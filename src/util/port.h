@@ -37,10 +37,9 @@ static void PthreadCall(const char* label, int result) {
   }
 }
 
-void InitOnce(OnceType* once, void (*initializer)()) {
+extern void InitOnce(OnceType* once, void (*initializer)()) {
   PthreadCall("once", pthread_once(once, initializer));
 }
-
 
 }
 }
