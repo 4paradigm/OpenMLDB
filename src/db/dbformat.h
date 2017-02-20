@@ -22,6 +22,8 @@
 #include "util/slice.h"
 #include "util/comparator.h"
 #include "util/coding.h"
+#include "util/string_util.h"
+#include "db/filter_policy.h"
 
 namespace rtidb {
 
@@ -178,6 +180,18 @@ class InternalKeyComparator : public Comparator {
   const Comparator* user_comparator() const { return user_comparator_; }
 
   int Compare(const InternalKey& a, const InternalKey& b) const;
+};
+
+
+// Filter policy wrapper that converts from internal keys to user keys
+class InternalFilterPolicy : public FilterPolicy {
+ private:
+  const FilterPolicy* const user_policy_;
+ public:
+  explicit InternalFilterPolicy(const FilterPolicy* p) : user_policy_(p) { }
+  virtual const char* Name() const;
+  virtual void CreateFilter(const Slice* keys, int n, std::string* dst) const;
+  virtual bool KeyMayMatch(const Slice& key, const Slice& filter) const;
 };
 
 inline int InternalKeyComparator::Compare(

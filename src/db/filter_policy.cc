@@ -1,6 +1,6 @@
 /*
- * port.h
- * Copyright 2017 elasticlog <elasticlog01@gmail.com> 
+ * filter_policy.cc
+ * Copyright 2017 elasticlog <elasticlog01@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,36 +15,13 @@
  * limitations under the License.
  */
 
-#ifndef RTIDB_PORT_H
-#define RTIDB_PORT_H
 
-#include <cstdlib>
-#include <stdio.h>
-#include <string.h>
-#include <pthread.h>
+#include "db/filter_policy.h"
 
 namespace rtidb {
-namespace port {
 
-typedef pthread_once_t OnceType;
-#define RTIDB_ONCE_INIT PTHREAD_ONCE_INIT
-static const bool kLittleEndian = true;
+FilterPolicy::~FilterPolicy() { }
 
-static void PthreadCall(const char* label, int result) {
-  if (result != 0) {
-    fprintf(stderr, "pthread %s: %s\n", label, strerror(result));
-    abort();
-  }
-}
-
-void InitOnce(OnceType* once, void (*initializer)()) {
-  PthreadCall("once", pthread_once(once, initializer));
-}
-
-
-}
-}
-
-#endif /* !PORT_H */
+}  // namespace rtidb
 
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */

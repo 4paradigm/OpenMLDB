@@ -1,5 +1,5 @@
 /*
- * port.h
+ * string_util.h
  * Copyright 2017 elasticlog <elasticlog01@gmail.com> 
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,36 +15,35 @@
  * limitations under the License.
  */
 
-#ifndef RTIDB_PORT_H
-#define RTIDB_PORT_H
+#ifndef RTIDB_STRING_UTIL_H
+#define RTIDB_STRING_UTIL_H
 
-#include <cstdlib>
-#include <stdio.h>
-#include <string.h>
-#include <pthread.h>
+#include "util/slice.h"
 
 namespace rtidb {
-namespace port {
 
-typedef pthread_once_t OnceType;
-#define RTIDB_ONCE_INIT PTHREAD_ONCE_INIT
-static const bool kLittleEndian = true;
-
-static void PthreadCall(const char* label, int result) {
-  if (result != 0) {
-    fprintf(stderr, "pthread %s: %s\n", label, strerror(result));
-    abort();
+inline void AppendEscapedStringTo(std::string* str, const Slice& value) {
+  for (size_t i = 0; i < value.size(); i++) {
+    char c = value[i];
+    if (c >= ' ' && c <= '~') {
+      str->push_back(c);
+    } else {
+      char buf[10];
+      snprintf(buf, sizeof(buf), "\\x%02x",
+               static_cast<unsigned int>(c) & 0xff);
+      str->append(buf);
+    }
   }
 }
 
-void InitOnce(OnceType* once, void (*initializer)()) {
-  PthreadCall("once", pthread_once(once, initializer));
+inline std::string EscapeString(const Slice& value) {
+  std::string r;
+  AppendEscapedStringTo(&r, value);
+  return r;
 }
 
-
-}
 }
 
-#endif /* !PORT_H */
+#endif /* !STRING_UTIL_H */
 
 /* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */
