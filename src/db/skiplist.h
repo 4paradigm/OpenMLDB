@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef STORAGE_LEVELDB_DB_SKIPLIST_H_
-#define STORAGE_LEVELDB_DB_SKIPLIST_H_
+#ifndef RTIDB_SKIPLIST_H_
+#define RTIDB_SKIPLIST_H_
 
 // Thread safety
 // -------------
@@ -33,7 +33,7 @@
 #include "util/arena.h"
 #include "util/random.h"
 
-namespace leveldb {
+namespace ritdb {
 
 class Arena;
 
@@ -379,6 +379,6 @@ bool SkipList<Key,Comparator>::Contains(const Key& key) const {
   }
 }
 
-}  // namespace leveldb
+}  // namespace rtidb
 
-#endif  // STORAGE_LEVELDB_DB_SKIPLIST_H_
+#endif  // RITDB_SKIPLIST_H_
