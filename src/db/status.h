@@ -10,13 +10,13 @@
 // non-const method, all threads accessing the same Status must use
 // external synchronization.
 
-#ifndef STORAGE_LEVELDB_INCLUDE_STATUS_H_
-#define STORAGE_LEVELDB_INCLUDE_STATUS_H_
+#ifndef RTIDB_STATUS_H_
+#define RTIDB_STATUS_H_
 
 #include <string>
-#include "leveldb/slice.h"
+#include "rtidb/slice.h"
 
-namespace leveldb {
+namespace rtidb {
 
 class Status {
  public:
@@ -107,6 +107,6 @@ inline void Status::operator=(const Status& s) {
   }
 }
 
-}  // namespace leveldb
+}  // namespace rtidb
 
-#endif  // STORAGE_LEVELDB_INCLUDE_STATUS_H_
+#endif  // RTIDB_STATUS_H_

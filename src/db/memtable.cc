@@ -4,9 +4,9 @@
 
 #include "db/memtable.h"
 #include "db/dbformat.h"
-#include "leveldb/comparator.h"
-#include "leveldb/env.h"
-#include "leveldb/iterator.h"
+#include "db/comparator.h"
+#include "db/env.h"
+#include "db/iterator.h"
 #include "util/coding.h"
 
 namespace rtidb {
@@ -142,4 +142,4 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
   return false;
 }
 
-}  // namespace leveldb
+}  // namespace rtidb

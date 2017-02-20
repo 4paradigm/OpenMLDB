@@ -12,7 +12,7 @@
 // non-const method, all threads accessing the same Slice must use
 // external synchronization.
 
-#ifndef RITDB_SLICE_H_
+#ifndef RTIDB_SLICE_H_
 #define RTIDB_SLICE_H_
 
 #include <assert.h>
@@ -20,7 +20,7 @@
 #include <string.h>
 #include <string>
 
-namespace ritdb {
+namespace rtidb {
 
 class Slice {
  public:
@@ -103,7 +103,7 @@ inline int Slice::compare(const Slice& b) const {
   return r;
 }
 
-}  // namespace ritdb
+}  // namespace rtidb
 
 
-#endif  // RITDB_SLICE_H_
+#endif  // RTIDB_SLICE_H_
