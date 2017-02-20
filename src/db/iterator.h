@@ -1,3 +1,20 @@
+/*
+ * iterator.h
+ * Copyright 2017 elasticlog <elasticlog01@gmail.com> 
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -12,10 +29,11 @@
 // non-const method, all threads accessing the same Iterator must use
 // external synchronization.
 
-#ifndef RTIDB_ITERATOR_H_
-#define RTIDB_ITERATOR_H_
 
-#include "db/slice.h"
+#ifndef RTIDB_ITERATOR_H
+#define RTIDB_ITERATOR_H
+
+#include "util/slice.h"
 #include "db/status.h"
 
 namespace rtidb {
@@ -97,4 +115,6 @@ extern Iterator* NewErrorIterator(const Status& status);
 
 }  // namespace rtidb
 
-#endif  // RITDB_ITERATOR_H_
+#endif  // RITDB_ITERATOR_H
+
+/* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */

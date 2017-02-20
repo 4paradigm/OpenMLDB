@@ -1,3 +1,20 @@
+/*
+ * coding.h
+ * Copyright 2017 elasticlog <elasticlog01@gmail.com> 
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -7,16 +24,17 @@
 // * In addition we support variable length "varint" encoding
 // * Strings are encoded prefixed by their length in varint format
 
-#ifndef STORAGE_LEVELDB_UTIL_CODING_H_
-#define STORAGE_LEVELDB_UTIL_CODING_H_
+
+#ifndef RTIDB_CODING_H
+#define RTIDB_CODING_H
 
 #include <stdint.h>
 #include <string.h>
 #include <string>
-#include "leveldb/slice.h"
-#include "port/port.h"
+#include "util/slice.h"
+#include "util/port.h"
 
-namespace leveldb {
+namespace rtidb {
 
 // Standard Put... routines append to a string
 extern void PutFixed32(std::string* dst, uint32_t value);
@@ -99,6 +117,7 @@ inline const char* GetVarint32Ptr(const char* p,
   return GetVarint32PtrFallback(p, limit, value);
 }
 
-}  // namespace leveldb
+}  // namespace rtidb
 
-#endif  // STORAGE_LEVELDB_UTIL_CODING_H_
+#endif  // RTIDB_UTIL_CODING_H_
+/* vim: set expandtab ts=2 sw=2 sts=2 tw=100: */
