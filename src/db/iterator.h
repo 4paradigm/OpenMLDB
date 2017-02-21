@@ -34,7 +34,7 @@
 #define RTIDB_ITERATOR_H
 
 #include "util/slice.h"
-#include "db/status.h"
+#include "util/status.h"
 
 namespace rtidb {
 

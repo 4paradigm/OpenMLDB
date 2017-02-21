@@ -16,7 +16,7 @@
  */
 
 
-#include "db/filter_policy.h"
+#include "util/filter_policy.h"
 
 namespace rtidb {
 

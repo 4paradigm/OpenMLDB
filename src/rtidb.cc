@@ -15,12 +15,14 @@
  * limitations under the License.
  */
 
-
+#include <stdio.h>
 #include "db/memtable.h"
 #include "db/dbformat.h"
 #include "util/comparator.h"
+#include "version.h"
 
 int main(int argc, char* argv[]) {
+  printf("version %d.%d\n",RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR);
   const rtidb::Comparator* com = rtidb::BytewiseComparator();
   rtidb::InternalKeyComparator ic(com);
   rtidb::MemTable* table = new rtidb::MemTable(ic);

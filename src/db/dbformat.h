@@ -23,7 +23,7 @@
 #include "util/comparator.h"
 #include "util/coding.h"
 #include "util/string_util.h"
-#include "db/filter_policy.h"
+#include "util/filter_policy.h"
 
 namespace rtidb {
 
