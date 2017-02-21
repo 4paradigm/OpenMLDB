@@ -56,7 +56,7 @@ void RtiDBTabletServerImpl::Put(RpcController* controller,
         return;
     }
     MutexLock lock(table_lock);
-    Slice key(request->pk() + request->sk());
+    Slice key(request->pk()+"/"+request->sk());
     Slice value(request->value());
     table->Add(0, kTypeValue, key, value);
     response->set_code(0);
@@ -79,7 +79,22 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-    return;
+    Iterator* it = table->NewIterator();
+    Slice sk(request->pk() + "/" + request->sk());
+    Slice ek(request->pk() + "/" + request->ek());
+    it->Seek(sk);
+    while (it->Valid()) {
+        if (it->value().compare(ek) > 0) {
+            break;
+        }
+        KvPair* pair = response->add_pairs();
+        pair->set_sk(it->key().ToString());
+        pair->set_value(it->value().ToString());
+        it->Next();
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    table->Unref();
 }
 
 
