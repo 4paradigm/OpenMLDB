@@ -16,22 +16,49 @@
  */
 
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <gflags/gflags.h>
+#include <sofa/pbrpc/pbrpc.h>
 #include "storage/memtable.h"
 #include "storage/dbformat.h"
 #include "util/comparator.h"
 #include "version.h"
+#include "dbms/baidu_common.h"
+#include "dbms/rtidb_tablet_server_impl.h"
 
-int main(int argc, char* argv[]) {
-  printf("version %d.%d\n",RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR);
-  const rtidb::Comparator* com = rtidb::BytewiseComparator();
-  rtidb::InternalKeyComparator ic(com);
-  rtidb::MemTable* table = new rtidb::MemTable(ic);
-  table->Ref();
-  rtidb::Slice key("test");
-  rtidb::Slice value("value");
-  rtidb::SequenceNumber seq = 10;
-  table->Add(seq, rtidb::kTypeValue, key, value);
-  table->Unref();
+DEFINE_string(ts_endpoint, "127.0.0.1:9527", "config the ip and port that ts serves for");
+DEFINE_int32(ts_partition_count, 8, "config the partition count of ts");
+
+
+static volatile bool s_quit = false;
+static void SignalIntHandler(int /*sig*/){
+  s_quit = true;
+}
+
+int main(int argc, char* args[]) {
+  ::baidu::common::SetLogFile("./rtidb_ts.log", true);
+  ::baidu::common::SetWarningFile("./rtidb_ts.wlog", true);
+  ::baidu::common::SetLogSize(1024);//1024M
+  ::google::ParseCommandLineFlags(&argc, &args, true);
+  sofa::pbrpc::RpcServerOptions options;
+  sofa::pbrpc::RpcServer rpc_server(options);  
+  rtidb::RtiDBTabletServerImpl* ts = new rtidb::RtiDBTabletServerImpl(FLAGS_ts_partition_count);
+  ts->Init();
+  if (!rpc_server.RegisterService(ts)) {
+    LOG(WARNING, "fail to start ts service");
+    exit(1);
+  }
+  if (!rpc_server.Start(FLAGS_ts_endpoint)) {
+    LOG(WARNING, "fail to listen endpoint %s", FLAGS_ts_endpoint.c_str());
+    exit(1);
+  }
+  LOG(INFO, "start ts with endpoint %s successfully", FLAGS_ts_endpoint.c_str());
+  signal(SIGINT, SignalIntHandler);
+  signal(SIGTERM, SignalIntHandler);
+  while (!s_quit) {
+    sleep(1);
+  }
   return 0;
 }
 

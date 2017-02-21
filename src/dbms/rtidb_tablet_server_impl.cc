@@ -16,6 +16,10 @@
 
 #include "dbms/rtidb_tablet_server_impl.h"
 
+#include "storage/dbformat.h"
+#include "util/comparator.h"
+#include "util/slice.h"
+#include "util/hash.h"
 
 namespace rtidb {
 
@@ -26,18 +30,29 @@ RtiDBTabletServerImpl::RtiDBTabletServerImpl(uint32_t partitions):partitions_(pa
 RtiDBTabletServerImpl::~RtiDBTabletServerImpl() {}
 
 bool RtiDBTabletServerImpl::Init() {
-
+    for (uint32_t i = 0; i < partitions_; i++) {
+         const Comparator* com = BytewiseComparator();
+         InternalKeyComparator ic(com);
+         MemTable* table = new MemTable(ic);
+         Mutex* mu = new Mutex();
+         tables_.push_back(std::make_pair(mu,table));
+    }
 }
 
 void RtiDBTabletServerImpl::Put(RpcController* controller,
             const PutRequest* request,
             PutResponse* response,
             Closure* done) {
-
-
+    uint32_t index = ::rtidb::Hash(request->pk().c_str(), 32, 32) % partitions_;
+    std::pair<Mutex*, MemTable*> pair = tables_[index];
+    MutexLock lock(pair.first);
+    Slice key(request->pk() + request->sk());
+    Slice value(request->value());
+    pair.second->Add(0, kTypeValue, key, value);
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
 }
-
-
 
 }
 

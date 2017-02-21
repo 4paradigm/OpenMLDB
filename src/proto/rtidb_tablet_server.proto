@@ -3,8 +3,11 @@ package rtidb;
 option cc_generic_services = true;
 
 message PutRequest {
-  optional string key = 1;
-  optional bytes value = 2;
+  // the prefix key 
+  optional string pk = 1;
+  // the subfix key
+  optional string sk = 2;
+  optional bytes value = 3;
 }
 
 message PutResponse {

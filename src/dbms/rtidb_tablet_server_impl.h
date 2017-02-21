@@ -18,8 +18,10 @@
 #define RTIDB_TABLET_SERVER_IMPL_H
 
 #include <vector>
+#include <map>
 #include "rtidb_tablet_server.pb.h"
 #include "storage/memtable.h"
+#include "dbms/baidu_common.h"
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -39,10 +41,9 @@ public:
             const PutRequest* request,
             PutResponse* response,
             Closure* done);
-
 private:
     uint32_t partitions_;
-    std::vector<MemTable*> tables_;
+    std::vector<std::pair<Mutex*, MemTable*> > tables_;
 };
 
 }
