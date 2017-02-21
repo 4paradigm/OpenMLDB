@@ -1,5 +1,5 @@
 //
-// rtidb_tablet_server_impl.h 
+// rtidb_tablet_server_impl.cc
 // Copyright 2017 elasticlog <elasticlog01@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,36 +14,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RTIDB_TABLET_SERVER_IMPL_H
-#define RTIDB_TABLET_SERVER_IMPL_H
+#include "dbms/rtidb_tablet_server_impl.h"
 
-#include <vector>
-#include "rtidb_tablet_server.pb.h"
-#include "storage/memtable.h"
-
-using ::google::protobuf::RpcController;
-using ::google::protobuf::Closure;
 
 namespace rtidb {
 
-class RtiDBTabletServerImpl : public RtiDBTabletServer {
 
-public:
-    RtiDBTabletServerImpl(uint32_t partitions);
+RtiDBTabletServerImpl::RtiDBTabletServerImpl(uint32_t partitions):partitions_(partitions),
+    tables_() {}
 
-    ~RtiDBTabletServerImpl();
+RtiDBTabletServerImpl::~RtiDBTabletServerImpl() {}
 
-    bool Init();
-
-    void Put(RpcController* controller,
-            const PutRequest* request,
-            PutResponse* response,
-            Closure* done);
-
-private:
-    uint32_t partitions_;
-    std::vector<MemTable*> tables_;
-};
+bool RtiDBTabletServerImpl::Init() {
 
 }
-#endif /* !RTIDB_TABLET_SERVER_IMPL_H */
+
+void RtiDBTabletServerImpl::Put(RpcController* controller,
+            const PutRequest* request,
+            PutResponse* response,
+            Closure* done) {
+
+
+}
+
+
+
+}
+
+
