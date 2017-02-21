@@ -1,5 +1,5 @@
 //
-// rtidb_impl.h 
+// rtidb_tablet_server_impl.h 
 // Copyright 2017 elasticlog <elasticlog01@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +14,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RTIDB_IMPL_H
-#define RTIDB_IMPL_H
+#ifndef RTIDB_TABLET_SERVER_IMPL_H
+#define RTIDB_TABLET_SERVER_IMPL_H
+
+#include "rtidb_tablet_server.pb.h"
+
+using ::google::protobuf::RpcController;
+using ::google::protobuf::Closure;
 
 namespace rtidb {
 
+class RtiDBTabletServerImpl : public RtiDBTabletServer {
+
+public:
+    RtiDBTabletServerImpl();
+
+    ~RtiDBTabletServerImpl();
+
+    void Put(RpcController* controller,
+            const PutRequest* request,
+            PutResponse* response,
+            Closure* done);
+
+};
 
 }
-#endif /* !RTIDB_IMPL_H */
+#endif /* !RTIDB_TABLET_SERVER_IMPL_H */
