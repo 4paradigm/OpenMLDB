@@ -1,0 +1,17 @@
+package rtidb;
+
+option cc_generic_services = true;
+
+message PutRequest {
+  optional string key = 1;
+  optional bytes value = 2;
+}
+
+message PutResponse {
+  optional int code = 1;
+  optional string msg = 2;
+}
+
+service RtiDB {
+  rpc Put(PutRequest) returns (PutResponse);
+}

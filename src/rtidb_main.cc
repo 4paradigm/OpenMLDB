@@ -16,8 +16,8 @@
  */
 
 #include <stdio.h>
-#include "db/memtable.h"
-#include "db/dbformat.h"
+#include "storage/memtable.h"
+#include "storage/dbformat.h"
 #include "util/comparator.h"
 #include "version.h"
 

@@ -37,8 +37,8 @@
 #define RTIDB_MEMTABLE_H
 
 #include <string>
-#include "db/dbformat.h"
-#include "db/iterator.h"
+#include "storage/dbformat.h"
+#include "storage/iterator.h"
 #include "util/skiplist.h"
 #include "util/arena.h"
 

@@ -20,7 +20,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include <stdio.h>
-#include "db/dbformat.h"
+#include "storage/dbformat.h"
 #include "util/port.h"
 #include "util/coding.h"
 
