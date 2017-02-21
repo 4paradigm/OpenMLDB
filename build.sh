@@ -129,4 +129,22 @@ else
     touch gflags_succ
 fi
 
+if [ -d "common_succ" ]
+then 
+   echo "common exist"
+else
+
+  # common
+  git clone https://github.com/baidu/common.git
+  cd common
+  sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/include/' Makefile
+  make -j2 >/dev/null
+  cp -rf include/* ${DEPS_PREFIX}/include
+  cp -rf libcommon.a ${DEPS_PREFIX}/lib
+  cd -
+  touch common_succ
+  cd ${WORK_DIR}
+fi
+
+
 
