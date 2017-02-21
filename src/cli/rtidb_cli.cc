@@ -17,7 +17,33 @@
 
 #include "rtidb_tablet_server.pb.h"
 
+#include "rpc/rpc_client.h"
 
-int main()
+namespace ritdb {
+
+class RtiDBClient {
+
+public:
+    RtiDBClient(const std::string& endpoint):endpoint_(endpoint),
+    stub_(NULL),rpc_client_(NULL){}
+    ~RtiDBClient(){}
+
+    void Init() {
+        rpc_client_ = new RpcClient();
+        rpc_client_->GetStub(endpoint_, &stub_);
+    }
+
+    void Put(const std::string& pk,
+             const std::string& sk,
+             const std::string& val) {}
+
+private:
+    std::string endpoint_;
+    RtiDBTabletServer_Stub* stub_;
+    RpcClient* rpc_client_;
+};
+
+}
+
 
 
