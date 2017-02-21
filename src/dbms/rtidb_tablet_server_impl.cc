@@ -25,7 +25,7 @@ namespace rtidb {
 
 
 RtiDBTabletServerImpl::RtiDBTabletServerImpl(uint32_t partitions):partitions_(partitions),
-    tables_() {}
+    tables_(),mu_() {}
 
 RtiDBTabletServerImpl::~RtiDBTabletServerImpl() {}
 
@@ -34,6 +34,8 @@ bool RtiDBTabletServerImpl::Init() {
          const Comparator* com = BytewiseComparator();
          InternalKeyComparator ic(com);
          MemTable* table = new MemTable(ic);
+         // for the tables_ container
+         table->Ref();
          Mutex* mu = new Mutex();
          tables_.push_back(std::make_pair(mu,table));
     }
@@ -43,15 +45,54 @@ void RtiDBTabletServerImpl::Put(RpcController* controller,
             const PutRequest* request,
             PutResponse* response,
             Closure* done) {
-    uint32_t index = ::rtidb::Hash(request->pk().c_str(), 32, 32) % partitions_;
-    std::pair<Mutex*, MemTable*> pair = tables_[index];
-    MutexLock lock(pair.first);
+    MemTable* table = NULL;
+    Mutex* table_lock = NULL;
+    GetTable(request->pk(), table, table_lock);
+    if (table == NULL || table_lock == NULL) {
+        response->set_code(-1);
+        response->set_msg("no table exist  for input pk");
+        LOG(WARNING, "no table exist for pk %s", request->pk().c_str());
+        done->Run();
+        return;
+    }
+    MutexLock lock(table_lock);
     Slice key(request->pk() + request->sk());
     Slice value(request->value());
-    pair.second->Add(0, kTypeValue, key, value);
+    table->Add(0, kTypeValue, key, value);
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
+    table->Unref();
+}
+
+void RtiDBTabletServerImpl::Scan(RpcController* controller,
+        const ScanRequest* request,
+        ScanResponse* response,
+        Closure* done) {
+    MemTable* table = NULL;
+    Mutex* table_lock = NULL;
+    GetTable(request->pk(), table, table_lock);
+    if (table == NULL || table_lock == NULL) {
+        response->set_code(-1);
+        response->set_msg("no table exist  for input pk");
+        LOG(WARNING, "no table exist for pk %s", request->pk().c_str());
+        done->Run();
+        return;
+    }
+    return;
+}
+
+
+void RtiDBTabletServerImpl::GetTable(const std::string& pk, MemTable* table,
+        Mutex* table_lock) {
+    uint32_t index = ::rtidb::Hash(pk.c_str(), 32, 32) % partitions_;
+    MutexLock lock(&mu_);
+    if (index < tables_.size()) {
+        std::pair<Mutex*, MemTable*> pair = tables_[index];
+        table = pair.second;
+        table_lock = pair.first;
+        table->Ref();
+    }
 }
 
 }

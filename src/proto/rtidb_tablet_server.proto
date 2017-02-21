@@ -15,6 +15,28 @@ message PutResponse {
   optional string msg = 2;
 }
 
+message ScanRequest {
+  // the prefix key
+  optional string pk = 1;
+  // the start subfix key
+  optional string sk = 2;
+  // the end subfix key
+  optional string ek = 3;
+}
+
+message KvPair {
+  optional string pk = 1;
+  optional string sk = 2;
+  optional bytes value = 3;
+}
+
+message ScanResponse {
+  repeated KvPair pairs = 1;
+  optional string msg = 2;
+  optional int32 code = 3;
+}
+
 service RtiDBTabletServer {
   rpc Put(PutRequest) returns (PutResponse);
+  rpc Scan(ScanRequest) returns (ScanResponse); 
 }

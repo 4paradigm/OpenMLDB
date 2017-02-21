@@ -41,9 +41,18 @@ public:
             const PutRequest* request,
             PutResponse* response,
             Closure* done);
+
+    void Scan(RpcController* controller,
+              const ScanRequest* request,
+              ScanResponse* response,
+              Closure* done);
+private:
+    void GetTable(const std::string& pk, MemTable* table,
+            Mutex* table_lock);
 private:
     uint32_t partitions_;
     std::vector<std::pair<Mutex*, MemTable*> > tables_;
+    Mutex mu_;
 };
 
 }

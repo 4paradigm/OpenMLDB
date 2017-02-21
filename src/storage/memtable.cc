@@ -49,12 +49,12 @@ static Slice GetLengthPrefixedSlice(const char* data) {
 
 MemTable::MemTable(const InternalKeyComparator& cmp)
     : comparator_(cmp),
-      refs_(0),
-      table_(comparator_, &arena_) {
+      table_(comparator_, &arena_),
+      refs_(0){
 }
 
 MemTable::~MemTable() {
-  assert(refs_ == 0);
+  assert(refs_.Get() == 0);
 }
 
 size_t MemTable::ApproximateMemoryUsage() { return arena_.MemoryUsage(); }

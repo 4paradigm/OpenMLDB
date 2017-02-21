@@ -41,6 +41,7 @@
 #include "storage/iterator.h"
 #include "util/skiplist.h"
 #include "util/arena.h"
+#include "counter.h"
 
 namespace rtidb {
 
@@ -54,13 +55,13 @@ class MemTable {
   explicit MemTable(const InternalKeyComparator& comparator);
 
   // Increase reference count.
-  void Ref() { ++refs_; }
+  void Ref() { refs_.Inc(); }
 
   // Drop reference count.  Delete if no more references exist.
   void Unref() {
-    --refs_;
-    assert(refs_ >= 0);
-    if (refs_ <= 0) {
+    refs_.Dec();
+    assert(refs_.Get() >= 0);
+    if (refs_.Get() <= 0) {
       delete this;
     }
   }
@@ -104,10 +105,9 @@ class MemTable {
   typedef SkipList<const char*, KeyComparator> Table;
 
   KeyComparator comparator_;
-  int refs_;
   Arena arena_;
   Table table_;
-
+  ::baidu::common::Counter refs_;
   // No copying allowed
   MemTable(const MemTable&);
   void operator=(const MemTable&);
