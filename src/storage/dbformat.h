@@ -132,6 +132,10 @@ class LookupKey {
   void operator=(const LookupKey&);
 };
 
+inline LookupKey::~LookupKey() {
+  if (start_ != space_) delete[] start_;
+}
+
 
 // Modules in this directory should keep internal keys wrapped inside
 // the following class instead of plain strings so that we do not

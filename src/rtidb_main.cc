@@ -37,9 +37,9 @@ static void SignalIntHandler(int /*sig*/){
 }
 
 int main(int argc, char* args[]) {
-  ::baidu::common::SetLogFile("./rtidb_ts.log", true);
-  ::baidu::common::SetWarningFile("./rtidb_ts.wlog", true);
-  ::baidu::common::SetLogSize(1024);//1024M
+  //::baidu::common::SetLogFile("./rtidb_ts.log", true);
+  //::baidu::common::SetLogSize(1024);//1024M
+  ::baidu::common::SetLogLevel(INFO);
   ::google::ParseCommandLineFlags(&argc, &args, true);
   sofa::pbrpc::RpcServerOptions options;
   sofa::pbrpc::RpcServer rpc_server(options);  

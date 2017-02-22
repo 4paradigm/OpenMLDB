@@ -19,6 +19,7 @@
 
 #include "mutex.h"
 #include "logging.h"
+#include "timer.h"
 #include "thread_pool.h"
 
 using ::baidu::common::INFO;

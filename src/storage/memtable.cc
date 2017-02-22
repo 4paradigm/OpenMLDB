@@ -67,22 +67,12 @@ int MemTable::KeyComparator::operator()(const char* aptr, const char* bptr)
   return comparator.Compare(a, b);
 }
 
-// Encode a suitable internal key target for "target" and return it.
-// Uses *scratch as scratch space, and the returned pointer will point
-// into this scratch space.
-static const char* EncodeKey(std::string* scratch, const Slice& target) {
-  scratch->clear();
-  PutVarint32(scratch, target.size());
-  scratch->append(target.data(), target.size());
-  return scratch->data();
-}
-
 class MemTableIterator: public Iterator {
  public:
   explicit MemTableIterator(MemTable::Table* table) : iter_(table) { }
 
   virtual bool Valid() const { return iter_.Valid(); }
-  virtual void Seek(const Slice& k) { iter_.Seek(EncodeKey(&tmp_, k)); }
+  virtual void Seek(const Slice& target) { iter_.Seek(target.data()); }
   virtual void SeekToFirst() { iter_.SeekToFirst(); }
   virtual void SeekToLast() { iter_.SeekToLast(); }
   virtual void Next() { iter_.Next(); }

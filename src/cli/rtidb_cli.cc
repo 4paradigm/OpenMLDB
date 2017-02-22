@@ -17,33 +17,78 @@
 
 #include "rtidb_tablet_server.pb.h"
 
+#include <iostream>
+#include <vector>
+#include <gflags/gflags.h>
+#include <boost/lexical_cast.hpp>
 #include "rpc/rpc_client.h"
+#include "cli/rtidb_client.h"
+#include "util/string_util.h"
+#include <signal.h>
+#include <unistd.h>
 
-namespace ritdb {
+DEFINE_string(ts_endpoint, "127.0.0.1:9527", "config the ip and port that ts serves for");
 
-class RtiDBClient {
-
-public:
-    RtiDBClient(const std::string& endpoint):endpoint_(endpoint),
-    stub_(NULL),rpc_client_(NULL){}
-    ~RtiDBClient(){}
-
-    void Init() {
-        rpc_client_ = new RpcClient();
-        rpc_client_->GetStub(endpoint_, &stub_);
-    }
-
-    void Put(const std::string& pk,
-             const std::string& sk,
-             const std::string& val) {}
-
-private:
-    std::string endpoint_;
-    RtiDBTabletServer_Stub* stub_;
-    RpcClient* rpc_client_;
-};
-
+static volatile bool s_quit = false;
+static void SignalIntHandler(int /*sig*/){
+  s_quit = true;
 }
 
+void HandlePut(const std::string& input, rtidb::RtiDBClient* client) {
+    std::vector<std::string> parts;
+    ::rtidb::SplitString(input, " ", &parts);
+    if (parts.size() < 4) {
+        std::cout << "error format input" << std::endl;
+        return;
+    }
+    client->Put(parts[1], parts[2], parts[3]);
+}
+
+void HandleScan(const std::string& input, rtidb::RtiDBClient* client) {
+    std::vector<std::string> parts;
+    ::rtidb::SplitString(input, " ", &parts);
+    if (parts.size() < 4) {
+        std::cout << "error format input" << std::endl;
+        return;
+    }
+    client->Scan(parts[1], parts[2], parts[3]);
+}
+
+void HandleBench(rtidb::RtiDBClient* client) {
+    char val[400];
+    for (int i = 0; i < 400; i++) {
+        val[i] ='0';
+    }
+    std::string sval(val);
+    for (int i = 0; i < 10000000; i++) {
+        std::string key = "00000000";
+        std::string num = boost::lexical_cast<std::string>(i);
+        key.replace(key.size()-num.size(), num.size(), num); 
+        client->Put("2", key, sval);
+    }
+}
+
+int main(int argc, char* argv[]) {
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    rtidb::RtiDBClient* client = new rtidb::RtiDBClient(FLAGS_ts_endpoint);
+    client->Init();
+    std::cout << "welcome to rtidb cli!" << std::endl;
+    while (!s_quit) {
+        std::cout << ">";
+        std::string buffer;
+        std::getline(std::cin, buffer);
+        if (buffer.empty()) {
+            continue;
+        }
+        std::string cmd = buffer.substr(0, 3);
+        if (cmd == "put") {
+            HandlePut(buffer, client);
+        }else if (cmd =="ben"){
+            HandleBench(client);
+        }else {
+            HandleScan(buffer, client);
+        }
+    }
 
 
+}

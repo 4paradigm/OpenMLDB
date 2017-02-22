@@ -47,8 +47,8 @@ public:
               ScanResponse* response,
               Closure* done);
 private:
-    void GetTable(const std::string& pk, MemTable* table,
-            Mutex* table_lock);
+    void GetTable(const std::string& pk, MemTable** table,
+            Mutex** table_lock);
 private:
     uint32_t partitions_;
     std::vector<std::pair<Mutex*, MemTable*> > tables_;

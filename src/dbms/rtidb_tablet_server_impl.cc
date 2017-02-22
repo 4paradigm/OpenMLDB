@@ -19,7 +19,7 @@
 #include "storage/dbformat.h"
 #include "util/comparator.h"
 #include "util/slice.h"
-#include "util/hash.h"
+#include "util/coding.h"
 
 namespace rtidb {
 
@@ -47,7 +47,7 @@ void RtiDBTabletServerImpl::Put(RpcController* controller,
             Closure* done) {
     MemTable* table = NULL;
     Mutex* table_lock = NULL;
-    GetTable(request->pk(), table, table_lock);
+    GetTable(request->pk(), &table, &table_lock);
     if (table == NULL || table_lock == NULL) {
         response->set_code(-1);
         response->set_msg("no table exist  for input pk");
@@ -61,6 +61,7 @@ void RtiDBTabletServerImpl::Put(RpcController* controller,
     table->Add(0, kTypeValue, key, value);
     response->set_code(0);
     response->set_msg("ok");
+    LOG(DEBUG, "add key %s value %s ok", key.data(), value.data());
     done->Run();
     table->Unref();
 }
@@ -71,7 +72,7 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
         Closure* done) {
     MemTable* table = NULL;
     Mutex* table_lock = NULL;
-    GetTable(request->pk(), table, table_lock);
+    GetTable(request->pk(), &table, &table_lock);
     if (table == NULL || table_lock == NULL) {
         response->set_code(-1);
         response->set_msg("no table exist  for input pk");
@@ -79,12 +80,18 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
+
+    LOG(DEBUG, "scan table with pk %s  sk %s ek %s",request->pk().c_str(),
+            request->sk().c_str(), request->ek().c_str());
     Iterator* it = table->NewIterator();
     Slice sk(request->pk() + "/" + request->sk());
+    LookupKey lsk(sk, 0);
     Slice ek(request->pk() + "/" + request->ek());
-    it->Seek(sk);
+    InternalKey iek(ek, 0, kTypeValue);
+    it->Seek(lsk.memtable_key());
     while (it->Valid()) {
-        if (it->value().compare(ek) > 0) {
+        LOG(DEBUG, "scan k:%s v:%s", it->key().data(), it->value().data());
+        if (it->key().compare(iek.Encode()) > 0) {
             break;
         }
         KvPair* pair = response->add_pairs();
@@ -92,21 +99,24 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
         pair->set_value(it->value().ToString());
         it->Next();
     }
+    delete it;
     response->set_code(0);
     response->set_msg("ok");
     table->Unref();
+    done->Run();
 }
 
 
-void RtiDBTabletServerImpl::GetTable(const std::string& pk, MemTable* table,
-        Mutex* table_lock) {
-    uint32_t index = ::rtidb::Hash(pk.c_str(), 32, 32) % partitions_;
+void RtiDBTabletServerImpl::GetTable(const std::string& pk, MemTable** table,
+        Mutex** table_lock) {
+    uint32_t index = ::rtidb::DecodeFixed32(pk.c_str()) % partitions_;
+    LOG(DEBUG, "hash pk %s with index %ld", pk.c_str(), index);
     MutexLock lock(&mu_);
     if (index < tables_.size()) {
         std::pair<Mutex*, MemTable*> pair = tables_[index];
-        table = pair.second;
-        table_lock = pair.first;
-        table->Ref();
+        pair.second->Ref();
+        *table = pair.second;
+        *table_lock = pair.first;
     }
 }
 
