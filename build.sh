@@ -129,11 +129,10 @@ else
     touch gflags_succ
 fi
 
-if [ -d "common_succ" ]
+if [ -f "common_succ" ]
 then 
    echo "common exist"
 else
-
   # common
   git clone https://github.com/baidu/common.git
   cd common
@@ -146,5 +145,31 @@ else
   cd ${WORK_DIR}
 fi
 
+if [ -f "libunwind_succ" ]
+then
+  echo "libunwind succ exist"
+else
+  wget  -O libunwind-1.2.tar.gz http://download.savannah.gnu.org/releases/libunwind/libunwind-1.2.tar.gz
+  tar -zxvf libunwind-1.2.tar.gz
+  cd libunwind-1.2
+  ./configure --enable-shared=no --enable-static=yes --prefix=${DEPS_PREFIX}
+  make -j8 && make install
+  cd -
+  touch libunwind_succ
+fi
 
-
+if [ -f "gperf_tool" ]
+then
+    echo "gperf_tool exist"
+else
+    wget --no-check-certificate -O gperftools-2.5.tar.gz https://github.com/gperftools/gperftools/releases/download/gperftools-2.5/gperftools-2.5.tar.gz 
+    tar -zxvf gperftools-2.5.tar.gz 
+    cd gperftools-2.5 
+    export LDFLAGS=-L${DEPS_PREFIX}/lib 
+    export CPPFLAGS=-I${DEPS_PREFIX}/include 
+    ./configure --enable-shared=no --enable-static=yes --enable-libunwind --prefix=${DEPS_PREFIX} 
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch gperf_tool
+fi
