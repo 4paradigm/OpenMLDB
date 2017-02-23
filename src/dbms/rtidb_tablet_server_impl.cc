@@ -98,8 +98,8 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
             break;
         }
         KvPair* pair = response->add_pairs();
-        pair->set_sk(it->key().ToString());
-        pair->set_value(it->value().ToString());
+        pair->set_sk(it->key().data());
+        pair->set_value(it->value().data());
         it->Next();
     }
     delete it;

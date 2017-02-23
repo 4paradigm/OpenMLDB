@@ -51,10 +51,10 @@ void HandleScan(const std::string& input, rtidb::RtiDBClient* client) {
         std::cout << "error format input" << std::endl;
         return;
     }
-    client->Scan(parts[1], parts[2], parts[3]);
+    client->Scan(parts[1], parts[2], parts[3], true);
 }
 
-void HandleBench(const std::string& input, rtidb::RtiDBClient* client) {
+void HandlePutBench(const std::string& input, rtidb::RtiDBClient* client) {
     std::vector<std::string> parts;
     ::rtidb::SplitString(input, " ", &parts);
     char val[400];
@@ -67,6 +67,14 @@ void HandleBench(const std::string& input, rtidb::RtiDBClient* client) {
         std::string num = boost::lexical_cast<std::string>(i);
         key.replace(key.size()-num.size(), num.size(), num); 
         client->Put(parts[1], key, sval);
+    }
+}
+
+void HandleScanBench(const std::string& input, rtidb::RtiDBClient* client) {
+    std::vector<std::string> parts;
+    ::rtidb::SplitString(input, " ", &parts);
+    for (int i = 0; i < 10000; i++) {
+        client->Scan(parts[1], parts[2], parts[3], false);
     }
 }
 
@@ -85,8 +93,10 @@ int main(int argc, char* argv[]) {
         std::string cmd = buffer.substr(0, 3);
         if (cmd == "put") {
             HandlePut(buffer, client);
-        }else if (cmd =="ben"){
-            HandleBench(buffer, client);
+        }else if (cmd =="pbe"){
+            HandlePutBench(buffer, client);
+        }else if (cmd =="sbe" ){
+            HandleScanBench(buffer, client);
         }else {
             HandleScan(buffer, client);
         }

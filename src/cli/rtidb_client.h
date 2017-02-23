@@ -55,7 +55,7 @@ public:
     }
 
     void Scan(const std::string& pk, const std::string& sk,
-              const std::string& ek) {
+              const std::string& ek, bool print) {
 
         int64_t consumed = ::baidu::common::timer::get_micros();
         ScanRequest request;
@@ -74,6 +74,9 @@ public:
         RpcMetric* pmetric = response.mutable_metric();
         pmetric->set_rptime(::baidu::common::timer::get_micros());
         consumed = ::baidu::common::timer::get_micros() - consumed;
+        if (!print) {
+            return;
+        }
         for (int i = 0; i < response.pairs_size(); i++) {
             const ::rtidb::KvPair& pair = response.pairs(i);
             std::cout << "key:" << pair.sk()
