@@ -70,6 +70,9 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
         const ScanRequest* request,
         ScanResponse* response,
         Closure* done) {
+    RpcMetric* metric = response->mutable_metric();
+    metric->CopyFrom(request->metric());
+    metric->set_rqtime(::baidu::common::timer::get_micros());
     MemTable* table = NULL;
     Mutex* table_lock = NULL;
     GetTable(request->pk(), &table, &table_lock);
@@ -80,7 +83,7 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-
+    metric->set_sctime(::baidu::common::timer::get_micros());
     LOG(DEBUG, "scan table with pk %s  sk %s ek %s",request->pk().c_str(),
             request->sk().c_str(), request->ek().c_str());
     Iterator* it = table->NewIterator();
@@ -103,6 +106,7 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
     table->Unref();
+    metric->set_sptime(::baidu::common::timer::get_micros());
     done->Run();
 }
 

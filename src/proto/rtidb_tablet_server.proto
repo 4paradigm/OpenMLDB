@@ -22,6 +22,7 @@ message ScanRequest {
   optional string sk = 2;
   // the end subfix key
   optional string ek = 3;
+  optional RpcMetric metric = 5;
 }
 
 message KvPair {
@@ -30,10 +31,24 @@ message KvPair {
   optional bytes value = 3;
 }
 
+message RpcMetric {
+  // the time start send rpc request
+  optional int64 sqtime = 1;
+  // the time server receive rpc request
+  optional int64 rqtime = 2;
+  // the time server start to caculate
+  optional int64 sctime = 3;
+  // the time server start send response
+  optional int64 sptime = 4;
+  // the time client receive response
+  optional int64 rptime = 5;
+}
+
 message ScanResponse {
   repeated KvPair pairs = 1;
   optional string msg = 2;
   optional int32 code = 3;
+  optional RpcMetric metric = 6;
 }
 
 service RtiDBTabletServer {

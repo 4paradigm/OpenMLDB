@@ -62,6 +62,8 @@ public:
         request.set_pk(pk);
         request.set_sk(sk);
         request.set_ek(ek);
+        RpcMetric* metric = request.mutable_metric();
+        metric->set_sqtime(::baidu::common::timer::get_micros());
         ScanResponse response;
         bool ok = rpc_client_->SendRequest(stub_, &RtiDBTabletServer_Stub::Scan,
                 &request, &response, 12, 1);
@@ -69,7 +71,8 @@ public:
             std::cout << "fail to call scan request with error " << response.msg() << std::endl;
             return;
         }
-
+        RpcMetric* pmetric = response.mutable_metric();
+        pmetric->set_rptime(::baidu::common::timer::get_micros());
         consumed = ::baidu::common::timer::get_micros() - consumed;
         for (int i = 0; i < response.pairs_size(); i++) {
             const ::rtidb::KvPair& pair = response.pairs(i);
@@ -78,6 +81,19 @@ public:
         }
         std::cout << "scan " << response.pairs_size() << " records, latency " 
             << consumed / 1000 << " ms" << std::endl;
+        PrintMetric(pmetric);
+    }
+
+    void PrintMetric(const RpcMetric* metric) {
+        uint64_t rpc_send_consumed = metric->rqtime() - metric->sqtime();
+        uint64_t server_lock_consumed = metric->sctime() - metric->rqtime();
+        uint64_t server_caculated_consumed = metric->sptime() - metric->sctime();
+        uint64_t rpc_receive_consumed = metric->rptime() - metric->sptime();
+
+        std::cout << "rpc metric: #RpcSendConsumed=" << rpc_send_consumed << " "
+                  << "#ServerLockConsumed=" << server_lock_consumed << " "
+                  << "#ServerCaculatedConsumed="<< server_caculated_consumed << " "
+                  << "#RpcReceiveConsumed=" << rpc_receive_consumed << std::endl;
     }
 
 private:

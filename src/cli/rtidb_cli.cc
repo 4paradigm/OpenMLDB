@@ -54,7 +54,9 @@ void HandleScan(const std::string& input, rtidb::RtiDBClient* client) {
     client->Scan(parts[1], parts[2], parts[3]);
 }
 
-void HandleBench(rtidb::RtiDBClient* client) {
+void HandleBench(const std::string& input, rtidb::RtiDBClient* client) {
+    std::vector<std::string> parts;
+    ::rtidb::SplitString(input, " ", &parts);
     char val[400];
     for (int i = 0; i < 400; i++) {
         val[i] ='0';
@@ -64,7 +66,7 @@ void HandleBench(rtidb::RtiDBClient* client) {
         std::string key = "00000000";
         std::string num = boost::lexical_cast<std::string>(i);
         key.replace(key.size()-num.size(), num.size(), num); 
-        client->Put("2", key, sval);
+        client->Put(parts[1], key, sval);
     }
 }
 
@@ -84,7 +86,7 @@ int main(int argc, char* argv[]) {
         if (cmd == "put") {
             HandlePut(buffer, client);
         }else if (cmd =="ben"){
-            HandleBench(client);
+            HandleBench(buffer, client);
         }else {
             HandleScan(buffer, client);
         }
