@@ -92,21 +92,19 @@ then
     echo "sofa exist"
 else
     # sofa-pbrpc
-    wget --no-check-certificate -O sofa-pbrpc-1.0.0.tar.gz https://github.com/BaiduPS/sofa-pbrpc/archive/v1.0.0.tar.gz
-    tar zxf sofa-pbrpc-1.0.0.tar.gz
-    cd sofa-pbrpc-1.0.0
-    sed -i '/BOOST_HEADER_DIR=/ d' depends.mk
-    sed -i '/PROTOBUF_DIR=/ d' depends.mk
-    sed -i '/SNAPPY_DIR=/ d' depends.mk
+    #wget --no-check-certificate -O sofa-pbrpc-1.0.0.tar.gz https://github.com/BaiduPS/sofa-pbrpc/archive/v1.0.0.tar.gz
+    #tar zxf sofa-pbrpc-1.0.0.tar.gz
+    git clone https://github.com/baidu/sofa-pbrpc.git
+    cd sofa-pbrpc
     echo "BOOST_HEADER_DIR=${DEPS_PREFIX}/include" >> depends.mk
     echo "PROTOBUF_DIR=${DEPS_PREFIX}" >> depends.mk
     echo "SNAPPY_DIR=${DEPS_PREFIX}" >> depends.mk
     echo "PREFIX=${DEPS_PREFIX}" >> depends.mk
     cd -
-    cd sofa-pbrpc-1.0.0/src
-    PROTOBUF_DIR=${DEPS_PREFIX} sh compile_proto.sh
+    cd sofa-pbrpc/src
+    sh compile_proto.sh ${DEPS_PREFIX}/include
     cd -
-    cd sofa-pbrpc-1.0.0
+    cd sofa-pbrpc
     make -j2 >/dev/null
     make install
     cd -

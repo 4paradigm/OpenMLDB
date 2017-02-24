@@ -1,3 +1,5 @@
+import "sofa/pbrpc/rpc_option.proto";
+
 package rtidb;
 
 option cc_generic_services = true;
@@ -55,5 +57,5 @@ message ScanResponse {
 
 service RtiDBTabletServer {
   rpc Put(PutRequest) returns (PutResponse);
-  rpc Scan(ScanRequest) returns (ScanResponse); 
+  rpc Scan(ScanRequest) returns (ScanResponse);
 }
