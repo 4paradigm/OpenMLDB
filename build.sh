@@ -140,14 +140,13 @@ else
   cp -rf libcommon.a ${DEPS_PREFIX}/lib
   cd -
   touch common_succ
-  cd ${WORK_DIR}
 fi
 
 if [ -f "libunwind_succ" ]
 then
   echo "libunwind succ exist"
 else
-  wget  -O libunwind-1.2.tar.gz http://download.savannah.gnu.org/releases/libunwind/libunwind-1.2.tar.gz
+  wget --no-check-certificate  -O libunwind-1.2.tar.gz http://download.savannah.gnu.org/releases/libunwind/libunwind-1.2.tar.gz
   tar -zxvf libunwind-1.2.tar.gz
   cd libunwind-1.2
   ./configure --enable-shared=no --enable-static=yes --prefix=${DEPS_PREFIX}
