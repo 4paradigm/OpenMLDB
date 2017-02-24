@@ -90,12 +90,13 @@ public:
     void PrintMetric(const RpcMetric* metric) {
         uint64_t rpc_send_consumed = metric->rqtime() - metric->sqtime();
         uint64_t server_lock_consumed = metric->sctime() - metric->rqtime();
-        uint64_t server_caculated_consumed = metric->sptime() - metric->sctime();
+        uint64_t server_iterator_consumed = metric->sptime() - metric->sitime();
         uint64_t rpc_receive_consumed = metric->rptime() - metric->sptime();
-
+        uint64_t server_seek_consumed = metric->sitime() - metric->sctime();
         std::cout << "rpc metric: #RpcSendConsumed=" << rpc_send_consumed << " "
                   << "#ServerLockConsumed=" << server_lock_consumed << " "
-                  << "#ServerCaculatedConsumed="<< server_caculated_consumed << " "
+                  << "#ServerSeekConsumed="<<server_seek_consumed << " "
+                  << "#ServerIteratorConsumed="<< server_iterator_consumed << " "
                   << "#RpcReceiveConsumed=" << rpc_receive_consumed << std::endl;
     }
 

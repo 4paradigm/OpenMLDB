@@ -42,6 +42,8 @@ message RpcMetric {
   optional int64 sptime = 4;
   // the time client receive response
   optional int64 rptime = 5;
+  // the time server start to iterator
+  optional int64 sitime = 6;
 }
 
 message ScanResponse {

@@ -92,6 +92,7 @@ void RtiDBTabletServerImpl::Scan(RpcController* controller,
     Slice ek(request->pk() + "/" + request->ek());
     InternalKey iek(ek, 0, kTypeValue);
     it->Seek(lsk.memtable_key());
+    metric->set_sitime(::baidu::common::timer::get_micros());
     while (it->Valid()) {
         LOG(DEBUG, "scan k:%s v:%s", it->key().data(), it->value().data());
         if (it->key().compare(iek.Encode()) > 0) {
