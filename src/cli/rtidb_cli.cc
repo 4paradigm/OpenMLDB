@@ -76,6 +76,7 @@ void HandleScanBench(const std::string& input, rtidb::RtiDBClient* client) {
     for (int i = 0; i < 10000; i++) {
         client->Scan(parts[1], parts[2], parts[3], false);
     }
+    client->ShowPercentile();
 }
 
 int main(int argc, char* argv[]) {
