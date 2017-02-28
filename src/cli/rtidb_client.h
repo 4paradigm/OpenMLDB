@@ -19,7 +19,7 @@
 
 #include "rtidb_tablet_server.pb.h"
 
-#include <set>
+#include <vector>
 #include <boost/numeric/conversion/cast.hpp>
 #include "dbms/baidu_common.h"
 
@@ -76,11 +76,8 @@ public:
         RpcMetric* pmetric = response.mutable_metric();
         pmetric->set_rptime(::baidu::common::timer::get_micros());
         consumed = ::baidu::common::timer::get_micros() - consumed;
-        scan_percentile_.insert(consumed);
+        scan_percentile_.push_back(consumed/1000);
         count_++;
-        if (scan_percentile_.size() > 1000) {
-            scan_percentile_.erase(scan_percentile_.begin());
-        }
         if (!print) {
             return;
         }
@@ -108,24 +105,11 @@ public:
     }
 
     void ShowPercentile() {
-        int32_t percentile[3];
-        percentile[0] = boost::numeric_cast<int32_t>(0.99 * count_); 
-        percentile[1] = boost::numeric_cast<int32_t>(0.90 * count_);
-        percentile[2] = boost::numeric_cast<int32_t>(0.5 * count_);
-        int32_t count = 0;
-        int64_t result[3];
-        int32_t pidx = 0;
-        std::set<int64_t>::reverse_iterator rit = scan_percentile_.rbegin();
-        for (; rit != scan_percentile_.rend()&& pidx < 3; ++rit) {
-            if (percentile[pidx] == count) {
-                result[pidx] = *rit;
-                pidx ++;
-            }
-            count ++;
-        }
-        std::cout << "Percentile:99=" << result[0] << " "
-                  << "90=" << result[1] << " "
-                  << "50=" << result[2] << " " << std::endl;
+        
+        std::sort(scan_percentile_.begin(), scan_percentile_.end());
+        std::cout << "Percentile:99=" << scan_percentile_[9900] << " "
+                  << "95=" << scan_percentile_[9500]<< " "
+                  << "90=" << scan_percentile_[9000] << " " << std::endl;
         count_ = 0;
         scan_percentile_.clear();
     }
@@ -134,7 +118,7 @@ private:
     std::string endpoint_;
     RtiDBTabletServer_Stub* stub_;
     RpcClient* rpc_client_;
-    std::set<int64_t> scan_percentile_;
+    std::vector<int64_t> scan_percentile_;
     int32_t count_;
 };
 }
