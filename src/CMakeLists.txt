@@ -8,8 +8,12 @@ set(dbms_src dbms/rtidb_tablet_server_impl.cc)
 set(rtidb_src rtidb_main.cc)
 set(tablet_src proto/rtidb_tablet_server.pb.cc)
 set(cli_src  cli/rtidb_cli.cc)
+set(rtidb_perf_src  rtidb_perf.cc proto/kvpair.pb.cc)
 ADD_EXECUTABLE(rtidb ${rtidb_src} ${storage_src} ${util_src} ${dbms_src} ${tablet_src})
 TARGET_LINK_LIBRARIES(rtidb common pthread sofa-pbrpc protobuf z gflags snappy profiler tcmalloc_and_profiler unwind tcmalloc)
 
 ADD_EXECUTABLE(rtidb_cli ${cli_src} ${tablet_src})
 TARGET_LINK_LIBRARIES(rtidb_cli common pthread protobuf sofa-pbrpc z gflags snappy)
+
+ADD_EXECUTABLE(rtidb_perf ${rtidb_perf_src})
+TARGET_LINK_LIBRARIES(rtidb_perf common pthread flatbuffers protobuf z gflags snappy)

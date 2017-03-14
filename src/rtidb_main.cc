@@ -42,6 +42,7 @@ int main(int argc, char* args[]) {
   ::baidu::common::SetLogLevel(INFO);
   ::google::ParseCommandLineFlags(&argc, &args, true);
   sofa::pbrpc::RpcServerOptions options;
+  options.io_service_pool_size = 4;
   sofa::pbrpc::RpcServer rpc_server(options);  
   rtidb::RtiDBTabletServerImpl* ts = new rtidb::RtiDBTabletServerImpl(FLAGS_ts_partition_count);
   ts->Init();

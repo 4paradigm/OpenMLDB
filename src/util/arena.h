@@ -31,6 +31,7 @@
 
 namespace rtidb {
 
+
 class Arena {
  public:
   Arena();
