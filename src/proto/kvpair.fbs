@@ -1,0 +1,13 @@
+namespace rtidb.fbs;
+
+table KvPair{
+   key:string;
+   value:string;
+}
+
+table KvPairList {
+
+   list:[KvPair];
+}
+
+root_type KvPairList;

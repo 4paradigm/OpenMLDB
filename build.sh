@@ -1,5 +1,4 @@
 #! /bin/sh
-#!/bin/bash
 
 set -e -u -E # this script will exit if any sub-command fails
 

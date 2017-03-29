@@ -13,3 +13,4 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 add_subdirectory(src)
+
