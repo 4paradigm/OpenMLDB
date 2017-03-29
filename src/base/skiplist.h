@@ -24,27 +24,39 @@ namespace rtidb {
 namespace base {
 
 // Skiplist node , a thread safe structure 
-template<typename T>
+template<class T>
 class Node {
 
 public:
-    Node(const T& data, int32_t height):data_(data), 
-    nexts_(NULL),
+    Node(const T& data, uint32_t height):data_(data), 
     height_(height){
-        nexts_ = new boost::atomic<T>[height];
+        nexts_ = new boost::atomic< Node<T>* >[height];
     }
     ~Node() {}
 
     // Set the next reference
-    void SetNext(int32_t level, const Node* node) {
-        assert(level < height_);
-        
+    void SetNext(uint32_t level, Node<T>* node) {
+        assert(level < height_ && level >= 0);
+        nexts_[level].store(node, boost::memory_order_release);
+    }
+
+    uint32_t Height() {
+        return height_;
+    }
+
+    Node<T>* GetNext(uint32_t level) {
+        assert(level < height_ && level >= 0);
+        return nexts_[level].load(boost::memory_order_acquire);
+    }
+
+    const T GetData() const{
+        return data_;
     }
 
 private:
     T const data_;
-    boost::atomic<T>* nexts_[0];
-    int32_t height_;
+    boost::atomic< Node<T>* >* nexts_;
+    uint32_t const height_;
 };
 
 }// base
