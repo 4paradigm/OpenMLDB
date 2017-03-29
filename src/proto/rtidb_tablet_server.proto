@@ -1,6 +1,5 @@
-import "sofa/pbrpc/rpc_option.proto";
 
-package rtidb;
+package rtidb.api;
 
 option cc_generic_services = true;
 
@@ -24,14 +23,11 @@ message ScanRequest {
   optional string sk = 2;
   // the end subfix key
   optional string ek = 3;
+  //
+  optional int32 limit = 4;
   optional RpcMetric metric = 5;
 }
 
-message KvPair {
-  optional string pk = 1;
-  optional string sk = 2;
-  optional bytes value = 3;
-}
 
 message RpcMetric {
   // the time start send rpc request
@@ -49,9 +45,11 @@ message RpcMetric {
 }
 
 message ScanResponse {
-  repeated KvPair pairs = 1;
+  repeated bytes pairs = 1;
   optional string msg = 2;
   optional int32 code = 3;
+  optional int32 count = 4;
+  optional bool more = 5;
   optional RpcMetric metric = 6;
 }
 
