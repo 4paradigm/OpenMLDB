@@ -68,6 +68,21 @@ else
     echo "install protobuf done"
 fi
 
+if [ -f "zlib_succ" ]
+then
+    echo "zlib exist"
+else
+    echo "start install zlib..."
+    wget --no-check-certificate https://github.com/elasticlog/deps/files/877654/zlib-1.2.11.tar.gz
+    tar zxf zlib-1.2.11.tar.gz 
+    cd zlib-1.2.11
+    ./configure --static --prefix=${DEPS_PREFIX} >/dev/null
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch zlib_succ
+    echo "install zlib done"
+fi
 
 if [ -f "snappy_succ" ]
 then
@@ -143,19 +158,6 @@ else
   touch common_succ
 fi
 
-if [ -f "libunwind_succ" ]
-then
-  echo "libunwind succ exist"
-else
-  wget --no-check-certificate  -O libunwind-1.2.tar.gz http://download.savannah.gnu.org/releases/libunwind/libunwind-1.2.tar.gz
-  tar -zxvf libunwind-1.2.tar.gz
-  cd libunwind-1.2
-  ./configure --enable-shared=no --enable-static=yes --prefix=${DEPS_PREFIX}
-  make -j8 && make install
-  cd -
-  touch libunwind_succ
-fi
-
 if [ -f "gperf_tool" ]
 then
     echo "gperf_tool exist"
@@ -163,9 +165,7 @@ else
     wget --no-check-certificate -O gperftools-2.5.tar.gz https://github.com/gperftools/gperftools/releases/download/gperftools-2.5/gperftools-2.5.tar.gz 
     tar -zxvf gperftools-2.5.tar.gz 
     cd gperftools-2.5 
-    export LDFLAGS=-L${DEPS_PREFIX}/lib 
-    export CPPFLAGS=-I${DEPS_PREFIX}/include 
-    ./configure --enable-shared=no --enable-static=yes --enable-libunwind --prefix=${DEPS_PREFIX} 
+    ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
     make -j2 >/dev/null
     make install
     cd -

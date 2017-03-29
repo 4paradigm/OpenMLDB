@@ -1,6 +1,6 @@
 #! /bin/sh
 #
 
-sudo apt-get install build-essential cmake  git vim
+sudo apt-get install -y build-essential cmake git vim zip
 
 
