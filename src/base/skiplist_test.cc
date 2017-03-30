@@ -73,11 +73,30 @@ TEST_F(SkiplistTest, Insert) {
     sl.Insert(2);
     Skiplist<uint32_t, Comparator>::Iterator* it = sl.NewIterator();
     it->Seek(0);
-    it->Next();
     ASSERT_EQ(1, it->GetData());
     it->Next();
     ASSERT_EQ(2, it->GetData());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+    delete it;
 }
+
+TEST_F(SkiplistTest, Iterator) {
+    Comparator cmp;
+    Skiplist<uint32_t, Comparator> sl(12, 4, cmp);
+    Skiplist<uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+    it->Seek(0);
+    ASSERT_FALSE(it->Valid());
+    delete it;
+    sl.Insert(1);
+    it = sl.NewIterator();
+    it->SeekToFirst();
+    ASSERT_EQ(1, it->GetData());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+    delete it;
+}
+
 
 
 }

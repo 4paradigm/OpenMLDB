@@ -31,13 +31,11 @@ class Node {
 public:
     // Set data reference and Node height
     Node(const T& data, uint32_t height):data_(data), 
-    height_(height){
+    height_(height), ref_(){
         nexts_ = new boost::atomic< Node<T>* >[height];
+        ref_.store(0, boost::memory_order_relaxed);
     }
-    ~Node() {
-        delete[] nexts_;
-    }
-
+   
     // Set the next node with memory barrier
     void SetNext(uint32_t level, Node<T>* node) {
         assert(level < height_ && level >= 0);
@@ -68,10 +66,24 @@ public:
         return data_;
     }
 
+    void Ref() {
+        ref_.fetch_add(1, boost::memory_order_relaxed); 
+    }
+
+    void Dec() {
+
+    }
+
+private:
+    ~Node() {
+        //TODO free memory 
+        delete[] nexts_;
+    }
 private:
     T const data_;
     boost::atomic< Node<T>* >* nexts_;
     uint32_t const height_;
+    boost::atomic<uint32_t> ref_;
 };
 
 template<class T, class Comparator>
@@ -131,6 +143,12 @@ public:
 
         void Seek(const T& data) {
             node_ = list_->FindLessThan(data);
+            Next();
+        }
+
+        void SeekToFirst() {
+            node_ = list_->head_;
+            Next();
         }
 
     private:
@@ -138,9 +156,11 @@ public:
         Skiplist<T, Comparator>* const list_;
     };
 
+    // delete the iterator after it's used
     Iterator* NewIterator() {
         return new Iterator(this);
     }
+
 private:
 
     Node<T>* NewNode(const T& data, uint32_t height) {
