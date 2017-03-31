@@ -35,59 +35,55 @@ struct Comparator {
 };
 
 TEST_F(NodeTest, SetNext) {
-    Node<uint32_t> node(1, 2);
-    Node<uint32_t> node2(3, 2);
+    Node<uint32_t, uint32_t> node(1, 1, 2);
+    Node<uint32_t, uint32_t> node2(3, 3, 2);
     node.SetNext(1, &node2);
-    const Node<uint32_t>* node_ptr = node.GetNext(1);
-    const uint32_t result = node_ptr->GetData();
-    ASSERT_EQ(3, result);
+    const Node<uint32_t, uint32_t>* node_ptr = node.GetNext(1);
+    ASSERT_EQ(3, node_ptr->GetValue());
+    ASSERT_EQ(3, node_ptr->GetKey());
 }
 
-TEST_F(NodeTest, SetNext2) {
-    uint32_t data1 = 1;
-    uint32_t data2 = 3;
-    Node<uint32_t*> node(&data1, 2);
-    Node<uint32_t*> node2(&data2, 2);
-    node.SetNext(1, &node2);
-    const Node<uint32_t*>* node_ptr = node.GetNext(1);
-    const uint32_t* result = node_ptr->GetData();
-    ASSERT_EQ(3, *result);
-}
 
 TEST_F(SkiplistTest, InsertAndIterator) {
     Comparator cmp;
-    Skiplist<uint32_t, Comparator> sl(12, 4, cmp);
-    sl.Insert(1);
-    sl.Insert(2);
-    sl.Insert(2);
-    sl.Insert(3);
-    Skiplist<uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    sl.Insert(1, 2);
+    sl.Insert(2, 4);
+    sl.Insert(2, 5);
+    sl.Insert(3, 6);
+    Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
     it->Seek(0);
-    ASSERT_EQ(1, it->GetData());
+    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(2, it->GetValue());
     it->Next();
-    ASSERT_EQ(2, it->GetData());
+    ASSERT_EQ(2, it->GetKey());
+    ASSERT_EQ(5, it->GetValue());
     it->Next();
-    ASSERT_EQ(2, it->GetData());
+    ASSERT_EQ(2, it->GetKey());
+    ASSERT_EQ(4, it->GetValue());
     it->Next();
-    ASSERT_EQ(3, it->GetData());
+    ASSERT_EQ(3, it->GetKey());
+    ASSERT_EQ(6, it->GetValue());
     it->Next();
     ASSERT_FALSE(it->Valid());
     it->Seek(2);
-    ASSERT_EQ(2, it->GetData());
+    ASSERT_EQ(2, it->GetKey());
+    ASSERT_EQ(5, it->GetValue());
     delete it;
 }
 
 TEST_F(SkiplistTest, Iterator) {
     Comparator cmp;
-    Skiplist<uint32_t, Comparator> sl(12, 4, cmp);
-    Skiplist<uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
     it->Seek(0);
     ASSERT_FALSE(it->Valid());
     delete it;
-    sl.Insert(1);
+    sl.Insert(1, 2);
     it = sl.NewIterator();
     it->SeekToFirst();
-    ASSERT_EQ(1, it->GetData());
+    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(2, it->GetValue());
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -95,18 +91,27 @@ TEST_F(SkiplistTest, Iterator) {
 
 TEST_F(SkiplistTest, Split1) {
     Comparator cmp;
-    Skiplist<uint32_t, Comparator> sl(12, 4, cmp);
-    sl.Insert(0);
-    sl.Insert(1);
-    sl.Insert(2);
-    sl.Insert(3);
-    Node<uint32_t>* node = sl.Split(1);
-    ASSERT_EQ(1, node->GetData());
-    Skiplist<uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    sl.Insert(0, 0);
+    sl.Insert(1, 1);
+    sl.Insert(2, 2);
+    sl.Insert(3, 3);
+    Node<uint32_t, uint32_t>* node = sl.Split(1);
+    ASSERT_EQ(1, node->GetKey());
+    Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
     it->Seek(0);
-    ASSERT_EQ(0, it->GetData());
+    ASSERT_EQ(0, it->GetKey());
     it->Next();
     ASSERT_FALSE(it->Valid());
+}
+
+TEST_F(SkiplistTest, Get) {
+    Comparator cmp;
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    sl.Insert(1, 1);
+    uint32_t ret = sl.Get(1);
+    ASSERT_EQ(1, ret);
+    ASSERT_FALSE(sl.Get(2) == 2);
 }
 
 }
