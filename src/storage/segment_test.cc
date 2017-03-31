@@ -18,12 +18,39 @@ public:
     ~SegmentTest() {}
 };
 
-TEST_F(SegmentTest, Put0) {
-   Segment segment(); 
-   //const char* test = "test";
-   //std::string pk = "pk";
-   //segment.Put(pk, 9768, test, 5);
+TEST_F(SegmentTest, PutAndGet) {
+   Segment segment; 
+   const char* test = "test";
+   std::string pk = "pk";
+   segment.Put(pk, 9768, test, 4);
+   DataBlock* db = NULL;
+   bool ret = segment.Get(pk, 9768, &db);
+   ASSERT_TRUE(ret);
+   ASSERT_TRUE(db != NULL);
+   ASSERT_EQ(4, db->size);
+   std::string t(db->data);
+   std::string e = "test";
+   ASSERT_EQ(e, t);
 }
+
+TEST_F(SegmentTest, Iterator) {
+   Segment segment; 
+   segment.Put("pk", 9768, "test1", 5);
+   segment.Put("pk", 9769, "test2", 5);
+   Segment::Iterator* it = segment.NewIterator("pk");
+   it->Seek(9768);
+   ASSERT_EQ(9768, it->GetKey());
+   DataBlock* value = it->GetValue();
+   std::string result(value->data, value->size);
+   ASSERT_EQ("test1", result);
+   it->Next();
+   value = it->GetValue();
+   std::string result2(value->data, value->size);
+   ASSERT_EQ("test2", result2);
+   it->Next();
+   ASSERT_FALSE(it->Valid());
+}
+
 
 }
 }

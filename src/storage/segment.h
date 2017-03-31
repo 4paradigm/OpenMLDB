@@ -65,6 +65,24 @@ public:
              const char* data,
              uint32_t size);
 
+    bool Get(const std::string& key,
+             const uint64_t& time,
+             DataBlock** block);
+    class Iterator {
+    public:
+        Iterator(TimeEntries::Iterator* it);
+        ~Iterator();
+
+        void Seek(const uint64_t& time);
+        bool Valid() const;
+        void Next();
+        DataBlock* GetValue() const;
+        uint64_t GetKey() const;
+    private:
+        TimeEntries::Iterator* it_;
+    };
+
+    Segment::Iterator* NewIterator(const std::string& key);
 private:
     HashEntries* entries_;
     // only Put need mutex
