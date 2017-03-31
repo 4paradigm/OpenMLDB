@@ -31,9 +31,8 @@ class Node {
 public:
     // Set data reference and Node height
     Node(const T& data, uint32_t height):data_(data), 
-    height_(height), ref_(){
+    height_(height){
         nexts_ = new boost::atomic< Node<T>* >[height];
-        ref_.store(0, boost::memory_order_relaxed);
     }
    
     // Set the next node with memory barrier
@@ -66,15 +65,6 @@ public:
         return data_;
     }
 
-    void Ref() {
-        ref_.fetch_add(1, boost::memory_order_relaxed); 
-    }
-
-    void Dec() {
-
-    }
-
-private:
     ~Node() {
         //TODO free memory 
         delete[] nexts_;
@@ -83,7 +73,6 @@ private:
     T const data_;
     boost::atomic< Node<T>* >* nexts_;
     uint32_t const height_;
-    boost::atomic<uint32_t> ref_;
 };
 
 template<class T, class Comparator>
