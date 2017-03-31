@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <boost/atomic.hpp>
 #include "base/random.h"
+#include <iostream>
 
 namespace rtidb {
 namespace base {
@@ -95,19 +96,36 @@ public:
     // Insert need external synchronized
     void Insert(const T& data) {
         uint32_t height = RandomHeight();
-        Node<T>* after[MaxHeight];
-        FindGreaterOrEqual(data, after);
+        Node<T>* pre[MaxHeight];
+        FindGreaterOrEqual(data, pre);
         if (height > GetMaxHeight()) {
             for (uint32_t i = GetMaxHeight(); i < height; i++ ) {
-                after[i] = head_;
+                pre[i] = head_;
             }
             max_height_.store(height, boost::memory_order_relaxed);
         }
         Node<T>* node = NewNode(data, height);
-        for (int i = 0; i < height; i ++) {
-            node->SetNextNoBarrier(i, after[i]->GetNextNoBarrier(i));
-            after[i]->SetNext(i, node);
+        for (uint32_t i = 0; i < height; i ++) {
+            node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
+            pre[i]->SetNext(i, node);
         }
+    }
+
+    // Split list two parts, the return part is just a linkedlist
+    Node<T>* Split(const T& data) {
+        Node<T>* pre[MaxHeight];
+        for (uint32_t i = 0; i < MaxHeight; i++) {
+            pre[i] = NULL;
+        }
+        Node<T>* target = FindGreaterOrEqual(data, pre);
+        Node<T>* result = target->GetNextNoBarrier(0);
+        for (uint32_t i = 0; i < MaxHeight; i++) {
+            if (pre[i] == NULL) {
+                continue;
+            }
+            pre[i]->SetNext(i, NULL);
+        }
+        return result;
     }
 
     class Iterator {
@@ -165,7 +183,7 @@ private:
         return height;
     }
 
-    void FindGreaterOrEqual(const T& data, Node<T>** nodes) {
+    Node<T>* FindGreaterOrEqual(const T& data, Node<T>** nodes) const {
         assert(nodes != NULL);
         Node<T>* node = head_;
         uint32_t level = GetMaxHeight() - 1;
@@ -176,14 +194,14 @@ private:
             }else {
                 nodes[level] = node;
                 if (level <= 0) {
-                    return;
+                    return node;
                 }
                 level--;
             }
         }
     }
 
-    Node<T>* FindLessThan(const T& data) {
+    Node<T>* FindLessThan(const T& data) const {
         Node<T>* node = head_;
         uint32_t level = GetMaxHeight() - 1;
         while (true) {
@@ -200,11 +218,11 @@ private:
         }
     }
 
-    bool IsAfterNode(const T& data, const Node<T>* node) {
+    bool IsAfterNode(const T& data, const Node<T>* node) const {
         return (node != NULL) && (compare_(data, node->GetData()) > 0);
     } 
 
-    uint32_t GetMaxHeight() {
+    uint32_t GetMaxHeight() const {
         return max_height_.load(boost::memory_order_relaxed);
     }
 

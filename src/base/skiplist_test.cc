@@ -66,7 +66,7 @@ TEST_F(NodeTest, SetNext2) {
     ASSERT_EQ(3, *result);
 }
 
-TEST_F(SkiplistTest, Insert) {
+TEST_F(SkiplistTest, InsertAndIterator) {
     Comparator cmp;
     Skiplist<uint32_t, Comparator> sl(12, 4, cmp);
     sl.Insert(1);
@@ -84,6 +84,8 @@ TEST_F(SkiplistTest, Insert) {
     ASSERT_EQ(3, it->GetData());
     it->Next();
     ASSERT_FALSE(it->Valid());
+    it->Seek(2);
+    ASSERT_EQ(2, it->GetData());
     delete it;
 }
 
@@ -101,6 +103,22 @@ TEST_F(SkiplistTest, Iterator) {
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
+}
+
+TEST_F(SkiplistTest, Split1) {
+    Comparator cmp;
+    Skiplist<uint32_t, Comparator> sl(12, 4, cmp);
+    sl.Insert(0);
+    sl.Insert(1);
+    sl.Insert(2);
+    sl.Insert(3);
+    Node<uint32_t>* node = sl.Split(1);
+    ASSERT_EQ(1, node->GetData());
+    Skiplist<uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+    it->Seek(0);
+    ASSERT_EQ(0, it->GetData());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
 }
 
 }
