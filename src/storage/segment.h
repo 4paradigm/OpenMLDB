@@ -65,9 +65,12 @@ public:
              const char* data,
              uint32_t size);
 
+    // Get time data
     bool Get(const std::string& key,
              const uint64_t& time,
              DataBlock** block);
+
+    // Segment Iterator
     class Iterator {
     public:
         Iterator(TimeEntries::Iterator* it);

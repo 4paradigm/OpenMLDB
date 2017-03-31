@@ -5,8 +5,10 @@
 // Date 2017-03-31
 //
 
+#include <iostream>
 #include "storage/segment.h"
 #include "gtest/gtest.h"
+#include "gperftools/malloc_extension.h"
 
 namespace rtidb {
 namespace storage {
@@ -49,6 +51,14 @@ TEST_F(SegmentTest, Iterator) {
    ASSERT_EQ("test2", result2);
    it->Next();
    ASSERT_FALSE(it->Valid());
+   MallocExtension* extension = MallocExtension::instance();
+   char stat[100];
+   extension->GetStats(stat, 100);
+   std::string stat_str(stat);
+   std::cout << stat_str << std::endl;
+   size_t allocated = 0;
+   extension->GetNumericProperty("generic.current_allocated_bytes", &allocated);
+   std::cout << allocated << std::endl;
 }
 
 

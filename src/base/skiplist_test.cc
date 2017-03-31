@@ -111,6 +111,9 @@ TEST_F(SkiplistTest, Split1) {
     ASSERT_EQ(0, it->GetKey());
     it->Next();
     ASSERT_FALSE(it->Valid());
+    // Can not find the node deleted
+    it->Seek(2);
+    ASSERT_FALSE(it->Valid());
 }
 
 TEST_F(SkiplistTest, Split2) {

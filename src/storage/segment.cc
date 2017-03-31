@@ -17,7 +17,6 @@ Segment::Segment():entries_(NULL) {
 
 Segment::~Segment() {}
 
-
 void Segment::Put(const std::string& key,
         const uint64_t& time,
         const char* data,
@@ -85,7 +84,6 @@ DataBlock* Segment::Iterator::GetValue() const {
 uint64_t Segment::Iterator::GetKey() const {
     return it_->GetKey();
 }
-
 
 }
 }
