@@ -25,6 +25,10 @@ public:
     height_(height){
         nexts_ = new boost::atomic< Node<K,V>* >[height];
     }
+
+    Node(uint32_t height):key_(), value_(),height_(height) {
+        nexts_ = new boost::atomic< Node<K,V>* >[height];
+    }
    
     // Set the next node with memory barrier
     void SetNext(uint32_t level, Node<K,V>* node) {
@@ -81,7 +85,7 @@ public:
     head_(NULL),
     compare_(compare),
     rand_(0xdeadbeef){
-        head_ = new Node<K,V>(0, 0, MaxHeight);
+        head_ = new Node<K,V>(MaxHeight);
         for (uint32_t i = 0; i < head_->Height(); i++) {
             head_->SetNext(i, NULL);
         }

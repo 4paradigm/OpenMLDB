@@ -34,6 +34,14 @@ struct Comparator {
     }
 };
 
+struct StrComparator {
+    int operator()(const std::string& a, const std::string& b) const {
+        return a.compare(b);
+    }
+};
+
+
+
 TEST_F(NodeTest, SetNext) {
     Node<uint32_t, uint32_t> node(1, 1, 2);
     Node<uint32_t, uint32_t> node2(3, 3, 2);
@@ -101,6 +109,18 @@ TEST_F(SkiplistTest, Split1) {
     Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
     it->Seek(0);
     ASSERT_EQ(0, it->GetKey());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+}
+
+TEST_F(SkiplistTest, Split2) {
+    StrComparator cmp;
+    Skiplist<std::string, std::string, StrComparator> sl(12, 4, cmp);
+    sl.Insert("h", "b");
+    sl.Insert("a", "b");
+    Skiplist<std::string, std::string, StrComparator>::Iterator* it = sl.NewIterator();
+    it->Seek("h");
+    ASSERT_EQ("h", it->GetKey());
     it->Next();
     ASSERT_FALSE(it->Valid());
 }
