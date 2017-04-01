@@ -171,6 +171,7 @@ else
     touch gperf_tool
 fi
 
+cd $WORK_DIR
 sh gen_cpp.sh
 mkdir -p $WORK_DIR/build 
 cd $WORK_DIR/build && cmake .. && make -j4
