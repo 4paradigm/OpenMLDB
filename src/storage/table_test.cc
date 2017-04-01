@@ -20,12 +20,15 @@ public:
 
 TEST_F(TableTest, Put) {
     Table* table = new Table("tx_log", 1, 1, 8);
+    table->Ref();
     table->Init();
     table->Put("test", 9537, "test", 4);
+    table->UnRef();
 }
 
 TEST_F(TableTest, Iterator) {
     Table* table = new Table("tx_log", 1, 1, 8);
+    table->Ref();
     table->Init();
 
     table->Put("pk", 9527, "test", 4);

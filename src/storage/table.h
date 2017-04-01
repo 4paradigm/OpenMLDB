@@ -25,7 +25,6 @@ public:
           uint32_t pid,
           uint32_t seg_cnt);
 
-    ~Table();
 
     void Init();
 
@@ -50,6 +49,13 @@ public:
     };
 
     Table::Iterator* NewIterator(const std::string& pk);
+
+    void Ref();
+
+    void UnRef();
+
+private:
+    ~Table(){}
 
 private:
     std::string const name_;

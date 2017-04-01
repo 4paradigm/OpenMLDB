@@ -23,9 +23,6 @@ Table::Table(const std::string& name,
         uint32_t seg_cnt):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt), segments_(NULL), ref_(0) {}
 
-Table::~Table() {}
-
-
 void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
     for (uint32_t i = 0; i < seg_cnt_; i++) {
@@ -42,9 +39,23 @@ void Table::Put(const std::string& pk, const uint64_t& time,
     segment->Put(pk, time, data, size);
 }
 
-Table::Iterator::Iterator(Segment::Iterator* it):it_(it) {}
+void Table::Ref() {
+    ref_.fetch_add(1, boost::memory_order_relaxed);
+}
 
-Table::Iterator::~Iterator() {}
+void Table::UnRef() {
+    ref_.fetch_sub(1, boost::memory_order_acquire);
+    if (ref_.load(boost::memory_order_relaxed) <= 0) {
+        delete this;
+    }
+}
+
+Table::Iterator::Iterator(Segment::Iterator* it):it_(it){
+
+}
+
+Table::Iterator::~Iterator() {
+}
 
 bool Table::Iterator::Valid() const {
     return it_->Valid();
