@@ -15,6 +15,7 @@ using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace storage {
+
 const static uint32_t SEED = 9527;
 Table::Table(const std::string& name,
         uint32_t id,
@@ -39,6 +40,36 @@ void Table::Put(const std::string& pk, const uint64_t& time,
     uint32_t index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     Segment* segment = segments_[index];
     segment->Put(pk, time, data, size);
+}
+
+Table::Iterator::Iterator(Segment::Iterator* it):it_(it) {}
+
+Table::Iterator::~Iterator() {}
+
+bool Table::Iterator::Valid() const {
+    return it_->Valid();
+}
+
+void Table::Iterator::Next() {
+    it_->Next();
+}
+
+void Table::Iterator::Seek(const uint64_t& time) {
+    it_->Seek(time);
+}
+
+DataBlock* Table::Iterator::GetValue() const {
+    return it_->GetValue();
+}
+
+uint64_t Table::Iterator::GetKey() const {
+    return it_->GetKey();
+}
+
+Table::Iterator* Table::NewIterator(const std::string& pk) {
+    uint32_t index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    Segment* segment = segments_[index];
+    return new Table::Iterator(segment->NewIterator(pk));
 }
 
 }

@@ -24,14 +24,33 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt);
+
     ~Table();
 
     void Init();
+
+    // Put 
     void Put(const std::string& pk,
              const uint64_t& time,
              const char* data,
              uint32_t size);
-    
+
+    class Iterator {
+    public:
+        Iterator(Segment::Iterator* it);
+        ~Iterator();
+        
+        bool Valid() const;
+        void Next();
+        void Seek(const uint64_t& time);
+        DataBlock* GetValue() const;
+        uint64_t GetKey() const;
+    private:
+        Segment::Iterator* it_;
+    };
+
+    Table::Iterator* NewIterator(const std::string& pk);
+
 private:
     std::string const name_;
     uint32_t const id_;
