@@ -23,14 +23,15 @@ struct DataBlock {
     char* data;
 };
 
+// the desc time comparator
 struct TimeComparator {
     int operator()(const uint64_t& a, const uint64_t& b) const {
         if (a > b) {
-            return 1;
+            return -1;
         }else if (a == b) {
             return 0;
         }
-        return -1;
+        return 1;
     }
 };
 
