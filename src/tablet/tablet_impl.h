@@ -37,6 +37,11 @@ public:
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done);
+
+    void CreateTable(RpcController* controller,
+            const ::rtidb::api::CreateTableRequest* request,
+            ::rtidb::api::CreateTableResponse* response,
+            Closure* done);
 private:
     // Get table by table id and Inc reference
     ::rtidb::storage::Table* GetTable(uint32_t tid);

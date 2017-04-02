@@ -84,7 +84,32 @@ void TabletImpl::Scan(RpcController* controller,
     }
     response->set_code(0);
     done->Run();
+    delete it;
 }
+
+void TabletImpl::CreateTable(RpcController* controller,
+            const ::rtidb::api::CreateTableRequest* request,
+            ::rtidb::api::CreateTableResponse* response,
+            Closure* done) {
+    MutexLock lock(&mu_);
+    if (tables_.find(request->tid()) != tables_.end()) {
+        // table exists
+        response->set_code(-2);
+        response->set_msg("table exists");
+        done->Run();
+        return;
+    }
+    //TODO(wangtaize) config segment count option
+    Table* table = new Table(request->name(), request->tid(),
+            request->pid(), 8);
+    table->Init();
+    // for tables_ 
+    table->Ref();
+    tables_.insert(std::make_pair(request->tid(), table));
+    response->set_code(0);
+    done->Run();
+}
+
 
 Table* TabletImpl::GetTable(uint32_t tid) {
     MutexLock lock(&mu_);
