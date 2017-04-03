@@ -39,6 +39,7 @@ void TabletImpl::Put(RpcController* controller,
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
     response->set_code(0);
+    LOG(DEBUG, "put key %s ok", request->pk().c_str());
     done->Run();
 }
 
@@ -107,6 +108,8 @@ void TabletImpl::CreateTable(RpcController* controller,
     table->Ref();
     tables_.insert(std::make_pair(request->tid(), table));
     response->set_code(0);
+    LOG(INFO, "create table with id %d pid %d name %s", request->tid(), 
+            request->pid(), request->name().c_str());
     done->Run();
 }
 

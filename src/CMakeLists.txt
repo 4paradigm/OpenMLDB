@@ -12,6 +12,6 @@ target_link_libraries(segment_test gtest pthread common tcmalloc_minimal)
 add_executable(table_test  storage/table.cc storage/table_test.cc storage/segment.cc)
 target_link_libraries(table_test gtest pthread common tcmalloc_minimal)
 
-add_executable(rtidb cmd/rtidb.cc)
+add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc)
 target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage tcmalloc_minimal)
 

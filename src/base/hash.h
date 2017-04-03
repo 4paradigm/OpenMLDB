@@ -13,7 +13,7 @@ namespace rtidb {
 namespace base {
 
 
-static uint32_t hash(const void* key, uint32_t len, uint32_t seed) {
+static inline uint32_t hash(const void* key, uint32_t len, uint32_t seed) {
 
     const uint32_t m = 0x5bd1e995;
     const uint32_t r = 24;
