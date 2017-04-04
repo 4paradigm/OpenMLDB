@@ -19,6 +19,7 @@
 #include "tablet/tablet_impl.h"
 #include "client/tablet_client.h"
 #include "base/strings.h"
+#include "timer.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -86,13 +87,33 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     }else {
         std::cout << "Create table ok" << std::endl;
     }
-
 }
 
-void HandleShowHelp() {
+// the input format like scan tid pid pk st et
+void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 6) {
+        std::cout << "Bad scan format" << std::endl;
+        return;
+    }
+    std::vector< std::pair<uint64_t, std::string*> > data;
+    bool ok = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
+            boost::lexical_cast<uint32_t>(parts[2]),
+            parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
+            boost::lexical_cast<uint64_t>(parts[5]),
+            data);
+    if (!ok) {
+        std::cout << "Fail to scan table" << std::endl;
+    }else {
+        std::cout << "#\tTime\tData" << std::endl;
+        for (size_t i = 0; i < data.size(); i++) {
+            std::cout<< i+1 << "\t"<<data[i].first << "\t" << *(data[i].second) << std::endl;
+        }
+    }
 }
 
 void StartClient() {
+
+    //::baidu::common::SetLogLevel(DEBUG);
     std::cout << "Welcome to rtidb!" << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
     while (!s_quit) {
@@ -108,6 +129,8 @@ void StartClient() {
             HandleClientPut(parts, &client);
         }else if (parts[0] == "create") {
             HandleClientCreateTable(parts, &client);
+        }else if (parts[0] == "scan") {
+            HandleClientScan(parts, &client);
         }
     }
 

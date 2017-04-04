@@ -22,11 +22,20 @@ public:
     ~TabletClient();
     bool CreateTable(const std::string& name, uint32_t id, uint32_t pid,
             uint32_t ttl);
+
     bool Put(uint32_t tid,
              uint32_t pid,
              const std::string& pk, 
              uint64_t time,
              const std::string& value);
+
+    bool Scan(uint32_t tid,
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t stime,
+             uint64_t etime,
+             std::vector<std::pair<uint64_t, std::string*> >& pairs);
+
 private:
     std::string endpoint_;
     ::rtidb::RpcClient client_;

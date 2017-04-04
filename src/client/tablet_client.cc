@@ -6,6 +6,7 @@
 //
 
 #include "client/tablet_client.h"
+#include "base/codec.h"
 
 namespace rtidb {
 namespace client {
@@ -53,6 +54,28 @@ bool TabletClient::Put(uint32_t tid,
     }
     return false;
 }
+
+bool TabletClient::Scan(uint32_t tid,
+                         uint32_t pid,
+                         const std::string& pk,
+                         uint64_t stime,
+                         uint64_t etime,
+                         std::vector<std::pair<uint64_t, std::string*> >& pairs) {
+    ::rtidb::api::ScanRequest request;
+    request.set_pk(pk);
+    request.set_st(stime);
+    request.set_et(etime);
+    request.set_tid(tid);
+    ::rtidb::api::ScanResponse response;
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Scan,
+            &request, &response, 12, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    ::rtidb::base::Decode(response.mutable_pairs(), pairs);
+    return true;
+}
+
 
 }
 }

@@ -7,7 +7,7 @@
 
 #include "tablet/tablet_impl.h"
 #include "base/codec.h"
-
+#include "base/strings.h"
 #include "logging.h"
 #include <vector>
 
@@ -55,19 +55,22 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-
+    LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), request->et());
     // Use seek to process scan request
     // the first seek to find the total size to copy
     Table::Iterator* it = table->NewIterator(request->pk());
     it->Seek(request->st());
     // TODO(wangtaize) config the tmp init size
-    std::vector<std::pair<uint64_t, DataBlock*> > tmp(100);
+    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     uint32_t total_block_size = 0;
+    uint32_t count = 0;
     while (it->Valid()) {
-        if (it->GetKey() <= (uint64_t)request->et()) {
+        LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
+        if (it->GetKey() < (uint64_t)request->et()) {
             break;
         }
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
+        count++;
         total_block_size += it->GetValue()->size;
         it->Next();
     }
@@ -75,13 +78,13 @@ void TabletImpl::Scan(RpcController* controller,
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
     pairs->resize(total_size);
+    LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
-    for (size_t i = 0; i < tmp.size(); i++) {
+    for (size_t i = 0; i < count; i++) {
         std::pair<uint64_t, DataBlock*>& pair = tmp[i];
+        LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer);
-        if (i < tmp.size() - 1) {
-            rbuffer += pair.second->size;
-        }
+        rbuffer += (4 + 8 + pair.second->size);
     }
     response->set_code(0);
     done->Run();
