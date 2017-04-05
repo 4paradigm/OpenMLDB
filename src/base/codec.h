@@ -39,7 +39,6 @@ static inline void Decode(const std::string* str, std::vector<std::pair<uint64_t
     const char* buffer = str->c_str();
     uint32_t total_size = str->length();
     LOG(DEBUG, "total size %d %s", total_size, DebugString(*str).c_str());
-
     while (total_size > 0) {
         uint32_t size = 0;
         memcpy(static_cast<void*>(&size), buffer, 4);
@@ -49,8 +48,7 @@ static inline void Decode(const std::string* str, std::vector<std::pair<uint64_t
         memcpy(static_cast<void*>(&time), buffer, 8);
         buffer += 8;
         assert(size >= 8);
-        std::string* data = new std::string();
-        data->resize(size - 8);
+        std::string* data = new std::string(size - 8, '0');
         memcpy(reinterpret_cast<char*>(& ((*data)[0])), buffer, size - 8);
         buffer += (size - 8);
         pairs.push_back(std::make_pair(time, data));

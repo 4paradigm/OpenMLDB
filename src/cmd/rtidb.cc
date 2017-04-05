@@ -35,7 +35,7 @@ static void SignalIntHandler(int /*sig*/){
 
 void StartTablet() {
     //TODO(wangtaize) optimalize options
-    ::baidu::common::SetLogLevel(DEBUG);
+    ::baidu::common::SetLogLevel(INFO);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
@@ -73,6 +73,21 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
     }
 }
 
+void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    char val[400];
+    for (int i = 0; i < 400; i++) {
+        val[i] ='0';
+    }
+    std::string sval(val);
+    for (uint32_t i = 0 ; i < 10000; i++) {
+        std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+        for (uint32_t j = 0; j < 1000; j++) {
+            client->Put(1, 1, key, j, sval);
+        }
+        std::cout<< i << std::endl;
+    }
+}
+
 //
 // the input format like create name tid pid
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
@@ -100,19 +115,47 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
             boost::lexical_cast<uint32_t>(parts[2]),
             parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
             boost::lexical_cast<uint64_t>(parts[5]),
-            data);
+            data,
+            true);
     if (!ok) {
         std::cout << "Fail to scan table" << std::endl;
     }else {
+        bool print = true;
+        if (parts.size() >= 7) {
+            if (parts[6] == "false") {
+                print = false;
+            }
+        }
         std::cout << "#\tTime\tData" << std::endl;
         for (size_t i = 0; i < data.size(); i++) {
-            std::cout<< i+1 << "\t"<<data[i].first << "\t" << *(data[i].second) << std::endl;
+            if (print) {
+                std::cout<< i+1 << "\t"<<data[i].first << "\t" << *(data[i].second) << std::endl;
+            }
+            delete data[i].second;
         }
+        data.clear();
     }
 }
 
-void StartClient() {
+void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    uint64_t st = 999;
+    uint64_t et = 1;
+    uint32_t tid = 1;
+    uint32_t pid = 1;
+    std::vector<std::pair<uint64_t, std::string*> > data;
+    for (uint32_t i = 0; i < 1000; i++) {
+        std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+        client->Scan(tid, pid, key, st, et, data);
+        for (uint32_t j = 0; j < data.size(); j++) {
+            std::pair<uint64_t, std::string*>& pair = data[j];
+            delete pair.second;
+        }
+        data.clear();
+    }
+    client->ShowTp();
+}
 
+void StartClient() {
     //::baidu::common::SetLogLevel(DEBUG);
     std::cout << "Welcome to rtidb!" << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
@@ -131,6 +174,11 @@ void StartClient() {
             HandleClientCreateTable(parts, &client);
         }else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
+        }else if (parts[0] == "benput") {
+            HandleClientBenPut(parts, &client);
+        }else if (parts[0] == "benscan") {
+            HandleClientBenScan(parts, &client);
+        
         }
     }
 
