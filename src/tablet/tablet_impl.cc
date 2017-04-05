@@ -9,6 +9,7 @@
 #include "base/codec.h"
 #include "base/strings.h"
 #include "logging.h"
+#include "timer.h"
 #include <vector>
 
 using ::baidu::common::INFO;
@@ -47,6 +48,9 @@ void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
+    ::rtidb::api::RpcMetric* metric = response->mutable_metric();
+    metric->CopyFrom(request->metric());
+    metric->set_rqtime(::baidu::common::timer::get_micros());
     Table* table = GetTable(request->tid());
     if (table == NULL) {
         LOG(WARNING, "fail to find table with id %d", request->tid());
@@ -55,11 +59,13 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
+    metric->set_sctime(::baidu::common::timer::get_micros());
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), request->et());
     // Use seek to process scan request
     // the first seek to find the total size to copy
     Table::Iterator* it = table->NewIterator(request->pk());
     it->Seek(request->st());
+    metric->set_sitime(::baidu::common::timer::get_micros());
     // TODO(wangtaize) config the tmp init size
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     uint32_t total_block_size = 0;
@@ -74,6 +80,7 @@ void TabletImpl::Scan(RpcController* controller,
         total_block_size += it->GetValue()->size;
         it->Next();
     }
+    metric->set_setime(::baidu::common::timer::get_micros());
     // Experiment reduce memory alloc times
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
@@ -87,7 +94,10 @@ void TabletImpl::Scan(RpcController* controller,
         rbuffer += (4 + 8 + pair.second->size);
     }
     response->set_code(0);
+    response->set_count(count);
+    metric->set_sptime(::baidu::common::timer::get_micros()); 
     done->Run();
+    table->UnRef();
     delete it;
 }
 

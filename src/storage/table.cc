@@ -58,6 +58,9 @@ Table::Iterator::~Iterator() {
 }
 
 bool Table::Iterator::Valid() const {
+    if (it_ == NULL) {
+        return false;
+    }
     return it_->Valid();
 }
 
@@ -66,6 +69,9 @@ void Table::Iterator::Next() {
 }
 
 void Table::Iterator::Seek(const uint64_t& time) {
+    if (it_ == NULL) {
+        return;
+    }
     it_->Seek(time);
 }
 

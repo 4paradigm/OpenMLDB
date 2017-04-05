@@ -24,9 +24,13 @@ void Segment::Put(const std::string& key,
     HashEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         MutexLock lock(&mu_);
-        entry = new HashEntry();
-        entry->key = key;
-        entries_->Insert(key, entry);
+        entry = entries_->Get(key);
+        // Need a double check
+        if (entry == NULL || key.compare(entry->key) != 0) {
+            entry = new HashEntry();
+            entry->key = key;
+            entries_->Insert(key, entry);
+        }
     }
     MutexLock lock(&entry->mu);
     char* block = new char[size];
