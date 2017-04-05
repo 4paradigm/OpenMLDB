@@ -7,8 +7,9 @@ message PutRequest {
   // the prefix key 
   optional string pk = 1;
   // the subfix key
-  optional string sk = 2;
+  optional int64 time = 2;
   optional bytes value = 3;
+  optional int32 tid = 4;
 }
 
 message PutResponse {
@@ -20,12 +21,12 @@ message ScanRequest {
   // the prefix key
   optional string pk = 1;
   // the start subfix key
-  optional string sk = 2;
+  optional int64 st = 2;
   // the end subfix key
-  optional string ek = 3;
-  //
+  optional int64 et = 3;
   optional int32 limit = 4;
   optional RpcMetric metric = 5;
+  optional int32 tid = 6;
 }
 
 
@@ -45,7 +46,7 @@ message RpcMetric {
 }
 
 message ScanResponse {
-  repeated bytes pairs = 1;
+  optional bytes pairs = 1;
   optional string msg = 2;
   optional int32 code = 3;
   optional int32 count = 4;
@@ -53,7 +54,21 @@ message ScanResponse {
   optional RpcMetric metric = 6;
 }
 
-service RtiDBTabletServer {
+message CreateTableRequest {
+  optional int32 tid = 1;
+  optional string name = 2;
+  optional int32 pid = 3;
+  // time to live for every row
+  optional int32 ttl = 4; 
+}
+
+message CreateTableResponse {
+  optional int32 code = 1;
+  optional string msg = 2;
+}
+
+service TabletServer {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Scan(ScanRequest) returns (ScanResponse);
+  rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
 }

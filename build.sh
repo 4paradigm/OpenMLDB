@@ -171,3 +171,9 @@ else
     touch gperf_tool
 fi
 
+cd $WORK_DIR
+sh gen_cpp.sh
+mkdir -p $WORK_DIR/build 
+cd $WORK_DIR/build && cmake .. && make -j4
+cd $WORK_DIR/build/bin
+ls | grep test | while read line; do ./$line; done

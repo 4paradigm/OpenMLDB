@@ -1,18 +1,7 @@
 //
 // skiplist.h 
-// Copyright 2017 elasticlog <elasticlog01@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2017 4paradigm.com
+
 
 #ifndef RTIDB_BASE_SKIPLIST_H
 #define RTIDB_BASE_SKIPLIST_H
@@ -26,24 +15,29 @@ namespace rtidb {
 namespace base {
 
 // Skiplist node , a thread safe structure 
-template<class T>
+template<class K, class V>
 class Node {
 
 public:
     // Set data reference and Node height
-    Node(const T& data, uint32_t height):data_(data), 
+    Node(const K& key, const V& value, uint32_t height):key_(key), 
+    value_(value),
     height_(height){
-        nexts_ = new boost::atomic< Node<T>* >[height];
+        nexts_ = new boost::atomic< Node<K,V>* >[height];
+    }
+
+    Node(uint32_t height):key_(), value_(),height_(height) {
+        nexts_ = new boost::atomic< Node<K,V>* >[height];
     }
    
     // Set the next node with memory barrier
-    void SetNext(uint32_t level, Node<T>* node) {
+    void SetNext(uint32_t level, Node<K,V>* node) {
         assert(level < height_ && level >= 0);
         nexts_[level].store(node, boost::memory_order_release);
     }
 
     // Set the next node without memory barrier
-    void SetNextNoBarrier(uint32_t level, Node<T>* node) {
+    void SetNextNoBarrier(uint32_t level, Node<K,V>* node) {
         assert(level < height_ && level >= 0);
         nexts_[level].store(node, boost::memory_order_relaxed);
     }
@@ -52,18 +46,22 @@ public:
         return height_;
     }
 
-    Node<T>* GetNext(uint32_t level) {
+    Node<K,V>* GetNext(uint32_t level) {
         assert(level < height_ && level >= 0);
         return nexts_[level].load(boost::memory_order_acquire);
     }
 
-    Node<T>* GetNextNoBarrier(uint32_t level) {
+    Node<K,V>* GetNextNoBarrier(uint32_t level) {
         assert(level < height_ && level >= 0);
         return nexts_[level].load(boost::memory_order_relaxed);
     }
 
-    const T& GetData() const{
-        return data_;
+    const V& GetValue() const{
+        return value_;
+    }
+
+    const K& GetKey() const {
+        return key_;
     }
 
     ~Node() {
@@ -71,12 +69,14 @@ public:
         delete[] nexts_;
     }
 private:
-    T const data_;
-    boost::atomic< Node<T>* >* nexts_;
+    K const key_;
+    V const value_;
+    boost::atomic< Node<K,V>* >* nexts_;
     uint32_t const height_;
 };
 
-template<class T, class Comparator>
+
+template<class K, class V, class Comparator>
 class Skiplist {
 
 public:
@@ -85,7 +85,7 @@ public:
     head_(NULL),
     compare_(compare),
     rand_(0xdeadbeef){
-        head_ = new Node<T>(0, MaxHeight);
+        head_ = new Node<K,V>(MaxHeight);
         for (uint32_t i = 0; i < head_->Height(); i++) {
             head_->SetNext(i, NULL);
         }
@@ -94,17 +94,17 @@ public:
     ~Skiplist() {}
 
     // Insert need external synchronized
-    void Insert(const T& data) {
+    void Insert(const K& key, const V& value) {
         uint32_t height = RandomHeight();
-        Node<T>* pre[MaxHeight];
-        FindGreaterOrEqual(data, pre);
+        Node<K,V>* pre[MaxHeight];
+        FindGreaterOrEqual(key, pre);
         if (height > GetMaxHeight()) {
             for (uint32_t i = GetMaxHeight(); i < height; i++ ) {
                 pre[i] = head_;
             }
             max_height_.store(height, boost::memory_order_relaxed);
         }
-        Node<T>* node = NewNode(data, height);
+        Node<K,V>* node = NewNode(key, value, height);
         for (uint32_t i = 0; i < height; i ++) {
             node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
             pre[i]->SetNext(i, node);
@@ -112,13 +112,13 @@ public:
     }
 
     // Split list two parts, the return part is just a linkedlist
-    Node<T>* Split(const T& data) {
-        Node<T>* pre[MaxHeight];
+    Node<K,V>* Split(const K& key) {
+        Node<K, V>* pre[MaxHeight];
         for (uint32_t i = 0; i < MaxHeight; i++) {
             pre[i] = NULL;
         }
-        Node<T>* target = FindGreaterOrEqual(data, pre);
-        Node<T>* result = target->GetNextNoBarrier(0);
+        Node<K, V>* target = FindGreaterOrEqual(key, pre);
+        Node<K, V>* result = target->GetNextNoBarrier(0);
         for (uint32_t i = 0; i < MaxHeight; i++) {
             if (pre[i] == NULL) {
                 continue;
@@ -128,9 +128,14 @@ public:
         return result;
     }
 
+    const V& Get(const K& key) {
+        Node<K,V>* node = FindEqual(key);
+        return node->GetValue();
+    }
+
     class Iterator {
     public:
-        Iterator(Skiplist<T, Comparator>* list):node_(NULL),
+        Iterator(Skiplist<K, V, Comparator>* list):node_(NULL),
         list_(list) {}
         ~Iterator() {}
 
@@ -143,13 +148,18 @@ public:
             node_ = node_->GetNext(0);
         }
 
-        const T& GetData() const {
+        const K& GetKey() const {
             assert(Valid());
-            return node_->GetData();
+            return node_->GetKey();
         }
 
-        void Seek(const T& data) {
-            node_ = list_->FindLessThan(data);
+        const V& GetValue() const {
+            assert(Valid());
+            return node_->GetValue();
+        }
+
+        void Seek(const K& k) {
+            node_ = list_->FindLessThan(k);
             Next();
         }
 
@@ -159,8 +169,8 @@ public:
         }
 
     private:
-        Node<T>* node_;
-        Skiplist<T, Comparator>* const list_;
+        Node<K, V>* node_;
+        Skiplist<K, V, Comparator>* const list_;
     };
 
     // delete the iterator after it's used
@@ -170,8 +180,8 @@ public:
 
 private:
 
-    Node<T>* NewNode(const T& data, uint32_t height) {
-        Node<T>* node = new Node<T>(data, height); 
+    Node<K,V>* NewNode(const K& key, const V& value, uint32_t height) {
+        Node<K,V>* node = new Node<K,V>(key, value, height); 
         return node;
     }
 
@@ -183,13 +193,13 @@ private:
         return height;
     }
 
-    Node<T>* FindGreaterOrEqual(const T& data, Node<T>** nodes) const {
+    Node<K, V>* FindGreaterOrEqual(const K& key, Node<K, V>** nodes) const {
         assert(nodes != NULL);
-        Node<T>* node = head_;
+        Node<K, V>* node = head_;
         uint32_t level = GetMaxHeight() - 1;
         while (true) {
-            Node<T>* next = node->GetNext(level);
-            if (IsAfterNode(data, next)) {
+            Node<K, V>* next = node->GetNext(level);
+            if (IsAfterNode(key, next)) {
                 node = next;
             }else {
                 nodes[level] = node;
@@ -201,13 +211,29 @@ private:
         }
     }
 
-    Node<T>* FindLessThan(const T& data) const {
-        Node<T>* node = head_;
+    Node<K, V>* FindEqual(const K& key) const{
+        Node<K, V>* node = head_; 
         uint32_t level = GetMaxHeight() - 1;
         while (true) {
-            assert(node == head_ || compare_(node->GetData(), data) < 0);
-            Node<T>* next = node->GetNext(level);
-            if (next == NULL || compare_(next->GetData() , data) >=0) {
+            Node<K, V>* next = node->GetNext(level);
+            if (next == NULL || compare_(next->GetKey(), key) > 0) {
+                if (level <= 0) {
+                    return node;
+                }
+                level --;
+            }else {
+                node = next;
+            }
+        }
+    }
+
+    Node<K, V>* FindLessThan(const K& key) const {
+        Node<K, V>* node = head_;
+        uint32_t level = GetMaxHeight() - 1;
+        while (true) {
+            assert(node == head_ || compare_(node->GetKey(), key) < 0);
+            Node<K, V>* next = node->GetNext(level);
+            if (next == NULL || compare_(next->GetKey() , key) >=0) {
                 if (level <= 0) {
                     return node;
                 }
@@ -218,8 +244,8 @@ private:
         }
     }
 
-    bool IsAfterNode(const T& data, const Node<T>* node) const {
-        return (node != NULL) && (compare_(data, node->GetData()) > 0);
+    bool IsAfterNode(const K& key, const Node<K, V>* node) const {
+        return (node != NULL) && (compare_(key, node->GetKey()) > 0);
     } 
 
     uint32_t GetMaxHeight() const {
@@ -229,7 +255,7 @@ private:
 private:
     uint32_t const MaxHeight;
     uint32_t const Branch;
-    Node<T>* head_;
+    Node<K, V>* head_;
     Comparator const compare_;
     boost::atomic<uint32_t> max_height_; 
     Random rand_;
