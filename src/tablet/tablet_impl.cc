@@ -87,11 +87,12 @@ void TabletImpl::Scan(RpcController* controller,
     pairs->resize(total_size);
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
+    uint32_t offset = 0;
     for (size_t i = 0; i < count; i++) {
         std::pair<uint64_t, DataBlock*>& pair = tmp[i];
         LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
-        ::rtidb::base::Encode(pair.first, pair.second, rbuffer);
-        rbuffer += (4 + 8 + pair.second->size);
+        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
+        offset += (4 + 8 + pair.second->size);
     }
     response->set_code(0);
     response->set_count(count);
