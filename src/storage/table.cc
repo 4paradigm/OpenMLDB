@@ -69,6 +69,9 @@ void Table::Iterator::Next() {
 }
 
 void Table::Iterator::Seek(const uint64_t& time) {
+    if (it_ == NULL) {
+        return;
+    }
     it_->Seek(time);
 }
 
