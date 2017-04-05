@@ -35,7 +35,7 @@ static void SignalIntHandler(int /*sig*/){
 
 void StartTablet() {
     //TODO(wangtaize) optimalize options
-    ::baidu::common::SetLogLevel(DEBUG);
+    ::baidu::common::SetLogLevel(INFO);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
@@ -70,6 +70,16 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
         std::cout << "Put ok" << std::endl;
     }else {
         std::cout << "Put failed" << std::endl; 
+    }
+}
+
+void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    for (uint32_t i = 0 ; i < 10000; i++) {
+        std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+        for (uint32_t j = 0; j < 1000; j++) {
+            client->Put(1, 1, key, j, key);
+        }
+        std::cout<< i << std::endl;
     }
 }
 
@@ -112,7 +122,6 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
 }
 
 void StartClient() {
-
     //::baidu::common::SetLogLevel(DEBUG);
     std::cout << "Welcome to rtidb!" << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
@@ -131,6 +140,8 @@ void StartClient() {
             HandleClientCreateTable(parts, &client);
         }else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
+        }else if (parts[0] == "benput") {
+            HandleClientBenPut(parts, &client);
         }
     }
 

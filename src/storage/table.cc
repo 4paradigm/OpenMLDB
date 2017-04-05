@@ -58,6 +58,9 @@ Table::Iterator::~Iterator() {
 }
 
 bool Table::Iterator::Valid() const {
+    if (it_ == NULL) {
+        return false;
+    }
     return it_->Valid();
 }
 
