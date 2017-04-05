@@ -3,8 +3,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "base/slice.h"
 #include <stdint.h>
+
+#include "base/slice.h"
 
 
 namespace rtidb {
@@ -13,7 +14,7 @@ namespace base {
 class KvIterator {
 
 public:
-    KvIterator(const void* ptr,
+    KvIterator(void* ptr,
             char* buffer,
             uint32_t tsize):ptr_(ptr),buffer_(buffer),
     tsize_(tsize),
@@ -51,7 +52,7 @@ public:
     }
 
 private:
-    void* const ptr_;
+    void* ptr_;
     char* buffer_;
     uint32_t tsize_;
     uint32_t offset_;

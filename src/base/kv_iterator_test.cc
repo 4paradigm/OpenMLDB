@@ -6,6 +6,8 @@
 #include "base/kv_iterator.h"
 #include "base/codec.h"
 #include "gtest/gtest.h"
+#include "base/strings.h"
+#include <iostream>
 
 namespace rtidb {
 namespace base {
@@ -29,9 +31,11 @@ TEST_F(KvIteratorTest, Iterator) {
     db2->data = "hell1";
     db2->size = 5;
     Encode(9527, db1, data);
+    data+=17
     Encode(9528, db2, data);
 
-    KvIterator kv_it(static_cast<const void*> data, data, 34);
+    std::cout <<DebugString(debug) << std::endl;
+    KvIterator kv_it(static_cast<void*>(data), data, 34);
     ASSERT_TRUE(kv_it.Valid());
     kv_it.Next();
     ASSERT_EQ(9527, kv_it.GetKey());

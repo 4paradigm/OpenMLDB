@@ -6,7 +6,7 @@
 #include <string.h>
 #include <string>
 
-namespace ritdb {
+namespace rtidb {
 namespace base {
 
 class Slice {
