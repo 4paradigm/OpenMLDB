@@ -5,6 +5,7 @@
 
 #include "base/kv_iterator.h"
 #include "base/codec.h"
+#include "gtest/gtest.h"
 
 namespace rtidb {
 namespace base {
