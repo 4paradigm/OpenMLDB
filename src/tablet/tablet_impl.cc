@@ -87,6 +87,7 @@ void TabletImpl::Scan(RpcController* controller,
         rbuffer += (4 + 8 + pair.second->size);
     }
     response->set_code(0);
+    response->set_count(count);
     done->Run();
     delete it;
 }

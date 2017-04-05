@@ -7,6 +7,8 @@
 
 #include "client/tablet_client.h"
 #include "base/codec.h"
+#include "timer.h"
+#include <iostream>
 
 namespace rtidb {
 namespace client {
@@ -67,15 +69,28 @@ bool TabletClient::Scan(uint32_t tid,
     request.set_et(etime);
     request.set_tid(tid);
     ::rtidb::api::ScanResponse response;
+    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Scan,
             &request, &response, 12, 1);
     if (!ok || response.code() != 0) {
         return false;
     }
     ::rtidb::base::Decode(response.mutable_pairs(), pairs);
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    percentile_.push_back(consumed/1000);
     return true;
 }
 
+void TabletClient::ShowTp() {
+    std::sort(percentile_.begin(), percentile_.end());
+    uint32_t size = percentile_.size();
+    std::cout << "Percentile:99=" << percentile_[(uint32_t)(size * 0.99)] 
+              << " ,95=" << percentile_[(uint32_t)(size * 0.95)]
+              << " ,90=" << percentile_[(uint32_t)(size * 0.90)]
+              << " ,50=" << percentile_[(uint32_t)(size * 0.5)]
+              << std::endl;
+    percentile_.clear();
+}
 
 }
 }

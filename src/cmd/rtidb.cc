@@ -74,10 +74,15 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
 }
 
 void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    char val[400];
+    for (int i = 0; i < 400; i++) {
+        val[i] ='0';
+    }
+    std::string sval(val);
     for (uint32_t i = 0 ; i < 10000; i++) {
         std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
         for (uint32_t j = 0; j < 1000; j++) {
-            client->Put(1, 1, key, j, key);
+            client->Put(1, 1, key, j, sval);
         }
         std::cout<< i << std::endl;
     }
@@ -121,6 +126,20 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
     }
 }
 
+void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    uint64_t st = 999;
+    uint64_t et = 1;
+    uint32_t tid = 1;
+    uint32_t pid = 1;
+    std::vector<std::pair<uint64_t, std::string*> > data;
+    for (uint32_t i = 0; i < 10000; i++) {
+        std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+        client->Scan(tid, pid, key, st, et, data);
+        data.clear();
+    }
+    client->ShowTp();
+}
+
 void StartClient() {
     //::baidu::common::SetLogLevel(DEBUG);
     std::cout << "Welcome to rtidb!" << std::endl;
@@ -142,6 +161,9 @@ void StartClient() {
             HandleClientScan(parts, &client);
         }else if (parts[0] == "benput") {
             HandleClientBenPut(parts, &client);
+        }else if (parts[0] == "benscan") {
+            HandleClientBenScan(parts, &client);
+        
         }
     }
 

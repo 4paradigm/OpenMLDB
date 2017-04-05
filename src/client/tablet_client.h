@@ -36,10 +36,13 @@ public:
              uint64_t etime,
              std::vector<std::pair<uint64_t, std::string*> >& pairs);
 
+    void ShowTp();
+
 private:
     std::string endpoint_;
     ::rtidb::RpcClient client_;
     ::rtidb::api::TabletServer_Stub* tablet_;
+    std::vector<uint64_t> percentile_;
 };
 
 
