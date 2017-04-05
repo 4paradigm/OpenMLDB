@@ -11,6 +11,7 @@
 
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
+#include "base/kv_iterator.h"
 
 namespace rtidb {
 namespace client {
@@ -29,12 +30,11 @@ public:
              uint64_t time,
              const std::string& value);
 
-    bool Scan(uint32_t tid,
+    ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
              uint64_t etime,
-             std::vector<std::pair<uint64_t, std::string*> >& pairs,
              bool showm = false);
 
     void ShowTp();
