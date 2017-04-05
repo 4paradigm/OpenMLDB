@@ -34,7 +34,8 @@ public:
              const std::string& pk,
              uint64_t stime,
              uint64_t etime,
-             std::vector<std::pair<uint64_t, std::string*> >& pairs);
+             std::vector<std::pair<uint64_t, std::string*> >& pairs,
+             bool showm = false);
 
     void ShowTp();
 
