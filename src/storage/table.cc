@@ -50,12 +50,14 @@ void Table::UnRef() {
     }
 }
 
+
+
 Table::Iterator::Iterator(Segment::Iterator* it):it_(it){
 
 }
 
 Table::Iterator::~Iterator() {
-
+    delete it_;
 }
 
 bool Table::Iterator::Valid() const {

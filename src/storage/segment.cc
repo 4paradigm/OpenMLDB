@@ -66,7 +66,9 @@ Segment::Iterator* Segment::NewIterator(const std::string& key) {
 
 Segment::Iterator::Iterator(TimeEntries::Iterator* it): it_(it) {}
 
-Segment::Iterator::~Iterator() {}
+Segment::Iterator::~Iterator() {
+    delete it_;
+}
 
 
 void Segment::Iterator::Seek(const uint64_t& time) {

@@ -15,6 +15,11 @@
 namespace rtidb {
 namespace storage {
 
+enum TableGcType {
+    kTTL,
+    kCountLimit
+};
+
 class Table {
 
 public:
@@ -53,7 +58,6 @@ public:
     void Ref();
 
     void UnRef();
-    
 
 private:
     ~Table(){}
