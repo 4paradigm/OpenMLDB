@@ -42,7 +42,8 @@ struct HashEntry {
     std::string key;
     TimeEntries entries;
     Mutex mu;
-    HashEntry():entries(12, 4, tcmp),mu() {}
+    boost::atomic<uint64_t> count_;
+    HashEntry():entries(12, 4, tcmp),mu(), count_(0){}
     ~HashEntry() {}
 };
 

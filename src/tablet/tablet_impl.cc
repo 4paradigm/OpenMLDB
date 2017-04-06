@@ -74,14 +74,12 @@ void TabletImpl::Scan(RpcController* controller,
     // TODO(wangtaize) config the tmp init size
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     uint32_t total_block_size = 0;
-    uint32_t count = 0;
     while (it->Valid()) {
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
         if (it->GetKey() < (uint64_t)request->et()) {
             break;
         }
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
-        count++;
         total_block_size += it->GetValue()->size;
         it->Next();
     }
@@ -93,14 +91,14 @@ void TabletImpl::Scan(RpcController* controller,
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < tmp.size(); i++) {
         std::pair<uint64_t, DataBlock*>& pair = tmp[i];
         LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
     response->set_code(0);
-    response->set_count(count);
+    response->set_count(tmp.size());
     metric->set_sptime(::baidu::common::timer::get_micros()); 
     done->Run();
     table->UnRef();

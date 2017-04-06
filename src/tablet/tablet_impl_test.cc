@@ -8,6 +8,7 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "gtest/gtest.h"
+#include "logging.h"
 
 namespace rtidb {
 namespace tablet {
@@ -86,7 +87,19 @@ TEST_F(TabletImplTest, Scan) {
     tablet.CreateTable(NULL, &request, &response,
             &closure);
     ASSERT_EQ(0, response.code());
-
+    ::rtidb::api::ScanRequest sr;
+    sr.set_tid(2);
+    sr.set_pk("test1");
+    sr.set_st(9528);
+    sr.set_et(9527);
+    sr.set_limit(10);
+    ::rtidb::api::ScanResponse srp;
+    tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(10, srp.code());
+    sr.set_tid(1);
+    tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(0, srp.code());
+    ASSERT_EQ(0, srp.count());
     ::rtidb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
@@ -100,6 +113,10 @@ TEST_F(TabletImplTest, Scan) {
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
     ASSERT_EQ(0, presponse.code());
+    tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(0, srp.code());
+    ASSERT_EQ(1, srp.count());
+
 }
 
 
@@ -108,6 +125,7 @@ TEST_F(TabletImplTest, Scan) {
 }
 
 int main(int argc, char** argv) {
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
