@@ -81,6 +81,7 @@ bool TabletClient::Put(uint32_t tid,
     if (showm) {
         while (kv_it->Valid()) {
             kv_it->Next();
+            kv_it->GetValue().ToString();
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
