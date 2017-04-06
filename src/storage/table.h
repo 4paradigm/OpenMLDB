@@ -30,7 +30,6 @@ public:
           uint32_t pid,
           uint32_t seg_cnt);
 
-
     void Init();
 
     // Put 
@@ -59,6 +58,7 @@ public:
 
     void UnRef();
 
+    void SchedGc();
 private:
     ~Table(){}
 
@@ -71,6 +71,8 @@ private:
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
     bool enable_gc_;
+    // hour
+    uint32_t const ttl_;
 };
 
 }

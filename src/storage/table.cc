@@ -8,6 +8,7 @@
 #include "logging.h"
 #include "storage/table.h"
 #include "base/hash.h"
+#include "timer.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -21,7 +22,7 @@ Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt), segments_(NULL), ref_(0), enable_gc_(false){}
+    pid_(pid), seg_cnt_(seg_cnt), segments_(NULL), ref_(0), enable_gc_(false), ttl_(0){}
 
 void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
@@ -48,6 +49,19 @@ void Table::UnRef() {
     if (ref_.load(boost::memory_order_relaxed) <= 0) {
         delete this;
     }
+}
+
+void Table::SchedGc() {
+    if (!enable_gc_) {
+        return;
+    }
+    LOG(INFO, "table %s start to make a gc", name_.c_str()); 
+    uint64_t time = ::baidu::common::timer::get_micros() / 1000 - 60 * 60  * 1000 - ttl_ * 60 * 60 * 1000; 
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        Segment* segment = segments_[i];
+        segment->Gc4TTL(time);
+    }
+
 }
 
 

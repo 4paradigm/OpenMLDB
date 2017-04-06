@@ -21,6 +21,10 @@ using ::baidu::common::MutexLock;
 struct DataBlock {
     uint32_t size;
     char* data;
+    DataBlock() {}
+    ~DataBlock() {
+        delete data;
+    }
 };
 
 // the desc time comparator
@@ -86,6 +90,9 @@ public:
     private:
         TimeEntries::Iterator* it_;
     };
+
+    // remove out of date data
+    uint64_t Gc4TTL(const uint64_t& time);
 
     Segment::Iterator* NewIterator(const std::string& key);
 private:
