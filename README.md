@@ -3,22 +3,14 @@ Database for Real Time Intelligence
 
 # build
 ```
-# install thirdparty
 sh build.sh
-# gen cpp
-sh gen_cpp.sh
-# complie
-mkdir build
-cd build 
-cmake ..
-make -j4
 ```
 
 # start tablet server
 
 ```
 cd build/bin
-./rtidb >log 2>&1 &
+./rtidb --role=tablet >log 2>&1 &
 ```
 
 # start cli
