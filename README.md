@@ -13,23 +13,24 @@ cd build/bin
 ./rtidb --role=tablet >log 2>&1 &
 ```
 
-# start cli
+# start client
 
 ```
 cd build/bin
-./rtidb_cli
->put 3 1 1
+./rtidb --role=client
+```
+
+# create table
+
+```
+>create t0 1 1 1
+```
+
+# put 
+
+```
+>put 1 1 testkey 9527 testvalue
 Put 1 ok, latency 0 ms
->put 3 2 2
-Put 2 ok, latency 0 ms
->put 3 3 3
-Put 3 ok, latency 0 ms
->put 3 4 4
-Put 4 ok, latency 0 ms
->scan 3 2 3
-key:3/2  value:2
-key:3/3  value:3
-scan 2 records, latency 0 ms
 ```
 
 # todo
