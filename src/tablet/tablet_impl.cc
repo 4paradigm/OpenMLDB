@@ -20,9 +20,14 @@ using ::rtidb::storage::DataBlock;
 namespace rtidb {
 namespace tablet {
 
-TabletImpl::TabletImpl():tables_(),mu_() {}
+TabletImpl::TabletImpl():tables_(),mu_(), dbstat_(NULL){}
 
 TabletImpl::~TabletImpl() {}
+
+void TabletImpl::Init() {
+    //Create a dbstat table with tid = 0 and pid = 0
+    //dbstat_ = new Table("dbstat", 0, 0, 8);
+}
 
 void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,

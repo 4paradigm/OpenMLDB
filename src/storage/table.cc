@@ -21,7 +21,7 @@ Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt), segments_(NULL), ref_(0) {}
+    pid_(pid), seg_cnt_(seg_cnt), segments_(NULL), ref_(0), enable_gc_(false){}
 
 void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
@@ -55,6 +55,7 @@ Table::Iterator::Iterator(Segment::Iterator* it):it_(it){
 }
 
 Table::Iterator::~Iterator() {
+
 }
 
 bool Table::Iterator::Valid() const {

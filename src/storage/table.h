@@ -53,6 +53,7 @@ public:
     void Ref();
 
     void UnRef();
+    
 
 private:
     ~Table(){}
@@ -65,6 +66,7 @@ private:
     // Segments is readonly
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
+    bool enable_gc_;
 };
 
 }

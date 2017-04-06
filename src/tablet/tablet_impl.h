@@ -27,7 +27,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 public:
     TabletImpl();
     ~TabletImpl();
-
+    void Init();
     void Put(RpcController* controller,
              const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response,
@@ -48,6 +48,7 @@ private:
 private:
     std::map<uint32_t , ::rtidb::storage::Table*> tables_;
     Mutex mu_;
+    ::rtidb::storage::Table* dbstat_;
 };
 
 

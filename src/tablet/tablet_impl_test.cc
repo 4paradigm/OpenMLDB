@@ -87,7 +87,6 @@ TEST_F(TabletImplTest, Scan) {
             &closure);
     ASSERT_EQ(0, response.code());
 
-
     ::rtidb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
