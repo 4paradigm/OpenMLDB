@@ -76,6 +76,8 @@ TEST_F(SegmentTest, TestGc4TTL) {
     ASSERT_EQ(0, count);
     count = segment.Gc4TTL(9768);
     ASSERT_EQ(1, count);
+    count = segment.Gc4TTL(9770);
+    ASSERT_EQ(1, count);
 }
 
 
