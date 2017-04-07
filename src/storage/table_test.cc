@@ -7,6 +7,7 @@
 
 #include "storage/table.h"
 #include "gtest/gtest.h"
+#include "timer.h"
 
 namespace rtidb {
 namespace storage {
@@ -48,6 +49,24 @@ TEST_F(TableTest, Iterator) {
     std::string value2_str(value2->data, value2->size);
     ASSERT_EQ("test", value2_str);
     ASSERT_EQ(4, value2->size);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+}
+
+TEST_F(TableTest, SchedGc) {
+    Table* table = new Table("tx_log", 1, 1, 9 , 1);
+    table->Ref();
+    table->Init();
+
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table->Put("test", 9527, "test", 4);
+    table->Put("test", now, "tes2", 4);
+    table->SchedGc();
+    Table::Iterator* it = table->NewIterator("test");
+    it->Seek(now);
+    ASSERT_TRUE(it->Valid());
+    std::string value_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("tes2", value_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
 }

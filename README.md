@@ -35,8 +35,4 @@ Put 1 ok, latency 0 ms
 
 # todo
 
-* update sofa rpc to 1.1.1
-* capnproto flatbuffer 性能对比
-* 基于boost asio 和以上性能优势的序列化工具实现网络通讯
-* 主从同步
-* 支持分布式横向扩展
+* tablet 单测case丰富

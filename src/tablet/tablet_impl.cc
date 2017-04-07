@@ -80,8 +80,11 @@ void TabletImpl::Scan(RpcController* controller,
     // TODO(wangtaize) config the tmp init size
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     uint32_t total_block_size = 0;
-    uint64_t ttl_end_time = ::baidu::common::timer::get_micros() / 1000 - table->GetTTL() * 60 * 1000;
-    uint64_t end_time = ttl_end_time > (uint64_t)request->et() ? ttl_end_time : (uint64_t)request->et();
+    uint64_t end_time = request->et();
+    if (table->GetTTL() > 0) {
+        uint64_t ttl_end_time = ::baidu::common::timer::get_micros() / 1000 - table->GetTTL() * 60 * 1000;
+        end_time = ttl_end_time > (uint64_t)request->et() ? ttl_end_time : (uint64_t)request->et();
+    }
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     while (it->Valid()) {
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
@@ -128,10 +131,14 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t ttl = request->ttl();
+    uint32_t seg_cnt = 8;
+    if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
+        seg_cnt = request->seg_cnt();
+    }
     //TODO(wangtaize) config segment count option
     // parameter validation 
     Table* table = new Table(request->name(), request->tid(),
-                             request->pid(), request->seg_cnt(), 
+                             request->pid(), seg_cnt, 
                              request->ttl());
     table->Init();
     // for tables_ 
