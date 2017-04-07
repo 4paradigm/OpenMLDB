@@ -60,7 +60,7 @@ public:
 
     void UnRef();
 
-    void SchedGc();
+    uint64_t SchedGc();
 
     uint32_t GetTTL() const {
         return ttl_;

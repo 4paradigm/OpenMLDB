@@ -54,14 +54,15 @@ TEST_F(TableTest, Iterator) {
 }
 
 TEST_F(TableTest, SchedGc) {
-    Table* table = new Table("tx_log", 1, 1, 9 , 1);
+    Table* table = new Table("tx_log", 1, 1, 8 , 1);
     table->Ref();
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->Put("test", 9527, "test", 4);
     table->Put("test", now, "tes2", 4);
-    table->SchedGc();
+    uint64_t count = table->SchedGc();
+    ASSERT_EQ(1, count);
     Table::Iterator* it = table->NewIterator("test");
     it->Seek(now);
     ASSERT_TRUE(it->Valid());
