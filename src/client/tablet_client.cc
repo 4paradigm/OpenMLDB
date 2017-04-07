@@ -49,8 +49,11 @@ bool TabletClient::Put(uint32_t tid,
     request.set_value(value);
     request.set_tid(tid);
     ::rtidb::api::PutResponse response;
+    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Put,
             &request, &response, 12, 1);
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    percentile_.push_back(consumed/1000);
     if (ok && response.code() == 0) {
         return true;
     }

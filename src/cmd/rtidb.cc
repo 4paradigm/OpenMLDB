@@ -85,7 +85,7 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
         for (uint32_t j = 0; j < 1000; j++) {
             client->Put(1, 1, key, j, sval);
         }
-        std::cout<< i << std::endl;
+        client->ShowTp();
     }
 }
 
