@@ -6,6 +6,9 @@
 //
 
 #include "tablet/tablet_impl.h"
+
+#include <gflags/gflags.h>
+#include <boost/bind.hpp>
 #include "base/codec.h"
 #include "base/strings.h"
 #include "logging.h"
@@ -17,10 +20,14 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 using ::rtidb::storage::Table;
 using ::rtidb::storage::DataBlock;
+
+DECLARE_int32(gc_interval);
+DECLARE_int32(gc_pool_size);
+
 namespace rtidb {
 namespace tablet {
 
-TabletImpl::TabletImpl():tables_(),mu_(), dbstat_(NULL){}
+TabletImpl::TabletImpl():tables_(),mu_(), dbstat_(NULL), gc_pool_(FLAGS_gc_pool_size){}
 
 TabletImpl::~TabletImpl() {}
 
@@ -65,7 +72,6 @@ void TabletImpl::Scan(RpcController* controller,
         return;
     }
     metric->set_sctime(::baidu::common::timer::get_micros());
-    LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), request->et());
     // Use seek to process scan request
     // the first seek to find the total size to copy
     Table::Iterator* it = table->NewIterator(request->pk());
@@ -74,9 +80,12 @@ void TabletImpl::Scan(RpcController* controller,
     // TODO(wangtaize) config the tmp init size
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     uint32_t total_block_size = 0;
+    uint64_t ttl_end_time = ::baidu::common::timer::get_micros() / 1000 - table->GetTTL() * 60 * 1000;
+    uint64_t end_time = ttl_end_time > (uint64_t)request->et() ? ttl_end_time : (uint64_t)request->et();
+    LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     while (it->Valid()) {
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
-        if (it->GetKey() < (uint64_t)request->et()) {
+        if (it->GetKey() < end_time) {
             break;
         }
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
@@ -117,19 +126,36 @@ void TabletImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
+    uint32_t tid = request->tid();
+    uint32_t ttl = request->ttl();
     //TODO(wangtaize) config segment count option
+    // parameter validation 
     Table* table = new Table(request->name(), request->tid(),
-            request->pid(), 8);
+                             request->pid(), request->seg_cnt(), 
+                             request->ttl());
     table->Init();
     // for tables_ 
     table->Ref();
     tables_.insert(std::make_pair(request->tid(), table));
     response->set_code(0);
-    LOG(INFO, "create table with id %d pid %d name %s", request->tid(), 
-            request->pid(), request->name().c_str());
+    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %d", request->tid(), 
+            request->pid(), request->name().c_str(), request->seg_cnt(), request->ttl());
     done->Run();
+    if (ttl > 0) {
+        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid));
+    }
 }
 
+
+void TabletImpl::GcTable(uint32_t tid) {
+    Table* table = GetTable(tid);
+    if (table == NULL) {
+        return;
+    }
+    table->SchedGc();
+    table->UnRef();
+    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid));
+}
 
 Table* TabletImpl::GetTable(uint32_t tid) {
     MutexLock lock(&mu_);

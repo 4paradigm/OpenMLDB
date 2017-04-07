@@ -13,11 +13,13 @@
 #include "proto/tablet.pb.h"
 #include "storage/table.h"
 #include "mutex.h"
+#include "thread_pool.h"
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
 using ::baidu::common::Mutex;
 using ::baidu::common::MutexLock;
+using ::baidu::common::ThreadPool;
 
 namespace rtidb {
 namespace tablet {
@@ -45,10 +47,13 @@ public:
 private:
     // Get table by table id and Inc reference
     ::rtidb::storage::Table* GetTable(uint32_t tid);
+
+    void GcTable(uint32_t tid);
 private:
     std::map<uint32_t , ::rtidb::storage::Table*> tables_;
     Mutex mu_;
     ::rtidb::storage::Table* dbstat_;
+    ThreadPool gc_pool_;
 };
 
 

@@ -19,7 +19,7 @@ public:
 };
 
 TEST_F(TableTest, Put) {
-    Table* table = new Table("tx_log", 1, 1, 8);
+    Table* table = new Table("tx_log", 1, 1, 8, 10);
     table->Ref();
     table->Init();
     table->Put("test", 9537, "test", 4);
@@ -27,7 +27,7 @@ TEST_F(TableTest, Put) {
 }
 
 TEST_F(TableTest, Iterator) {
-    Table* table = new Table("tx_log", 1, 1, 8);
+    Table* table = new Table("tx_log", 1, 1, 8, 10);
     table->Ref();
     table->Init();
 

@@ -62,6 +62,7 @@ message CreateTableRequest {
   optional int32 pid = 3;
   // time to live for every row
   optional int32 ttl = 4; 
+  optional int32 seg_cnt = 5;
 }
 
 message CreateTableResponse {

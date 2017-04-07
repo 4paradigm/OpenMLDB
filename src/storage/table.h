@@ -28,7 +28,8 @@ public:
     Table(const std::string& name,
           uint32_t id,
           uint32_t pid,
-          uint32_t seg_cnt);
+          uint32_t seg_cnt,
+          uint32_t ttl);
 
     void Init();
 
@@ -59,6 +60,10 @@ public:
     void UnRef();
 
     void SchedGc();
+
+    uint32_t GetTTL() const {
+        return ttl_;
+    }
 private:
     ~Table(){}
 
