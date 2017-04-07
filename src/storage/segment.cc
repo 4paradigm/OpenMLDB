@@ -91,8 +91,8 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
         }
         it->Next();
     }
-    LOG(INFO, "[Gc] segment gc with key %lld and consumed %lld", time,
-            (::baidu::common::timer::get_micros() - consumed)/1000);
+    LOG(INFO, "[Gc] segment gc with key %lld ,consumed %lld, count %lld", time,
+            (::baidu::common::timer::get_micros() - consumed)/1000, count);
     return count;
 }
 

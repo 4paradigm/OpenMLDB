@@ -23,6 +23,7 @@ using ::rtidb::storage::DataBlock;
 
 DECLARE_int32(gc_interval);
 DECLARE_int32(gc_pool_size);
+DECLARE_int32(gc_safe_offset);
 
 namespace rtidb {
 namespace tablet {
@@ -132,6 +133,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     uint32_t tid = request->tid();
     uint32_t ttl = request->ttl();
     uint32_t seg_cnt = 8;
+    std::string name = request->name();
     if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
         seg_cnt = request->seg_cnt();
     }
@@ -141,6 +143,7 @@ void TabletImpl::CreateTable(RpcController* controller,
                              request->pid(), seg_cnt, 
                              request->ttl());
     table->Init();
+    table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
     tables_.insert(std::make_pair(request->tid(), table));
@@ -150,6 +153,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     done->Run();
     if (ttl > 0) {
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid));
+        LOG(INFO, "table %s with %d enable ttl %d", name.c_str(), tid, ttl);
     }
 }
 

@@ -23,15 +23,18 @@ Table::Table(const std::string& name,
         uint32_t pid,
         uint32_t seg_cnt,
         uint32_t ttl):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt), segments_(NULL), ref_(0), enable_gc_(ttl_ > 0), ttl_(ttl){}
+    pid_(pid), seg_cnt_(seg_cnt),
+    segments_(NULL), 
+    ref_(0), enable_gc_(ttl_ > 0), ttl_(ttl),
+    ttl_offset_(60 * 1000){}
 
 void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         segments_[i] = new Segment();
     }
-    LOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d", name_.c_str(),
-            id_, pid_, seg_cnt_);
+    LOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
+            id_, pid_, seg_cnt_, ttl_);
 }
 
 void Table::Put(const std::string& pk, const uint64_t& time,
@@ -52,12 +55,16 @@ void Table::UnRef() {
     }
 }
 
+void Table::SetGcSafeOffset(uint64_t offset) {
+    ttl_offset_ = offset;
+}
+
 void Table::SchedGc() {
     if (!enable_gc_) {
         return;
     }
     LOG(INFO, "table %s start to make a gc", name_.c_str()); 
-    uint64_t time = ::baidu::common::timer::get_micros() / 1000 - 60 * 1000 - ttl_ * 60 * 1000; 
+    uint64_t time = ::baidu::common::timer::get_micros() / 1000 - ttl_offset_ - ttl_ * 60 * 1000; 
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         Segment* segment = segments_[i];
         segment->Gc4TTL(time);

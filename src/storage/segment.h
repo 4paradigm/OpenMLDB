@@ -20,7 +20,7 @@ using ::baidu::common::MutexLock;
 
 struct DataBlock {
     uint32_t size;
-    char* data;
+    const char* data;
     DataBlock() {}
     ~DataBlock() {
         delete data;

@@ -90,14 +90,14 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
 }
 
 //
-// the input format like create name tid pid
+// the input format like create name tid pid ttl
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 4) {
+    if (parts.size() < 5) {
         std::cout << "Bad create format" << std::endl;
         return;
     }
     bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-            boost::lexical_cast<uint32_t>(parts[3]), 100);
+            boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]));
     if (!ok) {
         std::cout << "Fail to create table" << std::endl;
     }else {
@@ -115,7 +115,7 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
             boost::lexical_cast<uint32_t>(parts[2]),
             parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
             boost::lexical_cast<uint64_t>(parts[5]),
-            true);
+            false);
     if (it == NULL) {
         std::cout << "Fail to scan table" << std::endl;
     }else {
@@ -132,6 +132,7 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
             if (print) {
                 std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
             } 
+            index ++;
         }
         delete it;
     }

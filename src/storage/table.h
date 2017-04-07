@@ -33,6 +33,7 @@ public:
 
     void Init();
 
+    void SetGcSafeOffset(uint64_t offset);
     // Put 
     void Put(const std::string& pk,
              const uint64_t& time,
@@ -78,6 +79,7 @@ private:
     bool enable_gc_;
     // hour
     uint32_t const ttl_;
+    uint64_t ttl_offset_;
 };
 
 }
