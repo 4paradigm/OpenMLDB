@@ -1,0 +1,79 @@
+
+package rtidb.api;
+
+option java_generic_services = true;
+option java_package = "com._4paradigm.rtidb";
+option java_outer_classname = "Tablet";
+
+message PutRequest {
+  // the prefix key 
+  optional string pk = 1;
+  // the subfix key
+  optional int64 time = 2;
+  optional bytes value = 3;
+  optional int32 tid = 4;
+}
+
+message PutResponse {
+  optional int32 code = 1;
+  optional string msg = 2;
+}
+
+message ScanRequest {
+  // the prefix key
+  optional string pk = 1;
+  // the start subfix key
+  optional int64 st = 2;
+  // the end subfix key
+  optional int64 et = 3;
+  optional int32 limit = 4;
+  optional RpcMetric metric = 5;
+  optional int32 tid = 6;
+}
+
+
+message RpcMetric {
+  // the time start send rpc request
+  optional int64 sqtime = 1;
+  // the time server receive rpc request
+  optional int64 rqtime = 2;
+  // the time server start to caculate
+  optional int64 sctime = 3;
+  // the time server start send response
+  optional int64 sptime = 4;
+  // the time client receive response
+  optional int64 rptime = 5;
+  // the time server start first iterator
+  optional int64 sitime = 6;
+  // the time server start encode 
+  optional int64 setime = 7;
+}
+
+message ScanResponse {
+  optional bytes pairs = 1;
+  optional string msg = 2;
+  optional int32 code = 3;
+  optional int32 count = 4;
+  optional bool more = 5;
+  optional RpcMetric metric = 6;
+}
+
+message CreateTableRequest {
+  optional int32 tid = 1;
+  optional string name = 2;
+  optional int32 pid = 3;
+  // time to live for every row
+  optional int32 ttl = 4; 
+  optional int32 seg_cnt = 5;
+}
+
+message CreateTableResponse {
+  optional int32 code = 1;
+  optional string msg = 2;
+}
+
+service TabletServer {
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Scan(ScanRequest) returns (ScanResponse);
+  rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+}
