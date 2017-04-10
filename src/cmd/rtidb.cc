@@ -28,6 +28,7 @@ using ::baidu::common::DEBUG;
 
 DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
 DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
+DEFINE_string(log_level, "debug | info", "Set the rtidb log level");
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/){
@@ -36,7 +37,11 @@ static void SignalIntHandler(int /*sig*/){
 
 void StartTablet() {
     //TODO(wangtaize) optimalize options
-    ::baidu::common::SetLogLevel(INFO);
+    if (FLAGS_log_level == "debug") {
+        ::baidu::common::SetLogLevel(DEBUG);
+    }else {
+        ::baidu::common::SetLogLevel(INFO);
+    }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();

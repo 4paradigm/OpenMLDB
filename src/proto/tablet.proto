@@ -2,6 +2,9 @@
 package rtidb.api;
 
 option cc_generic_services = true;
+option java_generic_services = true;
+option java_package = "com._4paradigm.rtidb";
+option java_outer_classname = "Tablet";
 
 message PutRequest {
   // the prefix key 
