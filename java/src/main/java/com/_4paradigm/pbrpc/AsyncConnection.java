@@ -18,6 +18,7 @@ public class AsyncConnection {
     private int port;
     private RpcContext context;
     private ChannelFuture channel = null; 
+    private NioEventLoopGroup group = null;
     public AsyncConnection(String host, int port) {
         this.host = host;
         this.port = port;
@@ -25,8 +26,9 @@ public class AsyncConnection {
     }
     
     public void connect() throws InterruptedException {
+        group = new NioEventLoopGroup();
         Bootstrap b = new Bootstrap();
-        b.group(new NioEventLoopGroup());
+        b.group(group);
         b.channel(NioSocketChannel.class);
         b.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         b.option(ChannelOption.SO_KEEPALIVE, true);
@@ -51,6 +53,7 @@ public class AsyncConnection {
     }
 
     public void close() {
+        group.shutdownGracefully();
         channel.cancel(false);
     }
 }
