@@ -5,6 +5,10 @@
 
 #include "base/kv_iterator.h"
 #include "base/codec.h"
+#include "gtest/gtest.h"
+#include "base/strings.h"
+#include "proto/tablet.pb.h"
+#include <iostream>
 
 namespace rtidb {
 namespace base {
@@ -17,9 +21,35 @@ public:
 };
 
 
-TEST_F(KvIteratorTest, Iterator) {
+TEST_F(KvIteratorTest, Iterator_NULL) {
+    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    KvIterator kv_it(response);
+    ASSERT_FALSE(kv_it.Valid());
+}
 
-    char* data = new char[12 * 2 + 10];
+TEST_F(KvIteratorTest, Iterator_ONE) {
+    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+    std::string* pairs = response->mutable_pairs();
+    pairs->resize(17);
+    char* data = reinterpret_cast<char*>(& ((*pairs)[0])) ;
+    DataBlock* db1 = new DataBlock();
+    db1->data = "hello";
+    db1->size = 5;
+    Encode(9527, db1, data, 0);
+    KvIterator kv_it(response);
+    ASSERT_TRUE(kv_it.Valid());
+    kv_it.Next();
+    ASSERT_EQ(9527, kv_it.GetKey());
+    ASSERT_EQ("hello", kv_it.GetValue().ToString());
+    ASSERT_FALSE(kv_it.Valid());
+}
+
+TEST_F(KvIteratorTest, Iterator) {
+    ::rtidb::api::ScanResponse* response = new ::rtidb::api::ScanResponse();
+
+    std::string* pairs = response->mutable_pairs();
+    pairs->resize(34);
+    char* data = reinterpret_cast<char*>(& ((*pairs)[0])) ;
     DataBlock* db1 = new DataBlock();
     db1->data = "hello";
     db1->size = 5;
@@ -27,18 +57,18 @@ TEST_F(KvIteratorTest, Iterator) {
     DataBlock* db2 = new DataBlock();
     db2->data = "hell1";
     db2->size = 5;
-    Encode(9527, db1, data);
-    Encode(9528, db2, data);
-
-    KvIterator kv_it(static_cast<const void*> data, data, 34);
+    Encode(9527, db1, data, 0);
+    Encode(9528, db2, data, 17);
+    KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     kv_it.Next();
     ASSERT_EQ(9527, kv_it.GetKey());
-    ASSERT_EQ("hello", kv_it.GetValue().data());
+    ASSERT_EQ("hello", kv_it.GetValue().ToString());
     ASSERT_TRUE(kv_it.Valid());
     kv_it.Next();
     ASSERT_EQ(9528, kv_it.GetKey());
     ASSERT_EQ("hell1", kv_it.GetValue().ToString());
+    ASSERT_FALSE(kv_it.Valid());
 
 }
 

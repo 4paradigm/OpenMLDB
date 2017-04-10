@@ -20,7 +20,7 @@ class Node {
 
 public:
     // Set data reference and Node height
-    Node(const K& key, const V& value, uint32_t height):key_(key), 
+    Node(const K& key, V& value, uint32_t height):key_(key), 
     value_(value),
     height_(height){
         nexts_ = new boost::atomic< Node<K,V>* >[height];
@@ -56,7 +56,7 @@ public:
         return nexts_[level].load(boost::memory_order_relaxed);
     }
 
-    const V& GetValue() const{
+    V& GetValue() {
         return value_;
     }
 
@@ -69,8 +69,8 @@ public:
         delete[] nexts_;
     }
 private:
-    K const key_;
-    V const value_;
+    K  const key_;
+    V  value_;
     boost::atomic< Node<K,V>* >* nexts_;
     uint32_t const height_;
 };
@@ -94,7 +94,7 @@ public:
     ~Skiplist() {}
 
     // Insert need external synchronized
-    void Insert(const K& key, const V& value) {
+    void Insert(const K& key, V& value) {
         uint32_t height = RandomHeight();
         Node<K,V>* pre[MaxHeight];
         FindGreaterOrEqual(key, pre);
@@ -153,7 +153,7 @@ public:
             return node_->GetKey();
         }
 
-        const V& GetValue() const {
+        V& GetValue() {
             assert(Valid());
             return node_->GetValue();
         }
@@ -180,7 +180,7 @@ public:
 
 private:
 
-    Node<K,V>* NewNode(const K& key, const V& value, uint32_t height) {
+    Node<K,V>* NewNode(const K& key, V& value, uint32_t height) {
         Node<K,V>* node = new Node<K,V>(key, value, height); 
         return node;
     }
@@ -193,7 +193,7 @@ private:
         return height;
     }
 
-    Node<K, V>* FindGreaterOrEqual(const K& key, Node<K, V>** nodes) const {
+    Node<K, V>* FindGreaterOrEqual(const K& key, Node<K, V>** nodes) {
         assert(nodes != NULL);
         Node<K, V>* node = head_;
         uint32_t level = GetMaxHeight() - 1;
@@ -211,7 +211,7 @@ private:
         }
     }
 
-    Node<K, V>* FindEqual(const K& key) const{
+    Node<K, V>* FindEqual(const K& key) {
         Node<K, V>* node = head_; 
         uint32_t level = GetMaxHeight() - 1;
         while (true) {
@@ -227,7 +227,7 @@ private:
         }
     }
 
-    Node<K, V>* FindLessThan(const K& key) const {
+    Node<K, V>* FindLessThan(const K& key) {
         Node<K, V>* node = head_;
         uint32_t level = GetMaxHeight() - 1;
         while (true) {

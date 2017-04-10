@@ -9,6 +9,7 @@
 #include "storage/segment.h"
 #include "gtest/gtest.h"
 #include "gperftools/malloc_extension.h"
+#include "logging.h"
 
 namespace rtidb {
 namespace storage {
@@ -65,14 +66,27 @@ TEST_F(SegmentTest, Iterator) {
    extension->GetNumericProperty("generic.current_allocated_bytes", &allocated);
    std::cout << allocated << std::endl;
 
-
 }
+
+TEST_F(SegmentTest, TestGc4TTL) {
+    Segment segment;
+    segment.Put("PK", 9768, "test1", 5);
+    segment.Put("PK", 9769, "test2", 5);
+    uint64_t count = segment.Gc4TTL(9765);
+    ASSERT_EQ(0, count);
+    count = segment.Gc4TTL(9768);
+    ASSERT_EQ(1, count);
+    count = segment.Gc4TTL(9770);
+    ASSERT_EQ(1, count);
+}
+
 
 
 }
 }
 
 int main(int argc, char** argv) {
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

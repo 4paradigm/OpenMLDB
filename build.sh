@@ -6,6 +6,7 @@ set -e -u -E # this script will exit if any sub-command fails
 # download & build depend software
 ########################################
 
+
 WORK_DIR=`pwd`
 DEPS_SOURCE=`pwd`/thirdsrc
 DEPS_PREFIX=`pwd`/thirdparty
@@ -172,8 +173,11 @@ else
 fi
 
 cd $WORK_DIR
-sh gen_cpp.sh
+sh gen_code.h
 mkdir -p $WORK_DIR/build 
 cd $WORK_DIR/build && cmake .. && make -j4
-cd $WORK_DIR/build/bin
-ls | grep test | while read line; do ./$line; done
+cd $WORK_DIR/build/bin && ls | grep test | while read line; do ./$line ; done
+
+cd $WORK_DIR
+sh build_java_client.sh
+

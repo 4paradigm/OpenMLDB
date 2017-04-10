@@ -15,6 +15,11 @@
 namespace rtidb {
 namespace storage {
 
+enum TableGcType {
+    kTTL,
+    kCountLimit
+};
+
 class Table {
 
 public:
@@ -23,11 +28,12 @@ public:
     Table(const std::string& name,
           uint32_t id,
           uint32_t pid,
-          uint32_t seg_cnt);
-
+          uint32_t seg_cnt,
+          uint32_t ttl);
 
     void Init();
 
+    void SetGcSafeOffset(uint64_t offset);
     // Put 
     void Put(const std::string& pk,
              const uint64_t& time,
@@ -54,6 +60,11 @@ public:
 
     void UnRef();
 
+    uint64_t SchedGc();
+
+    uint32_t GetTTL() const {
+        return ttl_;
+    }
 private:
     ~Table(){}
 
@@ -65,6 +76,10 @@ private:
     // Segments is readonly
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
+    bool enable_gc_;
+    // hour
+    uint32_t const ttl_;
+    uint64_t ttl_offset_;
 };
 
 }

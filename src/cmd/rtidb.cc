@@ -19,6 +19,7 @@
 #include "tablet/tablet_impl.h"
 #include "client/tablet_client.h"
 #include "base/strings.h"
+#include "base/kv_iterator.h"
 #include "timer.h"
 
 using ::baidu::common::INFO;
@@ -27,6 +28,7 @@ using ::baidu::common::DEBUG;
 
 DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
 DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
+DEFINE_string(log_level, "debug | info", "Set the rtidb log level");
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/){
@@ -35,7 +37,11 @@ static void SignalIntHandler(int /*sig*/){
 
 void StartTablet() {
     //TODO(wangtaize) optimalize options
-    ::baidu::common::SetLogLevel(INFO);
+    if (FLAGS_log_level == "debug") {
+        ::baidu::common::SetLogLevel(DEBUG);
+    }else {
+        ::baidu::common::SetLogLevel(INFO);
+    }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
@@ -84,19 +90,19 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
         for (uint32_t j = 0; j < 1000; j++) {
             client->Put(1, 1, key, j, sval);
         }
-        std::cout<< i << std::endl;
+        client->ShowTp();
     }
 }
 
 //
-// the input format like create name tid pid
+// the input format like create name tid pid ttl
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 4) {
+    if (parts.size() < 5) {
         std::cout << "Bad create format" << std::endl;
         return;
     }
     bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-            boost::lexical_cast<uint32_t>(parts[3]), 100);
+            boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]));
     if (!ok) {
         std::cout << "Fail to create table" << std::endl;
     }else {
@@ -110,14 +116,12 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
         std::cout << "Bad scan format" << std::endl;
         return;
     }
-    std::vector< std::pair<uint64_t, std::string*> > data;
-    bool ok = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
+    ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
             boost::lexical_cast<uint32_t>(parts[2]),
             parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
             boost::lexical_cast<uint64_t>(parts[5]),
-            data,
-            true);
-    if (!ok) {
+            false);
+    if (it == NULL) {
         std::cout << "Fail to scan table" << std::endl;
     }else {
         bool print = true;
@@ -127,13 +131,15 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
             }
         }
         std::cout << "#\tTime\tData" << std::endl;
-        for (size_t i = 0; i < data.size(); i++) {
+        uint32_t index = 1;
+        while (it->Valid()) {
+            it->Next();
             if (print) {
-                std::cout<< i+1 << "\t"<<data[i].first << "\t" << *(data[i].second) << std::endl;
-            }
-            delete data[i].second;
+                std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
+            } 
+            index ++;
         }
-        data.clear();
+        delete it;
     }
 }
 
@@ -142,15 +148,10 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
     uint64_t et = 1;
     uint32_t tid = 1;
     uint32_t pid = 1;
-    std::vector<std::pair<uint64_t, std::string*> > data;
     for (uint32_t i = 0; i < 1000; i++) {
         std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-        client->Scan(tid, pid, key, st, et, data);
-        for (uint32_t j = 0; j < data.size(); j++) {
-            std::pair<uint64_t, std::string*>& pair = data[j];
-            delete pair.second;
-        }
-        data.clear();
+        ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
+        delete it;
     }
     client->ShowTp();
 }

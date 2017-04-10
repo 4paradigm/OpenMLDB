@@ -1,7 +1,12 @@
 #ifndef RTIDB_BASE_SLICE
 #define RTIDB_BASE_SLICE
 
-namespace ritdb {
+#include <assert.h>
+#include <stddef.h>
+#include <string.h>
+#include <string>
+
+namespace rtidb {
 namespace base {
 
 class Slice {

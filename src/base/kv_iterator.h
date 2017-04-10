@@ -3,8 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "base/slice.h"
+#include <stdint.h>
 
+#include "base/slice.h"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace base {
@@ -12,19 +14,20 @@ namespace base {
 class KvIterator {
 
 public:
-    KvIterator(const void* ptr,
-            char* buffer,
-            uint32_t tsize):ptr_(ptr),buffer_(buffer),
-    tsize_(tsize),
+    KvIterator(::rtidb::api::ScanResponse* response):response_(response),buffer_(NULL),
+    tsize_(0),
     offset_(0), c_size_(0),
-    tmp_(NULL){}
+    tmp_(NULL){
+        buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
+        tsize_ = response->pairs().size();
+    }
 
     ~KvIterator() {
-        delete ptr_;
+        delete response_;
     }
 
     bool Valid() {
-        if (offset_ >= tsize_ - 12) {
+        if (tsize_ < 12 || offset_ >= tsize_ - 12) {
             return false;
         }
         return true;
@@ -39,6 +42,7 @@ public:
         buffer_ += 8;
         tmp_ = new Slice(buffer_, block_size - 8);
         buffer_ += (block_size - 8);
+        offset_ += (4 + block_size);
     }
 
     uint64_t GetKey() const {
@@ -50,7 +54,7 @@ public:
     }
 
 private:
-    void* const ptr_;
+    ::rtidb::api::ScanResponse* response_;
     char* buffer_;
     uint32_t tsize_;
     uint32_t offset_;

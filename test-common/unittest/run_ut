@@ -1,0 +1,22 @@
+#!/bin/bash
+curDir=`dirname $BASH_SOURCE`
+curDir=`realpath ${curDir}`
+rootdir=${curDir}/../../
+
+
+source ${curDir}/common.sh
+pkgname=pipelineTool-0.1.0.tar.gz
+
+testOut=${rootdir}/test-output
+pipelineDir=${testOut}/pipelineTool
+if [ ! -d ${pipelineDir} ]; then
+    execshell "wget http://pkg.4paradigm.com/tools/pipelineTool-0.1.0.tar.gz"
+    execshell "decompress pipelineTool-0.1.0.tar.gz ${pipelineDir} pipelineTool"
+    execshell "rm -f pipelineTool-0.1.0.tar.gz"
+fi
+
+runenvdir=${testOut}/unittest/runenv
+jenkinsdir=${testOut}/unittest/jenkinsdir
+builddir=${rootdir}/build
+${pipelineDir}/pipelineTool -f ${pipelineDir}/conf/rtidb_ut.xml -Drunenv=${runenvdir} -Djenkinsdir=${jenkinsdir} -Dbuild.dir=${builddir}  -silent -Dthread_count=1
+
