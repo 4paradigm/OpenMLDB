@@ -12,7 +12,7 @@ cp -rf src/proto/tablet.proto java/src/main/proto/rtidb/api
 
 clear_debug
 
-nohup ./build/bin/rtidb --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9526 --role=tablet >log 2>&1 &
+./build/bin/rtidb --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9526 --role=tablet &
 
 sleep 2
 
