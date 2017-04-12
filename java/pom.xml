@@ -27,6 +27,14 @@
 			<artifactId>netty-all</artifactId>
 			<version>4.0.4.Final</version>
 		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/javassist/javassist -->
+<dependency>
+    <groupId>javassist</groupId>
+    <artifactId>javassist</artifactId>
+    <version>3.12.1.GA</version>
+</dependency>
+		
 
 
         <!--logging-->
