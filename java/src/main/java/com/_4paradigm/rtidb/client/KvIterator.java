@@ -48,8 +48,6 @@ public class KvIterator {
         if (length < 0) {
             throw new RuntimeException("bad frame data");
         }
-        System.out.println(slice.position());
-        
         offset += (4 + size);
         slice.limit(offset);
     }

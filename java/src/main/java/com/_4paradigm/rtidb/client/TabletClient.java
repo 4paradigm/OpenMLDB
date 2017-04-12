@@ -31,8 +31,23 @@ public class TabletClient {
         channel = new SyncRpcChannel(asyncConn);
         iface = Tablet.TabletServer.newBlockingStub(channel);
     }
+    public boolean put(int tid, String key, long time,
+            byte[] bytes) {
+        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time).setValue(ByteString.copyFrom(bytes)).build();
+        try {
+            
+            Tablet.PutResponse response = iface.put(ctrl, resquest);
+            if (response.getCode() == 0) {
+                return true;
+            }
+            return false;
+        } catch (ServiceException e) {
+            logger.error("fail call put", e);
+        }
+        return false;
+    }
     
-    public boolean put(int tid, int pid, String key,
+    public boolean put(int tid, String key,
             long time, String value) {
         Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time).setValue(ByteString.copyFrom(value.getBytes())).build();
         try {

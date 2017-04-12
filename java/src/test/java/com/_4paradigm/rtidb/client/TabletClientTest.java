@@ -39,10 +39,10 @@ public class TabletClientTest {
             e.printStackTrace();
             Assert.assertFalse(true);
         }
-        Assert.assertFalse(client.put(22, 0, "pk", 9527, "test0"));
+        Assert.assertFalse(client.put(22, "pk", 9527, "test0"));
         boolean ok = client.createTable("tj1", 21, 0, 0);
         Assert.assertTrue(ok);
-        ok = client.put(21, 0, "pk", 9527, "test0");
+        ok = client.put(21, "pk", 9527, "test0");
         Assert.assertTrue(ok);
     }
     
@@ -60,7 +60,7 @@ public class TabletClientTest {
         Assert.assertNull(it);
         boolean ok = client.createTable("tj1", 23, 0, 0);
         Assert.assertTrue(ok);
-        ok = client.put(23, 0, "pk", 9527, "test0");
+        ok = client.put(23,"pk", 9527, "test0");
         Assert.assertTrue(ok);
         it = client.scan(23, "pk", 9527l, 9526l);
         Assert.assertTrue( it!= null);

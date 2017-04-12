@@ -24,6 +24,7 @@ public class FrameEncoder extends MessageToByteEncoder<MessageContext> {
         header.writeLong(mc.getRequest().getSerializedSize());
         header.writeLong(mc.getMeta().getSerializedSize() + mc.getRequest().getSerializedSize());
         out.writeBytes(header);
+        header.release();
         mc.getMeta().writeTo(new ByteBufOutputStream(out));
         mc.getRequest().writeTo(new ByteBufOutputStream(out));
         context.put(mc.getSeq(), mc);
