@@ -17,13 +17,26 @@ public:
     KvIterator(::rtidb::api::ScanResponse* response):response_(response),buffer_(NULL),
     tsize_(0),
     offset_(0), c_size_(0),
-    tmp_(NULL){
+    tmp_(NULL),
+    auto_clean_(true){
+        buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
+        tsize_ = response->pairs().size();
+    }
+
+    KvIterator(::rtidb::api::ScanResponse* response,
+               bool clean):response_(response),buffer_(NULL),
+    tsize_(0),
+    offset_(0), c_size_(0),
+    tmp_(NULL),
+    auto_clean_(clean){
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tsize_ = response->pairs().size();
     }
 
     ~KvIterator() {
-        delete response_;
+        if (auto_clean_) {
+            delete response_;
+        }
     }
 
     bool Valid() {
@@ -61,6 +74,7 @@ private:
     uint32_t c_size_;
     uint64_t time_;
     Slice* tmp_;
+    bool auto_clean_;
 };
 
 }
