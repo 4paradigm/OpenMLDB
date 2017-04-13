@@ -21,6 +21,7 @@
 #include "base/strings.h"
 #include "base/kv_iterator.h"
 #include "timer.h"
+#include "version.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -53,7 +54,10 @@ void StartTablet() {
         LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
         exit(1);
     }
-    LOG(INFO, "start tablet on port %s", FLAGS_endpoint.c_str());
+    LOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+            RTIDB_VERSION_MAJOR,
+            RTIDB_VERSION_MINOR,
+            RTIDB_VERSION_BUG);
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {
@@ -144,12 +148,13 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
 }
 
 void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    uint64_t st = 999;
-    uint64_t et = 1;
+    uint64_t st = 1491826337000;
+    uint64_t et = 0;
     uint32_t tid = 1;
     uint32_t pid = 1;
     for (uint32_t i = 0; i < 1000; i++) {
-        std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+        //std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+        std::string key = "8495-1540-5091-2377";
         ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
         delete it;
     }
@@ -158,7 +163,8 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
 
 void StartClient() {
     //::baidu::common::SetLogLevel(DEBUG);
-    std::cout << "Welcome to rtidb!" << std::endl;
+    std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+        << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
     while (!s_quit) {
         std::cout << ">";

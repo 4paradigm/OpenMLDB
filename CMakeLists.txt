@@ -2,6 +2,14 @@ cmake_minimum_required (VERSION 2.8)
 
 project(rtidb)
 
+set(RTIDB_VERSION_MAJOR 0)
+set(RTIDB_VERSION_MINOR 1)
+set(RTIDB_VERSION_BUG 1)
+CONFIGURE_FILE (
+  "${PROJECT_SOURCE_DIR}/src/version.h.in"
+  "${PROJECT_SOURCE_DIR}/src/version.h"
+)
+
 add_definitions('-g')
 add_definitions('-Wall')
 add_definitions('-std=c++11')
