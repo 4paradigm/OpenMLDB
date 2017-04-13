@@ -36,6 +36,7 @@ Put 1 ok, latency 0 ms
 # todo
 
 * tablet 单测case丰富
+* 大小端编码优化
 
 # 特点
 
