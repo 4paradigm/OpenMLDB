@@ -17,7 +17,10 @@ namespace rtidb {
 namespace storage {
 
 const static StringComparator scmp;
-Segment::Segment():entries_(NULL) {
+const static uint32_t data_block_size = sizeof(DataBlock);
+
+Segment::Segment():entries_(NULL),mu_(),
+    data_byte_size_(0), data_cnt_(0){
     entries_ = new HashEntries(12, 4, scmp);
 }
 
@@ -38,6 +41,8 @@ void Segment::Put(const std::string& key,
             entries_->Insert(key, entry);
         }
     }
+    data_byte_size_.fetch_add(data_block_size + size, boost::memory_order_relaxed);
+    data_cnt_.fetch_add(1, boost::memory_order_relaxed);
     MutexLock lock(&entry->mu);
     char* block = new char[size];
     memcpy(block, data, size);
@@ -65,9 +70,10 @@ bool Segment::Get(const std::string& key,
 // fast gc with no global pause
 uint64_t Segment::Gc4TTL(const uint64_t& time) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
+    uint64_t freed_data_byte_size = 0;
+    uint64_t count = 0;
     HashEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
-    uint64_t count = 0;
     while (it->Valid()) {
         HashEntry* entry = it->GetValue();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
@@ -75,9 +81,11 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
             MutexLock lock(&entry->mu);
             node = entry->entries.Split(time);
         }
+        uint64_t freed_data_byte_size = 0;
         if (node != NULL) {
             count ++;
             LOG(DEBUG, "delete key %lld", node->GetKey());
+            freed_data_byte_size += (data_block_size + node->GetValue()->size);
             delete node->GetValue();
             while (true) {
                 node = node->GetNextNoBarrier(0);
@@ -86,13 +94,17 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
                 }
                 count ++;
                 LOG(DEBUG, "delete key %lld", node->GetKey());
+                freed_data_byte_size += (data_block_size + node->GetValue()->size);
                 delete node->GetValue();
             }
+
         }
         it->Next();
     }
     LOG(INFO, "[Gc] segment gc with key %lld ,consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed)/1000, count);
+    data_byte_size_.fetch_sub(freed_data_byte_size, boost::memory_order_relaxed);
+    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     return count;
 }
 

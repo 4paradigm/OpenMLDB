@@ -7,13 +7,15 @@
 
 #include "tablet/tablet_impl.h"
 
+#include <vector>
 #include <gflags/gflags.h>
 #include <boost/bind.hpp>
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
 #include "base/codec.h"
 #include "base/strings.h"
 #include "logging.h"
 #include "timer.h"
-#include <vector>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -24,17 +26,25 @@ using ::rtidb::storage::DataBlock;
 DECLARE_int32(gc_interval);
 DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
+DECLARE_int32(statdb_ttl);
 
 namespace rtidb {
 namespace tablet {
 
-TabletImpl::TabletImpl():tables_(),mu_(), dbstat_(NULL), gc_pool_(FLAGS_gc_pool_size){}
+TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size){}
 
 TabletImpl::~TabletImpl() {}
 
 void TabletImpl::Init() {
+    MutexLock lock(&mu_);
     //Create a dbstat table with tid = 0 and pid = 0
-    //dbstat_ = new Table("dbstat", 0, 0, 8);
+    Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
+    dbstat->Init();
+    tables_.insert(std::make_pair(0, dbstat));
+    if (FLAGS_statdb_ttl > 0) {
+        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
+                boost::bind(&TabletImpl::GcTable, this, 0));
+    }
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -178,6 +188,62 @@ Table* TabletImpl::GetTable(uint32_t tid) {
     }
     return NULL;
 }
+
+
+// http action
+
+bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
+        sofa::pbrpc::HTTPResponse& response) {
+    const std::string& path = request.path; 
+    if (path == "/tablet/show") {
+       ShowTables(request, response); 
+    }
+    return true;
+}
+
+void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
+        sofa::pbrpc::HTTPResponse& response) {
+
+    std::vector<Table*> tmp_tables;
+    {
+        MutexLock lock(&mu_);
+        std::map<uint32_t, Table*>::iterator it = tables_.begin();
+        for (; it != tables_.end(); ++it) {
+            Table* table = it->second;
+            table->Ref();
+            tmp_tables.push_back(table);
+        }
+
+    }
+
+    ::rapidjson::StringBuffer sb;
+    ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
+    writer.StartObject();
+    writer.Key("tables");
+    writer.StartArray();
+    for (size_t i = 0; i < tmp_tables.size(); i++) {
+        Table* table = tmp_tables[i];
+        writer.StartObject();
+        writer.Key("name");
+        writer.String(table->GetName().c_str());
+        writer.Key("tid");
+        writer.Uint(table->GetId());
+        writer.Key("pid");
+        writer.Uint(table->GetPid());
+        writer.Key("seg_cnt");
+        writer.Uint(table->GetSegCnt());
+        writer.Key("data_cnt");
+        writer.Uint(table->GetDataCnt());
+        writer.Key("data_byte_size");
+        writer.Uint(table->GetByteSize());
+        writer.EndObject();
+    }
+    writer.EndArray();
+    writer.EndObject();
+    response.content->Append(sb.GetString());
+}
+
+
 
 }
 }

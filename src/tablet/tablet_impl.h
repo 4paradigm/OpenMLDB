@@ -14,6 +14,7 @@
 #include "storage/table.h"
 #include "mutex.h"
 #include "thread_pool.h"
+#include <sofa/pbrpc/pbrpc.h>
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -44,15 +45,25 @@ public:
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done);
+
+    //
+    //http api
+    // get all table informatiom
+    // 
+    bool WebService(const sofa::pbrpc::HTTPRequest& request,
+            sofa::pbrpc::HTTPResponse& response);
+
 private:
     // Get table by table id and Inc reference
     ::rtidb::storage::Table* GetTable(uint32_t tid);
 
     void GcTable(uint32_t tid);
+
+    void ShowTables(const sofa::pbrpc::HTTPRequest& request,
+            sofa::pbrpc::HTTPResponse& response); 
 private:
     std::map<uint32_t , ::rtidb::storage::Table*> tables_;
     Mutex mu_;
-    ::rtidb::storage::Table* dbstat_;
     ThreadPool gc_pool_;
 };
 

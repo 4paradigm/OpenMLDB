@@ -11,6 +11,7 @@
 
 #include "base/skiplist.h"
 #include "mutex.h"
+#include "boost/atomic.hpp"
 
 namespace rtidb {
 namespace storage {
@@ -46,8 +47,7 @@ struct HashEntry {
     std::string key;
     TimeEntries entries;
     Mutex mu;
-    boost::atomic<uint64_t> count_;
-    HashEntry():entries(12, 4, tcmp),mu(), count_(0){}
+    HashEntry():entries(12, 4, tcmp),mu(){}
     ~HashEntry() {}
 };
 
@@ -95,10 +95,19 @@ public:
     uint64_t Gc4TTL(const uint64_t& time);
 
     Segment::Iterator* NewIterator(const std::string& key);
+
+    uint64_t GetByteSize() {
+        return data_byte_size_.load(boost::memory_order_relaxed);
+    }
+    uint64_t GetDataCnt() {
+        return data_cnt_.load(boost::memory_order_relaxed);
+    }
 private:
     HashEntries* entries_;
     // only Put need mutex
     Mutex mu_;
+    boost::atomic<uint64_t> data_byte_size_;
+    boost::atomic<uint64_t> data_cnt_;
 };
 
 }// namespace storage

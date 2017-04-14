@@ -172,6 +172,16 @@ else
     touch gperf_tool
 fi
 
+if [ -f "rapjson_succ" ]
+then 
+    echo "rapjson exist"
+else
+    wget --no-check-certificate -O rapidjson.1.1.0.tar.gz https://github.com/miloyip/rapidjson/archive/v1.1.0.tar.gz
+    tar -zxvf rapidjson.1.1.0.tar.gz
+    cp -rf rapidjson-1.1.0/include/rapidjson ${DEPS_PREFIX}/include
+    touch rapjson_succ
+fi
+
 cd $WORK_DIR
 sh gen_code.h
 mkdir -p $WORK_DIR/build 

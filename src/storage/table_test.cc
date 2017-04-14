@@ -72,6 +72,22 @@ TEST_F(TableTest, SchedGc) {
     ASSERT_FALSE(it->Valid());
 }
 
+TEST_F(TableTest, TableDataCnt) {
+    Table* table = new Table("tx_log", 1, 1, 8 , 1);
+    table->Ref();
+    table->Init();
+    ASSERT_EQ(table->GetDataCnt(), 0);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table->Put("test", 9527, "test", 4);
+    table->Put("test", now, "tes2", 4);
+    ASSERT_EQ(table->GetDataCnt(), 2);
+    uint64_t count = table->SchedGc();
+    ASSERT_EQ(1, count);
+    ASSERT_EQ(table->GetDataCnt(), 1);
+}
+
+
+
 }
 }
 

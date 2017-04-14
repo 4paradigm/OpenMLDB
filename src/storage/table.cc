@@ -26,7 +26,8 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
-    ttl_offset_(60 * 1000){}
+    ttl_offset_(60 * 1000)
+    {}
 
 void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
@@ -45,6 +46,7 @@ void Table::Put(const std::string& pk, const uint64_t& time,
     uint32_t index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     Segment* segment = segments_[index];
     segment->Put(pk, time, data, size);
+    data_cnt_.fetch_add(1, boost::memory_order_relaxed);
 }
 
 void Table::Ref() {
@@ -73,6 +75,7 @@ uint64_t Table::SchedGc() {
         Segment* segment = segments_[i];
         count += segment->Gc4TTL(time);
     }
+    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     return count;
 
 }

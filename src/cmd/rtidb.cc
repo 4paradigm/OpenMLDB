@@ -46,10 +46,13 @@ void StartTablet() {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    sofa::pbrpc::Servlet webservice =
+                sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
     if (!rpc_server.RegisterService(tablet)) {
         LOG(WARNING, "fail to register tablet rpc service");
         exit(1);
     }
+    rpc_server.RegisterWebServlet("/tablet", webservice);
     if (!rpc_server.Start(FLAGS_endpoint)) {
         LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
         exit(1);
