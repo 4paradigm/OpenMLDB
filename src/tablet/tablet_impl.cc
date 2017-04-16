@@ -40,6 +40,7 @@ void TabletImpl::Init() {
     //Create a dbstat table with tid = 0 and pid = 0
     Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
     dbstat->Init();
+    dbstat->Ref();
     tables_.insert(std::make_pair(0, dbstat));
     if (FLAGS_statdb_ttl > 0) {
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,

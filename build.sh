@@ -187,6 +187,9 @@ sh gen_code.h
 mkdir -p $WORK_DIR/build 
 cd $WORK_DIR/build && cmake .. && make -j4
 cd $WORK_DIR/build/bin && ls | grep test | while read line; do ./$line ; done
+cd $WORK_DIR
+
+sh benchmark.sh
 
 cd $WORK_DIR
 sh build_java_client.sh
