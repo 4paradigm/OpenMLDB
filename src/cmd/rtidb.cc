@@ -177,6 +177,7 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
         ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
         delete it;
     }
+    client->ShowTp();
 
     for (uint32_t j = 0; j < times; j++) {
         for (uint32_t i = 0; i < 500; i++) {
