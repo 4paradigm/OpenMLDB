@@ -18,9 +18,8 @@ sleep 2
 
 ./build/bin/rtidb --cmd="create t0 1 1 0" --role=client --endpoint=127.0.0.1:9426 --interactive=false 
 
-./build/bin/rtidb --cmd="benput pk 40 10" --role=client --endpoint=127.0.0.1:9426 --interactive=false
+./build/bin/rtidb --cmd="benchmark" --role=client --endpoint=127.0.0.1:9426 --interactive=false
 
-./build/bin/rtidb --cmd="benscan pk 10" --role=client --endpoint=127.0.0.1:9426 --interactive=false
 
 clear_debug
 
