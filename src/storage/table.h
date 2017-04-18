@@ -50,6 +50,7 @@ public:
         void Seek(const uint64_t& time);
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
+        void SeekToFirst();
     private:
         Segment::Iterator* it_;
     };

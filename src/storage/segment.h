@@ -94,6 +94,7 @@ public:
         void Next();
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
+        void SeekToFirst();
     private:
         TimeEntries::Iterator* it_;
     };

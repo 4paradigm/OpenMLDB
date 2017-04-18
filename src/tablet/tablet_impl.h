@@ -14,6 +14,7 @@
 #include "storage/table.h"
 #include "mutex.h"
 #include "thread_pool.h"
+#include "tablet/tablet_metric.h"
 #include <sofa/pbrpc/pbrpc.h>
 
 using ::google::protobuf::RpcController;
@@ -66,10 +67,14 @@ private:
 
     void ShowTables(const sofa::pbrpc::HTTPRequest& request,
             sofa::pbrpc::HTTPResponse& response); 
+
+    void ShowMetric(const sofa::pbrpc::HTTPRequest& request,
+            sofa::pbrpc::HTTPResponse& response);
 private:
     std::map<uint32_t , ::rtidb::storage::Table*> tables_;
     Mutex mu_;
     ThreadPool gc_pool_;
+    TabletMetric* metric_;
 };
 
 

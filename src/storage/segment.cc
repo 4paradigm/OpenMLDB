@@ -153,6 +153,10 @@ uint64_t Segment::Iterator::GetKey() const {
     return it_->GetKey();
 }
 
+void Segment::Iterator::SeekToFirst() {
+    it_->SeekToFirst();
+}
+
 }
 }
 

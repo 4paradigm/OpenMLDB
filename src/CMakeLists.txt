@@ -1,6 +1,6 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc)
+add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
 add_library(storage STATIC storage/table.cc storage/segment.cc)
 
 add_executable(skiplist_test base/skiplist_test.cc)

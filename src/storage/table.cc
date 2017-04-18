@@ -112,6 +112,13 @@ void Table::Iterator::Seek(const uint64_t& time) {
     it_->Seek(time);
 }
 
+void Table::Iterator::SeekToFirst() {
+    if (it_ == NULL) {
+        return;
+    }
+    it_->SeekToFirst();
+}
+
 DataBlock* Table::Iterator::GetValue() const {
     return it_->GetValue();
 }

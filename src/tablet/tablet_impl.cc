@@ -8,6 +8,8 @@
 #include "tablet/tablet_impl.h"
 
 #include <vector>
+#include <stdlib.h>
+#include <stdio.h>
 #include <gflags/gflags.h>
 #include <boost/bind.hpp>
 #include "rapidjson/writer.h"
@@ -31,13 +33,14 @@ DECLARE_int32(statdb_ttl);
 namespace rtidb {
 namespace tablet {
 
-TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size){}
+TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
+    metric_(NULL){}
 
 TabletImpl::~TabletImpl() {}
 
 void TabletImpl::Init() {
     MutexLock lock(&mu_);
-    //Create a dbstat table with tid = 0 and pid = 0
+    // Create a dbstat table with tid = 0 and pid = 0
     Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
     dbstat->Init();
     dbstat->Ref();
@@ -46,6 +49,10 @@ void TabletImpl::Init() {
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
                 boost::bind(&TabletImpl::GcTable, this, 0));
     }
+    // For tablet metric
+    dbstat->Ref();
+    metric_ = new TabletMetric(dbstat);
+    metric_->Init();
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -221,6 +228,8 @@ bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
     const std::string& path = request.path; 
     if (path == "/tablet/show") {
        ShowTables(request, response); 
+    }else if (path == "/tablet/metric") {
+       ShowMetric(request, response);
     }
     return true;
 }
@@ -267,6 +276,53 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
     writer.EndObject();
     response.content->Append(sb.GetString());
 }
+
+void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
+            sofa::pbrpc::HTTPResponse& response) {
+    const std::string key = "key";
+    ::rapidjson::StringBuffer sb;
+    ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
+    writer.StartObject();
+    writer.Key("metric");
+    writer.StartArray();
+
+    std::map<const std::string, std::string>::const_iterator qit = request.query_params->find(key);
+    if (qit == request.query_params->end()) {
+        writer.EndArray();
+        writer.EndObject();
+        response.content->Append(sb.GetString());
+        return;
+    }
+
+    const std::string& pk = qit->second;;
+    Table* stat = GetTable(0);
+    if (stat == NULL) {
+        writer.EndArray();
+        writer.EndObject();
+        response.content->Append(sb.GetString());
+        return;
+    }
+
+    Table::Iterator* it = stat->NewIterator(pk);
+    it->SeekToFirst();
+
+    while (it->Valid()) {
+        writer.StartObject();
+        writer.Key("time");
+        writer.Uint(it->GetKey());
+        writer.Key("value");
+        uint32_t val = 0;
+        memcpy(static_cast<void*>(&val), it->GetValue()->data, 4);
+        writer.Uint(val);
+        writer.EndObject();
+        it->Next();
+    }
+    writer.EndArray();
+    writer.EndObject();
+    response.content->Append(sb.GetString());
+    stat->UnRef();
+}
+
 
 
 
