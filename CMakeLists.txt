@@ -4,7 +4,7 @@ project(rtidb)
 
 set(RTIDB_VERSION_MAJOR 0)
 set(RTIDB_VERSION_MINOR 1)
-set(RTIDB_VERSION_BUG 1)
+set(RTIDB_VERSION_BUG 0)
 CONFIGURE_FILE (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
