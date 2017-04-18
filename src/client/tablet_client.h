@@ -36,6 +36,7 @@ public:
              uint64_t stime,
              uint64_t etime,
              bool showm = false);
+    bool DropTable(const uint32_t id);
 
     void ShowTp();
 

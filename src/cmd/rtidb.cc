@@ -129,6 +129,15 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 }
 
+void HandleClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]));
+    if (ok) {
+        std::cout << "Drop table ok" << std::endl;
+    }else {
+        std::cout << "Fail to drop table" << std::endl;
+    }
+}
+
 // the input format like scan tid pid pk st et
 void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {
@@ -260,6 +269,8 @@ void StartClient() {
             HandleClientBenScan(parts, &client);
         }else if (parts[0] == "benchmark") {
             HandleClientBenchmark(&client);
+        }else if (parts[0] == "drop") {
+            HandleClientDropTable(parts, &client);
         }
         if (!FLAGS_interactive) {
             return;

@@ -46,6 +46,11 @@ public:
             ::rtidb::api::CreateTableResponse* response,
             Closure* done);
 
+    void DropTable(RpcController* controller,
+            const ::rtidb::api::DropTableRequest* request,
+            ::rtidb::api::DropTableResponse* response,
+            Closure* done);
+
     //
     //http api
     // get all table informatiom
