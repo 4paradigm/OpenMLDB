@@ -24,7 +24,15 @@ Segment::Segment():entries_(NULL),mu_(),
     entries_ = new HashEntries(12, 4, scmp);
 }
 
-Segment::~Segment() {}
+
+Segment::~Segment() {
+    HashEntries::Iterator* it = entries_->NewIterator();
+    while (it->Valid()) {
+        delete it->GetValue();
+    }
+    delete it;
+    delete entries_;
+}
 
 void Segment::Put(const std::string& key,
         const uint64_t& time,

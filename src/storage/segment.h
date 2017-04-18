@@ -48,7 +48,14 @@ struct HashEntry {
     TimeEntries entries;
     Mutex mu;
     HashEntry():entries(12, 4, tcmp),mu(){}
-    ~HashEntry() {}
+    ~HashEntry() {
+        TimeEntries::Iterator* it = entries.NewIterator();
+        it->SeekToFirst();
+        while(it->Valid()) {
+            delete it->GetValue();
+        }
+        delete it;
+    }
 };
 
 struct StringComparator {

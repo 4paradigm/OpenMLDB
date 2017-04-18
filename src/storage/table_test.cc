@@ -51,6 +51,7 @@ TEST_F(TableTest, Iterator) {
     ASSERT_EQ(4, value2->size);
     it->Next();
     ASSERT_FALSE(it->Valid());
+    delete it;
 }
 
 TEST_F(TableTest, SchedGc) {
@@ -84,6 +85,14 @@ TEST_F(TableTest, TableDataCnt) {
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
     ASSERT_EQ(table->GetDataCnt(), 1);
+}
+
+TEST_F(TableTest, TableUnref) {
+    Table* table = new Table("tx_log", 1, 1 ,8 , 1);
+    table->Ref();
+    table->Init();
+    table->Put("test", 9527, "test", 4);
+    table->UnRef();
 }
 
 

@@ -108,6 +108,19 @@ bool TabletClient::Put(uint32_t tid,
     return kv_it;
 }
 
+bool TabletClient::DropTable(const uint32_t id) {
+    ::rtidb::api::DropTableRequest request;
+    request.set_tid(id);
+    ::rtidb::api::DropTableResponse response;
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::DropTable,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+
+}
+
 void TabletClient::ShowTp() {
     std::sort(percentile_.begin(), percentile_.end());
     uint32_t size = percentile_.size();

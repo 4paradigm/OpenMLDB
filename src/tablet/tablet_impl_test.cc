@@ -162,6 +162,38 @@ TEST_F(TabletImplTest, GC) {
 
 }
 
+TEST_F(TabletImplTest, DropTable) {
+    TabletImpl tablet;
+    ::rtidb::api::CreateTableRequest request;
+    request.set_name("t0");
+    request.set_tid(1);
+    request.set_pid(1);
+    request.set_ttl(1);
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+
+    ::rtidb::api::DropTableRequest dr;
+    dr.set_tid(1);
+    ::rtidb::api::DropTableResponse drs;
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(0, drs.code());
+
+    ::rtidb::api::PutRequest prequest;
+    prequest.set_pk("test1");
+    prequest.set_time(9527);
+    prequest.set_value("test0");
+    prequest.set_tid(1);
+    ::rtidb::api::PutResponse presponse;
+    tablet.Put(NULL, &prequest, &presponse,
+            &closure);
+
+    ASSERT_EQ(10, presponse.code());
+
+
+}
 
 
 }

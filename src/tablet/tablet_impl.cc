@@ -168,6 +168,29 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
 }
 
+void TabletImpl::DropTable(RpcController* controller,
+            const ::rtidb::api::DropTableRequest* request,
+            ::rtidb::api::DropTableResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid());
+    if (table == NULL) {
+        response->set_code(-1);
+        response->set_msg("table does not exist");
+        done->Run();
+    }
+    MutexLock lock(&mu_);
+    // unref table, let it release memory
+    //
+    LOG(INFO, "delete table %d", request->tid());
+    table->UnRef();
+    table->UnRef();
+    tables_.erase(request->tid());
+    response->set_code(0);
+    done->Run();
+
+}
+
+
 
 void TabletImpl::GcTable(uint32_t tid) {
     Table* table = GetTable(tid);

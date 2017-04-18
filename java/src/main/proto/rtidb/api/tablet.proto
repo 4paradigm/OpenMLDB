@@ -6,6 +6,10 @@ option java_generic_services = true;
 option java_package = "com._4paradigm.rtidb";
 option java_outer_classname = "Tablet";
 
+enum TableType {
+    kTimeOrderedTable = 1;
+}
+
 message PutRequest {
   // the prefix key 
   optional string pk = 1;
@@ -73,8 +77,19 @@ message CreateTableResponse {
   optional string msg = 2;
 }
 
+message DropTableRequest {
+  optional int32 tid = 1;
+}
+
+message DropTableResponse {
+  optional int32 code = 1;
+  optional string msg = 2;
+}
+
 service TabletServer {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Scan(ScanRequest) returns (ScanResponse);
   rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+  rpc DropTable(DropTableRequest) returns (DropTableResponse);
 }
+
