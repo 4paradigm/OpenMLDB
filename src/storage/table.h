@@ -65,6 +65,38 @@ public:
     uint32_t GetTTL() const {
         return ttl_;
     }
+
+    inline uint64_t GetDataCnt() const {
+        uint64_t data_cnt = 0;
+        for (uint32_t i = 0; i < seg_cnt_; i++) {
+            data_cnt += segments_[i]->GetDataCnt();
+        }
+        return data_cnt;
+    }
+
+    inline uint64_t GetByteSize() const {
+        uint64_t byte_size = 0;
+        for (uint32_t i = 0; i < seg_cnt_; i++) {
+            byte_size += segments_[i]->GetByteSize();
+        }
+        return byte_size;
+    }
+
+    inline std::string GetName() const {
+        return name_;
+    }
+
+    inline uint32_t GetId() const {
+        return id_;
+    }
+
+    inline uint32_t GetSegCnt() const{
+        return seg_cnt_;
+    }
+    inline uint32_t GetPid() const {
+        return pid_;
+    }
+
 private:
     ~Table(){}
 
@@ -80,6 +112,7 @@ private:
     // hour
     uint32_t const ttl_;
     uint64_t ttl_offset_;
+    boost::atomic<uint64_t> data_cnt_;
 };
 
 }

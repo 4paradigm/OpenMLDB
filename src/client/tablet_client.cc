@@ -53,7 +53,7 @@ bool TabletClient::Put(uint32_t tid,
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Put,
             &request, &response, 12, 1);
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    percentile_.push_back(consumed/1000);
+    percentile_.push_back(consumed);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -88,7 +88,7 @@ bool TabletClient::Put(uint32_t tid,
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    percentile_.push_back(consumed/1000);
+    percentile_.push_back(consumed);
     if (showm) {
         uint64_t rpc_send_time = response->metric().rqtime() - response->metric().sqtime();
         uint64_t mutex_time = response->metric().sctime() - response->metric().rqtime();

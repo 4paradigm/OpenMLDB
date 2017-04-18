@@ -80,6 +80,23 @@ TEST_F(SegmentTest, TestGc4TTL) {
     ASSERT_EQ(1, count);
 }
 
+TEST_F(SegmentTest, TestStat) {
+    Segment segment;
+    segment.Put("PK", 9768, "test1", 5);
+    segment.Put("PK", 9769, "test2", 5);
+    ASSERT_EQ(2, segment.GetDataCnt());
+    ASSERT_TRUE(10 < segment.GetByteSize());
+    uint64_t count = segment.Gc4TTL(9765);
+    ASSERT_EQ(0, count);
+    count = segment.Gc4TTL(9768);
+    ASSERT_EQ(1, segment.GetDataCnt());
+    ASSERT_EQ(1, count);
+    count = segment.Gc4TTL(9770);
+    ASSERT_EQ(1, count);
+
+    ASSERT_EQ(0, segment.GetDataCnt());
+}
+
 
 
 }

@@ -97,7 +97,7 @@ public:
     void Insert(const K& key, V& value) {
         uint32_t height = RandomHeight();
         Node<K,V>* pre[MaxHeight];
-        FindGreaterOrEqual(key, pre);
+        FindLessOrEqual(key, pre);
         if (height > GetMaxHeight()) {
             for (uint32_t i = GetMaxHeight(); i < height; i++ ) {
                 pre[i] = head_;
@@ -117,7 +117,7 @@ public:
         for (uint32_t i = 0; i < MaxHeight; i++) {
             pre[i] = NULL;
         }
-        Node<K, V>* target = FindGreaterOrEqual(key, pre);
+        Node<K, V>* target = FindLessOrEqual(key, pre);
         Node<K, V>* result = target->GetNextNoBarrier(0);
         for (uint32_t i = 0; i < MaxHeight; i++) {
             if (pre[i] == NULL) {
@@ -193,7 +193,7 @@ private:
         return height;
     }
 
-    Node<K, V>* FindGreaterOrEqual(const K& key, Node<K, V>** nodes) {
+    Node<K, V>* FindLessOrEqual(const K& key, Node<K, V>** nodes) {
         assert(nodes != NULL);
         Node<K, V>* node = head_;
         uint32_t level = GetMaxHeight() - 1;

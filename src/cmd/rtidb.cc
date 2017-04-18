@@ -21,6 +21,7 @@
 #include "base/strings.h"
 #include "base/kv_iterator.h"
 #include "timer.h"
+#include "version.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -29,6 +30,9 @@ using ::baidu::common::DEBUG;
 DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
 DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
 DEFINE_string(log_level, "debug | info", "Set the rtidb log level");
+DEFINE_string(cmd, "", "Set the command");
+DEFINE_bool(interactive, true, "Set the interactive");
+
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/){
@@ -45,15 +49,22 @@ void StartTablet() {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    tablet->Init();
+    sofa::pbrpc::Servlet webservice =
+                sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
     if (!rpc_server.RegisterService(tablet)) {
         LOG(WARNING, "fail to register tablet rpc service");
         exit(1);
     }
+    rpc_server.RegisterWebServlet("/tablet", webservice);
     if (!rpc_server.Start(FLAGS_endpoint)) {
         LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
         exit(1);
     }
-    LOG(INFO, "start tablet on port %s", FLAGS_endpoint.c_str());
+    LOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+            RTIDB_VERSION_MAJOR,
+            RTIDB_VERSION_MINOR,
+            RTIDB_VERSION_BUG);
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {
@@ -80,12 +91,20 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
 }
 
 void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    char val[400];
-    for (int i = 0; i < 400; i++) {
+    uint32_t size = 400;
+    if (parts.size() >= 3) {
+        size = boost::lexical_cast<uint32_t>(parts[2]);
+    }
+    uint32_t times = 10000;
+    if (parts.size() >= 4) {
+        times = ::boost::lexical_cast<uint32_t>(parts[3]);
+    }
+    char val[size];
+    for (uint32_t i = 0; i < size; i++) {
         val[i] ='0';
     }
     std::string sval(val);
-    for (uint32_t i = 0 ; i < 10000; i++) {
+    for (uint32_t i = 0 ; i < times; i++) {
         std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
         for (uint32_t j = 0; j < 1000; j++) {
             client->Put(1, 1, key, j, sval);
@@ -143,29 +162,89 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
     }
 }
 
-void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+void HandleClientBenchmarkPut(uint32_t val_size, uint32_t run_times,
+        ::rtidb::client::TabletClient* client) {
+    char val[val_size];
+    for (uint32_t i = 0; i < val_size; i++) {
+        val[i] ='0';
+    }
+    std::string sval(val);
+    for (uint32_t i = 0 ; i < run_times; i++) {
+        std::string key = "test" + boost::lexical_cast<std::string>(i);
+        for (uint32_t j = 0; j < 1000; j++) {
+            client->Put(1, 1, key, j, sval);
+        }
+        client->ShowTp();
+    }
+}
+
+void HandleClientBenchmarkScan(uint32_t run_times, 
+        ::rtidb::client::TabletClient* client) {
     uint64_t st = 999;
-    uint64_t et = 1;
+    uint64_t et = 0;
     uint32_t tid = 1;
     uint32_t pid = 1;
-    for (uint32_t i = 0; i < 1000; i++) {
+    for (uint32_t j = 0; j < run_times; j++) {
+        for (uint32_t i = 0; i < 500; i++) {
+            std::string key = "test" + boost::lexical_cast<std::string>(i);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
+            delete it;
+        }
+        client->ShowTp();
+    }
+
+
+}
+
+void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
+    uint32_t size = 40;
+    uint32_t times = 10;
+    HandleClientBenchmarkPut(size, times, client);
+    HandleClientBenchmarkScan(times, client);
+}
+
+void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    uint64_t st = 999;
+    uint64_t et = 0;
+    uint32_t tid = 1;
+    uint32_t pid = 1;
+    uint32_t times = 10;
+    if (parts.size() >= 3) {
+        times = ::boost::lexical_cast<uint32_t>(parts[2]);
+    }
+
+    for (uint32_t i = 0; i < 10; i++) {
         std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
         ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
         delete it;
     }
     client->ShowTp();
+
+    for (uint32_t j = 0; j < times; j++) {
+        for (uint32_t i = 0; i < 500; i++) {
+            std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
+            delete it;
+        }
+        client->ShowTp();
+    }
 }
 
 void StartClient() {
     //::baidu::common::SetLogLevel(DEBUG);
-    std::cout << "Welcome to rtidb!" << std::endl;
+    std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+        << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
     while (!s_quit) {
         std::cout << ">";
         std::string buffer;
-        std::getline(std::cin, buffer);
-        if (buffer.empty()) {
-            continue;
+        if (!FLAGS_interactive) {
+            buffer = FLAGS_cmd;
+        }else {
+            std::getline(std::cin, buffer);
+            if (buffer.empty()) {
+                continue;
+            }
         }
         std::vector<std::string> parts;
         ::rtidb::base::SplitString(buffer, " ", &parts);
@@ -179,7 +258,11 @@ void StartClient() {
             HandleClientBenPut(parts, &client);
         }else if (parts[0] == "benscan") {
             HandleClientBenScan(parts, &client);
-        
+        }else if (parts[0] == "benchmark") {
+            HandleClientBenchmark(&client);
+        }
+        if (!FLAGS_interactive) {
+            return;
         }
     }
 
