@@ -178,13 +178,16 @@ void TabletImpl::DropTable(RpcController* controller,
         response->set_msg("table does not exist");
         done->Run();
     }
+    MutexLock lock(&mu_);
     // unref table, let it release memory
     //
     LOG(INFO, "delete table %d", request->tid());
     table->UnRef();
     table->UnRef();
+    tables_.erase(request->tid());
     response->set_code(0);
     done->Run();
+
 }
 
 
