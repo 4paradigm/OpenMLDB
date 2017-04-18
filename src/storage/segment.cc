@@ -27,6 +27,7 @@ Segment::Segment():entries_(NULL),mu_(),
 
 Segment::~Segment() {
     HashEntries::Iterator* it = entries_->NewIterator();
+    it->SeekToFirst();
     while (it->Valid()) {
         delete it->GetValue();
     }
