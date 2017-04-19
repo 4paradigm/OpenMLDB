@@ -14,8 +14,18 @@ namespace rtidb {
 namespace tablet {
 
 TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
-    extension_(NULL), bg_pool_(){
+    extension_(NULL), bg_pool_(), throughput_(NULL){
    extension_ = MallocExtension::instance();
+   throughput_ = new boost::atomic<uint64_t>[4];
+   throughput_[0].store(0, boost::memory_order_relaxed);
+   throughput_[1].store(0, boost::memory_order_relaxed);
+   throughput_[2].store(0, boost::memory_order_relaxed);
+   throughput_[3].store(0, boost::memory_order_relaxed);
+   last_throughput_ = new uint64_t[4];
+   last_throughput_[0] = 0;
+   last_throughput_[1] = 0;
+   last_throughput_[2] = 0;
+   last_throughput_[3] = 0;
 }
 
 
@@ -25,10 +35,63 @@ TabletMetric::~TabletMetric() {
 
 
 void TabletMetric::Init() {
-    bg_pool_.DelayTask(60 * 1000, boost::bind(&TabletMetric::GenMemoryStat, this));
+    bg_pool_.DelayTask(60 * 1000, boost::bind(&TabletMetric::Collect, this));
 }
 
-void TabletMetric::GenMemoryStat() {
+void TabletMetric::IncrThroughput(const uint64_t& put_count,
+                                  const uint64_t& put_bytes,
+                                  const uint64_t& scan_count,
+                                  const uint64_t& scan_bytes) {
+    if (put_count > 0) {
+        throughput_[0].fetch_add(put_count, boost::memory_order_relaxed);
+    }
+    if (put_bytes > 0) {
+        throughput_[1].fetch_add(put_bytes, boost::memory_order_relaxed);
+    }
+    if (scan_count > 0) {
+        throughput_[2].fetch_add(scan_count, boost::memory_order_relaxed);
+    }
+    if (scan_bytes > 0) {
+        throughput_[3].fetch_add(scan_bytes, boost::memory_order_relaxed);
+    }
+}
+
+void TabletMetric::CollectThroughput() {
+    uint64_t now = ::baidu::common::timer::now_time();
+    char buffer[8];
+    uint64_t current_put_count = throughput_[0].load(boost::memory_order_relaxed);
+    uint64_t put_qps = (current_put_count - last_throughput_[0]) / 60;
+    last_throughput_[0] = current_put_count;
+    memcpy(buffer, static_cast<const void*>(&put_qps), 8);
+    stat_->Put("throughput.put_qps", now, buffer, 8);
+
+    uint64_t current_put_bytes = throughput_[1].load(boost::memory_order_relaxed);
+    uint64_t put_bandwidth = (current_put_bytes - last_throughput_[1]) / 60;
+    last_throughput_[1] = current_put_bytes;
+    memcpy(buffer, static_cast<const void*>(&put_bandwidth), 8);
+    stat_->Put("throughput.put_bandwidth", now, buffer, 8);
+
+    uint64_t current_scan_count = throughput_[2].load(boost::memory_order_relaxed);
+    uint64_t scan_qps = (current_scan_count - last_throughput_[2]) / 60;
+    last_throughput_[2] = current_scan_count;
+    memcpy(buffer, static_cast<const void*>(&scan_qps), 8);
+    stat_->Put("throughput.scan_qps", now, buffer, 8);
+
+    uint64_t current_scan_bytes = throughput_[3].load(boost::memory_order_relaxed);
+    uint64_t scan_bandwidth = (current_scan_bytes - last_throughput_[3]) / 60;
+    last_throughput_[3] = current_scan_bytes;
+    memcpy(buffer, static_cast<const void*>(&scan_bandwidth), 8);
+    stat_->Put("throughput.scan_bandwidth", now, buffer, 8);
+
+}
+
+void TabletMetric::Collect() {
+    CollectThroughput();
+    CollectMemoryStat();
+    bg_pool_.DelayTask(60 * 1000, boost::bind(&TabletMetric::Collect, this));
+}
+
+void TabletMetric::CollectMemoryStat() {
     uint64_t now = ::baidu::common::timer::now_time();
     char buffer[4];
     size_t allocated = 0;
@@ -43,7 +106,6 @@ void TabletMetric::GenMemoryStat() {
     extension_->GetNumericProperty("tcmalloc.pageheap_free_bytes", &heap_free);
     memcpy(buffer, static_cast<const void*>(&heap_free), 4);
     stat_->Put("mem.heap_free", now, buffer, 4);
-    bg_pool_.DelayTask(60 * 1000, boost::bind(&TabletMetric::GenMemoryStat, this));
 }
 
 }

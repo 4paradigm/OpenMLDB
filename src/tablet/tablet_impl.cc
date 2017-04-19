@@ -68,11 +68,14 @@ void TabletImpl::Put(RpcController* controller,
         return;
     }
 
+    uint64_t size = request->value().length();
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
     response->set_code(0);
     LOG(DEBUG, "put key %s ok", request->pk().c_str());
+    table->UnRef();
     done->Run();
+    metric_->IncrThroughput(1, size, 0, 0);
 }
 
 void TabletImpl::Scan(RpcController* controller,
@@ -134,6 +137,7 @@ void TabletImpl::Scan(RpcController* controller,
     done->Run();
     table->UnRef();
     delete it;
+    metric_->IncrThroughput(0, 0, 1, total_size);
 }
 
 void TabletImpl::CreateTable(RpcController* controller,
@@ -186,15 +190,14 @@ void TabletImpl::DropTable(RpcController* controller,
         done->Run();
     }
     MutexLock lock(&mu_);
-    // unref table, let it release memory
-    //
     LOG(INFO, "delete table %d", request->tid());
-    table->UnRef();
-    table->UnRef();
     tables_.erase(request->tid());
     response->set_code(0);
     done->Run();
-
+    // unref table, let it release memory
+    // do not block request
+    table->UnRef();
+    table->UnRef();
 }
 
 
