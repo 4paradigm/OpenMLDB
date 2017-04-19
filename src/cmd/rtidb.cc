@@ -210,7 +210,7 @@ void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
     uint32_t times = 10;
     std::cout << "Percentile:Start benchmark put " << std::endl;
     HandleClientBenchmarkPut(size, times, client);
-    std::cout << "Percentile:Start benchmark Scan" << std::endl;
+    std::cout << "Percentile:Start benchmark Scan 1000 records" << std::endl;
     HandleClientBenchmarkScan(times, client);
 }
 
