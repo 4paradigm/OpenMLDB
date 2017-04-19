@@ -283,7 +283,7 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     ::rapidjson::StringBuffer sb;
     ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
     writer.StartObject();
-    writer.Key("metric");
+    writer.Key("datapoints");
     writer.StartArray();
 
     std::map<const std::string, std::string>::const_iterator qit = request.query_params->find(key);
@@ -307,14 +307,12 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     it->SeekToFirst();
 
     while (it->Valid()) {
-        writer.StartObject();
-        writer.Key("time");
-        writer.Uint(it->GetKey());
-        writer.Key("value");
+        writer.StartArray();
         uint32_t val = 0;
         memcpy(static_cast<void*>(&val), it->GetValue()->data, 4);
         writer.Uint(val);
-        writer.EndObject();
+        writer.Uint(it->GetKey());
+        writer.EndArray();
         it->Next();
     }
     writer.EndArray();
