@@ -73,6 +73,7 @@ void TabletImpl::Put(RpcController* controller,
             request->value().length());
     response->set_code(0);
     LOG(DEBUG, "put key %s ok", request->pk().c_str());
+    table->UnRef();
     done->Run();
     metric_->IncrThroughput(1, size, 0, 0);
 }
