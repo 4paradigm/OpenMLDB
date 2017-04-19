@@ -21,10 +21,16 @@ using ::baidu::common::MutexLock;
 
 struct DataBlock {
     uint32_t size;
-    const char* data;
-    DataBlock() {}
+    char* data;
+
+    DataBlock(const char* input,uint32_t len):size(len),data(NULL) {
+        data = new char[len];
+        memcpy(data, input, len);
+    }
+
     ~DataBlock() {
-        delete data;
+        delete[] data;
+        data = NULL;
     }
 };
 
@@ -53,6 +59,7 @@ struct HashEntry {
         it->SeekToFirst();
         while(it->Valid()) {
             delete it->GetValue();
+            it->Next();
         }
         delete it;
     }

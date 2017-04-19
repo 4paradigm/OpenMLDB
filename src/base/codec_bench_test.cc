@@ -34,9 +34,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock();
-        block->size = 400;
-        block->data = bd;
+        ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(bd, 400);
         data.push_back(block);
     }
 
@@ -82,9 +80,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     for (uint32_t i = 0; i < 1000; i++) {
-        ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock();
-        block->size = 400;
-        block->data = bd;
+        ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(bd, 400);
         data.push_back(block);
     }
     char buffer[400 * 1000 + 1000 * 12];

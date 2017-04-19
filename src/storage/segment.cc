@@ -30,6 +30,7 @@ Segment::~Segment() {
     it->SeekToFirst();
     while (it->Valid()) {
         delete it->GetValue();
+        it->Next();
     }
     delete it;
     delete entries_;
@@ -53,11 +54,7 @@ void Segment::Put(const std::string& key,
     data_byte_size_.fetch_add(data_block_size + size, boost::memory_order_relaxed);
     data_cnt_.fetch_add(1, boost::memory_order_relaxed);
     MutexLock lock(&entry->mu);
-    char* block = new char[size];
-    memcpy(block, data, size);
-    DataBlock* db = new DataBlock();
-    db->size = size;
-    db->data = block;
+    DataBlock* db = new DataBlock(data, size);
     entry->entries.Insert(time, db);
 }
 

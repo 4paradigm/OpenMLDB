@@ -7,8 +7,9 @@
 
 #include <iostream>
 #include "storage/segment.h"
-#include "gtest/gtest.h"
+
 #include "gperftools/malloc_extension.h"
+#include "gtest/gtest.h"
 #include "logging.h"
 
 namespace rtidb {
@@ -20,6 +21,12 @@ public:
     SegmentTest(){}
     ~SegmentTest() {}
 };
+
+TEST_F(SegmentTest, TestFree) {
+    Segment* seg2 = new Segment();
+    delete seg2;
+
+}
 
 TEST_F(SegmentTest, PutAndGet) {
    Segment segment; 
@@ -93,7 +100,6 @@ TEST_F(SegmentTest, TestStat) {
     ASSERT_EQ(1, count);
     count = segment.Gc4TTL(9770);
     ASSERT_EQ(1, count);
-
     ASSERT_EQ(0, segment.GetDataCnt());
 }
 
