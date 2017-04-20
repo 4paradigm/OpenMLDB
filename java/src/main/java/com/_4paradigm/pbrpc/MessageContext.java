@@ -16,15 +16,15 @@ public class MessageContext {
     private Closure closure;
     private Parser<? extends Message> parser;
     private AtomicBoolean done = new AtomicBoolean(false);
-    
+
     public void finish() {
         done.set(true);
     }
-    
+
     public Parser<? extends Message> getParser() {
         return parser;
     }
-    
+
     public RpcMeta getMeta() {
         return meta;
     }
@@ -36,27 +36,35 @@ public class MessageContext {
     public void setParser(Parser<? extends Message> parser) {
         this.parser = parser;
     }
+
     public Closure getClosure() {
         return closure;
     }
+
     public void setClosure(Closure closure) {
         this.closure = closure;
     }
+
     public long getSeq() {
         return seq;
     }
+
     public void setSeq(long seq) {
         this.seq = seq;
     }
+
     public Message getRequest() {
         return request;
     }
+
     public void setRequest(Message request) {
         this.request = request;
     }
+
     public Message getResponse() {
         return response;
     }
+
     public void setResponse(Message response) {
         this.response = response;
     }

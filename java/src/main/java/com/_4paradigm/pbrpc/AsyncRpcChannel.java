@@ -10,7 +10,7 @@ import sofa.pbrpc.SofaRpcMeta;
 import sofa.pbrpc.SofaRpcMeta.RpcMeta;
 
 public class AsyncRpcChannel implements RpcChannel {
-    
+
     private AsyncConnection connection;
 
     public AsyncRpcChannel(AsyncConnection connection) {

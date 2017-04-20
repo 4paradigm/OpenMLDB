@@ -13,18 +13,19 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 public class AsyncConnection {
-    
+
     private String host;
     private int port;
     private RpcContext context;
-    private ChannelFuture channel = null; 
+    private ChannelFuture channel = null;
     private NioEventLoopGroup group = null;
+
     public AsyncConnection(String host, int port) {
         this.host = host;
         this.port = port;
         this.context = new RpcContext();
     }
-    
+
     public void connect() throws InterruptedException {
         group = new NioEventLoopGroup();
         Bootstrap b = new Bootstrap();
@@ -36,10 +37,11 @@ public class AsyncConnection {
             @Override
             public void initChannel(SocketChannel channel) throws Exception {
                 // 切出一个完整的frame
-                channel.pipeline().addLast("FrameSpliter", new LengthFieldBasedFrameDecoder(ByteOrder.LITTLE_ENDIAN, 1024 * 1024, 16, 8, 0, 0, true));
+                channel.pipeline().addLast("FrameSpliter",
+                        new LengthFieldBasedFrameDecoder(ByteOrder.LITTLE_ENDIAN, 1024 * 1024, 16, 8, 0, 0, true));
                 // 解码frame, 这里也会做protobuf序列化
                 channel.pipeline().addLast("FrameDecoder", new FrameDecoder(context));
-                // 
+                //
                 channel.pipeline().addLast("processor", new ClientHandler());
                 // 编码frame
                 channel.pipeline().addLast("FrameEncoder", new FrameEncoder(context));
@@ -47,7 +49,7 @@ public class AsyncConnection {
         });
         channel = b.connect(host, port).sync();
     }
-    
+
     public void sendMessage(MessageContext mc) {
         channel.channel().pipeline().writeAndFlush(mc);
     }

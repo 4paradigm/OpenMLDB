@@ -18,40 +18,40 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import sofa.pbrpc.SofaRpcMeta;
 import sofa.pbrpc.SofaRpcMeta.RpcMeta;
 
-public class FrameDecoder extends ByteToMessageDecoder{
+public class FrameDecoder extends ByteToMessageDecoder {
     private static final Logger logger = LoggerFactory.getLogger(FrameDecoder.class);
     private static final byte[] primaryMagic = new byte[] { 'S', 'O', 'F', 'A' };
     private RpcContext context;
-    
+
     public FrameDecoder(RpcContext context) {
         this.context = context;
     }
-    
+
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf buffer, List<Object> out) throws Exception {
         ByteBuf litBuffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         boolean match = matchMagicKey(litBuffer);
-        //TODO (wangtaize) handle mismatch
+        // TODO (wangtaize) handle mismatch
         if (!match) {
         }
         int metaSize = litBuffer.readInt();
         long dataSize = litBuffer.readLong();
         long totalSize = litBuffer.readLong();
         buffer.readerIndex(24);
-        //TODO (wangtaize) handle null
+        // TODO (wangtaize) handle null
         RpcMeta meta = parseMeta(buffer, metaSize);
         MessageContext mc = context.remove(meta.getSequenceId());
         buffer.readerIndex(24 + metaSize);
         if (mc == null) {
             logger.warn("no message context with seq {}", meta.getSequenceId());
-            //TODO(wangtaize) add error message
-        }else {
+            // TODO(wangtaize) add error message
+        } else {
             Message response = parseData(mc, buffer, dataSize);
             mc.setResponse(response);
             out.add(mc);
         }
     }
-    
+
     private Message parseData(MessageContext mc, ByteBuf buffer, Long size) {
         try {
             Message response = mc.getParser().parseFrom(new ByteBufInputStream(buffer, size.intValue()));
@@ -61,9 +61,9 @@ public class FrameDecoder extends ByteToMessageDecoder{
             return null;
         }
     }
-    
+
     private RpcMeta parseMeta(ByteBuf buffer, int size) {
-        
+
         try {
             RpcMeta meta = SofaRpcMeta.RpcMeta.parseFrom(new ByteBufInputStream(buffer, size));
             return meta;
@@ -72,7 +72,7 @@ public class FrameDecoder extends ByteToMessageDecoder{
             return null;
         }
     }
-    
+
     private boolean matchMagicKey(ByteBuf litBuffer) {
         byte[] magic = new byte[4];
         litBuffer.readBytes(magic, 0, 4);
