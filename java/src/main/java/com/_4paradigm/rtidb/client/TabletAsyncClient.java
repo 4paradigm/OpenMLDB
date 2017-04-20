@@ -10,7 +10,6 @@ import com._4paradigm.rtidb.Tablet;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
 
 public class TabletAsyncClient {
     private final static Logger logger = LoggerFactory.getLogger(TabletAsyncClient.class);
@@ -59,6 +58,13 @@ public class TabletAsyncClient {
         builder.setSt(st);
         Tablet.ScanRequest request = builder.build();
         iface.scan(ctrl, request, done);
+    }
+    
+    public void dropTable(int tid, RpcCallback<Tablet.DropTableResponse> done) {
+        Tablet.DropTableRequest.Builder builder = Tablet.DropTableRequest.newBuilder();
+        builder.setTid(tid);
+        Tablet.DropTableRequest request = builder.build();
+        iface.dropTable(ctrl, request, done);
     }
 
     public void close() {

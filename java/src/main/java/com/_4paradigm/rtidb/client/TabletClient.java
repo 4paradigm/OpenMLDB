@@ -95,7 +95,22 @@ public class TabletClient {
         }
         return null;
     }
-
+    
+    public boolean dropTable(int tid) {
+        Tablet.DropTableRequest.Builder builder = Tablet.DropTableRequest.newBuilder();
+        builder.setTid(tid);
+        Tablet.DropTableRequest request = builder.build();
+        try {
+            Tablet.DropTableResponse response = iface.dropTable(ctrl, request);
+            if(response.getCode() == 0) {
+                return true;
+            }
+        } catch (ServiceException e) {
+            logger.error("fail to drop table {}", tid, e);
+        }
+        return false;
+    }
+    
     public void close() {
         this.asyncConn.close();
     }

@@ -73,4 +73,15 @@ public class TabletClientTest {
         bb.get(buf);
         Assert.assertEquals("test0", new String(buf));
     }
+    
+    @Test
+    public void test4Drop() {
+        TabletClient client = new TabletClient(host, port);
+        boolean ok = client.dropTable(9527);
+        Assert.assertFalse(ok);
+        ok = client.createTable("tj1", 9527, 0, 0);
+        Assert.assertFalse(ok);
+        ok = client.dropTable(9527);
+        Assert.assertFalse(ok);
+    }
 }
