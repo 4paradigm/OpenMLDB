@@ -33,6 +33,7 @@ public:
 
 TEST_F(TabletImplTest, CreateTable) {
     TabletImpl tablet;
+    tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
     request.set_tid(1);
@@ -50,6 +51,8 @@ TEST_F(TabletImplTest, CreateTable) {
 
 TEST_F(TabletImplTest, Put) {
     TabletImpl tablet;
+
+    tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
     request.set_tid(1);
@@ -65,7 +68,7 @@ TEST_F(TabletImplTest, Put) {
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
-    prequest.set_tid(0);
+    prequest.set_tid(2);
     ::rtidb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
@@ -78,6 +81,8 @@ TEST_F(TabletImplTest, Put) {
 
 TEST_F(TabletImplTest, Scan) {
     TabletImpl tablet;
+
+    tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
     request.set_tid(1);
@@ -107,7 +112,7 @@ TEST_F(TabletImplTest, Scan) {
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
-    prequest.set_tid(0);
+    prequest.set_tid(2);
     ::rtidb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
@@ -126,6 +131,8 @@ TEST_F(TabletImplTest, Scan) {
 
 TEST_F(TabletImplTest, GC) {
     TabletImpl tablet;
+
+    tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
     request.set_tid(1);
@@ -164,20 +171,25 @@ TEST_F(TabletImplTest, GC) {
 
 TEST_F(TabletImplTest, DropTable) {
     TabletImpl tablet;
+
+    tablet.Init();
+    MockClosure closure;
+    ::rtidb::api::DropTableRequest dr;
+    dr.set_tid(1);
+    ::rtidb::api::DropTableResponse drs;
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(-1, drs.code());
+
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
     request.set_tid(1);
     request.set_pid(1);
     request.set_ttl(1);
     ::rtidb::api::CreateTableResponse response;
-    MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
             &closure);
     ASSERT_EQ(0, response.code());
 
-    ::rtidb::api::DropTableRequest dr;
-    dr.set_tid(1);
-    ::rtidb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(0, drs.code());
 
