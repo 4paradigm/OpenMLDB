@@ -5,7 +5,7 @@
 // Date 2017-04-21
 //
 
-#include "replica/log_appender.h"
+#include "replica/file_appender.h"
 
 #include <errno.h>
 #include <unistd.h>
@@ -21,17 +21,17 @@ using ::baidu::common::DEBUG;
 namespace rtidb {
 namespace replica {
 
-LogAppender::LogAppender(const std::string& filename,
+FileAppender::FileAppender(const std::string& filename,
                          const std::string& folder,
                          uint64_t max_size):filename_(filename),
     folder_(folder),max_size_(max_size){}
 
 
-LogAppender::~LogAppender() {
+FileAppender::~FileAppender() {
 
 }
 
-bool LogAppender::Init() {
+bool FileAppender::Init() {
     std::string path = folder_ + "/" + filename_;
     fd_ = fopen(path.c_str(), "ab+");
     if (fd_ == NULL) {
@@ -53,7 +53,7 @@ bool LogAppender::Init() {
 }
 
 
-uint32_t LogAppender::Append(const char* buf, uint32_t size) {
+uint32_t FileAppender::Append(const char* buf, uint32_t size) {
     if (current_size_ >= max_size_) {
         LOG(WARNING,  "file %s reaches the max size %lld", filename_.c_str(),
             max_size_);
@@ -75,7 +75,7 @@ uint32_t LogAppender::Append(const char* buf, uint32_t size) {
 }
 
 
-bool LogAppender::Flush() {
+bool FileAppender::Flush() {
     int ok  = fflush(fd_);
     if (ok != 0) {
         LOG(WARNING, "fail to flush buf to file %s for %s",
@@ -86,7 +86,7 @@ bool LogAppender::Flush() {
     return true;
 }
 
-bool LogAppender::Sync() {
+bool FileAppender::Sync() {
 
     if (fd_no_ <= 0) {
         return false;
@@ -102,7 +102,7 @@ bool LogAppender::Sync() {
     return true;
 }
 
-void LogAppender::Close() {
+void FileAppender::Close() {
     if (fd_ == NULL) {
         return; 
     }
@@ -116,7 +116,7 @@ void LogAppender::Close() {
     fd_ = NULL;
 }
 
-bool LogAppender::IsFull() {
+bool FileAppender::IsFull() {
     return current_size_ >= max_size_;
 }
 

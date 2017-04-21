@@ -1,11 +1,11 @@
 //
-// log_appender_test.cc
+// file_appender_test.cc
 // Copyright (C) 2017 4paradigm.com
 // Author vagrant
 // Date 2017-04-21
 //
 
-#include "replica/log_appender.h"
+#include "replica/file_appender.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -17,21 +17,21 @@
 namespace rtidb {
 namespace replica {
 
-class LogAppenderTest : public ::testing::Test {
+class FileAppenderTest : public ::testing::Test {
 
 public:
-    LogAppenderTest() {}
+    FileAppenderTest() {}
 
-    ~LogAppenderTest() {}
+    ~FileAppenderTest() {}
 };
 
 
-TEST_F(LogAppenderTest, Append) {
+TEST_F(FileAppenderTest, Append) {
     std::string name = "segment.log";
     std::string folder = "/tmp/";
     std::string fullname = folder + name;
     remove(fullname.c_str());
-    LogAppender appender(name, folder, 5);
+    FileAppender appender(name, folder, 5);
     bool ok = appender.Init();
     ASSERT_TRUE(ok);
     const char* hello = "hello";

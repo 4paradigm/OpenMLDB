@@ -6,8 +6,8 @@
 //
 
 
-#ifndef RTIDB_LOG_APPENDER_H
-#define RTIDB_LOG_APPENDER_H
+#ifndef RTIDB_FILE_APPENDER_H
+#define RTIDB_FILE_APPENDER_H
 
 #include <string>
 #include <stdint.h>
@@ -16,15 +16,15 @@
 namespace rtidb {
 namespace replica {
 
-class LogAppender {
+class FileAppender {
 
 public:
 
-    LogAppender(const std::string& filename,
+    FileAppender(const std::string& filename,
                 const std::string& folder,
                 uint64_t max_size);
 
-    ~LogAppender();
+    ~FileAppender();
 
     bool Init();
 
@@ -54,4 +54,4 @@ private:
 
 }
 }
-#endif /* !LOG_APPENDER_H */
+#endif /* !FILE_APPENDER_H */
