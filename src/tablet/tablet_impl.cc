@@ -202,7 +202,6 @@ void TabletImpl::DropTable(RpcController* controller,
 }
 
 
-
 void TabletImpl::GcTable(uint32_t tid) {
     Table* table = GetTable(tid);
     if (table == NULL) {
@@ -212,6 +211,7 @@ void TabletImpl::GcTable(uint32_t tid) {
     table->UnRef();
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid));
 }
+
 
 Table* TabletImpl::GetTable(uint32_t tid) {
     MutexLock lock(&mu_);
@@ -226,7 +226,6 @@ Table* TabletImpl::GetTable(uint32_t tid) {
 
 
 // http action
-
 bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
         sofa::pbrpc::HTTPResponse& response) {
     const std::string& path = request.path; 
