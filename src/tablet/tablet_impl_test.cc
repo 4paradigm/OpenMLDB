@@ -173,20 +173,23 @@ TEST_F(TabletImplTest, DropTable) {
     TabletImpl tablet;
 
     tablet.Init();
+    MockClosure closure;
+    ::rtidb::api::DropTableRequest dr;
+    dr.set_tid(1);
+    ::rtidb::api::DropTableResponse drs;
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(-1, drs.code());
+
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
     request.set_tid(1);
     request.set_pid(1);
     request.set_ttl(1);
     ::rtidb::api::CreateTableResponse response;
-    MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
             &closure);
     ASSERT_EQ(0, response.code());
 
-    ::rtidb::api::DropTableRequest dr;
-    dr.set_tid(1);
-    ::rtidb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(0, drs.code());
 

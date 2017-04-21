@@ -188,6 +188,7 @@ void TabletImpl::DropTable(RpcController* controller,
         response->set_code(-1);
         response->set_msg("table does not exist");
         done->Run();
+        return;
     }
     MutexLock lock(&mu_);
     LOG(INFO, "delete table %d", request->tid());
