@@ -10,11 +10,11 @@ import io.netty.handler.codec.MessageToByteEncoder;
 public class FrameEncoder extends MessageToByteEncoder<MessageContext> {
     private static final byte[] primaryMagic = new byte[] { 'S', 'O', 'F', 'A' };
     private RpcContext context;
-    
+
     public FrameEncoder(RpcContext context) {
         this.context = context;
     }
-    
+
     @Override
     protected void encode(ChannelHandlerContext ctx, MessageContext mc, ByteBuf out) throws Exception {
         ByteBuf header = out.alloc().directBuffer(24);

@@ -5,12 +5,11 @@ import java.nio.ByteBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 
-
 public class TabletClientTest {
 
     private String host = "127.0.0.1";
     private int port = 9526;
-    
+
     @Test
     public void test0Create() {
         TabletClient client = new TabletClient(host, port);
@@ -27,8 +26,7 @@ public class TabletClientTest {
         Assert.assertFalse(ok);
         client.close();
     }
-    
-    
+
     @Test
     public void test1Put() {
         TabletClient client = new TabletClient(host, port);
@@ -45,7 +43,7 @@ public class TabletClientTest {
         ok = client.put(21, "pk", 9527, "test0");
         Assert.assertTrue(ok);
     }
-    
+
     @Test
     public void test3Scan() {
         TabletClient client = new TabletClient(host, port);
@@ -60,10 +58,10 @@ public class TabletClientTest {
         Assert.assertNull(it);
         boolean ok = client.createTable("tj1", 23, 0, 0);
         Assert.assertTrue(ok);
-        ok = client.put(23,"pk", 9527, "test0");
+        ok = client.put(23, "pk", 9527, "test0");
         Assert.assertTrue(ok);
         it = client.scan(23, "pk", 9527l, 9526l);
-        Assert.assertTrue( it!= null);
+        Assert.assertTrue(it != null);
         Assert.assertTrue(it.valid());
         it.next();
         Assert.assertEquals(9527l, it.getKey());
@@ -72,5 +70,23 @@ public class TabletClientTest {
         byte[] buf = new byte[5];
         bb.get(buf);
         Assert.assertEquals("test0", new String(buf));
+    }
+
+    @Test
+    public void test4Drop() {
+        TabletClient client = new TabletClient(host, port);
+        try {
+            client.init();
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            Assert.assertFalse(true);
+        }
+        boolean ok = client.dropTable(9527);
+        Assert.assertFalse(ok);
+        ok = client.createTable("tj1", 9527, 0, 0);
+        Assert.assertFalse(ok);
+        ok = client.dropTable(9527);
+        Assert.assertFalse(ok);
     }
 }

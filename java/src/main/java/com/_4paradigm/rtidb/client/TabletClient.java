@@ -19,23 +19,24 @@ public class TabletClient {
     private Tablet.TabletServer.BlockingInterface iface;
     private String host;
     private int port;
-    
+
     public TabletClient(String host, int port) {
         this.host = host;
         this.port = port;
     }
-    
+
     public void init() throws InterruptedException {
         asyncConn = new AsyncConnection(host, port);
         asyncConn.connect();
         channel = new SyncRpcChannel(asyncConn);
         iface = Tablet.TabletServer.newBlockingStub(channel);
     }
-    public boolean put(int tid, String key, long time,
-            byte[] bytes) {
-        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time).setValue(ByteString.copyFrom(bytes)).build();
+
+    public boolean put(int tid, String key, long time, byte[] bytes) {
+        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time)
+                .setValue(ByteString.copyFrom(bytes)).build();
         try {
-            
+
             Tablet.PutResponse response = iface.put(ctrl, resquest);
             if (response.getCode() == 0) {
                 return true;
@@ -46,10 +47,10 @@ public class TabletClient {
         }
         return false;
     }
-    
-    public boolean put(int tid, String key,
-            long time, String value) {
-        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time).setValue(ByteString.copyFrom(value.getBytes())).build();
+
+    public boolean put(int tid, String key, long time, String value) {
+        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time)
+                .setValue(ByteString.copyFrom(value.getBytes())).build();
         try {
             Tablet.PutResponse response = iface.put(ctrl, resquest);
             if (response.getCode() == 0) {
@@ -61,9 +62,10 @@ public class TabletClient {
         }
         return false;
     }
-    
+
     public boolean createTable(String name, int tid, int pid, int ttl) {
-        Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setName(name).setTid(tid).setPid(pid).setTtl(ttl).build();
+        Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setName(name).setTid(tid).setPid(pid)
+                .setTtl(ttl).build();
         try {
             Tablet.CreateTableResponse response = iface.createTable(ctrl, request);
             if (response.getCode() == 0) {
@@ -74,9 +76,8 @@ public class TabletClient {
         }
         return false;
     }
-    
-    public KvIterator scan(int tid, String pk,
-                           long st, long et) {
+
+    public KvIterator scan(int tid, String pk, long st, long et) {
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(pk);
         builder.setTid(tid);
@@ -93,6 +94,21 @@ public class TabletClient {
             logger.error("fail to scan tablet {}", tid, e);
         }
         return null;
+    }
+    
+    public boolean dropTable(int tid) {
+        Tablet.DropTableRequest.Builder builder = Tablet.DropTableRequest.newBuilder();
+        builder.setTid(tid);
+        Tablet.DropTableRequest request = builder.build();
+        try {
+            Tablet.DropTableResponse response = iface.dropTable(ctrl, request);
+            if(response.getCode() == 0) {
+                return true;
+            }
+        } catch (ServiceException e) {
+            logger.error("fail to drop table {}", tid, e);
+        }
+        return false;
     }
     
     public void close() {
