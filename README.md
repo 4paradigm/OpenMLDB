@@ -36,10 +36,10 @@ Put 1 ok, latency 0 ms
 # todo
 
 * [x] tablet 单测case丰富
-* [] 大小端编码优化
-* [] sdk支持LengthWindow, SlidingTimeWindow, Session
-* [] 支持主从复制
-* [] 支持数据落地，重启恢复
+* [ ] 大小端编码优化
+* [ ] sdk支持LengthWindow, SlidingTimeWindow, Session
+* [ ] 支持主从复制
+* [ ] 支持数据落地，重启恢复
 
 # 特点
 
