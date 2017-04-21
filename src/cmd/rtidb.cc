@@ -208,7 +208,9 @@ void HandleClientBenchmarkScan(uint32_t run_times,
 void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
     uint32_t size = 40;
     uint32_t times = 10;
+    std::cout << "Percentile:Start benchmark put " << std::endl;
     HandleClientBenchmarkPut(size, times, client);
+    std::cout << "Percentile:Start benchmark Scan 1000 records" << std::endl;
     HandleClientBenchmarkScan(times, client);
 }
 
@@ -228,7 +230,6 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
         delete it;
     }
     client->ShowTp();
-
     for (uint32_t j = 0; j < times; j++) {
         for (uint32_t i = 0; i < 500; i++) {
             std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);

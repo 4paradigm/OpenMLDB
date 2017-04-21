@@ -45,6 +45,6 @@ rtidb是面向机器学习场景的高性能内存db, 摒弃了传统在线数�
 * 读写互相不影响，rtidb采用skiplist做为核心数据结构，对并发读写非常友好，读取数据时不需要加锁
 * 支持TTL, 因为rtidb使用skiplist作为核心数据结构，内存回收时，对读操作零影响
 * 高性能内存池，rtidb使用tcmalloc管理内存分配，[性能指标](http://goog-perftools.sourceforge.net/doc/tcmalloc.html)
-* 高度定制化序列化协议，encode比protobuf快100倍，decode比protobuf快1倍,[详细见](src/base/codec_bench_test.cc)
+* 高度定制化序列化协议，encode比protobuf快10倍，decode比protobuf快1倍,[详细见](src/base/codec_bench_test.cc)
 * 使用c++开发，保证服务高稳定的响应时间，不会存在类似java gc问题
 

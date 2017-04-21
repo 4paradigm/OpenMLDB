@@ -81,7 +81,6 @@ uint64_t Table::SchedGc() {
     }
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     return count;
-
 }
 
 

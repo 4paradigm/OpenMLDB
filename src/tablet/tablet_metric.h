@@ -12,6 +12,7 @@
 #include "storage/table.h"
 
 #include "gperftools/malloc_extension.h"
+#include <boost/atomic.hpp>
 #include "thread_pool.h"
 
 using ::baidu::common::ThreadPool;
@@ -25,12 +26,28 @@ public:
     ~TabletMetric();
 
     void Init();
+
+    void IncrThroughput(
+        const uint64_t& put_count,
+        const uint64_t& put_bytes,
+        const uint64_t& scan_count,
+        const uint64_t& scan_bytes);
 private:
-    void GenMemoryStat();
+    void CollectMemoryStat();
+    void CollectThroughput();
+    void Collect();
 private:
     ::rtidb::storage::Table* stat_;
     MallocExtension* extension_;
     ThreadPool bg_pool_;
+
+    // throughput 
+    // the first put qps
+    // the second put bandwidth
+    // the third scan qps
+    // the fourth scan bandwidth
+    boost::atomic<uint64_t>* throughput_;
+    uint64_t* last_throughput_;
 };
 
 }
