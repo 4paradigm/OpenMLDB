@@ -42,6 +42,7 @@ public class TabletClientTest {
         Assert.assertTrue(ok);
         ok = client.put(21, "pk", 9527, "test0");
         Assert.assertTrue(ok);
+        client.close();
     }
 
     @Test
@@ -70,6 +71,7 @@ public class TabletClientTest {
         byte[] buf = new byte[5];
         bb.get(buf);
         Assert.assertEquals("test0", new String(buf));
+        client.close();
     }
 
     @Test
@@ -88,5 +90,6 @@ public class TabletClientTest {
         Assert.assertFalse(ok);
         ok = client.dropTable(9527);
         Assert.assertFalse(ok);
+        client.close();
     }
 }
