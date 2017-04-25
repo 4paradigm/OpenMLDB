@@ -76,7 +76,7 @@ else
     wget --no-check-certificate https://github.com/elasticlog/deps/files/877654/zlib-1.2.11.tar.gz
     tar zxf zlib-1.2.11.tar.gz 
     cd zlib-1.2.11
-    ./configure --static --prefix=${DEPS_PREFIX} >/dev/null
+    ./configure --prefix=${DEPS_PREFIX} >/dev/null
     make -j2 >/dev/null
     make install
     cd -

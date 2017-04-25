@@ -42,9 +42,9 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t id,
 
 bool TabletClient::Put(uint32_t tid,
                        uint32_t pid,
-                       const std::string& pk,
-                       uint64_t time, 
-                       const std::string& value) {
+                       const char* pk,
+                       uint64_t time,
+                       const char* value) {
     ::rtidb::api::PutRequest request;
     request.set_pk(pk);
     request.set_time(time);
@@ -60,6 +60,15 @@ bool TabletClient::Put(uint32_t tid,
         return true;
     }
     return false;
+
+}
+
+bool TabletClient::Put(uint32_t tid,
+                       uint32_t pid,
+                       const std::string& pk,
+                       uint64_t time, 
+                       const std::string& value) {
+    return Put(tid, pid, pk.c_str(), time, value.c_str());
 }
 
 ::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,
@@ -68,6 +77,15 @@ bool TabletClient::Put(uint32_t tid,
                          uint64_t stime,
                          uint64_t etime,
                          bool showm) {
+    return Scan(tid, pid, pk.c_str(), stime, etime, showm);
+}
+
+::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,
+             uint32_t pid,
+             const char* pk,
+             uint64_t stime,
+             uint64_t etime,
+             bool showm) {
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
@@ -108,7 +126,10 @@ bool TabletClient::Put(uint32_t tid,
                   << "decode_time=" << decode_time << std::endl;
     }
     return kv_it;
+
 }
+
+
 
 bool TabletClient::DropTable(const uint32_t id) {
     ::rtidb::api::DropTableRequest request;
