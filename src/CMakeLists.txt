@@ -4,6 +4,8 @@ add_library(tablet STATIC proto/tablet.pb.cc tablet/table_ha.cc tablet/tablet_im
 add_library(storage STATIC storage/table.cc storage/segment.cc)
 add_library(replica STATIC replica/file_appender.cc)
 
+add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
+target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
 
 add_executable(replica_test replica/file_appender_test.cc)
 target_link_libraries(replica_test pthread gtest common replica)
