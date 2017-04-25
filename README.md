@@ -40,6 +40,7 @@ Put 1 ok, latency 0 ms
 * [ ] sdk支持LengthWindow, SlidingTimeWindow, Session
 * [ ] 支持主从复制
 * [ ] 支持数据落地，重启恢复
+* [ ] 支持批量导入，方便离线快速导入数据或者故障快速恢复数据
 
 # 特点
 
