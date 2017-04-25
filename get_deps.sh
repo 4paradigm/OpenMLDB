@@ -182,3 +182,17 @@ else
     touch rapjson_succ
 fi
 
+if [ -f "leveldb_succ" ]
+then
+    echo "leveldb exist"
+else
+    git clone https://github.com/google/leveldb.git
+    cd leveldb
+    make -j8
+    cp -rf include/* ${DEPS_PREFIX}/include
+    cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
+    cd -
+    touch leveldb_succ
+fi
+
+
