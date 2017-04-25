@@ -98,6 +98,14 @@ public:
         return pid_;
     }
 
+    inline bool Persistence() const {
+        return enable_persistence_;
+    }
+
+    inline void Persistence(bool pers) {
+        enable_persistence_ = pers;
+    }
+
 private:
     ~Table(){}
 
@@ -114,6 +122,7 @@ private:
     uint32_t const ttl_;
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> data_cnt_;
+    bool enable_persistence_;
 };
 
 }

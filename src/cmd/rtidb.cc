@@ -120,8 +120,15 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         std::cout << "Bad create format" << std::endl;
         return;
     }
+    bool ha = false;
+    if (parts.size() > 5) {
+        if (parts[5] == "true") {
+            ha = true;
+        }
+    }
     bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-            boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]));
+            boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]),
+            ha);
     if (!ok) {
         std::cout << "Fail to create table" << std::endl;
     }else {
@@ -171,7 +178,8 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
     }
 }
 
-void HandleClientBenchmarkPut(uint32_t val_size, uint32_t run_times,
+void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid,
+                              uint32_t val_size, uint32_t run_times,
         ::rtidb::client::TabletClient* client) {
     char val[val_size];
     for (uint32_t i = 0; i < val_size; i++) {
@@ -181,18 +189,17 @@ void HandleClientBenchmarkPut(uint32_t val_size, uint32_t run_times,
     for (uint32_t i = 0 ; i < run_times; i++) {
         std::string key = "test" + boost::lexical_cast<std::string>(i);
         for (uint32_t j = 0; j < 1000; j++) {
-            client->Put(1, 1, key, j, sval);
+            client->Put(tid, pid, key, j, sval);
         }
         client->ShowTp();
     }
 }
 
-void HandleClientBenchmarkScan(uint32_t run_times, 
+void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
+        uint32_t run_times, 
         ::rtidb::client::TabletClient* client) {
     uint64_t st = 999;
     uint64_t et = 0;
-    uint32_t tid = 1;
-    uint32_t pid = 1;
     for (uint32_t j = 0; j < run_times; j++) {
         for (uint32_t i = 0; i < 500; i++) {
             std::string key = "test" + boost::lexical_cast<std::string>(i);
@@ -208,10 +215,12 @@ void HandleClientBenchmarkScan(uint32_t run_times,
 void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
     uint32_t size = 40;
     uint32_t times = 10;
-    std::cout << "Percentile:Start benchmark put " << std::endl;
-    HandleClientBenchmarkPut(size, times, client);
+    std::cout << "Percentile:Start benchmark put without ha " << std::endl;
+    HandleClientBenchmarkPut(1, 1, size, times, client);
+    std::cout << "Percentile:Start benchmark put with ha " << std::endl;
+    HandleClientBenchmarkPut(2, 1, size, times, client);
     std::cout << "Percentile:Start benchmark Scan 1000 records" << std::endl;
-    HandleClientBenchmarkScan(times, client);
+    HandleClientBenchmarkScan(1, 1, times, client);
 }
 
 void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {

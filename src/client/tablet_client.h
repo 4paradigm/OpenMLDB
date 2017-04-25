@@ -22,7 +22,8 @@ public:
     TabletClient(const std::string& endpoint);
     ~TabletClient();
     bool CreateTable(const std::string& name, uint32_t id, uint32_t pid,
-            uint32_t ttl);
+            uint32_t ttl,
+            bool data_ha = false);
 
     bool Put(uint32_t tid,
              uint32_t pid,

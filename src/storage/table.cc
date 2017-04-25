@@ -26,7 +26,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
-    ttl_offset_(60 * 1000)
+    ttl_offset_(60 * 1000), enable_persistence_(false)
     {}
 
 void Table::Init() {

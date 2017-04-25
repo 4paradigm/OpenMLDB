@@ -23,12 +23,14 @@ TabletClient::~TabletClient() {
 }
 
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint32_t ttl) {
+        uint32_t pid, uint32_t ttl,
+        bool data_ha) {
     ::rtidb::api::CreateTableRequest request;
     request.set_name(name);
     request.set_tid(id);
     request.set_pid(pid);
     request.set_ttl(ttl);
+    request.set_ha(data_ha);
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, 12, 1);
