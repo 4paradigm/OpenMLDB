@@ -31,12 +31,21 @@ class RtidbClient(object):
     return KvIterator(rtidb_so.Scan(self.db_, tid, pid, pk, stime, etime))
 
   def drop_table(self, tid):
-    return rtidb_so.DropTabel(self.db_, tid)
+    return rtidb_so.DropTable(self.db_, tid)
 
   def __del__(self):
     rtidb_so.FreeClient(self.db_)
 
 
+#
+#  the usage 
+#  it = rtidb_client.scan()
+#  while (it.valid()):
+#      it.next()
+#      it.get_key()
+#      it.get_value()
+#
+#
 class KvIterator(object):
   def __init__(self, it):
     self.it_ = it
