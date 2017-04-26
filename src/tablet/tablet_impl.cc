@@ -325,7 +325,6 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
             writer.EndObject();
             delete stat;
         }
-        writer.Uint(table->GetDataCnt());
         writer.Key("data_byte_size");
         writer.Uint(table->GetByteSize());
         writer.EndObject();
