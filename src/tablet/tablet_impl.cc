@@ -306,7 +306,25 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         writer.Uint(table->GetPid());
         writer.Key("seg_cnt");
         writer.Uint(table->GetSegCnt());
-        writer.Key("data_cnt");
+        uint64_t total = 0;
+        uint64_t* stat = NULL;
+        uint32_t size = 0;
+        table->GetDataCnt(&stat, &size);
+        if (stat != NULL) {
+            writer.Key("data_cnt_stat");
+            writer.StartObject();
+            writer.Key("stat");
+            writer.StartArray();
+            for (size_t k = 0; k < size; k++) {
+                writer.Uint(stat[k]);
+                total += stat[k];
+            }
+            writer.EndArray();
+            writer.Key("total");
+            writer.Uint(total);
+            writer.EndObject();
+            delete stat;
+        }
         writer.Uint(table->GetDataCnt());
         writer.Key("data_byte_size");
         writer.Uint(table->GetByteSize());
