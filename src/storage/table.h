@@ -74,6 +74,18 @@ public:
         }
         return data_cnt;
     }
+    
+    inline void GetDataCnt(uint64_t** stat, uint32_t* size) const {
+        if (stat == NULL) {
+            return;
+        }
+        uint64_t* data_array = new uint64_t[seg_cnt_];
+        for (uint32_t i = 0; i < seg_cnt_; i++) {
+            data_array[i] = segments_[i]->GetDataCnt();
+        }
+        *stat = data_array;
+        *size = seg_cnt_;
+    }
 
     inline uint64_t GetByteSize() const {
         uint64_t byte_size = 0;

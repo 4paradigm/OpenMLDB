@@ -43,13 +43,22 @@ class TestRtidbClient(unittest.TestCase):
     it = db.scan(103, 1, "pk", 9528, 9527)
     self.assertTrue(it.valid())
     it.next()
-#    self.assertEqual(9528, it.get_key())
+    self.assertEqual(9528, it.get_key())
     self.assertEqual("pk2", it.get_value())
     self.assertTrue(it.valid())
     it.next()
     self.assertEqual(9527, it.get_key())
     self.assertEqual("pk1", it.get_value())
     self.assertFalse(it.valid())
+
+  def test_drop_table(self):
+    db = rtidb_client.RtidbClient(endpoint)
+    ok = db.drop_table(104)
+    self.assertFalse(ok)
+    ok = db.create_table("py_test3", 105, 1, 0, False)
+    self.assertTrue(ok)
+    ok = db.drop_table(105)
+    self.assertTrue(ok)
 
 
 if __name__ == '__main__':
