@@ -52,3 +52,4 @@ rtidb是面向机器学习场景的高性能内存db, 摒弃了传统在线数�
 * 高性能内存池，rtidb使用tcmalloc管理内存分配，[性能指标](http://goog-perftools.sourceforge.net/doc/tcmalloc.html)
 * 高度定制化序列化协议，encode比protobuf快10倍，decode比protobuf快1倍,[详细见](src/base/codec_bench_test.cc)
 * 使用c++开发，保证服务高稳定的响应时间，不会存在类似java gc问题
+* 支持高级时序数据结构Lengthwindow, SlidingTimewindow, Session
