@@ -27,7 +27,7 @@ public class AsyncConnection {
     }
 
     public void connect() throws InterruptedException {
-        group = new NioEventLoopGroup();
+        group = new NioEventLoopGroup(4);
         Bootstrap b = new Bootstrap();
         b.group(group);
         b.channel(NioSocketChannel.class);
