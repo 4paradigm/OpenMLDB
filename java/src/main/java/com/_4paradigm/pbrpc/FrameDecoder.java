@@ -33,6 +33,7 @@ public class FrameDecoder extends ByteToMessageDecoder {
         boolean match = matchMagicKey(litBuffer);
         // TODO (wangtaize) handle mismatch
         if (!match) {
+            return;
         }
         int metaSize = litBuffer.readInt();
         long dataSize = litBuffer.readLong();
@@ -74,10 +75,15 @@ public class FrameDecoder extends ByteToMessageDecoder {
     }
 
     private boolean matchMagicKey(ByteBuf litBuffer) {
-        byte[] magic = new byte[4];
-        litBuffer.readBytes(magic, 0, 4);
-        boolean match = Arrays.equals(magic, primaryMagic);
-        return match;
+        try {
+            byte[] magic = new byte[4];
+            litBuffer.readBytes(magic, 0, 4);
+            boolean match = Arrays.equals(magic, primaryMagic);
+            return match;
+        }catch (IndexOutOfBoundsException e) {
+            return false;
+        }
+        
     }
 
 }
