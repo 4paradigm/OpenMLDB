@@ -76,6 +76,7 @@ else
     wget --no-check-certificate https://github.com/elasticlog/deps/files/877654/zlib-1.2.11.tar.gz
     tar zxf zlib-1.2.11.tar.gz 
     cd zlib-1.2.11
+    sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
     ./configure --static --prefix=${DEPS_PREFIX} >/dev/null
     make -j2 >/dev/null
     make install
@@ -181,4 +182,18 @@ else
     cp -rf rapidjson-1.1.0/include/rapidjson ${DEPS_PREFIX}/include
     touch rapjson_succ
 fi
+
+if [ -f "leveldb_succ" ]
+then
+    echo "leveldb exist"
+else
+    git clone https://github.com/google/leveldb.git
+    cd leveldb
+    make -j8
+    cp -rf include/* ${DEPS_PREFIX}/include
+    cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
+    cd -
+    touch leveldb_succ
+fi
+
 

@@ -21,4 +21,5 @@ set(GCC_COVERAGE_LINK_FLAGS    "-fno-builtin-malloc -fno-builtin-calloc -fno-bui
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 add_subdirectory(src)
+#add_subdirectory(python)
 

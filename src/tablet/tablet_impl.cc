@@ -29,6 +29,7 @@ DECLARE_int32(gc_interval);
 DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
+DECLARE_string(db_root_path);
 
 namespace rtidb {
 namespace tablet {
@@ -67,7 +68,15 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-
+    bool pers = table->Persistence();
+    ::rtidb::api::TableRow row;
+    TableDataHA* ha;
+    if (pers) {
+        ha = GetTableHa(request->tid());
+        row.set_pk(request->pk());
+        row.set_data(request->value());
+        row.set_time(request->time());
+    }
     uint64_t size = request->value().length();
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
@@ -76,6 +85,10 @@ void TabletImpl::Put(RpcController* controller,
     table->UnRef();
     done->Run();
     metric_->IncrThroughput(1, size, 0, 0);
+    if (pers && ha != NULL) {
+        ha->Put(row);
+        ha->UnRef();
+    }
 }
 
 void TabletImpl::Scan(RpcController* controller,
@@ -159,6 +172,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
         seg_cnt = request->seg_cnt();
     }
+
     //TODO(wangtaize) config segment count option
     // parameter validation 
     Table* table = new Table(request->name(), request->tid(),
@@ -168,6 +182,30 @@ void TabletImpl::CreateTable(RpcController* controller,
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
+    //
+    table->Persistence(request->ha());
+    if (request->ha()) {
+        std::string db_path = FLAGS_db_root_path + "/" + request->name();
+        TableDataHA* table_ha = new TableDataHA(db_path,
+                request->name());
+        bool ok = table_ha->Init();
+        if (!ok) {
+            table->UnRef();
+            response->set_code(-2);
+            response->set_msg("table ha err");
+            done->Run();
+            return;
+        }
+        table_ha->Ref();
+        ::rtidb::api::TableMeta meta;
+        meta.set_tid(request->tid());
+        meta.set_name(request->name());
+        meta.set_pid(request->pid());
+        meta.set_ttl(request->ttl());
+        meta.set_seg_cnt(request->seg_cnt());
+        table_ha->SaveMeta(meta);
+        table_has_.insert(std::make_pair(request->tid(), table_ha));
+    }
     tables_.insert(std::make_pair(request->tid(), table));
     response->set_code(0);
     LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %d", request->tid(), 
@@ -202,7 +240,6 @@ void TabletImpl::DropTable(RpcController* controller,
 }
 
 
-
 void TabletImpl::GcTable(uint32_t tid) {
     Table* table = GetTable(tid);
     if (table == NULL) {
@@ -212,6 +249,7 @@ void TabletImpl::GcTable(uint32_t tid) {
     table->UnRef();
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid));
 }
+
 
 Table* TabletImpl::GetTable(uint32_t tid) {
     MutexLock lock(&mu_);
@@ -226,7 +264,6 @@ Table* TabletImpl::GetTable(uint32_t tid) {
 
 
 // http action
-
 bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
         sofa::pbrpc::HTTPResponse& response) {
     const std::string& path = request.path; 
@@ -269,8 +306,25 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         writer.Uint(table->GetPid());
         writer.Key("seg_cnt");
         writer.Uint(table->GetSegCnt());
-        writer.Key("data_cnt");
-        writer.Uint(table->GetDataCnt());
+        uint64_t total = 0;
+        uint64_t* stat = NULL;
+        uint32_t size = 0;
+        table->GetDataCnt(&stat, &size);
+        if (stat != NULL) {
+            writer.Key("data_cnt_stat");
+            writer.StartObject();
+            writer.Key("stat");
+            writer.StartArray();
+            for (size_t k = 0; k < size; k++) {
+                writer.Uint(stat[k]);
+                total += stat[k];
+            }
+            writer.EndArray();
+            writer.Key("total");
+            writer.Uint(total);
+            writer.EndObject();
+            delete stat;
+        }
         writer.Key("data_byte_size");
         writer.Uint(table->GetByteSize());
         writer.EndObject();
@@ -325,8 +379,16 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     stat->UnRef();
 }
 
-
-
+TableDataHA* TabletImpl::GetTableHa(uint32_t tid) {
+    MutexLock lock(&mu_);
+    std::map<uint32_t, ::rtidb::tablet::TableDataHA*>::iterator it = table_has_.find(tid);
+    if (it == table_has_.end()) {
+        return NULL;
+    }
+    TableDataHA* table_ha = it->second;
+    table_ha->Ref();
+    return table_ha;
+}
 
 }
 }

@@ -94,7 +94,8 @@ public class TabletClient {
         }
         return null;
     }
-    
+
+
     public boolean dropTable(int tid) {
         Tablet.DropTableRequest.Builder builder = Tablet.DropTableRequest.newBuilder();
         builder.setTid(tid);
@@ -110,6 +111,7 @@ public class TabletClient {
         return false;
     }
     
+
     public void close() {
         this.asyncConn.close();
     }
