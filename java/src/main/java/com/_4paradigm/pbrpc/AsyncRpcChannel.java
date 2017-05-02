@@ -23,7 +23,7 @@ public class AsyncRpcChannel implements RpcChannel {
         mc.setRequest(request);
         mc.setParser(responsePrototype.getParserForType());
         long id = GlobalSequence.incrementAndGet();
-        RpcMeta meta = SofaRpcMeta.RpcMeta.newBuilder().setType(RpcMeta.Type.REQUEST).setMethod(method.getFullName())
+        final RpcMeta meta = SofaRpcMeta.RpcMeta.newBuilder().setType(RpcMeta.Type.REQUEST).setMethod(method.getFullName())
                 .setSequenceId(id).build();
         mc.setMeta(meta);
         mc.setSeq(id);
