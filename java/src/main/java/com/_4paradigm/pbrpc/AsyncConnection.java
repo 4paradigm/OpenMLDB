@@ -24,6 +24,7 @@ public class AsyncConnection {
     private ChannelFuture channel = null;
     private NioEventLoopGroup group = null;
     private int eventLoopThreadCnt;
+
     public AsyncConnection(String host, int port) {
         this.host = host;
         this.port = port;
@@ -42,7 +43,7 @@ public class AsyncConnection {
             @Override
             public void initChannel(SocketChannel channel) throws Exception {
                 channel.pipeline().addLast("FrameSpliter",
-                        new LengthFieldBasedFrameDecoder(ByteOrder.LITTLE_ENDIAN, 1024 * 1024, 16, 8, 0, 0, true));
+                        new LengthFieldBasedFrameDecoder(ByteOrder.LITTLE_ENDIAN, 2 * 1024 * 1024, 16, 8, 0, 0, true));
                 channel.pipeline().addLast("FrameDecoder", new FrameDecoder(context));
                 channel.pipeline().addLast("Processor", new ClientHandler());
                 channel.pipeline().addLast("FrameEncoder", new FrameEncoder(context));
