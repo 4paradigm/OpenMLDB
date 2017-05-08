@@ -7,7 +7,7 @@ import org.junit.Test;
 
 public class TabletClientTest {
 
-    private String host = "127.0.0.1";
+    private String host = "172.27.0.101";
     private int port = 9526;
 
     @Test
@@ -87,9 +87,9 @@ public class TabletClientTest {
         boolean ok = client.dropTable(9527);
         Assert.assertFalse(ok);
         ok = client.createTable("tj1", 9527, 0, 0);
-        Assert.assertFalse(ok);
+        Assert.assertTrue(ok);
         ok = client.dropTable(9527);
-        Assert.assertFalse(ok);
+        Assert.assertTrue(ok);
         client.close();
     }
 }

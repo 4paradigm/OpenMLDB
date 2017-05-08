@@ -17,7 +17,7 @@ clear_debug
 sleep 2
 
 cd $ROOT_DIR/java
-mvn package 
+mvn install
 
 clear_debug
 
