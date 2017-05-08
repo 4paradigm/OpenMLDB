@@ -81,7 +81,6 @@ bool TableDataHA::Put(const TableRow& row) {
 
 void TableDataHA::Ref() {
     ref_.fetch_add(1, boost::memory_order_relaxed);
-
 }
 
 void TableDataHA::UnRef() {

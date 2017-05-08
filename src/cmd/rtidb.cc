@@ -33,7 +33,6 @@ DEFINE_string(log_level, "debug | info", "Set the rtidb log level");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
-
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/){
     s_quit = true;
@@ -113,7 +112,6 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
     }
 }
 
-//
 // the input format like create name tid pid ttl
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 5) {

@@ -21,6 +21,3 @@ mvn package
 
 clear_debug
 
-
-
-
