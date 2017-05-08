@@ -8,9 +8,6 @@
 # Date 2017-04-25
 #
 
-"""
-
-"""
 
 from ctypes import CDLL, byref
 from ctypes import c_char_p,c_int, c_uint32, c_ulong,  string_at
@@ -46,6 +43,7 @@ class RtidbClient(object):
 #      it.get_value()
 #
 #
+
 class KvIterator(object):
   def __init__(self, it):
     self.it_ = it

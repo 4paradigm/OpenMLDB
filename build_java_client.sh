@@ -21,6 +21,3 @@ mvn install
 
 clear_debug
 
-
-
-
