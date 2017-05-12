@@ -28,7 +28,6 @@ public:
 TEST_F(CodecBenchmarkTest, Encode) {
     std::vector<::rtidb::storage::DataBlock*> data;
     char* bd = new char[400];
-
     for (uint32_t i = 0; i < 400; i++) {
         bd[i] = 'a';
     }
@@ -66,8 +65,7 @@ TEST_F(CodecBenchmarkTest, Encode) {
     }
 
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
-
-    std::cout << "Encode codec: " << consumed/1000 << std::endl;
+    std::cout << "Encode rtidb: " << consumed/1000 << std::endl;
     std::cout << "Encode protobuf: " << pconsumed/1000 << std::endl;
 }
 
@@ -119,8 +117,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     }
 
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
-
-    std::cout << "Decode kv_iterator: " << consumed/1000 << std::endl;
+    std::cout << "Decode rtidb: " << consumed/1000 << std::endl;
     std::cout << "Decode protobuf: " << pconsumed/1000 << std::endl;
 
 }

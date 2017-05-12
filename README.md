@@ -43,7 +43,7 @@ Put 1 ok, latency 0 ms
 * [ ] 大小端编码优化
 * [ ] sdk支持LengthWindow, SlidingTimeWindow, Session
 * [ ] 支持主从复制
-* [ ] 支持数据落地，重启恢复
+* [x] 支持数据落地，重启恢复
 * [ ] 支持批量导入，方便离线快速导入数据或者故障快速恢复数据
 * [ ] 支持hashtable存储引擎，在反欺诈场景，获取card/账户信息 这个场景是seek操作，如果使用skiplist，会有性能损失[map vs unordered_map](http://kariddi.blogspot.jp/2012/07/c11-unorderedmap-vs-map.html)
 
@@ -55,7 +55,7 @@ rtidb是面向机器学习场景的高性能内存时序数据db, 摒弃了传�
 * 读写互相不影响，rtidb采用skiplist做为核心数据结构，对并发读写非常友好，读取数据时不需要加锁
 * 支持TTL, 因为rtidb使用skiplist作为核心数据结构，内存回收时，对读操作零影响
 * 高性能内存池，rtidb使用tcmalloc管理内存分配，对比jvm 内存管理，rtidb内存创建和释放需要手动, 避免了jvm gc带来的问题，也能避免频繁调用内核的系统调用[性能指标](http://goog-perftools.sourceforge.net/doc/tcmalloc.html)
-* 高度定制化序列化协议，encode比protobuf快10倍，decode比protobuf快1倍,[详细见](src/base/codec_bench_test.cc)
+* 高度定制化序列化协议，encode比protobuf快10倍，decode比protobuf快2倍,[详细见](src/base/codec_bench_test.cc)
 * 使用c++开发，保证服务高稳定的响应时间，不会存在类似java gc问题
 * 支持高级时序数据结构Lengthwindow, SlidingTimewindow, Session
 

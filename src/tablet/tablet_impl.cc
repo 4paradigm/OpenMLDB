@@ -71,7 +71,7 @@ void TabletImpl::Put(RpcController* controller,
     }
     bool pers = table->Persistence();
     ::rtidb::api::TableRow row;
-    TableDataHA* ha;
+    TableDataHA* ha = NULL;
     if (pers) {
         ha = GetTableHa(request->tid());
         row.set_pk(request->pk());
@@ -132,24 +132,21 @@ void TabletImpl::Scan(RpcController* controller,
         it->Next();
     }
     metric->set_setime(::baidu::common::timer::get_micros());
-    // Experiment reduce memory alloc times
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
     pairs->resize(total_size);
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
-    uint32_t cnt = 0;
     std::list<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
     for (; lit != tmp.end(); ++lit) {
-        cnt++;
         std::pair<uint64_t, DataBlock*>& pair = *lit;
         LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
     response->set_code(0);
-    response->set_count(cnt);
+    response->set_count(tmp.size());
     metric->set_sptime(::baidu::common::timer::get_micros()); 
     done->Run();
     table->UnRef();
@@ -162,6 +159,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
     MutexLock lock(&mu_);
+    // check table if it exist
     if (tables_.find(request->tid()) != tables_.end()) {
         // table exists
         response->set_code(-2);
@@ -177,7 +175,6 @@ void TabletImpl::CreateTable(RpcController* controller,
         seg_cnt = request->seg_cnt();
     }
 
-    //TODO(wangtaize) config segment count option
     // parameter validation 
     Table* table = new Table(request->name(), request->tid(),
                              request->pid(), seg_cnt, 
@@ -186,7 +183,6 @@ void TabletImpl::CreateTable(RpcController* controller,
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
-    //
     table->Persistence(request->ha());
     if (request->ha()) {
         std::string db_path = FLAGS_db_root_path + "/" + request->name();
@@ -236,9 +232,9 @@ void TabletImpl::DropTable(RpcController* controller,
     LOG(INFO, "delete table %d", request->tid());
     tables_.erase(request->tid());
     response->set_code(0);
+    // do not block request
     done->Run();
     // unref table, let it release memory
-    // do not block request
     table->UnRef();
     table->UnRef();
 }

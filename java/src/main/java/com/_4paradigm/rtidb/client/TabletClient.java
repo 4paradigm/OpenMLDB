@@ -110,7 +110,6 @@ public class TabletClient {
         }
         return false;
     }
-    
 
     public void close() {
         this.asyncConn.close();
