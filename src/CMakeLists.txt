@@ -25,6 +25,10 @@ target_link_libraries(kv_iterator_test gtest pthread common protobuf)
 add_executable(tablet_impl_test  tablet/tablet_impl_test.cc)
 target_link_libraries(tablet_impl_test   gtest pthread tablet leveldb gflags storage common sofa-pbrpc  protobuf z snappy tcmalloc_minimal)
 
+add_executable(table_ha_test  tablet/table_ha_test.cc)
+target_link_libraries(table_ha_test   gtest pthread tablet leveldb gflags storage common sofa-pbrpc  protobuf z snappy tcmalloc_minimal)
+
+
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf tcmalloc_minimal)
 

@@ -11,6 +11,7 @@
 
 #include "leveldb/db.h"
 #include "proto/tablet.pb.h"
+#include "storage/table.h"
 #include <boost/atomic.hpp>
 
 using ::rtidb::api::TableMeta;
@@ -36,6 +37,8 @@ public:
 
     void UnRef();
 
+    bool Recover(::rtidb::storage::Table** table);
+
 private:
     ~TableDataHA();
 private:
@@ -43,7 +46,6 @@ private:
     leveldb::DB* db_;
     std::string tname_;
     boost::atomic<uint32_t> ref_;
-
 };
 
 }
