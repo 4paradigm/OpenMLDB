@@ -25,6 +25,5 @@ echo "start drop table"
 
 sleep 2
 
-
 clear_debug
 

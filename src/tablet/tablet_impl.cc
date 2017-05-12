@@ -8,6 +8,7 @@
 #include "tablet/tablet_impl.h"
 
 #include <vector>
+#include <list>
 #include <stdlib.h>
 #include <stdio.h>
 #include <gflags/gflags.h>
@@ -112,8 +113,8 @@ void TabletImpl::Scan(RpcController* controller,
     Table::Iterator* it = table->NewIterator(request->pk());
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
-    // TODO(wangtaize) config the tmp init size
-    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    std::list<std::pair<uint64_t, DataBlock*> > tmp;
+    // TODO(wangtaize) controle the max size
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
     if (table->GetTTL() > 0) {
@@ -138,14 +139,17 @@ void TabletImpl::Scan(RpcController* controller,
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
-    for (size_t i = 0; i < tmp.size(); i++) {
-        std::pair<uint64_t, DataBlock*>& pair = tmp[i];
+    uint32_t cnt = 0;
+    std::list<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
+    for (; lit != tmp.end(); ++lit) {
+        cnt++;
+        std::pair<uint64_t, DataBlock*>& pair = *lit;
         LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
     response->set_code(0);
-    response->set_count(tmp.size());
+    response->set_count(cnt);
     metric->set_sptime(::baidu::common::timer::get_micros()); 
     done->Run();
     table->UnRef();
