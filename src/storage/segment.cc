@@ -111,6 +111,7 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
             (::baidu::common::timer::get_micros() - consumed)/1000, count);
     data_byte_size_.fetch_sub(freed_data_byte_size, boost::memory_order_relaxed);
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
+    delete it;
     return count;
 }
 

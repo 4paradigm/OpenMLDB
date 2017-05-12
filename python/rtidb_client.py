@@ -34,17 +34,16 @@ class RtidbClient(object):
     rtidb_so.FreeClient(self.db_)
 
 
-#
-#  the usage 
-#  it = rtidb_client.scan()
-#  while (it.valid()):
-#      it.next()
-#      it.get_key()
-#      it.get_value()
-#
-#
-
 class KvIterator(object):
+  """
+  the usage 
+  it = rtidb_client.scan()
+  while (it.valid()):
+      it.next()
+      it.get_key()
+      it.get_value()
+
+  """
   def __init__(self, it):
     self.it_ = it
 
