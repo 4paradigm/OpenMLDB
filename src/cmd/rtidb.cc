@@ -187,7 +187,7 @@ void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid,
     std::string sval(val);
     for (uint32_t i = 0 ; i < run_times; i++) {
         std::string key = boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
-        for (uint32_t j = 0; j < 1000; j++) {
+        for (uint32_t j = 0; j < 4000; j++) {
             client->Put(tid, pid, key, j, sval);
         }
         client->ShowTp();
@@ -201,7 +201,7 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
     uint64_t st = 999;
     uint64_t et = 0;
     for (uint32_t j = 0; j < run_times; j++) {
-        for (uint32_t i = 0; i < 500; i++) {
+        for (uint32_t i = 0; i < 500 * 4; i++) {
             std::string key =boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
             ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
             delete it;

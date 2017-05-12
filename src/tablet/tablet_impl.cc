@@ -71,7 +71,7 @@ void TabletImpl::Put(RpcController* controller,
     }
     bool pers = table->Persistence();
     ::rtidb::api::TableRow row;
-    TableDataHA* ha;
+    TableDataHA* ha = NULL;
     if (pers) {
         ha = GetTableHa(request->tid());
         row.set_pk(request->pk());
