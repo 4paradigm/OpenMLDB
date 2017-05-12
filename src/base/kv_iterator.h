@@ -20,6 +20,7 @@ public:
     tmp_(NULL),
     auto_clean_(true){
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
+        tmp_ = new Slice();
         tsize_ = response->pairs().size();
     }
 
@@ -31,12 +32,14 @@ public:
     auto_clean_(clean){
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tsize_ = response->pairs().size();
+        tmp_ = new Slice();
     }
 
     ~KvIterator() {
         if (auto_clean_) {
             delete response_;
         }
+        delete tmp_;
     }
 
     bool Valid() {
@@ -53,7 +56,7 @@ public:
         buffer_ += 4;
         memcpy(static_cast<void*>(&time_), buffer_, 8);
         buffer_ += 8;
-        tmp_ = new Slice(buffer_, block_size - 8);
+        tmp_->reset(buffer_, block_size - 8);
         buffer_ += (block_size - 8);
         offset_ += (4 + block_size);
     }
@@ -67,7 +70,6 @@ public:
     }
 
 private:
-
     ::rtidb::api::ScanResponse* response_;
     char* buffer_;
     uint32_t tsize_;
