@@ -9,6 +9,7 @@
 #include "leveldb/options.h"
 #include <boost/lexical_cast.hpp>
 #include "logging.h"
+#include "timer.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
@@ -65,7 +66,7 @@ bool TableDataHA::Put(const TableRow& row) {
     std::string buffer;
     row.SerializeToString(&buffer);
     const leveldb::Slice value(buffer);
-    std::string key = row.pk() + boost::lexical_cast<std::string>(row.time());
+    std::string key = DATA_PREFIX + row.pk() + boost::lexical_cast<std::string>(row.time());
     leveldb::WriteOptions options;
     options.sync = false;
     leveldb::Status status = db_->Put(options, key, value);
@@ -76,7 +77,6 @@ bool TableDataHA::Put(const TableRow& row) {
             tname_.c_str(),
             status.ToString().c_str());
     return false;
-
 }
 
 void TableDataHA::Ref() {
@@ -86,8 +86,46 @@ void TableDataHA::Ref() {
 void TableDataHA::UnRef() {
     ref_.fetch_sub(1, boost::memory_order_acquire);
     if (ref_.load(boost::memory_order_acquire) <= 0) {
+        delete db_;
         delete this;
     }
+}
+
+bool TableDataHA::Recover(::rtidb::storage::Table** table) {
+    if (table == NULL) {
+        return false;
+    }
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    ::leveldb::ReadOptions options;
+    std::string table_meta_str;
+    leveldb::Status status = db_->Get(options, TABLE_META_KEY, &table_meta_str);
+    if (!status.ok()) {
+        LOG(WARNING, "fail to get table meta for %s", tname_.c_str());
+        return false;
+    }
+    TableMeta meta;
+    meta.ParseFromString(table_meta_str);
+    ::rtidb::storage::Table* t = new ::rtidb::storage::Table(meta.name(),
+            meta.tid(), meta.pid(), meta.seg_cnt(), meta.ttl());
+    t->Init();
+    LOG(WARNING, "Recover tablet %s meta successfully", tname_.c_str());
+    *table = t;
+    leveldb::Iterator* it = db_->NewIterator(options);
+    it->Seek(DATA_PREFIX);
+    TableRow row;
+    while (it->Valid()) {
+        leveldb::Slice data = it->value();
+        bool ok = row.ParseFromString(data.ToString());
+        if (ok) {
+            t->Put(row.pk(), row.time(), row.data().c_str(),
+                    row.data().size());
+        }
+        it->Next();
+    }
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    LOG(WARNING, "recover tablet %s data successfully with time %ld ms", tname_.c_str(),
+            consumed/1000);
+    return true;
 }
 
 }

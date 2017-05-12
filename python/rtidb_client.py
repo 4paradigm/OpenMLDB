@@ -19,16 +19,22 @@ class RtidbClient(object):
     self.db_ = rtidb_so.NewClient(endpoint)
 
   def create_table(self, name, tid, pid, ttl, data_ha = False):
-    return rtidb_so.CreateTable(self.db_, name, tid, pid, ttl, data_ha)
+    if rtidb_so.CreateTable(self.db_, name, tid, pid, ttl, data_ha):
+      return True
+    return False
 
   def put(self, tid, pid, pk, time, value):
-    return rtidb_so.Put(self.db_, tid, pid, pk, time, value)
+    if rtidb_so.Put(self.db_, tid, pid, pk, time, value):
+      return True
+    return False
 
   def scan(self, tid, pid, pk, stime, etime):
     return KvIterator(rtidb_so.Scan(self.db_, tid, pid, pk, stime, etime))
 
   def drop_table(self, tid):
-    return rtidb_so.DropTable(self.db_, tid)
+    if rtidb_so.DropTable(self.db_, tid):
+      return True
+    return False
 
   def __del__(self):
     rtidb_so.FreeClient(self.db_)
