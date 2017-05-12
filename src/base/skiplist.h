@@ -91,7 +91,9 @@ public:
         }
         max_height_.store(1, boost::memory_order_relaxed);
     }
-    ~Skiplist() {}
+    ~Skiplist() {
+        delete head_;
+    }
 
     // Insert need external synchronized
     void Insert(const K& key, V& value) {
