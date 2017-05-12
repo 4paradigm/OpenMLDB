@@ -178,6 +178,7 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
 
 void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid,
                               uint32_t val_size, uint32_t run_times,
+                              uint32_t ns,
         ::rtidb::client::TabletClient* client) {
     char val[val_size];
     for (uint32_t i = 0; i < val_size; i++) {
@@ -185,7 +186,7 @@ void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid,
     }
     std::string sval(val);
     for (uint32_t i = 0 ; i < run_times; i++) {
-        std::string key = "test" + boost::lexical_cast<std::string>(i);
+        std::string key = boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
         for (uint32_t j = 0; j < 1000; j++) {
             client->Put(tid, pid, key, j, sval);
         }
@@ -195,12 +196,13 @@ void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid,
 
 void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
         uint32_t run_times, 
+        uint32_t ns,
         ::rtidb::client::TabletClient* client) {
     uint64_t st = 999;
     uint64_t et = 0;
     for (uint32_t j = 0; j < run_times; j++) {
         for (uint32_t i = 0; i < 500; i++) {
-            std::string key = "test" + boost::lexical_cast<std::string>(i);
+            std::string key =boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
             ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, true);
             delete it;
         }
@@ -213,12 +215,32 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
 void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
     uint32_t size = 40;
     uint32_t times = 10;
-    std::cout << "Percentile:Start benchmark put without ha " << std::endl;
-    HandleClientBenchmarkPut(1, 1, size, times, client);
-    std::cout << "Percentile:Start benchmark put with ha " << std::endl;
-    HandleClientBenchmarkPut(2, 1, size, times, client);
-    std::cout << "Percentile:Start benchmark Scan 1000 records" << std::endl;
-    HandleClientBenchmarkScan(1, 1, times, client);
+    std::cout << "Percentile:Start benchmark put without ha size:40" << std::endl;
+    HandleClientBenchmarkPut(1, 1, size, times, 1, client);
+    std::cout << "Percentile:Start benchmark put without ha size:80" << std::endl;
+    HandleClientBenchmarkPut(1, 1, 80, times, 2, client);
+    std::cout << "Percentile:Start benchmark put without ha size:200" << std::endl;
+    HandleClientBenchmarkPut(1, 1, 200, times, 3, client);
+    std::cout << "Percentile:Start benchmark put without ha size:400" << std::endl;
+    HandleClientBenchmarkPut(1, 1, 400, times, 4, client);
+
+    std::cout << "Percentile:Start benchmark put with ha size:40" << std::endl;
+    HandleClientBenchmarkPut(2, 1, size, times, 1, client);
+    std::cout << "Percentile:Start benchmark put with ha size:80" << std::endl;
+    HandleClientBenchmarkPut(2, 1, 80, times, 2, client);
+    std::cout << "Percentile:Start benchmark put with ha size:200" << std::endl;
+    HandleClientBenchmarkPut(2, 1, 200, times, 3, client);
+    std::cout << "Percentile:Start benchmark put with ha size:400" << std::endl;
+    HandleClientBenchmarkPut(2, 1, 400, times, 4, client);
+
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:40" << std::endl;
+    HandleClientBenchmarkScan(1, 1, times, 1, client);
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:80" << std::endl;
+    HandleClientBenchmarkScan(1, 1, times, 2, client);
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:200" << std::endl;
+    HandleClientBenchmarkScan(1, 1, times, 3, client);
+    std::cout << "Percentile:Start benchmark Scan 1000 records key size:400" << std::endl;
+    HandleClientBenchmarkScan(1, 1, times, 4, client);
 }
 
 void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {

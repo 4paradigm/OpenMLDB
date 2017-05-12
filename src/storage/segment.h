@@ -106,7 +106,7 @@ public:
         TimeEntries::Iterator* it_;
     };
 
-    // remove out of date data
+    // gc with specify time, delete the data before time 
     uint64_t Gc4TTL(const uint64_t& time);
 
     Segment::Iterator* NewIterator(const std::string& key);

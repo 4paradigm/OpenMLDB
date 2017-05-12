@@ -67,6 +67,7 @@ public:
     }
 
 private:
+
     ::rtidb::api::ScanResponse* response_;
     char* buffer_;
     uint32_t tsize_;

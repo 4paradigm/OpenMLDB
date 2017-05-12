@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project(rtidb)
 
+set(CMAKE_BUILD_TYPE Release)
 set(RTIDB_VERSION_MAJOR 0)
 set(RTIDB_VERSION_MINOR 3)
 set(RTIDB_VERSION_BUG 0)
@@ -21,5 +22,4 @@ set(GCC_COVERAGE_LINK_FLAGS    "-fno-builtin-malloc -fno-builtin-calloc -fno-bui
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 add_subdirectory(src)
-#add_subdirectory(python)
 

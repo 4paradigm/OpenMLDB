@@ -17,9 +17,13 @@ TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
     extension_(NULL), bg_pool_(), throughput_(NULL){
    extension_ = MallocExtension::instance();
    throughput_ = new boost::atomic<uint64_t>[4];
+   // record put counter
    throughput_[0].store(0, boost::memory_order_relaxed);
+   // record put bandwidth
    throughput_[1].store(0, boost::memory_order_relaxed);
+   // record scan counter
    throughput_[2].store(0, boost::memory_order_relaxed);
+   // record scan bandwidth
    throughput_[3].store(0, boost::memory_order_relaxed);
    last_throughput_ = new uint64_t[4];
    last_throughput_[0] = 0;
