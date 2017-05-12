@@ -8,7 +8,6 @@
 #include "tablet/tablet_impl.h"
 
 #include <vector>
-#include <list>
 #include <stdlib.h>
 #include <stdio.h>
 #include <gflags/gflags.h>
@@ -113,7 +112,7 @@ void TabletImpl::Scan(RpcController* controller,
     Table::Iterator* it = table->NewIterator(request->pk());
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
-    std::list<std::pair<uint64_t, DataBlock*> > tmp;
+    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     // TODO(wangtaize) controle the max size
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
@@ -138,7 +137,7 @@ void TabletImpl::Scan(RpcController* controller,
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
-    std::list<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
+    std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
         LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
