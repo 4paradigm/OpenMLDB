@@ -45,13 +45,14 @@ class KvIterator(object):
   the usage 
   it = rtidb_client.scan()
   while (it.valid()):
-      it.next()
       it.get_key()
       it.get_value()
+      it.next()
 
   """
   def __init__(self, it):
     self.it_ = it
+    self.next()
 
   def valid(self):
     return rtidb_so.IteratorValid(self.it_)

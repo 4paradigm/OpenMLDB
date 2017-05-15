@@ -28,6 +28,8 @@ class TestRtidbClient(unittest.TestCase):
     self.assertTrue(ok)
     ok = db.put(102, 1, "pk", 9527, "pk")
     self.assertTrue(ok)
+    ok = db.put(102, 1, "pk", 9527, "pk")
+    self.assertTrue(ok)
     ok = db.put(201, 1, "pk", 9527, "pk")
     self.assertFalse(ok)
 
@@ -42,13 +44,12 @@ class TestRtidbClient(unittest.TestCase):
 
     it = db.scan(103, 1, "pk", 9528, 9527)
     self.assertTrue(it.valid())
-    it.next()
     self.assertEqual(9528, it.get_key())
     self.assertEqual("pk2", it.get_value())
-    self.assertTrue(it.valid())
     it.next()
     self.assertEqual(9527, it.get_key())
     self.assertEqual("pk1", it.get_value())
+    it.next()
     self.assertFalse(it.valid())
 
   def test_drop_table(self):
