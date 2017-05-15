@@ -63,7 +63,6 @@ TEST_F(KvIteratorTest, Iterator) {
     ASSERT_EQ(9528, kv_it.GetKey());
     ASSERT_EQ("hell1", kv_it.GetValue().ToString());
     ASSERT_FALSE(kv_it.Valid());
-
 }
 
 

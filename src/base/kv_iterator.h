@@ -43,7 +43,7 @@ public:
     }
 
     bool Valid() {
-        if (tsize_ < 12 || offset_ >= tsize_ - 12) {
+        if (tsize_ < 12 || offset_ > tsize_ - 12) {
             return false;
         }
         return true;
