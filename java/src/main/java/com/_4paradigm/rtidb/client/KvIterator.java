@@ -21,6 +21,7 @@ public class KvIterator {
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
         this.totalSize = this.bs.size();
+        next();
     }
 
     public boolean valid() {
@@ -40,6 +41,10 @@ public class KvIterator {
     }
 
     public void next() {
+        if (offset + 4 > totalSize) {
+            offset += 4;
+            return;
+        }
         slice = this.bb.slice().asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
         slice.position(offset);
         int size = slice.getInt();

@@ -22,6 +22,7 @@ public:
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         tmp_ = new Slice();
         tsize_ = response->pairs().size();
+        Next();
     }
 
     KvIterator(::rtidb::api::ScanResponse* response,
@@ -43,14 +44,17 @@ public:
     }
 
     bool Valid() {
-        if (tsize_ < 12 || offset_ > tsize_ - 12) {
+        if (tsize_ < 12 || offset_ > tsize_) {
             return false;
         }
         return true;
     }
 
     void Next() {
-        assert(Valid());
+        if (offset_ + 4 > tsize_) {
+            offset_ += 4;
+            return;
+        }
         uint32_t block_size = 0;
         memcpy(static_cast<void*>(&block_size), buffer_, 4);
         buffer_ += 4;

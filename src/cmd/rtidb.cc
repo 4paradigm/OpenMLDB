@@ -166,11 +166,11 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
         std::cout << "#\tTime\tData" << std::endl;
         uint32_t index = 1;
         while (it->Valid()) {
-            it->Next();
             if (print) {
                 std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
             } 
             index ++;
+            it->Next();
         }
         delete it;
     }
