@@ -15,6 +15,7 @@ message PutRequest {
   optional string pk = 1;
   // the subfix key
   optional int64 time = 2;
+
   optional bytes value = 3;
   optional int32 tid = 4;
 }

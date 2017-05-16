@@ -52,7 +52,6 @@ class KvIterator(object):
   """
   def __init__(self, it):
     self.it_ = it
-    self.next()
 
   def valid(self):
     return rtidb_so.IteratorValid(self.it_)

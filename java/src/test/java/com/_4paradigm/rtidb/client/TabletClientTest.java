@@ -64,13 +64,13 @@ public class TabletClientTest {
         it = client.scan(23, "pk", 9527l, 9526l);
         Assert.assertTrue(it != null);
         Assert.assertTrue(it.valid());
-        it.next();
         Assert.assertEquals(9527l, it.getKey());
         ByteBuffer bb = it.getValue();
         Assert.assertEquals(5, bb.limit() - bb.position());
         byte[] buf = new byte[5];
         bb.get(buf);
         Assert.assertEquals("test0", new String(buf));
+        it.next();
         client.close();
     }
 

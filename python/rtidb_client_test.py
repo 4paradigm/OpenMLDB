@@ -47,6 +47,7 @@ class TestRtidbClient(unittest.TestCase):
     self.assertEqual(9528, it.get_key())
     self.assertEqual("pk2", it.get_value())
     it.next()
+    self.assertTrue(it.valid())
     self.assertEqual(9527, it.get_key())
     self.assertEqual("pk1", it.get_value())
     it.next()
