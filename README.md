@@ -46,7 +46,7 @@ Put 1 ok, latency 0 ms
 * [x] 支持数据落地，重启恢复
 * [ ] 支持批量导入，方便离线快速导入数据或者故障快速恢复数据
 * [ ] 支持hashtable存储引擎，在反欺诈场景，获取card/账户信息 这个场景是seek操作，如果使用skiplist，会有性能损失[map vs unordered_map](http://kariddi.blogspot.jp/2012/07/c11-unorderedmap-vs-map.html)
-
+* [ ] 支持手动rebalance
 
 # 特点
 
