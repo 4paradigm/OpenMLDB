@@ -13,7 +13,7 @@ from ctypes import CDLL, byref
 from ctypes import c_char_p,c_int, c_uint32, c_ulong,  string_at
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-rtidb_so = CDLL(dir_path + "/librtidb_py.so")
+rtidb_so = CDLL(os.path.join(dir_path ,"librtidb_py.so"))
 
 class RtidbClient(object):
   def __init__(self, endpoint):
