@@ -5,12 +5,14 @@
 import os
 import sys
 import inspect
+import copy
 import hashlib
 import random
 import string
 import time
 import atest.log as log
 import util as util
+from common_utils.file_util import FileUtils
 from common_utils.process import Process
 sys.path.append(os.path.dirname(util.get('RTIDB_CLIENT_PY')))
 from rtidb_client import RtidbClient
@@ -28,11 +30,12 @@ class ClientContext(object):
     pid =   lambda self, pid: pid
     pk =    lambda self, pk: pk
     time =  lambda self, idx: CTIME + idx
-    stime = lambda self: CTIME
-    etime = lambda self, idx: CTIME + idx
+    stime = lambda self, idx: CTIME + idx
+    etime = lambda self: CTIME - 1
     ttl =   lambda self: 0
     value = lambda self: ''.join(random.sample(string.lowercase+string.digits, 20))
     data_ha = lambda self: False
+    seconds = 1
 
 
 class JobHelper(object):
@@ -70,8 +73,11 @@ class JobHelper(object):
         context = ClientContext()
         sub_dict = lambda data, keys: dict(filter(lambda i: i[0] in keys,
                                                   data.iteritems()))
-        argsList = inspect.getargspec(taskFunc).args
-        argsList.remove('self')
+        try:
+            argsList = inspect.getargspec(taskFunc).args
+            argsList.remove('self')
+        except:
+            argsList = []
         argsVals = []
         for attr in argsList:
             attrFunc = getattr(context, attr)
@@ -86,52 +92,66 @@ class JobHelper(object):
         self.taskList.append([taskFunc, taskParam])
         if self.rtidbClient.put == taskFunc:
             self.idx += 1
+            self.input = [] if self.input is None else self.input
             self.input.append(taskParam)
 
-    def run(self, failonerror=True):
+    def run(self, failonerror=True, autoidentity=True):
         """
 
         :return:
         """
-        ret = True
+        retStatus = True
         for idx, (taskFunc, taskParam) in enumerate(self.taskList):
             try:
                 msg = 'Func=%s, Param=%s' % (str(taskFunc),
                                              str(taskParam))
-                log.info(msg)
+                log.debug(msg)
                 ret = taskFunc(**taskParam)
-                ret = False if 0 == ret else True if 1 == ret else ret
+                # ret = False if 0 == ret else True if 1 == ret else ret
             except Exception as e:
-                msg = 'Task start fail, ' \
+                    msg = 'Task start fail, ' \
                       'message=%s, ' \
                       'args=%s, ' \
                       'param=%s' % (e.message, str(e.args), str(taskParam))
-                raise Exception(msg)
+                    log.info(msg)
+                    if failonerror:
+                        raise Exception(msg)
+                    else:
+                        retStatus = False
             if self.rtidbClient.scan == taskFunc:
                 self._scan_parser(ret)
             else:
                 if not ret:
-                    if failonerror or idx != (len(self.taskList) - 1):
-                        raise Exception('Task run error!')
+                    if failonerror:
+                        raise Exception('%s run error:%s' % (str(taskFunc),
+                                                             str(taskParam)))
                     else:
-                        return False
-        return ret
+                        retStatus = False
+        # common check
+        self._common_check(autoidentity, retStatus)
+
+        # save log file
+        logfile = util.get('RTIDB_LOG')
+        logfileBackup = logfile + '.' + util.inspect_get(self.stack, 'function')
+        FileUtils.cp(logfile, logfileBackup)
+
+        return retStatus
 
     def input_message(self):
         """
 
         :return:
         """
-        return self.input
+        return copy.deepcopy(self.input)
 
     def scanout_message(self):
         """
 
         :return:
         """
-        return self.output
+        return copy.deepcopy(self.output)
 
-    def identify(self, base, compare, inputJunkFunc=None, scanoutJunkFunc=None):
+    def identify(self, input, scanout, inputJunkFunc=None, scanoutJunkFunc=None):
         """
 
         :param baseMap:
@@ -141,25 +161,38 @@ class JobHelper(object):
         """
         retStatus = False
         retMsg = None
-        self.identified = True
 
-        base = filter(inputJunkFunc, base) if inputJunkFunc is not None else base
-        compare = filter(scanoutJunkFunc, compare) if scanoutJunkFunc is not None else compare
+        if all(x is None for x in [input,
+                                   scanout,
+                                   inputJunkFunc,
+                                   scanoutJunkFunc]):
+            retStatus = True
+        else:
+            input = filter(inputJunkFunc, input) if inputJunkFunc is not None else input
+            scanout = filter(scanoutJunkFunc, scanout) if scanoutJunkFunc is not None else scanout
 
-        for i in range(len(base)):
-            keys = base[i].keys()
-            for key in keys:
-                if key in ['value', 'pk']:
-                    continue
-                elif 'time' == key:
-                    base[i]['pk'] = base[i].pop(key)
-                else:
-                    base[i].pop(key)
-        base = sorted(base, key=lambda k: k['pk'], reverse=True)
-        retStatus = True if base == compare else False
-        retMsg = 'Expect:%s, Actual:%s' % (str(base), str(compare))
+            for i in range(len(input)):
+                keys = input[i].keys()
+                for key in keys:
+                    if key in ['value', 'pk']:
+                        continue
+                    elif 'time' == key:
+                        input[i]['pk'] = input[i].pop(key)
+                    else:
+                        input[i].pop(key)
+            input = sorted(input, key=lambda k: k['pk'], reverse=True)
+            retStatus = True if input == scanout else False
+        retMsg = 'Input:%s, Scanout:%s' % (str(input), str(scanout))
+        log.info(retMsg)
 
         return retStatus, retMsg
+
+    def sleep(self, seconds):
+        """
+
+        :return:
+        """
+        time.sleep(seconds)
 
     def _scan_parser(self, it):
         """
@@ -167,6 +200,7 @@ class JobHelper(object):
         :param it:
         :return:
         """
+        self.output = []
         while it.valid():
             self.output.append({'pk': it.get_key(),
                                 'value': it.get_value(),
@@ -179,20 +213,19 @@ class JobHelper(object):
         :return:
         """
         self.taskList = []
-        self.input = []
-        self.output = []
 
+        proc = Process()
+        for cmd in ['CMD_TABLE_STOP', 'CMD_TABLE_START']:
+            cmd = util.get(cmd)
+            proc.run(cmd)
         self.rtidbClient = RtidbClient(endpoint=util.get('ENDPOINT'))
         self.append(self.rtidbClient.drop_table)
-        self.run(failonerror=False)
+        self.run(failonerror=False, autoidentity=False)
 
         self.taskList = []
-        self.input = []
-        self.output = []
         self.pk = ''.join(random.sample(string.lowercase+string.digits, 20))
-        self.identified = False
 
-    def __del__(self):
+    def _common_check(self, autoidentity, retStatus):
         """
 
         :return:
@@ -205,15 +238,19 @@ class JobHelper(object):
         if 0 != retCode:
             raise Exception('Tablet server status error.')
         # 2, warn/error log check
-        logTokens = ['error', 'warn']
-        logfile = util.get('RTIDB_LOG')
-        for token in logTokens:
-            cmd = 'grep -i %(token)s %(logfile)s' % locals()
-            data, error, retCode = proc.run(cmd)
-            if 0 != retCode:
-                raise Exception('Tablet server run %(token)s: %(data)s' % locals())
+        if retStatus:
+            logTokens = ['E ', 'W ']
+            logfile = util.get('RTIDB_LOG')
+            for token in logTokens:
+                cmd = 'grep -E "%(token)s" %(logfile)s' % locals()
+                data, error, retCode = proc.run(cmd)
+                if 0 == retCode:
+                    raise Exception('Tablet server logchecker  %(token)s: %(data)s' % locals())
         # 3, identify
-        if not self.identified:
-            self.identify(self.input_message(), self.scanout_message())
+        if autoidentity and not retStatus:
+            retStatus, retMsg = self.identify(self.input_message(),
+                                              self.scanout_message())
+            if not retStatus:
+                raise Exception('Identify check error:%(retMsg)s' % locals())
 
 
