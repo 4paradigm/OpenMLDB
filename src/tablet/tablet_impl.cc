@@ -95,10 +95,31 @@ void TabletImpl::Put(RpcController* controller,
     }
 }
 
+inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
+    
+    if (request->st() < request->et()) {
+        return false;
+    }
+    return true;
+}
+
+inline bool TabletImpl::CheckCreateRequest(const rtidb::api::CreateTableRequest* request) {
+    if (request->name().size() <= 0) {
+        return false;
+    }
+    return true;
+}
+
 void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
+    if (!CheckScanRequest(request)) {
+        response->set_code(8);
+        response->set_msg("bad scan request");
+        done->Run();
+        return;
+    }
     ::rtidb::api::RpcMetric* metric = response->mutable_metric();
     metric->CopyFrom(request->metric());
     metric->set_rqtime(::baidu::common::timer::get_micros());
@@ -165,6 +186,13 @@ void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
+    if (!CheckCreateRequest(request)) {
+         // table exists
+        response->set_code(8);
+        response->set_msg("table name is empty");
+        done->Run();
+        return;
+    }
     MutexLock lock(&mu_);
     // check table if it exist
     if (tables_.find(request->tid()) != tables_.end()) {

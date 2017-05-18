@@ -54,6 +54,10 @@ class TestRtidbClient(unittest.TestCase):
     self.assertEqual("pk1", it.get_value())
     it.next()
     self.assertFalse(it.valid())
+  def test_scan_no_table(self):
+    db = rtidb_client.RtidbClient(endpoint)
+    it = db.scan(303, 1, "pk", 9528, 9527)
+    self.assertFalse(it.valid())
 
   def test_drop_table(self):
     db = rtidb_client.RtidbClient(endpoint)

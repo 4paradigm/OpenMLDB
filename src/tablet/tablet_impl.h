@@ -77,6 +77,11 @@ private:
 
     void ShowMetric(const sofa::pbrpc::HTTPRequest& request,
             sofa::pbrpc::HTTPResponse& response);
+
+    inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
+    
+    inline bool CheckCreateRequest(const rtidb::api::CreateTableRequest* request);
+
 private:
     std::map<uint32_t, ::rtidb::storage::Table*> tables_;
     Mutex mu_;
