@@ -32,6 +32,7 @@ sh benchmark.sh
 
 cd $WORK_DIR/build && cmake .. -DTCMALLOC_ENABLE=ON && make -j8
 echo "start to do benchmark with tcmalloc"
+cd $WORK_DIR
 sh benchmark.sh
 
 echo "start to build python client"
