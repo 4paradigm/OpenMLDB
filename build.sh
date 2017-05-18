@@ -9,9 +9,9 @@ set -e -u -E # this script will exit if any sub-command fails
 WORK_DIR=`pwd`
 if [ "$1" = "DEBUG" ]
 then
-    sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE DEBUG)' CMakeLists.txt 
+    sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE Debug)' CMakeLists.txt 
 else
-    sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE RELEASE)' CMakeLists.txt 
+    sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE Release)' CMakeLists.txt 
 fi
 
 sh get_deps.sh
