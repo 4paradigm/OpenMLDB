@@ -65,7 +65,6 @@ public:
     }
 
     ~Node() {
-        //TODO(wangtaize) free memory 
         delete[] nexts_;
     }
 private:
