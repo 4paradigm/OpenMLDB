@@ -49,12 +49,12 @@ struct TimeComparator {
 const static TimeComparator tcmp;
 typedef ::rtidb::base::Skiplist<uint64_t, DataBlock* , TimeComparator> TimeEntries;
 
-struct HashEntry {
+struct KeyEntry {
     std::string key;
     TimeEntries entries;
     Mutex mu;
-    HashEntry():entries(12, 4, tcmp),mu(){}
-    ~HashEntry() {
+    KeyEntry():entries(12, 4, tcmp),mu(){}
+    ~KeyEntry() {
         TimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
         while(it->Valid()) {
@@ -71,7 +71,7 @@ struct StringComparator {
     }
 };
 
-typedef ::rtidb::base::Skiplist<std::string, HashEntry*, StringComparator> HashEntries;
+typedef ::rtidb::base::Skiplist<std::string, KeyEntry*, StringComparator> KeyEntries;
 
 class Segment {
 
@@ -118,7 +118,7 @@ public:
         return data_cnt_.load(boost::memory_order_relaxed);
     }
 private:
-    HashEntries* entries_;
+    KeyEntries* entries_;
     // only Put need mutex
     Mutex mu_;
     boost::atomic<uint64_t> data_byte_size_;

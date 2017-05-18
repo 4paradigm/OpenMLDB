@@ -133,7 +133,11 @@ void TabletImpl::Scan(RpcController* controller,
     metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
-    pairs->resize(total_size);
+    if (tmp.size() <= 0) {
+        pairs->resize(0);
+    }else {
+        pairs->resize(total_size);
+    }
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;

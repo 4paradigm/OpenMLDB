@@ -30,6 +30,8 @@ class TestRtidbClient(unittest.TestCase):
     self.assertTrue(ok)
     ok = db.put(102, 1, "pk", 9527, "pk")
     self.assertTrue(ok)
+    ok = db.put(102, 1, "pk", 9527, 9527)
+    self.assertTrue(ok)
     ok = db.put(201, 1, "pk", 9527, "pk")
     self.assertFalse(ok)
 

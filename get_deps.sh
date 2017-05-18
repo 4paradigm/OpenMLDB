@@ -5,8 +5,7 @@ set -e -u -E # this script will exit if any sub-command fails
 ########################################
 # download & build depend software
 ########################################
-
-
+STAGE="release"
 WORK_DIR=`pwd`
 DEPS_SOURCE=`pwd`/thirdsrc
 DEPS_PREFIX=`pwd`/thirdparty
@@ -166,7 +165,14 @@ else
     wget --no-check-certificate -O gperftools-2.5.tar.gz https://github.com/gperftools/gperftools/releases/download/gperftools-2.5/gperftools-2.5.tar.gz 
     tar -zxvf gperftools-2.5.tar.gz 
     cd gperftools-2.5 
-    ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
+    if [ "$STAGE" = 'DEBUG' ]
+    then
+        echo "debug stage"
+        ./configure --enable-shared=no --prefix=${DEPS_PREFIX} 
+    else
+        echo "prod stage"
+        ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
+    fi
     make -j2 >/dev/null
     make install
     cd -

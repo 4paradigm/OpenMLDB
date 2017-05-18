@@ -101,6 +101,7 @@ TEST_F(TabletImplTest, Scan) {
     sr.set_limit(10);
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(0, srp.pairs().size());
     ASSERT_EQ(10, srp.code());
 
     sr.set_tid(1);
@@ -203,7 +204,6 @@ TEST_F(TabletImplTest, DropTable) {
             &closure);
 
     ASSERT_EQ(10, presponse.code());
-
 
 }
 

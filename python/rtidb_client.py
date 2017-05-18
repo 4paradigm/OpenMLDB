@@ -25,8 +25,12 @@ class RtidbClient(object):
     return False
 
   def put(self, tid, pid, pk, time, value):
-    if rtidb_so.Put(self.db_, tid, pid, pk, time, value):
-      return True
+    if type(value) is not str:
+      if rtidb_so.Put(self.db_, tid, pid, pk, time, str(value)):
+        return True
+    else:
+      if rtidb_so.Put(self.db_, tid, pid, pk, time, value):
+        return True
     return False
 
   def scan(self, tid, pid, pk, stime, etime):
