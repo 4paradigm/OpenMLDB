@@ -29,7 +29,7 @@ Segment::~Segment() {
     delete entries_;
 }
 
-uint64_t Segment::Relase() {
+uint64_t Segment::Release() {
     uint64_t total_bytes = 0;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();

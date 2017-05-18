@@ -27,11 +27,14 @@ cd $WORK_DIR
 echo "start to do core ut ....."
 sh ut.sh
 
-echo "start to do benchmark"
+echo "start to do benchmark without tcmalloc"
+sh benchmark.sh
+
+cd $WORK_DIR/build && cmake .. -DTCMALLOC_ENABLE=ON && make -j8
+echo "start to do benchmark with tcmalloc"
 sh benchmark.sh
 
 echo "start to build python client"
-
 sh build_python_client.sh
 
 echo "start to build java client"

@@ -21,10 +21,17 @@ public:
     ~SegmentTest() {}
 };
 
-TEST_F(SegmentTest, TestFree) {
+TEST_F(SegmentTest, TestRelease) {
     Segment* seg2 = new Segment();
+    const char* test = "test";
+    seg2->Put(test, 9527, test, 4);
+    uint64_t size = seg2->Release();
+    // 4 bytes pk size
+    // 4 bytes value size
+    // 8 bytes time size
+    // 4 bytes value size size
+    ASSERT_EQ(4 + 4 + 8 + 4, size);
     delete seg2;
-
 }
 
 TEST_F(SegmentTest, PutAndGet) {

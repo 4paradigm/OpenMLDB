@@ -235,12 +235,16 @@ void TabletImpl::DropTable(RpcController* controller,
         done->Run();
         return;
     }
-    MutexLock lock(&mu_);
-    LOG(INFO, "delete table %d", request->tid());
-    tables_.erase(request->tid());
-    response->set_code(0);
-    // do not block request
-    done->Run();
+    uint32_t tid = request->tid();
+    // do block other requests
+    {
+        MutexLock lock(&mu_);
+        tables_.erase(request->tid());
+        response->set_code(0);
+        done->Run();
+    }
+    uint64_t size = table->Release();
+    LOG(INFO, "delete table %d with bytes %lld released", tid, size);
     // unref table, let it release memory
     table->UnRef();
     table->UnRef();
