@@ -53,6 +53,7 @@ public:
              uint64_t etime,
              bool showm = false);
 
+    void ReleaseMemory();
 
     bool DropTable(const uint32_t id);
 

@@ -103,10 +103,18 @@ message TableRow {
   optional uint64 time = 3;
 }
 
+message RelMemRequest {}
+message RelMemResponse {}
+
+
 service TabletServer {
   rpc Put(PutRequest) returns (PutResponse);
   rpc Scan(ScanRequest) returns (ScanResponse);
   rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
   rpc DropTable(DropTableRequest) returns (DropTableResponse);
+
+  // this a system api
+  rpc RelMem(RelMemRequest) returns (RelMemResponse);
+
 }
 

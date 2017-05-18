@@ -1,9 +1,11 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-if (CMAKE_BUILD_TYPE MATCHES Release)
-    set(tc_lib tcmalloc_minimal)
-else()
-    set(tc_lib tcmalloc)
+if (TCMALLOC_ENABLE)
+    if (CMAKE_BUILD_TYPE MATCHES Release)
+        set(tc_lib tcmalloc_minimal)
+    else()
+        set(tc_lib tcmalloc)
+    endif()
 endif()
 
 add_library(tablet STATIC proto/tablet.pb.cc tablet/table_ha.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)

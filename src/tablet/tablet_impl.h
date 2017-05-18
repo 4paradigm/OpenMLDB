@@ -53,6 +53,10 @@ public:
             ::rtidb::api::DropTableResponse* response,
             Closure* done);
 
+    void RelMem(RpcController* controller,
+            const ::rtidb::api::RelMemRequest* request,
+            ::rtidb::api::RelMemResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom

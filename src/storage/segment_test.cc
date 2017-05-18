@@ -8,7 +8,6 @@
 #include <iostream>
 #include "storage/segment.h"
 
-#include "gperftools/malloc_extension.h"
 #include "gtest/gtest.h"
 #include "logging.h"
 
@@ -22,10 +21,17 @@ public:
     ~SegmentTest() {}
 };
 
-TEST_F(SegmentTest, TestFree) {
+TEST_F(SegmentTest, TestRelease) {
     Segment* seg2 = new Segment();
+    const char* test = "test";
+    seg2->Put(test, 9527, test, 4);
+    uint64_t size = seg2->Release();
+    // 4 bytes pk size
+    // 4 bytes value size
+    // 8 bytes time size
+    // 4 bytes value size size
+    ASSERT_EQ(4 + 4 + 8 + 4, size);
     delete seg2;
-
 }
 
 TEST_F(SegmentTest, PutAndGet) {
@@ -38,7 +44,7 @@ TEST_F(SegmentTest, PutAndGet) {
    ASSERT_TRUE(ret);
    ASSERT_TRUE(db != NULL);
    ASSERT_EQ(4, db->size);
-   std::string t(db->data);
+   std::string t(db->data, db->size);
    std::string e = "test";
    ASSERT_EQ(e, t);
 }
@@ -59,20 +65,11 @@ TEST_F(SegmentTest, Iterator) {
    ASSERT_EQ("test1", result2);
    it->Next();
    ASSERT_FALSE(it->Valid());
-   size_t allocated = 0;
    char data[400];
    for (uint32_t i = 0; i < 50000; i++) {
        std::string pk = "pk" + i;
        segment.Put(pk, i, data, 400);
    }
-   MallocExtension* extension = MallocExtension::instance();
-   char stat[2000];
-   extension->GetStats(stat, 2000);
-   std::string stat_str(stat);
-   std::cout << stat_str << std::endl;
-   extension->GetNumericProperty("generic.current_allocated_bytes", &allocated);
-   std::cout << allocated << std::endl;
-
 }
 
 TEST_F(SegmentTest, TestGc4TTL) {

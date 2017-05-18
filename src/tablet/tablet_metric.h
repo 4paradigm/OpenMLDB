@@ -38,7 +38,6 @@ private:
     void Collect();
 private:
     ::rtidb::storage::Table* stat_;
-    MallocExtension* extension_;
     ThreadPool bg_pool_;
 
     // throughput 

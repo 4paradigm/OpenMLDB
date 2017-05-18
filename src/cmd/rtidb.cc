@@ -269,6 +269,10 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
     }
 }
 
+void HandleClientRelMem(::rtidb::client::TabletClient* client) {
+    client->ReleaseMemory();
+}
+
 void StartClient() {
     //::baidu::common::SetLogLevel(DEBUG);
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
@@ -301,6 +305,8 @@ void StartClient() {
             HandleClientBenchmark(&client);
         }else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
+        }else if (parts[0] == "relmem") {
+            HandleClientRelMem(&client);
         }
         if (!FLAGS_interactive) {
             return;

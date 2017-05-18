@@ -64,6 +64,16 @@ void Table::UnRef() {
     }
 }
 
+uint64_t Table::Release() {
+    uint64_t total_bytes = 0;
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        if (segments_[i] != NULL) {
+            total_bytes += segments_[i]->Release();
+        }
+    }
+    return total_bytes;
+}
+
 void Table::SetGcSafeOffset(uint64_t offset) {
     ttl_offset_ = offset;
 }

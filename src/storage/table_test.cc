@@ -27,6 +27,18 @@ TEST_F(TableTest, Put) {
     table->UnRef();
 }
 
+TEST_F(TableTest, Release) {
+    Table* table = new Table("tx_log", 1, 1, 8, 10);
+    table->Ref();
+    table->Init();
+    table->Put("test", 9537, "test", 4);
+    table->Put("test2", 9537, "test", 4);
+    uint64_t size = table->Release();
+    ASSERT_EQ(4 + 8 + 4 + 4 + 5 + 8 + 4 + 4, size);
+    table->UnRef();
+}
+
+
 TEST_F(TableTest, Iterator) {
     Table* table = new Table("tx_log", 1, 1, 8, 10);
     table->Ref();
