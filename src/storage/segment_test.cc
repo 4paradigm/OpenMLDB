@@ -44,7 +44,7 @@ TEST_F(SegmentTest, PutAndGet) {
    ASSERT_TRUE(ret);
    ASSERT_TRUE(db != NULL);
    ASSERT_EQ(4, db->size);
-   std::string t(db->data);
+   std::string t(db->data, db->size);
    std::string e = "test";
    ASSERT_EQ(e, t);
 }
