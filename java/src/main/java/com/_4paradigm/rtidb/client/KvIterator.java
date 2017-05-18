@@ -25,7 +25,7 @@ public class KvIterator {
     }
 
     public boolean valid() {
-        if (offset < totalSize) {
+        if (offset <= totalSize) {
             return true;
         }
         return false;
