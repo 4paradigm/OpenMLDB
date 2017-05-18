@@ -7,6 +7,7 @@
 
 #include "tablet/tablet_impl.h"
 
+#include "config.h"
 #include <vector>
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,6 +15,9 @@
 #include <boost/bind.hpp>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#ifdef TCMALLOC_ENABLE 
+#include "gperftools/malloc_extension.h"
+#endif
 #include "base/codec.h"
 #include "base/strings.h"
 #include "logging.h"
@@ -240,6 +244,16 @@ void TabletImpl::DropTable(RpcController* controller,
     // unref table, let it release memory
     table->UnRef();
     table->UnRef();
+}
+
+void TabletImpl::RelMem(RpcController* controller,
+        const ::rtidb::api::RelMemRequest*,
+        ::rtidb::api::RelMemResponse*,
+        Closure* done) {
+#ifdef TCMALLOC_ENABLE
+    MallocExtension* tcmalloc = MallocExtension::instance();
+    tcmalloc->ReleaseFreeMemory();
+#endif
 }
 
 

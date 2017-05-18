@@ -26,14 +26,23 @@ Segment::Segment():entries_(NULL),mu_(),
 
 
 Segment::~Segment() {
+    delete entries_;
+}
+
+uint64_t Segment::Relase() {
+    uint64_t total_bytes = 0;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
+        if (it->GetValue() != NULL) {
+            total_bytes += it->GetValue()->Release();
+            total_bytes += it->GetKey().size();
+        }
         delete it->GetValue();
         it->Next();
     }
     delete it;
-    delete entries_;
+    return total_bytes;
 }
 
 void Segment::Put(const std::string& key,

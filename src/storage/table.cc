@@ -56,12 +56,19 @@ void Table::Ref() {
 void Table::UnRef() {
     ref_.fetch_sub(1, boost::memory_order_acquire);
     if (ref_.load(boost::memory_order_relaxed) <= 0) {
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            delete segments_[i];
-        }
         delete[] segments_;
         delete this;
     }
+}
+
+uint64_t Table::Release() {
+    uint64_t total_bytes = 0;
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        if (segments_[i] != NULL) {
+            total_bytes += segments_[i]->Release();
+        }
+    }
+    return total_bytes;
 }
 
 void Table::SetGcSafeOffset(uint64_t offset) {

@@ -5,8 +5,11 @@
 // Date 2017-04-18
 //
 
+#include "config.h"
 #include "tablet/tablet_metric.h"
-
+#ifdef TCMALLOC_ENABLE
+#include "gperftools/malloc_extension.h"
+#endif
 #include <boost/bind.hpp>
 #include "time.h"
 
@@ -14,8 +17,7 @@ namespace rtidb {
 namespace tablet {
 
 TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
-    extension_(NULL), bg_pool_(), throughput_(NULL){
-   extension_ = MallocExtension::instance();
+    bg_pool_(), throughput_(NULL){
    throughput_ = new boost::atomic<uint64_t>[4];
    // record put counter
    throughput_[0].store(0, boost::memory_order_relaxed);
@@ -96,9 +98,11 @@ void TabletMetric::Collect() {
 }
 
 void TabletMetric::CollectMemoryStat() {
+#ifdef TCMALLOC_ENABLE
     uint64_t now = ::baidu::common::timer::now_time();
     char buffer[4];
     size_t allocated = 0;
+    MallocExtension* extension_ = MallocExtension::instance();
     extension_->GetNumericProperty("generic.current_allocated_bytes", &allocated);
     memcpy(buffer, static_cast<const void*>(&allocated), 4);
     stat_->Put("mem.allocated", now, buffer, 4);
@@ -110,6 +114,7 @@ void TabletMetric::CollectMemoryStat() {
     extension_->GetNumericProperty("tcmalloc.pageheap_free_bytes", &heap_free);
     memcpy(buffer, static_cast<const void*>(&heap_free), 4);
     stat_->Put("mem.heap_free", now, buffer, 4);
+#endif
 }
 
 }

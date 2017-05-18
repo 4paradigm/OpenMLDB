@@ -8,7 +8,6 @@
 #include <iostream>
 #include "storage/segment.h"
 
-#include "gperftools/malloc_extension.h"
 #include "gtest/gtest.h"
 #include "logging.h"
 
@@ -59,20 +58,11 @@ TEST_F(SegmentTest, Iterator) {
    ASSERT_EQ("test1", result2);
    it->Next();
    ASSERT_FALSE(it->Valid());
-   size_t allocated = 0;
    char data[400];
    for (uint32_t i = 0; i < 50000; i++) {
        std::string pk = "pk" + i;
        segment.Put(pk, i, data, 400);
    }
-   MallocExtension* extension = MallocExtension::instance();
-   char stat[2000];
-   extension->GetStats(stat, 2000);
-   std::string stat_str(stat);
-   std::cout << stat_str << std::endl;
-   extension->GetNumericProperty("generic.current_allocated_bytes", &allocated);
-   std::cout << allocated << std::endl;
-
 }
 
 TEST_F(SegmentTest, TestGc4TTL) {
