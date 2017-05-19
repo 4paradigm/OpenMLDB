@@ -11,7 +11,6 @@
 
 #include "storage/table.h"
 
-#include "gperftools/malloc_extension.h"
 #include <boost/atomic.hpp>
 #include "thread_pool.h"
 
