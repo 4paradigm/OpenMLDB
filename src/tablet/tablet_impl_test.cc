@@ -7,6 +7,7 @@
 
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
+#include "base/kv_iterator.h"
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "timer.h"
@@ -29,6 +30,67 @@ public:
     TabletImplTest() {}
     ~TabletImplTest() {}
 };
+
+TEST_F(TabletImplTest, TTL) {
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    TabletImpl tablet;
+    tablet.Init();
+    ::rtidb::api::CreateTableRequest request;
+    request.set_name("t0");
+    request.set_tid(1);
+    request.set_pid(1);
+    // 1 minutes
+    request.set_ttl(1);
+
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(now);
+        prequest.set_value("test1");
+        prequest.set_tid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+    }
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(now - 2 * 60 * 1000);
+        prequest.set_value("test2");
+        prequest.set_tid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    {
+        ::rtidb::api::ScanRequest sr;
+        sr.set_tid(1);
+        sr.set_pk("test1");
+        sr.set_st(now);
+        sr.set_et(now - 3 * 60 * 1000);
+        ::rtidb::api::ScanResponse* srp = new ::rtidb::api::ScanResponse();
+        tablet.Scan(NULL, &sr, srp, &closure);
+        
+        ASSERT_EQ(1, srp->count());
+
+        ::rtidb::base::KvIterator it(srp);
+        ASSERT_TRUE(it.Valid());
+        ASSERT_EQ(now , it.GetKey());
+        ASSERT_EQ("test1", it.GetValue().ToString());
+        it.Next();
+        ASSERT_FALSE(it.Valid());
+    }
+
+}
+
 
 
 TEST_F(TabletImplTest, CreateTable) {
