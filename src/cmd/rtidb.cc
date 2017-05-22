@@ -77,16 +77,22 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
         std::cout << "Bad put format" << std::endl;
         return;
     }
-    bool ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]),
-                        boost::lexical_cast<uint32_t>(parts[2]),
-                        parts[3],
-                        boost::lexical_cast<uint64_t>(parts[4]),
-                        parts[5]);
-    if (ok) {
-        std::cout << "Put ok" << std::endl;
-    }else {
-        std::cout << "Put failed" << std::endl; 
-    }
+    try {
+        bool ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]),
+                            boost::lexical_cast<uint32_t>(parts[2]),
+                            parts[3],
+                            boost::lexical_cast<uint64_t>(parts[4]),
+                            parts[5]);
+        if (ok) {
+            std::cout << "Put ok" << std::endl;
+        }else {
+            std::cout << "Put failed" << std::endl; 
+        }
+
+    
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
+    } 
 }
 
 void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
@@ -124,13 +130,19 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
             ha = true;
         }
     }
-    bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-            boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]),
-            ha);
-    if (!ok) {
-        std::cout << "Fail to create table" << std::endl;
-    }else {
-        std::cout << "Create table ok" << std::endl;
+    try {
+    
+        bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
+                boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]),
+                ha);
+        if (!ok) {
+            std::cout << "Fail to create table" << std::endl;
+        }else {
+            std::cout << "Create table ok" << std::endl;
+        }
+
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args, tid , pid or ttl should be uint32_t" << std::endl;
     }
 }
 
@@ -149,30 +161,35 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
         std::cout << "Bad scan format" << std::endl;
         return;
     }
-    ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
-            boost::lexical_cast<uint32_t>(parts[2]),
-            parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
-            boost::lexical_cast<uint64_t>(parts[5]),
-            false);
-    if (it == NULL) {
-        std::cout << "Fail to scan table" << std::endl;
-    }else {
-        bool print = true;
-        if (parts.size() >= 7) {
-            if (parts[6] == "false") {
-                print = false;
+    try {
+        ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
+                boost::lexical_cast<uint32_t>(parts[2]),
+                parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
+                boost::lexical_cast<uint64_t>(parts[5]),
+                false);
+        if (it == NULL) {
+            std::cout << "Fail to scan table" << std::endl;
+        }else {
+            bool print = true;
+            if (parts.size() >= 7) {
+                if (parts[6] == "false") {
+                    print = false;
+                }
             }
+            std::cout << "#\tTime\tData" << std::endl;
+            uint32_t index = 1;
+            while (it->Valid()) {
+                if (print) {
+                    std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
+                } 
+                index ++;
+                it->Next();
+            }
+            delete it;
         }
-        std::cout << "#\tTime\tData" << std::endl;
-        uint32_t index = 1;
-        while (it->Valid()) {
-            if (print) {
-                std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
-            } 
-            index ++;
-            it->Next();
-        }
-        delete it;
+
+    } catch (std::exception const& e) {
+        std::cout<< "Invalid args, tid pid should be uint32_t, st and et should be uint64_t" << std::endl;
     }
 }
 
