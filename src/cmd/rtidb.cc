@@ -124,13 +124,19 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
             ha = true;
         }
     }
-    bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-            boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]),
-            ha);
-    if (!ok) {
-        std::cout << "Fail to create table" << std::endl;
-    }else {
-        std::cout << "Create table ok" << std::endl;
+    try {
+    
+        bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
+                boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]),
+                ha);
+        if (!ok) {
+            std::cout << "Fail to create table" << std::endl;
+        }else {
+            std::cout << "Create table ok" << std::endl;
+        }
+
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args, tid , pid or ttl should be uint32_t" << std::endl;
     }
 }
 
