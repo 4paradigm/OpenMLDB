@@ -23,6 +23,7 @@ public:
 
 };
 
+
 struct Comparator {
     int operator()(const uint32_t a, const uint32_t b) const {
         if (a > b) {
@@ -99,13 +100,33 @@ TEST_F(SkiplistTest, Iterator) {
     it->Seek(0);
     ASSERT_FALSE(it->Valid());
     delete it;
-    uint32_t key = 1;
-    uint32_t value=  2;
-    sl.Insert(key, value);
+    {
+        uint32_t key = 1;
+        uint32_t value=  2;
+        sl.Insert(key, value);
+    }
+    {
+        uint32_t key = 2;
+        uint32_t value=  3;
+        sl.Insert(key, value);
+    }
+    {
+        uint32_t key = 3;
+        uint32_t value=  4;
+        sl.Insert(key, value);
+    }
     it = sl.NewIterator();
     it->SeekToFirst();
     ASSERT_EQ(1, it->GetKey());
     ASSERT_EQ(2, it->GetValue());
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(2, it->GetKey());
+    ASSERT_EQ(3, it->GetValue());
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(3, it->GetKey());
+    ASSERT_EQ(4, it->GetValue());
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -155,6 +176,20 @@ TEST_F(SkiplistTest, Iterator2) {
     it->Next();
     ASSERT_FALSE(it->Valid());
 }
+
+TEST_F(SkiplistTest, Clear) {
+    StrComparator cmp;
+    Skiplist<std::string, std::string, StrComparator> sl(12, 4, cmp);
+    std::string k = "h";
+    std::string v= "b";
+    sl.Insert(k, v);
+    std::string k1 = "a";
+    std::string v2="b";
+    sl.Insert(k1, v2);
+    ASSERT_EQ(2,sl.Clear());
+}
+
+
 
 TEST_F(SkiplistTest, Get) {
     Comparator cmp;

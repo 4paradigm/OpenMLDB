@@ -41,6 +41,7 @@ uint64_t Segment::Release() {
         delete it->GetValue();
         it->Next();
     }
+    entries_->Clear();
     delete it;
     return total_bytes;
 }

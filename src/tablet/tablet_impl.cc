@@ -81,7 +81,7 @@ void TabletImpl::Put(RpcController* controller,
         row.set_data(request->value());
         row.set_time(request->time());
     }
-    uint64_t size = request->value().length();
+    uint64_t size = request->value().size();
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
     response->set_code(0);
@@ -105,6 +105,12 @@ inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request)
 
 inline bool TabletImpl::CheckCreateRequest(const rtidb::api::CreateTableRequest* request) {
     if (request->name().size() <= 0) {
+        return false;
+    }
+    if (request->tid() <= 0) {
+        return false;
+    }
+    if (request->pid() <= 0) {
         return false;
     }
     return true;
@@ -148,7 +154,7 @@ void TabletImpl::Scan(RpcController* controller,
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     while (it->Valid()) {
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
-        if (it->GetKey() < end_time) {
+        if (it->GetKey() <= end_time) {
             break;
         }
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
