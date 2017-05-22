@@ -61,6 +61,9 @@ public:
 
     void UnRef();
 
+    // release all memory allocated
+    uint64_t Release();
+
     uint64_t SchedGc();
 
     uint32_t GetTTL() const {

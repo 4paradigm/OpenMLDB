@@ -25,12 +25,17 @@ class RtidbClient(object):
     return False
 
   def put(self, tid, pid, pk, time, value):
-    if rtidb_so.Put(self.db_, tid, pid, pk, time, value):
-      return True
+    if type(value) is not str:
+      if rtidb_so.Put(self.db_, tid, pid, pk, time, str(value)):
+        return True
+    else:
+      if rtidb_so.Put(self.db_, tid, pid, pk, time, value):
+        return True
     return False
 
   def scan(self, tid, pid, pk, stime, etime):
-    return KvIterator(rtidb_so.Scan(self.db_, tid, pid, pk, stime, etime))
+    it = rtidb_so.Scan(self.db_, tid, pid, pk, stime, etime)
+    return KvIterator(it)
 
   def drop_table(self, tid):
     if rtidb_so.DropTable(self.db_, tid):
@@ -55,7 +60,9 @@ class KvIterator(object):
     self.it_ = it
 
   def valid(self):
-    return rtidb_so.IteratorValid(self.it_)
+    if self.it_:
+      return rtidb_so.IteratorValid(self.it_)
+    return False
 
   def next(self):
     rtidb_so.IteratorNext(self.it_)
@@ -74,4 +81,5 @@ class KvIterator(object):
     return value
 
   def __del__(self):
-    rtidb_so.IteratorFree(self.it_)
+    if self.it_:
+      rtidb_so.IteratorFree(self.it_)

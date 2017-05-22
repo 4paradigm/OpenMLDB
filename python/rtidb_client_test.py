@@ -30,6 +30,8 @@ class TestRtidbClient(unittest.TestCase):
     self.assertTrue(ok)
     ok = db.put(102, 1, "pk", 9527, "pk")
     self.assertTrue(ok)
+    ok = db.put(102, 1, "pk", 9527, 9527)
+    self.assertTrue(ok)
     ok = db.put(201, 1, "pk", 9527, "pk")
     self.assertFalse(ok)
 
@@ -51,6 +53,10 @@ class TestRtidbClient(unittest.TestCase):
     self.assertEqual(9527, it.get_key())
     self.assertEqual("pk1", it.get_value())
     it.next()
+    self.assertFalse(it.valid())
+  def test_scan_no_table(self):
+    db = rtidb_client.RtidbClient(endpoint)
+    it = db.scan(303, 1, "pk", 9528, 9527)
     self.assertFalse(it.valid())
 
   def test_drop_table(self):

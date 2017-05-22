@@ -7,6 +7,7 @@
 
 #include "tablet/tablet_impl.h"
 
+#include "config.h"
 #include <vector>
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,6 +15,9 @@
 #include <boost/bind.hpp>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#ifdef TCMALLOC_ENABLE 
+#include "gperftools/malloc_extension.h"
+#endif
 #include "base/codec.h"
 #include "base/strings.h"
 #include "logging.h"
@@ -81,7 +85,7 @@ void TabletImpl::Put(RpcController* controller,
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
     response->set_code(0);
-    LOG(DEBUG, "put key %s ok", request->pk().c_str());
+    LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     table->UnRef();
     done->Run();
     metric_->IncrThroughput(1, size, 0, 0);
@@ -91,10 +95,31 @@ void TabletImpl::Put(RpcController* controller,
     }
 }
 
+inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
+    
+    if (request->st() < request->et()) {
+        return false;
+    }
+    return true;
+}
+
+inline bool TabletImpl::CheckCreateRequest(const rtidb::api::CreateTableRequest* request) {
+    if (request->name().size() <= 0) {
+        return false;
+    }
+    return true;
+}
+
 void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
+    if (!CheckScanRequest(request)) {
+        response->set_code(8);
+        response->set_msg("bad scan request");
+        done->Run();
+        return;
+    }
     ::rtidb::api::RpcMetric* metric = response->mutable_metric();
     metric->CopyFrom(request->metric());
     metric->set_rqtime(::baidu::common::timer::get_micros());
@@ -133,7 +158,11 @@ void TabletImpl::Scan(RpcController* controller,
     metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
-    pairs->resize(total_size);
+    if (tmp.size() <= 0) {
+        pairs->resize(0);
+    }else {
+        pairs->resize(total_size);
+    }
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
@@ -157,6 +186,13 @@ void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
+    if (!CheckCreateRequest(request)) {
+         // table exists
+        response->set_code(8);
+        response->set_msg("table name is empty");
+        done->Run();
+        return;
+    }
     MutexLock lock(&mu_);
     // check table if it exist
     if (tables_.find(request->tid()) != tables_.end()) {
@@ -227,15 +263,29 @@ void TabletImpl::DropTable(RpcController* controller,
         done->Run();
         return;
     }
-    MutexLock lock(&mu_);
-    LOG(INFO, "delete table %d", request->tid());
-    tables_.erase(request->tid());
-    response->set_code(0);
-    // do not block request
-    done->Run();
+    uint32_t tid = request->tid();
+    // do block other requests
+    {
+        MutexLock lock(&mu_);
+        tables_.erase(request->tid());
+        response->set_code(0);
+        done->Run();
+    }
+    uint64_t size = table->Release();
+    LOG(INFO, "delete table %d with bytes %lld released", tid, size);
     // unref table, let it release memory
     table->UnRef();
     table->UnRef();
+}
+
+void TabletImpl::RelMem(RpcController* controller,
+        const ::rtidb::api::RelMemRequest*,
+        ::rtidb::api::RelMemResponse*,
+        Closure* done) {
+#ifdef TCMALLOC_ENABLE
+    MallocExtension* tcmalloc = MallocExtension::instance();
+    tcmalloc->ReleaseFreeMemory();
+#endif
 }
 
 

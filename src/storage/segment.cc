@@ -21,32 +21,41 @@ const static uint32_t data_block_size = sizeof(DataBlock);
 
 Segment::Segment():entries_(NULL),mu_(),
     data_byte_size_(0), data_cnt_(0){
-    entries_ = new HashEntries(12, 4, scmp);
+    entries_ = new KeyEntries(12, 4, scmp);
 }
 
 
 Segment::~Segment() {
-    HashEntries::Iterator* it = entries_->NewIterator();
+    delete entries_;
+}
+
+uint64_t Segment::Release() {
+    uint64_t total_bytes = 0;
+    KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
+        if (it->GetValue() != NULL) {
+            total_bytes += it->GetValue()->Release();
+            total_bytes += it->GetKey().size();
+        }
         delete it->GetValue();
         it->Next();
     }
     delete it;
-    delete entries_;
+    return total_bytes;
 }
 
 void Segment::Put(const std::string& key,
         const uint64_t& time,
         const char* data,
         uint32_t size) {
-    HashEntry* entry = entries_->Get(key);
+    KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         MutexLock lock(&mu_);
         entry = entries_->Get(key);
         // Need a double check
         if (entry == NULL || key.compare(entry->key) != 0) {
-            entry = new HashEntry();
+            entry = new KeyEntry();
             entry->key = key;
             entries_->Insert(key, entry);
         }
@@ -65,7 +74,7 @@ bool Segment::Get(const std::string& key,
         return false;
     }
 
-    HashEntry* entry = entries_->Get(key);
+    KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key) !=0) {
         return false;
     }
@@ -78,10 +87,10 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t freed_data_byte_size = 0;
     uint64_t count = 0;
-    HashEntries::Iterator* it = entries_->NewIterator();
+    KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        HashEntry* entry = it->GetValue();
+        KeyEntry* entry = it->GetValue();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             MutexLock lock(&entry->mu);
@@ -117,7 +126,7 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
 
 // Iterator
 Segment::Iterator* Segment::NewIterator(const std::string& key) {
-    HashEntry* entry = entries_->Get(key);
+    KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         return NULL;
     }

@@ -16,6 +16,8 @@
 namespace rtidb {
 namespace storage {
 
+class Segment;
+
 using ::baidu::common::Mutex;
 using ::baidu::common::MutexLock;
 
@@ -49,20 +51,31 @@ struct TimeComparator {
 const static TimeComparator tcmp;
 typedef ::rtidb::base::Skiplist<uint64_t, DataBlock* , TimeComparator> TimeEntries;
 
-struct HashEntry {
-    std::string key;
-    TimeEntries entries;
-    Mutex mu;
-    HashEntry():entries(12, 4, tcmp),mu(){}
-    ~HashEntry() {
+class KeyEntry {
+public:
+    KeyEntry():entries(12, 4, tcmp),mu(){}
+    ~KeyEntry() {}
+
+    uint64_t Release() {
+        uint64_t release_bytes = 0;
         TimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
         while(it->Valid()) {
+            // 4 bytes data size, 8 bytes key size 
+            release_bytes += (4 + 8 + it->GetValue()->size);
             delete it->GetValue();
             it->Next();
         }
         delete it;
+        return release_bytes;
     }
+
+private:
+    std::string key;
+    TimeEntries entries;
+    Mutex mu;
+    friend Segment;
+
 };
 
 struct StringComparator {
@@ -71,7 +84,7 @@ struct StringComparator {
     }
 };
 
-typedef ::rtidb::base::Skiplist<std::string, HashEntry*, StringComparator> HashEntries;
+typedef ::rtidb::base::Skiplist<std::string, KeyEntry*, StringComparator> KeyEntries;
 
 class Segment {
 
@@ -106,6 +119,8 @@ public:
         TimeEntries::Iterator* it_;
     };
 
+    uint64_t Release();
+
     // gc with specify time, delete the data before time 
     uint64_t Gc4TTL(const uint64_t& time);
 
@@ -118,7 +133,7 @@ public:
         return data_cnt_.load(boost::memory_order_relaxed);
     }
 private:
-    HashEntries* entries_;
+    KeyEntries* entries_;
     // only Put need mutex
     Mutex mu_;
     boost::atomic<uint64_t> data_byte_size_;

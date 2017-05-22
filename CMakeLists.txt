@@ -6,7 +6,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(RTIDB_VERSION_MAJOR 0)
 set(RTIDB_VERSION_MINOR 3)
 set(RTIDB_VERSION_BUG 0)
-CONFIGURE_FILE (
+configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
 )
@@ -15,10 +15,18 @@ add_definitions('-g')
 add_definitions('-Wall')
 add_definitions('-std=c++11')
 
+option(TCMALLOC_ENABLE "Enable TCMALLOC" OFF)
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(GCC_COVERAGE_LINK_FLAGS    "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+if (TCMALLOC_ENABLE)
+    set(GCC_COVERAGE_LINK_FLAGS    "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+endif()
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/src/config.h.in"
+    "${PROJECT_SOURCE_DIR}/src/config.h")
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include)
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib)
 add_subdirectory(src)

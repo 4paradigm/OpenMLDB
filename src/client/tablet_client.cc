@@ -40,6 +40,13 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t id,
     return false;
 }
 
+void TabletClient::ReleaseMemory() {
+    ::rtidb::api::RelMemRequest request;
+    ::rtidb::api::RelMemResponse response;
+    client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::RelMem,
+            &request, &response, 12, 1);
+}
+
 bool TabletClient::Put(uint32_t tid,
                        uint32_t pid,
                        const char* pk,
