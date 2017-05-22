@@ -81,7 +81,7 @@ void TabletImpl::Put(RpcController* controller,
         row.set_data(request->value());
         row.set_time(request->time());
     }
-    uint64_t size = request->value().length();
+    uint64_t size = request->value().size();
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
     response->set_code(0);

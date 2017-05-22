@@ -67,6 +67,7 @@ public:
     ~Node() {
         delete[] nexts_;
     }
+
 private:
     K  const key_;
     V  value_;
@@ -132,6 +133,28 @@ public:
     const V& Get(const K& key) {
         Node<K,V>* node = FindEqual(key);
         return node->GetValue();
+    }
+
+    // Need external synchronized
+    uint64_t Clear() {
+        uint64_t cnt = 0;
+        Node<K,V>* node = head_->GetNext(0);
+        // Unlink all next node
+        for (uint32_t i = 0; i < head_->Height(); i++) {
+            head_->SetNextNoBarrier(i, NULL);
+        }
+
+        while (node != NULL) {
+            cnt++;
+            Node<K,V>* tmp = node;
+            node = node->GetNext(0);
+            // Unlink all next node
+            for (uint32_t i = 0; i < tmp->Height(); i++) {
+                tmp->SetNextNoBarrier(i, NULL);
+            }
+            delete tmp;
+        }
+        return cnt;
     }
 
     class Iterator {
@@ -247,11 +270,12 @@ private:
 
     bool IsAfterNode(const K& key, const Node<K, V>* node) const {
         return (node != NULL) && (compare_(key, node->GetKey()) > 0);
-    } 
+    }
 
     uint32_t GetMaxHeight() const {
         return max_height_.load(boost::memory_order_relaxed);
     }
+    
 
 private:
     uint32_t const MaxHeight;

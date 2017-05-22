@@ -25,9 +25,17 @@ struct DataBlock {
     uint32_t size;
     char* data;
 
-    DataBlock(const char* input,uint32_t len):size(len),data(NULL) {
+    DataBlock(const char* input, uint32_t len):size(len),data(NULL) {
         data = new char[len];
         memcpy(data, input, len);
+    }
+
+    uint32_t Release() {
+        delete[] data;
+        data = NULL;
+        uint32_t ret = size;
+        size = 0;
+        return ret;
     }
 
     ~DataBlock() {
@@ -61,11 +69,14 @@ public:
         TimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
         while(it->Valid()) {
-            // 4 bytes data size, 8 bytes key size 
-            release_bytes += (4 + 8 + it->GetValue()->size);
+            if (it->GetValue() != NULL) {
+                // 4 bytes data size, 8 bytes key size 
+                release_bytes += (4 + 8 + it->GetValue()->Release());
+            }
             delete it->GetValue();
             it->Next();
         }
+        entries.Clear();
         delete it;
         return release_bytes;
     }
