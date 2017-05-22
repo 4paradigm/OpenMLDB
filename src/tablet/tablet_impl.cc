@@ -107,6 +107,12 @@ inline bool TabletImpl::CheckCreateRequest(const rtidb::api::CreateTableRequest*
     if (request->name().size() <= 0) {
         return false;
     }
+    if (request->tid() <= 0) {
+        return false;
+    }
+    if (request->pid() <= 0) {
+        return false;
+    }
     return true;
 }
 
@@ -148,7 +154,7 @@ void TabletImpl::Scan(RpcController* controller,
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     while (it->Valid()) {
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
-        if (it->GetKey() < end_time) {
+        if (it->GetKey() <= end_time) {
             break;
         }
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));

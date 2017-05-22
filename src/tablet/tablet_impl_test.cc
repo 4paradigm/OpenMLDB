@@ -171,21 +171,44 @@ TEST_F(TabletImplTest, Scan) {
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(0, srp.count());
 
-    ::rtidb::api::PutRequest prequest;
-    prequest.set_pk("test1");
-    prequest.set_time(9527);
-    prequest.set_value("test0");
-    prequest.set_tid(2);
-    ::rtidb::api::PutResponse presponse;
-    tablet.Put(NULL, &prequest, &presponse,
-            &closure);
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9527);
+        prequest.set_value("test0");
+        prequest.set_tid(2);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
 
-    ASSERT_EQ(10, presponse.code());
-    prequest.set_tid(1);
+        ASSERT_EQ(10, presponse.code());
+        prequest.set_tid(1);
 
-    tablet.Put(NULL, &prequest, &presponse,
-            &closure);
-    ASSERT_EQ(0, presponse.code());
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+
+        ASSERT_EQ(0, presponse.code());
+
+    }
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9528);
+        prequest.set_value("test0");
+        prequest.set_tid(2);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+
+        ASSERT_EQ(10, presponse.code());
+        prequest.set_tid(1);
+
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+
+        ASSERT_EQ(0, presponse.code());
+
+    }
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, srp.count());
