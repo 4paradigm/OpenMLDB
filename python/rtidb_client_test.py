@@ -11,7 +11,7 @@ import unittest
 
 import rtidb_client
 
-endpoint = "127.0.0.1:9526"
+endpoint = "127.0.0.1:9501"
 
 class TestRtidbClient(unittest.TestCase):
   

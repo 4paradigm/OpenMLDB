@@ -8,7 +8,7 @@ import org.junit.Test;
 public class TabletClientTest {
 
     private String host = "172.27.0.101";
-    private int port = 9526;
+    private int port = 9501;
 
     @Test
     public void test0Create() {
