@@ -12,7 +12,7 @@ clear_debug() {
 
 clear_debug
 
-HEAPCHECK=normal ./build/bin/rtidb --log_level=info --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9426 --role=tablet &
+./build/bin/rtidb --log_level=info --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9426 --role=tablet &
 
 sleep 2
 
@@ -22,7 +22,6 @@ sleep 2
 ./build/bin/rtidb --cmd="benchmark" --role=client --endpoint=127.0.0.1:9426 --interactive=false | grep Percentile
 echo "start drop table"
 ./build/bin/rtidb --cmd="drop 1" --role=client --endpoint=127.0.0.1:9426 --interactive=false
-
 sleep 4 
 
 clear_debug
