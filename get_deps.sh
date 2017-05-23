@@ -5,7 +5,7 @@ set -e -u -E # this script will exit if any sub-command fails
 ########################################
 # download & build depend software
 ########################################
-STAGE="release"
+STAGE="DEBUG"
 WORK_DIR=`pwd`
 DEPS_SOURCE=`pwd`/thirdsrc
 DEPS_PREFIX=`pwd`/thirdparty
