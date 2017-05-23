@@ -1,6 +1,6 @@
 #! /bin/sh
 set -e -u -E # this script will exit if any sub-command fails
-
+export HEAPCHECK=normal
 WORK_DIR=`pwd`
 test -d /tmp/rtidb && cd /tmp/rtidb && rm -rf *
 cd $WORK_DIR

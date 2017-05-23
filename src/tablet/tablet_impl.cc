@@ -97,11 +97,11 @@ void TabletImpl::Put(RpcController* controller,
     LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     table->UnRef();
     done->Run();
-    metric_->IncrThroughput(1, size, 0, 0);
     if (pers && ha != NULL) {
         ha->Put(row);
         ha->UnRef();
     }
+    metric_->IncrThroughput(1, size, 0, 0);
 }
 
 inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
