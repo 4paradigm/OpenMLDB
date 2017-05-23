@@ -4,7 +4,7 @@ if (TCMALLOC_ENABLE)
     if (CMAKE_BUILD_TYPE MATCHES Release)
         set(tc_lib tcmalloc_minimal)
     else()
-        set(tc_lib tcmalloc)
+        set(tc_lib unwind tcmalloc)
     endif()
 endif()
 
