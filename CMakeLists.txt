@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project(rtidb)
 
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 set(RTIDB_VERSION_MAJOR 0)
 set(RTIDB_VERSION_MINOR 3)
 set(RTIDB_VERSION_BUG 0)
@@ -15,7 +15,7 @@ add_definitions('-g')
 add_definitions('-Wall')
 add_definitions('-std=c++11')
 
-option(TCMALLOC_ENABLE "Enable TCMALLOC" OFF)
+option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
