@@ -41,4 +41,5 @@ sh build_python_client.sh
 echo "start to build java client"
 
 sh build_java_client.sh 
-
+cd $WORK_DIR
+sh mem_leak_check.sh
