@@ -41,7 +41,16 @@ namespace tablet {
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     metric_(NULL){}
 
-TabletImpl::~TabletImpl() {}
+TabletImpl::~TabletImpl() {
+    Table* table = GetTable(0);
+    if (table != NULL) {
+        table->Release();
+        table->UnRef();
+        table->UnRef();
+    }
+    tables_.erase(0);
+    delete metric_;
+}
 
 void TabletImpl::Init() {
     MutexLock lock(&mu_);
