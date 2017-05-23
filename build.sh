@@ -26,7 +26,7 @@ cd $WORK_DIR
 
 echo "start to do core ut ....."
 sh ut.sh
-
+unset HEAPCHECK
 echo "start to do benchmark without tcmalloc"
 sh benchmark.sh
 
