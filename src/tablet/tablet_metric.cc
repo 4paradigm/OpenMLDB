@@ -37,6 +37,8 @@ TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
 
 TabletMetric::~TabletMetric() {
     stat_->UnRef();
+    delete[] throughput_;
+    delete[] last_throughput_;
 }
 
 

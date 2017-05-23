@@ -21,6 +21,18 @@ public:
     ~SegmentTest() {}
 };
 
+TEST_F(SegmentTest, DataBlock) {
+    const char* test = "test";
+    DataBlock* db = new DataBlock(test, 4);
+    ASSERT_EQ(4, db->size);
+    ASSERT_EQ('t', db->data[0]);
+    ASSERT_EQ('e', db->data[1]);
+    ASSERT_EQ('s', db->data[2]);
+    ASSERT_EQ('t', db->data[3]);
+    ASSERT_EQ(4, db->Release());
+    ASSERT_EQ(NULL, db->data);
+}
+
 TEST_F(SegmentTest, TestRelease) {
     Segment* seg2 = new Segment();
     const char* test = "test";
