@@ -33,6 +33,10 @@ target_link_libraries(kv_iterator_test gtest pthread common protobuf)
 add_executable(tablet_impl_test  tablet/tablet_impl_test.cc)
 target_link_libraries(tablet_impl_test   gtest pthread tablet leveldb gflags storage common sofa-pbrpc  protobuf z snappy ${tc_lib})
 
+add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc)
+target_link_libraries(tablet_impl_mem_test   gtest pthread tablet leveldb gflags storage common sofa-pbrpc  protobuf z snappy ${tc_lib})
+
+
 add_executable(table_ha_test  tablet/table_ha_test.cc)
 target_link_libraries(table_ha_test   gtest pthread tablet leveldb gflags storage common sofa-pbrpc  protobuf z snappy ${tc_lib})
 

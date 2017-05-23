@@ -38,10 +38,7 @@ struct DataBlock {
         return ret;
     }
 
-    ~DataBlock() {
-        delete[] data;
-        data = NULL;
-    }
+    ~DataBlock() {}
 };
 
 // the desc time comparator
@@ -81,12 +78,11 @@ public:
         return release_bytes;
     }
 
-private:
+public:
     std::string key;
     TimeEntries entries;
     Mutex mu;
     friend Segment;
-
 };
 
 struct StringComparator {
