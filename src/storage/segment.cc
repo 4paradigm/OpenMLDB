@@ -98,21 +98,19 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
             node = entry->entries.Split(time);
         }
         uint64_t freed_data_byte_size = 0;
-        if (node != NULL) {
-            while (true) {
-                count ++;
-                ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
-                node = node->GetNextNoBarrier(0);
-                LOG(DEBUG, "delete key %lld", tmp->GetKey());
-                freed_data_byte_size += (data_block_size + tmp->GetValue()->size);
-                // clear the value that node hold
-                // and clear node it's self
-                delete tmp->GetValue();
-                delete tmp;
-                if (node == NULL) {
-                    break;
-                }
+        while (node != NULL) {
+            count ++;
+            ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
+            node = node->GetNextNoBarrier(0);
+            LOG(DEBUG, "delete key %lld", tmp->GetKey());
+            freed_data_byte_size += (data_block_size + tmp->GetValue()->size);
+            // clear the value that node hold
+            // and clear node it's self
+            if (tmp->GetValue() != NULL) {
+                tmp->GetValue()->Release();
             }
+            delete tmp->GetValue();
+            delete tmp;
         }
         it->Next();
     }
