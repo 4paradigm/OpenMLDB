@@ -34,6 +34,7 @@ DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_string(db_root_path);
+DECLARE_bool(enable_statdb);
 
 namespace rtidb {
 namespace tablet {
@@ -42,31 +43,37 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     metric_(NULL){}
 
 TabletImpl::~TabletImpl() {
-    Table* table = GetTable(0);
-    if (table != NULL) {
-        table->Release();
-        table->UnRef();
-        table->UnRef();
+    if (FLAGS_enable_statdb) {
+        Table* table = GetTable(0);
+        if (table != NULL) {
+            table->Release();
+            table->UnRef();
+            table->UnRef();
+        }
+        tables_.erase(0);
+        delete metric_;
+
     }
-    tables_.erase(0);
-    delete metric_;
 }
 
 void TabletImpl::Init() {
     MutexLock lock(&mu_);
-    // Create a dbstat table with tid = 0 and pid = 0
-    Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
-    dbstat->Init();
-    dbstat->Ref();
-    tables_.insert(std::make_pair(0, dbstat));
-    if (FLAGS_statdb_ttl > 0) {
-        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
-                boost::bind(&TabletImpl::GcTable, this, 0));
+    if (FLAGS_enable_statdb) {
+        // Create a dbstat table with tid = 0 and pid = 0
+        Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
+        dbstat->Init();
+        dbstat->Ref();
+        tables_.insert(std::make_pair(0, dbstat));
+        if (FLAGS_statdb_ttl > 0) {
+            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
+                    boost::bind(&TabletImpl::GcTable, this, 0));
+        }
+        // For tablet metric
+        dbstat->Ref();
+        metric_ = new TabletMetric(dbstat);
+        metric_->Init();
+
     }
-    // For tablet metric
-    dbstat->Ref();
-    metric_ = new TabletMetric(dbstat);
-    metric_->Init();
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -101,7 +108,9 @@ void TabletImpl::Put(RpcController* controller,
         ha->Put(row);
         ha->UnRef();
     }
-    metric_->IncrThroughput(1, size, 0, 0);
+    if (FLAGS_enable_statdb) {
+        metric_->IncrThroughput(1, size, 0, 0);
+    }
 }
 
 inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
@@ -194,7 +203,9 @@ void TabletImpl::Scan(RpcController* controller,
     done->Run();
     table->UnRef();
     delete it;
-    metric_->IncrThroughput(0, 0, 1, total_size);
+    if (FLAGS_enable_statdb) {
+        metric_->IncrThroughput(0, 0, 1, total_size);
+    }
 }
 
 void TabletImpl::CreateTable(RpcController* controller,
