@@ -346,6 +346,8 @@ bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
        ShowTables(request, response); 
     }else if (path == "/tablet/metric") {
        ShowMetric(request, response);
+    }else if (path == "/tablet/memory") {
+       ShowMemPool(request, response);
     }
     return true;
 }
@@ -463,6 +465,20 @@ TableDataHA* TabletImpl::GetTableHa(uint32_t tid) {
     TableDataHA* table_ha = it->second;
     table_ha->Ref();
     return table_ha;
+}
+
+void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
+    sofa::pbrpc::HTTPResponse& response) {
+#ifdef TCMALLOC_ENABLE
+    MallocExtension* tcmalloc = MallocExtension::instance();
+    std::string stat;
+    stat.resize(400);
+    char* buffer = reinterpret_cast<char*>(& (stat[0]));
+    tcmalloc->GetStats(buffer, 400);
+    response.content->Append("<html><head><title>Mem Stat</title></head><body><pre>");
+    response.content->Append(stat);
+    response.content->Append("</pre></body></html>");
+#endif
 }
 
 }

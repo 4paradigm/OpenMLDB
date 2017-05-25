@@ -78,6 +78,9 @@ private:
     void ShowMetric(const sofa::pbrpc::HTTPRequest& request,
             sofa::pbrpc::HTTPResponse& response);
 
+    void ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
+        sofa::pbrpc::HTTPResponse& response);
+
     inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
     
     inline bool CheckCreateRequest(const rtidb::api::CreateTableRequest* request);
