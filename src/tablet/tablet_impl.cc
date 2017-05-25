@@ -472,9 +472,9 @@ void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     std::string stat;
-    stat.resize(400);
+    stat.resize(1024);
     char* buffer = reinterpret_cast<char*>(& (stat[0]));
-    tcmalloc->GetStats(buffer, 400);
+    tcmalloc->GetStats(buffer, 1024);
     response.content->Append("<html><head><title>Mem Stat</title></head><body><pre>");
     response.content->Append(stat);
     response.content->Append("</pre></body></html>");
