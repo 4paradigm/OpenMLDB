@@ -151,6 +151,14 @@ TEST_F(SkiplistTest, Split1) {
     ASSERT_EQ(NULL, node);
     node = sl.Split(1);
     ASSERT_EQ(1, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node != NULL);
+    ASSERT_EQ(2, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node != NULL);
+    ASSERT_EQ(3, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node == NULL);
     Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
     it->Seek(0);
     ASSERT_EQ(0, it->GetKey());
@@ -188,6 +196,38 @@ TEST_F(SkiplistTest, Clear) {
     sl.Insert(k1, v2);
     ASSERT_EQ(2,sl.Clear());
 }
+
+TEST_F(SkiplistTest, Remove) {
+    StrComparator cmp;
+    Skiplist<std::string, std::string, StrComparator> sl(12, 4, cmp);
+    std::string k = "h";
+    std::string v= "b";
+    sl.Insert(k, v);
+    std::string k1 = "a";
+    std::string v2="b";
+    sl.Insert(k1, v2);
+    std::string k2 = "b";
+    std::string v3="c";
+    sl.Insert(k2, v3);
+    std::string k3 = "c";
+    Node<std::string, std::string>* none_exist_node = sl.Remove(k3);
+    ASSERT_FALSE(none_exist_node != NULL);
+    Node<std::string, std::string>* node = sl.Remove(k2);
+    ASSERT_FALSE(node == NULL);
+    ASSERT_EQ("b", node->GetKey());
+    ASSERT_EQ("c", node->GetValue());
+    Skiplist<std::string, std::string, StrComparator>::Iterator* it = sl.NewIterator();
+    it->SeekToFirst();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ("a", it->GetKey());
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ("h", it->GetKey());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+}
+
+
 
 
 

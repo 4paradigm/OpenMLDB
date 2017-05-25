@@ -34,6 +34,7 @@ DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_string(db_root_path);
+DECLARE_bool(enable_statdb);
 
 namespace rtidb {
 namespace tablet {
@@ -42,31 +43,37 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     metric_(NULL){}
 
 TabletImpl::~TabletImpl() {
-    Table* table = GetTable(0);
-    if (table != NULL) {
-        table->Release();
-        table->UnRef();
-        table->UnRef();
+    if (FLAGS_enable_statdb) {
+        Table* table = GetTable(0);
+        if (table != NULL) {
+            table->Release();
+            table->UnRef();
+            table->UnRef();
+        }
+        tables_.erase(0);
+        delete metric_;
+
     }
-    tables_.erase(0);
-    delete metric_;
 }
 
 void TabletImpl::Init() {
     MutexLock lock(&mu_);
-    // Create a dbstat table with tid = 0 and pid = 0
-    Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
-    dbstat->Init();
-    dbstat->Ref();
-    tables_.insert(std::make_pair(0, dbstat));
-    if (FLAGS_statdb_ttl > 0) {
-        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
-                boost::bind(&TabletImpl::GcTable, this, 0));
+    if (FLAGS_enable_statdb) {
+        // Create a dbstat table with tid = 0 and pid = 0
+        Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
+        dbstat->Init();
+        dbstat->Ref();
+        tables_.insert(std::make_pair(0, dbstat));
+        if (FLAGS_statdb_ttl > 0) {
+            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
+                    boost::bind(&TabletImpl::GcTable, this, 0));
+        }
+        // For tablet metric
+        dbstat->Ref();
+        metric_ = new TabletMetric(dbstat);
+        metric_->Init();
+
     }
-    // For tablet metric
-    dbstat->Ref();
-    metric_ = new TabletMetric(dbstat);
-    metric_->Init();
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -97,10 +104,12 @@ void TabletImpl::Put(RpcController* controller,
     LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     table->UnRef();
     done->Run();
-    metric_->IncrThroughput(1, size, 0, 0);
     if (pers && ha != NULL) {
         ha->Put(row);
         ha->UnRef();
+    }
+    if (FLAGS_enable_statdb) {
+        metric_->IncrThroughput(1, size, 0, 0);
     }
 }
 
@@ -194,7 +203,9 @@ void TabletImpl::Scan(RpcController* controller,
     done->Run();
     table->UnRef();
     delete it;
-    metric_->IncrThroughput(0, 0, 1, total_size);
+    if (FLAGS_enable_statdb) {
+        metric_->IncrThroughput(0, 0, 1, total_size);
+    }
 }
 
 void TabletImpl::CreateTable(RpcController* controller,
@@ -335,6 +346,8 @@ bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
        ShowTables(request, response); 
     }else if (path == "/tablet/metric") {
        ShowMetric(request, response);
+    }else if (path == "/tablet/memory") {
+       ShowMemPool(request, response);
     }
     return true;
 }
@@ -452,6 +465,20 @@ TableDataHA* TabletImpl::GetTableHa(uint32_t tid) {
     TableDataHA* table_ha = it->second;
     table_ha->Ref();
     return table_ha;
+}
+
+void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
+    sofa::pbrpc::HTTPResponse& response) {
+#ifdef TCMALLOC_ENABLE
+    MallocExtension* tcmalloc = MallocExtension::instance();
+    std::string stat;
+    stat.resize(1024);
+    char* buffer = reinterpret_cast<char*>(& (stat[0]));
+    tcmalloc->GetStats(buffer, 1024);
+    response.content->Append("<html><head><title>Mem Stat</title></head><body><pre>");
+    response.content->Append(stat);
+    response.content->Append("</pre></body></html>");
+#endif
 }
 
 }

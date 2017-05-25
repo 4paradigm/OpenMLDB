@@ -113,6 +113,35 @@ public:
         }
     }
 
+    bool IsEmpty() {
+        if (head_->GetNextNoBarrier(0) == NULL) {
+            return true;
+        }
+        return false;
+    }
+
+
+    // Remove need external synchronized
+    Node<K,V>* Remove(const K& key) {
+        Node<K, V>* pre[MaxHeight];
+        for (uint32_t i = 0; i < MaxHeight; i++) {
+            pre[i] = head_;
+        }
+        Node<K, V>* target = FindLessOrEqual(key, pre);
+        if (target == NULL) {
+            return NULL;
+        }
+        Node<K, V>* result = target->GetNextNoBarrier(0);
+        if (result == NULL || compare_(result->GetKey(), key) != 0) {
+            return NULL;
+        }
+        for (uint32_t i = 0; i < result->Height(); i++) {
+            pre[i]->SetNextNoBarrier(i, result->GetNextNoBarrier(i));
+            result->SetNextNoBarrier(i, NULL);
+        }
+        return result;
+    }
+
     // Split list two parts, the return part is just a linkedlist
     Node<K,V>* Split(const K& key) {
         Node<K, V>* pre[MaxHeight];
@@ -120,6 +149,9 @@ public:
             pre[i] = NULL;
         }
         Node<K, V>* target = FindLessOrEqual(key, pre);
+        if (target == NULL) {
+            return NULL;
+        }
         Node<K, V>* result = target->GetNextNoBarrier(0);
         for (uint32_t i = 0; i < MaxHeight; i++) {
             if (pre[i] == NULL) {

@@ -4,7 +4,7 @@ if (TCMALLOC_ENABLE)
     if (CMAKE_BUILD_TYPE MATCHES Release)
         set(tc_lib tcmalloc_minimal)
     else()
-        set(tc_lib tcmalloc)
+        set(tc_lib unwind tcmalloc)
     endif()
 endif()
 
@@ -26,6 +26,9 @@ target_link_libraries(segment_test gtest pthread common ${tc_lib})
 
 add_executable(table_test  storage/table.cc storage/table_test.cc storage/segment.cc)
 target_link_libraries(table_test gtest pthread common ${tc_lib})
+
+add_executable(table_mem_test  storage/table.cc storage/table_mem_test.cc storage/segment.cc)
+target_link_libraries(table_mem_test gtest pthread common ${tc_lib})
 
 add_executable(kv_iterator_test  base/kv_iterator_test.cc proto/tablet.pb.cc)
 target_link_libraries(kv_iterator_test gtest pthread common protobuf)

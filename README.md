@@ -1,5 +1,5 @@
 # rtidb
-Database for Real Time Intelligence 
+Database for Real Time Intelligence , It's awesome!
 
 # version
 
