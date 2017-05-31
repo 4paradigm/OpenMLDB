@@ -151,6 +151,14 @@ TEST_F(SkiplistTest, Split1) {
     ASSERT_EQ(NULL, node);
     node = sl.Split(1);
     ASSERT_EQ(1, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node != NULL);
+    ASSERT_EQ(2, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node != NULL);
+    ASSERT_EQ(3, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node == NULL);
     Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
     it->Seek(0);
     ASSERT_EQ(0, it->GetKey());
