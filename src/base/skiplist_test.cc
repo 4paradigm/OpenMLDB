@@ -35,6 +35,19 @@ struct Comparator {
     }
 };
 
+struct DescComparator {
+    int operator()(const uint32_t a, const uint32_t b) const {
+        if (a > b) {
+            return -1;
+        }else if (a == b) {
+            return 0;
+        }
+        return 1;
+    }
+};
+
+
+
 struct StrComparator {
     int operator()(const std::string& a, const std::string& b) const {
         return a.compare(b);
@@ -229,8 +242,6 @@ TEST_F(SkiplistTest, Remove) {
 
 
 
-
-
 TEST_F(SkiplistTest, Get) {
     Comparator cmp;
     Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
@@ -240,6 +251,42 @@ TEST_F(SkiplistTest, Get) {
     uint32_t ret = sl.Get(1);
     ASSERT_EQ(1, ret);
     ASSERT_FALSE(sl.Get(2) == 2);
+}
+
+TEST_F(SkiplistTest, Duplicate) {
+    DescComparator cmp;
+    Skiplist<uint32_t, uint32_t, DescComparator> sl(12, 4, cmp);
+    {
+        uint32_t key = 1;
+        uint32_t value = 1;
+        sl.Insert(key, value);
+    }
+    {
+        uint32_t key = 1;
+        uint32_t value = 2;
+        sl.Insert(key, value);
+    }
+    {
+        uint32_t key = 2;
+        uint32_t value = 3;
+        sl.Insert(key, value);
+    }
+
+    Skiplist<uint32_t, uint32_t, DescComparator>::Iterator* it = sl.NewIterator();
+    it->SeekToFirst();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(2, it->GetKey());
+    ASSERT_EQ(3, it->GetValue());
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(2, it->GetValue());
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(1, it->GetValue());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
 }
 
 }
