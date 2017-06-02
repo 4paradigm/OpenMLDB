@@ -129,6 +129,9 @@ inline bool TabletImpl::CheckCreateRequest(const rtidb::api::CreateTableRequest*
     if (request->name().size() <= 0) {
         return false;
     }
+    if (request->tid() <= 0) {
+        return false;
+    }
     return true;
 }
 

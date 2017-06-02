@@ -21,6 +21,9 @@ class TestRtidbClient(unittest.TestCase):
     self.assertTrue(ok)
     ok = db.create_table("py_test1", 101, 1, 0, False)
     self.assertFalse(ok)
+    ok = db.create_table("", 119, 1, 0, False)
+    self.assertFalse(ok)
+
 
   def test_put(self):
     db = rtidb_client.RtidbClient(endpoint)
