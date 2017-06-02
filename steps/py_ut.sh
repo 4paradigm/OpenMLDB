@@ -1,5 +1,6 @@
 #! /bin/sh
 #
+# py_ut.sh
 
 ROOT=`pwd`
 
@@ -18,3 +19,5 @@ cd python && python rtidb_client_test.py
 
 clear_debug
 sleep 3
+
+

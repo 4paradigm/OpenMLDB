@@ -1,5 +1,7 @@
 #! /bin/sh
 #
+# ut_mem_check.sh
+#
 
 ROOT_DIR=`pwd`
 
@@ -33,4 +35,6 @@ done
 sleep 4 
 
 clear_debug
+
+
 

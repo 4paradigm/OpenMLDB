@@ -168,7 +168,7 @@ else
     if [ "$STAGE" = 'DEBUG' ]
     then
         echo "debug stage"
-        ./configure --enable-shared=no --prefix=${DEPS_PREFIX} 
+        ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --prefix=${DEPS_PREFIX} 
     else
         echo "prod stage"
         ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
