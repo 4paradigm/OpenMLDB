@@ -49,7 +49,7 @@ class CreateTable(TestSuite):
         jobHelper = JobHelper()
         jobHelper.append(jobHelper.rtidbClient.create_table, name='ill_*/.&@#')
         retStatus = jobHelper.run(failonerror=False)
-        self.assertFalse(retStatus)
+        self.assertTrue(retStatus)
 
     def testCreateTableTableIdDuplicate(self):
         """
@@ -68,7 +68,7 @@ class CreateTable(TestSuite):
         table_id配空
         """
         jobHelper = JobHelper()
-        jobHelper.append(jobHelper.rtidbClient.create_table, tid='')
+        jobHelper.append(jobHelper.rtidbClient.create_table, tid=0)
         retStatus = jobHelper.run(failonerror=False)
         self.assertFalse(retStatus)
 
@@ -78,9 +78,9 @@ class CreateTable(TestSuite):
         pid配空
         """
         jobHelper = JobHelper()
-        jobHelper.append(jobHelper.rtidbClient.create_table, pid='')
+        jobHelper.append(jobHelper.rtidbClient.create_table, pid=1)
         retStatus = jobHelper.run(failonerror=False)
-        self.assertFalse(retStatus)
+        self.assertTrue(retStatus)
 
     def testCreateTablePid0(self):
         """

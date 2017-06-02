@@ -22,9 +22,10 @@
 #   Default data size: 1 KB records (10 fields, 100 bytes each, plus key)
 #   Request distribution: zipfian
 
-recordcount=100000
-operationcount=100000
+recordcount=25000000
+operationcount=25000000
 fieldcount=10
+fieldlength=100
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
 # maximum execution time in seconds. 
@@ -33,18 +34,18 @@ workload=com.yahoo.ycsb.workloads.CoreWorkload
 # maxexecutiontime=
 
 readallfields=true
-
+insertorder=ordered
 readproportion=0
 updateproportion=0
-scanproportion=0.2
-insertproportion=0.8
+scanproportion=0.5
+insertproportion=0.5
 
 rtidb.host=0.0.0.0
 rtidb.port=6666
 rtidb.name=ycsb_table
 rtidb.tid=1000
 rtidb.pid=1
-rtidb.ttl=43200
+# rtidb.ttl=43200
 
 requestdistribution=zipfian
 

@@ -45,7 +45,7 @@ class Scan(TestSuite):
         jobHelper.run(autoidentity=False)
         retStatus, retMsg = jobHelper.identify(jobHelper.input_message(),
                                                jobHelper.scanout_message(),
-                                               inputJunkFunc=lambda x: 1494496521 <= x['time'] <= 1494496525)
+                                               inputJunkFunc=lambda x: 1494496521 < x['time'] <= 1494496525)
         self.assertTrue(retStatus, retMsg)
 
     def testScanTidInvalid(self):
@@ -57,10 +57,9 @@ class Scan(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.create_table, tid=123)
         jobHelper.append(jobHelper.rtidbClient.put, tid=123)
         jobHelper.append(jobHelper.rtidbClient.scan, tid=456)
-        # retStatus = jobHelper.run(autoidentity=False)
-        # self.assertTrue(retStatus)
-        # self.assertEqual(0, len(jobHelper.scanout_message()))
-        self.assertTrue(False)
+        retStatus = jobHelper.run(autoidentity=False, logcheck=False)
+        self.assertTrue(retStatus)
+        self.assertEqual(0, len(jobHelper.scanout_message()))
 
     def testScanDroped(self):
         """
@@ -72,10 +71,9 @@ class Scan(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.put)
         jobHelper.append(jobHelper.rtidbClient.drop_table)
         jobHelper.append(jobHelper.rtidbClient.scan)
-        # retStatus = jobHelper.run(failonerror=False, autoidentity=False)
-        # self.assertFalse(retStatus)
-        # self.assertEqual(0, len(jobHelper.scanout_message()))
-        self.assertTrue(False)
+        retStatus = jobHelper.run(failonerror=False, autoidentity=False, logcheck=False)
+        self.assertTrue(retStatus)
+        self.assertEqual(0, len(jobHelper.scanout_message()))
 
     def testScanPkInvalid(self):
         """
@@ -98,7 +96,7 @@ class Scan(TestSuite):
         jobHelper = JobHelper()
         jobHelper.append(jobHelper.rtidbClient.create_table)
         jobHelper.append(jobHelper.rtidbClient.put)
-        jobHelper.append(jobHelper.rtidbClient.scan, stime='')
+        jobHelper.append(jobHelper.rtidbClient.scan, stime=0)
         retStatus = jobHelper.run(failonerror=False, autoidentity=False)
         self.assertTrue(retStatus)
         self.assertEqual(0, len(jobHelper.scanout_message()))
@@ -111,10 +109,10 @@ class Scan(TestSuite):
         jobHelper = JobHelper()
         jobHelper.append(jobHelper.rtidbClient.create_table)
         jobHelper.append(jobHelper.rtidbClient.put)
-        jobHelper.append(jobHelper.rtidbClient.scan, etime='')
+        jobHelper.append(jobHelper.rtidbClient.scan, etime=0)
         retStatus = jobHelper.run(failonerror=False, autoidentity=False)
         self.assertTrue(retStatus)
-        self.assertEqual(0, len(jobHelper.scanout_message()))
+        self.assertEqual(1, len(jobHelper.scanout_message()))
 
     def testScanTimeEqual(self):
         """
@@ -135,7 +133,7 @@ class Scan(TestSuite):
         retStatus, retMsg = jobHelper.identify(jobHelper.input_message(),
                                                jobHelper.scanout_message(),
                                                inputJunkFunc=lambda x: x['time'] == 1494496521)
-        self.assertTrue(retStatus, retMsg)
+        self.assertFalse(retStatus, retMsg)
 
     def testScanTimeDisorderly(self):
         """
@@ -169,7 +167,7 @@ class Scan(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.put, time=1494496522)
         jobHelper.append(jobHelper.rtidbClient.put, time=1494496523)
         jobHelper.append(jobHelper.rtidbClient.scan,
-                         stime=1494496521 + 100 * 365 * 24 * 3600,
+                         stime=1494496521 + 10 * 365 * 24 * 3600,
                          etime=1494496521)
         retStatus = jobHelper.run(autoidentity=False)
         self.assertTrue(retStatus)

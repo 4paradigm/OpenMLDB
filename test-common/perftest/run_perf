@@ -3,6 +3,11 @@ set -x
 curDir=`dirname $BASH_SOURCE`
 curDir=`realpath ${curDir}`
 rootdir=${curDir}/../../
+rtidbIp=127.0.0.1
+rtidbPort=9526
+rtidbTTL=1
+threads=10
+target=5000
 
 
 source ${curDir}/../common.sh
@@ -30,8 +35,8 @@ confile=${curDir}/workload.rtidb
 mkdir -p ${logdir}
 
 cd ${rootdir}/build/bin
-nohup ./rtidb --log_level=debug --endpoint=0.0.0.0:6666 --role=tablet > ${logdir}/rtidb.log 2>&1 &
+# nohup ./rtidb --log_level=debug --endpoint=${rtidbIp}:${rtidbPort} --role=tablet > ${logdir}/rtidb.log 2>&1 &
 cd ${ycsbDir}
-./bin/ycsb load rtidb -P ${confile} >  ${logdir}/ycsb.log 2>&1
-./bin/ycsb run  rtidb -P ${confile} >> ${logdir}/ycsb.log 2>&1
-ps -ef |grep '0.0.0.0:6666' |grep -v grep |awk '{print $2}' |xargs kill -9 
+./bin/ycsb load rtidb -P ${confile} -p rtidb.host=${rtidbIp} -p rtidb.port=${rtidbPort} -p rtidb.ttl=${rtidbTTL} -threads ${threads}  -target ${target}  >  ${logdir}/ycsb.log 2>&1
+./bin/ycsb run  rtidb -P ${confile} -p rtidb.host=${rtidbIp} -p rtidb.port=${rtidbPort}  -p rtidb.ttl=${rtidbTTL} -threads ${threads} -target ${target} >> ${logdir}/ycsb.log 2>&1
+ps -ef |grep '${rtidbIp}:${rtidbPort}' |grep -v grep |awk '{print $2}' |xargs kill -9 

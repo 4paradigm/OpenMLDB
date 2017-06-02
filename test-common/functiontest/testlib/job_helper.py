@@ -26,7 +26,7 @@ class ClientContext(object):
 
     """
     name =  lambda self, stack: NAME_GEN(stack)
-    tid =   lambda self, stack: int(''.join(filter(str.isdigit, hashlib.md5(NAME_GEN(stack)).hexdigest()))[6])
+    tid =   lambda self, stack: int(''.join(filter(str.isdigit, hashlib.md5(NAME_GEN(stack)).hexdigest()))[6]) + 1
     pid =   lambda self, pid: pid
     pk =    lambda self, pk: pk
     time =  lambda self, idx: CTIME + idx
@@ -95,7 +95,7 @@ class JobHelper(object):
             self.input = [] if self.input is None else self.input
             self.input.append(taskParam)
 
-    def run(self, failonerror=True, autoidentity=True):
+    def run(self, failonerror=True, autoidentity=True, logcheck=True):
         """
 
         :return:
@@ -103,10 +103,11 @@ class JobHelper(object):
         retStatus = True
         for idx, (taskFunc, taskParam) in enumerate(self.taskList):
             try:
-                msg = 'Func=%s, Param=%s' % (str(taskFunc),
-                                             str(taskParam))
-                log.debug(msg)
                 ret = taskFunc(**taskParam)
+                msg = 'Func=%s, Param=%s, ret=%s' % (str(taskFunc),
+                                                     str(taskParam),
+                                                     str(ret))
+                log.info(msg[:1000])
                 # ret = False if 0 == ret else True if 1 == ret else ret
             except Exception as e:
                     msg = 'Task start fail, ' \
@@ -128,7 +129,7 @@ class JobHelper(object):
                     else:
                         retStatus = False
         # common check
-        self._common_check(autoidentity, retStatus)
+        self._common_check(autoidentity, retStatus, logcheck)
 
         # save log file
         logfile = util.get('RTIDB_LOG')
@@ -225,7 +226,7 @@ class JobHelper(object):
         self.taskList = []
         self.pk = ''.join(random.sample(string.lowercase+string.digits, 20))
 
-    def _common_check(self, autoidentity, retStatus):
+    def _common_check(self, autoidentity, retStatus, logcheck):
         """
 
         :return:
@@ -238,7 +239,7 @@ class JobHelper(object):
         if 0 != retCode:
             raise Exception('Tablet server status error.')
         # 2, warn/error log check
-        if retStatus:
+        if retStatus and logcheck:
             logTokens = ['E ', 'W ']
             logfile = util.get('RTIDB_LOG')
             for token in logTokens:

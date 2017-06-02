@@ -37,10 +37,8 @@ class Put(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.drop_table)
         jobHelper.append(jobHelper.rtidbClient.put)
         jobHelper.append(jobHelper.rtidbClient.scan)
-        # retStatus = jobHelper.run(failonerror=False, autoidentity=False)
-        # self.assertFalse(retStatus)
-        self.assertFalse(True)
-        self.assertEqual(0, len(jobHelper.scanout_message()))
+        retStatus = jobHelper.run(failonerror=False, autoidentity=False)
+        self.assertFalse(retStatus)
 
     def testPutTidEmpty(self):
         """
@@ -63,12 +61,11 @@ class Put(TestSuite):
         """
         jobHelper = JobHelper()
 
-        jobHelper.append(jobHelper.rtidbClient.create_table)
+        jobHelper.append(jobHelper.rtidbClient.create_table, tid=0)
         jobHelper.append(jobHelper.rtidbClient.put, tid=0)
         jobHelper.append(jobHelper.rtidbClient.scan)
-        retStatus = jobHelper.run(autoidentity=False)
-        self.assertTrue(retStatus)
-        self.assertEqual(0, len(jobHelper.scanout_message()))
+        retStatus = jobHelper.run(failonerror=False, autoidentity=False)
+        self.assertFalse(retStatus)
 
     def testPutPkEmpty(self):
         """
@@ -95,7 +92,7 @@ class Put(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.put, time='')
         jobHelper.append(jobHelper.rtidbClient.scan)
         retStatus = jobHelper.run(failonerror=False, autoidentity=False)
-        self.assertFalse(retStatus)
+        self.assertTrue(retStatus)
         self.assertEqual(0, len(jobHelper.scanout_message()))
 
     def testPutValueInit(self):
@@ -108,9 +105,8 @@ class Put(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.create_table)
         jobHelper.append(jobHelper.rtidbClient.put, value=123)
         jobHelper.append(jobHelper.rtidbClient.scan)
-        # retStatus = jobHelper.run()
-        # self.assertTrue(retStatus)
-        self.assertTrue(False)
+        retStatus = jobHelper.run()
+        self.assertTrue(retStatus)
 
     def testPutValueFloat(self):
         """
@@ -123,8 +119,8 @@ class Put(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.put, value=1.23)
         jobHelper.append(jobHelper.rtidbClient.scan)
         retStatus = jobHelper.run(failonerror=False, autoidentity=False)
-        self.assertFalse(retStatus)
-        self.assertEqual(0, len(jobHelper.scanout_message()))
+        self.assertTrue(retStatus)
+        self.assertEqual(1, len(jobHelper.scanout_message()))
 
     def testPutValueBool(self):
         """
@@ -136,10 +132,9 @@ class Put(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.create_table)
         jobHelper.append(jobHelper.rtidbClient.put, value=True)
         jobHelper.append(jobHelper.rtidbClient.scan)
-        # retStatus = jobHelper.run(failonerror=False, autoidentity=False)
-        # self.assertFalse(retStatus)
-        # self.assertEqual(0, len(jobHelper.scanout_message()))
-        self.assertFalse(True)
+        retStatus = jobHelper.run(failonerror=False, autoidentity=False)
+        self.assertTrue(retStatus)
+        self.assertEqual(1, len(jobHelper.scanout_message()))
 
     def testPutValueBig(self):
         """
@@ -190,7 +185,6 @@ class Put(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.create_table)
         jobHelper.append(jobHelper.rtidbClient.put, value=None)
         jobHelper.append(jobHelper.rtidbClient.scan)
-        # retStatus = jobHelper.run(failonerror=False, autoidentity=False)
-        # self.assertFalse(retStatus)
-        # self.assertEqual(0, len(jobHelper.scanout_message()))
-        self.assertFalse(True)
+        retStatus = jobHelper.run(failonerror=False, autoidentity=False)
+        self.assertTrue(retStatus)
+        self.assertEqual(1, len(jobHelper.scanout_message()))

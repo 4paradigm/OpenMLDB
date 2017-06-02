@@ -1,0 +1,22 @@
+#!/bin/bash
+curDir=`dirname $BASH_SOURCE`
+curDir=`realpath ${curDir}`
+rootdir=${curDir}/../../
+
+
+source ${curDir}/common.sh
+
+testOut=${rootdir}/test-output
+functiontestDir=${testOut}/functiontest
+rm -rf ${functiontestDir}
+mkdir -p ${functiontestDir}
+tar -zxvf ${rootdir}/test-common/functiontest/ptest-0.1.0.tar.gz -C ${rootdir}/test-output/functiontest/
+
+${rootdir}/test-output/functiontest/ptest/ptest -p ${rootdir}/test-common/functiontest/testcase --ps
+${rootdir}/test-output/functiontest/ptest/ptest -p ${rootdir}/test-common/functiontest/testcase --rt -o ${rootdir}/test-output/functiontest/report.json
+grep "\"status\": \"failed\"" ${rootdir}/test-output/functiontest/report.json
+if [ $? -eq 0 ]; then
+    echo "ERROR: functiontest !"
+    exit 1
+fi
+exit 0

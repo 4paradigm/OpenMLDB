@@ -28,7 +28,7 @@ class Sequence(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.put, time=1494496526)
         jobHelper.append(jobHelper.rtidbClient.scan,
                          stime=1494496522,
-                         etime=1494496521)
+                         etime=1494496520)
         jobHelper.run(autoidentity=False)
         self.assertEqual(4, len(jobHelper.scanout_message()))
 
@@ -53,5 +53,5 @@ class Sequence(TestSuite):
         jobHelper.run(autoidentity=False)
         retStatus, retMsg = jobHelper.identify(jobHelper.input_message(),
                                                jobHelper.scanout_message(),
-                                               inputJunkFunc=lambda x: 1494496521 <= x['time'] <= 1494496525)
+                                               inputJunkFunc=lambda x: 1494496521 < x['time'] <= 1494496525)
         self.assertTrue(retStatus, retMsg)

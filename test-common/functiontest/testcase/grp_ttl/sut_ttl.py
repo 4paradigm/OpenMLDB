@@ -19,19 +19,17 @@ class Ttl(TestSuite):
         配置ttl时间，put 10条时序数据，sleep直到t0-t4过期，scan结果
         """
         jobHelper = JobHelper()
-        now = int(time.time())
+        put_time = long(time.time() * 1000)
         jobHelper.append(jobHelper.rtidbClient.create_table, ttl=10)
-        jobHelper.append(jobHelper.rtidbClient.put, time=now - 25)
-        jobHelper.append(jobHelper.rtidbClient.put, time=now - 20)
-        jobHelper.append(jobHelper.rtidbClient.put, time=now - 5)
-        jobHelper.append(jobHelper.rtidbClient.put, time=now)
-        jobHelper.append(jobHelper.rtidbClient.put, time=now + 5)
+        jobHelper.append(jobHelper.rtidbClient.put, time=put_time)
+        jobHelper.append(jobHelper.rtidbClient.put, time=put_time - 20l)
+        jobHelper.append(jobHelper.rtidbClient.put, time=put_time - 11l * 60 * 1000)
         jobHelper.append(jobHelper.rtidbClient.scan,
-                         stime=now + 5,
-                         etime=now - 25)
+                         stime=put_time,
+                         etime=put_time - 12l * 60 * 1000)
         jobHelper.run(autoidentity=False)
         retStatus, retMsg = jobHelper.identify(jobHelper.input_message(),
                                                jobHelper.scanout_message(),
-                                               inputJunkFunc=lambda x: now - 25 <= x['time'] <= now + 5)
+                                               inputJunkFunc=lambda x:  x['time'] > put_time - 11l * 60 * 1000)
         self.assertTrue(retStatus, retMsg)
 

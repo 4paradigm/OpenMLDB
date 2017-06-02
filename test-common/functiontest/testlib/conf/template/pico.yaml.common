@@ -1,0 +1,117 @@
+framework:
+    # communication
+    COMMUNICATION_io_thread_num: 4
+    COMMUNICATION_max_socket_num: 65535
+    COMMUNICATION_request_sender_num: 4
+    COMMUNICATION_response_sender_num: 4
+
+    # hadoop default
+    HADOOP_DEFAULT_hadoop_bin: "./hdfsproxy-client dfs"
+
+    # process default
+    PROCESS_DEFAULT_map_thread_num: 8
+    PROCESS_DEFAULT_stream_thread_num: 16
+    PROCESS_DEFAULT_sink_thread_num : 4
+    PROCESS_DEFAULT_filter_thread_num: 4
+    PROCESS_DEFAULT_flat_map_thread_num: 4
+    PROCESS_DEFAULT_local_block_data_source_thread_num: 4
+    PROCESS_DEFAULT_local_data_source_thread_num: 4
+    PROCESS_DEFAULT_hdfs_block_data_source_thread_num: 4
+    PROCESS_DEFAULT_block_data_source_thread_num: 4
+
+    #local file cache
+    PROCESS_DEFAULT_local_file_cache_data_source_thread_num: 8
+    PROCESS_DEFAULT_local_file_cache_default_sink_thread_num: 8
+    PROCESS_DEFAULT_global_shuffle_client_thread_num: 4
+    PROCESS_DEFAULT_global_shuffle_server_thread_num: 4
+
+    # accumulator
+    ACCUMULATOR_report_accumulator_json_path: ""
+    ACCUMULATOR_report_interval_in_sec: 30
+
+    # sparse table default
+    SPARSE_TABLE_DEFAULT_local_shard_num: 2
+    SPARSE_TABLE_DEFAULT_table_save_thread_num: 4
+    SPARSE_TABLE_DEFAULT_pull_agent_sending_thread_num: 2
+    SPARSE_TABLE_DEFAULT_push_agent_sending_thread_num: 2
+
+    THREAD_DEFAULT_global_concurrency: 4
+    DENSE_TABLE_DEFAULT_pull_agent_sending_thread_num: 4
+    DENSE_TABLE_DEFAULT_push_agent_sending_thread_num: 4
+    DENSE_TABLE_DEFAULT_table_save_thread_num: 4
+    PROCESS_DEFAULT_cache_const_reference_data_source_thread_num: 4
+    PROCESS_DEFAULT_cache_data_source_read_thread_num: 4
+    PROCESS_DEFAULT_cache_data_source_uncompress_thread_num: 4
+    PROCESS_DEFAULT_cache_reference_data_source_thread_num: 4
+    PROCESS_DEFAULT_cache_sink_compress_thread_num: 4
+    PROCESS_DEFAULT_cache_sink_write_thread_num: 4
+    PROCESS_DEFAULT_pipe_thread_num: 4
+    SPARSE_TABLE_DEFAULT_pull_agent_filling_thread_num: 4
+    SPARSE_TABLE_DEFAULT_pull_agent_packing_thread_num: 4
+    SPARSE_TABLE_DEFAULT_pull_agent_receiving_thread_num: 4
+    SPARSE_TABLE_DEFAULT_push_agent_packing_thread_num: 4
+    SPARSE_TABLE_DEFAULT_push_agent_receiving_thread_num: 4
+    cache_shard_num: 4,
+
+app_name: invalid
+
+
+lr:
+    sink_model_interval: 0
+    input_path: "hdfs://"
+    input_validation_path: "hdfs://"
+
+    cache_uri: "mem://./"
+    training_pass_num: 2
+    model_output_path: "hdfs://"
+    block_size: 4
+    block_count: 4
+    training_mode: sync
+    
+gbm:
+    sink_model_interval: 0
+    input_path: "hdfs://"
+    booster_types: "1000dt"
+    n_learner: 10
+    training_mode: async
+    
+linear-fractal:
+    sink_model_interval: 0
+    input_instance_path: ""
+    input_model_path: ""
+    output_predict_result_path: ""
+
+lr-predict:
+    sink_model_interval: 0
+    input_instance_path: ""
+    input_model_path: ""
+    output_predict_result_path: ""
+    
+gbm-predict:
+    sink_model_interval: 0
+    input_instance_path: ""
+    input_model_path: ""
+    output_predict_result_path: ""
+
+linear-fractal-predict:
+    sink_model_interval: 0
+    input_instance_path: ""
+    input_model_path: ""
+    output_predict_result_path: ""
+
+dvf2cvf:
+    sink_model_interval: 0
+    decay_rate: 0.9
+    decayed_erase_threshold: 0
+    enable_slots: ''
+    input_path: 
+       -   is_output_instance: true
+           statistics_output_mode: NONE
+           path: "01"
+           output_path_suffix: '01'
+           output_instance_file_prefix: ins
+       -   is_output_instance: true
+           statistics_output_mode: NONE
+           path: "02"
+           output_path_suffix: '02'
+           output_instance_file_prefix: ins

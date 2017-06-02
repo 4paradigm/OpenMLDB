@@ -43,7 +43,7 @@ class DropTable(TestSuite):
         jobHelper.append(jobHelper.rtidbClient.create_table, tid=123)
         jobHelper.append(jobHelper.rtidbClient.scan, tid=123)
         jobHelper.append(jobHelper.rtidbClient.drop_table, tid=123456)
-        retStatus = jobHelper.run(failonerror=False)
+        retStatus = jobHelper.run(failonerror=False, autoidentity=False)
         self.assertFalse(retStatus)
 
     def testDropTableRedo(self):
