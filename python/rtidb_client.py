@@ -10,7 +10,7 @@
 
 import os
 from ctypes import CDLL, byref
-from ctypes import c_char_p,c_int, c_uint32, c_ulong,  string_at
+from ctypes import c_char_p,c_int, c_uint32, c_ulong,  string_at,c_void_p
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 rtidb_so = CDLL(os.path.join(dir_path ,"librtidb_py.so"))
@@ -18,6 +18,7 @@ rtidb_so = CDLL(os.path.join(dir_path ,"librtidb_py.so"))
 class RtidbClient(object):
   def __init__(self, endpoint):
     self.db_ = rtidb_so.NewClient(endpoint)
+    rtidb_so.Put.argtypes=[c_void_p,  c_uint32, c_uint32, c_char_p, c_ulong, c_char_p]
 
   def create_table(self, name, tid, pid, ttl, data_ha = False):
     if rtidb_so.CreateTable(self.db_, name, tid, pid, ttl, data_ha):
