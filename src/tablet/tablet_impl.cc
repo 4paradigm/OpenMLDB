@@ -33,6 +33,7 @@ DECLARE_int32(gc_interval);
 DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
+DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
 DECLARE_bool(enable_statdb);
 
@@ -72,8 +73,11 @@ void TabletImpl::Init() {
         dbstat->Ref();
         metric_ = new TabletMetric(dbstat);
         metric_->Init();
-
     }
+#ifdef TCMALLOC_ENABLE
+    MallocExtension* tcmalloc = MallocExtension::instance();
+    tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
+#endif 
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -123,12 +127,6 @@ inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request)
 
 inline bool TabletImpl::CheckCreateRequest(const rtidb::api::CreateTableRequest* request) {
     if (request->name().size() <= 0) {
-        return false;
-    }
-    if (request->tid() <= 0) {
-        return false;
-    }
-    if (request->pid() <= 0) {
         return false;
     }
     return true;
@@ -213,7 +211,6 @@ void TabletImpl::CreateTable(RpcController* controller,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
     if (!CheckCreateRequest(request)) {
-         // table exists
         response->set_code(8);
         response->set_msg("table name is empty");
         done->Run();
