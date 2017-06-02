@@ -1,4 +1,7 @@
 #! /bin/sh
+#
+# java_ut.sh
+#
 
 ROOT_DIR=`pwd`
 
@@ -20,4 +23,5 @@ cd $ROOT_DIR/java
 mvn install
 
 clear_debug
+
 
