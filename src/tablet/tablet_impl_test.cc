@@ -96,19 +96,33 @@ TEST_F(TabletImplTest, TTL) {
 TEST_F(TabletImplTest, CreateTable) {
     TabletImpl tablet;
     tablet.Init();
-    ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(1);
-    request.set_pid(1);
-    request.set_ttl(0);
-    ::rtidb::api::CreateTableResponse response;
-    MockClosure closure;
-    tablet.CreateTable(NULL, &request, &response,
-            &closure);
-    ASSERT_EQ(0, response.code());
-    tablet.CreateTable(NULL, &request, &response,
-            &closure);
-    ASSERT_EQ(-2, response.code());
+    {
+        ::rtidb::api::CreateTableRequest request;
+        request.set_name("t0");
+        request.set_tid(1);
+        request.set_pid(1);
+        request.set_ttl(0);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        request.set_name("");
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(8, response.code());
+    }
+    {
+        ::rtidb::api::CreateTableRequest request;
+        request.set_name("t0");
+        request.set_ttl(0);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(8, response.code());
+    }
+
 }
 
 TEST_F(TabletImplTest, Put) {
