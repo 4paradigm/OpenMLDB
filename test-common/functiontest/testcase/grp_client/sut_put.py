@@ -89,7 +89,7 @@ class Put(TestSuite):
         jobHelper = JobHelper()
 
         jobHelper.append(jobHelper.rtidbClient.create_table)
-        jobHelper.append(jobHelper.rtidbClient.put, time='')
+        jobHelper.append(jobHelper.rtidbClient.put, time=0)
         jobHelper.append(jobHelper.rtidbClient.scan)
         retStatus = jobHelper.run(failonerror=False, autoidentity=False)
         self.assertTrue(retStatus)
