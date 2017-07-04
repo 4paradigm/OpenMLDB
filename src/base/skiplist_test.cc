@@ -69,6 +69,36 @@ TEST_F(NodeTest, SetNext) {
     ASSERT_EQ(3, node_ptr->GetKey());
 }
 
+TEST_F(NodeTest, AddToFirst) {
+    Comparator cmp;
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    uint32_t key3 = 2;
+    uint32_t value3 = 5;
+    sl.Insert(key3, value3);
+    uint32_t key4 = 3;
+    uint32_t value4= 6;
+    sl.Insert(key4, value4);
+    uint32_t key1 = 1;
+    uint32_t value1 = 1;
+    bool ok = sl.AddToFirst(key1, value1);
+    ASSERT_TRUE(ok);
+    Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+    it->SeekToFirst();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(1, it->GetValue());
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(2, it->GetKey());
+    ASSERT_EQ(5, it->GetValue());
+    delete it;
+
+    uint32_t key_bad = 2;
+    uint32_t value_bad = 2;
+    ok = sl.AddToFirst(key_bad, value_bad);
+    ASSERT_FALSE(ok);
+}
+
 
 TEST_F(SkiplistTest, InsertAndIterator) {
     Comparator cmp;
@@ -104,6 +134,22 @@ TEST_F(SkiplistTest, InsertAndIterator) {
     ASSERT_EQ(2, it->GetKey());
     ASSERT_EQ(5, it->GetValue());
     delete it;
+}
+
+TEST_F(SkiplistTest, GetSize) {
+    Comparator cmp;
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    ASSERT_EQ(0, sl.GetSize());
+    uint32_t key1 = 1;
+    uint32_t value1 = 2;
+    sl.Insert(key1, value1);
+    uint32_t key3 = 2;
+    uint32_t value3 = 5;
+    sl.Insert(key3, value3);
+    uint32_t key4 = 3;
+    uint32_t value4= 6;
+    sl.Insert(key4, value4);
+    ASSERT_EQ(3, sl.GetSize());
 }
 
 TEST_F(SkiplistTest, Iterator) {

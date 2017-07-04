@@ -28,7 +28,7 @@ using ::baidu::common::ThreadPool;
 namespace rtidb {
 namespace replica {
 
-bool ReceiveEntry(const LogEntry* entry) {
+bool ReceiveEntry(const ::rtidb::api::LogEntry* entry) {
     if (entry != NULL) {
         return true;
     }
@@ -59,8 +59,6 @@ TEST_F(LogReplicatorTest, BenchMark) {
     LogReplicator replicator(folder);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
-    uint64_t consumed = ::baidu::common::timer::get_micros();
-    replicator.Close();
 }
 
 

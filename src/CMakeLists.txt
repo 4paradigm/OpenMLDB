@@ -11,8 +11,7 @@ endif()
 add_library(tablet STATIC proto/tablet.pb.cc tablet/table_ha.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
 add_library(storage STATIC storage/table.cc storage/segment.cc)
 
-add_library(log STATIC log/coding.cc 
-                       log/crc32c.cc 
+add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
                        log/log_writer.cc 
                        log/log_reader.cc
@@ -23,8 +22,8 @@ add_library(replica STATIC replica/log_replicator.cc)
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
 
-add_executable(replica_test replica/log_replicator_test.cc)
-target_link_libraries(replica_test pthread gtest common replica)
+add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
+target_link_libraries(replica_test pthread gtest gflags replica log sofa-pbrpc protobuf z snappy common leveldb)
 
 add_executable(skiplist_test base/skiplist_test.cc)
 target_link_libraries(skiplist_test gtest pthread ${tc_lib})

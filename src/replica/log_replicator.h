@@ -10,7 +10,6 @@
 
 #include <vector>
 #include <map>
-#include "replica/file_appender.h"
 #include "base/skiplist.h"
 #include "boost/atomic.hpp"
 #include "leveldb/db.h"

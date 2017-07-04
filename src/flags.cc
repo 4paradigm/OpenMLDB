@@ -14,4 +14,5 @@ DEFINE_int32(statdb_ttl, 30 * 24 * 60 , "the ttl of statdb");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
 DEFINE_bool(enable_statdb, false, "enable statdb");
+DEFINE_int32(binlog_single_file_max_size, 1024*4, "the max size of single binlog file");
 

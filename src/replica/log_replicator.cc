@@ -68,7 +68,7 @@ bool LogReplicator::Init() {
 }
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request) {
-    if (wh_ == NULL || wsize_ > (uint32_t)FLAGS_binlog_single_file_max_size) {
+    if (wh_ == NULL || (wsize_ / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
             return false;
