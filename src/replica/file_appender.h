@@ -29,7 +29,7 @@ public:
     bool Init();
 
     uint32_t Append(const char* buf, 
-                   uint32_t size);
+                    uint32_t size);
 
     bool Flush();
 

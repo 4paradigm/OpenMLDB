@@ -22,8 +22,8 @@ namespace rtidb {
 namespace replica {
 
 FileAppender::FileAppender(const std::string& filename,
-                         const std::string& folder,
-                         uint64_t max_size):filename_(filename),
+                           const std::string& folder,
+                           uint64_t max_size):filename_(filename),
     folder_(folder),max_size_(max_size){}
 
 
@@ -35,7 +35,7 @@ bool FileAppender::Init() {
     std::string path = folder_ + "/" + filename_;
     fd_ = fopen(path.c_str(), "ab+");
     if (fd_ == NULL) {
-        LOG(WARNING, "fail to create file %s", path.c_str());
+        LOG(WARNING, "fail to create file %s with folder %s , filename %s", path.c_str(), folder_.c_str(), filename_.c_str());
         return false;
     }
     fd_no_ = fileno(fd_);
@@ -59,7 +59,9 @@ uint32_t FileAppender::Append(const char* buf, uint32_t size) {
             max_size_);
         return -1;
     }
-
+    if (fd_ == NULL) {
+        return -1;
+    }
     size_t data_size = fwrite(buf, sizeof(char), size, fd_);
 
     if (data_size > 0) {
@@ -87,11 +89,9 @@ bool FileAppender::Flush() {
 }
 
 bool FileAppender::Sync() {
-
     if (fd_no_ <= 0) {
         return false;
     }
-
     int ok = fsync(fd_no_);
     if (ok != 0) {
         LOG(WARNING, "fail to fsync fd %ld with filename %s for %s",
@@ -120,9 +120,7 @@ bool FileAppender::IsFull() {
     return current_size_ >= max_size_;
 }
 
-
 }
 }
-
 
 
