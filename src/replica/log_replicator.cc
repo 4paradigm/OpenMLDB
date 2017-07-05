@@ -28,9 +28,23 @@ using ::baidu::common::DEBUG;
 const static StringComparator scmp;
 const static std::string LOG_META_PREFIX="/logs/";
 
-LogReplicator::LogReplicator(const std::string& path):path_(path), meta_path_(), log_path_(),
+LogReplicator::LogReplicator(const std::string& path,
+                             const std::vector<std::string>& endpoints,
+                             const ReplicatorRole& role):path_(path), meta_path_(), log_path_(),
     meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
-    role_(kSlaveNode), last_log_term_(0), last_log_offset_(0){}
+    role_(role), last_log_term_(0), last_log_offset_(0),
+    endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),
+    sf_(NULL), lr_(NULL),apply_log_offset_(0),running_(true), tp_(1){}
+
+LogReplicator::LogReplicator(const std::string& path,
+                             ApplyLogFunc& func,
+                             const ReplicatorRole& role):path_(path), meta_path_(), log_path_(),
+    meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
+    role_(role), last_log_term_(0), last_log_offset_(0),
+    endpoints_(), nodes_(), mu_(), cv_(&mu_),
+    sf_(NULL), lr_(NULL),apply_log_offset_(0),
+    func_(func),running_(true), tp_(1){}
+
 
 LogReplicator::~LogReplicator() {}
 
@@ -43,14 +57,12 @@ bool LogReplicator::Init() {
         LOG(WARNING, "fail to create db meta path %s", meta_path_.c_str());
         return false;
     }
-
     log_path_ = path_ + "/logs/";
     ok = ::rtidb::base::MkdirRecur(log_path_);
     if (!ok) {
         LOG(WARNING, "fail to log dir %s", log_path_.c_str());
         return false;
     }
-
     leveldb::Status status = leveldb::DB::Open(options,
                                                log_path_, 
                                                &meta_);
@@ -64,6 +76,23 @@ bool LogReplicator::Init() {
         return false;
     }
 
+    if (role_ == kLeaderNode) {
+        for (size_t i = 0; i < endpoints_.size(); i++) {
+            ReplicaNode& node = nodes_[i];
+            node.endpoint = endpoints_[i];
+            node.last_sync_term = 0;
+            node.last_sync_offset = 0;
+            node.client = new ::rtidb::RpcClient();
+            bool ok = node.client->GetStub(node.endpoint, &node.stub);
+            if (!ok) {
+                LOG(WARNING, "fail to get stub with endpoint %s", node.endpoint.c_str());
+                return false;
+            }
+        }
+        tp_.AddTask(boost::bind(&LogReplicator::ReplicateLog, this));
+    }else {
+        tp_.AddTask(boost::bind(&LogReplicator::ApplyLog, this));
+    }
     return ok;
 }
 
@@ -101,7 +130,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
             return false;
         }
     }
-    entry.set_log_index(++log_offset_);
+    entry.set_log_index(log_offset_.fetch_add(1, boost::memory_order_relaxed));
     std::string buffer;
     entry.SerializeToString(&buffer);
     ::rtidb::base::Slice slice(buffer.c_str(), buffer.size());
@@ -111,6 +140,40 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         return false;
     }
     return true;
+}
+
+bool LogReplicator::RollRLogFile(SequentialFile** sf,
+        Reader** lr, uint64_t offset) {
+    if (sf == NULL || lr == NULL) {
+        return false;
+    }
+    mu_.AssertHeld();
+    LogParts::Iterator* it = logs_->NewIterator();
+    while (it->Valid()) {
+        LogPart* part = it->GetValue();
+        if (part->slog_id_ < offset) {
+            it->Next();
+            continue;
+        }
+        delete it;
+        std::string full_path = log_path_ + "/" + part->log_name_;
+        FILE* fd = fopen(full_path.c_str(), "rb");
+        if (fd == NULL) {
+            LOG(WARNING, "fail to create file %s", full_path.c_str());
+            return false;
+        }
+        if ((*sf) != NULL) {
+            delete (*sf);
+            delete (*lr);
+        }
+        LOG(INFO, "roll log file to %s for path %s", part->log_name_.c_str(),
+                path_.c_str());
+        *sf = ::rtidb::log::NewSeqFile(full_path, fd);
+        *lr = new Reader(*sf, NULL, false, 0);
+        return true;
+    }
+    delete it;
+    return false;
 }
 
 bool LogReplicator::RollWLogFile() {
@@ -125,7 +188,9 @@ bool LogReplicator::RollWLogFile() {
         LOG(WARNING, "fail to create file %s", full_path.c_str());
         return false;
     }
-    LogPart* part = new LogPart(log_offset_ + 1, name);
+
+    uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
+    LogPart* part = new LogPart(offset + 1, name);
     std::string buffer;
     buffer.resize(8 + 4 + name.size() + 1);
     char* cbuffer = reinterpret_cast<char*>(&(buffer[0]));
@@ -185,6 +250,118 @@ bool LogReplicator::Recover() {
     delete it;
     //TODO(wangtaize) recover term and log offset from log part
     return true;
+}
+
+void LogReplicator::Sync() {
+    MutexLock lock(&mu_);
+    cv_.Signal();
+}
+
+void LogReplicator::ReplicateLog() {
+    while (running_.load(boost::memory_order_relaxed)) {
+        MutexLock lock(&mu_);
+        cv_.TimeWait(10000);
+        //TODO (wangtaize) one thread per replicate node
+        std::vector<ReplicaNode>::iterator it = nodes_.begin();
+        for (; it != nodes_.end(); ++it) {
+            ReplicateToNode(*it);
+        }
+    }
+    LOG(INFO, "replicate exit for path %s", path_.c_str());
+}
+
+bool LogReplicator::ReadNextRecord(Reader** lr, 
+                                   SequentialFile** sf,
+                                   ::rtidb::base::Slice* record,
+                                   std::string* buffer,
+                                   uint64_t offset) {
+    mu_.AssertHeld();
+    // for the first run
+    if (lr_ == NULL 
+        || sf_ == NULL) {
+        bool ok = RollRLogFile(&sf_, &lr_, offset);
+        if (!ok) {
+            LOG(WARNING, "fail to roll read log for path %s", path_.c_str());
+            return false;
+        }
+     }
+     bool ok = lr_->ReadRecord(record, buffer);
+     if (!ok) {
+         // reache the end of file;
+         ok = RollRLogFile(&sf_, &lr_, offset);
+         if (!ok) {
+             LOG(WARNING, "fail to roll read log for path %s", path_.c_str());
+             return false;
+         }
+         ok = lr_->ReadRecord(record, buffer);
+         if (!ok) {
+             LOG(WARNING, "fail to read log for path %s", path_.c_str());
+             return false;
+         }
+     }
+     return true;
+}
+
+void LogReplicator::ApplyLog() {
+    while(running_.load(boost::memory_order_relaxed)) {
+        MutexLock lock(&mu_);
+        cv_.TimeWait(10000);
+        if (apply_log_offset_ >= log_offset_.load(boost::memory_order_relaxed)) {
+            continue;
+        }
+        std::string buffer;
+        ::rtidb::base::Slice record;
+        bool ok = ReadNextRecord(&lr_, &sf_, &record, &buffer, apply_log_offset_);
+        if (!ok) {
+            LOG(WARNING, "fail to read next record for path %s", path_.c_str());
+            // forever retry
+            continue;
+        }
+        ::rtidb::api::LogEntry entry;
+        entry.ParseFromString(record.ToString());
+        ok = func_(entry);
+        if (ok) {
+            LOG(DEBUG, "apply log with path %s ok to offset %lld", path_.c_str(),
+                    entry.log_index());
+            apply_log_offset_ = entry.log_index();
+        }else {
+            //TODO cache log entry and reapply 
+            LOG(WARNING, "fail to apply log with path %s to offset %lld", path_.c_str(),
+                    entry.log_index());
+        }
+    }
+}
+
+void LogReplicator::ReplicateToNode(ReplicaNode& node) {
+    mu_.AssertHeld();
+    if (node.last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
+        return; 
+    }
+    std::string buffer;
+    ::rtidb::base::Slice record;
+    bool ok = ReadNextRecord(&node.lr, &node.sf, &record, &buffer, node.last_sync_offset);
+    if (!ok) {
+        LOG(WARNING, "fail to read next record for path %s", path_.c_str());
+        // forever retry
+        return;
+    }
+    ::rtidb::api::AppendEntriesRequest request;
+    ::rtidb::api::AppendEntriesResponse response;
+    request.set_pre_log_index(node.last_sync_offset);
+    request.set_pre_log_term(node.last_sync_term);
+    ::rtidb::api::LogEntry* entry = request.add_entries();
+    entry->ParseFromString(record.ToString());
+    ok = node.client->SendRequest(node.stub, &::rtidb::api::TabletServer_Stub::AppendEntries,
+                                       &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        LOG(DEBUG, "sync log to node %s to offset %lld",
+                node.endpoint.c_str(), entry->log_index());
+        node.last_sync_offset = entry->log_index();
+        node.last_sync_term = entry->term();
+    }else {
+        node.cache.push_back(request);
+        LOG(WARNING, "fail to sync log to node %s", node.endpoint.c_str());
+    }
 }
 
 } // end of replica

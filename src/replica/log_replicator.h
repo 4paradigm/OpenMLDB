@@ -12,10 +12,13 @@
 #include <map>
 #include "base/skiplist.h"
 #include "boost/atomic.hpp"
+#include "boost/function.hpp"
 #include "leveldb/db.h"
 #include "mutex.h"
 #include "thread_pool.h"
 #include "log/log_writer.h"
+#include "log/log_reader.h"
+#include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
@@ -27,7 +30,11 @@ using ::baidu::common::Mutex;
 using ::baidu::common::CondVar;
 using ::baidu::common::ThreadPool;
 using ::rtidb::log::WritableFile;
+using ::rtidb::log::SequentialFile;
 using ::rtidb::log::Writer;
+using ::rtidb::log::Reader;
+
+typedef boost::function< bool (const ::rtidb::api::LogEntry& entry)> ApplyLogFunc;
 
 enum ReplicatorRole {
     kLeaderNode = 1,
@@ -72,6 +79,17 @@ struct ReplicaNode {
     uint64_t last_sync_offset;
     ::rtidb::RpcClient* client;
     ::rtidb::api::TabletServer_Stub* stub;
+    SequentialFile* sf;
+    Reader* lr; 
+    std::vector<::rtidb::api::AppendEntriesRequest> cache;
+    ReplicaNode():endpoint(),last_sync_term(0),
+    last_sync_offset(0), client(NULL), stub(NULL), sf(NULL), lr(NULL),cache(){}
+    ~ReplicaNode() {
+        delete client;
+        delete stub;
+        delete sf;
+        delete lr;
+    }
 };
 
 struct StringComparator {
@@ -87,7 +105,13 @@ class LogReplicator {
 
 public:
 
-    LogReplicator(const std::string& path);
+    LogReplicator(const std::string& path,
+                  const std::vector<std::string>& endpoints,
+                  const ReplicatorRole& role);
+
+    LogReplicator(const std::string& path,
+                  ApplyLogFunc& func,
+                  const ReplicatorRole& role);
 
     ~LogReplicator();
 
@@ -99,12 +123,27 @@ public:
     // the master node append entry
     bool AppendEntry(::rtidb::api::LogEntry& entry);
 
-private:
-
+    // sync data to slave nodes
+    void Sync();
     // recover logs meta
     bool Recover();
     bool RollWLogFile();
+    bool RollRLogFile(SequentialFile** sf, 
+                      Reader** lr, 
+                      uint64_t offset);
+    
+    // read next record from log file
+    // when one of log file reaches the end , it will auto 
+    // roll it
+    bool ReadNextRecord(Reader** lr, 
+                        SequentialFile** sf, 
+                        ::rtidb::base::Slice* record,
+                        std::string* buffer,
+                        uint64_t offset);
 
+    void ReplicateLog();
+    void ReplicateToNode(ReplicaNode& node);
+    void ApplyLog();
 private:
     // the replicator root data path
     std::string path_;
@@ -114,13 +153,31 @@ private:
     leveldb::DB* meta_;
     // the term for leader judgement
     uint64_t term_;
-    uint64_t log_offset_;
+    boost::atomic<uint64_t> log_offset_;
     LogParts* logs_;
     WriteHandle* wh_;
     uint32_t wsize_;
     ReplicatorRole role_;
     uint64_t last_log_term_;
     uint64_t last_log_offset_;
+    std::vector<std::string> endpoints_;
+    std::vector<ReplicaNode> nodes_;
+
+    // sync mutex
+    Mutex mu_;
+    CondVar cv_;
+
+    // for slave node to apply log to itself
+    SequentialFile* sf_;
+    Reader* lr_;
+    uint64_t apply_log_offset_;
+    ApplyLogFunc func_;
+
+    // for background task
+    boost::atomic<bool> running_;
+
+    // background task pool
+    ThreadPool tp_;
 };
 
 } // end of replica

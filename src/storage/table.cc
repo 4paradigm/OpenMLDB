@@ -27,7 +27,7 @@ Table::Table(const std::string& name,
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
     ttl_offset_(60 * 1000), enable_persistence_(false)
-    {}
+{}
 
 void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
@@ -93,11 +93,7 @@ uint64_t Table::SchedGc() {
     return count;
 }
 
-
-
-Table::Iterator::Iterator(Segment::Iterator* it):it_(it){
-
-}
+Table::Iterator::Iterator(Segment::Iterator* it):it_(it){}
 
 Table::Iterator::~Iterator() {
     delete it_;

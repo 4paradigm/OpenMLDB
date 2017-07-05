@@ -23,6 +23,7 @@ enum TableGcType {
 class Table {
 
 public:
+
     // Create a logic table with table name , table id, table partition id 
     // and segment count
     Table(const std::string& name,
@@ -44,7 +45,6 @@ public:
     public:
         Iterator(Segment::Iterator* it);
         ~Iterator();
-        
         bool Valid() const;
         void Next();
         void Seek(const uint64_t& time);
@@ -77,7 +77,7 @@ public:
         }
         return data_cnt;
     }
-    
+
     inline void GetDataCnt(uint64_t** stat, uint32_t* size) const {
         if (stat == NULL) {
             return;
@@ -106,9 +106,10 @@ public:
         return id_;
     }
 
-    inline uint32_t GetSegCnt() const{
+    inline uint32_t GetSegCnt() const {
         return seg_cnt_;
     }
+
     inline uint32_t GetPid() const {
         return pid_;
     }
@@ -122,6 +123,7 @@ public:
     }
 
 private:
+
     ~Table(){}
 
 private:

@@ -20,8 +20,7 @@
 #include "logging.h"
 #include "thread_pool.h"
 
-#include <stdlib.h>
-#include <time.h>
+#include "timer.h"
 
 using ::baidu::common::ThreadPool;
 
@@ -48,16 +47,24 @@ inline std::string GenRand() {
 }
 
 TEST_F(LogReplicatorTest, Init) {
+    std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder);
+    LogReplicator replicator(folder, endpoints, kLeaderNode);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
 }
 
 TEST_F(LogReplicatorTest, BenchMark) {
+    std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder);
+    LogReplicator replicator(folder, endpoints, kLeaderNode);
     bool ok = replicator.Init();
+    ::rtidb::api::LogEntry entry;
+    entry.set_term(1);
+    entry.set_pk("test");
+    entry.set_value("test");
+    entry.set_ts(9527);
+    ok = replicator.AppendEntry(entry);
     ASSERT_TRUE(ok);
 }
 
