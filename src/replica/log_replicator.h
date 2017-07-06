@@ -66,7 +66,7 @@ struct WriteHandle {
     ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {
         return lw_->AddRecord(slice);
     }
-
+    
     ~WriteHandle() {
         delete lw_;
         delete wf_;
@@ -77,16 +77,12 @@ struct ReplicaNode {
     std::string endpoint;
     uint64_t last_sync_term;
     uint64_t last_sync_offset;
-    ::rtidb::RpcClient* client;
-    ::rtidb::api::TabletServer_Stub* stub;
     SequentialFile* sf;
     Reader* lr; 
     std::vector<::rtidb::api::AppendEntriesRequest> cache;
     ReplicaNode():endpoint(),last_sync_term(0),
-    last_sync_offset(0), client(NULL), stub(NULL), sf(NULL), lr(NULL),cache(){}
+    last_sync_offset(0), sf(NULL), lr(NULL),cache(){}
     ~ReplicaNode() {
-        delete client;
-        delete stub;
         delete sf;
         delete lr;
     }
@@ -110,7 +106,7 @@ public:
                   const ReplicatorRole& role);
 
     LogReplicator(const std::string& path,
-                  ApplyLogFunc& func,
+                  ApplyLogFunc func,
                   const ReplicatorRole& role);
 
     ~LogReplicator();
@@ -123,11 +119,15 @@ public:
     // the master node append entry
     bool AppendEntry(::rtidb::api::LogEntry& entry);
 
-    // sync data to slave nodes
-    void Sync();
+    //  data to slave nodes
+    void Notify();
     // recover logs meta
     bool Recover();
+
+    void Stop();
+
     bool RollWLogFile();
+
     bool RollRLogFile(SequentialFile** sf, 
                       Reader** lr, 
                       uint64_t offset);
@@ -142,7 +142,7 @@ public:
                         uint64_t offset);
 
     void ReplicateLog();
-    void ReplicateToNode(ReplicaNode& node);
+    void ReplicateToNode(ReplicaNode* node);
     void ApplyLog();
 private:
     // the replicator root data path
@@ -161,11 +161,12 @@ private:
     uint64_t last_log_term_;
     uint64_t last_log_offset_;
     std::vector<std::string> endpoints_;
-    std::vector<ReplicaNode> nodes_;
-
+    std::vector<ReplicaNode*> nodes_;
     // sync mutex
     Mutex mu_;
     CondVar cv_;
+
+    ::rtidb::RpcClient* rpc_client_;
 
     // for slave node to apply log to itself
     SequentialFile* sf_;

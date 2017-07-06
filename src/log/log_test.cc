@@ -53,6 +53,11 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     bool ok = reader.ReadRecord(&value, &scratch);
     ASSERT_TRUE(ok);
     ASSERT_EQ("hello", value.ToString());
+    status = writer.AddRecord("hello1");
+    ASSERT_TRUE(status.ok());
+    ok = reader.ReadRecord(&value, &scratch);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ("hello1", value.ToString());
     ok = reader.ReadRecord(&value, &scratch);
     ASSERT_FALSE(ok);
 }

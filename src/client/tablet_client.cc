@@ -32,7 +32,8 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t id,
     request.set_ttl(ttl);
     request.set_ha(data_ha);
     ::rtidb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::CreateTable,
+    bool ok = client_.SendRequest(tablet_,
+            &::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         return true;

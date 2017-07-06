@@ -54,6 +54,8 @@ target_link_libraries(table_ha_test   gtest pthread tablet leveldb gflags storag
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf unwind tcmalloc)
 
+add_executable(log_test  log/log_test.cc base/status.cc)
+target_link_libraries(log_test   gtest pthread storage tablet log gflags storage common protobuf unwind tcmalloc)
 
 add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc)
 target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage leveldb tcmalloc_minimal)

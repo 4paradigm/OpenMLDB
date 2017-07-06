@@ -9,7 +9,6 @@
 
 #include <sched.h>
 #include <unistd.h>
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <gtest/gtest.h>
@@ -17,15 +16,88 @@
 #include <boost/atomic.hpp>
 #include <boost/bind.hpp>
 #include <stdio.h>
+#include "proto/tablet.pb.h"
 #include "logging.h"
 #include "thread_pool.h"
+#include <sofa/pbrpc/pbrpc.h>
 
 #include "timer.h"
 
 using ::baidu::common::ThreadPool;
+using ::google::protobuf::RpcController;
+using ::google::protobuf::Closure;
+using ::baidu::common::INFO;
+using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace replica {
+
+class MockTabletImpl : public ::rtidb::api::TabletServer {
+
+public:
+    MockTabletImpl(const ReplicatorRole& role,
+                   const std::string& path,
+                   const std::vector<std::string>& endpoints): role_(role),
+    path_(path), endpoints_(endpoints), replicator_(path_, endpoints_, role_){
+    }
+
+    MockTabletImpl(const ReplicatorRole& role,
+                   const std::string& path,
+                   ApplyLogFunc func): role_(role),
+    path_(path), func_(func), replicator_(path_, func_, role_){
+    }
+    ~MockTabletImpl() {}
+
+    bool Init() {
+        return replicator_.Init();
+    }
+
+    void Put(RpcController* controller,
+             const ::rtidb::api::PutRequest* request,
+             ::rtidb::api::PutResponse* response,
+             Closure* done) {}
+
+    void Scan(RpcController* controller,
+              const ::rtidb::api::ScanRequest* request,
+              ::rtidb::api::ScanResponse* response,
+              Closure* done) {}
+
+    void CreateTable(RpcController* controller,
+            const ::rtidb::api::CreateTableRequest* request,
+            ::rtidb::api::CreateTableResponse* response,
+            Closure* done) {}
+
+    void DropTable(RpcController* controller,
+            const ::rtidb::api::DropTableRequest* request,
+            ::rtidb::api::DropTableResponse* response,
+            Closure* done) {}
+
+    void RelMem(RpcController* controller,
+            const ::rtidb::api::RelMemRequest* request,
+            ::rtidb::api::RelMemResponse* response,
+            Closure* done) {}
+    void AppendEntries(RpcController* controller,
+            const ::rtidb::api::AppendEntriesRequest* request,
+            ::rtidb::api::AppendEntriesResponse* response,
+            Closure* done) {
+        LOG(INFO, "receive log entry from leader");
+        bool ok = replicator_.AppendEntries(request);
+        if (ok) {
+            response->set_code(0);
+        }else {
+            response->set_code(1);
+        }
+        done->Run();
+    }
+
+private:
+    ReplicatorRole role_;
+    std::string path_;
+    std::vector<std::string> endpoints_;
+    ApplyLogFunc func_;
+    LogReplicator replicator_;
+
+};
 
 bool ReceiveEntry(const ::rtidb::api::LogEntry* entry) {
     if (entry != NULL) {
@@ -46,12 +118,29 @@ inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
 }
 
+bool StartRpcServe(MockTabletImpl* tablet,
+        const std::string& endpoint) {
+    sofa::pbrpc::RpcServerOptions options;
+    sofa::pbrpc::RpcServer rpc_server(options);
+    if (!rpc_server.RegisterService(tablet)) {
+        return false;
+    }
+    bool ok =rpc_server.Start(endpoint);
+    if (ok) {
+        LOG(INFO, "register service ok");
+    }else {
+        LOG(WARNING, "fail to start service");
+    }
+    return ok;
+}
+
 TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
     LogReplicator replicator(folder, endpoints, kLeaderNode);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
+    replicator.Stop();
 }
 
 TEST_F(LogReplicatorTest, BenchMark) {
@@ -66,8 +155,48 @@ TEST_F(LogReplicatorTest, BenchMark) {
     entry.set_ts(9527);
     ok = replicator.AppendEntry(entry);
     ASSERT_TRUE(ok);
+    replicator.Stop();
 }
 
+bool MockApplyLog(const ::rtidb::api::LogEntry& entry) {
+    return true;
+}
+
+TEST_F(LogReplicatorTest, LeaderAndFollower) {
+    std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+    MockTabletImpl* follower = new MockTabletImpl(kSlaveNode, folder, boost::bind(MockApplyLog, _1)); 
+    bool ok = follower->Init();
+    ASSERT_TRUE(ok);
+    std::string follower_addr = "127.0.0.1:18527";
+    sofa::pbrpc::RpcServerOptions options;
+    sofa::pbrpc::RpcServer rpc_server(options);
+    if (!rpc_server.RegisterService(follower)) {
+        ASSERT_TRUE(false);
+    }
+    ok =rpc_server.Start(follower_addr);
+    ASSERT_TRUE(ok);
+    LOG(INFO, "start follower");
+    std::vector<std::string> endpoints;
+    endpoints.push_back(follower_addr);
+    folder = "/tmp/rtidb/" + GenRand() + "/";
+    LogReplicator leader(folder, endpoints, kLeaderNode);
+    ok = leader.Init();
+    ASSERT_TRUE(ok);
+    ::rtidb::api::LogEntry entry;
+    entry.set_pk("test_pk");
+    entry.set_value("value0");
+    entry.set_ts(9527);
+    ok = leader.AppendEntry(entry);
+    ok = leader.AppendEntry(entry);
+
+    ok = leader.AppendEntry(entry);
+    ok = leader.AppendEntry(entry);
+    ok = leader.AppendEntry(entry);
+    ok = leader.AppendEntry(entry);
+    leader.Notify();
+    ASSERT_TRUE(ok);
+    sleep(2);
+}
 
 }
 }
@@ -78,6 +207,4 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
-
-
 
