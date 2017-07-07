@@ -188,7 +188,6 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     entry.set_ts(9527);
     ok = leader.AppendEntry(entry);
     ok = leader.AppendEntry(entry);
-
     ok = leader.AppendEntry(entry);
     ok = leader.AppendEntry(entry);
     ok = leader.AppendEntry(entry);

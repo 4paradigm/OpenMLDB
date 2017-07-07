@@ -80,9 +80,10 @@ struct ReplicaNode {
     SequentialFile* sf;
     int32_t log_part_index;
     std::vector<::rtidb::api::AppendEntriesRequest> cache;
-    uint64_t last_log_offset;
+    uint64_t last_log_byte_offset;
     ReplicaNode():endpoint(),last_sync_term(0),
-    last_sync_offset(0), sf(NULL), log_part_index(0),cache(), last_log_offset(0){}
+    last_sync_offset(0), sf(NULL), log_part_index(-1),cache(),
+    last_log_byte_offset(0){}
     ~ReplicaNode() {
         delete sf;
     }
@@ -131,6 +132,7 @@ public:
     // roll read log file fd
     // offset: the log entry offset, not byte offset
     // last_log_part_index: log index in logs
+    // return log part index
     int32_t RollRLogFile(SequentialFile** sf, 
                          uint64_t offset,
                          int32_t last_log_part_index);
@@ -138,13 +140,9 @@ public:
     // read next record from log file
     // when one of log file reaches the end , it will auto 
     // roll it
-    bool ReadNextRecord(Reader** lr, 
-                        SequentialFile** sf, 
+    bool ReadNextRecord(ReplicaNode* node,
                         ::rtidb::base::Slice* record,
-                        std::string* buffer,
-                        uint64_t offset,
-                        int32_t last_log_part_index,
-                        uint64_t last_record_byte_offset);
+                        std::string* buffer);
 
     void ReplicateLog();
     void ReplicateToNode(ReplicaNode* node);
@@ -177,7 +175,6 @@ private:
 
     // for slave node to apply log to itself
     ReplicaNode* self_;
-    uint64_t apply_log_offset_;
     ApplyLogFunc func_;
 
     // for background task

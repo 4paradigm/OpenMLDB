@@ -34,7 +34,7 @@ LogReplicator::LogReplicator(const std::string& path,
     meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_term_(0), last_log_offset_(0),
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    self_(NULL),apply_log_offset_(0),running_(true), tp_(1){}
+    self_(NULL),running_(true), tp_(1){}
 
 LogReplicator::LogReplicator(const std::string& path,
                              ApplyLogFunc func,
@@ -42,7 +42,7 @@ LogReplicator::LogReplicator(const std::string& path,
     meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_term_(0), last_log_offset_(0),
     endpoints_(), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    self_(NULL),apply_log_offset_(0),
+    self_(NULL),
     func_(func),running_(true), tp_(1){}
 
 LogReplicator::~LogReplicator() {}
@@ -158,8 +158,9 @@ bool LogReplicator::OpenSeqFile(const std::string& path, SequentialFile** sf) {
     // close old Sequentialfile 
     if ((*sf) != NULL) {
         delete (*sf);
+        *sf = NULL;
     }
-    LOG(INFO, "open log file to %s for path %s ok", part->log_name_.c_str(),
+    LOG(INFO, "open log file to %s for path %s ok", path.c_str(),
             path_.c_str());
     *sf = ::rtidb::log::NewSeqFile(path, fd);
     return true;
@@ -321,51 +322,68 @@ void LogReplicator::ReplicateLog() {
     LOG(INFO, "replicate log exits for path %s", path_.c_str());
 }
 
-bool LogReplicator::ReadNextRecord(Reader** lr, 
-                                   SequentialFile** sf,
+bool LogReplicator::ReadNextRecord(ReplicaNode* node,
                                    ::rtidb::base::Slice* record,
-                                   std::string* buffer,
-                                   uint64_t offset,
-                                   int32_t last_log_part_index,
-                                   uint64_t last_record_byte_offset) {
+                                   std::string* buffer) {
     mu_.AssertHeld();
-    // for the first run
-    if (lr_ == NULL 
-        || sf_ == NULL) {
-        bool ok = RollRLogFile(&sf_, offset, last_log_part_index);
-        if (!ok) {
+    // first read record 
+    if (node->sf == NULL) {
+        int32_t new_log_part_index = RollRLogFile(&node->sf, 
+                                                  node->last_sync_offset,
+                                                  node->log_part_index);
+        if (new_log_part_index < 0) {
             LOG(WARNING, "fail to roll read log for path %s", path_.c_str());
             return false;
         }
-     }
-     bool ok = lr_->ReadRecord(record, buffer);
-     if (!ok) {
-         LOG(DEBUG, "reach the end of file for path %s", path_.c_str());
-         // reache the end of file;
-         ok = RollRLogFile(&sf_, &lr_, offset);
-         if (!ok) {
-             LOG(WARNING, "fail to roll read log for path %s", path_.c_str());
-             return false;
-         }
-         ok = lr_->ReadRecord(record, buffer);
-         if (!ok) {
-             LOG(WARNING, "fail to read log for path %s", path_.c_str());
-             return false;
-         }
-     }
-     return true;
+        // when change log part index , reset
+        // last_log_byte_offset to 0
+        node->log_part_index = new_log_part_index;
+        node->last_log_byte_offset = 0;
+    }
+    Reader reader(node->sf,NULL, true, node->last_log_byte_offset);
+    LOG(DEBUG, "log index %ld, log byte offset %lld", node->log_part_index, node->last_log_byte_offset);
+    bool ok = reader.ReadRecord(record, buffer);
+    if (!ok) {
+        LOG(DEBUG, "reach the end of file for path %s", path_.c_str());
+        // reache the end of file 
+        int32_t new_log_part_index = RollRLogFile(&node->sf,
+                                                  node->last_sync_offset,
+                                                  node->log_part_index);
+        // reache the latest log part
+        if (new_log_part_index == node->log_part_index) {
+            LOG(DEBUG, "no new log entry for path %s", path_.c_str());
+            return false;
+        }
+        if (new_log_part_index < 0) {
+            return false;
+        }
+        // roll a new log part file, reset status
+        node->log_part_index = new_log_part_index;
+        node->last_log_byte_offset = 0;
+        Reader reader1(node->sf, NULL, true, node->last_log_byte_offset);
+        ok = reader1.ReadRecord(record, buffer);
+        if (!ok) {
+            LOG(WARNING, "fail to read log for path %s", path_.c_str());
+            return false;
+        }
+        node->last_log_byte_offset = reader1.LastRecordOffset();
+        return true;
+    }
+    LOG(DEBUG, "reader last record offset %lld", reader.LastRecordOffset());
+    node->last_log_byte_offset = reader.LastRecordOffset();
+    return true;
 }
 
 void LogReplicator::ApplyLog() {
     while(running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
         cv_.TimeWait(10000);
-        if (apply_log_offset_ >= log_offset_.load(boost::memory_order_relaxed)) {
+        if (self_->last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
             continue;
         }
         std::string buffer;
         ::rtidb::base::Slice record;
-        bool ok = ReadNextRecord(&lr_, &sf_, &record, &buffer, apply_log_offset_);
+        bool ok = ReadNextRecord(self_, &record, &buffer);
         if (!ok) {
             LOG(WARNING, "fail to read next record for path %s", path_.c_str());
             // forever retry
@@ -377,7 +395,7 @@ void LogReplicator::ApplyLog() {
         if (ok) {
             LOG(DEBUG, "apply log with path %s ok to offset %lld", path_.c_str(),
                     entry.log_index());
-            apply_log_offset_ = entry.log_index();
+            self_->last_sync_offset = entry.log_index();
         }else {
             //TODO cache log entry and reapply 
             LOG(WARNING, "fail to apply log with path %s to offset %lld", path_.c_str(),
@@ -400,9 +418,7 @@ void LogReplicator::ReplicateToNode(ReplicaNode* node) {
     }
     std::string buffer;
     ::rtidb::base::Slice record;
-    ok = ReadNextRecord(&node->lr, 
-            &node->sf, &record, 
-            &buffer, node->last_sync_offset);
+    ok = ReadNextRecord(node, &record, &buffer);
     if (!ok) {
         LOG(WARNING, "fail to read next record for path %s", path_.c_str());
         // forever retry
