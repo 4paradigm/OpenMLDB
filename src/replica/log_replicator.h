@@ -78,13 +78,13 @@ struct ReplicaNode {
     uint64_t last_sync_term;
     uint64_t last_sync_offset;
     SequentialFile* sf;
-    Reader* lr; 
+    int32_t log_part_index;
     std::vector<::rtidb::api::AppendEntriesRequest> cache;
+    uint64_t last_log_offset;
     ReplicaNode():endpoint(),last_sync_term(0),
-    last_sync_offset(0), sf(NULL), lr(NULL),cache(){}
+    last_sync_offset(0), sf(NULL), log_part_index(0),cache(), last_log_offset(0){}
     ~ReplicaNode() {
         delete sf;
-        delete lr;
     }
 };
 
@@ -128,10 +128,13 @@ public:
 
     bool RollWLogFile();
 
-    bool RollRLogFile(SequentialFile** sf, 
-                      Reader** lr, 
-                      uint64_t offset);
-    
+    // roll read log file fd
+    // offset: the log entry offset, not byte offset
+    // last_log_part_index: log index in logs
+    int32_t RollRLogFile(SequentialFile** sf, 
+                         uint64_t offset,
+                         int32_t last_log_part_index);
+
     // read next record from log file
     // when one of log file reaches the end , it will auto 
     // roll it
@@ -139,11 +142,15 @@ public:
                         SequentialFile** sf, 
                         ::rtidb::base::Slice* record,
                         std::string* buffer,
-                        uint64_t offset);
+                        uint64_t offset,
+                        int32_t last_log_part_index,
+                        uint64_t last_record_byte_offset);
 
     void ReplicateLog();
     void ReplicateToNode(ReplicaNode* node);
     void ApplyLog();
+private:
+    bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 private:
     // the replicator root data path
     std::string path_;
@@ -169,8 +176,7 @@ private:
     ::rtidb::RpcClient* rpc_client_;
 
     // for slave node to apply log to itself
-    SequentialFile* sf_;
-    Reader* lr_;
+    ReplicaNode* self_;
     uint64_t apply_log_offset_;
     ApplyLogFunc func_;
 

@@ -34,7 +34,7 @@ LogReplicator::LogReplicator(const std::string& path,
     meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_term_(0), last_log_offset_(0),
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    sf_(NULL), lr_(NULL),apply_log_offset_(0),running_(true), tp_(1){}
+    self_(NULL),apply_log_offset_(0),running_(true), tp_(1){}
 
 LogReplicator::LogReplicator(const std::string& path,
                              ApplyLogFunc func,
@@ -42,7 +42,7 @@ LogReplicator::LogReplicator(const std::string& path,
     meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_term_(0), last_log_offset_(0),
     endpoints_(), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    sf_(NULL), lr_(NULL),apply_log_offset_(0),
+    self_(NULL),apply_log_offset_(0),
     func_(func),running_(true), tp_(1){}
 
 LogReplicator::~LogReplicator() {}
@@ -87,6 +87,7 @@ bool LogReplicator::Init() {
         tp_.AddTask(boost::bind(&LogReplicator::ReplicateLog, this));
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
     }else {
+        self_ = new ReplicaNode();
         tp_.AddTask(boost::bind(&LogReplicator::ApplyLog, this));
         LOG(INFO, "init follower node for path %s ok", path_.c_str());
     }
@@ -143,43 +144,87 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
     return true;
 }
 
-bool LogReplicator::RollRLogFile(SequentialFile** sf,
-        Reader** lr, uint64_t offset) {
-    if (sf == NULL || lr == NULL) {
-        LOG(WARNING, "invalid input sf and lr which is null");
+bool LogReplicator::OpenSeqFile(const std::string& path, SequentialFile** sf) {
+    if (sf == NULL) {
+        LOG(WARNING, "input sf in null");
         return false;
     }
+
+    FILE* fd = fopen(path.c_str(), "rb");
+    if (fd == NULL) {
+        LOG(WARNING, "fail to open file %s", path.c_str());
+        return false;
+    }
+    // close old Sequentialfile 
+    if ((*sf) != NULL) {
+        delete (*sf);
+    }
+    LOG(INFO, "open log file to %s for path %s ok", part->log_name_.c_str(),
+            path_.c_str());
+    *sf = ::rtidb::log::NewSeqFile(path, fd);
+    return true;
+}
+
+int32_t LogReplicator::RollRLogFile(SequentialFile** sf,
+                                    uint64_t offset,
+                                    int32_t last_log_part_index) {
+    if (sf == NULL) {
+        LOG(WARNING, "invalid input sf which is null");
+        return -1;
+    }
     mu_.AssertHeld();
+    int32_t index = -1;
     LogParts::Iterator* it = logs_->NewIterator();
     it->SeekToFirst();
-    while (it->Valid()) {
-        LogPart* part = it->GetValue();
-        LOG(DEBUG, "log with name %s and start offset %lld", part->log_name_.c_str(),
-                part->slog_id_);
-        if (part->slog_id_ < offset) {
-            it->Next();
-            continue;
+    // use log entry offset to find the log part file
+    if (last_log_part_index < 0) {
+        while (it->Valid()) {
+            index ++;
+            LogPart* part = it->GetValue();
+            LOG(DEBUG, "log with name %s and start offset %lld", part->log_name_.c_str(),
+                    part->slog_id_);
+            if (part->slog_id_ < offset) {
+                it->Next();
+                continue;
+            }
+            delete it;
+            // open a new log part file
+            std::string full_path = log_path_ + "/" + part->log_name_;
+            bool ok = OpenSeqFile(full_path, sf);
+            if (!ok) {
+                return -1;
+            }
+            return index;
         }
         delete it;
-        std::string full_path = log_path_ + "/" + part->log_name_;
-        FILE* fd = fopen(full_path.c_str(), "rb");
-        if (fd == NULL) {
-            LOG(WARNING, "fail to create file %s", full_path.c_str());
-            return false;
+        LOG(WARNING, "fail to find log include offset %lld", offset);
+        return -1;
+    }else {
+        uint32_t current_index = (uint32_t) last_log_part_index;
+        // the latest log part was already opened
+        if (current_index == (logs_->GetSize() - 1)) {
+            delete it;
+            return current_index;
         }
-        if ((*sf) != NULL) {
-            delete (*sf);
-            delete (*lr);
+        while (it->Valid()) {
+            index ++;
+            LogPart* part = it->GetValue();
+            // find the next of current index log file part
+            if (index > current_index) {
+                delete it;
+                // open a new log part file
+                std::string full_path = log_path_ + "/" + part->log_name_;
+                bool ok = OpenSeqFile(full_path, sf);
+                if (!ok) {
+                    return -1;
+                }
+                return index;
+            }
+            it->Next();
         }
-        LOG(INFO, "roll log file to %s for path %s", part->log_name_.c_str(),
-                path_.c_str());
-        *sf = ::rtidb::log::NewSeqFile(full_path, fd);
-        *lr = new Reader(*sf, NULL, false, 0);
-        return true;
+        delete it;
+        return -1;
     }
-    delete it;
-    LOG(WARNING, "fail to find log include offset %lld", offset);
-    return false;
 }
 
 bool LogReplicator::RollWLogFile() {
@@ -280,12 +325,14 @@ bool LogReplicator::ReadNextRecord(Reader** lr,
                                    SequentialFile** sf,
                                    ::rtidb::base::Slice* record,
                                    std::string* buffer,
-                                   uint64_t offset) {
+                                   uint64_t offset,
+                                   int32_t last_log_part_index,
+                                   uint64_t last_record_byte_offset) {
     mu_.AssertHeld();
     // for the first run
     if (lr_ == NULL 
         || sf_ == NULL) {
-        bool ok = RollRLogFile(&sf_, &lr_, offset);
+        bool ok = RollRLogFile(&sf_, offset, last_log_part_index);
         if (!ok) {
             LOG(WARNING, "fail to roll read log for path %s", path_.c_str());
             return false;

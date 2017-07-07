@@ -82,7 +82,7 @@ private:
     uint64_t end_of_buffer_offset_;
 
     // Offset at which to start looking for the first record to return
-    uint64_t const initial_offset_;
+    uint64_t initial_offset_;
 
     // True if we are resynchronizing after a seek (initial_offset_ > 0). In
     // particular, a run of kMiddleType and kLastType records can be silently

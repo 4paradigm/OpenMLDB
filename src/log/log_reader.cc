@@ -66,13 +66,13 @@ bool Reader::SkipToInitialBlock() {
   return true;
 }
 
+
 bool Reader::ReadRecord(Slice* record, std::string* scratch) {
   if (last_record_offset_ < initial_offset_) {
     if (!SkipToInitialBlock()) {
       return false;
     }
   }
-
   scratch->clear();
   record->clear();
   bool in_fragmented_record = false;
