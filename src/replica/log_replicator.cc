@@ -136,6 +136,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
+        wsize_ += buffer.size();
         last_log_offset_ = request->entries(i).log_index();
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
         response->set_log_offset(last_log_offset_);
@@ -146,7 +147,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
 
 bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
     MutexLock lock(&wmu_);
-    if (wh_ == NULL || wsize_ > (uint32_t)FLAGS_binlog_single_file_max_size) {
+    if (wh_ == NULL || wsize_ / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
             return false;
@@ -161,6 +162,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
+    wsize_ += buffer.size();
     LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }
