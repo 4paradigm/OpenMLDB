@@ -528,6 +528,9 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
             sync_log_offset = entry->log_index();
         }
+        if (request.entries_size() <= 0) {
+            continue;
+        }
         ok = rpc_client_->SendRequest(stub, 
                                      &::rtidb::api::TabletServer_Stub::AppendEntries,
                                      &request, &response, 12, 1);
