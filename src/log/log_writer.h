@@ -33,6 +33,7 @@ public:
     ~Writer();
 
     Status AddRecord(const Slice& slice);
+    Status EndLog();
 
 private:
     WritableFile* dest_;

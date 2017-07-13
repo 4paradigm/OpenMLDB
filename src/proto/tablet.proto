@@ -6,8 +6,26 @@ option java_package = "com._4paradigm.rtidb";
 option java_outer_classname = "Tablet";
 
 enum TableMode {
-    kMaster = 1;
-    kSlave = 2;
+    kTableLeader = 1;
+    kTableFollower = 2;
+}
+
+enum TableSyncLevel {
+    // Write ahead log before response
+    kSyncBeforeDone = 1;
+    kSyncBeforeDoneAndFSync = 2;
+    kSyncBeforeDoneAndPeriodFSync = 3;
+    // Write ahead log after response
+    kSyncAfterDone = 10;
+    kSyncAfterDoneAndFSync = 11;
+    kSyncAfterDoneAndPeriodFSync = 12;
+}
+
+enum TableType {
+    // KV table 
+    kKVTable = 1;
+    // Time Series table
+    kTSTable = 2;
 }
 
 enum TTLType {
@@ -21,7 +39,8 @@ message PutRequest {
 	// the subfix key
 	optional int64 time = 2;
 	optional bytes value = 3;
-	optional int32 tid = 4;
+	optional uint32 tid = 4;
+    optional uint32 pid = 5;
 }
 
 message ReplicateLogRequest {
@@ -56,6 +75,7 @@ message ScanRequest {
 	optional int32 limit = 4;
 	optional RpcMetric metric = 5;
 	optional int32 tid = 6;
+	optional int32 pid = 7;
 }
 
 
@@ -92,10 +112,10 @@ message CreateTableRequest {
 	// time to live for every row
 	optional int32 ttl = 4;
 	optional int32 seg_cnt = 5;
-	optional bool ha = 6 [default = false];
-	optional TTLType ttl_type = 7 [default = kAbsoluteTime];
-	repeated string replicas = 8;
-	optional TableMode mode = 9;
+	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
+    // the slave endpoints
+	repeated string replicas = 7;
+	optional TableMode mode = 8;
 }
 
 message CreateTableResponse {
@@ -105,6 +125,7 @@ message CreateTableResponse {
 
 message DropTableRequest {
 	optional int32 tid = 1;
+	optional int32 pid = 2;
 }
 
 message DropTableResponse {
@@ -145,6 +166,8 @@ message AppendEntriesRequest {
     optional uint64 pre_log_term = 3;
     repeated LogEntry entries = 4;
     optional uint64 leader_endpoint = 5;
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
 }
 
 message AppendEntriesResponse {
@@ -159,7 +182,6 @@ service TabletServer {
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
 	// this a system api
-	rpc RelMem(RelMemRequest) returns (RelMemResponse);
 	rpc ReplicateLog(ReplicateLogRequest) returns(ReplicateLogResponse);
 
 	// raft log replication

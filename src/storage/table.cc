@@ -22,11 +22,26 @@ Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
+        uint32_t ttl,
+        bool is_leader,
+        const std::vector<std::string>& replicas):name_(name), id_(id),
+    pid_(pid), seg_cnt_(seg_cnt),
+    segments_(NULL), 
+    ref_(0), enable_gc_(false), ttl_(ttl),
+    ttl_offset_(60 * 1000), is_leader_(is_leader),
+    replicas_(replicas)
+{}
+
+Table::Table(const std::string& name,
+        uint32_t id,
+        uint32_t pid,
+        uint32_t seg_cnt,
         uint32_t ttl):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
-    ttl_offset_(60 * 1000), enable_persistence_(false)
+    ttl_offset_(60 * 1000), is_leader_(false),
+    replicas_()
 {}
 
 void Table::Init() {

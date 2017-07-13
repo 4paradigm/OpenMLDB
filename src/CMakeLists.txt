@@ -8,7 +8,7 @@ if (TCMALLOC_ENABLE)
     endif()
 endif()
 
-add_library(tablet STATIC proto/tablet.pb.cc tablet/table_ha.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
+add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
 add_library(storage STATIC storage/table.cc storage/segment.cc)
 
 add_library(log STATIC log/crc32c.cc 
@@ -47,16 +47,12 @@ add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc)
 target_link_libraries(tablet_impl_mem_test   gtest pthread tablet leveldb gflags storage common sofa-pbrpc  protobuf z snappy unwind tcmalloc)
 
 
-add_executable(table_ha_test  tablet/table_ha_test.cc)
-target_link_libraries(table_ha_test   gtest pthread tablet leveldb gflags storage common sofa-pbrpc  protobuf z snappy unwind)
-
-
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf unwind tcmalloc)
 
 add_executable(log_test  log/log_test.cc base/status.cc)
-target_link_libraries(log_test   gtest pthread storage tablet log gflags storage common protobuf unwind tcmalloc)
+target_link_libraries(log_test   gtest pthread storage tablet log gflags storage common protobuf tcmalloc_minimal)
 
-add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc)
-target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage leveldb tcmalloc_minimal)
+add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc base/status.cc)
+target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb tcmalloc_minimal)
 

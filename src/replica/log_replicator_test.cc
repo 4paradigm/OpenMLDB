@@ -38,13 +38,13 @@ public:
     MockTabletImpl(const ReplicatorRole& role,
                    const std::string& path,
                    const std::vector<std::string>& endpoints): role_(role),
-    path_(path), endpoints_(endpoints), replicator_(path_, endpoints_, role_){
+    path_(path), endpoints_(endpoints), replicator_(path_, endpoints_, role_, 1, 1){
     }
 
     MockTabletImpl(const ReplicatorRole& role,
                    const std::string& path,
                    ApplyLogFunc func): role_(role),
-    path_(path), func_(func), replicator_(path_, func_, role_){
+    path_(path), func_(func), replicator_(path_, func_, role_, 1, 1){
     }
     ~MockTabletImpl() {}
 
@@ -80,14 +80,16 @@ public:
             const ::rtidb::api::AppendEntriesRequest* request,
             ::rtidb::api::AppendEntriesResponse* response,
             Closure* done) {
-        LOG(INFO, "receive log entry from leader");
         bool ok = replicator_.AppendEntries(request);
         if (ok) {
+            LOG(INFO, "receive log entry from leader ok");
             response->set_code(0);
         }else {
+            LOG(INFO, "receive log entry from leader error");
             response->set_code(1);
         }
         done->Run();
+        replicator_.Notify();
     }
 
 private:
@@ -99,11 +101,8 @@ private:
 
 };
 
-bool ReceiveEntry(const ::rtidb::api::LogEntry* entry) {
-    if (entry != NULL) {
-        return true;
-    }
-    return false;
+bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) {
+    return true;
 }
 
 class LogReplicatorTest : public ::testing::Test {
@@ -137,7 +136,7 @@ bool StartRpcServe(MockTabletImpl* tablet,
 TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder, endpoints, kLeaderNode);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, 1, 1);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
     replicator.Stop();
@@ -146,7 +145,7 @@ TEST_F(LogReplicatorTest, Init) {
 TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder, endpoints, kLeaderNode);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, 1, 1);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
@@ -159,6 +158,7 @@ TEST_F(LogReplicatorTest, BenchMark) {
 }
 
 bool MockApplyLog(const ::rtidb::api::LogEntry& entry) {
+    LOG(INFO, "apply entry pk %s, value %s , ts %lld", entry.pk().c_str(), entry.value().c_str(), entry.ts());
     return true;
 }
 
@@ -186,7 +186,6 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     entry.set_pk("test_pk");
     entry.set_value("value0");
     entry.set_ts(9527);
-    ok = leader.AppendEntry(entry);
     ok = leader.AppendEntry(entry);
     ok = leader.AppendEntry(entry);
     ok = leader.AppendEntry(entry);

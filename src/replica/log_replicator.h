@@ -38,7 +38,7 @@ typedef boost::function< bool (const ::rtidb::api::LogEntry& entry)> ApplyLogFun
 
 enum ReplicatorRole {
     kLeaderNode = 1,
-    kSlaveNode
+    kFollowerNode
 };
 
 class LogReplicator;
@@ -66,6 +66,10 @@ struct WriteHandle {
     ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {
         return lw_->AddRecord(slice);
     }
+
+    ::rtidb::base::Status EndLog() {
+        return lw_->EndLog();
+    }
     
     ~WriteHandle() {
         delete lw_;
@@ -78,12 +82,12 @@ struct ReplicaNode {
     uint64_t last_sync_term;
     uint64_t last_sync_offset;
     SequentialFile* sf;
+    Reader* reader;
     int32_t log_part_index;
     std::vector<::rtidb::api::AppendEntriesRequest> cache;
-    uint64_t last_log_byte_offset;
+    std::string buffer;
     ReplicaNode():endpoint(),last_sync_term(0),
-    last_sync_offset(0), sf(NULL), log_part_index(-1),cache(),
-    last_log_byte_offset(0){}
+    last_sync_offset(0), sf(NULL), reader(NULL), log_part_index(-1), cache(), buffer(){}
     ~ReplicaNode() {
         delete sf;
     }
@@ -104,11 +108,15 @@ public:
 
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
-                  const ReplicatorRole& role);
+                  const ReplicatorRole& role,
+                  uint32_t tid,
+                  uint32_t pid);
 
     LogReplicator(const std::string& path,
                   ApplyLogFunc func,
-                  const ReplicatorRole& role);
+                  const ReplicatorRole& role,
+                  uint32_t tid,
+                  uint32_t pid);
 
     ~LogReplicator();
 
@@ -147,6 +155,10 @@ public:
     void ReplicateLog();
     void ReplicateToNode(ReplicaNode* node);
     void ApplyLog();
+    // Incr ref
+    void Ref();
+    // Descr ref
+    void UnRef();
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 private:
@@ -182,6 +194,13 @@ private:
 
     // background task pool
     ThreadPool tp_;
+
+    // reference cnt
+    boost::atomic<uint64_t> refs_;
+
+    uint32_t tid_;
+    uint32_t pid_;
+    Mutex wmu_;
 };
 
 } // end of replica

@@ -11,6 +11,7 @@
 
 #include "storage/segment.h"
 #include "boost/atomic.hpp"
+#include <vector>
 
 namespace rtidb {
 namespace storage {
@@ -30,7 +31,16 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
+          uint32_t ttl,
+          bool is_leader,
+          const std::vector<std::string>& replicas);
+
+    Table(const std::string& name,
+          uint32_t id,
+          uint32_t pid,
+          uint32_t seg_cnt,
           uint32_t ttl);
+
 
     void Init();
 
@@ -113,13 +123,13 @@ public:
     inline uint32_t GetPid() const {
         return pid_;
     }
-
-    inline bool Persistence() const {
-        return enable_persistence_;
+    
+    inline bool IsLeader() const {
+        return is_leader_;
     }
 
-    inline void Persistence(bool pers) {
-        enable_persistence_ = pers;
+    inline const std::vector<std::string>& GetReplicas() const {
+        return replicas_;
     }
 
 private:
@@ -135,11 +145,11 @@ private:
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
     bool enable_gc_;
-    // hour
     uint32_t const ttl_;
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> data_cnt_;
-    bool enable_persistence_;
+    bool const is_leader_;
+    std::vector<std::string> const replicas_;
 };
 
 }

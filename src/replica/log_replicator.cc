@@ -17,6 +17,8 @@
 #include <gflags/gflags.h>
 
 DECLARE_int32(binlog_single_file_max_size);
+DECLARE_int32(binlog_sync_batch_size);
+DECLARE_int32(binlog_apply_batch_size);
 
 namespace rtidb {
 namespace replica {
@@ -30,20 +32,22 @@ const static std::string LOG_META_PREFIX="/logs/";
 
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
-                             const ReplicatorRole& role):path_(path), meta_path_(), log_path_(),
+                             const ReplicatorRole& role,
+                             uint32_t tid, uint32_t pid):path_(path), meta_path_(), log_path_(),
     meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_term_(0), last_log_offset_(0),
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    self_(NULL),running_(true), tp_(1){}
+    self_(NULL),running_(true), tp_(1), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
 LogReplicator::LogReplicator(const std::string& path,
                              ApplyLogFunc func,
-                             const ReplicatorRole& role):path_(path), meta_path_(), log_path_(),
+                             const ReplicatorRole& role,
+                             uint32_t tid, uint32_t pid):path_(path), meta_path_(), log_path_(),
     meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_term_(0), last_log_offset_(0),
     endpoints_(), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
     self_(NULL),
-    func_(func),running_(true), tp_(1){}
+    func_(func),running_(true), tp_(1), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
 LogReplicator::~LogReplicator() {}
 
@@ -95,7 +99,19 @@ bool LogReplicator::Init() {
     return ok;
 }
 
+void LogReplicator::Ref() {
+    refs_.fetch_add(1, boost::memory_order_relaxed);
+}
+
+void LogReplicator::UnRef() {
+    refs_.fetch_sub(1, boost::memory_order_acquire);
+    if (refs_.load(boost::memory_order_relaxed) <= 0) {
+        // TODO clean memory
+    }
+}
+
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request) {
+    MutexLock lock(&wmu_);
     if (wh_ == NULL || (wsize_ / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
@@ -103,8 +119,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             return false;
         }
     }
-    if (request->pre_log_index() !=  last_log_offset_
-        || request->pre_log_term() != last_log_term_) {
+    if (request->pre_log_index() !=  last_log_offset_) {
         LOG(WARNING, "log mismatch for path %s, pre_log_index %lld, come log index %lld", path_.c_str(),
                 last_log_offset_, request->pre_log_index());
         return false;
@@ -120,12 +135,14 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         }
         last_log_term_ = request->term();
         last_log_offset_ = request->entries(i).log_index();
+        log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
     }
     LOG(DEBUG, "sync log entry to offset %lld for %s", last_log_offset_, path_.c_str());
     return true;
 }
 
 bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
+    MutexLock lock(&wmu_);
     if (wh_ == NULL || wsize_ > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
@@ -135,7 +152,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
     entry.set_log_index(log_offset_.fetch_add(1, boost::memory_order_relaxed));
     std::string buffer;
     entry.SerializeToString(&buffer);
-    ::rtidb::base::Slice slice(buffer.c_str(), buffer.size());
+    ::rtidb::base::Slice slice(buffer);
     ::rtidb::base::Status status = wh_->Write(slice);
     if (!status.ok()) {
         LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
@@ -149,7 +166,6 @@ bool LogReplicator::OpenSeqFile(const std::string& path, SequentialFile** sf) {
         LOG(WARNING, "input sf in null");
         return false;
     }
-
     FILE* fd = fopen(path.c_str(), "rb");
     if (fd == NULL) {
         LOG(WARNING, "fail to open file %s", path.c_str());
@@ -176,6 +192,9 @@ int32_t LogReplicator::RollRLogFile(SequentialFile** sf,
     mu_.AssertHeld();
     int32_t index = -1;
     LogParts::Iterator* it = logs_->NewIterator();
+    if (logs_->GetSize() <= 0) {
+        return -2;
+    }
     it->SeekToFirst();
     // use log entry offset to find the log part file
     if (last_log_part_index < 0) {
@@ -211,7 +230,7 @@ int32_t LogReplicator::RollRLogFile(SequentialFile** sf,
             index ++;
             LogPart* part = it->GetValue();
             // find the next of current index log file part
-            if (index > current_index) {
+            if ((uint32_t)index > current_index) {
                 delete it;
                 // open a new log part file
                 std::string full_path = log_path_ + "/" + part->log_name_;
@@ -230,6 +249,7 @@ int32_t LogReplicator::RollRLogFile(SequentialFile** sf,
 
 bool LogReplicator::RollWLogFile() {
     if (wh_ != NULL) {
+        wh_->EndLog();
         delete wh_;
     }
     std::string name = ::rtidb::base::FormatToString(logs_->GetSize(), 8) + ".log";
@@ -331,18 +351,20 @@ bool LogReplicator::ReadNextRecord(ReplicaNode* node,
         int32_t new_log_part_index = RollRLogFile(&node->sf, 
                                                   node->last_sync_offset,
                                                   node->log_part_index);
+        if (new_log_part_index == -2) {
+            return false;
+        }
+
         if (new_log_part_index < 0) {
             LOG(WARNING, "fail to roll read log for path %s", path_.c_str());
             return false;
         }
+        node->reader = new Reader(node->sf, NULL, false, 0);
         // when change log part index , reset
         // last_log_byte_offset to 0
         node->log_part_index = new_log_part_index;
-        node->last_log_byte_offset = 0;
     }
-    Reader reader(node->sf,NULL, true, node->last_log_byte_offset);
-    LOG(DEBUG, "log index %ld, log byte offset %lld", node->log_part_index, node->last_log_byte_offset);
-    bool ok = reader.ReadRecord(record, buffer);
+    bool ok = node->reader->ReadRecord(record, buffer);
     if (!ok) {
         LOG(DEBUG, "reach the end of file for path %s", path_.c_str());
         // reache the end of file 
@@ -357,20 +379,17 @@ bool LogReplicator::ReadNextRecord(ReplicaNode* node,
         if (new_log_part_index < 0) {
             return false;
         }
+        delete node->reader;
         // roll a new log part file, reset status
         node->log_part_index = new_log_part_index;
-        node->last_log_byte_offset = 0;
-        Reader reader1(node->sf, NULL, true, node->last_log_byte_offset);
-        ok = reader1.ReadRecord(record, buffer);
+        node->reader = new Reader(node->sf, NULL, false, 0);
+        ok = node->reader->ReadRecord(record, buffer);
         if (!ok) {
             LOG(WARNING, "fail to read log for path %s", path_.c_str());
             return false;
         }
-        node->last_log_byte_offset = reader1.LastRecordOffset();
         return true;
     }
-    LOG(DEBUG, "reader last record offset %lld", reader.LastRecordOffset());
-    node->last_log_byte_offset = reader.LastRecordOffset();
     return true;
 }
 
@@ -379,35 +398,42 @@ void LogReplicator::ApplyLog() {
         MutexLock lock(&mu_);
         cv_.TimeWait(10000);
         if (self_->last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
+            LOG(DEBUG, "no more log entry sync offset %lld, log offset %lld", self_->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
             continue;
         }
-        std::string buffer;
-        ::rtidb::base::Slice record;
-        bool ok = ReadNextRecord(self_, &record, &buffer);
-        if (!ok) {
-            LOG(WARNING, "fail to read next record for path %s", path_.c_str());
-            // forever retry
-            continue;
+        uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - self_->last_sync_offset;
+        if (batchSize > (uint32_t)FLAGS_binlog_apply_batch_size) {
+            batchSize = FLAGS_binlog_apply_batch_size;
         }
-        ::rtidb::api::LogEntry entry;
-        entry.ParseFromString(record.ToString());
-        ok = func_(entry);
-        if (ok) {
-            LOG(DEBUG, "apply log with path %s ok to offset %lld", path_.c_str(),
-                    entry.log_index());
-            self_->last_sync_offset = entry.log_index();
-        }else {
-            //TODO cache log entry and reapply 
-            LOG(WARNING, "fail to apply log with path %s to offset %lld", path_.c_str(),
-                    entry.log_index());
+        for (uint32_t i = 0; i < batchSize; i++) {
+            std::string buffer;
+            ::rtidb::base::Slice record;
+            bool ok = ReadNextRecord(self_, &record, &buffer);
+            if (!ok) {
+                LOG(WARNING, "fail to read next record for path %s", path_.c_str());
+                // forever retry
+                continue;
+            }
+            ::rtidb::api::LogEntry entry;
+            entry.ParseFromString(record.ToString());
+            ok = func_(entry);
+            if (ok) {
+                LOG(DEBUG, "apply log with path %s ok to offset %lld", path_.c_str(),
+                        entry.log_index());
+                self_->last_sync_offset = entry.log_index();
+            }else {
+                //TODO cache log entry and reapply 
+                LOG(WARNING, "fail to apply log with path %s to offset %lld", path_.c_str(),
+                        entry.log_index());
+            }
         }
     }
 }
 
 void LogReplicator::ReplicateToNode(ReplicaNode* node) {
     mu_.AssertHeld();
-    LOG(DEBUG, "node offset %lld, log offset %lld", node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
     if (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed) - 1)) {
+        LOG(DEBUG, "node offset %lld, log offset %lld no new data", node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
         return; 
     }
     ::rtidb::api::TabletServer_Stub* stub;
@@ -416,30 +442,40 @@ void LogReplicator::ReplicateToNode(ReplicaNode* node) {
         LOG(WARNING, "fail to get rpc stub with endpoint %s", node->endpoint.c_str());
         return;
     }
-    std::string buffer;
-    ::rtidb::base::Slice record;
-    ok = ReadNextRecord(node, &record, &buffer);
-    if (!ok) {
-        LOG(WARNING, "fail to read next record for path %s", path_.c_str());
-        // forever retry
-        return;
-    }
     ::rtidb::api::AppendEntriesRequest request;
+    request.set_tid(tid_);
+    request.set_pid(pid_);
     ::rtidb::api::AppendEntriesResponse response;
     request.set_pre_log_index(node->last_sync_offset);
     request.set_pre_log_term(node->last_sync_term);
-    ::rtidb::api::LogEntry* entry = request.add_entries();
-    entry->ParseFromString(record.ToString());
-    LOG(DEBUG, "entry log index %lld, pk %s , val %s, ts %lld", entry->log_index(), entry->pk().c_str(), entry->value().c_str(),
-            entry->ts());
+    uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - node->last_sync_offset - 1;
+    if (batchSize > (uint32_t)FLAGS_binlog_sync_batch_size) {
+        batchSize = FLAGS_binlog_sync_batch_size;
+    }
+    uint64_t sync_log_offset = 0;
+    for (uint64_t i = 0; i < batchSize; i++) {
+        std::string buffer;
+        ::rtidb::base::Slice record;
+        ok = ReadNextRecord(node, &record, &buffer);
+        if (!ok) {
+            LOG(WARNING, "fail to read next record for path %s", path_.c_str());
+            return;
+        }
+        ::rtidb::api::LogEntry* entry = request.add_entries();
+        ok = entry->ParseFromString(record.ToString());
+        if (!ok) {
+            LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+            return;
+        }
+        sync_log_offset = entry->log_index();
+    }
     ok = rpc_client_->SendRequest(stub, 
                                  &::rtidb::api::TabletServer_Stub::AppendEntries,
                                  &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         LOG(DEBUG, "sync log to node %s to offset %lld",
-                node->endpoint.c_str(), entry->log_index());
-        node->last_sync_offset = entry->log_index();
-        node->last_sync_term = entry->term();
+                node->endpoint.c_str(), sync_log_offset);
+        node->last_sync_offset = sync_log_offset;
     }else {
         node->cache.push_back(request);
         LOG(WARNING, "fail to sync log to node %s", node->endpoint.c_str());

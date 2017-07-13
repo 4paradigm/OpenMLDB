@@ -32,6 +32,37 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length)
 Writer::~Writer() {
 }
 
+Status Writer::EndLog() {
+    Slice slice;
+    const char* ptr = slice.data();
+    size_t left = 0;
+    Status s;
+    bool begin = true;
+    do {
+        const int leftover = kBlockSize - block_offset_;
+        assert(leftover >= 0);
+        if (leftover < kHeaderSize) {
+          // Switch to a new block
+            if (leftover > 0) {
+                // Fill the trailer (literal below relies on kHeaderSize being 7)
+                assert(kHeaderSize == 7);
+                dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+            }
+            block_offset_ = 0;
+        }
+        // Invariant: we never leave < kHeaderSize bytes in a block.
+        assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
+        const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
+        const size_t fragment_length = (left < avail) ? left : avail;
+        RecordType type = kEofType;
+        s = EmitPhysicalRecord(type, ptr, fragment_length);
+        ptr += fragment_length;
+        left -= fragment_length;
+        begin = false;
+    } while (s.ok() && left > 0);
+    return s;
+}
+
 Status Writer::AddRecord(const Slice& slice) {
     const char* ptr = slice.data();
     size_t left = slice.size();

@@ -20,10 +20,12 @@ enum RecordType {
     // For fragments
     kFirstType = 2,
     kMiddleType = 3,
-    kLastType = 4
+    kLastType = 4,
+    // The end of log file
+    kEofType = 5
 };
 
-static const int kMaxRecordType = kLastType;
+static const int kMaxRecordType = kEofType;
 
 static const int kBlockSize = 32768;
 

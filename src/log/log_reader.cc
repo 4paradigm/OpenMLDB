@@ -23,6 +23,7 @@ namespace rtidb {
 namespace log {
 
 Reader::Reporter::~Reporter() {
+
 }
 
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
@@ -65,7 +66,6 @@ bool Reader::SkipToInitialBlock() {
   }
   return true;
 }
-
 
 bool Reader::ReadRecord(Slice* record, std::string* scratch) {
   if (last_record_offset_ < initial_offset_) {
@@ -213,13 +213,11 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         buffer_.clear();
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
         end_of_buffer_offset_ += buffer_.size();
+        // Read log error
         if (!status.ok()) {
           buffer_.clear();
           ReportDrop(kBlockSize, status);
-          eof_ = true;
           return kEof;
-        } else if (buffer_.size() < kBlockSize) {
-          eof_ = true;
         }
         continue;
       } else {
@@ -239,15 +237,16 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     const unsigned int type = header[6];
     const uint32_t length = a | (b << 8);
     if (kHeaderSize + length > buffer_.size()) {
-      size_t drop_size = buffer_.size();
       buffer_.clear();
-      if (!eof_) {
-        ReportCorruption(drop_size, "bad record length");
-        return kBadRecord;
-      }
       // If the end of the file has been reached without reading |length| bytes
       // of payload, assume the writer died in the middle of writing the record.
       // Don't report a corruption.
+      return kEof;
+    }
+    // Get Eof flag
+    if (type == kEofType) {
+      buffer_.clear();
+      eof_ = true;
       return kEof;
     }
 
@@ -283,7 +282,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
       result->clear();
       return kBadRecord;
     }
-
     *result = Slice(header + kHeaderSize, length);
     return type;
   }

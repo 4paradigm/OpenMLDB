@@ -118,23 +118,32 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
     }
 }
 
-// the input format like create name tid pid ttl
+// the input format like create name tid pid ttl leader endpoints 
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 5) {
+    if (parts.size() < 4) {
         std::cout << "Bad create format" << std::endl;
         return;
     }
-    bool ha = false;
-    if (parts.size() > 5) {
-        if (parts[5] == "true") {
-            ha = true;
-        }
+
+    bool leader = true;
+    if (parts.size() > 5 && parts[5] == "false") {
+        leader = false;
     }
+
+    std::vector<std::string> endpoints;
+    for (size_t i = 6; i < parts.size(); i++) {
+        endpoints.push_back(parts[i]);
+    }
+
     try {
-    
-        bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-                boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]),
-                ha);
+        uint32_t ttl = 0;
+        if (parts.size() > 4) {
+            ttl = boost::lexical_cast<uint32_t>(parts[4]);
+        }
+        bool ok = client->CreateTable(parts[1], 
+                                      boost::lexical_cast<uint32_t>(parts[2]),
+                                      boost::lexical_cast<uint32_t>(parts[3]), 
+                                      ttl, leader, endpoints);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -286,10 +295,6 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
     }
 }
 
-void HandleClientRelMem(::rtidb::client::TabletClient* client) {
-    client->ReleaseMemory();
-}
-
 void StartClient() {
     //::baidu::common::SetLogLevel(DEBUG);
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
@@ -322,8 +327,6 @@ void StartClient() {
             HandleClientBenchmark(&client);
         }else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
-        }else if (parts[0] == "relmem") {
-            HandleClientRelMem(&client);
         }
         if (!FLAGS_interactive) {
             return;

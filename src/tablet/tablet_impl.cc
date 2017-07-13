@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <gflags/gflags.h>
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #ifdef TCMALLOC_ENABLE 
@@ -35,17 +36,18 @@ DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
+DECLARE_string(binlog_root_path);
 DECLARE_bool(enable_statdb);
 
 namespace rtidb {
 namespace tablet {
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
-    metric_(NULL){}
+    metric_(NULL), replicators_(){}
 
 TabletImpl::~TabletImpl() {
     if (FLAGS_enable_statdb) {
-        Table* table = GetTable(0);
+        Table* table = GetTable(0, 0);
         if (table != NULL) {
             table->Release();
             table->UnRef();
@@ -53,7 +55,6 @@ TabletImpl::~TabletImpl() {
         }
         tables_.erase(0);
         delete metric_;
-
     }
 }
 
@@ -64,10 +65,10 @@ void TabletImpl::Init() {
         Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
         dbstat->Init();
         dbstat->Ref();
-        tables_.insert(std::make_pair(0, dbstat));
+        tables_[0].insert(std::make_pair(0, dbstat));
         if (FLAGS_statdb_ttl > 0) {
             gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
-                    boost::bind(&TabletImpl::GcTable, this, 0));
+                    boost::bind(&TabletImpl::GcTable, this, 0, 0));
         }
         // For tablet metric
         dbstat->Ref();
@@ -84,41 +85,56 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
-    Table* table = GetTable(request->tid());
+    if (request->tid() < 1) {
+        LOG(WARNING, "invalid table tid %ld", request->tid());
+        response->set_code(11);
+        response->set_msg("invalid table id");
+        done->Run();
+        return;
+    }
+    Table* table = GetTable(request->tid(), request->pid());
     if (table == NULL) {
-        LOG(WARNING, "fail to find table with id %d", request->tid());
+        LOG(WARNING, "fail to find table with tid %ld, pid %ld", request->tid(),
+                request->pid());
         response->set_code(10);
         response->set_msg("table not found");
         done->Run();
         return;
-    }
-    bool pers = table->Persistence();
-    ::rtidb::api::TableRow row;
-    TableDataHA* ha = NULL;
-    if (pers) {
-        ha = GetTableHa(request->tid());
-        row.set_pk(request->pk());
-        row.set_data(request->value());
-        row.set_time(request->time());
     }
     uint64_t size = request->value().size();
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
     response->set_code(0);
     LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
+    bool leader = table->IsLeader();
+    LogReplicator* replicator = NULL;
+    if (leader && table->GetReplicas().size() > 0) {
+        do {
+            replicator = GetReplicator(request->tid(), request->pid());
+            if (replicator == NULL) {
+                LOG(WARNING, "fail to find table tid %ld pid %ld leader's log replicator", request->tid(),
+                        request->pid());
+                break;
+            }
+            ::rtidb::api::LogEntry entry;
+            entry.set_ts(request->time());
+            entry.set_pk(request->pk());
+            entry.set_value(request->value());
+            replicator->AppendEntry(entry);
+        } while(false);
+    }
     table->UnRef();
     done->Run();
-    if (pers && ha != NULL) {
-        ha->Put(row);
-        ha->UnRef();
-    }
     if (FLAGS_enable_statdb) {
         metric_->IncrThroughput(1, size, 0, 0);
+    }
+    if (replicator != NULL) {
+        replicator->Notify();
+        replicator->UnRef();
     }
 }
 
 inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
-    
     if (request->st() < request->et()) {
         return false;
     }
@@ -148,9 +164,9 @@ void TabletImpl::Scan(RpcController* controller,
     ::rtidb::api::RpcMetric* metric = response->mutable_metric();
     metric->CopyFrom(request->metric());
     metric->set_rqtime(::baidu::common::timer::get_micros());
-    Table* table = GetTable(request->tid());
+    Table* table = GetTable(request->tid(), request->pid());
     if (table == NULL) {
-        LOG(WARNING, "fail to find table with id %d", request->tid());
+        LOG(WARNING, "fail to find table with tid %ld, pid %ld", request->tid(), request->pid());
         response->set_code(10);
         response->set_msg("table not found");
         done->Run();
@@ -209,6 +225,44 @@ void TabletImpl::Scan(RpcController* controller,
     }
 }
 
+void TabletImpl::AppendEntries(RpcController* controller,
+        const ::rtidb::api::AppendEntriesRequest* request,
+        ::rtidb::api::AppendEntriesResponse* response,
+        Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL ||
+        table->IsLeader()) {
+        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist or table is leader");
+        done->Run();
+        return;
+    }
+    LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
+    bool ok = replicator->AppendEntries(request);
+    if (!ok) {
+        response->set_code(-1);
+        response->set_msg("fail to append entries to replicator");
+        done->Run();
+    }else {
+        response->set_code(0);
+        response->set_msg("ok");
+        done->Run();
+    }
+}
+
+bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log) {
+    Table* table = GetTable(tid, pid);
+    if (table == NULL) {
+        LOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
+        return false; 
+    }
+    table->Put(log.pk(), log.ts(), log.value().c_str(), log.value().size());
+    table->UnRef();
+    return true;
+}
+
 void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
@@ -219,70 +273,101 @@ void TabletImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
-    MutexLock lock(&mu_);
-    // check table if it exist
-    if (tables_.find(request->tid()) != tables_.end()) {
-        // table exists
-        response->set_code(-2);
-        response->set_msg("table exists");
+    Table* exist = GetTable(request->tid(), request->pid());
+    if (exist != NULL) {
+        exist->UnRef();
+        LOG(WARNING, "table with tid %ld and pid %ld exists", request->tid(),
+                request->pid());
+        response->set_code(1);
+        response->set_msg("table with tid and pid exists");
         done->Run();
         return;
     }
     uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
     uint32_t ttl = request->ttl();
+    std::string name = request->name();
+    uint32_t seg_cnt = 8;
+    if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
+        seg_cnt = request->seg_cnt();
+    }
+    // Note after create , request and response is unavaliable
+    {
+        MutexLock lock(&mu_);
+        CreateTableInternal(request, response);
+    }
+    done->Run();
+    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %d", tid, 
+            pid, name.c_str(), seg_cnt, ttl);
+    if (ttl > 0) {
+        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+        LOG(INFO, "table %s with tid %ld pid %ld enable ttl %ld", name.c_str(), tid, pid, ttl);
+    }
+}
+
+void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
+        ::rtidb::api::CreateTableResponse* response) {
+    mu_.AssertHeld();
     uint32_t seg_cnt = 8;
     std::string name = request->name();
     if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
         seg_cnt = request->seg_cnt();
     }
-
-    // parameter validation 
+    bool is_leader = false;
+    if (request->mode() == ::rtidb::api::TableMode::kTableLeader) {
+        is_leader = true;
+    }
+    std::vector<std::string> endpoints;
+    for (int32_t i = 0; i < request->replicas_size(); i++) {
+        endpoints.push_back(request->replicas(i));
+    }
     Table* table = new Table(request->name(), request->tid(),
                              request->pid(), seg_cnt, 
-                             request->ttl());
+                             request->ttl(), is_leader,
+                             endpoints);
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
-    table->Persistence(request->ha());
-    if (request->ha()) {
-        std::string db_path = FLAGS_db_root_path + "/" + request->name();
-        TableDataHA* table_ha = new TableDataHA(db_path,
-                request->name());
-        bool ok = table_ha->Init();
-        if (!ok) {
-            table->UnRef();
-            response->set_code(-2);
-            response->set_msg("table ha err");
-            done->Run();
-            return;
-        }
-        table_ha->Ref();
-        ::rtidb::api::TableMeta meta;
-        meta.set_tid(request->tid());
-        meta.set_name(request->name());
-        meta.set_pid(request->pid());
-        meta.set_ttl(request->ttl());
-        meta.set_seg_cnt(request->seg_cnt());
-        table_ha->SaveMeta(meta);
-        table_has_.insert(std::make_pair(request->tid(), table_ha));
+    std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
+    LogReplicator* replicator = NULL;
+    if (table->IsLeader() && table->GetReplicas().size() > 0) {
+        replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), 
+                ReplicatorRole::kLeaderNode, request->tid(), request->pid());
+    }else if (!table->IsLeader() && table->GetReplicas().size() > 0) {
+        replicator = new LogReplicator(table_binlog_path, 
+                boost::bind(&TabletImpl::ApplyLogToTable, this, request->tid(), request->pid(), _1), 
+                ReplicatorRole::kFollowerNode, request->tid(), request->pid());
     }
-    tables_.insert(std::make_pair(request->tid(), table));
+    if (replicator == NULL) {
+        tables_[request->tid()].insert(std::make_pair(request->pid(), table));
+        response->set_code(0);
+        response->set_msg("ok");
+        return;
+    }
+    replicator->Ref();
+    bool ok = replicator->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
+        // clean memory
+        table->Release();
+        table->UnRef();
+        replicator->UnRef();
+        response->set_code(-1);
+        response->set_msg("fail create replicator for table");
+        return;
+    }
+    tables_[request->tid()].insert(std::make_pair(request->pid(), table));
+    replicators_[request->tid()].insert(std::make_pair(request->pid(), replicator));
     response->set_code(0);
-    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %d", request->tid(), 
-            request->pid(), request->name().c_str(), request->seg_cnt(), request->ttl());
-    done->Run();
-    if (ttl > 0) {
-        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid));
-        LOG(INFO, "table %s with %d enable ttl %d", name.c_str(), tid, ttl);
-    }
+    response->set_msg("ok");
 }
 
 void TabletImpl::DropTable(RpcController* controller,
             const ::rtidb::api::DropTableRequest* request,
             ::rtidb::api::DropTableResponse* response,
             Closure* done) {
-    Table* table = GetTable(request->tid());
+    Table* table = GetTable(request->tid(), request->pid());
     if (table == NULL) {
         response->set_code(-1);
         response->set_msg("table does not exist");
@@ -290,10 +375,11 @@ void TabletImpl::DropTable(RpcController* controller,
         return;
     }
     uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
     // do block other requests
     {
         MutexLock lock(&mu_);
-        tables_.erase(request->tid());
+        tables_[tid].erase(pid);
         response->set_code(0);
         done->Run();
     }
@@ -304,33 +390,41 @@ void TabletImpl::DropTable(RpcController* controller,
     table->UnRef();
 }
 
-void TabletImpl::RelMem(RpcController* controller,
-        const ::rtidb::api::RelMemRequest*,
-        ::rtidb::api::RelMemResponse*,
-        Closure* done) {
-#ifdef TCMALLOC_ENABLE
-    MallocExtension* tcmalloc = MallocExtension::instance();
-    tcmalloc->ReleaseFreeMemory();
-#endif
-}
-
-
-void TabletImpl::GcTable(uint32_t tid) {
-    Table* table = GetTable(tid);
+void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
+    Table* table = GetTable(tid, pid);
     if (table == NULL) {
         return;
     }
     table->SchedGc();
     table->UnRef();
-    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid));
+    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
 }
 
-
-Table* TabletImpl::GetTable(uint32_t tid) {
+LogReplicator* TabletImpl::GetReplicator(uint32_t tid, uint32_t pid) {
     MutexLock lock(&mu_);
-    std::map<uint32_t, Table*>::iterator it = tables_.find(tid);
+    Replicators::iterator it = replicators_.find(tid);
+    if (it != replicators_.end()) {
+        std::map<uint32_t, LogReplicator*>::iterator tit = it->second.find(pid);
+        if (tit == it->second.end()) {
+            return NULL;
+        }
+        LogReplicator* replicator = tit->second;
+        replicator->Ref();
+        return replicator;
+    }
+    return NULL;
+
+}
+
+Table* TabletImpl::GetTable(uint32_t tid, uint32_t pid) {
+    MutexLock lock(&mu_);
+    Tables::iterator it = tables_.find(tid);
     if (it != tables_.end()) {
-        Table* table = it->second;
+        std::map<uint32_t, Table*>::iterator tit = it->second.find(pid);
+        if (tit == it->second.end()) {
+            return NULL;
+        }
+        Table* table = tit->second;
         table->Ref();
         return table;
     }
@@ -358,13 +452,15 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
     std::vector<Table*> tmp_tables;
     {
         MutexLock lock(&mu_);
-        std::map<uint32_t, Table*>::iterator it = tables_.begin();
+        Tables::iterator it = tables_.begin();
         for (; it != tables_.end(); ++it) {
-            Table* table = it->second;
-            table->Ref();
-            tmp_tables.push_back(table);
+            std::map<uint32_t, Table*>::iterator tit = it->second.begin();
+            for (; tit != it->second.end(); ++tit) {
+                Table* table = tit->second;
+                table->Ref();
+                tmp_tables.push_back(table);
+            }
         }
-
     }
 
     ::rapidjson::StringBuffer sb;
@@ -430,7 +526,7 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     }
 
     const std::string& pk = qit->second;;
-    Table* stat = GetTable(0);
+    Table* stat = GetTable(0, 0);
     if (stat == NULL) {
         writer.EndArray();
         writer.EndObject();
@@ -454,17 +550,6 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     writer.EndObject();
     response.content->Append(sb.GetString());
     stat->UnRef();
-}
-
-TableDataHA* TabletImpl::GetTableHa(uint32_t tid) {
-    MutexLock lock(&mu_);
-    std::map<uint32_t, ::rtidb::tablet::TableDataHA*>::iterator it = table_has_.find(tid);
-    if (it == table_has_.end()) {
-        return NULL;
-    }
-    TableDataHA* table_ha = it->second;
-    table_ha->Ref();
-    return table_ha;
 }
 
 void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,

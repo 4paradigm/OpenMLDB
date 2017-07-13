@@ -79,6 +79,7 @@ bool Segment::Get(const std::string& key,
     if (entry == NULL || key.compare(entry->key) !=0) {
         return false;
     }
+
     *block = entry->entries.Get(time);
     return true;
 }
