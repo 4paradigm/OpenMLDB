@@ -240,7 +240,7 @@ void TabletImpl::AppendEntries(RpcController* controller,
         return;
     }
     LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
-    bool ok = replicator->AppendEntries(request);
+    bool ok = replicator->AppendEntries(request, response);
     if (!ok) {
         response->set_code(-1);
         response->set_msg("fail to append entries to replicator");

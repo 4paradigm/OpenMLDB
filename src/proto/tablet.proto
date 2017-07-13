@@ -161,9 +161,7 @@ message LogEntry {
 }
 
 message AppendEntriesRequest {
-    optional uint64 term = 1;
     optional uint64 pre_log_index = 2;
-    optional uint64 pre_log_term = 3;
     repeated LogEntry entries = 4;
     optional uint64 leader_endpoint = 5;
     optional uint32 tid = 6;
@@ -171,7 +169,7 @@ message AppendEntriesRequest {
 }
 
 message AppendEntriesResponse {
-    optional uint64 term = 1;
+    optional uint64 log_offset = 1;
     optional uint32 code = 2;
     optional string msg = 3;
 }

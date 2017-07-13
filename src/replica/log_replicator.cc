@@ -14,6 +14,7 @@
 #include "logging.h"
 #include "base/strings.h"
 #include "base/file_util.h"
+#include <boost/ref.hpp>
 #include <gflags/gflags.h>
 
 DECLARE_int32(binlog_single_file_max_size);
@@ -34,8 +35,8 @@ LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
                              uint32_t tid, uint32_t pid):path_(path), meta_path_(), log_path_(),
-    meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
-    role_(role), last_log_term_(0), last_log_offset_(0),
+    meta_(NULL), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
+    role_(role), last_log_offset_(0),
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
     self_(NULL),running_(true), tp_(1), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
@@ -43,8 +44,8 @@ LogReplicator::LogReplicator(const std::string& path,
                              ApplyLogFunc func,
                              const ReplicatorRole& role,
                              uint32_t tid, uint32_t pid):path_(path), meta_path_(), log_path_(),
-    meta_(NULL), term_(0), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
-    role_(role), last_log_term_(0), last_log_offset_(0),
+    meta_(NULL), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
+    role_(role), last_log_offset_(0),
     endpoints_(), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
     self_(NULL),
     func_(func),running_(true), tp_(1), refs_(0), tid_(tid), pid_(pid), wmu_(){}
@@ -88,7 +89,7 @@ bool LogReplicator::Init() {
             nodes_.push_back(node);
             LOG(INFO, "add replica node with endpoint %s", node->endpoint.c_str());
         }
-        tp_.AddTask(boost::bind(&LogReplicator::ReplicateLog, this));
+        tp_.DelayTask(1000, boost::bind(&LogReplicator::MatchLogOffset, this));
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
     }else {
         self_ = new ReplicaNode();
@@ -110,7 +111,8 @@ void LogReplicator::UnRef() {
     }
 }
 
-bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request) {
+bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
+        ::rtidb::api::AppendEntriesResponse* response) {
     MutexLock lock(&wmu_);
     if (wh_ == NULL || (wsize_ / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
@@ -122,6 +124,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
     if (request->pre_log_index() !=  last_log_offset_) {
         LOG(WARNING, "log mismatch for path %s, pre_log_index %lld, come log index %lld", path_.c_str(),
                 last_log_offset_, request->pre_log_index());
+        response->set_log_offset(last_log_offset_);
         return false;
     }
     for (int32_t i = 0; i < request->entries_size(); i++) {
@@ -133,9 +136,9 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
-        last_log_term_ = request->term();
         last_log_offset_ = request->entries(i).log_index();
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
+        response->set_log_offset(last_log_offset_);
     }
     LOG(DEBUG, "sync log entry to offset %lld for %s", last_log_offset_, path_.c_str());
     return true;
@@ -149,7 +152,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
             return false;
         }
     }
-    entry.set_log_index(log_offset_.fetch_add(1, boost::memory_order_relaxed));
+    entry.set_log_index(1 + log_offset_.fetch_add(1, boost::memory_order_relaxed));
     std::string buffer;
     entry.SerializeToString(&buffer);
     ::rtidb::base::Slice slice(buffer);
@@ -158,6 +161,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
+    LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }
 
@@ -326,20 +330,30 @@ bool LogReplicator::Recover() {
 
 void LogReplicator::Notify() {
     MutexLock lock(&mu_);
-    cv_.Signal();
+    cv_.Broadcast();
 }
 
-void LogReplicator::ReplicateLog() {
-    while (running_.load(boost::memory_order_relaxed)) {
-        MutexLock lock(&mu_);
-        cv_.TimeWait(10000);
-        //TODO (wangtaize) one thread per replicate node
-        std::vector<ReplicaNode*>::iterator it = nodes_.begin();
-        for (; it != nodes_.end(); ++it) {
-            ReplicateToNode(*it);
+
+void LogReplicator::MatchLogOffset() {
+    MutexLock lock(&mu_);
+    bool all_matched = true;
+    std::vector<ReplicaNode*>::iterator it = nodes_.begin();
+    for (; it != nodes_.end(); ++it) {
+        ReplicaNode* node = *it;
+        if (node->log_matched) {
+            continue;
+        }
+        bool ok = MatchLogOffsetFromNode(node);
+        if (ok) {
+            tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, boost::ref(node->endpoint)));
+        }else {
+            all_matched = false;
         }
     }
-    LOG(INFO, "replicate log exits for path %s", path_.c_str());
+    if (!all_matched) {
+        // retry after 1 second
+        tp_.DelayTask(1000, boost::bind(&LogReplicator::MatchLogOffset, this));
+    }
 }
 
 bool LogReplicator::ReadNextRecord(ReplicaNode* node,
@@ -352,6 +366,7 @@ bool LogReplicator::ReadNextRecord(ReplicaNode* node,
                                                   node->last_sync_offset,
                                                   node->log_part_index);
         if (new_log_part_index == -2) {
+            LOG(WARNING, "no log avaliable tid %d pid %d", tid_, pid_);
             return false;
         }
 
@@ -430,55 +445,98 @@ void LogReplicator::ApplyLog() {
     }
 }
 
-void LogReplicator::ReplicateToNode(ReplicaNode* node) {
+bool LogReplicator::MatchLogOffsetFromNode(ReplicaNode* node) {
     mu_.AssertHeld();
-    if (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed) - 1)) {
-        LOG(DEBUG, "node offset %lld, log offset %lld no new data", node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
-        return; 
-    }
     ::rtidb::api::TabletServer_Stub* stub;
     bool ok = rpc_client_->GetStub(node->endpoint, &stub);
     if (!ok) {
         LOG(WARNING, "fail to get rpc stub with endpoint %s", node->endpoint.c_str());
-        return;
+        return false;
     }
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
     ::rtidb::api::AppendEntriesResponse response;
-    request.set_pre_log_index(node->last_sync_offset);
-    request.set_pre_log_term(node->last_sync_term);
-    uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - node->last_sync_offset - 1;
-    if (batchSize > (uint32_t)FLAGS_binlog_sync_batch_size) {
-        batchSize = FLAGS_binlog_sync_batch_size;
-    }
-    uint64_t sync_log_offset = 0;
-    for (uint64_t i = 0; i < batchSize; i++) {
-        std::string buffer;
-        ::rtidb::base::Slice record;
-        ok = ReadNextRecord(node, &record, &buffer);
-        if (!ok) {
-            LOG(WARNING, "fail to read next record for path %s", path_.c_str());
-            return;
-        }
-        ::rtidb::api::LogEntry* entry = request.add_entries();
-        ok = entry->ParseFromString(record.ToString());
-        if (!ok) {
-            LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
-            return;
-        }
-        sync_log_offset = entry->log_index();
-    }
     ok = rpc_client_->SendRequest(stub, 
                                  &::rtidb::api::TabletServer_Stub::AppendEntries,
                                  &request, &response, 12, 1);
     if (ok && response.code() == 0) {
-        LOG(DEBUG, "sync log to node %s to offset %lld",
-                node->endpoint.c_str(), sync_log_offset);
-        node->last_sync_offset = sync_log_offset;
-    }else {
-        node->cache.push_back(request);
-        LOG(WARNING, "fail to sync log to node %s", node->endpoint.c_str());
+        node->last_sync_offset = response.log_offset();
+        node->log_matched = true;
+        LOG(INFO, "match node log offset %lld for table tid %d pid %d",
+                node->last_sync_offset, tid_, pid_);
+        return true;
+    }
+    return false;
+}
+
+
+void LogReplicator::ReplicateToNode(const std::string& endpoint) {
+    while (running_.load(boost::memory_order_relaxed)) {
+        MutexLock lock(&mu_);
+        cv_.TimeWait(1000);
+        std::vector<ReplicaNode*>::iterator it = nodes_.begin();
+        ReplicaNode* node = NULL;
+        for (; it != nodes_.end(); ++it) {
+            ReplicaNode* inode = *it;
+            if (inode->endpoint == endpoint) {
+                node = inode;
+                break;
+            }
+        }
+        if (node == NULL) {
+            LOG(WARNING, "fail to find node with endpoint %s", endpoint.c_str());
+            break;
+        }
+
+        LOG(DEBUG, "node offset %lld, log offset %lld ", node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
+        if (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
+            continue; 
+        }
+        ::rtidb::api::TabletServer_Stub* stub;
+        bool ok = rpc_client_->GetStub(node->endpoint, &stub);
+        if (!ok) {
+            LOG(WARNING, "fail to get rpc stub with endpoint %s", node->endpoint.c_str());
+            continue;
+        }
+        ::rtidb::api::AppendEntriesRequest request;
+        request.set_tid(tid_);
+        request.set_pid(pid_);
+        ::rtidb::api::AppendEntriesResponse response;
+        request.set_pre_log_index(node->last_sync_offset);
+        uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - node->last_sync_offset;
+        if (batchSize > (uint32_t)FLAGS_binlog_sync_batch_size) {
+            batchSize = FLAGS_binlog_sync_batch_size;
+        }
+        uint64_t sync_log_offset = 0;
+        for (uint64_t i = 0; i < batchSize; i++) {
+            std::string buffer;
+            ::rtidb::base::Slice record;
+            ok = ReadNextRecord(node, &record, &buffer);
+            if (!ok) {
+                LOG(WARNING, "fail to read next record for path %s", path_.c_str());
+                continue;
+            }
+            ::rtidb::api::LogEntry* entry = request.add_entries();
+            ok = entry->ParseFromString(record.ToString());
+            if (!ok) {
+                LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                continue;
+            }
+            LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
+            sync_log_offset = entry->log_index();
+        }
+        ok = rpc_client_->SendRequest(stub, 
+                                     &::rtidb::api::TabletServer_Stub::AppendEntries,
+                                     &request, &response, 12, 1);
+        if (ok && response.code() == 0) {
+            LOG(DEBUG, "sync log to node %s to offset %lld",
+                    node->endpoint.c_str(), sync_log_offset);
+            node->last_sync_offset = sync_log_offset;
+        }else {
+            node->cache.push_back(request);
+            LOG(WARNING, "fail to sync log to node %s", node->endpoint.c_str());
+        }
     }
 }
 

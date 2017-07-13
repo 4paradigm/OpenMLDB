@@ -80,7 +80,7 @@ public:
             const ::rtidb::api::AppendEntriesRequest* request,
             ::rtidb::api::AppendEntriesResponse* response,
             Closure* done) {
-        bool ok = replicator_.AppendEntries(request);
+        bool ok = replicator_.AppendEntries(request, response);
         if (ok) {
             LOG(INFO, "receive log entry from leader ok");
             response->set_code(0);
@@ -164,7 +164,7 @@ bool MockApplyLog(const ::rtidb::api::LogEntry& entry) {
 
 TEST_F(LogReplicatorTest, LeaderAndFollower) {
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    MockTabletImpl* follower = new MockTabletImpl(kSlaveNode, folder, boost::bind(MockApplyLog, _1)); 
+    MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, boost::bind(MockApplyLog, _1)); 
     bool ok = follower->Init();
     ASSERT_TRUE(ok);
     std::string follower_addr = "127.0.0.1:18527";
@@ -179,18 +179,25 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     std::vector<std::string> endpoints;
     endpoints.push_back(follower_addr);
     folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator leader(folder, endpoints, kLeaderNode);
+    LogReplicator leader(folder, endpoints, kLeaderNode, 1, 1);
     ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test_pk");
-    entry.set_value("value0");
+    entry.set_value("value1");
     entry.set_ts(9527);
     ok = leader.AppendEntry(entry);
+    entry.set_value("value2");
     ok = leader.AppendEntry(entry);
+    entry.set_value("value3");
     ok = leader.AppendEntry(entry);
+    entry.set_value("value4");
     ok = leader.AppendEntry(entry);
+    entry.set_value("value5");
     ok = leader.AppendEntry(entry);
+    entry.set_value("value6");
+    ok = leader.AppendEntry(entry);
+
     leader.Notify();
     ASSERT_TRUE(ok);
     sleep(2);

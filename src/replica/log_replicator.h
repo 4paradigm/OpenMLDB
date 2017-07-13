@@ -79,15 +79,16 @@ struct WriteHandle {
 
 struct ReplicaNode {
     std::string endpoint;
-    uint64_t last_sync_term;
     uint64_t last_sync_offset;
     SequentialFile* sf;
     Reader* reader;
     int32_t log_part_index;
     std::vector<::rtidb::api::AppendEntriesRequest> cache;
     std::string buffer;
-    ReplicaNode():endpoint(),last_sync_term(0),
-    last_sync_offset(0), sf(NULL), reader(NULL), log_part_index(-1), cache(), buffer(){}
+    bool log_matched;
+    ReplicaNode():endpoint(),
+    last_sync_offset(0), sf(NULL), reader(NULL), 
+    log_part_index(-1), cache(), buffer(), log_matched(false){}
     ~ReplicaNode() {
         delete sf;
     }
@@ -123,7 +124,8 @@ public:
     bool Init();
 
     // the slave node receives master log entries
-    bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request);
+    bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
+            ::rtidb::api::AppendEntriesResponse* response);
 
     // the master node append entry
     bool AppendEntry(::rtidb::api::LogEntry& entry);
@@ -151,9 +153,9 @@ public:
     bool ReadNextRecord(ReplicaNode* node,
                         ::rtidb::base::Slice* record,
                         std::string* buffer);
-
-    void ReplicateLog();
-    void ReplicateToNode(ReplicaNode* node);
+    void MatchLogOffset();
+    bool MatchLogOffsetFromNode(ReplicaNode* node);
+    void ReplicateToNode(const std::string& endpoint);
     void ApplyLog();
     // Incr ref
     void Ref();
@@ -169,13 +171,11 @@ private:
     // the meta db based on leveldb
     leveldb::DB* meta_;
     // the term for leader judgement
-    uint64_t term_;
     boost::atomic<uint64_t> log_offset_;
     LogParts* logs_;
     WriteHandle* wh_;
     uint32_t wsize_;
     ReplicatorRole role_;
-    uint64_t last_log_term_;
     uint64_t last_log_offset_;
     std::vector<std::string> endpoints_;
     std::vector<ReplicaNode*> nodes_;
