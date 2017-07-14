@@ -156,7 +156,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
 }
 
 void HandleClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]));
+    bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
     if (ok) {
         std::cout << "Drop table ok" << std::endl;
     }else {

@@ -39,7 +39,7 @@ class RtidbClient(object):
     it = rtidb_so.Scan(self.db_, tid, pid, pk, stime, etime)
     return KvIterator(it)
 
-  def drop_table(self, tid):
+  def drop_table(self, tid, pid):
     if rtidb_so.DropTable(self.db_, tid):
       return True
     return False

@@ -22,7 +22,7 @@ sleep 2
 
 ./build/bin/rtidb --cmd="benchmark" --role=client --endpoint=127.0.0.1:9426 --interactive=false | grep Percentile
 echo "start drop table"
-./build/bin/rtidb --cmd="drop 1" --role=client --endpoint=127.0.0.1:9426 --interactive=false
+./build/bin/rtidb --cmd="drop 1 1" --role=client --endpoint=127.0.0.1:9426 --interactive=false
 sleep 4 
 
 clear_debug
