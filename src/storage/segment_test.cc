@@ -93,6 +93,7 @@ TEST_F(SegmentTest, MultiGet) {
        std::string value1_str(value1->data, value1->size);
        ASSERT_EQ("test2", value1_str);
    }
+
    {
        DataBlock* value1 = datas[1];
        std::string value1_str(value1->data, value1->size);

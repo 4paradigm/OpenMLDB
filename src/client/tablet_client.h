@@ -44,6 +44,9 @@ public:
              uint64_t time,
              const char* value);
 
+    ::rtidb::base::KvIterator* BatchGet(uint32_t tid, uint32_t pid,
+                                       const std::vector<std::string>& keys);
+
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
