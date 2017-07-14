@@ -23,3 +23,4 @@ sleep 1
 sleep 1
 ./build/bin/rtidb --cmd="benchmark" --role=client --endpoint=127.0.0.1:19527 --interactive=false  | grep Percentile
 
+clear_debug

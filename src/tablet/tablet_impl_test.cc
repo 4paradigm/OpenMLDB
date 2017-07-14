@@ -326,7 +326,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
     request.set_tid(1);
     request.set_pid(1);
     request.set_ttl(1);
-    request.set_mode(::rtidb::api::TableMode::kTableLeader);
+    request.set_mode(::rtidb::api::TableMode::kTableFollower);
     request.add_replicas("127.0.0.1:9527");
     ::rtidb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response,
