@@ -71,23 +71,6 @@ TEST_F(TabletImplTest, TTL) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    {
-        ::rtidb::api::ScanRequest sr;
-        sr.set_tid(1);
-        sr.set_pid(1);
-        sr.set_pk("test1");
-        sr.set_st(now);
-        sr.set_et(now - 3 * 60 * 1000);
-        ::rtidb::api::ScanResponse* srp = new ::rtidb::api::ScanResponse();
-        tablet.Scan(NULL, &sr, srp, &closure);
-        ASSERT_EQ(1, srp->count());
-        ::rtidb::base::KvIterator it(srp);
-        ASSERT_TRUE(it.Valid());
-        ASSERT_EQ(now , it.GetKey());
-        ASSERT_EQ("test1", it.GetValue().ToString());
-        it.Next();
-        ASSERT_FALSE(it.Valid());
-    }
 
 }
 

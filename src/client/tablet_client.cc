@@ -147,9 +147,10 @@ bool TabletClient::Put(uint32_t tid,
 
 
 
-bool TabletClient::DropTable(const uint32_t id) {
+bool TabletClient::DropTable(uint32_t id, uint32_t pid) {
     ::rtidb::api::DropTableRequest request;
     request.set_tid(id);
+    request.set_pid(pid);
     ::rtidb::api::DropTableResponse response;
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::DropTable,
             &request, &response, 12, 1);

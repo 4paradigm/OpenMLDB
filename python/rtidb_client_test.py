@@ -60,11 +60,11 @@ class TestRtidbClient(unittest.TestCase):
 
   def test_drop_table(self):
     db = rtidb_client.RtidbClient(endpoint)
-    ok = db.drop_table(104)
+    ok = db.drop_table(104, 1)
     self.assertFalse(ok)
     ok = db.create_table("py_test3", 105, 1, 0)
     self.assertTrue(ok)
-    ok = db.drop_table(105)
+    ok = db.drop_table(105, 1)
     self.assertTrue(ok)
 
 
