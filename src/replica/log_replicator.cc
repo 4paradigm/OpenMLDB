@@ -59,6 +59,7 @@ LogReplicator::~LogReplicator() {
         while (it->Valid()) {
             LogPart* lp = it->GetValue();
             delete lp;
+            it->Next();
         }
         delete it;
         logs_->Clear();
@@ -280,6 +281,7 @@ bool LogReplicator::RollWLogFile() {
     if (wh_ != NULL) {
         wh_->EndLog();
         delete wh_;
+        wh_ = NULL;
     }
     std::string name = ::rtidb::base::FormatToString(logs_->GetSize(), 8) + ".log";
     std::string full_path = log_path_ + "/" + name;

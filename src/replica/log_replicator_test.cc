@@ -46,7 +46,9 @@ public:
                    ApplyLogFunc func): role_(role),
     path_(path), func_(func), replicator_(path_, func_, role_, 1, 1){
     }
-    ~MockTabletImpl() {}
+    ~MockTabletImpl() {
+        replicator_.Stop();
+    }
 
     bool Init() {
         return replicator_.Init();
@@ -199,6 +201,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     ok = leader.AppendEntry(entry);
 
     leader.Notify();
+    leader.Stop();
     ASSERT_TRUE(ok);
     sleep(2);
 }
