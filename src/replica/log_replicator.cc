@@ -50,7 +50,30 @@ LogReplicator::LogReplicator(const std::string& path,
     self_(NULL),
     func_(func),running_(true), tp_(1), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
-LogReplicator::~LogReplicator() {}
+LogReplicator::~LogReplicator() {
+    delete meta_;
+    meta_ = NULL;
+    if (logs_ != NULL) {
+        LogParts::Iterator* it = logs_->NewIterator();
+        it->SeekToFirst();
+        while (it->Valid()) {
+            LogPart* lp = it->GetValue();
+            delete lp;
+        }
+        delete it;
+        logs_->Clear();
+    }
+    delete logs_;
+    logs_ = NULL;
+    delete wh_;
+    wh_ = NULL;
+    std::vector<ReplicaNode*>::iterator nit = nodes_.begin();
+    for (; nit != nodes_.end(); ++nit) {
+        delete (*nit);
+    }
+    delete rpc_client_;
+    delete self_;
+}
 
 bool LogReplicator::Init() {
     leveldb::Options options;
@@ -107,7 +130,7 @@ void LogReplicator::Ref() {
 void LogReplicator::UnRef() {
     refs_.fetch_sub(1, boost::memory_order_acquire);
     if (refs_.load(boost::memory_order_relaxed) <= 0) {
-        // TODO clean memory
+        delete this;
     }
 }
 
@@ -265,7 +288,6 @@ bool LogReplicator::RollWLogFile() {
         LOG(WARNING, "fail to create file %s", full_path.c_str());
         return false;
     }
-
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
     LogPart* part = new LogPart(offset, name);
     std::string buffer;
@@ -547,7 +569,8 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
 
 void LogReplicator::Stop() {
     running_.store(false, boost::memory_order_relaxed);
-    tp_.Stop(1000);
+    // wait all task to shutdown
+    tp_.Stop(true);
     LOG(INFO, "stop replicator for path %s ok", path_.c_str());
 }
 
