@@ -101,6 +101,14 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
+    if (!table->IsLeader()) {
+        LOG(WARNING, "table with tid %ld, pid %ld is follower and it's readonly ", request->tid(),
+                request->pid());
+        response->set_code(20);
+        response->set_msg("table is follower, and it's readonly");
+        done->Run();
+        return;
+    }
     uint64_t size = request->value().size();
     table->Put(request->pk(), request->time(), request->value().c_str(),
             request->value().length());
@@ -374,20 +382,29 @@ void TabletImpl::DropTable(RpcController* controller,
         done->Run();
         return;
     }
+    LogReplicator* replicator = GetReplicator(request->tid(), 
+            request->pid());
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     // do block other requests
     {
         MutexLock lock(&mu_);
         tables_[tid].erase(pid);
+        replicators_[tid].erase(pid);
         response->set_code(0);
         done->Run();
     }
     uint64_t size = table->Release();
-    LOG(INFO, "delete table %d with bytes %lld released", tid, size);
+    LOG(INFO, "drop table %d pid %d with bytes %lld released", tid, pid, size);
     // unref table, let it release memory
     table->UnRef();
     table->UnRef();
+    if (replicator != NULL) {
+        replicator->Stop();
+        replicator->UnRef();
+        replicator->UnRef();
+        LOG(INFO, "drop replicator for tid %d, pid %d", tid, pid);
+    }
 }
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
