@@ -101,14 +101,6 @@ public:
         *size = seg_cnt_;
     }
 
-    inline uint64_t GetByteSize() const {
-        uint64_t byte_size = 0;
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            byte_size += segments_[i]->GetByteSize();
-        }
-        return byte_size;
-    }
-
     inline std::string GetName() const {
         return name_;
     }

@@ -31,6 +31,8 @@ enum TableType {
 enum TTLType {
     kAbsoluteTime = 1;
     kRelativeTime = 2;
+    // keep the latest record
+    kLatestTime = 3;
 }
 
 message PutRequest {

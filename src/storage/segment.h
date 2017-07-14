@@ -87,6 +87,7 @@ public:
         refs_.fetch_sub(1, boost::memory_order_relaxed);
     }
 
+
 public:
     std::string key;
     TimeEntries entries;
@@ -139,25 +140,22 @@ public:
     };
 
     uint64_t Release();
-
     // gc with specify time, delete the data before time 
     uint64_t Gc4TTL(const uint64_t& time);
-
+    uint64_t Gc4WithHead();
     Segment::Iterator* NewIterator(const std::string& key, Ticket& ticket);
-
-    uint64_t GetByteSize() {
-        return data_byte_size_.load(boost::memory_order_relaxed);
-    }
 
     uint64_t GetDataCnt() {
         return data_cnt_.load(boost::memory_order_relaxed);
     }
 
 private:
+    uint64_t FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node);
+
+private:
     KeyEntries* entries_;
     // only Put need mutex
     Mutex mu_;
-    boost::atomic<uint64_t> data_byte_size_;
     boost::atomic<uint64_t> data_cnt_;
 };
 

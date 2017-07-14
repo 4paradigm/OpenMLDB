@@ -102,7 +102,6 @@ TEST_F(SegmentTest, TestStat) {
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
     ASSERT_EQ(2, segment.GetDataCnt());
-    ASSERT_TRUE(10 < segment.GetByteSize());
     uint64_t count = segment.Gc4TTL(9765);
     ASSERT_EQ(0, count);
     count = segment.Gc4TTL(9768);
