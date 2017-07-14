@@ -9,6 +9,8 @@
 #ifndef RTIDB_STORAGE_SEGMENT_H
 #define RTIDB_STORAGE_SEGMENT_H
 
+#include <map>
+#include <vector>
 #include "base/skiplist.h"
 #include "mutex.h"
 #include "boost/atomic.hpp"
@@ -121,6 +123,10 @@ public:
     bool Get(const std::string& key,
              uint64_t time,
              DataBlock** block);
+
+    void BatchGet(const std::vector<std::string>& keys,
+                  std::map<uint32_t, DataBlock*>& datas,
+                  Ticket& ticket);
 
     // Segment Iterator
     class Iterator {

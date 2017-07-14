@@ -107,6 +107,20 @@ message ScanResponse {
 	optional RpcMetric metric = 6;
 }
 
+message BatchGetRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    // keys list
+    repeated string keys = 3;
+}
+
+message BatchGetResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    // pairs the index to key index
+    optional bytes pairs = 3;
+}
+
 message CreateTableRequest {
 	optional int32 tid = 1;
 	optional string name = 2;
@@ -135,23 +149,6 @@ message DropTableResponse {
 	optional string msg = 2;
 }
 
-message TableMeta {
-	optional int32 tid = 1;
-	optional string name = 2;
-	optional int32 pid = 3;
-	optional int32 ttl = 4;
-	optional int32 seg_cnt = 5;
-}
-
-message TableRow {
-	optional string pk = 1;
-	optional bytes data = 2;
-	optional uint64 time = 3;
-}
-
-message RelMemRequest {}
-message RelMemResponse {}
-
 // raft protocol
 message LogEntry {
     // term for leader
@@ -177,13 +174,13 @@ message AppendEntriesResponse {
 }
 
 service TabletServer {
+
 	rpc Put(PutRequest) returns (PutResponse);
 	rpc Scan(ScanRequest) returns (ScanResponse);
+    rpc BatchGet(BatchGetRequest) returns (BatchGetResponse);
+
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
-	// this a system api
-	rpc ReplicateLog(ReplicateLogRequest) returns(ReplicateLogResponse);
-
 	// raft log replication
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
 }

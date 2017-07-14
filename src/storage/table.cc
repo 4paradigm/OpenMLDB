@@ -82,6 +82,14 @@ void Table::UnRef() {
     }
 }
 
+void Table::BatchGet(const std::vector<std::string>& keys,
+                     std::map<uint32_t, DataBlock*>& pairs,
+                     Ticket& ticket) {
+    // batch get just support one segment
+    Segment* segment = segments_[0];
+    segment->BatchGet(keys, pairs, ticket);
+}
+
 uint64_t Table::Release() {
     uint64_t total_bytes = 0;
     for (uint32_t i = 0; i < seg_cnt_; i++) {

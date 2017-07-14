@@ -9,10 +9,11 @@
 #ifndef RTIDB_STORAGE_TABLE_H
 #define RTIDB_STORAGE_TABLE_H
 
+#include <vector>
+#include <map>
 #include "storage/segment.h"
 #include "storage/ticket.h"
 #include "boost/atomic.hpp"
-#include <vector>
 
 namespace rtidb {
 namespace storage {
@@ -51,6 +52,10 @@ public:
              uint64_t time,
              const char* data,
              uint32_t size);
+
+    void BatchGet(const std::vector<std::string>& keys,
+                  std::map<uint32_t, DataBlock*>& pairs,
+                  Ticket& ticket);
 
     class Iterator {
     public:
@@ -116,7 +121,7 @@ public:
     inline uint32_t GetPid() const {
         return pid_;
     }
-    
+
     inline bool IsLeader() const {
         return is_leader_;
     }

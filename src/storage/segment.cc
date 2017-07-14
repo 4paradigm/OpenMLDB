@@ -171,6 +171,28 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
     return count;
 }
 
+void Segment::BatchGet(const std::vector<std::string>& keys,
+                       std::map<uint32_t, DataBlock*>& datas,
+                       Ticket& ticket) {
+    KeyEntries::Iterator* it = entries_->NewIterator();
+    for (uint32_t i = 0; i < keys.size(); i++) {
+        const std::string& key = keys[i];
+        it->Seek(key);
+        if (!it->Valid()) {
+            continue;
+        }
+        KeyEntry* entry = it->GetValue();
+        ticket.Push(entry);
+        TimeEntries::Iterator* tit = entry->entries.NewIterator();
+        tit->SeekToFirst();
+        if (tit->Valid()) {
+            datas.insert(std::make_pair(i, tit->GetValue()));
+        }
+        delete tit;
+    }
+    delete it;
+}
+
 // Iterator
 Segment::Iterator* Segment::NewIterator(const std::string& key, Ticket& ticket) {
     KeyEntry* entry = entries_->Get(key);

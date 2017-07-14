@@ -142,6 +142,52 @@ void TabletImpl::Put(RpcController* controller,
     }
 }
 
+void TabletImpl::BatchGet(RpcController* controller, 
+        const ::rtidb::api::BatchGetRequest* request,
+        ::rtidb::api::BatchGetResponse* response,
+        Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL) {
+        LOG(WARNING, "fail to find table with tid %ld, pid %ld", request->tid(), request->pid());
+        response->set_code(10);
+        response->set_msg("table not found");
+        done->Run();
+        return;
+    }
+    std::vector<std::string> keys;
+    for (int32_t i = 0; i < request->keys_size(); i++) {
+        keys.push_back(request->keys(i));
+    }
+    std::map<uint32_t, DataBlock*> datas;
+    ::rtidb::storage::Ticket ticket;
+    table->BatchGet(keys, datas, ticket);
+    uint32_t total_block_size = 0;
+    std::map<uint32_t, DataBlock*>::iterator it = datas.begin();
+    for (; it != datas.end(); ++it) {
+        total_block_size += it->second->size;
+    }
+    uint32_t total_size = datas.size() * (8+4) + total_block_size;
+    std::string* pairs = response->mutable_pairs();
+    if (datas.size() <= 0) {
+        pairs->resize(0);
+    }else {
+        pairs->resize(total_size);
+    }
+    LOG(DEBUG, "batch get count %d", datas.size());
+    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
+    uint32_t offset = 0;
+    it = datas.begin();
+    for (; it != datas.end(); ++it) {
+        LOG(DEBUG, "decode key %lld value %s", it->first, it->second->data);
+        ::rtidb::base::Encode((uint64_t)it->first, it->second, rbuffer, offset);
+        offset += (4 + 8 + it->second->size);
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+    table->UnRef();
+}
+
 inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
     if (request->st() < request->et()) {
         return false;
