@@ -65,7 +65,8 @@ TEST_F(SegmentTest, Iterator) {
    Segment segment; 
    segment.Put("pk", 9768, "test1", 5);
    segment.Put("pk", 9769, "test2", 5);
-   Segment::Iterator* it = segment.NewIterator("pk");
+   Ticket ticket;
+   Segment::Iterator* it = segment.NewIterator("pk", ticket);
    it->Seek(9769);
    ASSERT_EQ(9769, it->GetKey());
    DataBlock* value = it->GetValue();

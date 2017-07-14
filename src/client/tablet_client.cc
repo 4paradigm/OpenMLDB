@@ -23,28 +23,35 @@ TabletClient::~TabletClient() {
 }
 
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint32_t ttl,
-        bool data_ha) {
+        uint32_t pid, uint32_t ttl) {
+    std::vector<std::string> endpoints;
+    return CreateTable(name, id, pid, ttl, true, endpoints);
+}
+
+bool TabletClient::CreateTable(const std::string& name,
+                               uint32_t tid, uint32_t pid, uint32_t ttl,
+                               bool leader, const std::vector<std::string>& endpoints) {
     ::rtidb::api::CreateTableRequest request;
     request.set_name(name);
-    request.set_tid(id);
+    request.set_tid(tid);
     request.set_pid(pid);
     request.set_ttl(ttl);
-    request.set_ha(data_ha);
+    if (leader) {
+        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+    }else {
+        request.set_mode(::rtidb::api::TableMode::kTableFollower);
+    }
+    for (size_t i = 0; i < endpoints.size(); i++) {
+        request.add_replicas(endpoints[i]);
+    }
     ::rtidb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::CreateTable,
+    bool ok = client_.SendRequest(tablet_,
+            &::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         return true;
     }
     return false;
-}
-
-void TabletClient::ReleaseMemory() {
-    ::rtidb::api::RelMemRequest request;
-    ::rtidb::api::RelMemResponse response;
-    client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::RelMem,
-            &request, &response, 12, 1);
 }
 
 bool TabletClient::Put(uint32_t tid,
@@ -57,6 +64,7 @@ bool TabletClient::Put(uint32_t tid,
     request.set_time(time);
     request.set_value(value);
     request.set_tid(tid);
+    request.set_pid(pid);
     ::rtidb::api::PutResponse response;
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Put,
@@ -98,6 +106,7 @@ bool TabletClient::Put(uint32_t tid,
     request.set_st(stime);
     request.set_et(etime);
     request.set_tid(tid);
+    request.set_pid(pid);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();

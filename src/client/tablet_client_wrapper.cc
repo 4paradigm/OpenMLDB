@@ -27,9 +27,9 @@ void FreeClient(TabletClient* client) {
 
 bool CreateTable(TabletClient* client, 
                  const char* name, int tid,
-                 int pid, int ttl, bool data_ha) {
+                 int pid, int ttl) {
     std::string n(name);
-    return client->CreateTable(n, tid, pid, ttl, data_ha);
+    return client->CreateTable(n, tid, pid, ttl);
 }
 
 bool Put(TabletClient* client,

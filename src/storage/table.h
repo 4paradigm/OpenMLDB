@@ -10,7 +10,9 @@
 #define RTIDB_STORAGE_TABLE_H
 
 #include "storage/segment.h"
+#include "storage/ticket.h"
 #include "boost/atomic.hpp"
+#include <vector>
 
 namespace rtidb {
 namespace storage {
@@ -23,8 +25,17 @@ enum TableGcType {
 class Table {
 
 public:
+
     // Create a logic table with table name , table id, table partition id 
     // and segment count
+    Table(const std::string& name,
+          uint32_t id,
+          uint32_t pid,
+          uint32_t seg_cnt,
+          uint32_t ttl,
+          bool is_leader,
+          const std::vector<std::string>& replicas);
+
     Table(const std::string& name,
           uint32_t id,
           uint32_t pid,
@@ -34,9 +45,10 @@ public:
     void Init();
 
     void SetGcSafeOffset(uint64_t offset);
+
     // Put 
     void Put(const std::string& pk,
-             const uint64_t& time,
+             uint64_t time,
              const char* data,
              uint32_t size);
 
@@ -44,7 +56,6 @@ public:
     public:
         Iterator(Segment::Iterator* it);
         ~Iterator();
-        
         bool Valid() const;
         void Next();
         void Seek(const uint64_t& time);
@@ -55,7 +66,7 @@ public:
         Segment::Iterator* it_;
     };
 
-    Table::Iterator* NewIterator(const std::string& pk);
+    Table::Iterator* NewIterator(const std::string& pk, Ticket& ticket);
 
     void Ref();
 
@@ -77,7 +88,7 @@ public:
         }
         return data_cnt;
     }
-    
+
     inline void GetDataCnt(uint64_t** stat, uint32_t* size) const {
         if (stat == NULL) {
             return;
@@ -106,22 +117,24 @@ public:
         return id_;
     }
 
-    inline uint32_t GetSegCnt() const{
+    inline uint32_t GetSegCnt() const {
         return seg_cnt_;
     }
+
     inline uint32_t GetPid() const {
         return pid_;
     }
-
-    inline bool Persistence() const {
-        return enable_persistence_;
+    
+    inline bool IsLeader() const {
+        return is_leader_;
     }
 
-    inline void Persistence(bool pers) {
-        enable_persistence_ = pers;
+    inline const std::vector<std::string>& GetReplicas() const {
+        return replicas_;
     }
 
 private:
+
     ~Table(){}
 
 private:
@@ -133,11 +146,11 @@ private:
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
     bool enable_gc_;
-    // hour
     uint32_t const ttl_;
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> data_cnt_;
-    bool enable_persistence_;
+    bool const is_leader_;
+    std::vector<std::string> const replicas_;
 };
 
 }

@@ -17,17 +17,17 @@ class TestRtidbClient(unittest.TestCase):
   
   def test_create_table(self):
     db = rtidb_client.RtidbClient(endpoint)
-    ok = db.create_table("py_test1", 101, 1, 0, False)
+    ok = db.create_table("py_test1", 101, 1, 0)
     self.assertTrue(ok)
-    ok = db.create_table("py_test1", 101, 1, 0, False)
+    ok = db.create_table("py_test1", 101, 1, 0)
     self.assertFalse(ok)
-    ok = db.create_table("", 119, 1, 0, False)
+    ok = db.create_table("", 119, 1, 0)
     self.assertFalse(ok)
 
 
   def test_put(self):
     db = rtidb_client.RtidbClient(endpoint)
-    ok = db.create_table("py_test2", 102, 1, 0, False)
+    ok = db.create_table("py_test2", 102, 1, 0)
     self.assertTrue(ok)
     ok = db.put(102, 1, "pk", 9527, "pk")
     self.assertTrue(ok)
@@ -40,7 +40,7 @@ class TestRtidbClient(unittest.TestCase):
 
   def test_scan(self):
     db = rtidb_client.RtidbClient(endpoint)
-    ok = db.create_table("py_test3", 103, 1, 0, False)
+    ok = db.create_table("py_test3", 103, 1, 0)
     self.assertTrue(ok)
     ok = db.put(103, 1, "pk", 9527, "pk1")
     self.assertTrue(ok)
@@ -62,7 +62,7 @@ class TestRtidbClient(unittest.TestCase):
     db = rtidb_client.RtidbClient(endpoint)
     ok = db.drop_table(104)
     self.assertFalse(ok)
-    ok = db.create_table("py_test3", 105, 1, 0, False)
+    ok = db.create_table("py_test3", 105, 1, 0)
     self.assertTrue(ok)
     ok = db.drop_table(105)
     self.assertTrue(ok)

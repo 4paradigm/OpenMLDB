@@ -167,6 +167,34 @@ public:
         return node->GetValue();
     }
 
+    Node<K, V>* GetLast() {
+        Node<K, V>* node = head_->GetNext(0);
+        while (node != NULL) {
+            Node<K, V>* tmp = node->GetNext(0);
+            // find the end
+            if (tmp == NULL) {
+                return node;
+            }
+            node = tmp;
+        }
+        return NULL;
+    }
+
+    uint32_t GetSize() {
+        uint32_t cnt = 0;
+        Node<K, V>* node = head_->GetNext(0);
+        while (node != NULL) {
+            cnt++;
+            Node<K, V>* tmp = node->GetNext(0);
+            // find the end
+            if (tmp == NULL) {
+                break;
+            }
+            node = tmp;
+        }
+        return cnt;
+    }
+
     // Need external synchronized
     uint64_t Clear() {
         uint64_t cnt = 0;
@@ -188,6 +216,31 @@ public:
         }
         return cnt;
     }
+
+    // Need external synchronized
+    bool AddToFirst(const K& key, V& value) {
+        {
+            Node<K,V>* node = head_->GetNext(0);
+            if (node != NULL && compare_(key, node->GetKey()) > 0) {
+                return false;
+            }
+        }
+        uint32_t height = RandomHeight();
+        Node<K,V>* pre[MaxHeight];
+        for (uint32_t i = 0; i < height; i++ ) {
+            pre[i] = head_;
+        }
+        if (height > GetMaxHeight()) { 
+            max_height_.store(height, boost::memory_order_relaxed);
+        }
+        Node<K,V>* node = NewNode(key, value, height);
+        for (uint32_t i = 0; i < height; i ++) {
+            node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
+            pre[i]->SetNext(i, node);
+        }
+        return true;
+    }
+
 
     class Iterator {
     public:
@@ -321,4 +374,5 @@ private:
 
 }// base
 }// rtidb
+
 #endif /* !SKIPLIST_H */

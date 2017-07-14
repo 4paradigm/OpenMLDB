@@ -62,6 +62,7 @@ TEST_F(TabletImplMemTest, TestMem) {
         prequest.set_time(9527);
         prequest.set_value("test2");
         prequest.set_tid(1);
+        prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
         tablet->Put(NULL, &prequest, &presponse,
                 &closure);
@@ -75,6 +76,7 @@ TEST_F(TabletImplMemTest, TestMem) {
             prequest.set_time(i);
             prequest.set_value("test2");
             prequest.set_tid(1);
+            prequest.set_pid(1);
             ::rtidb::api::PutResponse presponse;
             tablet->Put(NULL, &prequest, &presponse,
                     &closure);
@@ -85,6 +87,7 @@ TEST_F(TabletImplMemTest, TestMem) {
     {
         ::rtidb::api::ScanRequest sr;
         sr.set_tid(1);
+        sr.set_pid(1);
         sr.set_pk("test3");
         sr.set_st(10000);
         sr.set_et(0);
@@ -97,6 +100,7 @@ TEST_F(TabletImplMemTest, TestMem) {
     {
         ::rtidb::api::DropTableRequest dr;
         dr.set_tid(1);
+        dr.set_pid(1);
         ::rtidb::api::DropTableResponse drs;
         tablet->DropTable(NULL, &dr, &drs, &closure);
         ASSERT_EQ(0, drs.code());

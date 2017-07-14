@@ -6,6 +6,7 @@
 //
 
 #include "storage/table.h"
+#include "storage/ticket.h"
 #include "gtest/gtest.h"
 #include "timer.h"
 
@@ -47,8 +48,8 @@ TEST_F(TableTest, Iterator) {
     table->Put("pk", 9527, "test", 4);
     table->Put("pk1", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
-
-    Table::Iterator* it = table->NewIterator("pk");
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("pk", ticket);
 
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
@@ -76,7 +77,8 @@ TEST_F(TableTest, SchedGc) {
     table->Put("test", now, "tes2", 4);
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
-    Table::Iterator* it = table->NewIterator("test");
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("test", ticket);
     it->Seek(now);
     ASSERT_TRUE(it->Valid());
     std::string value_str(it->GetValue()->data, it->GetValue()->size);
@@ -106,8 +108,6 @@ TEST_F(TableTest, TableUnref) {
     table->Put("test", 9527, "test", 4);
     table->UnRef();
 }
-
-
 
 }
 }

@@ -47,7 +47,7 @@ uint64_t Segment::Release() {
 }
 
 void Segment::Put(const std::string& key,
-        const uint64_t& time,
+        uint64_t time,
         const char* data,
         uint32_t size) {
     KeyEntry* entry = entries_->Get(key);
@@ -69,8 +69,8 @@ void Segment::Put(const std::string& key,
 }
 
 bool Segment::Get(const std::string& key,
-        const uint64_t& time,
-        DataBlock** block) {
+                  const uint64_t time,
+                  DataBlock** block) {
     if (block == NULL) {
         return false;
     }
@@ -79,9 +79,11 @@ bool Segment::Get(const std::string& key,
     if (entry == NULL || key.compare(entry->key) !=0) {
         return false;
     }
+
     *block = entry->entries.Get(time);
     return true;
 }
+
 
 // fast gc with no global pause
 uint64_t Segment::Gc4TTL(const uint64_t& time) {
@@ -92,6 +94,10 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = it->GetValue();
+        // skip entry that ocupied by reader
+        if (entry->refs_.load(boost::memory_order_acquire) > 0) {
+            continue;
+        }
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             MutexLock lock(&entry->mu);
@@ -123,11 +129,12 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
 }
 
 // Iterator
-Segment::Iterator* Segment::NewIterator(const std::string& key) {
+Segment::Iterator* Segment::NewIterator(const std::string& key, Ticket& ticket) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         return NULL;
     }
+    ticket.Push(entry);
     return new Iterator(entry->entries.NewIterator());
 }
 

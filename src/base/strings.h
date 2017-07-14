@@ -11,9 +11,12 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 namespace rtidb {
 namespace base {
+
+const static char LABELS[10] = {'0','1','2','3','4','5','6','7','8','9'};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
@@ -48,6 +51,24 @@ static inline bool IsVisible(char c) {
     return (c >= 0x20 && c <= 0x7E);
 }
 
+
+
+static inline std::string FormatToString(uint32_t name, uint32_t max_shift) {
+    uint32_t shift = 0;
+    std::string result;
+    result.resize(max_shift);
+    char* rbuffer = reinterpret_cast<char*>(& (result[0]));
+    for (uint32_t i = 0; i < max_shift; i++) {
+        rbuffer[i] = '0';
+    }
+    while (shift < max_shift) {
+        rbuffer[max_shift - shift - 1] = LABELS[name % 10];
+        shift++;
+        name /= 10;
+    }
+    return result;
+}
+
 static inline char ToHex(uint8_t i) {
     char j = 0;
     if (i < 10) {
@@ -58,6 +79,23 @@ static inline char ToHex(uint8_t i) {
     return j;
 }
 
+static inline std::string DebugCharArray(char* data, uint32_t size) {
+    std::string dst;
+    dst.resize(size << 2);
+    uint32_t j = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        uint8_t c = data[i];
+        if (IsVisible(c)) {
+            dst[j++] = c;
+        } else {
+            dst[j++] = '\\';
+            dst[j++] = 'x';
+            dst[j++] = ToHex(c >> 4);
+            dst[j++] = ToHex(c & 0xF);
+        }
+    }
+    return dst.substr(0, j);
+}
 
 static inline std::string DebugString(const std::string& src) {
     size_t src_len = src.size();
