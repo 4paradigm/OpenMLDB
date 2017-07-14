@@ -183,17 +183,14 @@ void TabletImpl::Scan(RpcController* controller,
     metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
     // the first seek to find the total size to copy
-    Table::Iterator* it = table->NewIterator(request->pk());
+    ::rtidb::storage::Ticket ticket;
+    Table::Iterator* it = table->NewIterator(request->pk(), ticket);
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     // TODO(wangtaize) controle the max size
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
-    if (table->GetTTL() > 0) {
-        uint64_t ttl_end_time = ::baidu::common::timer::get_micros() / 1000 - table->GetTTL() * 60 * 1000;
-        end_time = ttl_end_time > (uint64_t)request->et() ? ttl_end_time : (uint64_t)request->et();
-    }
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     while (it->Valid()) {
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
@@ -550,8 +547,8 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
         response.content->Append(sb.GetString());
         return;
     }
-
-    Table::Iterator* it = stat->NewIterator(pk);
+    ::rtidb::storage::Ticket ticket;
+    Table::Iterator* it = stat->NewIterator(pk, ticket);
     it->SeekToFirst();
 
     while (it->Valid()) {

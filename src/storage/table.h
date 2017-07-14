@@ -10,6 +10,7 @@
 #define RTIDB_STORAGE_TABLE_H
 
 #include "storage/segment.h"
+#include "storage/ticket.h"
 #include "boost/atomic.hpp"
 #include <vector>
 
@@ -41,13 +42,13 @@ public:
           uint32_t seg_cnt,
           uint32_t ttl);
 
-
     void Init();
 
     void SetGcSafeOffset(uint64_t offset);
+
     // Put 
     void Put(const std::string& pk,
-             const uint64_t& time,
+             uint64_t time,
              const char* data,
              uint32_t size);
 
@@ -65,7 +66,7 @@ public:
         Segment::Iterator* it_;
     };
 
-    Table::Iterator* NewIterator(const std::string& pk);
+    Table::Iterator* NewIterator(const std::string& pk, Ticket& ticket);
 
     void Ref();
 

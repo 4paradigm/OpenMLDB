@@ -56,9 +56,12 @@ void Table::Init() {
             id_, pid_, seg_cnt_, ttl_);
 }
 
-void Table::Put(const std::string& pk, const uint64_t& time,
+void Table::Put(const std::string& pk, uint64_t time,
         const char* data, uint32_t size) {
-    uint32_t index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    uint32_t index = 0;
+    if (seg_cnt_ > 1) {
+        index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
     Segment* segment = segments_[index];
     segment->Put(pk, time, data, size);
     data_cnt_.fetch_add(1, boost::memory_order_relaxed);
@@ -147,10 +150,13 @@ uint64_t Table::Iterator::GetKey() const {
     return it_->GetKey();
 }
 
-Table::Iterator* Table::NewIterator(const std::string& pk) {
-    uint32_t index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+Table::Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
+    uint32_t index = 0;
+    if (seg_cnt_ > 1) {
+        index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
     Segment* segment = segments_[index];
-    return new Table::Iterator(segment->NewIterator(pk));
+    return new Table::Iterator(segment->NewIterator(pk, ticket));
 }
 
 }
