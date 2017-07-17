@@ -27,9 +27,9 @@ void FreeClient(TabletClient* client) {
 
 bool CreateTable(TabletClient* client, 
                  const char* name, int tid,
-                 int pid, int ttl, bool data_ha) {
+                 int pid, int ttl) {
     std::string n(name);
-    return client->CreateTable(n, tid, pid, ttl, data_ha);
+    return client->CreateTable(n, tid, pid, ttl);
 }
 
 bool Put(TabletClient* client,
@@ -48,8 +48,8 @@ KvIterator* Scan(TabletClient* client,
     return client->Scan(tid, pid, pk, st, et, false);
 }
 
-bool DropTable(TabletClient* client, uint32_t tid) {
-    return client->DropTable(tid);
+bool DropTable(TabletClient* client, uint32_t tid, uint32_t pid) {
+    return client->DropTable(tid, pid);
 }
 
 bool IteratorValid(KvIterator* it) {

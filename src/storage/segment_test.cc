@@ -61,11 +61,52 @@ TEST_F(SegmentTest, PutAndGet) {
    ASSERT_EQ(e, t);
 }
 
+TEST_F(SegmentTest, MultiGet) {
+   Segment segment; 
+   {
+       const char* test = "test1";
+       std::string pk = "pk1";
+       segment.Put(pk, 1, test, 5);
+   }
+   {
+       const char* test = "test2";
+       std::string pk = "pk1";
+       segment.Put(pk, 2, test, 5);
+   }
+
+   {
+       const char* test = "test2";
+       std::string pk = "pk2";
+       segment.Put(pk, 2, test, 5);
+   }
+
+   std::vector<std::string> keys;
+   keys.push_back("pk1");
+   keys.push_back("pk2");
+   std::map<uint32_t, DataBlock*> datas;
+   Ticket ticket;
+   segment.BatchGet(keys, datas, ticket);
+   ASSERT_EQ(2, datas.size());
+
+   {
+       DataBlock* value1 = datas[0];
+       std::string value1_str(value1->data, value1->size);
+       ASSERT_EQ("test2", value1_str);
+   }
+
+   {
+       DataBlock* value1 = datas[1];
+       std::string value1_str(value1->data, value1->size);
+       ASSERT_EQ("test2", value1_str);
+   }
+}
+
 TEST_F(SegmentTest, Iterator) {
    Segment segment; 
    segment.Put("pk", 9768, "test1", 5);
    segment.Put("pk", 9769, "test2", 5);
-   Segment::Iterator* it = segment.NewIterator("pk");
+   Ticket ticket;
+   Segment::Iterator* it = segment.NewIterator("pk", ticket);
    it->Seek(9769);
    ASSERT_EQ(9769, it->GetKey());
    DataBlock* value = it->GetValue();
@@ -101,7 +142,6 @@ TEST_F(SegmentTest, TestStat) {
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
     ASSERT_EQ(2, segment.GetDataCnt());
-    ASSERT_TRUE(10 < segment.GetByteSize());
     uint64_t count = segment.Gc4TTL(9765);
     ASSERT_EQ(0, count);
     count = segment.Gc4TTL(9768);

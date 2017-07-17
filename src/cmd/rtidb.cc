@@ -118,23 +118,32 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
     }
 }
 
-// the input format like create name tid pid ttl
+// the input format like create name tid pid ttl leader endpoints 
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 5) {
+    if (parts.size() < 4) {
         std::cout << "Bad create format" << std::endl;
         return;
     }
-    bool ha = false;
-    if (parts.size() > 5) {
-        if (parts[5] == "true") {
-            ha = true;
-        }
+
+    bool leader = true;
+    if (parts.size() > 5 && parts[5] == "false") {
+        leader = false;
     }
+
+    std::vector<std::string> endpoints;
+    for (size_t i = 6; i < parts.size(); i++) {
+        endpoints.push_back(parts[i]);
+    }
+
     try {
-    
-        bool ok = client->CreateTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-                boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint32_t>(parts[4]),
-                ha);
+        uint32_t ttl = 0;
+        if (parts.size() > 4) {
+            ttl = boost::lexical_cast<uint32_t>(parts[4]);
+        }
+        bool ok = client->CreateTable(parts[1], 
+                                      boost::lexical_cast<uint32_t>(parts[2]),
+                                      boost::lexical_cast<uint32_t>(parts[3]), 
+                                      ttl, leader, endpoints);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -147,7 +156,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
 }
 
 void HandleClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]));
+    bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
     if (ok) {
         std::cout << "Drop table ok" << std::endl;
     }else {
@@ -225,30 +234,55 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
         }
         client->ShowTp();
     }
+}
 
+void HandleClientBenBatchGet(uint32_t tid, uint32_t pid, uint32_t run_times, uint32_t ns,
+        ::rtidb::client::TabletClient* client) {
+    for (uint32_t j = 0; j < run_times; j++) {
+        std::vector<std::string> keys;
+        for (uint32_t i = 0; i < 20; i++) {
+            std::string key =boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
+            keys.push_back(key);
+        }
+        for (uint32_t k = 0; k < 500 * 4; k++)  {
+            ::rtidb::base::KvIterator* kit = client->BatchGet(tid, pid, keys);
+            delete kit;
+        }
+        client->ShowTp();
+    }
 
 }
 
 void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
     uint32_t size = 40;
     uint32_t times = 10;
-    std::cout << "Percentile:Start benchmark put without ha size:40" << std::endl;
+    std::cout << "Percentile:Start benchmark put size:40" << std::endl;
     HandleClientBenchmarkPut(1, 1, size, times, 1, client);
-    std::cout << "Percentile:Start benchmark put without ha size:80" << std::endl;
+    std::cout << "Percentile:Start benchmark put size:80" << std::endl;
     HandleClientBenchmarkPut(1, 1, 80, times, 2, client);
-    std::cout << "Percentile:Start benchmark put without ha size:200" << std::endl;
+    std::cout << "Percentile:Start benchmark put size:200" << std::endl;
     HandleClientBenchmarkPut(1, 1, 200, times, 3, client);
-    std::cout << "Percentile:Start benchmark put without ha size:400" << std::endl;
+    std::cout << "Percentile:Start benchmark put ha size:400" << std::endl;
     HandleClientBenchmarkPut(1, 1, 400, times, 4, client);
 
-    std::cout << "Percentile:Start benchmark put with ha size:40" << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica size:40" << std::endl;
     HandleClientBenchmarkPut(2, 1, size, times, 1, client);
-    std::cout << "Percentile:Start benchmark put with ha size:80" << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica size:80" << std::endl;
     HandleClientBenchmarkPut(2, 1, 80, times, 2, client);
-    std::cout << "Percentile:Start benchmark put with ha size:200" << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica  size:200" << std::endl;
     HandleClientBenchmarkPut(2, 1, 200, times, 3, client);
-    std::cout << "Percentile:Start benchmark put with ha size:400" << std::endl;
+    std::cout << "Percentile:Start benchmark put with one replica size:400" << std::endl;
     HandleClientBenchmarkPut(2, 1, 400, times, 4, client);
+
+    std::cout << "Percentile:Start benchmark batchget size:40" << std::endl;
+    HandleClientBenBatchGet(2, 1,  times, 1, client);
+    std::cout << "Percentile:Start benchmark batchget size:80" << std::endl;
+    HandleClientBenBatchGet(2, 1,  times, 2, client);
+    std::cout << "Percentile:Start benchmark batchget size:200" << std::endl;
+    HandleClientBenBatchGet(2, 1,  times, 3, client);
+    std::cout << "Percentile:Start benchmark batchget size:400" << std::endl;
+    HandleClientBenBatchGet(2, 1,  times, 4, client);
+
 
     std::cout << "Percentile:Start benchmark Scan 1000 records key size:40" << std::endl;
     HandleClientBenchmarkScan(1, 1, times, 1, client);
@@ -286,10 +320,6 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
     }
 }
 
-void HandleClientRelMem(::rtidb::client::TabletClient* client) {
-    client->ReleaseMemory();
-}
-
 void StartClient() {
     //::baidu::common::SetLogLevel(DEBUG);
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
@@ -322,8 +352,6 @@ void StartClient() {
             HandleClientBenchmark(&client);
         }else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
-        }else if (parts[0] == "relmem") {
-            HandleClientRelMem(&client);
         }
         if (!FLAGS_interactive) {
             return;

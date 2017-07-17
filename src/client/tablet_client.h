@@ -23,9 +23,14 @@ public:
 
     ~TabletClient();
 
-    bool CreateTable(const std::string& name, uint32_t id, uint32_t pid,
-            uint32_t ttl,
-            bool data_ha = false);
+    bool CreateTable(const std::string& name, 
+                     uint32_t id, 
+                     uint32_t pid,
+                     uint32_t ttl);
+
+    bool CreateTable(const std::string& name,
+                     uint32_t tid, uint32_t pid, uint32_t ttl,
+                     bool leader, const std::vector<std::string>& endpoints);
 
     bool Put(uint32_t tid,
              uint32_t pid,
@@ -38,6 +43,9 @@ public:
              const char* pk,
              uint64_t time,
              const char* value);
+
+    ::rtidb::base::KvIterator* BatchGet(uint32_t tid, uint32_t pid,
+                                       const std::vector<std::string>& keys);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
@@ -53,9 +61,7 @@ public:
              uint64_t etime,
              bool showm = false);
 
-    void ReleaseMemory();
-
-    bool DropTable(const uint32_t id);
+    bool DropTable(uint32_t id, uint32_t pid);
 
     void ShowTp();
 

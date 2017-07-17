@@ -9,15 +9,18 @@
 #ifndef RTIDB_STORAGE_SEGMENT_H
 #define RTIDB_STORAGE_SEGMENT_H
 
+#include <map>
+#include <vector>
 #include "base/skiplist.h"
 #include "mutex.h"
 #include "boost/atomic.hpp"
+#include "storage/ticket.h"
 
 namespace rtidb {
 namespace storage {
 
 class Segment;
-
+class Ticket;
 using ::baidu::common::Mutex;
 using ::baidu::common::MutexLock;
 
@@ -58,7 +61,7 @@ typedef ::rtidb::base::Skiplist<uint64_t, DataBlock* , TimeComparator> TimeEntri
 
 class KeyEntry {
 public:
-    KeyEntry():entries(12, 4, tcmp),mu(){}
+    KeyEntry():entries(12, 4, tcmp),mu(), refs_(0){}
     ~KeyEntry() {}
 
     uint64_t Release() {
@@ -78,10 +81,21 @@ public:
         return release_bytes;
     }
 
+    void Ref() {
+        refs_.fetch_add(1, boost::memory_order_relaxed);
+    }
+
+    void UnRef() {
+        refs_.fetch_sub(1, boost::memory_order_relaxed);
+    }
+
+
 public:
     std::string key;
     TimeEntries entries;
     Mutex mu;
+    // Reader refs
+    boost::atomic<uint64_t> refs_;
     friend Segment;
 };
 
@@ -101,14 +115,18 @@ public:
 
     // Put time data 
     void Put(const std::string& key,
-             const uint64_t& time,
+             uint64_t time,
              const char* data,
              uint32_t size);
 
     // Get time data
     bool Get(const std::string& key,
-             const uint64_t& time,
+             uint64_t time,
              DataBlock** block);
+
+    void BatchGet(const std::vector<std::string>& keys,
+                  std::map<uint32_t, DataBlock*>& datas,
+                  Ticket& ticket);
 
     // Segment Iterator
     class Iterator {
@@ -122,28 +140,28 @@ public:
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
         void SeekToFirst();
+
     private:
         TimeEntries::Iterator* it_;
     };
 
     uint64_t Release();
-
     // gc with specify time, delete the data before time 
     uint64_t Gc4TTL(const uint64_t& time);
+    uint64_t Gc4WithHead();
+    Segment::Iterator* NewIterator(const std::string& key, Ticket& ticket);
 
-    Segment::Iterator* NewIterator(const std::string& key);
-
-    uint64_t GetByteSize() {
-        return data_byte_size_.load(boost::memory_order_relaxed);
-    }
     uint64_t GetDataCnt() {
         return data_cnt_.load(boost::memory_order_relaxed);
     }
+
+private:
+    uint64_t FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node);
+
 private:
     KeyEntries* entries_;
     // only Put need mutex
     Mutex mu_;
-    boost::atomic<uint64_t> data_byte_size_;
     boost::atomic<uint64_t> data_cnt_;
 };
 

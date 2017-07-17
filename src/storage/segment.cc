@@ -19,8 +19,7 @@ namespace storage {
 const static StringComparator scmp;
 const static uint32_t data_block_size = sizeof(DataBlock);
 
-Segment::Segment():entries_(NULL),mu_(),
-    data_byte_size_(0), data_cnt_(0){
+Segment::Segment():entries_(NULL),mu_(), data_cnt_(0){
     entries_ = new KeyEntries(12, 4, scmp);
 }
 
@@ -47,7 +46,7 @@ uint64_t Segment::Release() {
 }
 
 void Segment::Put(const std::string& key,
-        const uint64_t& time,
+        uint64_t time,
         const char* data,
         uint32_t size) {
     KeyEntry* entry = entries_->Get(key);
@@ -61,7 +60,6 @@ void Segment::Put(const std::string& key,
             entries_->Insert(key, entry);
         }
     }
-    data_byte_size_.fetch_add(data_block_size + size, boost::memory_order_relaxed);
     data_cnt_.fetch_add(1, boost::memory_order_relaxed);
     MutexLock lock(&entry->mu);
     DataBlock* db = new DataBlock(data, size);
@@ -69,8 +67,8 @@ void Segment::Put(const std::string& key,
 }
 
 bool Segment::Get(const std::string& key,
-        const uint64_t& time,
-        DataBlock** block) {
+                  const uint64_t time,
+                  DataBlock** block) {
     if (block == NULL) {
         return false;
     }
@@ -79,14 +77,76 @@ bool Segment::Get(const std::string& key,
     if (entry == NULL || key.compare(entry->key) !=0) {
         return false;
     }
+
     *block = entry->entries.Get(time);
     return true;
+}
+
+uint64_t Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node) {
+    uint64_t count = 0;
+    while (node != NULL) {
+        count ++;
+        ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
+        node = node->GetNextNoBarrier(0);
+        LOG(DEBUG, "delete key %lld", tmp->GetKey());
+        // clear the value that node hold
+        // and clear node it's self
+        if (tmp->GetValue() != NULL) {
+            tmp->GetValue()->Release();
+        }
+        delete tmp->GetValue();
+        delete tmp;
+    }
+    return count;
+}
+
+uint64_t Segment::Gc4WithHead() {
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    uint64_t count = 0;
+    KeyEntries::Iterator* it = entries_->NewIterator();
+    it->SeekToFirst();
+    while (it->Valid()) {
+        KeyEntry* entry = it->GetValue();
+        if (entry->entries.GetSize() <= 1) {
+            continue;
+        }
+        TimeEntries::Iterator* tit = entry->entries.NewIterator();
+        tit->SeekToFirst();
+        uint32_t cnt = 0;
+        uint64_t ts = 0;
+        while (tit->Valid()) {
+            if (cnt == 1) {
+                ts = tit->GetKey();
+                break;
+            }
+            cnt++;
+            tit->Next();
+        }
+        delete tit;
+        ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+        if (cnt == 1) {
+            {
+                MutexLock lock(&entry->mu);
+                // skip entry that ocupied by reader
+                if (entry->refs_.load(boost::memory_order_acquire) > 0) {
+                    continue;
+                }
+                node = entry->entries.Split(ts);
+            }
+            count += FreeList(node);
+        }
+        it->Next();
+    }
+    LOG(INFO, "[GcWithHead] segment gc consumed %lld, count %lld",
+            (::baidu::common::timer::get_micros() - consumed)/1000, count);
+    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
+    delete it;
+    return count;
 }
 
 // fast gc with no global pause
 uint64_t Segment::Gc4TTL(const uint64_t& time) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t freed_data_byte_size = 0;
     uint64_t count = 0;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
@@ -95,39 +155,51 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             MutexLock lock(&entry->mu);
+            // skip entry that ocupied by reader
+            if (entry->refs_.load(boost::memory_order_acquire) > 0) {
+                continue;
+            }
             node = entry->entries.Split(time);
         }
-        uint64_t freed_data_byte_size = 0;
-        while (node != NULL) {
-            count ++;
-            ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
-            node = node->GetNextNoBarrier(0);
-            LOG(DEBUG, "delete key %lld", tmp->GetKey());
-            freed_data_byte_size += (data_block_size + tmp->GetValue()->size);
-            // clear the value that node hold
-            // and clear node it's self
-            if (tmp->GetValue() != NULL) {
-                tmp->GetValue()->Release();
-            }
-            delete tmp->GetValue();
-            delete tmp;
-        }
+        count += FreeList(node);
         it->Next();
     }
-    LOG(INFO, "[Gc] segment gc with key %lld ,consumed %lld, count %lld", time,
+    LOG(INFO, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed)/1000, count);
-    data_byte_size_.fetch_sub(freed_data_byte_size, boost::memory_order_relaxed);
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     delete it;
     return count;
 }
 
+void Segment::BatchGet(const std::vector<std::string>& keys,
+                       std::map<uint32_t, DataBlock*>& datas,
+                       Ticket& ticket) {
+    KeyEntries::Iterator* it = entries_->NewIterator();
+    for (uint32_t i = 0; i < keys.size(); i++) {
+        const std::string& key = keys[i];
+        it->Seek(key);
+        if (!it->Valid()) {
+            continue;
+        }
+        KeyEntry* entry = it->GetValue();
+        ticket.Push(entry);
+        TimeEntries::Iterator* tit = entry->entries.NewIterator();
+        tit->SeekToFirst();
+        if (tit->Valid()) {
+            datas.insert(std::make_pair(i, tit->GetValue()));
+        }
+        delete tit;
+    }
+    delete it;
+}
+
 // Iterator
-Segment::Iterator* Segment::NewIterator(const std::string& key) {
+Segment::Iterator* Segment::NewIterator(const std::string& key, Ticket& ticket) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         return NULL;
     }
+    ticket.Push(entry);
     return new Iterator(entry->entries.NewIterator());
 }
 

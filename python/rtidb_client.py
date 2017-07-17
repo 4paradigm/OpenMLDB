@@ -21,8 +21,8 @@ class RtidbClient(object):
     rtidb_so.Put.argtypes=[c_void_p,  c_uint32, c_uint32, c_char_p, c_ulong, c_char_p]
     rtidb_so.Scan.argtypes=[c_void_p,  c_uint32, c_uint32, c_char_p, c_ulong, c_ulong]
 
-  def create_table(self, name, tid, pid, ttl, data_ha = False):
-    if rtidb_so.CreateTable(self.db_, name, tid, pid, ttl, data_ha):
+  def create_table(self, name, tid, pid, ttl):
+    if rtidb_so.CreateTable(self.db_, name, tid, pid, ttl):
       return True
     return False
 
@@ -39,7 +39,7 @@ class RtidbClient(object):
     it = rtidb_so.Scan(self.db_, tid, pid, pk, stime, etime)
     return KvIterator(it)
 
-  def drop_table(self, tid):
+  def drop_table(self, tid, pid):
     if rtidb_so.DropTable(self.db_, tid):
       return True
     return False
