@@ -35,6 +35,7 @@ public class TabletClient {
     public boolean put(int tid, String key, long time, byte[] bytes) {
         Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time)
                 .setValue(ByteString.copyFrom(bytes)).build();
+        
         try {
             Tablet.PutResponse response = iface.put(ctrl, resquest);
             if (response.getCode() == 0) {

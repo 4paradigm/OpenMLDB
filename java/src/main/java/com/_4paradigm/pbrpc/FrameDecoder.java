@@ -22,16 +22,16 @@ public class FrameDecoder extends ByteToMessageDecoder {
     private static final Logger logger = LoggerFactory.getLogger(FrameDecoder.class);
     private static final byte[] primaryMagic = new byte[] { 'S', 'O', 'F', 'A' };
     private RpcContext context;
-
-    public FrameDecoder(RpcContext context) {
+    private final int maxFrameLength;
+    public FrameDecoder(RpcContext context, int maxFrameLength) {
         this.context = context;
+        this.maxFrameLength = maxFrameLength;
     }
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf buffer, List<Object> out) throws Exception {
         ByteBuf litBuffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         boolean match = matchMagicKey(litBuffer);
-        // TODO (wangtaize) handle mismatch
         if (!match) {
             return;
         }
@@ -39,18 +39,23 @@ public class FrameDecoder extends ByteToMessageDecoder {
         long dataSize = litBuffer.readLong();
         long totalSize = litBuffer.readLong();
         buffer.readerIndex(24);
-        // TODO (wangtaize) handle null
         RpcMeta meta = parseMeta(buffer, metaSize);
         MessageContext mc = context.remove(meta.getSequenceId());
-        buffer.readerIndex(24 + metaSize);
         if (mc == null) {
             logger.warn("no message context with seq {}", meta.getSequenceId());
-            // TODO(wangtaize) add error message
-        } else {
+            return;
+        }
+        if (totalSize > maxFrameLength) {
+            mc.setError(101);
+            out.add(mc);
+        }else {
+            mc.setError(0);
+            buffer.readerIndex(24 + metaSize);
             Message response = parseData(mc, buffer, dataSize);
             mc.setResponse(response);
             out.add(mc);
         }
+        
     }
 
     private Message parseData(MessageContext mc, ByteBuf buffer, Long size) {
@@ -72,6 +77,7 @@ public class FrameDecoder extends ByteToMessageDecoder {
             logger.error("fail to parse meta", e);
             return null;
         }
+        
     }
 
     private boolean matchMagicKey(ByteBuf litBuffer) {
@@ -85,5 +91,13 @@ public class FrameDecoder extends ByteToMessageDecoder {
         }
         
     }
+
+    
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        
+        super.exceptionCaught(ctx, cause);
+    }
+    
 
 }
