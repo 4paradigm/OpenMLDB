@@ -17,25 +17,38 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 public class AsyncConnection {
     private final static Logger logger = LoggerFactory.getLogger(AsyncConnection.class);
-    private final static int DEFAULT_EVENT_LOOP_THREAD_CNT = 4;
-    private String host;
-    private int port;
+    private final static int DEFAULT_EVENT_LOOP_THREAD_CNT = 2;
+    
     private RpcContext context;
     private ChannelFuture channel = null;
-    private NioEventLoopGroup group = null;
+    private NioEventLoopGroup ioGroup = null;
     private int eventLoopThreadCnt;
-
+    private String host;
+    private int port;
+    private int maxFrameLength = 2 * 1024 * 1024;
     public AsyncConnection(String host, int port) {
         this.host = host;
         this.port = port;
         this.context = new RpcContext();
         this.eventLoopThreadCnt = DEFAULT_EVENT_LOOP_THREAD_CNT;
     }
+    
+    public AsyncConnection(String host, 
+                           int port, 
+                           int maxFrameLength,
+                           int eventLoopThreadCnt) {
+        this.host = host;
+        this.port = port;
+        this.context = new RpcContext();
+        this.eventLoopThreadCnt = eventLoopThreadCnt;
+        this.maxFrameLength = maxFrameLength;
+    }
+    
 
     public void connect() throws InterruptedException {
-        group = new NioEventLoopGroup(eventLoopThreadCnt);
+        ioGroup = new NioEventLoopGroup(eventLoopThreadCnt);
         Bootstrap b = new Bootstrap();
-        b.group(group);
+        b.group(ioGroup);
         b.channel(NioSocketChannel.class);
         b.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         b.option(ChannelOption.SO_KEEPALIVE, true);
@@ -43,11 +56,12 @@ public class AsyncConnection {
             @Override
             public void initChannel(SocketChannel channel) throws Exception {
                 channel.pipeline().addLast("FrameSpliter",
-                        new LengthFieldBasedFrameDecoder(ByteOrder.LITTLE_ENDIAN, 2 * 1024 * 1024, 16, 8, 0, 0, true));
-                channel.pipeline().addLast("FrameDecoder", new FrameDecoder(context));
+                        new LengthFieldBasedFrameDecoder(ByteOrder.LITTLE_ENDIAN, maxFrameLength, 16, 8, 0, 0, true));
+                channel.pipeline().addLast("FrameDecoder", new FrameDecoder(context, maxFrameLength));
                 channel.pipeline().addLast("Processor", new ClientHandler());
                 channel.pipeline().addLast("FrameEncoder", new FrameEncoder(context));
             }
+            
         });
         channel = b.connect(host, port).sync();
         logger.info("create a new connection with loop thread cnt {}", eventLoopThreadCnt);
@@ -59,7 +73,7 @@ public class AsyncConnection {
 
     public void close() {
         // stop receiving message
-        group.shutdownGracefully();
+        ioGroup.shutdownGracefully();
         channel.channel().close();
     }
 }

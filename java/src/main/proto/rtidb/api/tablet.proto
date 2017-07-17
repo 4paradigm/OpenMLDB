@@ -8,6 +8,7 @@ option java_outer_classname = "Tablet";
 
 enum TableType {
     kTimeOrderedTable = 1;
+    kKvTable = 2;
 }
 
 message PutRequest {

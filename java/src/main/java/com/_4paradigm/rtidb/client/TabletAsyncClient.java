@@ -19,14 +19,19 @@ public class TabletAsyncClient {
     private Tablet.TabletServer.Interface iface;
     private String host;
     private int port;
-
-    public TabletAsyncClient(String host, int port) {
+    private int maxFrameLength;
+    private int eventLoopThreadCnt;
+    
+    public TabletAsyncClient(String host, int port, int maxFrameLength,
+            int eventLoopThreadCnt) {
         this.host = host;
         this.port = port;
+        this.maxFrameLength = maxFrameLength;
+        this.eventLoopThreadCnt = eventLoopThreadCnt;
     }
 
     public void init() throws InterruptedException {
-        asyncConn = new AsyncConnection(host, port);
+        asyncConn = new AsyncConnection(host, port, maxFrameLength, eventLoopThreadCnt);
         asyncConn.connect();
         channel = new AsyncRpcChannel(asyncConn);
         iface = Tablet.TabletServer.newStub(channel);

@@ -16,7 +16,8 @@ public class MessageContext {
     private Closure closure;
     private Parser<? extends Message> parser;
     private AtomicBoolean done = new AtomicBoolean(false);
-
+    private int error;
+    
     public void finish() {
         done.set(true);
     }
@@ -47,6 +48,20 @@ public class MessageContext {
 
     public long getSeq() {
         return seq;
+    }
+
+    /**
+     * @return the error
+     */
+    public int getError() {
+        return error;
+    }
+
+    /**
+     * @param error the error to set
+     */
+    public void setError(int error) {
+        this.error = error;
     }
 
     public void setSeq(long seq) {
