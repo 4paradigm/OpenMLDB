@@ -140,6 +140,72 @@ TEST_F(TabletImplTest, Put) {
     ASSERT_EQ(0, presponse.code());
 }
 
+
+TEST_F(TabletImplTest, Scan_with_limit) {
+    TabletImpl tablet;
+
+    tablet.Init();
+    ::rtidb::api::CreateTableRequest request;
+    request.set_name("t0");
+    request.set_tid(1);
+    request.set_pid(1);
+    request.set_ttl(0);
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9527);
+        prequest.set_value("test0");
+        prequest.set_tid(1);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9528);
+        prequest.set_value("test0");
+        prequest.set_tid(1);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9529);
+        prequest.set_value("test0");
+        prequest.set_tid(1);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    ::rtidb::api::ScanRequest sr;
+    sr.set_tid(1);
+    sr.set_pid(1);
+    sr.set_pk("test1");
+    sr.set_st(9530);
+    sr.set_et(9526);
+    sr.set_limit(2);
+    ::rtidb::api::ScanResponse srp;
+    tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(0, srp.code());
+    ASSERT_EQ(2, srp.count());
+}
+
 TEST_F(TabletImplTest, Scan) {
     TabletImpl tablet;
 

@@ -71,13 +71,13 @@ message ScanRequest {
 	// the prefix key
 	optional string pk = 1;
 	// the start subfix key
-	optional int64 st = 2;
+	optional uint64 st = 2;
 	// the end subfix key
-	optional int64 et = 3;
-	optional int32 limit = 4;
+	optional uint64 et = 3;
+	optional uint32 limit = 4;
 	optional RpcMetric metric = 5;
-	optional int32 tid = 6;
-	optional int32 pid = 7;
+	optional uint32 tid = 6;
+	optional uint32 pid = 7;
 }
 
 
@@ -102,14 +102,13 @@ message ScanResponse {
 	optional bytes pairs = 1;
 	optional string msg = 2;
 	optional int32 code = 3;
-	optional int32 count = 4;
-	optional bool more = 5;
+	optional uint32 count = 4;
 	optional RpcMetric metric = 6;
 }
 
 message BatchGetRequest {
-    optional int32 tid = 1;
-    optional int32 pid = 2;
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
     // keys list
     repeated string keys = 3;
 }

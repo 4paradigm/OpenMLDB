@@ -34,6 +34,7 @@ DECLARE_int32(gc_interval);
 DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
+DECLARE_uint32(scan_max_bytes_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
 DECLARE_string(binlog_root_path);
@@ -238,7 +239,9 @@ void TabletImpl::Scan(RpcController* controller,
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
+    uint32_t scount = 0;
     while (it->Valid()) {
+        scount ++;
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
         if (it->GetKey() <= end_time) {
             break;
@@ -246,15 +249,29 @@ void TabletImpl::Scan(RpcController* controller,
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
         total_block_size += it->GetValue()->size;
         it->Next();
+        if (request->limit() > 0 && request->limit() <= scount) {
+            break;
+        }
     }
+    delete it;
     metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
+    // check reach the max bytes size
+    if (total_size > FLAGS_scan_max_bytes_size) {
+        response->set_code(31);
+        response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_size));
+        done->Run();
+        table->UnRef();
+        return;
+    }
+
     std::string* pairs = response->mutable_pairs();
     if (tmp.size() <= 0) {
         pairs->resize(0);
     }else {
         pairs->resize(total_size);
     }
+
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
@@ -265,12 +282,12 @@ void TabletImpl::Scan(RpcController* controller,
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
+
     response->set_code(0);
     response->set_count(tmp.size());
     metric->set_sptime(::baidu::common::timer::get_micros()); 
     done->Run();
     table->UnRef();
-    delete it;
     if (FLAGS_enable_statdb) {
         metric_->IncrThroughput(0, 0, 1, total_size);
     }
