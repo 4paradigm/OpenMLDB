@@ -3,7 +3,7 @@ Database for Real Time Intelligence , It's awesome!
 
 # version
 
-0.9.0
+0.9.1
 [![Build Status](http://jenkins.4paradigm.com/view/rtidb_pipline/job/rtidb/badge/icon)](http://jenkins.4paradigm.com/view/rtidb_pipline/job/rtidb/)
 
 # start tablet server
