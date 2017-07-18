@@ -460,10 +460,8 @@ bool LogReplicator::ReadNextRecord(ReplicaNode* node,
 void LogReplicator::ApplyLog() {
     while(running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
-        cv_.TimeWait(10000);
-        if (self_->last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
-            LOG(DEBUG, "no more log entry sync offset %lld, log offset %lld", self_->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
-            continue;
+        while (self_->last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
+            cv_.TimeWait(5000);
         }
         uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - self_->last_sync_offset;
         if (batchSize > (uint32_t)FLAGS_binlog_apply_batch_size) {
@@ -523,7 +521,6 @@ bool LogReplicator::MatchLogOffsetFromNode(ReplicaNode* node) {
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
-        cv_.TimeWait(500);
         std::vector<ReplicaNode*>::iterator it = nodes_.begin();
         ReplicaNode* node = NULL;
         for (; it != nodes_.end(); ++it) {
@@ -540,17 +537,15 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         }
 
         LOG(DEBUG, "node %s offset %lld, log offset %lld ", node->endpoint.c_str(), node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
-        if (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
-            continue; 
+        while (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
+            cv_.TimeWait(5000);
         }
-
         ::rtidb::api::TabletServer_Stub* stub;
         bool ok = rpc_client_->GetStub(node->endpoint, &stub);
         if (!ok) {
             LOG(WARNING, "fail to get rpc stub with endpoint %s", node->endpoint.c_str());
             continue;
         }
-
         ::rtidb::api::AppendEntriesRequest request;
         request.set_tid(tid_);
         request.set_pid(pid_);

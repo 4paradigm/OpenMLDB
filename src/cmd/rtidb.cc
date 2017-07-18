@@ -365,7 +365,10 @@ void StartClient() {
             HandleClientBenchmark(&client);
         }else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
+        }else if (parts[0] == "addreplica") {
+            HandleClientAddReplica(parts, &client);
         }
+
         if (!FLAGS_interactive) {
             return;
         }

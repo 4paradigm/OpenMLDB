@@ -117,7 +117,7 @@ void TabletImpl::Put(RpcController* controller,
     LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     bool leader = table->IsLeader();
     LogReplicator* replicator = NULL;
-    if (leader && table->GetReplicas().size() > 0) {
+    if (leader) {
         do {
             replicator = GetReplicator(request->tid(), request->pid());
             if (replicator == NULL) {
@@ -299,7 +299,7 @@ void TabletImpl::AddReplica(RpcController* controller,
             Closure* done) {
     Table* table = GetTable(request->tid(), request->pid());
     if (table == NULL ||
-        table->IsLeader()) {
+        !table->IsLeader()) {
         LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
                 request->pid());
         response->set_code(-1);
