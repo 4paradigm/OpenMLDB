@@ -67,10 +67,14 @@ struct WriteHandle {
         return lw_->AddRecord(slice);
     }
 
+    ::rtidb::base::Status Sync() {
+        return wf_->Sync(); 
+    }
+
     ::rtidb::base::Status EndLog() {
         return lw_->EndLog();
     }
-    
+
     ~WriteHandle() {
         delete lw_;
         delete wf_;
@@ -168,6 +172,9 @@ public:
     void Ref();
     // Descr ref
     void UnRef();
+    // Sync Write Buffer to Disk
+    void SyncToDisk();
+
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 private:

@@ -76,6 +76,17 @@ LogReplicator::~LogReplicator() {
     delete self_;
 }
 
+void LogReplicator::SyncToDisk() {
+    MutexLock lock(&wmu_);
+    if (wh_ != NULL) {
+        ::rtidb::base::Status status = wh_->Sync();
+        if (!status.ok()) {
+            LOG(WARNING, "fail to sync data for path %s", path_.c_str());
+        }
+    }
+    tp_.DelayTask(10000, boost::bind(&LogReplicator::SyncToDisk, this));
+}
+
 bool LogReplicator::Init() {
     leveldb::Options options;
     options.create_if_missing = true;
@@ -120,6 +131,7 @@ bool LogReplicator::Init() {
         tp_.AddTask(boost::bind(&LogReplicator::ApplyLog, this));
         LOG(INFO, "init follower node for path %s ok", path_.c_str());
     }
+    tp_.DelayTask(10000, boost::bind(&LogReplicator::SyncToDisk, this));
     rpc_client_ = new ::rtidb::RpcClient();
     return ok;
 }
