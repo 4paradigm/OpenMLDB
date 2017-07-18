@@ -125,7 +125,7 @@ public:
 
     // the slave node receives master log entries
     bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
-            ::rtidb::api::AppendEntriesResponse* response);
+                       ::rtidb::api::AppendEntriesResponse* response);
 
     // the master node append entry
     bool AppendEntry(::rtidb::api::LogEntry& entry);
@@ -153,9 +153,16 @@ public:
     bool ReadNextRecord(ReplicaNode* node,
                         ::rtidb::base::Slice* record,
                         std::string* buffer);
+
+    // add replication
+    bool AddReplicateNode(const std::string& endpoint);
+
     void MatchLogOffset();
+
     bool MatchLogOffsetFromNode(ReplicaNode* node);
+
     void ReplicateToNode(const std::string& endpoint);
+
     void ApplyLog();
     // Incr ref
     void Ref();

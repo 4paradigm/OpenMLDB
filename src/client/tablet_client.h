@@ -45,7 +45,7 @@ public:
              const char* value);
 
     ::rtidb::base::KvIterator* BatchGet(uint32_t tid, uint32_t pid,
-                                       const std::vector<std::string>& keys);
+                                        const std::vector<std::string>& keys);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
@@ -62,6 +62,8 @@ public:
              bool showm = false);
 
     bool DropTable(uint32_t id, uint32_t pid);
+
+    bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
 
     void ShowTp();
 

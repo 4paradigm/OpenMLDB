@@ -293,10 +293,10 @@ void TabletImpl::Scan(RpcController* controller,
     }
 }
 
-void TabletImpl::AppendEntries(RpcController* controller,
-        const ::rtidb::api::AppendEntriesRequest* request,
-        ::rtidb::api::AppendEntriesResponse* response,
-        Closure* done) {
+void TabletImpl::AddReplica(RpcController* controller, 
+            const ::rtidb::api::AddReplicaRequest* request,
+            ::rtidb::api::AddReplicaResponse* response,
+            Closure* done) {
     Table* table = GetTable(request->tid(), request->pid());
     if (table == NULL ||
         table->IsLeader()) {
@@ -308,6 +308,47 @@ void TabletImpl::AppendEntries(RpcController* controller,
         return;
     }
     LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
+    if (replicator == NULL) {
+        response->set_code(-2);
+        response->set_msg("no replicator for table");
+        LOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
+        done->Run();
+        return;
+    }
+    bool ok = replicator->AddReplicateNode(request->endpoint());
+    if (ok) {
+        response->set_code(0);
+        response->set_msg("ok");
+        done->Run();
+    }else {
+        response->set_code(-3);
+        LOG(WARNING, "fail to add endpoint for table %d pid %d", request->tid(), request->pid());
+        response->set_msg("fail to add endpoint");
+        done->Run();
+    }
+}
+
+void TabletImpl::AppendEntries(RpcController* controller,
+        const ::rtidb::api::AppendEntriesRequest* request,
+        ::rtidb::api::AppendEntriesResponse* response,
+        Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL ||
+        table->IsLeader()) {
+        LOG(WARNING, "table not exist or table is leader tid %d, pid %d", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist or table is leader");
+        done->Run();
+        return;
+    }
+    LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
+    if (replicator == NULL) {
+        response->set_code(-2);
+        response->set_msg("no replicator for table");
+        done->Run();
+        return;
+    }
     bool ok = replicator->AppendEntries(request, response);
     if (!ok) {
         response->set_code(-1);
@@ -399,10 +440,10 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     table->Ref();
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
-    if (table->IsLeader() && table->GetReplicas().size() > 0) {
+    if (table->IsLeader()) {
         replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), 
                 ReplicatorRole::kLeaderNode, request->tid(), request->pid());
-    }else if (!table->IsLeader() && table->GetReplicas().size() > 0) {
+    }else {
         replicator = new LogReplicator(table_binlog_path, 
                 boost::bind(&TabletImpl::ApplyLogToTable, this, request->tid(), request->pid(), _1), 
                 ReplicatorRole::kFollowerNode, request->tid(), request->pid());

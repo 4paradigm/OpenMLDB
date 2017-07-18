@@ -120,6 +120,17 @@ message BatchGetResponse {
     optional bytes pairs = 3;
 }
 
+message AddReplicaRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string endpoint = 3;
+}
+
+message AddReplicaResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 message CreateTableRequest {
 	optional int32 tid = 1;
 	optional string name = 2;
@@ -180,6 +191,9 @@ service TabletServer {
 
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
+
 	// raft log replication
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
+    rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
+
 }

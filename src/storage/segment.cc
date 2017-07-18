@@ -127,11 +127,7 @@ uint64_t Segment::Gc4WithHead() {
         if (cnt == 1) {
             {
                 MutexLock lock(&entry->mu);
-                // skip entry that ocupied by reader
-                if (entry->refs_.load(boost::memory_order_acquire) > 0) {
-                    continue;
-                }
-                node = entry->entries.Split(ts);
+                SplitList(entry, ts, &node);
             }
             count += FreeList(node);
         }
@@ -142,6 +138,13 @@ uint64_t Segment::Gc4WithHead() {
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     delete it;
     return count;
+}
+
+void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
+    // skip entry that ocupied by reader
+    if (entry->refs_.load(boost::memory_order_acquire) <= 0) {
+        *node = entry->entries.Split(ts);
+    }
 }
 
 // fast gc with no global pause
@@ -155,11 +158,7 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             MutexLock lock(&entry->mu);
-            // skip entry that ocupied by reader
-            if (entry->refs_.load(boost::memory_order_acquire) > 0) {
-                continue;
-            }
-            node = entry->entries.Split(time);
+            SplitList(entry, time, &node);
         }
         count += FreeList(node);
         it->Next();

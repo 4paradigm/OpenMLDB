@@ -164,6 +164,19 @@ void HandleClientDropTable(const std::vector<std::string>& parts, ::rtidb::clien
     }
 }
 
+void HandleClientAddReplica(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad addreplica format" << std::endl;
+        return;
+    }
+    bool ok = client->AddReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+    if (ok) {
+        std::cout << "AddReplica ok" << std::endl;
+    }else {
+        std::cout << "Fail to Add Replica" << std::endl;
+    }
+}
+
 // the input format like scan tid pid pk st et
 void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {

@@ -38,7 +38,7 @@ LogReplicator::LogReplicator(const std::string& path,
     meta_(NULL), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_offset_(0),
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    self_(NULL),running_(true), tp_(1), refs_(0), tid_(tid), pid_(pid), wmu_(){}
+    self_(NULL),running_(true), tp_(3), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
 LogReplicator::LogReplicator(const std::string& path,
                              ApplyLogFunc func,
@@ -48,7 +48,7 @@ LogReplicator::LogReplicator(const std::string& path,
     role_(role), last_log_offset_(0),
     endpoints_(), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
     self_(NULL),
-    func_(func),running_(true), tp_(1), refs_(0), tid_(tid), pid_(pid), wmu_(){}
+    func_(func),running_(true), tp_(3), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
 LogReplicator::~LogReplicator() {
     delete meta_;
@@ -166,6 +166,29 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         response->set_log_offset(last_log_offset_);
     }
     LOG(DEBUG, "sync log entry to offset %lld for %s", last_log_offset_, path_.c_str());
+    return true;
+}
+
+bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
+    {
+        MutexLock lock(&mu_);
+        if (role_ != kLeaderNode) {
+            return false;
+        }
+        std::vector<std::string>::iterator it = endpoints_.begin();
+        for (; it != endpoints_.end(); ++it) {
+            std::string ep = *it;
+            if (ep.compare(endpoint) == 0) {
+                LOG(WARNING, "replica endpoint %s does exist", ep.c_str());
+                return false;
+            }
+        }
+        ReplicaNode* node = new ReplicaNode();
+        node->endpoint = endpoint;
+        nodes_.push_back(node);
+        LOG(INFO, "add ReplicaNode with endpoint %s ok", endpoint.c_str());
+    }
+    tp_.DelayTask(1000, boost::bind(&LogReplicator::MatchLogOffset, this));
     return true;
 }
 
@@ -489,8 +512,8 @@ bool LogReplicator::MatchLogOffsetFromNode(ReplicaNode* node) {
     if (ok && response.code() == 0) {
         node->last_sync_offset = response.log_offset();
         node->log_matched = true;
-        LOG(INFO, "match node log offset %lld for table tid %d pid %d",
-                node->last_sync_offset, tid_, pid_);
+        LOG(INFO, "match node %s log offset %lld for table tid %d pid %d",
+                node->endpoint.c_str(), node->last_sync_offset, tid_, pid_);
         return true;
     }
     return false;
@@ -500,7 +523,7 @@ bool LogReplicator::MatchLogOffsetFromNode(ReplicaNode* node) {
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
-        cv_.TimeWait(1000);
+        cv_.TimeWait(500);
         std::vector<ReplicaNode*>::iterator it = nodes_.begin();
         ReplicaNode* node = NULL;
         for (; it != nodes_.end(); ++it) {
@@ -510,21 +533,24 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
                 break;
             }
         }
+
         if (node == NULL) {
             LOG(WARNING, "fail to find node with endpoint %s", endpoint.c_str());
             break;
         }
 
-        LOG(DEBUG, "node offset %lld, log offset %lld ", node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
+        LOG(DEBUG, "node %s offset %lld, log offset %lld ", node->endpoint.c_str(), node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
         if (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
             continue; 
         }
+
         ::rtidb::api::TabletServer_Stub* stub;
         bool ok = rpc_client_->GetStub(node->endpoint, &stub);
         if (!ok) {
             LOG(WARNING, "fail to get rpc stub with endpoint %s", node->endpoint.c_str());
             continue;
         }
+
         ::rtidb::api::AppendEntriesRequest request;
         request.set_tid(tid_);
         request.set_pid(pid_);

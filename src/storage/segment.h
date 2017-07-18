@@ -157,7 +157,7 @@ public:
 
 private:
     uint64_t FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node);
-
+    void SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node);
 private:
     KeyEntries* entries_;
     // only Put need mutex

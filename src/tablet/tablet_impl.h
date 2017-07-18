@@ -67,6 +67,11 @@ public:
             ::rtidb::api::DropTableResponse* response,
             Closure* done);
 
+    void AddReplica(RpcController* controller, 
+            const ::rtidb::api::AddReplicaRequest* request,
+            ::rtidb::api::AddReplicaResponse* response,
+            Closure* done);
+
     void AppendEntries(RpcController* controller,
             const ::rtidb::api::AppendEntriesRequest* request,
             ::rtidb::api::AppendEntriesResponse* response,

@@ -161,24 +161,44 @@ bool MockApplyLog(const ::rtidb::api::LogEntry& entry) {
 }
 
 TEST_F(LogReplicatorTest, LeaderAndFollower) {
-    std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, boost::bind(MockApplyLog, _1)); 
-    bool ok = follower->Init();
-    ASSERT_TRUE(ok);
-    std::string follower_addr = "127.0.0.1:18527";
     sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
-    if (!rpc_server.RegisterService(follower)) {
-        ASSERT_TRUE(false);
+    sofa::pbrpc::RpcServer rpc_server0(options);
+    sofa::pbrpc::RpcServer rpc_server1(options);
+    {
+
+        std::string follower_addr = "127.0.0.1:18527";
+        std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, boost::bind(MockApplyLog, _1)); 
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+       if (!rpc_server0.RegisterService(follower)) {
+            ASSERT_TRUE(false);
+        }
+        ok =rpc_server0.Start(follower_addr);
+        ASSERT_TRUE(ok);
+        LOG(INFO, "start follower");
+
     }
-    ok =rpc_server.Start(follower_addr);
-    ASSERT_TRUE(ok);
-    LOG(INFO, "start follower");
+    {
+
+        std::string follower_addr = "127.0.0.1:18528";
+        std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, boost::bind(MockApplyLog, _1)); 
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+        if (!rpc_server1.RegisterService(follower)) {
+            ASSERT_TRUE(false);
+        }
+        ok =rpc_server1.Start(follower_addr);
+        ASSERT_TRUE(ok);
+        LOG(INFO, "start follower");
+    }
+
     std::vector<std::string> endpoints;
-    endpoints.push_back(follower_addr);
-    folder = "/tmp/rtidb/" + GenRand() + "/";
+    endpoints.push_back("127.0.0.1:18527");
+    std::string folder = "/tmp/rtidb/" + GenRand() + "/";
     LogReplicator leader(folder, endpoints, kLeaderNode, 1, 1);
-    ok = leader.Init();
+    bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test_pk");
@@ -195,11 +215,11 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     ok = leader.AppendEntry(entry);
     entry.set_value("value6");
     ok = leader.AppendEntry(entry);
-
     leader.Notify();
+    leader.AddReplicateNode("127.0.0.1:18528");
+    sleep(4);
     leader.Stop();
     ASSERT_TRUE(ok);
-    sleep(2);
 }
 
 }
