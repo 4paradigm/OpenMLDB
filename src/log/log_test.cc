@@ -105,8 +105,6 @@ TEST_F(LogWRTest, TestLogEntry) {
     }
     status = writer.AddRecord(sval);
     ASSERT_TRUE(status.ok());
-    status = writer.EndLog();
-    ASSERT_TRUE(status.ok());
     {
         Slice value2;
         ok = reader.ReadRecord(&value2, &scratch2);
@@ -117,6 +115,8 @@ TEST_F(LogWRTest, TestLogEntry) {
         ASSERT_EQ("test0", entry2.pk());
         ASSERT_EQ("test1", entry2.value());
         ASSERT_EQ(9527, entry2.ts());
+        ok = reader.ReadRecord(&value2, &scratch2);
+        ASSERT_FALSE(ok);
         ok = reader.ReadRecord(&value2, &scratch2);
         ASSERT_FALSE(ok);
     }

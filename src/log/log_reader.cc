@@ -16,8 +16,10 @@
 #include "log/crc32c.h"
 #include "log/log_format.h"
 #include "base/status.h"
+#include "logging.h"
 
 using ::rtidb::base::Status;
+using ::baidu::common::INFO;
 
 namespace rtidb {
 namespace log {
@@ -215,9 +217,13 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         end_of_buffer_offset_ += buffer_.size();
         // Read log error
         if (!status.ok()) {
-          buffer_.clear();
-          ReportDrop(kBlockSize, status);
-          return kEof;
+            buffer_.clear();
+            ReportDrop(kBlockSize, status);
+            return kEof;
+        }
+        // No data avaliable
+        if (buffer_.size() <= 0) {
+            return kEof;
         }
         continue;
       } else {

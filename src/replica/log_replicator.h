@@ -177,6 +177,7 @@ public:
 
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
+
 private:
     // the replicator root data path
     std::string path_;

@@ -79,10 +79,14 @@ LogReplicator::~LogReplicator() {
 void LogReplicator::SyncToDisk() {
     MutexLock lock(&wmu_);
     if (wh_ != NULL) {
+        LOG(DEBUG, "start sync to disk for path %s", path_.c_str());
+        uint64_t consumed = ::baidu::common::timer::get_micros();
         ::rtidb::base::Status status = wh_->Sync();
         if (!status.ok()) {
             LOG(WARNING, "fail to sync data for path %s", path_.c_str());
         }
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        LOG(DEBUG, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
     }
     tp_.DelayTask(10000, boost::bind(&LogReplicator::SyncToDisk, this));
 }
@@ -490,7 +494,7 @@ void LogReplicator::ApplyLog() {
             if (!ok) {
                 LOG(WARNING, "fail to read next record for path %s", path_.c_str());
                 // forever retry
-                continue;
+                break;
             }
             ::rtidb::api::LogEntry entry;
             entry.ParseFromString(record.ToString());
@@ -532,7 +536,6 @@ bool LogReplicator::MatchLogOffsetFromNode(ReplicaNode* node) {
     }
     return false;
 }
-
 
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     while (running_.load(boost::memory_order_relaxed)) {
@@ -582,13 +585,13 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             ok = ReadNextRecord(node, &record, &buffer);
             if (!ok) {
                 LOG(WARNING, "fail to read next record for path %s", path_.c_str());
-                continue;
+                break;
             }
             ::rtidb::api::LogEntry* entry = request.add_entries();
             ok = entry->ParseFromString(record.ToString());
             if (!ok) {
                 LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
-                continue;
+                break;
             }
             LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
             sync_log_offset = entry->log_index();

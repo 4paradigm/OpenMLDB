@@ -84,7 +84,6 @@ Status Writer::AddRecord(const Slice& slice) {
             }
             block_offset_ = 0;
         }
-
         // Invariant: we never leave < kHeaderSize bytes in a block.
         assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
 
