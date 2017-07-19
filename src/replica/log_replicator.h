@@ -175,6 +175,10 @@ public:
     // Sync Write Buffer to Disk
     void SyncToDisk();
 
+    inline uint64_t GetLogOffset() {
+        return  log_offset_.load(boost::memory_order_relaxed);
+    }
+
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 private:

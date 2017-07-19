@@ -586,6 +586,7 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
     writer.StartObject();
     writer.Key("tables");
     writer.StartArray();
+    LogReplicator* replicator = NULL;
     for (size_t i = 0; i < tmp_tables.size(); i++) {
         Table* table = tmp_tables[i];
         writer.StartObject();
@@ -595,6 +596,12 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         writer.Uint(table->GetId());
         writer.Key("pid");
         writer.Uint(table->GetPid());
+        replicator = GetReplicator(request->tid(), request->pid());
+        if (replicator != NULL) {
+            writer.Key("log_offset");
+            writer.Uint(replicator->GetLogOffset());
+            replicator.UnRef();
+        }
         writer.Key("seg_cnt");
         writer.Uint(table->GetSegCnt());
         uint64_t total = 0;
