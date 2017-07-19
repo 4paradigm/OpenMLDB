@@ -473,7 +473,11 @@ void LogReplicator::ApplyLog() {
     while(running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
         while (self_->last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
-            cv_.TimeWait(5000);
+            cv_.TimeWait(1000);
+            if (!running_.load(boost::memory_order_relaxed)) {
+                LOG(INFO, "apply log exist for path %s", path_.c_str());
+                return;
+            }
         }
         uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - self_->last_sync_offset;
         if (batchSize > (uint32_t)FLAGS_binlog_apply_batch_size) {
@@ -551,6 +555,10 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         LOG(DEBUG, "node %s offset %lld, log offset %lld ", node->endpoint.c_str(), node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
         while (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
             cv_.TimeWait(5000);
+            if (!running_.load(boost::memory_order_relaxed)) {
+                LOG(INFO, "replicate %s to node exist for path %s", endpoint.c_str(), path_.c_str());
+                return;
+            }
         }
         ::rtidb::api::TabletServer_Stub* stub;
         bool ok = rpc_client_->GetStub(node->endpoint, &stub);
