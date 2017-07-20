@@ -222,7 +222,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
   while (true) {
     if (buffer_.size() < kHeaderSize) {
       if (!eof_) {
-        uint64_t pos = 0; 
+        uint64_t pos = 0;
         Status ok = file_->Tell(&pos);
         if (!ok.ok()) { 
             LOG(WARNING, "fail to tell file %s", ok.ToString().c_str());
@@ -241,11 +241,12 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         }
         if (buffer_.size() < kHeaderSize) { 
             if (buffer_.size() > 0) {
+                LOG(DEBUG, "go back to pos %lld, buffer %d", pos, buffer_.size());
+                buffer_.clear();
                 file_->Seek(pos);
-                LOG(DEBUG, "go back to pos %lld", pos);
             }
             return kWaitRecord;
-       }
+        }
       } else {
         // Note that if buffer_ is non-empty, we have a truncated header at the
         // end of the file, which can be caused by the writer crashing in the
@@ -264,12 +265,14 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     const unsigned int type = header[6];
     const uint32_t length = a | (b << 8);
     if (kHeaderSize + length > buffer_.size()) {
-      LOG(DEBUG, "end of file %d", buffer_.size());
+      LOG(DEBUG, "end of file %d, header size %d data length %d", buffer_.size(), kHeaderSize,
+              length);
+      size_t offset_in_block = end_of_buffer_offset_ % kBlockSize;
+      end_of_buffer_offset_ -= offset_in_block;
+      file_->Seek(end_of_buffer_offset_);
+      LOG(DEBUG, "go last block to pos %lld", end_of_buffer_offset_);
       buffer_.clear();
-      // If the end of the file has been reached without reading |length| bytes
-      // of payload, assume the writer died in the middle of writing the record.
-      // Don't report a corruption.
-      return kEof;
+      return kWaitRecord;
     }
     // Get Eof flag
     if (type == kEofType) {

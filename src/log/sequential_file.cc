@@ -15,9 +15,11 @@
 #include <stdio.h>
 #include "base/slice.h"
 #include "base/status.h"
+#include "logging.h"
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
+using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace log {
@@ -64,6 +66,7 @@ public:
             return Status::IOError("fail to ftell file", strerror(errno));
         }
         *pos = (uint64_t)ret;
+        LOG(DEBUG, "tell file with pos %lld", ret);
         return Status::OK();
     }
 

@@ -20,6 +20,10 @@
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_sync_batch_size);
 DECLARE_int32(binlog_apply_batch_size);
+DECLARE_int32(binlog_coffee_time);
+DECLARE_int32(binlog_sync_wait_time);
+DECLARE_int32(binlog_sync_to_disk_interval);
+DECLARE_int32(binlog_match_logoffset_interval);
 
 namespace rtidb {
 namespace replica {
@@ -38,7 +42,7 @@ LogReplicator::LogReplicator(const std::string& path,
     meta_(NULL), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_offset_(0),
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    self_(NULL),running_(true), tp_(3), refs_(0), tid_(tid), pid_(pid), wmu_(){}
+    self_(NULL),running_(true), tp_(4), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
 LogReplicator::LogReplicator(const std::string& path,
                              ApplyLogFunc func,
@@ -48,7 +52,7 @@ LogReplicator::LogReplicator(const std::string& path,
     role_(role), last_log_offset_(0),
     endpoints_(), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
     self_(NULL),
-    func_(func),running_(true), tp_(3), refs_(0), tid_(tid), pid_(pid), wmu_(){}
+    func_(func),running_(true), tp_(4), refs_(0), tid_(tid), pid_(pid), wmu_(){}
 
 LogReplicator::~LogReplicator() {
     delete meta_;
@@ -79,16 +83,15 @@ LogReplicator::~LogReplicator() {
 void LogReplicator::SyncToDisk() {
     MutexLock lock(&wmu_);
     if (wh_ != NULL) {
-        LOG(DEBUG, "start sync to disk for path %s", path_.c_str());
         uint64_t consumed = ::baidu::common::timer::get_micros();
         ::rtidb::base::Status status = wh_->Sync();
         if (!status.ok()) {
             LOG(WARNING, "fail to sync data for path %s", path_.c_str());
         }
         consumed = ::baidu::common::timer::get_micros() - consumed;
-        LOG(DEBUG, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
+        LOG(INFO, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
     }
-    tp_.DelayTask(10000, boost::bind(&LogReplicator::SyncToDisk, this));
+    tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
 }
 
 bool LogReplicator::Init() {
@@ -128,14 +131,14 @@ bool LogReplicator::Init() {
             nodes_.push_back(node);
             LOG(INFO, "add replica node with endpoint %s", node->endpoint.c_str());
         }
-        tp_.DelayTask(1000, boost::bind(&LogReplicator::MatchLogOffset, this));
+        tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
     }else {
         self_ = new ReplicaNode();
         tp_.AddTask(boost::bind(&LogReplicator::ApplyLog, this));
         LOG(INFO, "init follower node for path %s ok", path_.c_str());
     }
-    tp_.DelayTask(10000, boost::bind(&LogReplicator::SyncToDisk, this));
+    tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
     rpc_client_ = new ::rtidb::RpcClient();
     return ok;
 }
@@ -204,7 +207,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
         nodes_.push_back(node);
         LOG(INFO, "add ReplicaNode with endpoint %s ok", endpoint.c_str());
     }
-    tp_.DelayTask(1000, boost::bind(&LogReplicator::MatchLogOffset, this));
+    tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
     return true;
 }
 
@@ -389,7 +392,6 @@ bool LogReplicator::Recover() {
         it->Next();
     }
     delete it;
-    //TODO(wangtaize) recover term and log offset from log part
     return true;
 }
 
@@ -477,7 +479,7 @@ void LogReplicator::ApplyLog() {
             coffee_time = 0;
         }
         while (self_->last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
-            cv_.TimeWait(1000);
+            cv_.TimeWait(FLAGS_binlog_sync_wait_time);
             if (!running_.load(boost::memory_order_relaxed)) {
                 LOG(INFO, "apply log exist for path %s", path_.c_str());
                 return;
@@ -506,7 +508,7 @@ void LogReplicator::ApplyLog() {
                 }
             }else if (status.IsWaitRecord()) {
                 LOG(WARNING, "got a coffee time for path %s", path_.c_str());
-                coffee_time = 1000;
+                coffee_time = FLAGS_binlog_coffee_time;
                 break;
             }else {
                 LOG(WARNING, "fail to read record for %s", status.ToString().c_str());
@@ -565,7 +567,7 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         }
         LOG(DEBUG, "node %s offset %lld, log offset %lld ", node->endpoint.c_str(), node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
         while (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
-            cv_.TimeWait(5000);
+            cv_.TimeWait(FLAGS_binlog_sync_wait_time);
             if (!running_.load(boost::memory_order_relaxed)) {
                 LOG(INFO, "replicate log exist for path %s", path_.c_str());
                 return;
@@ -599,10 +601,15 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
                     break;
                 }
                 LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
+                if (entry->log_index() <= node->last_sync_offset) {
+                    LOG(WARNING, "skip duplicate log offset %lld", entry->log_index());
+                    request.mutable_entries()->RemoveLast();
+                    continue;
+                }
                 sync_log_offset = entry->log_index();
             }else if (status.IsWaitRecord()) {
                 LOG(WARNING, "got a coffee time for path %s", path_.c_str());
-                coffee_time = 1000;
+                coffee_time = FLAGS_binlog_coffee_time;
                 break;
             }else {
                 LOG(WARNING, "fail to get record %s", status.ToString().c_str());

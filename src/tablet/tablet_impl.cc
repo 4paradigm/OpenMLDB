@@ -39,6 +39,7 @@ DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
 DECLARE_string(binlog_root_path);
 DECLARE_bool(enable_statdb);
+DECLARE_bool(binlog_notify_on_put);
 
 namespace rtidb {
 namespace tablet {
@@ -138,7 +139,9 @@ void TabletImpl::Put(RpcController* controller,
         metric_->IncrThroughput(1, size, 0, 0);
     }
     if (replicator != NULL) {
-        replicator->Notify();
+        if (FLAGS_binlog_notify_on_put) {
+            replicator->Notify(); 
+        }
         replicator->UnRef();
     }
 }
