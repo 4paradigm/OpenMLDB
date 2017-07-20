@@ -45,6 +45,9 @@ public:
     //
     // REQUIRES: External synchronization
     virtual base::Status Skip(uint64_t n) = 0;
+
+    virtual base::Status Tell(uint64_t* pos) = 0;
+    virtual base::Status Seek(uint64_t pos) = 0;
 private:
     // No copying allowed
     SequentialFile(const SequentialFile&);

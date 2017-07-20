@@ -421,7 +421,7 @@ void LogReplicator::MatchLogOffset() {
     }
 }
 
-bool LogReplicator::ReadNextRecord(ReplicaNode* node,
+::rtidb::base::Status LogReplicator::ReadNextRecord(ReplicaNode* node,
                                    ::rtidb::base::Slice* record,
                                    std::string* buffer) {
     mu_.AssertHeld();
@@ -432,20 +432,20 @@ bool LogReplicator::ReadNextRecord(ReplicaNode* node,
                                                   node->log_part_index);
         if (new_log_part_index == -2) {
             LOG(WARNING, "no log avaliable tid %d pid %d", tid_, pid_);
-            return false;
+            return Status::IOError("no log avaliable");
         }
 
         if (new_log_part_index < 0) {
             LOG(WARNING, "fail to roll read log for path %s", path_.c_str());
-            return false;
+            return Status::IOError("no log avaliable");
         }
         node->reader = new Reader(node->sf, NULL, false, 0);
         // when change log part index , reset
         // last_log_byte_offset to 0
         node->log_part_index = new_log_part_index;
     }
-    bool ok = node->reader->ReadRecord(record, buffer);
-    if (!ok) {
+    ::rtidb::base::Status status = node->reader->ReadRecord(record, buffer);
+    if (!status.ok()) {
         LOG(DEBUG, "reach the end of file for path %s", path_.c_str());
         // reache the end of file 
         int32_t new_log_part_index = RollRLogFile(&node->sf,
@@ -454,28 +454,28 @@ bool LogReplicator::ReadNextRecord(ReplicaNode* node,
         // reache the latest log part
         if (new_log_part_index == node->log_part_index) {
             LOG(DEBUG, "no new log entry for path %s", path_.c_str());
-            return false;
+            return status;
         }
         if (new_log_part_index < 0) {
-            return false;
+            return status;
         }
         delete node->reader;
         // roll a new log part file, reset status
         node->log_part_index = new_log_part_index;
         node->reader = new Reader(node->sf, NULL, false, 0);
-        ok = node->reader->ReadRecord(record, buffer);
-        if (!ok) {
-            LOG(WARNING, "fail to read log for path %s", path_.c_str());
-            return false;
-        }
-        return true;
+        status = node->reader->ReadRecord(record, buffer);
     }
-    return true;
+    return status;
 }
 
 void LogReplicator::ApplyLog() {
+    uint32_t coffee_time = 0;
     while(running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
+        if (coffee_time > 0) {
+            cv_.TimeWait(coffee_time);
+            coffee_time = 0;
+        }
         while (self_->last_sync_offset >= log_offset_.load(boost::memory_order_relaxed)) {
             cv_.TimeWait(1000);
             if (!running_.load(boost::memory_order_relaxed)) {
@@ -490,23 +490,27 @@ void LogReplicator::ApplyLog() {
         for (uint32_t i = 0; i < batchSize; i++) {
             std::string buffer;
             ::rtidb::base::Slice record;
-            bool ok = ReadNextRecord(self_, &record, &buffer);
-            if (!ok) {
-                LOG(WARNING, "fail to read next record for path %s", path_.c_str());
-                // forever retry
+            ::rtidb::base::Status status = ReadNextRecord(self_, &record, &buffer);
+            if (status.ok()) {
+                ::rtidb::api::LogEntry entry;
+                entry.ParseFromString(record.ToString());
+                bool ok = func_(entry);
+                if (ok) {
+                    LOG(DEBUG, "apply log with path %s ok to offset %lld", path_.c_str(),
+                            entry.log_index());
+                    self_->last_sync_offset = entry.log_index();
+                }else {
+                    //TODO cache log entry and reapply 
+                    LOG(WARNING, "fail to apply log with path %s to offset %lld", path_.c_str(),
+                            entry.log_index());
+                }
+            }else if (status.IsWaitRecord()) {
+                LOG(WARNING, "got a coffee time for path %s", path_.c_str());
+                coffee_time = 1000;
                 break;
-            }
-            ::rtidb::api::LogEntry entry;
-            entry.ParseFromString(record.ToString());
-            ok = func_(entry);
-            if (ok) {
-                LOG(DEBUG, "apply log with path %s ok to offset %lld", path_.c_str(),
-                        entry.log_index());
-                self_->last_sync_offset = entry.log_index();
             }else {
-                //TODO cache log entry and reapply 
-                LOG(WARNING, "fail to apply log with path %s to offset %lld", path_.c_str(),
-                        entry.log_index());
+                LOG(WARNING, "fail to read record for %s", status.ToString().c_str());
+                break;
             }
         }
     }
@@ -538,6 +542,7 @@ bool LogReplicator::MatchLogOffsetFromNode(ReplicaNode* node) {
 }
 
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
+    uint32_t coffee_time = 0;
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
         std::vector<ReplicaNode*>::iterator it = nodes_.begin();
@@ -554,12 +559,15 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             LOG(WARNING, "fail to find node with endpoint %s", endpoint.c_str());
             break;
         }
-
+        if (coffee_time > 0) {
+            cv_.TimeWait(coffee_time);
+            coffee_time = 0;
+        }
         LOG(DEBUG, "node %s offset %lld, log offset %lld ", node->endpoint.c_str(), node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
         while (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
             cv_.TimeWait(5000);
             if (!running_.load(boost::memory_order_relaxed)) {
-                LOG(INFO, "replicate %s to node exist for path %s", endpoint.c_str(), path_.c_str());
+                LOG(INFO, "replicate log exist for path %s", path_.c_str());
                 return;
             }
         }
@@ -582,19 +590,24 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         for (uint64_t i = 0; i < batchSize; i++) {
             std::string buffer;
             ::rtidb::base::Slice record;
-            ok = ReadNextRecord(node, &record, &buffer);
-            if (!ok) {
-                LOG(WARNING, "fail to read next record for path %s", path_.c_str());
+            ::rtidb::base::Status status = ReadNextRecord(node, &record, &buffer);
+            if (status.ok()) {
+                ::rtidb::api::LogEntry* entry = request.add_entries();
+                ok = entry->ParseFromString(record.ToString());
+                if (!ok) {
+                    LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                    break;
+                }
+                LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
+                sync_log_offset = entry->log_index();
+            }else if (status.IsWaitRecord()) {
+                LOG(WARNING, "got a coffee time for path %s", path_.c_str());
+                coffee_time = 1000;
+                break;
+            }else {
+                LOG(WARNING, "fail to get record %s", status.ToString().c_str());
                 break;
             }
-            ::rtidb::api::LogEntry* entry = request.add_entries();
-            ok = entry->ParseFromString(record.ToString());
-            if (!ok) {
-                LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
-                break;
-            }
-            LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
-            sync_log_offset = entry->log_index();
         }
         if (request.entries_size() <= 0) {
             continue;

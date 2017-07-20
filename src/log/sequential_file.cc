@@ -54,6 +54,27 @@ public:
         }
         return Status::OK();
     }
+
+    virtual Status Tell(uint64_t* pos) {
+        if (pos == NULL) {
+            return Status::InvalidArgument("invalid pos arg");
+        }
+        int64_t ret = ftell(file_);
+        if (ret < 0) {
+            return Status::IOError("fail to ftell file", strerror(errno));
+        }
+        *pos = (uint64_t)ret;
+        return Status::OK();
+    }
+
+    virtual Status Seek(uint64_t pos) {
+        int32_t ret = fseek(file_, pos, SEEK_SET);
+        if (ret == 0) {
+            return Status::OK();
+        }
+        return Status::IOError("fail to seek", strerror(errno));
+    }
+
 };
 
 SequentialFile* NewSeqFile(const std::string& fname, FILE* f) {

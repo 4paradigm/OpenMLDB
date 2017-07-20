@@ -16,6 +16,8 @@ add_library(log STATIC log/crc32c.cc
                        log/log_writer.cc 
                        log/log_reader.cc
                        log/writable_file.cc)
+add_library(base STATIC base/status.cc)
+
 
 add_library(replica STATIC replica/log_replicator.cc replica/mem_log.cc)
 
@@ -53,8 +55,8 @@ target_link_libraries(tablet_impl_mem_test   gtest pthread tablet leveldb gflags
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf unwind tcmalloc)
 
-add_executable(log_test  log/log_test.cc base/status.cc)
-target_link_libraries(log_test   gtest pthread storage tablet log gflags storage common protobuf tcmalloc_minimal)
+add_executable(log_test  log/log_test.cc)
+target_link_libraries(log_test   gtest pthread storage tablet base log gflags storage common protobuf tcmalloc_minimal)
 
 add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc base/status.cc)
 target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb tcmalloc_minimal)
