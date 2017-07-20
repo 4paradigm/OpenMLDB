@@ -154,7 +154,7 @@ public:
     // read next record from log file
     // when one of log file reaches the end , it will auto 
     // roll it
-    bool ReadNextRecord(ReplicaNode* node,
+    ::rtidb::base::Status ReadNextRecord(ReplicaNode* node,
                         ::rtidb::base::Slice* record,
                         std::string* buffer);
 
@@ -177,6 +177,7 @@ public:
 
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
+
 private:
     // the replicator root data path
     std::string path_;
