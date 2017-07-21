@@ -86,6 +86,22 @@ public:
         return ttl_;
     }
 
+    inline void SetWal(bool wal) {
+        wal_ = wal;
+    }
+
+    inline bool GetWal() {
+        return wal_;
+    }
+
+    inline void SetTerm(uint64_t term) {
+        term_ = term;
+    }
+
+    inline uint64_t GetTerm() {
+        return term_;
+    }
+
     inline uint64_t GetDataCnt() const {
         uint64_t data_cnt = 0;
         for (uint32_t i = 0; i < seg_cnt_; i++) {
@@ -148,6 +164,8 @@ private:
     boost::atomic<uint64_t> data_cnt_;
     bool const is_leader_;
     std::vector<std::string> const replicas_;
+    bool wal_;
+    uint64_t term_;
 };
 
 }

@@ -142,6 +142,9 @@ message CreateTableRequest {
     // the slave endpoints
 	repeated string replicas = 7;
 	optional TableMode mode = 8;
+    optional bool wal = 9 [default = true];
+    // term for change role
+    optional uint64 term = 10;
 }
 
 message CreateTableResponse {

@@ -441,12 +441,14 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
+    table->SetWal(request->wal());
+    table->SetTerm(request->term());
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
-    if (table->IsLeader()) {
+    if (table->IsLeader() && table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), 
                 ReplicatorRole::kLeaderNode, request->tid(), request->pid());
-    }else {
+    }else if(table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, 
                 boost::bind(&TabletImpl::ApplyLogToTable, this, request->tid(), request->pid(), _1), 
                 ReplicatorRole::kFollowerNode, request->tid(), request->pid());
