@@ -213,12 +213,14 @@ void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
+
     if (!CheckScanRequest(request)) {
         response->set_code(8);
         response->set_msg("bad scan request");
         done->Run();
         return;
     }
+
     ::rtidb::api::RpcMetric* metric = response->mutable_metric();
     metric->CopyFrom(request->metric());
     metric->set_rqtime(::baidu::common::timer::get_micros());
@@ -230,6 +232,7 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
+
     metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
     // the first seek to find the total size to copy

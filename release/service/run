@@ -1,0 +1,4 @@
+#!/bin/bash
+CURRENT_DIR=`pwd`
+PARENT_DIR=`dirname $CURRENT_DIR`
+cd $PARENT_DIR && ./bin/rtidb --flagfile=./conf/rtidb.flags 
