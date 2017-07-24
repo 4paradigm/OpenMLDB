@@ -54,7 +54,7 @@ Table::Table(const std::string& name,
     replicas_(), wal_(wal), term_(0)
 {}
 
-bool Table::Init() {
+void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         segments_[i] = new Segment();

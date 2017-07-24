@@ -45,7 +45,7 @@ public:
           uint32_t ttl,
           bool wal = true);
 
-    bool Init();
+    void Init();
 
     void SetGcSafeOffset(uint64_t offset);
 

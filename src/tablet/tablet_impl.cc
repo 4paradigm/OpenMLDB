@@ -439,12 +439,11 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     Table* table = new Table(request->name(), request->tid(),
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
-                             endpoints);
+                             endpoints, request->wal());
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
-    table->SetWal(request->wal());
     table->SetTerm(request->term());
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
