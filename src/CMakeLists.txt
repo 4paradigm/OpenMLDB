@@ -18,17 +18,13 @@ add_library(log STATIC log/crc32c.cc
                        log/writable_file.cc)
 add_library(base STATIC base/status.cc)
 
-
-add_library(replica STATIC replica/log_replicator.cc replica/mem_log.cc)
+add_library(replica STATIC replica/log_replicator.cc)
 
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
 
 add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
 target_link_libraries(replica_test gtest gflags replica log tablet pthread sofa-pbrpc protobuf z snappy common leveldb)
-
-add_executable(mem_log_test replica/mem_log_test.cc flags.cc base/status.cc)
-target_link_libraries(mem_log_test gtest gflags replica log tablet pthread sofa-pbrpc protobuf z snappy common leveldb)
 
 add_executable(skiplist_test base/skiplist_test.cc)
 target_link_libraries(skiplist_test gtest pthread unwind tcmalloc)
