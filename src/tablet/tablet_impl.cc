@@ -213,12 +213,14 @@ void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
+
     if (!CheckScanRequest(request)) {
         response->set_code(8);
         response->set_msg("bad scan request");
         done->Run();
         return;
     }
+
     ::rtidb::api::RpcMetric* metric = response->mutable_metric();
     metric->CopyFrom(request->metric());
     metric->set_rqtime(::baidu::common::timer::get_micros());
@@ -230,6 +232,7 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
+
     metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
     // the first seek to find the total size to copy
@@ -436,17 +439,18 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     Table* table = new Table(request->name(), request->tid(),
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
-                             endpoints);
+                             endpoints, request->wal());
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
+    table->SetTerm(request->term());
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
-    if (table->IsLeader()) {
+    if (table->IsLeader() && table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), 
                 ReplicatorRole::kLeaderNode, request->tid(), request->pid());
-    }else {
+    }else if(table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, 
                 boost::bind(&TabletImpl::ApplyLogToTable, this, request->tid(), request->pid(), _1), 
                 ReplicatorRole::kFollowerNode, request->tid(), request->pid());

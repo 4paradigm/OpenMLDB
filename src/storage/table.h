@@ -35,23 +35,31 @@ public:
           uint32_t seg_cnt,
           uint32_t ttl,
           bool is_leader,
-          const std::vector<std::string>& replicas);
+          const std::vector<std::string>& replicas,
+          bool wal = true);
 
     Table(const std::string& name,
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t ttl);
+          uint32_t ttl,
+          bool wal = true);
 
     void Init();
 
     void SetGcSafeOffset(uint64_t offset);
 
-    // Put 
+    // Put a record
     void Put(const std::string& pk,
              uint64_t time,
              const char* data,
              uint32_t size);
+
+    // Put a log entry for snapshot 
+    void PutEntry(const std::string& raw, 
+                  const std::string& key,
+                  uint64_t time,
+                  uint64_t snapshot);
 
     void BatchGet(const std::vector<std::string>& keys,
                   std::map<uint32_t, DataBlock*>& pairs,
@@ -84,6 +92,18 @@ public:
 
     uint32_t GetTTL() const {
         return ttl_;
+    }
+
+    inline bool GetWal() {
+        return wal_;
+    }
+
+    inline void SetTerm(uint64_t term) {
+        term_ = term;
+    }
+
+    inline uint64_t GetTerm() {
+        return term_;
     }
 
     inline uint64_t GetDataCnt() const {
@@ -148,6 +168,8 @@ private:
     boost::atomic<uint64_t> data_cnt_;
     bool const is_leader_;
     std::vector<std::string> const replicas_;
+    bool wal_;
+    uint64_t term_;
 };
 
 }

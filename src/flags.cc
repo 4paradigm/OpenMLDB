@@ -12,7 +12,6 @@ DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_int32(statdb_ttl, 30 * 24 * 60 , "the ttl of statdb");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
-DEFINE_string(db_root_path,"/tmp/", "the root path of db");
 DEFINE_bool(enable_statdb, false, "enable statdb");
 
 // scan configuration
@@ -28,3 +27,5 @@ DEFINE_int32(binlog_sync_to_disk_interval, 5000, "config the interval of sync bi
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
 DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
 
+// local db config
+DEFINE_string(db_root_path,"/tmp/", "the root path of db");

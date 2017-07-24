@@ -7,15 +7,15 @@
 
 #include "replica/log_replicator.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <cstring>
+#include "base/file_util.h"
+#include "base/strings.h"
 #include "leveldb/options.h"
 #include "logging.h"
-#include "base/strings.h"
-#include "base/file_util.h"
 #include <boost/ref.hpp>
+#include <cstring>
 #include <gflags/gflags.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_sync_batch_size);
