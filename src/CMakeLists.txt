@@ -9,7 +9,7 @@ if (TCMALLOC_ENABLE)
 endif()
 
 add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
-add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc)
+add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc storage/snapshot.cc)
 
 add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
@@ -18,17 +18,13 @@ add_library(log STATIC log/crc32c.cc
                        log/writable_file.cc)
 add_library(base STATIC base/status.cc)
 
-
-add_library(replica STATIC replica/log_replicator.cc replica/mem_log.cc)
+add_library(replica STATIC replica/log_replicator.cc)
 
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
 
 add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
 target_link_libraries(replica_test gtest gflags replica log tablet pthread sofa-pbrpc protobuf z snappy common leveldb)
-
-add_executable(mem_log_test replica/mem_log_test.cc flags.cc base/status.cc)
-target_link_libraries(mem_log_test gtest gflags replica log tablet pthread sofa-pbrpc protobuf z snappy common leveldb)
 
 add_executable(skiplist_test base/skiplist_test.cc)
 target_link_libraries(skiplist_test gtest pthread unwind tcmalloc)
@@ -38,6 +34,9 @@ target_link_libraries(segment_test gtest storage pthread common unwind tcmalloc)
 
 add_executable(table_test  storage/table_test.cc )
 target_link_libraries(table_test gtest pthread storage common unwind tcmalloc)
+
+add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc)
+target_link_libraries(snapshot_test gtest pthread storage leveldb protobuf common gflags unwind tcmalloc)
 
 add_executable(table_mem_test  storage/table_mem_test.cc)
 target_link_libraries(table_mem_test gtest pthread storage common unwind tcmalloc)

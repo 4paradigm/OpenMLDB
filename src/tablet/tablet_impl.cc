@@ -45,7 +45,7 @@ namespace rtidb {
 namespace tablet {
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
-    metric_(NULL), replicators_(){}
+    metric_(NULL), replicators_(), snapshots_(){}
 
 TabletImpl::~TabletImpl() {
     if (FLAGS_enable_statdb) {
@@ -213,12 +213,14 @@ void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
+
     if (!CheckScanRequest(request)) {
         response->set_code(8);
         response->set_msg("bad scan request");
         done->Run();
         return;
     }
+
     ::rtidb::api::RpcMetric* metric = response->mutable_metric();
     metric->CopyFrom(request->metric());
     metric->set_rqtime(::baidu::common::timer::get_micros());
@@ -230,6 +232,7 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
+
     metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
     // the first seek to find the total size to copy
@@ -375,6 +378,18 @@ bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api:
     return true;
 }
 
+bool TabletImpl::MakeSnapshot(uint32_t tid, uint32_t pid,
+                              const std::string& entry,
+                              const std::string& pk,
+                              uint64_t offset,
+                              uint64_t ts) {
+    Snapshot* snapshot = GetSnapshot(tid, pid);
+    if (snapshot == NULL) {
+        return false;
+    }
+    return snapshot->Put(entry, offset, pk, ts);
+}
+
 void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
@@ -436,42 +451,59 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     Table* table = new Table(request->name(), request->tid(),
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
-                             endpoints);
+                             endpoints, request->wal());
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
-    table->SetWal(request->wal());
     table->SetTerm(request->term());
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
+    Snapshot* snapshot = new Snapshot(request->tid(), request->pid(), 0);
+    snapshot->Ref();
+    bool ok = snapshot->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
+        table->Release();
+        table->UnRef();
+        snapshot->UnRef();
+        response->set_code(1);
+        response->set_msg("fail to init snapshot");
+        return;
+
+    }
     LogReplicator* replicator = NULL;
     if (table->IsLeader() && table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), 
-                ReplicatorRole::kLeaderNode, request->tid(), request->pid());
+                ReplicatorRole::kLeaderNode, request->tid(), request->pid(),
+                boost::bind(&TabletImpl::MakeSnapshot, this, request->tid(), request->pid(), _1, _2, _3, _4));
     }else if(table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, 
                 boost::bind(&TabletImpl::ApplyLogToTable, this, request->tid(), request->pid(), _1), 
-                ReplicatorRole::kFollowerNode, request->tid(), request->pid());
+                ReplicatorRole::kFollowerNode, request->tid(), request->pid(),
+                boost::bind(&TabletImpl::MakeSnapshot, this, request->tid(), request->pid(), _1, _2, _3, _4));
     }
     if (replicator == NULL) {
         tables_[request->tid()].insert(std::make_pair(request->pid(), table));
+        snapshots_[request->tid()].insert(std::make_pair(request->pid(), snapshot));
         response->set_code(0);
         response->set_msg("ok");
         return;
     }
     replicator->Ref();
-    bool ok = replicator->Init();
+    ok = replicator->Init();
     if (!ok) {
         LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
         // clean memory
         table->Release();
         table->UnRef();
         replicator->UnRef();
+        snapshot->UnRef();
         response->set_code(-1);
         response->set_msg("fail create replicator for table");
         return;
     }
     tables_[request->tid()].insert(std::make_pair(request->pid(), table));
+    snapshots_[request->tid()].insert(std::make_pair(request->pid(), snapshot));
     replicators_[request->tid()].insert(std::make_pair(request->pid(), replicator));
     response->set_code(0);
     response->set_msg("ok");
@@ -521,6 +553,21 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
     table->SchedGc();
     table->UnRef();
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+}
+
+Snapshot* TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
+    MutexLock lock(&mu_);
+    Snapshots::iterator it = snapshots_.find(tid);
+    if (it != snapshots_.end()) {
+        std::map<uint32_t, Snapshot*>::iterator tit = it->second.find(pid);
+        if (tit == it->second.end()) {
+            return NULL;
+        }
+        Snapshot* snapshot = tit->second;
+        snapshot->Ref();
+        return snapshot;
+    }
+    return NULL;
 }
 
 LogReplicator* TabletImpl::GetReplicator(uint32_t tid, uint32_t pid) {

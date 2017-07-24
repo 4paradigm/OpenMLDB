@@ -29,22 +29,38 @@ using ::baidu::common::DEBUG;
 
 DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
 DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
-DEFINE_string(log_level, "debug | info", "Set the rtidb log level");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
+
+DEFINE_string(log_dir, "", "Config the log dir");
+DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
+DEFINE_int32(log_file_count, 24, "Config the log count");
+DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/){
     s_quit = true;
 }
 
-void StartTablet() {
-    //TODO(wangtaize) optimalize options
+void SetupLog() {
+    // Config log 
     if (FLAGS_log_level == "debug") {
         ::baidu::common::SetLogLevel(DEBUG);
     }else {
         ::baidu::common::SetLogLevel(INFO);
     }
+    if (!FLAGS_log_dir.empty()) {
+        std::string info_file = FLAGS_log_dir + "/rtidb.info.log";
+        std::string warning_file = FLAGS_log_dir + "/rtidb.warning.log";
+        ::baidu::common::SetLogFile(info_file.c_str());
+        ::baidu::common::SetWarningFile(warning_file.c_str());
+    }
+    ::baidu::common::SetLogCount(FLAGS_log_file_count);
+    ::baidu::common::SetLogSizeLimit(FLAGS_log_file_size);
+}
+
+void StartTablet() {
+    SetupLog();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();

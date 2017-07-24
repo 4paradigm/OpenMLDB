@@ -35,19 +35,21 @@ public:
           uint32_t seg_cnt,
           uint32_t ttl,
           bool is_leader,
-          const std::vector<std::string>& replicas);
+          const std::vector<std::string>& replicas,
+          bool wal = true);
 
     Table(const std::string& name,
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t ttl);
+          uint32_t ttl,
+          bool wal = true);
 
     void Init();
 
     void SetGcSafeOffset(uint64_t offset);
 
-    // Put 
+    // Put a record
     void Put(const std::string& pk,
              uint64_t time,
              const char* data,
@@ -84,10 +86,6 @@ public:
 
     uint32_t GetTTL() const {
         return ttl_;
-    }
-
-    inline void SetWal(bool wal) {
-        wal_ = wal;
     }
 
     inline bool GetWal() {

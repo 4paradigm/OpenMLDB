@@ -4,44 +4,54 @@
 // Author wangtaize 
 // Date 2017-03-31
 //
-
-#include "logging.h"
+//
 #include "storage/table.h"
+
 #include "base/hash.h"
+#include "logging.h"
 #include "timer.h"
+#include <boost/lexical_cast.hpp>
+#include <gflags/gflags.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
+DECLARE_string(db_root_path);
+
 namespace rtidb {
 namespace storage {
 
 const static uint32_t SEED = 9527;
+const std::string SNAPSHOT_PREFIX="/snapshot/";
+const std::string DATA_PREFIX="/data/";
+
 Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
         uint32_t ttl,
         bool is_leader,
-        const std::vector<std::string>& replicas):name_(name), id_(id),
+        const std::vector<std::string>& replicas,
+        bool wal):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
     ttl_offset_(60 * 1000), is_leader_(is_leader),
-    replicas_(replicas), wal_(true), term_(0)
+    replicas_(replicas), wal_(wal), term_(0)
 {}
 
 Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
-        uint32_t ttl):name_(name), id_(id),
+        uint32_t ttl,
+        bool wal):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
     ttl_offset_(60 * 1000), is_leader_(false),
-    replicas_(), wal_(true), term_(0)
+    replicas_(), wal_(wal), term_(0)
 {}
 
 void Table::Init() {
