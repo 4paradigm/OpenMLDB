@@ -9,7 +9,7 @@ clear_debug() {
 }
 
 clear_debug
-DIR_PREFIX=/tmp
+DIR_PREFIX=$ROOT
 test -d $DIR_PREFIX/binlog1 && rm -rf $DIR_PREFIX/binlog1
 test -d $DIR_PREFIX/snapshot1 && rm -rf $DIR_PREFIX/snapshot1
 test -d $DIR_PREFIX/binlog2 && rm -rf $DIR_PREFIX/binlog2
