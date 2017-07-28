@@ -524,11 +524,13 @@ void TabletImpl::DropTable(RpcController* controller,
             request->pid());
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
+    Snapshot* snapshot = GetSnapshot(tid, pid);
     // do block other requests
     {
         MutexLock lock(&mu_);
         tables_[tid].erase(pid);
         replicators_[tid].erase(pid);
+        snapshots_[tid].erase(pid);
         response->set_code(0);
         done->Run();
     }
@@ -543,6 +545,12 @@ void TabletImpl::DropTable(RpcController* controller,
         replicator->UnRef();
         LOG(INFO, "drop replicator for tid %d, pid %d", tid, pid);
     }
+    if (snapshot != NULL) {
+        snapshot->UnRef();
+        snapshot->UnRef();
+        LOG(INFO, "drop snapshot for tid %d, pid %d", tid, pid);
+    }
+
 }
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
