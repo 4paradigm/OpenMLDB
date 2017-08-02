@@ -3,7 +3,7 @@
 Database for Real Time Intelligence , It's awesome!
 
 # arch
-[架构图](images/rtidb_arch.png)
+![架构图](images/rtidb_arch.png)
 
 # version
 
