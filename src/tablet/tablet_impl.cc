@@ -596,11 +596,11 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         writer.Uint(table->GetId());
         writer.Key("pid");
         writer.Uint(table->GetPid());
-        replicator = GetReplicator(request->tid(), request->pid());
+        replicator = GetReplicator(table->GetId(), table->GetPid());
         if (replicator != NULL) {
             writer.Key("log_offset");
             writer.Uint(replicator->GetLogOffset());
-            replicator.UnRef();
+            replicator->UnRef();
         }
         writer.Key("seg_cnt");
         writer.Uint(table->GetSegCnt());
