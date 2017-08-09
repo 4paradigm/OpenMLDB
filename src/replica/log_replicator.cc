@@ -38,21 +38,26 @@ const static std::string LOG_META_PREFIX="/logs/";
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             uint32_t tid, uint32_t pid):path_(path), meta_path_(), log_path_(),
+                             uint32_t tid, uint32_t pid,
+                             SnapshotFunc ssf):path_(path), meta_path_(), log_path_(),
     meta_(NULL), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_offset_(0),
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
-    self_(NULL),running_(true), tp_(4), refs_(0), tid_(tid), pid_(pid), wmu_(){}
+    self_(NULL), running_(true), tp_(4), refs_(0), tid_(tid), pid_(pid), wmu_(),
+    ssf_(ssf){}
 
 LogReplicator::LogReplicator(const std::string& path,
                              ApplyLogFunc func,
                              const ReplicatorRole& role,
-                             uint32_t tid, uint32_t pid):path_(path), meta_path_(), log_path_(),
+                             uint32_t tid, uint32_t pid,
+                             SnapshotFunc ssf):path_(path), meta_path_(), log_path_(),
     meta_(NULL), log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0),
     role_(role), last_log_offset_(0),
     endpoints_(), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
     self_(NULL),
-    func_(func),running_(true), tp_(4), refs_(0), tid_(tid), pid_(pid), wmu_(){}
+    func_(func), 
+    running_(true), tp_(4), refs_(0), tid_(tid), pid_(pid), wmu_(),
+    ssf_(ssf){}
 
 LogReplicator::~LogReplicator() {
     delete meta_;
@@ -121,6 +126,7 @@ bool LogReplicator::Init() {
     if (!ok) {
         return false;
     }
+
     if (role_ == kLeaderNode) {
         std::vector<std::string>::iterator it = endpoints_.begin();
         uint32_t index = 0;
@@ -179,6 +185,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
+        ssf_(buffer, request->entries(i).pk(), request->entries(i).log_index(), request->entries(i).ts());
         wsize_ += buffer.size();
         last_log_offset_ = request->entries(i).log_index();
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
@@ -229,6 +236,8 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         return false;
     }
     wsize_ += buffer.size();
+    //TODO handle fails
+    ssf_(buffer, entry.pk(), entry.log_index(), entry.ts());
     LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }

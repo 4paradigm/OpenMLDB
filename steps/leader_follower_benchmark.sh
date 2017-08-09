@@ -9,12 +9,14 @@ clear_debug() {
 }
 
 clear_debug
+DIR_PREFIX=$ROOT
+test -d $DIR_PREFIX/binlog1 && rm -rf $DIR_PREFIX/binlog1
+test -d $DIR_PREFIX/snapshot1 && rm -rf $DIR_PREFIX/snapshot1
+test -d $DIR_PREFIX/binlog2 && rm -rf $DIR_PREFIX/binlog2
+test -d $DIR_PREFIX/snapshot2 && rm -rf $DIR_PREFIX/snapshot2
 
-test -d /tmp/binlog1 && rm -rf /tmp/binlog1
-test -d /tmp/binlog2 && rm -rf /tmp/binlog2
-
-./build/bin/rtidb --binlog_root_path=/tmp/binlog1 --binlog_single_file_max_size=8 --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:19527 --role=tablet >log0 2>&1 &
-./build/bin/rtidb --binlog_root_path=/tmp/binlog2 --binlog_single_file_max_size=8 --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:19528 --role=tablet >log1 2>&1 &
+./build/bin/rtidb --binlog_root_path=$DIR_PREFIX/binlog1 --snapshot_root_path=$DIR_PREFIX/snapshot1 --binlog_single_file_max_size=8 --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:19527 --role=tablet >log0 2>&1 &
+./build/bin/rtidb --binlog_root_path=$DIR_PREFIX/binlog2 --snapshot_root_path=$DIR_PREFIX/snapshot2 --binlog_single_file_max_size=8 --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:19528 --role=tablet >log1 2>&1 &
 sleep 1
 
 ./build/bin/rtidb --cmd="create t1 2 1 0 false 127.0.0.1:19528" --role=client --endpoint=127.0.0.1:19528 --interactive=false 

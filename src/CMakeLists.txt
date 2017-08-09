@@ -9,7 +9,7 @@ if (TCMALLOC_ENABLE)
 endif()
 
 add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
-add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc)
+add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc storage/snapshot.cc)
 
 add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
@@ -34,6 +34,9 @@ target_link_libraries(segment_test gtest storage pthread common unwind tcmalloc)
 
 add_executable(table_test  storage/table_test.cc )
 target_link_libraries(table_test gtest pthread storage common unwind tcmalloc)
+
+add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc)
+target_link_libraries(snapshot_test gtest pthread storage leveldb protobuf common gflags unwind tcmalloc)
 
 add_executable(table_mem_test  storage/table_mem_test.cc)
 target_link_libraries(table_mem_test gtest pthread storage common unwind tcmalloc)

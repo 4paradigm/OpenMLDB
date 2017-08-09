@@ -55,12 +55,6 @@ public:
              const char* data,
              uint32_t size);
 
-    // Put a log entry for snapshot 
-    void PutEntry(const std::string& raw, 
-                  const std::string& key,
-                  uint64_t time,
-                  uint64_t snapshot);
-
     void BatchGet(const std::vector<std::string>& keys,
                   std::map<uint32_t, DataBlock*>& pairs,
                   Ticket& ticket);

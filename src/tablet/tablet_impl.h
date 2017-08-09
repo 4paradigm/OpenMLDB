@@ -12,6 +12,7 @@
 #include <map>
 #include "proto/tablet.pb.h"
 #include "storage/table.h"
+#include "storage/snapshot.h"
 #include "mutex.h"
 #include "thread_pool.h"
 #include "tablet/tablet_metric.h"
@@ -24,6 +25,7 @@ using ::baidu::common::Mutex;
 using ::baidu::common::MutexLock;
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
+using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
 
@@ -32,6 +34,7 @@ namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, Table*> > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, LogReplicator*> > Replicators;
+typedef std::map<uint32_t, std::map<uint32_t, Snapshot*> > Snapshots;
 
 class TabletImpl : public ::rtidb::api::TabletServer {
 
@@ -89,6 +92,7 @@ private:
 
     ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
 
+    ::rtidb::storage::Snapshot* GetSnapshot(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
     void ShowTables(const sofa::pbrpc::HTTPRequest& request,
@@ -109,12 +113,19 @@ private:
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
+    bool MakeSnapshot(uint32_t tid, uint32_t pid,
+                      const std::string& entry,
+                      const std::string& pk,
+                      uint64_t offset,
+                      uint64_t ts);
+
 private:
     Tables tables_;
     Mutex mu_;
     ThreadPool gc_pool_;
     TabletMetric* metric_;
     Replicators replicators_;
+    Snapshots snapshots_;
 };
 
 

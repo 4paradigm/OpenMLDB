@@ -35,11 +35,16 @@ using ::rtidb::log::Writer;
 using ::rtidb::log::Reader;
 
 typedef boost::function< bool (const ::rtidb::api::LogEntry& entry)> ApplyLogFunc;
+typedef boost::function< bool (const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts)> SnapshotFunc;
 
 enum ReplicatorRole {
     kLeaderNode = 1,
     kFollowerNode
 };
+
+inline bool DefaultSnapshotFunc(const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts) {
+    return true;
+} 
 
 class LogReplicator;
 
@@ -115,13 +120,15 @@ public:
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
                   uint32_t tid,
-                  uint32_t pid);
+                  uint32_t pid,
+                  SnapshotFunc ssf = boost::bind(&DefaultSnapshotFunc, _1, _2, _3, _4));
 
     LogReplicator(const std::string& path,
                   ApplyLogFunc func,
                   const ReplicatorRole& role,
                   uint32_t tid,
-                  uint32_t pid);
+                  uint32_t pid,
+                  SnapshotFunc ssf = boost::bind(&DefaultSnapshotFunc, _1, _2, _3, _4));
 
     ~LogReplicator();
 
@@ -220,6 +227,8 @@ private:
     uint32_t tid_;
     uint32_t pid_;
     Mutex wmu_;
+
+    SnapshotFunc ssf_;
 };
 
 } // end of replica
