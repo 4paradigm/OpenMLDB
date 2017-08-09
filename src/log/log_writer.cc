@@ -37,7 +37,6 @@ Status Writer::EndLog() {
     const char* ptr = slice.data();
     size_t left = 0;
     Status s;
-    bool begin = true;
     do {
         const int leftover = kBlockSize - block_offset_;
         assert(leftover >= 0);
@@ -58,7 +57,6 @@ Status Writer::EndLog() {
         s = EmitPhysicalRecord(type, ptr, fragment_length);
         ptr += fragment_length;
         left -= fragment_length;
-        begin = false;
     } while (s.ok() && left > 0);
     return s;
 }
@@ -84,7 +82,6 @@ Status Writer::AddRecord(const Slice& slice) {
             }
             block_offset_ = 0;
         }
-
         // Invariant: we never leave < kHeaderSize bytes in a block.
         assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
 
@@ -132,6 +129,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
             s = dest_->Flush();
         }
     }
+
     block_offset_ += kHeaderSize + n;
     return s;
 }

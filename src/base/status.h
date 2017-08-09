@@ -43,6 +43,14 @@ public:
         return Status(kIOError, msg, msg2);
     }
 
+    static Status WaitRecord() {
+        return Status(kWaitRecord, "", "");
+    }
+
+    static Status Eof() {
+        return Status(kEof, "", ""); 
+    }
+
     // Returns true iff the status indicates success.
     bool ok() const { return (state_ == NULL); }
 
@@ -60,6 +68,10 @@ public:
 
     // Returns true iff the status indicates an InvalidArgument.
     bool IsInvalidArgument() const { return code() == kInvalidArgument; }
+
+    bool IsWaitRecord() const { return code() == kWaitRecord; }
+    bool IsEof() const { return code() == kEof; }
+
 
     // Return a string representation of this status suitable for printing.
     // Returns the string "OK" for success.
@@ -79,7 +91,9 @@ private:
         kCorruption = 2,
         kNotSupported = 3,
         kInvalidArgument = 4,
-        kIOError = 5
+        kIOError = 5,
+        kWaitRecord = 6,
+        kEof = 7
     };
 
     Code code() const {

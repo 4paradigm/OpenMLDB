@@ -61,7 +61,7 @@ public:
     // "*scratch" as temporary storage.  The contents filled in *record
     // will only be valid until the next mutating operation on this
     // reader or the next mutation to *scratch.
-    bool ReadRecord(Slice* record, std::string* scratch);
+    ::rtidb::base::Status ReadRecord(Slice* record, std::string* scratch);
 
     // Returns the physical offset of the last record returned by ReadRecord.
     //
@@ -97,7 +97,8 @@ private:
       // * The record has an invalid CRC (ReadPhysicalRecord reports a drop)
       // * The record is a 0-length record (No drop is reported)
       // * The record is below constructor's initial_offset (No drop is reported)
-      kBadRecord = kMaxRecordType + 2
+      kBadRecord = kMaxRecordType + 2,
+      kWaitRecord = kMaxRecordType + 3
     };
 
     // Skips all blocks that are completely before "initial_offset_".

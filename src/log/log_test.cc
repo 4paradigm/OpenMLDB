@@ -52,8 +52,8 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     ASSERT_TRUE(status.ok());
     std::string scratch;
     Slice value;
-    bool ok = reader.ReadRecord(&value, &scratch);
-    ASSERT_TRUE(ok);
+    status = reader.ReadRecord(&value, &scratch);
+    ASSERT_TRUE(status.ok());
     ASSERT_EQ("hello", value.ToString());
     uint64_t last_record_offset = reader.LastRecordOffset();
     std::cout << "last record offset " << last_record_offset << std::endl;
@@ -62,8 +62,8 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     Reader reader2(rf, NULL, false, last_record_offset);
     std::string scratch2;
     Slice value2;
-    ok = reader2.ReadRecord(&value2, &scratch2);
-    ASSERT_TRUE(ok);
+    status = reader2.ReadRecord(&value2, &scratch2);
+    ASSERT_TRUE(status.ok());
     ASSERT_EQ("hello1", value2.ToString());
 }
 
@@ -94,8 +94,8 @@ TEST_F(LogWRTest, TestLogEntry) {
     Reader reader(rf, NULL, false, 0);
     {
         Slice value2;
-        ok = reader.ReadRecord(&value2, &scratch2);
-        ASSERT_TRUE(ok);
+        status = reader.ReadRecord(&value2, &scratch2);
+        ASSERT_TRUE(status.ok());
         ::rtidb::api::LogEntry entry2;
         ok = entry2.ParseFromString(value2.ToString());
         ASSERT_TRUE(ok);
@@ -105,20 +105,21 @@ TEST_F(LogWRTest, TestLogEntry) {
     }
     status = writer.AddRecord(sval);
     ASSERT_TRUE(status.ok());
-    status = writer.EndLog();
-    ASSERT_TRUE(status.ok());
     {
         Slice value2;
-        ok = reader.ReadRecord(&value2, &scratch2);
-        ASSERT_TRUE(ok);
+        status = reader.ReadRecord(&value2, &scratch2);
+        ASSERT_TRUE(status.ok());
         ::rtidb::api::LogEntry entry2;
         ok = entry2.ParseFromString(value2.ToString());
         ASSERT_TRUE(ok);
         ASSERT_EQ("test0", entry2.pk());
         ASSERT_EQ("test1", entry2.value());
         ASSERT_EQ(9527, entry2.ts());
-        ok = reader.ReadRecord(&value2, &scratch2);
-        ASSERT_FALSE(ok);
+        status = reader.ReadRecord(&value2, &scratch2);
+        std::cout << status.ToString() << std::endl;
+        ASSERT_TRUE(status.IsWaitRecord());
+        status = reader.ReadRecord(&value2, &scratch2);
+        ASSERT_TRUE(status.IsWaitRecord());
     }
 }
 

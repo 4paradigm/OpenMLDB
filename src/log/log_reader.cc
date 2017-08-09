@@ -15,8 +15,12 @@
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_format.h"
+#include "logging.h"
 #include "base/status.h"
 
+using ::baidu::common::INFO;
+using ::baidu::common::DEBUG;
+using ::baidu::common::WARNING;
 using ::rtidb::base::Status;
 
 namespace rtidb {
@@ -67,10 +71,10 @@ bool Reader::SkipToInitialBlock() {
   return true;
 }
 
-bool Reader::ReadRecord(Slice* record, std::string* scratch) {
+Status Reader::ReadRecord(Slice* record, std::string* scratch) {
   if (last_record_offset_ < initial_offset_) {
     if (!SkipToInitialBlock()) {
-      return false;
+      return Status::IOError("");
     }
   }
   scratch->clear();
@@ -118,7 +122,16 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
         scratch->clear();
         *record = fragment;
         last_record_offset_ = prospective_record_offset;
-        return true;
+        return Status::OK();
+
+      case kWaitRecord:
+        if (in_fragmented_record) {
+          // This can be caused by the writer dying immediately after
+          // writing a physical record but before completing the next; don't
+          // treat it as a corruption, just ignore the entire logical record.
+          scratch->clear();
+        }
+        return Status::WaitRecord(); 
 
       case kFirstType:
         if (in_fragmented_record) {
@@ -154,7 +167,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
           last_record_offset_ = prospective_record_offset;
-          return true;
+          return Status::OK();
         }
         break;
 
@@ -165,7 +178,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
           // treat it as a corruption, just ignore the entire logical record.
           scratch->clear();
         }
-        return false;
+        return Status::Eof();
 
       case kBadRecord:
         if (in_fragmented_record) {
@@ -187,7 +200,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
       }
     }
   }
-  return false;
+  return Status::IOError("");
 }
 
 uint64_t Reader::LastRecordOffset() {
@@ -209,23 +222,38 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
   while (true) {
     if (buffer_.size() < kHeaderSize) {
       if (!eof_) {
+        uint64_t pos = 0;
+        Status ok = file_->Tell(&pos);
+        if (!ok.ok()) { 
+            LOG(WARNING, "fail to tell file %s", ok.ToString().c_str());
+            return kWaitRecord;
+        }
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
         end_of_buffer_offset_ += buffer_.size();
         // Read log error
         if (!status.ok()) {
-          buffer_.clear();
-          ReportDrop(kBlockSize, status);
-          return kEof;
+            buffer_.clear();
+            ReportDrop(kBlockSize, status);
+            LOG(WARNING, "fail to read file %s", status.ToString().c_str());
+            return kWaitRecord;
         }
-        continue;
+        if (buffer_.size() < kHeaderSize) { 
+            if (buffer_.size() > 0) {
+                LOG(DEBUG, "go back to pos %lld, buffer %d", pos, buffer_.size());
+                buffer_.clear();
+                file_->Seek(pos);
+            }
+            return kWaitRecord;
+        }
       } else {
         // Note that if buffer_ is non-empty, we have a truncated header at the
         // end of the file, which can be caused by the writer crashing in the
         // middle of writing the header. Instead of considering this an error,
         // just report EOF.
         buffer_.clear();
+        LOG(DEBUG, "end of file");
         return kEof;
       }
     }
@@ -237,16 +265,20 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     const unsigned int type = header[6];
     const uint32_t length = a | (b << 8);
     if (kHeaderSize + length > buffer_.size()) {
+      LOG(DEBUG, "end of file %d, header size %d data length %d", buffer_.size(), kHeaderSize,
+              length);
+      size_t offset_in_block = end_of_buffer_offset_ % kBlockSize;
+      end_of_buffer_offset_ -= offset_in_block;
+      file_->Seek(end_of_buffer_offset_);
+      LOG(DEBUG, "go last block to pos %lld", end_of_buffer_offset_);
       buffer_.clear();
-      // If the end of the file has been reached without reading |length| bytes
-      // of payload, assume the writer died in the middle of writing the record.
-      // Don't report a corruption.
-      return kEof;
+      return kWaitRecord;
     }
     // Get Eof flag
     if (type == kEofType) {
       buffer_.clear();
       eof_ = true;
+      LOG(DEBUG, "end of file");
       return kEof;
     }
 
