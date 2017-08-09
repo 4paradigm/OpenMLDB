@@ -4,6 +4,7 @@
 
 * bin 存放rtidb二进制文件以及相关启动脚本
 * binlogs 存储table的binlogs文件
+* snapshots 存储table的内存快照
 * logs 存储rtidb运行日志文件
 * conf 存放rtidb配置文件
 
