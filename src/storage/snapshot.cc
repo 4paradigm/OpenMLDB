@@ -48,8 +48,8 @@ bool Snapshot::Init() {
                                                snapshot_path, 
                                                &db_);
     if (!status.ok()) {
-        LOG(INFO, "fail open snapshot with path %s for tid %d, pid %d", snapshot_path.c_str(),
-                tid_, pid_);
+        LOG(WARNING, "fail open snapshot with path %s for tid %d, pid %d with error %s", snapshot_path.c_str(),
+                tid_, pid_, status.ToString().c_str());
         return false;
     }
     ::leveldb::ReadOptions roptions;
@@ -138,6 +138,7 @@ void Snapshot::Ref() {
 void Snapshot::UnRef() {
     refs_.fetch_sub(1, boost::memory_order_acquire);
     if (refs_.load(boost::memory_order_relaxed) <= 0) {
+        LOG(INFO, "drop snapshot for tid %d pid %d", tid_, pid_);
         delete this;
     }
 }

@@ -246,12 +246,21 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t end_time = request->et();
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
+    uint64_t last_time = 0;
     while (it->Valid()) {
         scount ++;
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
         if (it->GetKey() <= end_time) {
             break;
         }
+        // skip duplicate record 
+        if (scount > 1 && last_time == it->GetKey()) {
+            LOG(DEBUG, "filter duplicate record for key %s with ts %lld", request->pk().c_str(), it->GetKey());
+            last_time = it->GetKey();
+            it->Next();
+            continue;
+        }
+        last_time = it->GetKey();
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
         total_block_size += it->GetValue()->size;
         it->Next();

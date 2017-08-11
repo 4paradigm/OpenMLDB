@@ -593,6 +593,7 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         }
         bool request_from_cache = false;
         ::rtidb::api::AppendEntriesRequest request;
+        ::rtidb::api::AppendEntriesResponse response;
         uint64_t sync_log_offset = 0;
         if (node->cache.size() > 0) {
             request_from_cache = true;
@@ -612,7 +613,6 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         }else {
             request.set_tid(tid_);
             request.set_pid(pid_);
-            ::rtidb::api::AppendEntriesResponse response;
             request.set_pre_log_index(node->last_sync_offset);
             uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - node->last_sync_offset;
             if (batchSize > (uint32_t)FLAGS_binlog_sync_batch_size) {
@@ -627,7 +627,7 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
                     ok = entry->ParseFromString(record.ToString());
                     if (!ok) {
                         LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
-                        request->mutable_entries()->RemoveLast();
+                        request.mutable_entries()->RemoveLast();
                         break;
                     }
                     LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
