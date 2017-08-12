@@ -172,6 +172,10 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
 }
 
 void HandleClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad drop command, you should input like 'drop tid pid' "<< std::endl;
+        return;
+    }
     bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
     if (ok) {
         std::cout << "Drop table ok" << std::endl;
