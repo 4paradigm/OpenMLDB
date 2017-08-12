@@ -570,10 +570,12 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             LOG(WARNING, "fail to find node with endpoint %s", endpoint.c_str());
             break;
         }
+
         if (coffee_time > 0) {
             cv_.TimeWait(coffee_time);
             coffee_time = 0;
         }
+
         LOG(DEBUG, "node %s offset %lld, log offset %lld ", node->endpoint.c_str(), node->last_sync_offset, log_offset_.load(boost::memory_order_relaxed));
         while (node->last_sync_offset >= (log_offset_.load(boost::memory_order_relaxed))) {
             cv_.TimeWait(FLAGS_binlog_sync_wait_time);
@@ -582,47 +584,67 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
                 return;
             }
         }
+
         ::rtidb::api::TabletServer_Stub* stub;
         bool ok = rpc_client_->GetStub(node->endpoint, &stub);
         if (!ok) {
             LOG(WARNING, "fail to get rpc stub with endpoint %s", node->endpoint.c_str());
             continue;
         }
+        bool request_from_cache = false;
         ::rtidb::api::AppendEntriesRequest request;
-        request.set_tid(tid_);
-        request.set_pid(pid_);
         ::rtidb::api::AppendEntriesResponse response;
-        request.set_pre_log_index(node->last_sync_offset);
-        uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - node->last_sync_offset;
-        if (batchSize > (uint32_t)FLAGS_binlog_sync_batch_size) {
-            batchSize = FLAGS_binlog_sync_batch_size;
-        }
         uint64_t sync_log_offset = 0;
-        for (uint64_t i = 0; i < batchSize; i++) {
-            std::string buffer;
-            ::rtidb::base::Slice record;
-            ::rtidb::base::Status status = ReadNextRecord(node, &record, &buffer);
-            if (status.ok()) {
-                ::rtidb::api::LogEntry* entry = request.add_entries();
-                ok = entry->ParseFromString(record.ToString());
-                if (!ok) {
-                    LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+        if (node->cache.size() > 0) {
+            request_from_cache = true;
+            request = node->cache[0];
+            if (request.entries_size() <= 0) {
+                node->cache.clear(); 
+                LOG(WARNING, "empty append entry request from node %s cache", node->endpoint.c_str());
+                continue;
+            }
+            const ::rtidb::api::LogEntry& entry = request.entries(request.entries_size() - 1);
+            if (entry.log_index() <= node->last_sync_offset) {
+                LOG(WARNING, "duplicate log index from node %s cache", node->endpoint.c_str());
+                node->cache.clear();
+                continue;
+            }
+            sync_log_offset = entry.log_index();
+        }else {
+            request.set_tid(tid_);
+            request.set_pid(pid_);
+            request.set_pre_log_index(node->last_sync_offset);
+            uint32_t batchSize = log_offset_.load(boost::memory_order_relaxed) - node->last_sync_offset;
+            if (batchSize > (uint32_t)FLAGS_binlog_sync_batch_size) {
+                batchSize = FLAGS_binlog_sync_batch_size;
+            }
+            for (uint64_t i = 0; i < batchSize; i++) {
+                std::string buffer;
+                ::rtidb::base::Slice record;
+                ::rtidb::base::Status status = ReadNextRecord(node, &record, &buffer);
+                if (status.ok()) {
+                    ::rtidb::api::LogEntry* entry = request.add_entries();
+                    ok = entry->ParseFromString(record.ToString());
+                    if (!ok) {
+                        LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                        request.mutable_entries()->RemoveLast();
+                        break;
+                    }
+                    LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
+                    if (entry->log_index() <= node->last_sync_offset) {
+                        LOG(WARNING, "skip duplicate log offset %lld", entry->log_index());
+                        request.mutable_entries()->RemoveLast();
+                        continue;
+                    }
+                    sync_log_offset = entry->log_index();
+                }else if (status.IsWaitRecord()) {
+                    LOG(WARNING, "got a coffee time for path %s", path_.c_str());
+                    coffee_time = FLAGS_binlog_coffee_time;
+                    break;
+                }else {
+                    LOG(WARNING, "fail to get record %s", status.ToString().c_str());
                     break;
                 }
-                LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
-                if (entry->log_index() <= node->last_sync_offset) {
-                    LOG(WARNING, "skip duplicate log offset %lld", entry->log_index());
-                    request.mutable_entries()->RemoveLast();
-                    continue;
-                }
-                sync_log_offset = entry->log_index();
-            }else if (status.IsWaitRecord()) {
-                LOG(WARNING, "got a coffee time for path %s", path_.c_str());
-                coffee_time = FLAGS_binlog_coffee_time;
-                break;
-            }else {
-                LOG(WARNING, "fail to get record %s", status.ToString().c_str());
-                break;
             }
         }
         if (request.entries_size() <= 0) {
@@ -631,11 +653,15 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         ok = rpc_client_->SendRequest(stub, 
                                      &::rtidb::api::TabletServer_Stub::AppendEntries,
                                      &request, &response, 12, 1);
+
         if (ok && response.code() == 0) {
             LOG(DEBUG, "sync log to node %s to offset %lld",
                     node->endpoint.c_str(), sync_log_offset);
             node->last_sync_offset = sync_log_offset;
-        }else {
+            if (request_from_cache) {
+                node->cache.clear(); 
+            }
+        }else if(!request_from_cache){
             node->cache.push_back(request);
             LOG(WARNING, "fail to sync log to node %s", node->endpoint.c_str());
         }

@@ -92,6 +92,7 @@ struct ReplicaNode {
     SequentialFile* sf;
     Reader* reader;
     int32_t log_part_index;
+    // just hold one request
     std::vector<::rtidb::api::AppendEntriesRequest> cache;
     std::string buffer;
     bool log_matched;
