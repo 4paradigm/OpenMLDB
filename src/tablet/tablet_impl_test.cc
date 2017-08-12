@@ -429,24 +429,24 @@ TEST_F(TabletImplTest, DropTable) {
     request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(1);
-    request.set_wal(false);
+    request.set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response,
             &closure);
     ASSERT_EQ(0, response.code());
-
-    tablet.DropTable(NULL, &dr, &drs, &closure);
-    ASSERT_EQ(0, drs.code());
 
     ::rtidb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
     prequest.set_tid(id);
+    prequest.set_pid(1);
     ::rtidb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
-    ASSERT_EQ(10, presponse.code());
+    ASSERT_EQ(0, presponse.code());
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(0, drs.code());
     tablet.CreateTable(NULL, &request, &response,
             &closure);
     ASSERT_EQ(0, response.code());

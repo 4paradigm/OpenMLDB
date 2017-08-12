@@ -396,7 +396,9 @@ bool TabletImpl::MakeSnapshot(uint32_t tid, uint32_t pid,
     if (snapshot == NULL) {
         return false;
     }
-    return snapshot->Put(entry, offset, pk, ts);
+    bool ret = snapshot->Put(entry, offset, pk, ts);
+    snapshot->UnRef();
+    return ret;
 }
 
 void TabletImpl::CreateTable(RpcController* controller,
@@ -466,7 +468,9 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     // for tables_ 
     table->Ref();
     table->SetTerm(request->term());
-    std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
+    std::string table_binlog_path = FLAGS_binlog_root_path + "/"
+        + boost::lexical_cast<std::string>(request->tid()) 
+        +"_" + boost::lexical_cast<std::string>(request->pid());
     Snapshot* snapshot = new Snapshot(request->tid(), request->pid(), 0);
     snapshot->Ref();
     bool ok = snapshot->Init();
