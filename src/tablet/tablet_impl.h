@@ -65,6 +65,11 @@ public:
             ::rtidb::api::CreateTableResponse* response,
             Closure* done);
 
+    void LoadTable(RpcController* controller,
+            const ::rtidb::api::CreateTableRequest* request,
+            ::rtidb::api::CreateTableResponse* response,
+            Closure* done);
+
     void DropTable(RpcController* controller,
             const ::rtidb::api::DropTableRequest* request,
             ::rtidb::api::DropTableResponse* response,
@@ -89,10 +94,12 @@ public:
 private:
     // Get table by table id and Inc reference
     ::rtidb::storage::Table* GetTable(uint32_t tid, uint32_t pid);
+    ::rtidb::storage::Table* GetTable(uint32_t tid, uint32_t pid, bool use_lock);
 
     ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
 
     ::rtidb::storage::Snapshot* GetSnapshot(uint32_t tid, uint32_t pid);
+    ::rtidb::storage::Snapshot* GetSnapshot(uint32_t tid, uint32_t pid, bool use_lock);
     void GcTable(uint32_t tid, uint32_t pid);
 
     void ShowTables(const sofa::pbrpc::HTTPRequest& request,
@@ -111,6 +118,9 @@ private:
     void CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response);
 
+    void LoadTableInternal(const ::rtidb::api::CreateTableRequest* request,
+            ::rtidb::api::CreateTableResponse* response);
+
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
     bool MakeSnapshot(uint32_t tid, uint32_t pid,
@@ -118,6 +128,10 @@ private:
                       const std::string& pk,
                       uint64_t offset,
                       uint64_t ts);
+    int LoadSnapShot();
+    int LoadSnapShot(uint32_t tid, uint32_t pid);
+
+    int DeleteSnapshot(uint32_t tid, uint32_t pid);
 
 private:
     Tables tables_;

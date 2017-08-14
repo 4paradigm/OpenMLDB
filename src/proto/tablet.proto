@@ -209,6 +209,7 @@ service TabletServer {
 
     // table api for master
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+	rpc LoadTable(CreateTableRequest) returns (CreateTableResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
 
     // replication api for master

@@ -16,6 +16,8 @@
 #include <dirent.h>
 #include <errno.h>
 #include "logging.h"
+#include <string.h>
+#include <vector>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -50,6 +52,25 @@ inline static bool MkdirRecur(const std::string& dir_path) {
         seg = dir_path.find('/', beg);
     }
     return Mkdir(dir_path);
+}
+
+inline static int GetSubDir(const std::string& path, std::vector<std::string>& sub_dir) {
+    if (path.empty()) {
+        return -1;
+    }
+    DIR *dir = opendir(path.c_str());
+    if (dir == NULL) {
+        return -1;
+    }
+    struct dirent *ptr;
+    while ((ptr = readdir(dir)) != NULL) {
+        if(strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+            continue;
+        } else if (ptr->d_type == DT_DIR) {
+            sub_dir.push_back(ptr->d_name);
+        }
+    }
+    return 0;
 }
 
 }

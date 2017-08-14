@@ -82,6 +82,8 @@ public:
             uint32_t tid, uint32_t pid, ::rtidb::RpcClient* rpc_client);
     int MatchLogOffsetFromNode();        
     int SyncData(uint64_t log_offset);
+    FollowerReplicateNode(const FollowerReplicateNode&) = delete;
+    FollowerReplicateNode& operator= (const FollowerReplicateNode&) = delete;
 
 private:
     std::vector<::rtidb::api::AppendEntriesRequest> cache;
@@ -95,6 +97,8 @@ public:
     ~SnapshotReplicateNode(){}
     int MatchLogOffsetFromNode();        
     int SyncData(uint64_t log_offset);
+    SnapshotReplicateNode(const SnapshotReplicateNode&) = delete;
+    SnapshotReplicateNode& operator= (const SnapshotReplicateNode&) = delete;
 
 private:
     SnapshotFunc snapshot_fun_;

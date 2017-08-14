@@ -77,19 +77,7 @@ public:
     void AppendEntries(RpcController* controller,
             const ::rtidb::api::AppendEntriesRequest* request,
             ::rtidb::api::AppendEntriesResponse* response,
-            Closure* done) {
-        bool ok = replicator_.AppendEntries(request, response);
-        if (ok) {
-            LOG(INFO, "receive log entry from leader ok");
-            response->set_code(0);
-        }else {
-            LOG(INFO, "receive log entry from leader error");
-            response->set_code(1);
-        }
-        done->Run();
-        replicator_.Notify();
-    }
-
+            Closure* done) {} 
 private:
     ReplicatorRole role_;
     std::string path_;

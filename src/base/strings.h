@@ -135,6 +135,12 @@ static inline std::string HumanReadableString(int64_t num) {
     return NumToString(v) + prefix[shift];
 }
 
+static inline bool IsNumber(const std::string& str) {
+    std::string::const_iterator it = str.begin();
+    while (it != str.end() && std::isdigit(*it)) ++it;
+    return !str.empty() && it == str.end();
+}
+
 
 }
 }
