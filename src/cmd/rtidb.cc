@@ -90,7 +90,7 @@ void StartTablet() {
 // the input format like put 1 1 key time value
 void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {
-        std::cout << "Bad put format" << std::endl;
+        std::cout << "Bad put format, eg put tid pid key time value" << std::endl;
         return;
     }
     try {

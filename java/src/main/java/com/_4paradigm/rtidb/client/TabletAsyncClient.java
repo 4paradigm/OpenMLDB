@@ -37,14 +37,14 @@ public class TabletAsyncClient {
         iface = Tablet.TabletServer.newStub(channel);
     }
 
-    public void put(int tid, String key, long time, byte[] bytes, RpcCallback<Tablet.PutResponse> done) {
-        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time)
+    public void put(int tid, int pid, String key, long time, byte[] bytes, RpcCallback<Tablet.PutResponse> done) {
+        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPid(pid).setPk(key).setTid(tid).setTime(time)
                 .setValue(ByteString.copyFrom(bytes)).build();
         iface.put(ctrl, resquest, done);
     }
 
-    public void put(int tid, String key, long time, String value, RpcCallback<Tablet.PutResponse> done) {
-        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time)
+    public void put(int tid,  int pid,String key, long time, String value, RpcCallback<Tablet.PutResponse> done) {
+        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPid(pid).setPk(key).setTid(tid).setTime(time)
                 .setValue(ByteString.copyFrom(value.getBytes())).build();
         iface.put(ctrl, resquest, done);
     }
@@ -55,19 +55,21 @@ public class TabletAsyncClient {
         iface.createTable(ctrl, request, done);
     }
 
-    public void scan(int tid, String pk, long st, long et, RpcCallback<Tablet.ScanResponse> done) {
+    public void scan(int tid, int pid,String pk, long st, long et, RpcCallback<Tablet.ScanResponse> done) {
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(pk);
         builder.setTid(tid);
         builder.setEt(et);
         builder.setSt(st);
+        builder.setPid(pid);
         Tablet.ScanRequest request = builder.build();
         iface.scan(ctrl, request, done);
     }
     
-    public void dropTable(int tid, RpcCallback<Tablet.DropTableResponse> done) {
+    public void dropTable(int tid, int pid,RpcCallback<Tablet.DropTableResponse> done) {
         Tablet.DropTableRequest.Builder builder = Tablet.DropTableRequest.newBuilder();
         builder.setTid(tid);
+        builder.setPid(pid);
         Tablet.DropTableRequest request = builder.build();
         iface.dropTable(ctrl, request, done);
     }
