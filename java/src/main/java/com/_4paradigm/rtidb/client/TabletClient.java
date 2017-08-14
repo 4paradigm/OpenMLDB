@@ -32,10 +32,9 @@ public class TabletClient {
         iface = Tablet.TabletServer.newBlockingStub(channel);
     }
 
-    public boolean put(int tid, String key, long time, byte[] bytes) {
-        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time)
+    public boolean put(int tid, int pid, String key, long time, byte[] bytes) {
+        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setPid(pid).setTime(time)
                 .setValue(ByteString.copyFrom(bytes)).build();
-        
         try {
             Tablet.PutResponse response = iface.put(ctrl, resquest);
             if (response.getCode() == 0) {
@@ -48,8 +47,8 @@ public class TabletClient {
         return false;
     }
 
-    public boolean put(int tid, String key, long time, String value) {
-        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setTid(tid).setTime(time)
+    public boolean put(int tid, int pid, String key, long time, String value) {
+        Tablet.PutRequest resquest = Tablet.PutRequest.newBuilder().setPk(key).setPid(pid).setTid(tid).setTime(time)
                 .setValue(ByteString.copyFrom(value.getBytes())).build();
         try {
             Tablet.PutResponse response = iface.put(ctrl, resquest);
@@ -77,12 +76,13 @@ public class TabletClient {
         return false;
     }
 
-    public KvIterator scan(int tid, String pk, long st, long et) {
+    public KvIterator scan(int tid,int pid,String pk, long st, long et) {
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(pk);
         builder.setTid(tid);
         builder.setEt(et);
         builder.setSt(st);
+        builder.setPid(pid);
         Tablet.ScanRequest request = builder.build();
         try {
             Tablet.ScanResponse response = iface.scan(ctrl, request);
@@ -96,14 +96,14 @@ public class TabletClient {
         return null;
     }
 
-
-    public boolean dropTable(int tid) {
+    public boolean dropTable(int tid, int pid) {
         Tablet.DropTableRequest.Builder builder = Tablet.DropTableRequest.newBuilder();
         builder.setTid(tid);
+        builder.setPid(pid);
         Tablet.DropTableRequest request = builder.build();
         try {
             Tablet.DropTableResponse response = iface.dropTable(ctrl, request);
-            if(response.getCode() == 0) {
+            if (response.getCode() == 0) {
                 return true;
             }
         } catch (ServiceException e) {

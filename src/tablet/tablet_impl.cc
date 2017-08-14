@@ -278,12 +278,21 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t end_time = request->et();
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
+    uint64_t last_time = 0;
     while (it->Valid()) {
         scount ++;
         LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
         if (it->GetKey() <= end_time) {
             break;
         }
+        // skip duplicate record 
+        if (scount > 1 && last_time == it->GetKey()) {
+            LOG(DEBUG, "filter duplicate record for key %s with ts %lld", request->pk().c_str(), it->GetKey());
+            last_time = it->GetKey();
+            it->Next();
+            continue;
+        }
+        last_time = it->GetKey();
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
         total_block_size += it->GetValue()->size;
         it->Next();
@@ -460,7 +469,9 @@ bool TabletImpl::MakeSnapshot(uint32_t tid, uint32_t pid,
     if (snapshot == NULL) {
         return false;
     }
-    return snapshot->Put(entry, offset, pk, ts);
+    bool ret = snapshot->Put(entry, offset, pk, ts);
+    snapshot->UnRef();
+    return ret;
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
@@ -917,6 +928,7 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
     writer.StartObject();
     writer.Key("tables");
     writer.StartArray();
+    LogReplicator* replicator = NULL;
     for (size_t i = 0; i < tmp_tables.size(); i++) {
         Table* table = tmp_tables[i];
         writer.StartObject();
@@ -926,6 +938,12 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         writer.Uint(table->GetId());
         writer.Key("pid");
         writer.Uint(table->GetPid());
+        replicator = GetReplicator(table->GetId(), table->GetPid());
+        if (replicator != NULL) {
+            writer.Key("log_offset");
+            writer.Uint(replicator->GetLogOffset());
+            replicator->UnRef();
+        }
         writer.Key("seg_cnt");
         writer.Uint(table->GetSegCnt());
         uint64_t total = 0;

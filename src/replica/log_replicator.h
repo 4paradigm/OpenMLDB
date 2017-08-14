@@ -123,6 +123,10 @@ public:
     void SetOffset(uint64_t offset);
     uint64_t GetOffset();
 
+    inline uint64_t GetLogOffset() {
+        return  log_offset_.load(boost::memory_order_relaxed);
+    }
+
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 

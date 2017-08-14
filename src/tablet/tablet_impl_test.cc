@@ -15,6 +15,8 @@
 namespace rtidb {
 namespace tablet {
 
+uint32_t counter = 10;
+
 class MockClosure : public ::google::protobuf::Closure {
 
 public:
@@ -31,13 +33,15 @@ public:
     ~TabletImplTest() {}
 };
 
+
 TEST_F(TabletImplTest, TTL) {
+    uint32_t id = counter++;
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     TabletImpl tablet;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
-    request.set_tid(1);
+    request.set_tid(id);
     request.set_pid(1);
     request.set_wal(false);
     // 1 minutes
@@ -52,7 +56,7 @@ TEST_F(TabletImplTest, TTL) {
         prequest.set_pk("test1");
         prequest.set_time(now);
         prequest.set_value("test1");
-        prequest.set_tid(1);
+        prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse,
@@ -65,7 +69,7 @@ TEST_F(TabletImplTest, TTL) {
         prequest.set_pk("test1");
         prequest.set_time(now - 2 * 60 * 1000);
         prequest.set_value("test2");
-        prequest.set_tid(1);
+        prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse,
@@ -78,12 +82,13 @@ TEST_F(TabletImplTest, TTL) {
 
 
 TEST_F(TabletImplTest, CreateTable) {
+    uint32_t id = counter++;
     TabletImpl tablet;
     tablet.Init();
     {
         ::rtidb::api::CreateTableRequest request;
         request.set_name("t0");
-        request.set_tid(1);
+        request.set_tid(id);
         request.set_pid(1);
         request.set_wal(false);
         request.set_ttl(0);
@@ -112,11 +117,11 @@ TEST_F(TabletImplTest, CreateTable) {
 
 TEST_F(TabletImplTest, Put) {
     TabletImpl tablet;
-
+    uint32_t id = counter++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
-    request.set_tid(1);
+    request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(0);
     request.set_wal(false);
@@ -136,21 +141,20 @@ TEST_F(TabletImplTest, Put) {
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
     ASSERT_EQ(10, presponse.code());
-    prequest.set_tid(1);
+    prequest.set_tid(id);
     prequest.set_pid(1);
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
     ASSERT_EQ(0, presponse.code());
 }
 
-
-TEST_F(TabletImplTest, Scan_with_limit) {
+TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     TabletImpl tablet;
-
+    uint32_t id = counter++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
-    request.set_tid(1);
+    request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(0);
     request.set_wal(false);
@@ -164,7 +168,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
         prequest.set_pk("test1");
         prequest.set_time(9527);
         prequest.set_value("test0");
-        prequest.set_tid(1);
+        prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse,
@@ -177,7 +181,19 @@ TEST_F(TabletImplTest, Scan_with_limit) {
         prequest.set_pk("test1");
         prequest.set_time(9528);
         prequest.set_value("test0");
-        prequest.set_tid(1);
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9528);
+        prequest.set_value("test0");
+        prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse,
@@ -190,7 +206,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
         prequest.set_pk("test1");
         prequest.set_time(9529);
         prequest.set_value("test0");
-        prequest.set_tid(1);
+        prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
         tablet.Put(NULL, &prequest, &presponse,
@@ -198,7 +214,73 @@ TEST_F(TabletImplTest, Scan_with_limit) {
         ASSERT_EQ(0, presponse.code());
     }
     ::rtidb::api::ScanRequest sr;
-    sr.set_tid(1);
+    sr.set_tid(id);
+    sr.set_pid(1);
+    sr.set_pk("test1");
+    sr.set_st(9530);
+    sr.set_et(9526);
+    ::rtidb::api::ScanResponse srp;
+    tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(0, srp.code());
+    ASSERT_EQ(3, srp.count());
+}
+
+TEST_F(TabletImplTest, Scan_with_limit) {
+    TabletImpl tablet;
+    uint32_t id = counter++;
+
+    tablet.Init();
+    ::rtidb::api::CreateTableRequest request;
+    request.set_name("t0");
+    request.set_tid(id);
+    request.set_pid(1);
+    request.set_ttl(0);
+    request.set_wal(false);
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9527);
+        prequest.set_value("test0");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9528);
+        prequest.set_value("test0");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9529);
+        prequest.set_value("test0");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    ::rtidb::api::ScanRequest sr;
+    sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(9530);
@@ -212,11 +294,11 @@ TEST_F(TabletImplTest, Scan_with_limit) {
 
 TEST_F(TabletImplTest, Scan) {
     TabletImpl tablet;
-
+    uint32_t id = counter++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
-    request.set_tid(1);
+    request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(0);
     request.set_wal(false);
@@ -236,7 +318,7 @@ TEST_F(TabletImplTest, Scan) {
     ASSERT_EQ(0, srp.pairs().size());
     ASSERT_EQ(10, srp.code());
 
-    sr.set_tid(1);
+    sr.set_tid(id);
     sr.set_pid(1);
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
@@ -253,7 +335,7 @@ TEST_F(TabletImplTest, Scan) {
                 &closure);
 
         ASSERT_EQ(10, presponse.code());
-        prequest.set_tid(1);
+        prequest.set_tid(id);
         prequest.set_pid(1);
         tablet.Put(NULL, &prequest, &presponse,
                 &closure);
@@ -272,7 +354,7 @@ TEST_F(TabletImplTest, Scan) {
                 &closure);
 
         ASSERT_EQ(10, presponse.code());
-        prequest.set_tid(1);
+        prequest.set_tid(id);
         prequest.set_pid(1);
 
         tablet.Put(NULL, &prequest, &presponse,
@@ -289,11 +371,11 @@ TEST_F(TabletImplTest, Scan) {
 
 TEST_F(TabletImplTest, GC) {
     TabletImpl tablet;
-
+    uint32_t id = counter ++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
-    request.set_tid(1);
+    request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(1);
     request.set_wal(false);
@@ -307,7 +389,7 @@ TEST_F(TabletImplTest, GC) {
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
-    prequest.set_tid(1);
+    prequest.set_tid(id);
     prequest.set_pid(1);
     ::rtidb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse,
@@ -317,7 +399,7 @@ TEST_F(TabletImplTest, GC) {
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
     ::rtidb::api::ScanRequest sr;
-    sr.set_tid(1);
+    sr.set_tid(id);
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(now);
@@ -332,10 +414,11 @@ TEST_F(TabletImplTest, GC) {
 
 TEST_F(TabletImplTest, DropTable) {
     TabletImpl tablet;
+    uint32_t id = counter++;
     tablet.Init();
     MockClosure closure;
     ::rtidb::api::DropTableRequest dr;
-    dr.set_tid(1);
+    dr.set_tid(id);
     dr.set_pid(1);
     ::rtidb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
@@ -343,35 +426,39 @@ TEST_F(TabletImplTest, DropTable) {
 
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
-    request.set_tid(1);
+    request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(1);
-    request.set_wal(false);
+    request.set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response,
             &closure);
     ASSERT_EQ(0, response.code());
 
-    tablet.DropTable(NULL, &dr, &drs, &closure);
-    ASSERT_EQ(0, drs.code());
-
     ::rtidb::api::PutRequest prequest;
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
-    prequest.set_tid(1);
+    prequest.set_tid(id);
+    prequest.set_pid(1);
     ::rtidb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
-    ASSERT_EQ(10, presponse.code());
+    ASSERT_EQ(0, presponse.code());
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(0, drs.code());
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
 }
 
 TEST_F(TabletImplTest, DropTableFollower) {
+    uint32_t id = counter++;
     TabletImpl tablet;
     tablet.Init();
     MockClosure closure;
     ::rtidb::api::DropTableRequest dr;
-    dr.set_tid(1);
+    dr.set_tid(id);
     dr.set_pid(1);
     ::rtidb::api::DropTableResponse drs;
     tablet.DropTable(NULL, &dr, &drs, &closure);
@@ -379,7 +466,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
 
     ::rtidb::api::CreateTableRequest request;
     request.set_name("t0");
-    request.set_tid(1);
+    request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(1);
     request.set_wal(false);
@@ -393,7 +480,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
-    prequest.set_tid(1);
+    prequest.set_tid(id);
     prequest.set_pid(1);
     ::rtidb::api::PutResponse presponse;
     tablet.Put(NULL, &prequest, &presponse,
@@ -406,7 +493,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
     prequest.set_pk("test1");
     prequest.set_time(9527);
     prequest.set_value("test0");
-    prequest.set_tid(1);
+    prequest.set_tid(id);
     prequest.set_pid(1);
     tablet.Put(NULL, &prequest, &presponse,
             &closure);

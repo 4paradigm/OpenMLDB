@@ -19,7 +19,7 @@
 
 #define RTIDB_VERSION_MAJOR 0
 #define RTIDB_VERSION_MINOR 9
-#define RTIDB_VERSION_BUG 5
+#define RTIDB_VERSION_BUG 6
 
 #endif /* !VERSION_H */
 

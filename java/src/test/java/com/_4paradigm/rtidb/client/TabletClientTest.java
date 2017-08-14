@@ -20,9 +20,9 @@ public class TabletClientTest {
             e.printStackTrace();
             Assert.assertFalse(true);
         }
-        boolean ok = client.createTable("tj0", 20, 0, 0);
+        boolean ok = client.createTable("tj0", 20, 1, 0);
         Assert.assertTrue(ok);
-        ok = client.createTable("tj0", 20, 0, 0);
+        ok = client.createTable("tj0", 20, 1, 0);
         Assert.assertFalse(ok);
         client.close();
     }
@@ -37,10 +37,10 @@ public class TabletClientTest {
             e.printStackTrace();
             Assert.assertFalse(true);
         }
-        Assert.assertFalse(client.put(22, "pk", 9527, "test0"));
-        boolean ok = client.createTable("tj1", 21, 0, 0);
+        Assert.assertFalse(client.put(22, 1, "pk", 9527, "test0"));
+        boolean ok = client.createTable("tj1", 21, 1, 0);
         Assert.assertTrue(ok);
-        ok = client.put(21, "pk", 9527, "test0");
+        ok = client.put(21, 1,"pk", 9527, "test0");
         Assert.assertTrue(ok);
         client.close();
     }
@@ -55,13 +55,13 @@ public class TabletClientTest {
             e.printStackTrace();
             Assert.assertFalse(true);
         }
-        KvIterator it = client.scan(24, "pk", 9527, 9526);
+        KvIterator it = client.scan(24, 1, "pk", 9527, 9526);
         Assert.assertNull(it);
-        boolean ok = client.createTable("tj1", 23, 0, 0);
+        boolean ok = client.createTable("tj1", 23, 1, 0);
         Assert.assertTrue(ok);
-        ok = client.put(23, "pk", 9527, "test0");
+        ok = client.put(23, 1,"pk", 9527, "test0");
         Assert.assertTrue(ok);
-        it = client.scan(23, "pk", 9527l, 9526l);
+        it = client.scan(23, 1, "pk", 9527l, 9526l);
         Assert.assertTrue(it != null);
         Assert.assertTrue(it.valid());
         Assert.assertEquals(9527l, it.getKey());
@@ -84,11 +84,11 @@ public class TabletClientTest {
             e.printStackTrace();
             Assert.assertFalse(true);
         }
-        boolean ok = client.dropTable(9527);
+        boolean ok = client.dropTable(9527, 1);
         Assert.assertFalse(ok);
-        ok = client.createTable("tj1", 9527, 0, 0);
+        ok = client.createTable("tj1", 9527, 1, 0);
         Assert.assertTrue(ok);
-        ok = client.dropTable(9527);
+        ok = client.dropTable(9527, 1);
         Assert.assertTrue(ok);
         client.close();
     }

@@ -30,7 +30,7 @@ do
     ./build/bin/rtidb --cmd="scan 1 1 test$k 5 0" --role=client --endpoint=127.0.0.1:9426 --interactive=false
 done
 
-./build/bin/rtidb --cmd="drop 1" --role=client --endpoint=127.0.0.1:9426 --interactive=false
+./build/bin/rtidb --cmd="drop 1 1" --role=client --endpoint=127.0.0.1:9426 --interactive=false
 
 sleep 4 
 

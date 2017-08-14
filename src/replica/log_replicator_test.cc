@@ -20,10 +20,15 @@
 #include "logging.h"
 #include "thread_pool.h"
 #include <sofa/pbrpc/pbrpc.h>
-
+#include "storage/table.h"
+#include "storage/segment.h"
+#include "storage/ticket.h"
 #include "timer.h"
 
 using ::baidu::common::ThreadPool;
+using ::rtidb::storage::Table;
+using ::rtidb::storage::Ticket;
+using ::rtidb::storage::DataBlock;
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
 using ::baidu::common::INFO;
@@ -32,25 +37,28 @@ using ::baidu::common::DEBUG;
 namespace rtidb {
 namespace replica {
 
+const std::vector<std::string> g_endpoints;
+
 class MockTabletImpl : public ::rtidb::api::TabletServer {
 
 public:
     MockTabletImpl(const ReplicatorRole& role,
                    const std::string& path,
                    const std::vector<std::string>& endpoints): role_(role),
-    path_(path), endpoints_(endpoints), replicator_(path_, endpoints_, role_, 1, 1){
+    path_(path), endpoints_(endpoints), replicator_(path_, endpoints_, role_, 1, 1),
+    table_(NULL){
     }
 
     MockTabletImpl(const ReplicatorRole& role,
-                   const std::string& path,
-                   ApplyLogFunc func): role_(role),
-    path_(path), func_(func), replicator_(path_, func_, role_, 1, 1){
+                   const std::string& path): role_(role),
+    path_(path), func_(boost::bind(&MockTabletImpl::ApplyLog, this, _1)), replicator_(path_, func_, role_, 1, 1), table_(NULL){
     }
     ~MockTabletImpl() {
         replicator_.Stop();
     }
-
     bool Init() {
+        table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+        table_->Init();
         return replicator_.Init();
     }
 
@@ -77,14 +85,35 @@ public:
     void AppendEntries(RpcController* controller,
             const ::rtidb::api::AppendEntriesRequest* request,
             ::rtidb::api::AppendEntriesResponse* response,
-            Closure* done) {} 
+            Closure* done) {
+        bool ok = replicator_.AppendEntries(request, response);
+        if (ok) {
+            LOG(INFO, "receive log entry from leader ok");
+            response->set_code(0);
+        }else {
+            LOG(INFO, "receive log entry from leader error");
+            response->set_code(1);
+        }
+        done->Run();
+        replicator_.Notify();
+    }
+
+    bool ApplyLog(const ::rtidb::api::LogEntry& entry) {
+        table_->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
+        return true;
+    }
+
+    Table* GetTable() {
+        return table_;
+    }
+
 private:
     ReplicatorRole role_;
     std::string path_;
     std::vector<std::string> endpoints_;
     ApplyLogFunc func_;
     LogReplicator replicator_;
-
+    ::rtidb::storage::Table* table_;
 };
 
 bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) {
@@ -143,35 +172,17 @@ TEST_F(LogReplicatorTest, BenchMark) {
     replicator.Stop();
 }
 
-bool MockApplyLog(const ::rtidb::api::LogEntry& entry) {
-    LOG(INFO, "apply entry pk %s, value %s , ts %lld", entry.pk().c_str(), entry.value().c_str(), entry.ts());
-    return true;
-}
 
 TEST_F(LogReplicatorTest, LeaderAndFollower) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server0(options);
     sofa::pbrpc::RpcServer rpc_server1(options);
+    Table* t7 = NULL;
     {
-
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, boost::bind(MockApplyLog, _1)); 
-        bool ok = follower->Init();
-        ASSERT_TRUE(ok);
-       if (!rpc_server0.RegisterService(follower)) {
-            ASSERT_TRUE(false);
-        }
-        ok =rpc_server0.Start(follower_addr);
-        ASSERT_TRUE(ok);
-        LOG(INFO, "start follower");
-
-    }
-    {
-
-        std::string follower_addr = "127.0.0.1:18528";
-        std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder, boost::bind(MockApplyLog, _1)); 
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
+                folder);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (!rpc_server1.RegisterService(follower)) {
@@ -180,6 +191,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ok =rpc_server1.Start(follower_addr);
         ASSERT_TRUE(ok);
         LOG(INFO, "start follower");
+        t7 = follower->GetTable();
     }
 
     std::vector<std::string> endpoints;
@@ -194,20 +206,101 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     entry.set_ts(9527);
     ok = leader.AppendEntry(entry);
     entry.set_value("value2");
+    entry.set_ts(9526);
     ok = leader.AppendEntry(entry);
     entry.set_value("value3");
+    entry.set_ts(9525);
     ok = leader.AppendEntry(entry);
     entry.set_value("value4");
+    entry.set_ts(9524);
     ok = leader.AppendEntry(entry);
-    entry.set_value("value5");
-    ok = leader.AppendEntry(entry);
-    entry.set_value("value6");
-    ok = leader.AppendEntry(entry);
+    ASSERT_TRUE(ok);
     leader.Notify();
     leader.AddReplicateNode("127.0.0.1:18528");
+    sleep(2);
+    Table* t8 = NULL;
+    {
+        std::string follower_addr = "127.0.0.1:18528";
+        std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+        if (!rpc_server0.RegisterService(follower)) {
+            ASSERT_TRUE(false);
+        }
+        ok =rpc_server0.Start(follower_addr);
+        ASSERT_TRUE(ok);
+        LOG(INFO, "start follower");
+        t8 = follower->GetTable();
+    }
     sleep(4);
     leader.Stop();
-    ASSERT_TRUE(ok);
+    {
+        Ticket ticket;
+        // check 18527
+        Table::Iterator* it = t7->NewIterator("test_pk", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        DataBlock* value = it->GetValue();
+        std::string value_str(value->data, value->size);
+        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value->data, value->size);
+        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ(9526, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str2(value->data, value->size);
+        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ(9525, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str3(value->data, value->size);
+        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ(9524, it->GetKey());
+
+    }
+    {
+        Ticket ticket;
+        // check 18527
+        Table::Iterator* it = t8->NewIterator("test_pk", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        DataBlock* value = it->GetValue();
+        std::string value_str(value->data, value->size);
+        ASSERT_EQ("value1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value->data, value->size);
+        ASSERT_EQ("value2", value_str1);
+        ASSERT_EQ(9526, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str2(value->data, value->size);
+        ASSERT_EQ("value3", value_str2);
+        ASSERT_EQ(9525, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str3(value->data, value->size);
+        ASSERT_EQ("value4", value_str3);
+        ASSERT_EQ(9524, it->GetKey());
+
+    }
 }
 
 }
