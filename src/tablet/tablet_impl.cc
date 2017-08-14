@@ -114,8 +114,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() != ::rtidb::storage::TSNORMAL 
-            && table->GetTableStat() != ::rtidb::storage::TSPAUSING) {
+    if (table->GetTableStat() == ::rtidb::storage::TSLOADING) {
         table->UnRef();
         LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
                       request->tid(), request->pid());
@@ -144,6 +143,7 @@ void TabletImpl::Put(RpcController* controller,
             entry.set_pk(request->pk());
             entry.set_value(request->value());
             replicator->AppendEntry(entry);
+            entry.set_log_index(replicator->GetOffset() + 1);
         } while(false);
     }
     table->UnRef();
@@ -171,8 +171,7 @@ void TabletImpl::BatchGet(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() != ::rtidb::storage::TSNORMAL 
-            && table->GetTableStat() != ::rtidb::storage::TSPAUSING) {
+    if (table->GetTableStat() == ::rtidb::storage::TSLOADIN) {
         table->UnRef();
         LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
                       request->tid(), request->pid());
