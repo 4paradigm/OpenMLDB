@@ -64,9 +64,12 @@ class TestRtidbClient(unittest.TestCase):
     self.assertFalse(ok)
     ok = db.create_table("py_test3", 105, 1, 0)
     self.assertTrue(ok)
+    ok = db.put(105, 1, "test0", 9527, "value0")
+    self.assertTrue(ok)
     ok = db.drop_table(105, 1)
     self.assertTrue(ok)
-
+    ok = db.create_table("py_test3", 105, 1, 0)
+    self.assertTrue(ok)
 
 if __name__ == '__main__':
     unittest.main()
