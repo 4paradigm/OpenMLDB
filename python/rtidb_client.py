@@ -19,6 +19,7 @@ class RtidbClient(object):
   def __init__(self, endpoint):
     self.db_ = rtidb_so.NewClient(endpoint)
     rtidb_so.Put.argtypes=[c_void_p,  c_uint32, c_uint32, c_char_p, c_ulong, c_char_p]
+    rtidb_so.DropTable.argtypes=[c_void_p,  c_uint32, c_uint32]
     rtidb_so.Scan.argtypes=[c_void_p,  c_uint32, c_uint32, c_char_p, c_ulong, c_ulong]
 
   def create_table(self, name, tid, pid, ttl):
@@ -40,13 +41,12 @@ class RtidbClient(object):
     return KvIterator(it)
 
   def drop_table(self, tid, pid):
-    if rtidb_so.DropTable(self.db_, tid):
+    if rtidb_so.DropTable(self.db_, tid, pid):
       return True
     return False
 
   def __del__(self):
     rtidb_so.FreeClient(self.db_)
-
 
 class KvIterator(object):
   """
