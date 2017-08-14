@@ -95,8 +95,12 @@ public:
 
     bool Init();
 
+    // the slave node receives master log entries
+    bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
+                       ::rtidb::api::AppendEntriesResponse* response);
+
     // the master node append entry
-    bool AppendEntry(const ::rtidb::api::LogEntry& entry);
+    bool AppendEntry(::rtidb::api::LogEntry& entry);
 
     //  data to slave nodes
     void Notify();

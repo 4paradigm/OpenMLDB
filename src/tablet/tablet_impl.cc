@@ -143,7 +143,6 @@ void TabletImpl::Put(RpcController* controller,
             entry.set_pk(request->pk());
             entry.set_value(request->value());
             replicator->AppendEntry(entry);
-            entry.set_log_index(replicator->GetOffset() + 1);
         } while(false);
     }
     table->UnRef();
@@ -171,7 +170,7 @@ void TabletImpl::BatchGet(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() == ::rtidb::storage::TSLOADIN) {
+    if (table->GetTableStat() == ::rtidb::storage::TSLOADING) {
         table->UnRef();
         LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
                       request->tid(), request->pid());
@@ -412,30 +411,8 @@ void TabletImpl::AppendEntries(RpcController* controller,
         done->Run();
         return;
     }
-    uint32_t last_log_offset = replicator->GetOffset();
-    if (request->pre_log_index() != last_log_offset) {
-        table->UnRef();
-        replicator->UnRef();
-        LOG(WARNING, "log mismatch! pre_log_index[%lu], come log index[%lu] tid[%u] pid[%u]", 
-                      last_log_offset, request->pre_log_index(), request->tid(), request->pid());
-        response->set_log_offset(last_log_offset);
-        response->set_code(-1);
-        response->set_msg("log index does not match");
-        done->Run();
-        return;
-    }
-    int success_add_num = 0;
-    for (int idx = 0; idx < request->entries_size(); idx++) {
-        const ::rtidb::api::LogEntry& entry = request->entries(idx);
-        table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().length());
-        if (!replicator->AppendEntry(entry)) {
-            // todo:delete table key if log write failed.
-            break;
-        }
-        success_add_num++;
-    }
-    response->set_log_offset(replicator->GetOffset());
-    if (success_add_num < request->entries_size()) {
+    bool ok = replicator->AppendEntries(request, response);
+    if (!ok) {
         response->set_code(-1);
         response->set_msg("fail to append entries to replicator");
         done->Run();
