@@ -247,8 +247,8 @@ void LogReplicator::MatchLogOffset() {
         if (node->IsLogMatched()) {
             continue;
         }
-        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && (table_->GetTableStat() == ::rtidb::storage::TSPAUSING
-                || table_->GetTableStat() == ::rtidb::storage::TSPAUSED)) {
+        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && (table_->GetTableStat() == ::rtidb::storage::kPausing
+                || table_->GetTableStat() == ::rtidb::storage::kPaused)) {
             all_matched = false;
             continue;
         }
@@ -272,8 +272,8 @@ void LogReplicator::ReplicateToNode(ReplicateNode* node) {
             cv_.TimeWait(coffee_time);
             coffee_time = 0;
         }
-        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::TSPAUSING) {
-            table_->SetTableStat(::rtidb::storage::TSPAUSED);
+        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
+            table_->SetTableStat(::rtidb::storage::kPaused);
             node->SetLogMatch(false);
             break;
         }

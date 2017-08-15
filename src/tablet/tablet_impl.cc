@@ -26,7 +26,6 @@
 #include "timer.h"
 
 using ::baidu::common::INFO;
-using ::baidu::common::FATAL;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 using ::rtidb::storage::Table;
@@ -114,7 +113,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() == ::rtidb::storage::TSLOADING) {
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         table->UnRef();
         LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
                       request->tid(), request->pid());
@@ -170,7 +169,7 @@ void TabletImpl::BatchGet(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() == ::rtidb::storage::TSLOADING) {
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         table->UnRef();
         LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
                       request->tid(), request->pid());
@@ -253,7 +252,7 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() == ::rtidb::storage::TSLOADING) {
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         table->UnRef();
         LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
                       request->tid(), request->pid());
@@ -355,16 +354,16 @@ void TabletImpl::PauseShnapshot(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() != ::rtidb::storage::TSNORMAL) {
+    if (table->GetTableStat() != ::rtidb::storage::kNormal) {
         LOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
                 table->GetTableStat(), request->tid(), request->pid());
         table->UnRef();
         response->set_code(-2);
-        response->set_msg("table status is not TSNORMAL");
+        response->set_msg("table status is not kNormal");
         done->Run();
         return;
     }
-    table->SetTableStat(::rtidb::storage::TSPAUSING);
+    table->SetTableStat(::rtidb::storage::kPausing);
     table->UnRef();
     response->set_code(0);
     response->set_msg("ok");
@@ -388,7 +387,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() != ::rtidb::storage::TSPAUSED) {
+    if (table->GetTableStat() != ::rtidb::storage::kPaused) {
         table->UnRef();
         response->set_code(-3);
         response->set_msg("waiting for pause!");
@@ -418,7 +417,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         response->set_msg("fail to add endpoint");
         done->Run();
     }  
-    table->SetTableStat(::rtidb::storage::TSNORMAL);
+    table->SetTableStat(::rtidb::storage::kNormal);
     table->UnRef();
 }
 
@@ -535,24 +534,24 @@ void TabletImpl::LoadTable(RpcController* controller,
     // load snapshot data
     Table* table = GetTable(tid, pid);        
     if (table == NULL) {
-        LOG(FATAL, "table with tid %ld and pid %ld does not exist", tid, pid);
+        LOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
         return; 
     }
     Snapshot* snapshot = GetSnapshot(tid, pid);
     if (snapshot == NULL) {
         table->UnRef();
-        LOG(FATAL, "snapshot with tid %ld and pid %ld does not exist", tid, pid);
+        LOG(WARNING, "snapshot with tid %ld and pid %ld does not exist", tid, pid);
         return; 
     }
     LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
     if (replicator == NULL) {
         table->UnRef();
         snapshot->UnRef();
-        LOG(FATAL, "replicator with tid %ld and pid %ld does not exist", tid, pid);
+        LOG(WARNING, "replicator with tid %ld and pid %ld does not exist", tid, pid);
         return;
     }
     snapshot->Recover(table);
-    table->SetTableStat(::rtidb::storage::TSNORMAL);
+    table->SetTableStat(::rtidb::storage::kNormal);
     replicator->SetOffset(snapshot->GetOffset());
     // start replicate task
     replicator->MatchLogOffset();
@@ -590,7 +589,7 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
     // for tables_ 
     table->Ref();
     table->SetTerm(request->term());
-    table->SetTableStat(::rtidb::storage::TSLOADING);
+    table->SetTableStat(::rtidb::storage::kLoading);
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
     if (table->IsLeader() && table->GetWal()) {
@@ -696,7 +695,7 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     // for tables_ 
     table->Ref();
     table->SetTerm(request->term());
-    table->SetTableStat(::rtidb::storage::TSNORMAL);
+    table->SetTableStat(::rtidb::storage::kNormal);
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     Snapshot* snapshot = new Snapshot(request->tid(), request->pid(), 0);
     snapshot->Ref();
@@ -1045,7 +1044,7 @@ int TabletImpl::LoadSnapShot() {
         uint32_t tid = boost::lexical_cast<uint32_t>(vec[0]);
         uint32_t pid = boost::lexical_cast<uint32_t>(vec[1]);
         if (LoadSnapShot(tid, pid) < 0) {
-            LOG(FATAL, "load snapshot faild! tid[%u] pid[%u]", tid, pid);
+            LOG(WARNING, "load snapshot faild! tid[%u] pid[%u]", tid, pid);
         }
     }
     return 0;
@@ -1063,7 +1062,7 @@ int TabletImpl::LoadSnapShot(uint32_t tid, uint32_t pid) {
         if (iter != snapshots_.end()) {
             std::map<uint32_t, Snapshot*>::iterator pos = iter->second.find(pid);
             if (pos != iter->second.end()) {
-                LOG(FATAL, "snapshot already exists! tid[%u] pid[%u]", tid, pid);
+                LOG(WARNING, "snapshot already exists! tid[%u] pid[%u]", tid, pid);
                 snapshot->UnRef();
                 return -1;
             }

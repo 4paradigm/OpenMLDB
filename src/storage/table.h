@@ -24,11 +24,11 @@ enum TableGcType {
 };
 
 enum TableStat {
-    TSUNDEFINED = 0,
-    TSNORMAL,
-    TSLOADING,
-    TSPAUSING,
-    TSPAUSED
+    kUndefined = 0,
+    kNormal,
+    kLoading,
+    kPausing,
+    kPaused
 };
 
 class Table {

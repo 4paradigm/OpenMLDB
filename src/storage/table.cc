@@ -38,7 +38,7 @@ Table::Table(const std::string& name,
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
     ttl_offset_(60 * 1000), is_leader_(is_leader),
-    replicas_(replicas), wal_(wal), term_(0), table_status_(TSUNDEFINED)
+    replicas_(replicas), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
 Table::Table(const std::string& name,
@@ -51,7 +51,7 @@ Table::Table(const std::string& name,
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
     ttl_offset_(60 * 1000), is_leader_(false),
-    replicas_(), wal_(wal), term_(0), table_status_(TSUNDEFINED)
+    replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
 void Table::Init() {
