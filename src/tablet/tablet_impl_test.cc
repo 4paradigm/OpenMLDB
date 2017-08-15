@@ -9,13 +9,19 @@
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
 #include "gtest/gtest.h"
+#include "gflags/gflags.h"
 #include "logging.h"
 #include "timer.h"
+#include <stdlib.h>
+
+DECLARE_string(snapshot_root_path);
 
 namespace rtidb {
 namespace tablet {
 
-uint32_t counter = 10;
+//srand(time(NULL));
+//uint32_t counter = (uint32_t)rand();
+uint32_t counter = ::baidu::common::timer::get_micros() % 1000;
 
 class MockClosure : public ::google::protobuf::Closure {
 
@@ -508,6 +514,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
 int main(int argc, char** argv) {
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     return RUN_ALL_TESTS();
 }
 

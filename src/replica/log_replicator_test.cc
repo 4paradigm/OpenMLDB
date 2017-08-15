@@ -165,13 +165,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server0(options);
     sofa::pbrpc::RpcServer rpc_server1(options);
-    Table* t7 = new Table("test", 1, 1, 8, 0, false, g_endpoints);;
+    Table* t7 = new Table("test", 1, 1, 8, 0, false, g_endpoints);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/rtidb/" + GenRand() + "/";
         MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
-                folder, t7);
+                folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (!rpc_server1.RegisterService(follower)) {
@@ -180,13 +180,12 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ok =rpc_server1.Start(follower_addr);
         ASSERT_TRUE(ok);
         LOG(INFO, "start follower");
-        t7 = follower->GetTable();
     }
 
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator leader(folder, endpoints, kLeaderNode, 1, 1);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
@@ -207,11 +206,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     leader.Notify();
     leader.AddReplicateNode("127.0.0.1:18528");
     sleep(2);
-    Table* t8 = NULL;
+    Table* t8 = new Table("test", 1, 1, 8, 0, false, g_endpoints);;
+    t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
         std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
+                folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (!rpc_server0.RegisterService(follower)) {
@@ -220,7 +221,6 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ok =rpc_server0.Start(follower_addr);
         ASSERT_TRUE(ok);
         LOG(INFO, "start follower");
-        t8 = follower->GetTable();
     }
     sleep(4);
     leader.Stop();
