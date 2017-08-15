@@ -6,7 +6,7 @@
 //
 
 #include "replica/log_replicator.h"
-
+#include "replica/replicate_node.h"
 #include <sched.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -44,21 +44,18 @@ class MockTabletImpl : public ::rtidb::api::TabletServer {
 public:
     MockTabletImpl(const ReplicatorRole& role,
                    const std::string& path,
-                   const std::vector<std::string>& endpoints): role_(role),
-    path_(path), endpoints_(endpoints), replicator_(path_, endpoints_, role_, 1, 1),
-    table_(NULL){
+                   const std::vector<std::string>& endpoints,
+                   Table* table): role_(role),
+    path_(path), endpoints_(endpoints), 
+    replicator_(path_, endpoints_, role_, table) {
     }
 
-    MockTabletImpl(const ReplicatorRole& role,
-                   const std::string& path): role_(role),
-    path_(path), func_(boost::bind(&MockTabletImpl::ApplyLog, this, _1)), replicator_(path_, func_, role_, 1, 1), table_(NULL){
-    }
     ~MockTabletImpl() {
         replicator_.Stop();
     }
     bool Init() {
-        table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
-        table_->Init();
+        //table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+        //table_->Init();
         return replicator_.Init();
     }
 
@@ -98,22 +95,11 @@ public:
         replicator_.Notify();
     }
 
-    bool ApplyLog(const ::rtidb::api::LogEntry& entry) {
-        table_->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
-        return true;
-    }
-
-    Table* GetTable() {
-        return table_;
-    }
-
 private:
     ReplicatorRole role_;
     std::string path_;
     std::vector<std::string> endpoints_;
-    ApplyLogFunc func_;
     LogReplicator replicator_;
-    ::rtidb::storage::Table* table_;
 };
 
 bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) {
@@ -151,7 +137,8 @@ bool StartRpcServe(MockTabletImpl* tablet,
 TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder, endpoints, kLeaderNode, 1, 1);
+    Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
     replicator.Stop();
@@ -160,7 +147,8 @@ TEST_F(LogReplicatorTest, Init) {
 TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder, endpoints, kLeaderNode, 1, 1);
+    Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
@@ -177,12 +165,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server0(options);
     sofa::pbrpc::RpcServer rpc_server1(options);
-    Table* t7 = NULL;
+    Table* t7 = new Table("test", 1, 1, 8, 0, false, g_endpoints);;
+    t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/rtidb/" + GenRand() + "/";
         MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
-                folder);
+                folder, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (!rpc_server1.RegisterService(follower)) {

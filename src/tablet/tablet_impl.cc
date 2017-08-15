@@ -338,6 +338,39 @@ void TabletImpl::Scan(RpcController* controller,
     }
 }
 
+void TabletImpl::PauseShnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL ||
+        !table->IsLeader()) {
+        if (table) {
+            table->UnRef();
+        }
+        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist or table is leader");
+        done->Run();
+        return;
+    }
+    if (table->GetTableStat() != ::rtidb::storage::TSNORMAL) {
+        LOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
+                table->GetTableStat(), request->tid(), request->pid());
+        table->UnRef();
+        response->set_code(-2);
+        response->set_msg("table status is not TSNORMAL");
+        done->Run();
+        return;
+    }
+    table->SetTableStat(::rtidb::storage::TSPAUSING);
+    table->UnRef();
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
+
 void TabletImpl::AddReplica(RpcController* controller, 
             const ::rtidb::api::AddReplicaRequest* request,
             ::rtidb::api::AddReplicaResponse* response,
@@ -355,6 +388,15 @@ void TabletImpl::AddReplica(RpcController* controller,
         done->Run();
         return;
     }
+    if (table->GetTableStat() != ::rtidb::storage::TSPAUSED) {
+        table->UnRef();
+        response->set_code(-3);
+        response->set_msg("waiting for pause!");
+        LOG(WARNING,"table %d, pid %d is not paused!", request->tid(), request->pid());
+        done->Run();
+        return;
+
+    }
     LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
     if (replicator == NULL) {
         table->UnRef();
@@ -363,12 +405,6 @@ void TabletImpl::AddReplica(RpcController* controller,
         LOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
         done->Run();
         return;
-    }
-    table->SetTableStat(::rtidb::storage::TSPAUSING);
-    // wait for snapshot task exit
-    while(table->GetTableStat() != ::rtidb::storage::TSPAUSED) {
-        // todo. add max loop count 
-        usleep(5 * 1000);
     }
     bool ok = replicator->AddReplicateNode(request->endpoint());
     replicator->UnRef();
@@ -451,10 +487,10 @@ bool TabletImpl::MakeSnapshot(uint32_t tid, uint32_t pid,
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
-            const ::rtidb::api::CreateTableRequest* request,
-            ::rtidb::api::CreateTableResponse* response,
+            const ::rtidb::api::LoadTableRequest* request,
+            ::rtidb::api::GeneralResponse* response,
             Closure* done) {
-    if (!CheckCreateRequest(request)) {
+    if (request->name().size() <= 0 || request->tid() <= 0) {
         response->set_code(8);
         response->set_msg("table name is empty");
         done->Run();
@@ -529,8 +565,8 @@ void TabletImpl::LoadTable(RpcController* controller,
     }
 }
 
-void TabletImpl::LoadTableInternal(const ::rtidb::api::CreateTableRequest* request,
-        ::rtidb::api::CreateTableResponse* response) {
+void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request,
+        ::rtidb::api::GeneralResponse* response) {
     mu_.AssertHeld();
     uint32_t seg_cnt = 8;
     std::string name = request->name();

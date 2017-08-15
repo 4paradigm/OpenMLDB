@@ -66,8 +66,8 @@ public:
             Closure* done);
 
     void LoadTable(RpcController* controller,
-            const ::rtidb::api::CreateTableRequest* request,
-            ::rtidb::api::CreateTableResponse* response,
+            const ::rtidb::api::LoadTableRequest* request,
+            ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
     void DropTable(RpcController* controller,
@@ -83,6 +83,11 @@ public:
     void AppendEntries(RpcController* controller,
             const ::rtidb::api::AppendEntriesRequest* request,
             ::rtidb::api::AppendEntriesResponse* response,
+            Closure* done); 
+
+    void PauseShnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
             Closure* done); 
 
     //
@@ -118,8 +123,8 @@ private:
     void CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response);
 
-    void LoadTableInternal(const ::rtidb::api::CreateTableRequest* request,
-            ::rtidb::api::CreateTableResponse* response);
+    void LoadTableInternal(const ::rtidb::api::LoadTableRequest* request,
+            ::rtidb::api::GeneralResponse* response);
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 

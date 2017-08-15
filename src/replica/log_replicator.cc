@@ -67,7 +67,9 @@ LogReplicator::~LogReplicator() {
         delete (*nit);
     }
     delete rpc_client_;
-    table_->UnRef();
+    if (table_) {
+        table_->UnRef();
+    }
 }
 
 void LogReplicator::SyncToDisk() {

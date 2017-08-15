@@ -67,6 +67,16 @@ message PutResponse {
 	optional string msg = 2;
 }
 
+message GeneralRequest {
+	required int32 tid = 1;
+    required int32 pid = 2;
+}
+
+message GeneralResponse {
+	optional int32 code = 1;
+	optional string msg = 2;
+}
+
 message ScanRequest {
 	// the prefix key
 	optional string pk = 1;
@@ -152,6 +162,22 @@ message CreateTableResponse {
 	optional string msg = 2;
 }
 
+message LoadTableRequest {
+	optional int32 tid = 1;
+	optional string name = 2;
+	optional int32 pid = 3;
+	// time to live for every row
+	optional int32 ttl = 4;
+	optional int32 seg_cnt = 5;
+	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
+    // the slave endpoints
+	repeated string replicas = 7;
+	optional TableMode mode = 8;
+    optional bool wal = 9 [default = true];
+    // term for change role
+    optional uint64 term = 10;
+}
+
 message DropTableRequest {
 	optional int32 tid = 1;
 	optional int32 pid = 2;
@@ -209,11 +235,12 @@ service TabletServer {
 
     // table api for master
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
-	rpc LoadTable(CreateTableRequest) returns (CreateTableResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
     rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
+    rpc PauseShnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 }
