@@ -347,32 +347,42 @@ void TabletImpl::AppendEntries(RpcController* controller,
         const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response,
         Closure* done) {
-    Table* table = GetTable(request->tid(), request->pid());
-    if (table == NULL ||
-        table->IsLeader()) {
-        LOG(WARNING, "table not exist or table is leader tid %d, pid %d", request->tid(),
-                request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist or table is leader");
-        done->Run();
-        return;
+    Table* table = NULL;
+    LogReplicator* replicator = NULL;
+    do {
+        table = GetTable(request->tid(), request->pid());
+        if (table == NULL ||
+            table->IsLeader()) {
+            LOG(WARNING, "table not exist or table is leader tid %d, pid %d", request->tid(),
+                    request->pid());
+            response->set_code(-1);
+            response->set_msg("table not exist or table is leader");
+            done->Run();
+            break;
+        }
+        replicator = GetReplicator(request->tid(), request->pid());
+        if (replicator == NULL) {
+            response->set_code(-2);
+            response->set_msg("no replicator for table");
+            done->Run();
+            break;
+        }
+        bool ok = replicator->AppendEntries(request, response);
+        if (!ok) {
+            response->set_code(-1);
+            response->set_msg("fail to append entries to replicator");
+            done->Run();
+        }else {
+            response->set_code(0);
+            response->set_msg("ok");
+            done->Run();
+        }
+    }while(false);
+    if (table != NULL) {
+        table->UnRef();
     }
-    LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
-    if (replicator == NULL) {
-        response->set_code(-2);
-        response->set_msg("no replicator for table");
-        done->Run();
-        return;
-    }
-    bool ok = replicator->AppendEntries(request, response);
-    if (!ok) {
-        response->set_code(-1);
-        response->set_msg("fail to append entries to replicator");
-        done->Run();
-    }else {
-        response->set_code(0);
-        response->set_msg("ok");
-        done->Run();
+    if (replicator != NULL) {
+        replicator->UnRef();
     }
 }
 
