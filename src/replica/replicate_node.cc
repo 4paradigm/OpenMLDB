@@ -114,6 +114,7 @@ int ReplicateNode::RollRLogFile() {
             } else if (part->slog_id_ > last_sync_offset) {
                 if (last_part && last_part->slog_id_ < last_sync_offset) {
                     part = last_part;
+                    index--;
                 } else {
                     return -1;
                 }
@@ -176,7 +177,7 @@ int ReplicateNode::OpenSeqFile(const std::string& path) {
 FollowerReplicateNode::FollowerReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path,
         uint32_t tid, uint32_t pid, ::rtidb::RpcClient* rpc_client):ReplicateNode(point, logs, log_path, tid, pid) {
     rpc_client_ = rpc_client;
-    replicate_node_mode_ = FOLLOWERREPLICATEMODE;
+    replicate_node_mode_ = FOLLOWER_REPLICATE_MODE;
 }
 
 int FollowerReplicateNode::MatchLogOffsetFromNode() {
@@ -271,7 +272,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
 
 SnapshotReplicateNode::SnapshotReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, 
         uint32_t tid, uint32_t pid, SnapshotFunc snapshot_fun):ReplicateNode(point, logs, log_path, tid, pid) {
-    replicate_node_mode_ = SNAPSHOTREPLICATEMODE;
+    replicate_node_mode_ = SNAPSHOT_REPLICATE_MODE;
     snapshot_fun_ = snapshot_fun;
 }
 

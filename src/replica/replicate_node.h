@@ -23,8 +23,8 @@ namespace replica {
 using ::rtidb::log::SequentialFile;
 using ::rtidb::log::Reader;
 
-const static uint32_t FOLLOWERREPLICATEMODE = 0;
-const static uint32_t SNAPSHOTREPLICATEMODE = 1;
+const static uint32_t FOLLOWER_REPLICATE_MODE = 0;
+const static uint32_t SNAPSHOT_REPLICATE_MODE = 1;
 struct StringComparator {
     int operator()(const std::string& a, const std::string& b) const {
         return a.compare(b);
