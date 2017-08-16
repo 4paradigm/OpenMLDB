@@ -9,6 +9,7 @@
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
 #include "gtest/gtest.h"
+#include "gflags/gflags.h"
 #include "config.h"
 #include "logging.h"
 #include "timer.h"
@@ -114,6 +115,7 @@ TEST_F(TabletImplMemTest, TestMem) {
 }
 
 int main(int argc, char** argv) {
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

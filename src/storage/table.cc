@@ -38,7 +38,7 @@ Table::Table(const std::string& name,
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
     ttl_offset_(60 * 1000), is_leader_(is_leader),
-    replicas_(replicas), wal_(wal), term_(0)
+    replicas_(replicas), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
 Table::Table(const std::string& name,
@@ -51,7 +51,7 @@ Table::Table(const std::string& name,
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl),
     ttl_offset_(60 * 1000), is_leader_(false),
-    replicas_(), wal_(wal), term_(0)
+    replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
 void Table::Init() {
@@ -84,6 +84,7 @@ void Table::Ref() {
 void Table::UnRef() {
     ref_.fetch_sub(1, boost::memory_order_acquire);
     if (ref_.load(boost::memory_order_relaxed) <= 0) {
+        Release();
         for (uint32_t i = 0; i < seg_cnt_; i++) {
             delete segments_[i];
         }

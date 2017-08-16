@@ -23,6 +23,14 @@ enum TableGcType {
     kCountLimit
 };
 
+enum TableStat {
+    kUndefined = 0,
+    kNormal,
+    kLoading,
+    kPausing,
+    kPaused
+};
+
 class Table {
 
 public:
@@ -144,6 +152,14 @@ public:
         return replicas_;
     }
 
+    inline uint32_t GetTableStat() {
+        return table_status_.load(boost::memory_order_relaxed);
+    }
+
+    inline void SetTableStat(uint32_t table_status) {
+        table_status_.store(table_status, boost::memory_order_relaxed);
+    }
+
 private:
 
     ~Table(){}
@@ -164,6 +180,7 @@ private:
     std::vector<std::string> const replicas_;
     bool wal_;
     uint64_t term_;
+    boost::atomic<uint32_t> table_status_;
 };
 
 }

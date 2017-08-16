@@ -6,7 +6,7 @@
 //
 
 #include "replica/log_replicator.h"
-
+#include "replica/replicate_node.h"
 #include <sched.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -44,21 +44,18 @@ class MockTabletImpl : public ::rtidb::api::TabletServer {
 public:
     MockTabletImpl(const ReplicatorRole& role,
                    const std::string& path,
-                   const std::vector<std::string>& endpoints): role_(role),
-    path_(path), endpoints_(endpoints), replicator_(path_, endpoints_, role_, 1, 1),
-    table_(NULL){
+                   const std::vector<std::string>& endpoints,
+                   Table* table): role_(role),
+    path_(path), endpoints_(endpoints), 
+    replicator_(path_, endpoints_, role_, table) {
     }
 
-    MockTabletImpl(const ReplicatorRole& role,
-                   const std::string& path): role_(role),
-    path_(path), func_(boost::bind(&MockTabletImpl::ApplyLog, this, _1)), replicator_(path_, func_, role_, 1, 1), table_(NULL){
-    }
     ~MockTabletImpl() {
         replicator_.Stop();
     }
     bool Init() {
-        table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
-        table_->Init();
+        //table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+        //table_->Init();
         return replicator_.Init();
     }
 
@@ -98,22 +95,11 @@ public:
         replicator_.Notify();
     }
 
-    bool ApplyLog(const ::rtidb::api::LogEntry& entry) {
-        table_->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
-        return true;
-    }
-
-    Table* GetTable() {
-        return table_;
-    }
-
 private:
     ReplicatorRole role_;
     std::string path_;
     std::vector<std::string> endpoints_;
-    ApplyLogFunc func_;
     LogReplicator replicator_;
-    ::rtidb::storage::Table* table_;
 };
 
 bool ReceiveEntry(const ::rtidb::api::LogEntry& entry) {
@@ -151,7 +137,9 @@ bool StartRpcServe(MockTabletImpl* tablet,
 TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder, endpoints, kLeaderNode, 1, 1);
+    Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    table->Init();
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
     replicator.Stop();
@@ -160,7 +148,9 @@ TEST_F(LogReplicatorTest, Init) {
 TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator replicator(folder, endpoints, kLeaderNode, 1, 1);
+    Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    table->Init();
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
@@ -177,12 +167,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server0(options);
     sofa::pbrpc::RpcServer rpc_server1(options);
-    Table* t7 = NULL;
+    Table* t7 = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
         std::string folder = "/tmp/rtidb/" + GenRand() + "/";
         MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
-                folder);
+                folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (!rpc_server1.RegisterService(follower)) {
@@ -191,13 +182,12 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ok =rpc_server1.Start(follower_addr);
         ASSERT_TRUE(ok);
         LOG(INFO, "start follower");
-        t7 = follower->GetTable();
     }
 
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-    LogReplicator leader(folder, endpoints, kLeaderNode, 1, 1);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
@@ -218,11 +208,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     leader.Notify();
     leader.AddReplicateNode("127.0.0.1:18528");
     sleep(2);
-    Table* t8 = NULL;
+    Table* t8 = new Table("test", 1, 1, 8, 0, false, g_endpoints);;
+    t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
         std::string folder = "/tmp/rtidb/" + GenRand() + "/";
-        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, folder);
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
+                folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
         if (!rpc_server0.RegisterService(follower)) {
@@ -231,43 +223,9 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ok =rpc_server0.Start(follower_addr);
         ASSERT_TRUE(ok);
         LOG(INFO, "start follower");
-        t8 = follower->GetTable();
     }
     sleep(4);
     leader.Stop();
-    {
-        Ticket ticket;
-        // check 18527
-        Table::Iterator* it = t7->NewIterator("test_pk", ticket);
-        it->Seek(9527);
-        ASSERT_TRUE(it->Valid());
-        DataBlock* value = it->GetValue();
-        std::string value_str(value->data, value->size);
-        ASSERT_EQ("value1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
-
-        it->Next();
-        ASSERT_TRUE(it->Valid());
-        value = it->GetValue();
-        std::string value_str1(value->data, value->size);
-        ASSERT_EQ("value2", value_str1);
-        ASSERT_EQ(9526, it->GetKey());
-
-        it->Next();
-        ASSERT_TRUE(it->Valid());
-        value = it->GetValue();
-        std::string value_str2(value->data, value->size);
-        ASSERT_EQ("value3", value_str2);
-        ASSERT_EQ(9525, it->GetKey());
-
-        it->Next();
-        ASSERT_TRUE(it->Valid());
-        value = it->GetValue();
-        std::string value_str3(value->data, value->size);
-        ASSERT_EQ("value4", value_str3);
-        ASSERT_EQ(9524, it->GetKey());
-
-    }
     {
         Ticket ticket;
         // check 18527
@@ -299,7 +257,6 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         std::string value_str3(value->data, value->size);
         ASSERT_EQ("value4", value_str3);
         ASSERT_EQ(9524, it->GetKey());
-
     }
 }
 

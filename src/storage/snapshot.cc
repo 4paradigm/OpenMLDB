@@ -102,29 +102,30 @@ bool Snapshot::BatchDelete(const std::vector<DeleteEntry>& entries) {
 
 bool Snapshot::Recover(Table* table) {
     //TODO multi thread recover
+    if (table == NULL) {
+        LOG(WARNING, "table is NULL");
+        return false;
+    }
     leveldb::Iterator* it = db_->NewIterator(leveldb::ReadOptions());
-    leveldb::Slice sk(LOG_PREFIX + " ");
-    leveldb::Slice ek(LOG_PREFIX + "~");
     it->SeekToFirst();
     LOG(INFO, "start to recover table tid %d, pid %d", tid_, pid_);
     uint64_t count = 0;
     uint64_t consumed = ::baidu::common::timer::get_micros();
     while (it->Valid()) {
         LOG(DEBUG, "key %s value %s", it->key().ToString().c_str(), ::rtidb::base::DebugString(it->value().ToString()).c_str());
-        if (ek.compare(it->key()) <= 0) {
-            break;
-        }
         LogEntry entry;
         bool ok = entry.ParseFromString(it->value().ToString());
         if (!ok) {
             LOG(WARNING, "bad pb format for key %s value %s", it->key().ToString().c_str(), ::rtidb::base::DebugString(it->value().ToString()).c_str());
-        }else {
-            table->Put(entry.pk(), entry.ts() ,
-                       entry.value().c_str(), 
-                       entry.value().length());
+        } else {
+            table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().length());
         }
         it->Next();
         count++;
+        if (count % 10000 == 0) {
+            LOG(INFO, "load cur_index[%lu] offset[%lu] tid[%u] pid[%u]", 
+                        count, offset_.load(boost::memory_order_relaxed), tid_, pid_);
+        }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
     LOG(INFO, "table tid %d, pid %d recovered with time %lld ms, count %lld", tid_, pid_, consumed/1000, count);
