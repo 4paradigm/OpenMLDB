@@ -10,15 +10,12 @@ enum TableMode {
     kTableFollower = 2;
 }
 
-enum TableSyncLevel {
-    // Write ahead log before response
-    kSyncBeforeDone = 1;
-    kSyncBeforeDoneAndFSync = 2;
-    kSyncBeforeDoneAndPeriodFSync = 3;
-    // Write ahead log after response
-    kSyncAfterDone = 10;
-    kSyncAfterDoneAndFSync = 11;
-    kSyncAfterDoneAndPeriodFSync = 12;
+enum TableState {
+    kTableUndefined = 0;
+    kTableNormal = 1;
+    kTableLoading = 2;
+    kTablePausing = 3;
+    kTablePaused = 4;
 }
 
 enum TableType {
@@ -63,6 +60,16 @@ message ReplicateLogResponse {
 }
 
 message PutResponse {
+	optional int32 code = 1;
+	optional string msg = 2;
+}
+
+message GeneralRequest {
+	required int32 tid = 1;
+    required int32 pid = 2;
+}
+
+message GeneralResponse {
 	optional int32 code = 1;
 	optional string msg = 2;
 }
@@ -152,6 +159,22 @@ message CreateTableResponse {
 	optional string msg = 2;
 }
 
+message LoadTableRequest {
+	optional int32 tid = 1;
+	optional string name = 2;
+	optional int32 pid = 3;
+	// time to live for every row
+	optional int32 ttl = 4;
+	optional int32 seg_cnt = 5;
+	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
+    // the slave endpoints
+	repeated string replicas = 7;
+	optional TableMode mode = 8;
+    optional bool wal = 9 [default = true];
+    // term for change role
+    optional uint64 term = 10;
+}
+
 message DropTableRequest {
 	optional int32 tid = 1;
 	optional int32 pid = 2;
@@ -200,6 +223,24 @@ message ChangeRoleResponse {
     optional uint64 term = 3;
 }
 
+// Get all table status information on tablet
+message GetTableStatusRequest {}
+
+// table status message
+message TableStatus {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint64 offset = 3;
+    optional TableMode mode = 4;
+    optional TableState state = 5;
+}
+
+message GetTableStatusResponse {
+    repeated TableStatus all_table_status = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -210,9 +251,12 @@ service TabletServer {
     // table api for master
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
+    rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
     rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
+    rpc PauseShnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 }

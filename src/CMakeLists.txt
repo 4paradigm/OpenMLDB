@@ -18,7 +18,8 @@ add_library(log STATIC log/crc32c.cc
                        log/writable_file.cc)
 add_library(base STATIC base/status.cc)
 
-add_library(replica STATIC replica/log_replicator.cc)
+add_library(replica STATIC replica/replicate_node.cc
+                           replica/log_replicator.cc)
 
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)

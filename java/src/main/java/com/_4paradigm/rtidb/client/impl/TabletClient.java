@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +12,7 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 
 public class TabletClient {
+    
     private final static Logger logger = LoggerFactory.getLogger(TabletClient.class);
     private final static RpcController ctrl = new FakeRpcController();
     private AsyncConnection asyncConn;

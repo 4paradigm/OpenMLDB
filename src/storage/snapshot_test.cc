@@ -11,6 +11,7 @@
 #include "storage/table.h"
 #include "storage/ticket.h"
 #include "proto/tablet.pb.h"
+#include "gflags/gflags.h"
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <sched.h>
@@ -20,6 +21,7 @@
 #include <gflags/gflags.h>
 
 DECLARE_string(snapshot_root_path);
+
 using ::rtidb::api::LogEntry;
 namespace rtidb {
 namespace storage {
@@ -35,8 +37,8 @@ inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
 }
 
+
 TEST_F(SnapshotTest, Onebox) {
-    FLAGS_snapshot_root_path = "/tmp/rtidb/snapshot/" + GenRand();
     Snapshot* snapshot = new Snapshot(1, 1, 0);
     snapshot->Ref();
     bool ok = snapshot->Init();
@@ -122,12 +124,55 @@ TEST_F(SnapshotTest, Onebox) {
 
 }
 
+TEST_F(SnapshotTest, Recover) {
+    Snapshot* snapshot = new Snapshot(1, 2, 0);
+    snapshot->Ref();
+    bool ok = snapshot->Init();
+    ASSERT_TRUE(ok);
+    uint64_t count = 1;
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    while (count < 10100) {
+        LogEntry entry;
+        char buf[100];
+        snprintf(buf, 100, "%s%lu", "test", count * 5);
+        entry.set_pk(buf);
+        entry.set_value(buf);
+        entry.set_ts(count * 5);
+        entry.set_log_index(count);
+        std::string raw;
+        entry.SerializeToString(&raw);
+        ok = snapshot->Put(raw, entry.log_index(), buf, count * 5);
+        ASSERT_TRUE(ok);
+        count++;
+    }
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    printf("input snapshot [%lu] consumed\n", consumed/1000);
+    snapshot->UnRef();
+    sleep(5);
+    Snapshot* snapshot1 = new Snapshot(1, 2, 0);
+    snapshot1->Ref();
+    ok = snapshot1->Init();
+    ASSERT_TRUE(ok);
+    Table* table = new Table("tx_log", 1, 2, 8, 10);
+    table->Ref();
+    table->Init();
+    ok = snapshot1->Recover(table);
+    ASSERT_TRUE(ok);
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("test100", ticket);
+    it->Seek(100);
+    ASSERT_TRUE(it->Valid());
+}
+
+
 }
 }
 
 int main(int argc, char** argv) {
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::storage::GenRand();
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
