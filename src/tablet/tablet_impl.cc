@@ -889,6 +889,7 @@ Table* TabletImpl::GetTable(uint32_t tid, uint32_t pid, bool use_lock) {
     if (use_lock) {
         return GetTable(tid, pid);
     }
+    mu_.AssertHeld();
     Tables::iterator it = tables_.find(tid);
     if (it != tables_.end()) {
         std::map<uint32_t, Table*>::iterator tit = it->second.find(pid);
@@ -1031,7 +1032,7 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
 int TabletImpl::LoadSnapShot() {
     std::vector<std::string> sub_dir;
     if (::rtidb::base::GetSubDir(FLAGS_snapshot_root_path, sub_dir) < 0) {
-        LOG(WARNING, "open dir[%s] failed!", FLAGS_snapshot_root_path);
+        LOG(WARNING, "open dir[%s] failed!", FLAGS_snapshot_root_path.c_str());
         return -1;
     }
     for (std::vector<std::string>::iterator iter = sub_dir.begin(); iter != sub_dir.end(); iter++) {

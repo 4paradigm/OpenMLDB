@@ -118,6 +118,10 @@ bool Snapshot::Recover(Table* table) {
         }
         it->Next();
         count++;
+        if (count % 10000 == 0) {
+            LOG(INFO, "load cur_index[%lu] offset[%lu] tid[%u] pid[%u]", 
+                        count, offset_.load(boost::memory_order_relaxed), tid_, pid_);
+        }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
     LOG(INFO, "table tid %d, pid %d recovered with time %lld ms, count %lld", tid_, pid_, consumed/1000, count);

@@ -138,6 +138,7 @@ TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
     Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
@@ -148,6 +149,7 @@ TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/rtidb/" + GenRand() + "/";
     Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
@@ -227,39 +229,6 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     {
         Ticket ticket;
         // check 18527
-        Table::Iterator* it = t7->NewIterator("test_pk", ticket);
-        it->Seek(9527);
-        ASSERT_TRUE(it->Valid());
-        DataBlock* value = it->GetValue();
-        std::string value_str(value->data, value->size);
-        ASSERT_EQ("value1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
-
-        it->Next();
-        ASSERT_TRUE(it->Valid());
-        value = it->GetValue();
-        std::string value_str1(value->data, value->size);
-        ASSERT_EQ("value2", value_str1);
-        ASSERT_EQ(9526, it->GetKey());
-
-        it->Next();
-        ASSERT_TRUE(it->Valid());
-        value = it->GetValue();
-        std::string value_str2(value->data, value->size);
-        ASSERT_EQ("value3", value_str2);
-        ASSERT_EQ(9525, it->GetKey());
-
-        it->Next();
-        ASSERT_TRUE(it->Valid());
-        value = it->GetValue();
-        std::string value_str3(value->data, value->size);
-        ASSERT_EQ("value4", value_str3);
-        ASSERT_EQ(9524, it->GetKey());
-
-    }
-    {
-        Ticket ticket;
-        // check 18527
         Table::Iterator* it = t8->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
@@ -288,7 +257,6 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         std::string value_str3(value->data, value->size);
         ASSERT_EQ("value4", value_str3);
         ASSERT_EQ(9524, it->GetKey());
-
     }
 }
 

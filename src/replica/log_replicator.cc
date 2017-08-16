@@ -154,7 +154,6 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             return false;
         }
         wsize_ += buffer.size();
-        //ssf_(buffer, request->entries(i).pk(), request->entries(i).log_index(), request->entries(i).ts());
         table_->Put(request->entries(i).pk(), request->entries(i).ts(), 
                 request->entries(i).value().c_str(), request->entries(i).value().length());
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
@@ -204,8 +203,6 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         return false;
     }
     wsize_ += buffer.size();
-    //TODO handle fails
-    //ssf_(buffer, entry.pk(), entry.log_index(), entry.ts());
     LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }
