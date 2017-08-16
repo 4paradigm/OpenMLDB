@@ -6,7 +6,7 @@
 
 ## 整体架构介绍
 
-rtidb集群才用master/slave模式，master会控制整个集群数据分布以及数据高可用。数据副本之间
+rtidb集群使用master/slave模式，master会控制整个集群数据分布以及数据高可用。数据副本之间
 实时通过binlog同步
 
 ### master 高可用
@@ -26,10 +26,11 @@ rtidb会通过多副本和自动主从切换实现数据高可用
 
 ## zookeeper 
 
-使用zk做master选主操作，
+使用zk做master选主操作, 以及slave存活检测
 
-### zookeeper配置
+### zookeeper 部署
 
+在每台机器上面都部署一个zookeeper 节点
 #### zoo.conf
 
 ```
@@ -45,7 +46,13 @@ server.3=host3:6181:6281
 
 每台机器需要有一个myid配置,分别配置为一个数字id,比如host1  myid内容为1
 
+## rtidb master部署
+
+在每天机器上面都部署一个NameServer(Master)
+
 ## rtidb tablet部署
+
+在每台机器上面都部署一个TabletServer(Slave)
 
 ### 目录结构
 
@@ -55,18 +62,32 @@ server.3=host3:6181:6281
 * logs 存储rtidb运行日志文件
 * conf 存放rtidb配置文件
 
-### bin/start.sh
+### bin/start_nameserver.sh
 
-rtidb启动脚本，运行目录需要在bin下面，启动命令为
+rtidb nameserver启动脚本，运行目录需要在bin下面，启动命令为
 ```
-cd bin && sh start.sh
+cd bin && sh start_nameserver.sh
 ```
 
-### bin/stop.sh
+### bin/start_tablet.sh
 
-rtidb停止脚本，运行目录在bin下面，停止命令为
+rtidb tablet启动脚本，运行目录需要在bin下面，启动命令为
 ```
-cd bin && sh stop.sh
+cd bin && sh start_tablet.sh
+```
+
+### bin/stop_nameserver.sh
+
+rtidb nameserver 停止脚本，运行目录在bin下面，停止命令为
+```
+cd bin && sh stop_nameserver.sh
+```
+
+### bin/stop_tablet.sh
+
+rtidb tablet 停止脚本，运行目录在bin下面，停止命令为
+```
+cd bin && sh stop_tablet.sh
 ```
 
 ### rtidb 配置文件
