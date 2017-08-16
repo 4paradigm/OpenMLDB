@@ -560,8 +560,9 @@ void TabletImpl::LoadTable(RpcController* controller,
     // start replicate task
     replicator->MatchLogOffset();
     replicator->UnRef();
-    table->UnRef();
     snapshot->UnRef();
+    table->SchedGc();
+    table->UnRef();
     if (ttl > 0) {
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
         LOG(INFO, "table %s with tid %ld pid %ld enable ttl %ld", name.c_str(), tid, pid, ttl);
@@ -750,29 +751,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     replicators_[request->tid()].insert(std::make_pair(request->pid(), replicator));
     response->set_code(0);
     response->set_msg("ok");
-}
-
-int TabletImpl::DeleteSnapshot(uint32_t tid, uint32_t pid) {
-    Snapshot* snapshot = NULL;
-    {
-        MutexLock lock(&mu_);
-        Snapshots::iterator snap_iter = snapshots_.find(tid);
-        if (snap_iter != snapshots_.end()) {
-            std::map<uint32_t, Snapshot*>::iterator pos = snap_iter->second.find(pid);
-            if (pos != snap_iter->second.end()) {
-                snapshot = pos->second;
-                snap_iter->second.erase(pos);
-                if (snap_iter->second.empty()) {
-                    snapshots_.erase(snap_iter);
-                }
-            }
-        }
-    }
-    if (snapshot != NULL) {
-        snapshot->UnRef();
-        LOG(INFO, "drop snapshot for tid[%u], pid[%u]", tid, pid);
-    }
-    return 0;
 }
 
 void TabletImpl::DropTable(RpcController* controller,
@@ -1033,7 +1011,7 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     stat->UnRef();
 }
 
-int TabletImpl::LoadSnapShot() {
+int TabletImpl::LoadSnapshot() {
     std::vector<std::string> sub_dir;
     if (::rtidb::base::GetSubDir(FLAGS_snapshot_root_path, sub_dir) < 0) {
         LOG(WARNING, "open dir[%s] failed!", FLAGS_snapshot_root_path.c_str());
@@ -1048,19 +1026,18 @@ int TabletImpl::LoadSnapShot() {
         }
         uint32_t tid = boost::lexical_cast<uint32_t>(vec[0]);
         uint32_t pid = boost::lexical_cast<uint32_t>(vec[1]);
-        if (LoadSnapShot(tid, pid) < 0) {
+        if (LoadSnapshot(tid, pid) < 0) {
             LOG(WARNING, "load snapshot faild! tid[%u] pid[%u]", tid, pid);
         }
     }
     return 0;
 }
 
-int TabletImpl::LoadSnapShot(uint32_t tid, uint32_t pid) {
+int TabletImpl::LoadSnapshot(uint32_t tid, uint32_t pid) {
     if (tid == 0 && pid == 0) {
         LOG(DEBUG, "tid[%u] pid[%u] need not load", tid, pid);
         return 0;
     }
-    Snapshot* snapshot = NULL;
     {
         MutexLock lock(&mu_);
         Snapshots::iterator iter = snapshots_.find(tid);
@@ -1068,19 +1045,18 @@ int TabletImpl::LoadSnapShot(uint32_t tid, uint32_t pid) {
             std::map<uint32_t, Snapshot*>::iterator pos = iter->second.find(pid);
             if (pos != iter->second.end()) {
                 LOG(WARNING, "snapshot already exists! tid[%u] pid[%u]", tid, pid);
-                snapshot->UnRef();
                 return -1;
             }
         } else {
             snapshots_.insert(std::make_pair(tid, std::map<uint32_t, Snapshot*>()));
         }
-        snapshot = new Snapshot(tid, pid, 0);
+        Snapshot* snapshot = new Snapshot(tid, pid, 0);
         snapshot->Ref();
+        if (!snapshot->Init()) {
+            snapshot->UnRef();
+            return -1;
+        }
         snapshots_[tid].insert(std::make_pair(pid, snapshot));
-    }
-    if (!snapshot->Init()) {
-        DeleteSnapshot(tid, pid);
-        return -1;
     }
     return 0;
 }

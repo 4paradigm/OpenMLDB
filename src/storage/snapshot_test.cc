@@ -20,7 +20,6 @@
 #include <unistd.h>
 #include <gflags/gflags.h>
 
-//DECLARE_string(snapshot_root_path);
 using ::rtidb::api::LogEntry;
 namespace rtidb {
 namespace storage {
@@ -37,7 +36,6 @@ inline std::string GenRand() {
 }
 
 TEST_F(SnapshotTest, Onebox) {
-    //FLAGS_snapshot_root_path = "/tmp/rtidb/snapshot/" + GenRand();
     Snapshot* snapshot = new Snapshot(1, 1, 0);
     snapshot->Ref();
     bool ok = snapshot->Init();

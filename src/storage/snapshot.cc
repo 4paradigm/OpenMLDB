@@ -102,6 +102,10 @@ bool Snapshot::BatchDelete(const std::vector<DeleteEntry>& entries) {
 
 bool Snapshot::Recover(Table* table) {
     //TODO multi thread recover
+    if (table == NULL) {
+        LOG(WARNING, "table is NULL");
+        return false;
+    }
     leveldb::Iterator* it = db_->NewIterator(leveldb::ReadOptions());
     it->SeekToFirst();
     LOG(INFO, "start to recover table tid %d, pid %d", tid_, pid_);
@@ -113,7 +117,7 @@ bool Snapshot::Recover(Table* table) {
         bool ok = entry.ParseFromString(it->value().ToString());
         if (!ok) {
             LOG(WARNING, "bad pb format for key %s value %s", it->key().ToString().c_str(), ::rtidb::base::DebugString(it->value().ToString()).c_str());
-        }else {
+        } else {
             table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().length());
         }
         it->Next();

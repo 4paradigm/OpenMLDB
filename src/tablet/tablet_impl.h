@@ -133,10 +133,8 @@ private:
                       const std::string& pk,
                       uint64_t offset,
                       uint64_t ts);
-    int LoadSnapShot();
-    int LoadSnapShot(uint32_t tid, uint32_t pid);
-
-    int DeleteSnapshot(uint32_t tid, uint32_t pid);
+    int LoadSnapshot();
+    int LoadSnapshot(uint32_t tid, uint32_t pid);
 
 private:
     Tables tables_;
