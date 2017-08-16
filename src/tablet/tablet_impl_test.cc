@@ -469,7 +469,6 @@ TEST_F(TabletImplTest, DropTableFollower) {
     request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(1);
-    request.set_wal(false);
     request.set_mode(::rtidb::api::TableMode::kTableFollower);
     request.add_replicas("127.0.0.1:9527");
     ::rtidb::api::CreateTableResponse response;
@@ -488,6 +487,12 @@ TEST_F(TabletImplTest, DropTableFollower) {
     //ReadOnly
     ASSERT_EQ(20, presponse.code());
 
+    //fix slave drop fails bugs
+    ::rtidb::api::AppendEntriesRequest arequest;
+    request.set_tid(id);
+    request.set_pid(1);
+    ::rtidb::api::AppendEntriesResponse aresponse;
+    tablet.AppendEntries(NULL, &arequest, &aresponse, &closure);
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(0, drs.code());
     prequest.set_pk("test1");
@@ -498,6 +503,10 @@ TEST_F(TabletImplTest, DropTableFollower) {
     tablet.Put(NULL, &prequest, &presponse,
             &closure);
     ASSERT_EQ(10, presponse.code());
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+
 }
 
 
