@@ -122,7 +122,6 @@ TEST_F(SnapshotTest, Onebox) {
 }
 
 TEST_F(SnapshotTest, Recover) {
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     Snapshot* snapshot = new Snapshot(1, 2, 0);
     snapshot->Ref();
     bool ok = snapshot->Init();
@@ -169,7 +168,7 @@ TEST_F(SnapshotTest, Recover) {
 int main(int argc, char** argv) {
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
