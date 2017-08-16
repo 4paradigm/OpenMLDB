@@ -386,6 +386,29 @@ void TabletImpl::AppendEntries(RpcController* controller,
     }
 }
 
+void TabletImpl::GetTableStatus(RpcController* controller,
+            const ::rtidb::api::GetTableStatusRequest* request,
+            ::rtidb::api::GetTableStatusResponse* response,
+            Closure* done) {
+    MutexLock lock(&mu_);
+    Tables::iterator it = tables_.begin();
+    for (; it != tables_.end(); ++it) {
+        std::map<uint32_t, Table*>::iterator pit = it->second.begin();
+        for (; pit != it->second.end(); ++pit) {
+            Table* table = tit->second;
+            table->Ref();
+            ::rtidb::api::TableStatus* status = response->add_all_table_status();
+            status->set_mode(::rtidb::api::TableMode::kTableFollower);
+            if (table->IsLeader()) {
+                status->set_mode(::rtidb::api::TableMode::kTableLeader);
+            }
+            status->set_tid(table->GetId());
+            status->set_pid(table->GetPid());
+        }
+    }
+}
+
+
 bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log) {
     Table* table = GetTable(tid, pid);
     if (table == NULL) {

@@ -80,6 +80,10 @@ public:
             ::rtidb::api::AppendEntriesResponse* response,
             Closure* done); 
 
+    void GetTableStatus(RpcController* controller,
+            const ::rtidb::api::GetTableStatusRequest* request,
+            ::rtidb::api::GetTableStatusResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom
