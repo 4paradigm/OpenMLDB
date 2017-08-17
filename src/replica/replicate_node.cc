@@ -104,36 +104,43 @@ int ReplicateNode::RollRLogFile() {
     it->SeekToFirst();
     // use log entry offset to find the log part file
     LogPart* last_part = NULL;
+    LogPart* part = NULL;
     if (log_part_index < 0) {
         while (it->Valid()) {
             index ++;
-            LogPart* part = it->GetValue();
+            part = it->GetValue();
             LOG(DEBUG, "log with name %s and start offset %lld", part->log_name_.c_str(),
                     part->slog_id_);
-            if (part->slog_id_ < last_sync_offset && logs_->GetSize() > 1) {
+            if (part->slog_id_ < last_sync_offset) {
                 it->Next();
                 last_part = part;
-                continue;
             } else if (part->slog_id_ > last_sync_offset) {
                 if (last_part && last_part->slog_id_ < last_sync_offset) {
                     part = last_part;
                     index--;
+                    break;
                 } else {
+                    delete it;
+                    LOG(WARNING, "fail to find log include offset [%lu] path[%s]", 
+                                 last_sync_offset, log_path_.c_str());
                     return -1;
                 }
+            } else {
+                break;
             }
-            delete it;
-            // open a new log part file
+        }
+        delete it;
+        if (part) {
             std::string full_path = log_path_ + "/" + part->log_name_;
             if (OpenSeqFile(full_path) < 0) {
+                LOG(WARNING, "OpenSeqFile failed! full path[%s]", full_path.c_str()); 
                 return -1;
             }
             return index;
+        } else {
+            LOG(WARNING, "no log part"); 
+            return -1;
         }
-        delete it;
-        LOG(WARNING, "fail to find log include offset [%lu] path[%s]", 
-                     last_sync_offset, log_path_.c_str());
-        return -1;
     } else {
         uint32_t current_index = (uint32_t) log_part_index;
         // the latest log part was already opened
@@ -248,7 +255,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
         request.set_pre_log_index(last_sync_offset);
         uint32_t batchSize = log_offset - last_sync_offset;
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
-        for (uint64_t i = 0; i < batchSize; i++) {
+        for (uint64_t i = 0; i < batchSize; ) {
             std::string buffer;
             ::rtidb::base::Slice record;
             ::rtidb::base::Status status = ReadNextRecord(&record, &buffer);
@@ -273,6 +280,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                 LOG(WARNING, "fail to get record %s", status.ToString().c_str());
                 break;
             }
+            i++;
         }
     }    
     if (request.entries_size() > 0) {
@@ -310,7 +318,7 @@ int SnapshotReplicateNode::MatchLogOffsetFromNode() {
 int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
     uint32_t batchSize = log_offset - last_sync_offset;
     batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
-    for (uint64_t i = 0; i < batchSize; i++) {
+    for (uint64_t i = 0; i < batchSize; ) {
         std::string buffer;
         ::rtidb::base::Slice record;
         ::rtidb::base::Status status = ReadNextRecord(&record, &buffer);
@@ -335,6 +343,7 @@ int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
             LOG(WARNING, "fail to get record %s", status.ToString().c_str());
             break;
         }
+        i++;
     }
     return 0;
 }

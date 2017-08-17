@@ -99,9 +99,8 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     ::rtidb::base::MkdirRecur(FLAGS_snapshot_root_path);
     char cmd[100];
-    snprintf(cmd, 100, "/bin/cp -r %s /%u_%u %s", old_snaphot_root_path.c_str(), tid, pid, FLAGS_snapshot_root_path.c_str());
+    snprintf(cmd, 100, "/bin/cp -r %s/%u_%u %s", old_snaphot_root_path.c_str(), tid, pid, FLAGS_snapshot_root_path.c_str());
     ret = system(cmd);
-    ASSERT_TRUE(ret);
 
     sofa::pbrpc::RpcServerOptions options_1;
     sofa::pbrpc::RpcServer rpc_server_1(options_1);
