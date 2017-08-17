@@ -91,6 +91,10 @@ uint64_t ReplicateNode::GetLastSyncOffset() {
     return last_sync_offset;
 }
 
+void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
+    last_sync_offset = offset;
+}
+
 int ReplicateNode::RollRLogFile() {
     int32_t index = -1;
     LogParts::Iterator* it = logs_->NewIterator();
@@ -106,7 +110,7 @@ int ReplicateNode::RollRLogFile() {
             LogPart* part = it->GetValue();
             LOG(DEBUG, "log with name %s and start offset %lld", part->log_name_.c_str(),
                     part->slog_id_);
-            if (part->slog_id_ < last_sync_offset) {
+            if (part->slog_id_ < last_sync_offset && logs_->GetSize() > 1) {
                 it->Next();
                 last_part = part;
                 continue;
@@ -127,7 +131,8 @@ int ReplicateNode::RollRLogFile() {
             return index;
         }
         delete it;
-        LOG(WARNING, "fail to find log include offset %lld", last_sync_offset);
+        LOG(WARNING, "fail to find log include offset [%lu] path[%s]", 
+                     last_sync_offset, log_path_.c_str());
         return -1;
     } else {
         uint32_t current_index = (uint32_t) log_part_index;
@@ -188,6 +193,7 @@ int FollowerReplicateNode::MatchLogOffsetFromNode() {
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
+    request.set_pre_log_index(0);
     ::rtidb::api::AppendEntriesResponse response;
     bool ret = rpc_client_->SendRequest(stub, 
                                  &::rtidb::api::TabletServer_Stub::AppendEntries,

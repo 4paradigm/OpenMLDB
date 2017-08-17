@@ -60,6 +60,7 @@ public:
     void SetLogMatch(bool log_match);
     std::string GetEndPoint();
     uint64_t GetLastSyncOffset();
+    void SetLastSyncOffset(uint64_t offset);
     ReplicateNode(const ReplicateNode&) = delete;
     ReplicateNode& operator= (const ReplicateNode&) = delete;
 protected:
