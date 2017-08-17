@@ -21,23 +21,23 @@ using ::baidu::common::DEBUG;
 
 ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, 
         uint32_t tid, uint32_t pid):endpoint(point), log_path_(log_path), tid_(tid), pid_(pid) {
-    sf = NULL;
-    reader = NULL;
-    last_sync_offset = 0;
+    sf_ = NULL;
+    reader_ = NULL;
+    last_sync_offset_ = 0;
     logs_ = logs;
-    log_part_index = -1;
-    log_matched = false;
+    log_part_index_ = -1;
+    log_matched_ = false;
 } 
 
 ReplicateNode::~ReplicateNode() {
-    delete sf;
-    delete reader;
+    delete sf_;
+    delete reader_;
 }
 
 ::rtidb::base::Status ReplicateNode::ReadNextRecord(
         ::rtidb::base::Slice* record, std::string* buffer) {
     // first read record 
-    if (sf == NULL) {
+    if (sf_ == NULL) {
         int32_t new_log_part_index = RollRLogFile();
         if (new_log_part_index == -2) {
             LOG(WARNING, "no log avaliable tid[%u] pid[%u]", tid_, pid_);
@@ -48,39 +48,39 @@ ReplicateNode::~ReplicateNode() {
             LOG(WARNING, "fail to roll read log tid[%u] pid[%u]", tid_, pid_);
             return ::rtidb::base::Status::IOError("no log avaliable");
         }
-        reader = new Reader(sf, NULL, false, 0);
+        reader_ = new Reader(sf_, NULL, false, 0);
         // when change log part index , reset
         // last_log_byte_offset to 0
-        log_part_index = new_log_part_index;
+        log_part_index_ = new_log_part_index;
     }
-    ::rtidb::base::Status status = reader->ReadRecord(record, buffer);
+    ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
     if (!status.ok()) {
         LOG(DEBUG, "reach the end of file tid[%u] pid[%u]", tid_, pid_);
         // reache the end of file 
         int32_t new_log_part_index = RollRLogFile();
         // reache the latest log part
-        if (new_log_part_index == log_part_index) {
+        if (new_log_part_index == log_part_index_) {
             LOG(DEBUG, "no new log entry tid[%u] pid[%u]", tid_, pid_);
             return status;
         }
         if (new_log_part_index < 0) {
             return status;
         }
-        delete reader;
+        delete reader_;
         // roll a new log part file, reset status
-        log_part_index = new_log_part_index;
-        reader = new Reader(sf, NULL, false, 0);
-        status = reader->ReadRecord(record, buffer);
+        log_part_index_ = new_log_part_index;
+        reader_ = new Reader(sf_, NULL, false, 0);
+        status = reader_->ReadRecord(record, buffer);
     }
     return status;
 }
 
 bool ReplicateNode::IsLogMatched() {
-    return log_matched;
+    return log_matched_;
 }
 
 void ReplicateNode::SetLogMatch(bool log_match) {
-    log_matched = log_match;
+    log_matched_ = log_match;
 }
 
 std::string ReplicateNode::GetEndPoint() {
@@ -88,11 +88,11 @@ std::string ReplicateNode::GetEndPoint() {
 }
 
 uint64_t ReplicateNode::GetLastSyncOffset() {
-    return last_sync_offset;
+    return last_sync_offset_;
 }
 
 void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
-    last_sync_offset = offset;
+    last_sync_offset_ = offset;
 }
 
 int ReplicateNode::RollRLogFile() {
@@ -105,24 +105,24 @@ int ReplicateNode::RollRLogFile() {
     // use log entry offset to find the log part file
     LogPart* last_part = NULL;
     LogPart* part = NULL;
-    if (log_part_index < 0) {
+    if (log_part_index_ < 0) {
         while (it->Valid()) {
             index ++;
             part = it->GetValue();
             LOG(DEBUG, "log with name %s and start offset %lld", part->log_name_.c_str(),
                     part->slog_id_);
-            if (part->slog_id_ < last_sync_offset) {
+            if (part->slog_id_ < last_sync_offset_) {
                 it->Next();
                 last_part = part;
-            } else if (part->slog_id_ > last_sync_offset) {
-                if (last_part && last_part->slog_id_ < last_sync_offset) {
+            } else if (part->slog_id_ > last_sync_offset_) {
+                if (last_part && last_part->slog_id_ < last_sync_offset_) {
                     part = last_part;
                     index--;
                     break;
                 } else {
                     delete it;
                     LOG(WARNING, "fail to find log include offset [%lu] path[%s]", 
-                                 last_sync_offset, log_path_.c_str());
+                                 last_sync_offset_, log_path_.c_str());
                     return -1;
                 }
             } else {
@@ -142,7 +142,7 @@ int ReplicateNode::RollRLogFile() {
             return -1;
         }
     } else {
-        uint32_t current_index = (uint32_t) log_part_index;
+        uint32_t current_index = (uint32_t)log_part_index_;
         // the latest log part was already opened
         if (current_index == (logs_->GetSize() - 1)) {
             delete it;
@@ -176,12 +176,12 @@ int ReplicateNode::OpenSeqFile(const std::string& path) {
         return -1;
     }
     // close old Sequentialfile 
-    if (sf != NULL) {
-        delete sf;
-        sf = NULL;
+    if (sf_ != NULL) {
+        delete sf_;
+        sf_ = NULL;
     }
     LOG(INFO, "open log file %s for table tid[%u] pid[%u]", path.c_str(), tid_, pid_);
-    sf = ::rtidb::log::NewSeqFile(path, fd);
+    sf_ = ::rtidb::log::NewSeqFile(path, fd);
     return 0;
 }
 
@@ -206,10 +206,10 @@ int FollowerReplicateNode::MatchLogOffsetFromNode() {
                                  &::rtidb::api::TabletServer_Stub::AppendEntries,
                                  &request, &response, 12, 1);
     if (ret && response.code() == 0) {
-        last_sync_offset = response.log_offset();
-        log_matched = true;
+        last_sync_offset_ = response.log_offset();
+        log_matched_ = true;
         LOG(INFO, "match node %s log offset %lld for table tid %d pid %d",
-                  endpoint.c_str(), last_sync_offset, tid_, pid_);
+                  endpoint.c_str(), last_sync_offset_, tid_, pid_);
         return 0;
     }
     return -1;
@@ -228,32 +228,32 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
         return 0;
     }
     LOG(DEBUG, "node[%s] offset[%lu] log offset[%lu]", 
-                endpoint.c_str(), last_sync_offset, log_offset);
+                endpoint.c_str(), last_sync_offset_, log_offset);
     ::rtidb::api::AppendEntriesRequest request;
     ::rtidb::api::AppendEntriesResponse response;
     uint64_t sync_log_offset = 0;
     bool request_from_cache = false;
     bool need_wait = false;
-    if (cache.size() > 0) {
+    if (cache_.size() > 0) {
         request_from_cache = true;
-        request = cache[0];
+        request = cache_[0];
         if (request.entries_size() <= 0) {
-            cache.clear(); 
+            cache_.clear(); 
             LOG(WARNING, "empty append entry request from node %s cache", endpoint.c_str());
             return -1;
         }
         const ::rtidb::api::LogEntry& entry = request.entries(request.entries_size() - 1);
-        if (entry.log_index() <= last_sync_offset) {
+        if (entry.log_index() <= last_sync_offset_) {
             LOG(WARNING, "duplicate log index from node %s cache", endpoint.c_str());
-            cache.clear();
+            cache_.clear();
             return -1;
         }
         sync_log_offset = entry.log_index();
     } else {
         request.set_tid(tid_);
         request.set_pid(pid_);
-        request.set_pre_log_index(last_sync_offset);
-        uint32_t batchSize = log_offset - last_sync_offset;
+        request.set_pre_log_index(last_sync_offset_);
+        uint32_t batchSize = log_offset - last_sync_offset_;
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
         for (uint64_t i = 0; i < batchSize; ) {
             std::string buffer;
@@ -266,7 +266,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                     break;
                 }
                 LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
-                if (entry->log_index() <= last_sync_offset) {
+                if (entry->log_index() <= last_sync_offset_) {
                     LOG(WARNING, "skip duplicate log offset %lld", entry->log_index());
                     request.mutable_entries()->RemoveLast();
                     continue;
@@ -289,12 +289,12 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                                      &request, &response, 12, 1);
         if (ret && response.code() == 0) {
             LOG(DEBUG, "sync log to node[%s] to offset %lld", endpoint.c_str(), sync_log_offset);
-            last_sync_offset = sync_log_offset;
+            last_sync_offset_ = sync_log_offset;
             if (request_from_cache) {
-                cache.clear(); 
+                cache_.clear(); 
             }
         } else if (!request_from_cache) {
-            cache.push_back(request);
+            cache_.push_back(request);
             LOG(WARNING, "fail to sync log to node %s", endpoint.c_str());
         }    
     }
@@ -311,12 +311,12 @@ SnapshotReplicateNode::SnapshotReplicateNode(const std::string& point, LogParts*
 }
 
 int SnapshotReplicateNode::MatchLogOffsetFromNode() {
-    log_matched = true;
+    log_matched_ = true;
     return 0;
 }
 
 int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
-    uint32_t batchSize = log_offset - last_sync_offset;
+    uint32_t batchSize = log_offset - last_sync_offset_;
     batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
     for (uint64_t i = 0; i < batchSize; ) {
         std::string buffer;
@@ -330,12 +330,12 @@ int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
                 break;
             }
             LOG(DEBUG, "entry val %s log index %lld", entry.value().c_str(), entry.log_index());
-            if (entry.log_index() <= last_sync_offset) {
+            if (entry.log_index() <= last_sync_offset_) {
                 LOG(WARNING, "skip duplicate log offset %lld", entry.log_index());
                 continue;
             }
             snapshot_fun_(record.ToString(), entry.pk().c_str(), entry.log_index(), entry.ts());
-            last_sync_offset = entry.log_index();
+            last_sync_offset_ = entry.log_index();
         } else if (status.IsWaitRecord()) {
             LOG(WARNING, "got a coffee time for[%s]", endpoint.c_str());
             return 1;
