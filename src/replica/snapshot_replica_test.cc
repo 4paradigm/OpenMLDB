@@ -94,6 +94,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     // copy file and load follower
     std::string old_snaphot_root_path = FLAGS_snapshot_root_path;
+    std::string old_binlog_root_path = FLAGS_binlog_root_path;
     FLAGS_binlog_root_path = FLAGS_binlog_root_path + "_new";
     FLAGS_snapshot_root_path = FLAGS_snapshot_root_path + "_new";
 
@@ -150,6 +151,9 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     DataBlock* value = it->GetValue();
     std::string value_str(value->data, value->size);
     ASSERT_EQ("valueme", value_str);
+
+    FLAGS_snapshot_root_path = old_snaphot_root_path;
+    FLAGS_binlog_root_path = old_binlog_root_path;
 }
 
 }
