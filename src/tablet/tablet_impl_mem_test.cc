@@ -8,6 +8,7 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
+#include <boost/lexical_cast.hpp>
 #include "gtest/gtest.h"
 #include "gflags/gflags.h"
 #include "config.h"
@@ -16,9 +17,19 @@
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/heap-checker.h"
 #endif
+#include <gflags/gflags.h>
+
+DECLARE_string(snapshot_root_path);
+DECLARE_string(binlog_root_path);
+
 
 namespace rtidb {
 namespace tablet {
+
+inline std::string GenRand() {
+    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+}
+
 
 class MockClosure : public ::google::protobuf::Closure {
 
@@ -117,6 +128,8 @@ TEST_F(TabletImplMemTest, TestMem) {
 int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
+    FLAGS_binlog_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

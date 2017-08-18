@@ -492,6 +492,41 @@ void TabletImpl::AppendEntries(RpcController* controller,
     }
 }
 
+void TabletImpl::GetTableStatus(RpcController* controller,
+            const ::rtidb::api::GetTableStatusRequest* request,
+            ::rtidb::api::GetTableStatusResponse* response,
+            Closure* done) {
+
+    MutexLock lock(&mu_);
+    Tables::iterator it = tables_.begin();
+    for (; it != tables_.end(); ++it) {
+        std::map<uint32_t, Table*>::iterator pit = it->second.begin();
+        for (; pit != it->second.end(); ++pit) {
+            Table* table = pit->second;
+            table->Ref();
+            ::rtidb::api::TableStatus* status = response->add_all_table_status();
+            status->set_mode(::rtidb::api::TableMode::kTableFollower);
+            if (table->IsLeader()) {
+                status->set_mode(::rtidb::api::TableMode::kTableLeader);
+            }
+            status->set_tid(table->GetId());
+            status->set_pid(table->GetPid());
+            if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
+                status->set_state(::rtidb::api::TableState(table->GetTableStat()));
+            }
+            LogReplicator* replicator = GetReplicatorUnLock(table->GetId(), table->GetPid());
+            if (replicator != NULL) {
+                status->set_offset(replicator->GetOffset());
+                replicator->UnRef();
+            }
+            table->UnRef();
+        }
+    }
+    response->set_code(0);
+    done->Run();
+}
+
+
 bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log) {
     Table* table = GetTable(tid, pid);
     if (table == NULL) {
@@ -538,8 +573,8 @@ void TabletImpl::LoadTable(RpcController* controller,
 
     {
         MutexLock lock(&mu_);
-        Table* table = GetTable(tid, pid, false);
-        Snapshot* snapshot = GetSnapshot(tid, pid, false);
+        Table* table = GetTableUnLock(tid, pid);
+        Snapshot* snapshot = GetSnapshotUnLock(tid, pid);
         if (table == NULL && snapshot != NULL) {
             snapshot->UnRef();
             LoadTableInternal(request, response);
@@ -676,8 +711,8 @@ void TabletImpl::CreateTable(RpcController* controller,
     // Note after create , request and response is unavaliable
     {
         MutexLock lock(&mu_);
-        Table* table = GetTable(tid, pid, false);
-        Snapshot* snapshot = GetSnapshot(tid, pid, false);
+        Table* table = GetTableUnLock(tid, pid);
+        Snapshot* snapshot = GetSnapshotUnLock(tid, pid);
         if (table != NULL || snapshot != NULL) {
             if (table) {
                 LOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
@@ -834,6 +869,11 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
 
 Snapshot* TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
     MutexLock lock(&mu_);
+    return GetSnapshotUnLock(tid, pid);
+}
+
+Snapshot* TabletImpl::GetSnapshotUnLock(uint32_t tid, uint32_t pid) {
+    mu_.AssertHeld();
     Snapshots::iterator it = snapshots_.find(tid);
     if (it != snapshots_.end()) {
         std::map<uint32_t, Snapshot*>::iterator tit = it->second.find(pid);
@@ -847,25 +887,8 @@ Snapshot* TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
     return NULL;
 }
 
-Snapshot* TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid, bool use_lock) {
-    if (use_lock) {
-        return GetSnapshot(tid, pid);
-    }
-    Snapshots::iterator it = snapshots_.find(tid);
-    if (it != snapshots_.end()) {
-        std::map<uint32_t, Snapshot*>::iterator tit = it->second.find(pid);
-        if (tit == it->second.end()) {
-            return NULL;
-        }
-        Snapshot* snapshot = tit->second;
-        snapshot->Ref();
-        return snapshot;
-    }
-    return NULL;
-}
-
-LogReplicator* TabletImpl::GetReplicator(uint32_t tid, uint32_t pid) {
-    MutexLock lock(&mu_);
+LogReplicator* TabletImpl::GetReplicatorUnLock(uint32_t tid, uint32_t pid) {
+    mu_.AssertHeld();
     Replicators::iterator it = replicators_.find(tid);
     if (it != replicators_.end()) {
         std::map<uint32_t, LogReplicator*>::iterator tit = it->second.find(pid);
@@ -877,28 +900,19 @@ LogReplicator* TabletImpl::GetReplicator(uint32_t tid, uint32_t pid) {
         return replicator;
     }
     return NULL;
+}
 
+LogReplicator* TabletImpl::GetReplicator(uint32_t tid, uint32_t pid) {
+    MutexLock lock(&mu_);
+    return GetReplicatorUnLock(tid, pid);
 }
 
 Table* TabletImpl::GetTable(uint32_t tid, uint32_t pid) {
     MutexLock lock(&mu_);
-    Tables::iterator it = tables_.find(tid);
-    if (it != tables_.end()) {
-        std::map<uint32_t, Table*>::iterator tit = it->second.find(pid);
-        if (tit == it->second.end()) {
-            return NULL;
-        }
-        Table* table = tit->second;
-        table->Ref();
-        return table;
-    }
-    return NULL;
+    return GetTableUnLock(tid, pid);
 }
 
-Table* TabletImpl::GetTable(uint32_t tid, uint32_t pid, bool use_lock) {
-    if (use_lock) {
-        return GetTable(tid, pid);
-    }
+Table* TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
     mu_.AssertHeld();
     Tables::iterator it = tables_.find(tid);
     if (it != tables_.end()) {

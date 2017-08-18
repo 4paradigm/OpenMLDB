@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <gflags/gflags.h>
 
+DECLARE_string(snapshot_root_path);
+
 using ::rtidb::api::LogEntry;
 namespace rtidb {
 namespace storage {
@@ -34,6 +36,7 @@ public:
 inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
 }
+
 
 TEST_F(SnapshotTest, Onebox) {
     Snapshot* snapshot = new Snapshot(1, 1, 0);
@@ -169,6 +172,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::storage::GenRand();
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
