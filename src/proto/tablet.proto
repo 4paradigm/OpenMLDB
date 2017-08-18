@@ -215,6 +215,8 @@ message AppendEntriesResponse {
 }
 
 message ChangeRoleRequest {
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
     optional uint64 term = 1;
     optional TableMode mode = 2;
     repeated string replicas = 3;

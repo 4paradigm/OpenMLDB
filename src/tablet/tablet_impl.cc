@@ -398,6 +398,73 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
     done->Run();
 }
 
+void TabletImpl::ChangeRole(RpcController* controller, 
+            const ::rtidb::api::ChangeRoleRequest* request,
+            ::rtidb::api::ChangeRoleResponse* response,
+            Closure* done) {
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    bool is_leader = false;
+    if (request->mode() == ::rtidb::api::TableMode::kTableLeader) {
+        is_leader = true;
+    }
+    std::vector<std::string> vec;
+    for (int idx = 0; idx < request->replicas_size(); idx++) {
+        vec.push_back(request->replicas(idx).c_str());
+    }
+    if (is_leader) {
+        if (ChangeToLeader(tid, pid, vec) < 0) {
+            response->set_code(-1);
+            response->set_msg("table change to leader failed!");
+            done->Run();
+            return;
+        }
+        response->set_code(0);
+        response->set_msg("ok");
+        done->Run();
+    } else {
+        response->set_code(-1);
+        response->set_msg("not support change to follower");
+        done->Run();
+    }
+}
+
+int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std::string>& replicas) {
+    Table* table = NULL;
+    LogReplicator* replicator = NULL;
+    {
+        MutexLock lock(&mu_);
+        table = GetTable(tid, pid, false);
+        if (!table) {
+            LOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
+            return -1;
+        }
+        if (table->IsLeader() || table->GetTableStat() != ::rtidb::storage::kNormal) {
+            LOG(WARNING, "table is leader or  state[%u] can not change role. tid[%u] pid[%u]", 
+                        table->GetTableStat(), tid, pid);
+            table->UnRef();
+            return -1;
+        }
+        replicator = GetReplicator(tid, pid);
+        if (replicator == NULL) {
+            LOG(WARNING,"no replicator for table tid[%u] pid[%u]", tid, pid);
+            table->UnRef();
+            return -1;
+        }
+        table->SetRole(true);
+        table->SetReplicas(replicas);
+    }
+    for (auto iter = replicas.begin(); iter != replicas.end(); iter++) {
+        if (!replicator->AddReplicateNode(*iter)) {
+            LOG(WARNING,"add replicator[%s] for table tid[%u] pid[%u] failed!", 
+                        iter->c_str(), tid, pid);
+        }
+    }
+    table->UnRef();
+    replicator->UnRef();
+    return 0;
+}
+
 void TabletImpl::AddReplica(RpcController* controller, 
             const ::rtidb::api::AddReplicaRequest* request,
             ::rtidb::api::AddReplicaResponse* response,
@@ -408,7 +475,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         if (table) {
             table->UnRef();
         }
-        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
+        LOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
                 request->pid());
         response->set_code(-1);
         response->set_msg("table not exist or table is leader");
