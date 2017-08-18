@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.impl;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

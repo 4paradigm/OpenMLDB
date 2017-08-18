@@ -5,6 +5,9 @@ import java.nio.ByteBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com._4paradigm.rtidb.client.impl.KvIterator;
+import com._4paradigm.rtidb.client.impl.TabletClient;
+
 public class TabletClientTest {
 
     private String host = "127.0.0.1";

@@ -36,7 +36,7 @@ inline std::string GenRand() {
 }
 
 TEST_F(LogWRTest, TestWriteAndRead) {
-    std::string log_dir = "/tmp/log/" + GenRand() + "/";
+    std::string log_dir = "/tmp/" + GenRand() + "/";
     ::rtidb::base::MkdirRecur(log_dir);
     std::string fname = "test.log";
     std::string full_path = log_dir + "/" + fname;
@@ -68,7 +68,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
 }
 
 TEST_F(LogWRTest, TestLogEntry) {
-    std::string log_dir = "/tmp/log/" + GenRand() + "/";
+    std::string log_dir = "/tmp/" + GenRand() + "/";
     ::rtidb::base::MkdirRecur(log_dir);
     std::string fname = "test.log";
     std::string full_path = log_dir + "/" + fname;
