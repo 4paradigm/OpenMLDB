@@ -13,20 +13,21 @@ import org.slf4j.LoggerFactory;
 import com._4paradigm.rtidb.Tablet;
 import com._4paradigm.rtidb.Tablet.GetTableStatusResponse;
 import com._4paradigm.rtidb.Tablet.PutResponse;
+import com._4paradigm.rtidb.Tablet.ScanResponse;
 import com._4paradigm.rtidb.Tablet.TableStatus;
 import com._4paradigm.rtidb.client.TabletAsyncClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.utils.IpAddressUtils;
 import com.google.protobuf.RpcCallback;
 
-public class TabletHaAsyncClient implements TabletAsyncClient {
-    private final static Logger logger = LoggerFactory.getLogger(TabletHaAsyncClient.class);
+public class TabletHaAsyncClientImpl implements TabletAsyncClient {
+    private final static Logger logger = LoggerFactory.getLogger(TabletHaAsyncClientImpl.class);
     private volatile Map<Integer, TableLocator> locators = new HashMap<Integer, TableLocator>();
     private List<TabletEndpoint> endpoints;
     private Map<TabletEndpoint, TabletAsyncClientImpl> clients = new HashMap<TabletEndpoint, TabletAsyncClientImpl>();
     private int maxFrameLength;
     private int eventLoopThreadCnt;
-    public TabletHaAsyncClient(List<TabletEndpoint> endpoints,
+    public TabletHaAsyncClientImpl(List<TabletEndpoint> endpoints,
             int maxFrameLength, int eventLoopThreadCnt){
         this.endpoints = endpoints;
         this.maxFrameLength = maxFrameLength;
@@ -141,6 +142,27 @@ public class TabletHaAsyncClient implements TabletAsyncClient {
             throw e;
         }
         return locator.getPartitions()[pid];
+    }
+
+    @Override
+    public void scan(int tid, int pid, String pk, long st, long et, RpcCallback<ScanResponse> done) {
+        PartitionLocator locator = getPartionLocator(tid, pid);
+        TabletAsyncClientImpl fastClient = null;
+        if (locator.getLocalClient() != null) {
+            fastClient = locator.getLocalClient();
+        }
+        try {
+            if (fastClient == null) {
+                int index = (int) (locator.getCounter().incrementAndGet() & locator.getReadClientArray().length);
+                fastClient = locator.getReadClientArray()[index];
+            }
+            if (fastClient == null) {
+                throw new TabletException("no read client avaliable");
+            }
+            fastClient.scan(tid, pid, pk, st, et, done);
+        } catch(Exception e) {
+            throw new TabletException("no read client avaliable", e);
+        }
     }
     
 }

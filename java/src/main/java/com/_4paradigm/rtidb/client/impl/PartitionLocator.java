@@ -1,7 +1,9 @@
 package com._4paradigm.rtidb.client.impl;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PartitionLocator {
     private int pid;
@@ -11,13 +13,35 @@ public class PartitionLocator {
     private Set<TabletAsyncClientImpl> readClient = new HashSet<TabletAsyncClientImpl>();
     // the partition on local host
     private TabletAsyncClientImpl localClient = null;
-
+    private AtomicLong counter = new AtomicLong(0);
+    private TabletAsyncClientImpl[] readClientArray = new TabletAsyncClientImpl[0];
+    
     /**
      * @return the pid
      */
     public int getPid() {
         return pid;
     }
+
+    
+    /**
+     * @return the readClientArray
+     */
+    public TabletAsyncClientImpl[] getReadClientArray() {
+        return readClientArray;
+    }
+
+
+   
+
+
+    /**
+     * @return the counter
+     */
+    public AtomicLong getCounter() {
+        return counter;
+    }
+
 
     /**
      * @param pid
@@ -55,6 +79,7 @@ public class PartitionLocator {
      */
     public void setReadClient(Set<TabletAsyncClientImpl> readClient) {
         this.readClient = readClient;
+        this.readClientArray = readClient.toArray(new TabletAsyncClientImpl[0]);
     }
 
     /**
