@@ -337,7 +337,35 @@ void TabletImpl::Scan(RpcController* controller,
     }
 }
 
-void TabletImpl::PauseShnapshot(RpcController* controller,
+void TabletImpl::LoadSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Snapshot* snapshot = GetSnapshot(request->tid(), request->pid());            
+    if (snapshot) {
+        snapshot->UnRef();
+        LOG(WARNING, "snapshot exisits! tid[%u] pid[%u]", 
+                    request->tid(), request->pid());
+        response->set_code(-1);
+        response->set_msg("snapshot exisits");
+        done->Run();
+        return;
+    }
+    if (LoadSnapshot(request->tid(), request->pid()) < 0) {
+        LOG(WARNING, "snapshot load failed! tid[%u] pid[%u]", 
+                    request->tid(), request->pid());
+        response->set_code(-1);
+        response->set_msg("snapshot load failed!");
+        done->Run();
+        return;
+
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
+
+void TabletImpl::PauseSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {

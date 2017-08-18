@@ -60,18 +60,19 @@ public:
     void SetLogMatch(bool log_match);
     std::string GetEndPoint();
     uint64_t GetLastSyncOffset();
+    void SetLastSyncOffset(uint64_t offset);
     ReplicateNode(const ReplicateNode&) = delete;
     ReplicateNode& operator= (const ReplicateNode&) = delete;
 protected:
     std::string endpoint;
-    uint64_t last_sync_offset;
+    uint64_t last_sync_offset_;
     std::string log_path_;
-    int log_part_index;
-    SequentialFile* sf;
-    Reader* reader;
+    int log_part_index_;
+    SequentialFile* sf_;
+    Reader* reader_;
     LogParts* logs_;
     uint32_t replicate_node_mode_;
-    bool log_matched;
+    bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
 };
@@ -86,7 +87,7 @@ public:
     FollowerReplicateNode& operator= (const FollowerReplicateNode&) = delete;
 
 private:
-    std::vector<::rtidb::api::AppendEntriesRequest> cache;
+    std::vector<::rtidb::api::AppendEntriesRequest> cache_;
     ::rtidb::RpcClient* rpc_client_;
 };
 

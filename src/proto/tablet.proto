@@ -257,6 +257,7 @@ service TabletServer {
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
     rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
-    rpc PauseShnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc LoadSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 }
