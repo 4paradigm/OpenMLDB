@@ -142,6 +142,10 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         LOG(WARNING, "log mismatch for path %s, pre_log_index %lld, come log index %lld", path_.c_str(),
                 last_log_offset, request->pre_log_index());
         response->set_log_offset(last_log_offset);
+        if (request->pre_log_index() == 0) {
+            LOG(DEBUG, "first sync log_index! set log_offset[%lu]", last_log_offset);
+            return true;
+        }
         return false;
     }
     for (int32_t i = 0; i < request->entries_size(); i++) {
@@ -244,10 +248,14 @@ void LogReplicator::MatchLogOffset() {
         if (node->IsLogMatched()) {
             continue;
         }
-        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && (table_->GetTableStat() == ::rtidb::storage::kPausing
-                || table_->GetTableStat() == ::rtidb::storage::kPaused)) {
-            all_matched = false;
-            continue;
+        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE) {
+            if (table_->GetTableStat() == ::rtidb::storage::kPausing
+                    || table_->GetTableStat() == ::rtidb::storage::kPaused) {
+                all_matched = false;
+                continue;
+            } else {
+                node->SetLastSyncOffset(GetOffset());
+            }
         }
         if (node->MatchLogOffsetFromNode() < 0) {
             all_matched = false;
