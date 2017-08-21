@@ -20,6 +20,7 @@ public:
   // Create a slice that refers to the contents of "s"
   Slice(const std::string& s) : data_(s.data()), size_(s.size()) { }
 
+  Slice(const char* s) : data_(s), size_(strlen(s)) { }
   // Return a pointer to the beginning of the referenced data
   const char* data() const { return data_; }
 
@@ -28,6 +29,11 @@ public:
 
   // Return true iff the length of the referenced data is zero
   bool empty() const { return size_ == 0; }
+
+  void reset(const char* d, size_t size) {
+      data_ = d;
+      size_ = size;
+  }
 
   // Return the ith byte in the referenced data.
   // REQUIRES: n < size()

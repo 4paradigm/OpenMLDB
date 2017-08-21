@@ -6,7 +6,9 @@
 //
 
 #include "storage/table.h"
+#include "storage/ticket.h"
 #include "gtest/gtest.h"
+#include "timer.h"
 
 namespace rtidb {
 namespace storage {
@@ -19,23 +21,35 @@ public:
 };
 
 TEST_F(TableTest, Put) {
-    Table* table = new Table("tx_log", 1, 1, 8);
+    Table* table = new Table("tx_log", 1, 1, 8, 10);
     table->Ref();
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->UnRef();
 }
 
+TEST_F(TableTest, Release) {
+    Table* table = new Table("tx_log", 1, 1, 8, 10);
+    table->Ref();
+    table->Init();
+    table->Put("test", 9537, "test", 4);
+    table->Put("test2", 9537, "test", 4);
+    uint64_t size = table->Release();
+    ASSERT_EQ(4 + 8 + 4 + 4 + 5 + 8 + 4 + 4, size);
+    table->UnRef();
+}
+
+
 TEST_F(TableTest, Iterator) {
-    Table* table = new Table("tx_log", 1, 1, 8);
+    Table* table = new Table("tx_log", 1, 1, 8, 10);
     table->Ref();
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
     table->Put("pk1", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
-
-    Table::Iterator* it = table->NewIterator("pk");
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("pk", ticket);
 
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
@@ -50,6 +64,49 @@ TEST_F(TableTest, Iterator) {
     ASSERT_EQ(4, value2->size);
     it->Next();
     ASSERT_FALSE(it->Valid());
+    delete it;
+}
+
+TEST_F(TableTest, SchedGc) {
+    Table* table = new Table("tx_log", 1, 1, 8 , 1);
+    table->Ref();
+    table->Init();
+
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table->Put("test", 9527, "test", 4);
+    table->Put("test", now, "tes2", 4);
+    uint64_t count = table->SchedGc();
+    ASSERT_EQ(1, count);
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("test", ticket);
+    it->Seek(now);
+    ASSERT_TRUE(it->Valid());
+    std::string value_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("tes2", value_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+}
+
+TEST_F(TableTest, TableDataCnt) {
+    Table* table = new Table("tx_log", 1, 1, 8 , 1);
+    table->Ref();
+    table->Init();
+    ASSERT_EQ(table->GetDataCnt(), 0);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table->Put("test", 9527, "test", 4);
+    table->Put("test", now, "tes2", 4);
+    ASSERT_EQ(table->GetDataCnt(), 2);
+    uint64_t count = table->SchedGc();
+    ASSERT_EQ(1, count);
+    ASSERT_EQ(table->GetDataCnt(), 1);
+}
+
+TEST_F(TableTest, TableUnref) {
+    Table* table = new Table("tx_log", 1, 1 ,8 , 1);
+    table->Ref();
+    table->Init();
+    table->Put("test", 9527, "test", 4);
+    table->UnRef();
 }
 
 }

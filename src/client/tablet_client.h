@@ -20,9 +20,17 @@ class TabletClient {
 
 public:
     TabletClient(const std::string& endpoint);
+
     ~TabletClient();
-    bool CreateTable(const std::string& name, uint32_t id, uint32_t pid,
-            uint32_t ttl);
+
+    bool CreateTable(const std::string& name, 
+                     uint32_t id, 
+                     uint32_t pid,
+                     uint32_t ttl);
+
+    bool CreateTable(const std::string& name,
+                     uint32_t tid, uint32_t pid, uint32_t ttl,
+                     bool leader, const std::vector<std::string>& endpoints);
 
     bool Put(uint32_t tid,
              uint32_t pid,
@@ -30,12 +38,41 @@ public:
              uint64_t time,
              const std::string& value);
 
+    bool Put(uint32_t tid,
+             uint32_t pid,
+             const char* pk,
+             uint64_t time,
+             const char* value);
+
+    ::rtidb::base::KvIterator* BatchGet(uint32_t tid, uint32_t pid,
+                                        const std::vector<std::string>& keys);
+
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
              uint64_t etime,
              bool showm = false);
+
+    ::rtidb::base::KvIterator* Scan(uint32_t tid,
+             uint32_t pid,
+             const char* pk,
+             uint64_t stime,
+             uint64_t etime,
+             bool showm = false);
+
+    bool DropTable(uint32_t id, uint32_t pid);
+
+    bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
+
+    bool PauseSnapshot(uint32_t tid, uint32_t pid);
+
+    bool LoadSnapshot(uint32_t tid, uint32_t pid);
+
+    bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t ttl);
+
+    bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t ttl,
+               bool leader, const std::vector<std::string>& endpoints);
 
     void ShowTp();
 

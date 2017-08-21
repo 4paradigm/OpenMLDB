@@ -5,8 +5,7 @@ set -e -u -E # this script will exit if any sub-command fails
 ########################################
 # download & build depend software
 ########################################
-
-
+STAGE="DEBUG"
 WORK_DIR=`pwd`
 DEPS_SOURCE=`pwd`/thirdsrc
 DEPS_PREFIX=`pwd`/thirdparty
@@ -76,6 +75,7 @@ else
     wget --no-check-certificate https://github.com/elasticlog/deps/files/877654/zlib-1.2.11.tar.gz
     tar zxf zlib-1.2.11.tar.gz 
     cd zlib-1.2.11
+    sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
     ./configure --static --prefix=${DEPS_PREFIX} >/dev/null
     make -j2 >/dev/null
     make install
@@ -165,16 +165,41 @@ else
     wget --no-check-certificate -O gperftools-2.5.tar.gz https://github.com/gperftools/gperftools/releases/download/gperftools-2.5/gperftools-2.5.tar.gz 
     tar -zxvf gperftools-2.5.tar.gz 
     cd gperftools-2.5 
-    ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
+    if [ "$STAGE" = 'DEBUG' ]
+    then
+        echo "debug stage"
+        ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --prefix=${DEPS_PREFIX} 
+    else
+        echo "prod stage"
+        ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
+    fi
     make -j2 >/dev/null
     make install
     cd -
     touch gperf_tool
 fi
 
-cd $WORK_DIR
-sh gen_cpp.sh
-mkdir -p $WORK_DIR/build 
-cd $WORK_DIR/build && cmake .. && make -j4
-cd $WORK_DIR/build/bin
-ls | grep test | while read line; do ./$line; done
+if [ -f "rapjson_succ" ]
+then 
+    echo "rapjson exist"
+else
+    wget --no-check-certificate -O rapidjson.1.1.0.tar.gz https://github.com/miloyip/rapidjson/archive/v1.1.0.tar.gz
+    tar -zxvf rapidjson.1.1.0.tar.gz
+    cp -rf rapidjson-1.1.0/include/rapidjson ${DEPS_PREFIX}/include
+    touch rapjson_succ
+fi
+
+if [ -f "leveldb_succ" ]
+then
+    echo "leveldb exist"
+else
+    git clone https://github.com/google/leveldb.git
+    cd leveldb
+    make -j8
+    cp -rf include/* ${DEPS_PREFIX}/include
+    cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
+    cd -
+    touch leveldb_succ
+fi
+
+

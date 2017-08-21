@@ -24,13 +24,29 @@ TabletClient::~TabletClient() {
 
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
         uint32_t pid, uint32_t ttl) {
+    std::vector<std::string> endpoints;
+    return CreateTable(name, id, pid, ttl, true, endpoints);
+}
+
+bool TabletClient::CreateTable(const std::string& name,
+                               uint32_t tid, uint32_t pid, uint32_t ttl,
+                               bool leader, const std::vector<std::string>& endpoints) {
     ::rtidb::api::CreateTableRequest request;
     request.set_name(name);
-    request.set_tid(id);
+    request.set_tid(tid);
     request.set_pid(pid);
     request.set_ttl(ttl);
+    if (leader) {
+        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+    }else {
+        request.set_mode(::rtidb::api::TableMode::kTableFollower);
+    }
+    for (size_t i = 0; i < endpoints.size(); i++) {
+        request.add_replicas(endpoints[i]);
+    }
     ::rtidb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::CreateTable,
+    bool ok = client_.SendRequest(tablet_,
+            &::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -40,16 +56,87 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t id,
 
 bool TabletClient::Put(uint32_t tid,
                        uint32_t pid,
-                       const std::string& pk,
-                       uint64_t time, 
-                       const std::string& value) {
+                       const char* pk,
+                       uint64_t time,
+                       const char* value) {
     ::rtidb::api::PutRequest request;
     request.set_pk(pk);
     request.set_time(time);
     request.set_value(value);
     request.set_tid(tid);
+    request.set_pid(pid);
     ::rtidb::api::PutResponse response;
+    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Put,
+            &request, &response, 12, 1);
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    percentile_.push_back(consumed);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+
+}
+
+bool TabletClient::Put(uint32_t tid,
+                       uint32_t pid,
+                       const std::string& pk,
+                       uint64_t time, 
+                       const std::string& value) {
+    return Put(tid, pid, pk.c_str(), time, value.c_str());
+}
+
+bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid) {
+    ::rtidb::api::GeneralRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::PauseSnapshot,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool TabletClient::LoadSnapshot(uint32_t tid, uint32_t pid) {
+    ::rtidb::api::GeneralRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::LoadSnapshot,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool TabletClient::LoadTable(const std::string& name, uint32_t id,
+        uint32_t pid, uint32_t ttl) {
+    std::vector<std::string> endpoints;
+    return LoadTable(name, id, pid, ttl, true, endpoints);
+}
+
+bool TabletClient::LoadTable(const std::string& name,
+                               uint32_t tid, uint32_t pid, uint32_t ttl,
+                               bool leader, const std::vector<std::string>& endpoints) {
+    ::rtidb::api::LoadTableRequest request;
+    request.set_name(name);
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_ttl(ttl);
+    if (leader) {
+        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+    }else {
+        request.set_mode(::rtidb::api::TableMode::kTableFollower);
+    }
+    for (size_t i = 0; i < endpoints.size(); i++) {
+        request.add_replicas(endpoints[i]);
+    }
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(tablet_,
+            &::rtidb::api::TabletServer_Stub::LoadTable,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         return true;
@@ -63,11 +150,43 @@ bool TabletClient::Put(uint32_t tid,
                          uint64_t stime,
                          uint64_t etime,
                          bool showm) {
+    return Scan(tid, pid, pk.c_str(), stime, etime, showm);
+}
+
+::rtidb::base::KvIterator* TabletClient::BatchGet(uint32_t tid, uint32_t pid,
+        const std::vector<std::string>& keys) {
+
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    ::rtidb::api::BatchGetRequest request;
+    request.set_pid(pid);
+    request.set_tid(tid);
+    for (size_t i = 0; i < keys.size(); i++) {
+        request.add_keys(keys[i]);
+    }
+    ::rtidb::api::BatchGetResponse* response = new ::rtidb::api::BatchGetResponse();
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::BatchGet,
+            &request, response, 12, 1);
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    percentile_.push_back(consumed);
+    if (!ok || response->code() != 0) {
+        return NULL;
+    }
+    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    return kv_it;
+}
+
+::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,
+             uint32_t pid,
+             const char* pk,
+             uint64_t stime,
+             uint64_t etime,
+             bool showm) {
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
     request.set_tid(tid);
+    request.set_pid(pid);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
@@ -85,7 +204,7 @@ bool TabletClient::Put(uint32_t tid,
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    percentile_.push_back(consumed/1000);
+    percentile_.push_back(consumed);
     if (showm) {
         uint64_t rpc_send_time = response->metric().rqtime() - response->metric().sqtime();
         uint64_t mutex_time = response->metric().sctime() - response->metric().rqtime();
@@ -103,6 +222,36 @@ bool TabletClient::Put(uint32_t tid,
                   << "decode_time=" << decode_time << std::endl;
     }
     return kv_it;
+
+}
+
+
+
+bool TabletClient::DropTable(uint32_t id, uint32_t pid) {
+    ::rtidb::api::DropTableRequest request;
+    request.set_tid(id);
+    request.set_pid(pid);
+    ::rtidb::api::DropTableResponse response;
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::DropTable,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint) {
+    ::rtidb::api::AddReplicaRequest request;
+    ::rtidb::api::AddReplicaResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_endpoint(endpoint);
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::AddReplica,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
 }
 
 void TabletClient::ShowTp() {
