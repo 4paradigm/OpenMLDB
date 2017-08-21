@@ -144,6 +144,34 @@ bool TabletClient::LoadTable(const std::string& name,
     return false;
 }
 
+bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader) {
+    std::vector<std::string> endpoints;
+    return ChangeRole(tid, pid, leader, endpoints);
+}
+
+bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
+        const std::vector<std::string>& endpoints) {
+    ::rtidb::api::ChangeRoleRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    if (leader) {
+        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+    } else {
+        request.set_mode(::rtidb::api::TableMode::kTableFollower);
+    }
+    for (auto iter = endpoints.begin(); iter != endpoints.end(); iter++) {
+        request.add_replicas(*iter);
+    }
+    ::rtidb::api::ChangeRoleResponse response;
+    bool ok = client_.SendRequest(tablet_,
+            &::rtidb::api::TabletServer_Stub::ChangeRole,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 ::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,
                          uint32_t pid,
                          const std::string& pk,
@@ -173,6 +201,32 @@ bool TabletClient::LoadTable(const std::string& name,
     }
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
     return kv_it;
+}
+
+int TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {
+    ::rtidb::api::GetTableStatusRequest request;
+    bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::GetTableStatus,
+            &request, &response, 12, 1);
+    if (ret) {
+        return 0;
+    }
+    return -1;
+}
+
+int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, 
+            ::rtidb::api::TableStatus& table_status) {
+    ::rtidb::api::GetTableStatusResponse response;
+    if (GetTableStatus(response) < 0) {
+        return -1;
+    }
+    for (int idx = 0; idx < response.all_table_status_size(); idx++) {
+        if (response.all_table_status(idx).tid() == tid &&
+                response.all_table_status(idx).pid() == pid) {
+            table_status = response.all_table_status(idx);
+            return 0;    
+        }
+    }
+    return -1;
 }
 
 ::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,

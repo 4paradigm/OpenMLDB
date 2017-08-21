@@ -74,6 +74,15 @@ public:
     bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t ttl,
                bool leader, const std::vector<std::string>& endpoints);
 
+    bool ChangeRole(uint32_t tid, uint32_t pid, bool leader);
+
+    bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
+                    const std::vector<std::string>& endpoints);
+
+    int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
+    int GetTableStatus(uint32_t tid, uint32_t pid,
+                    ::rtidb::api::TableStatus& table_status);
+
     void ShowTp();
 
 private:

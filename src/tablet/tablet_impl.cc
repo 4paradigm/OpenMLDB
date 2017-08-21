@@ -392,6 +392,8 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         return;
     }
     table->SetTableStat(::rtidb::storage::kPausing);
+    LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+               table->GetTableStat(), request->tid(), request->pid());
     table->UnRef();
     response->set_code(0);
     response->set_msg("ok");
@@ -434,7 +436,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
     LogReplicator* replicator = NULL;
     {
         MutexLock lock(&mu_);
-        table = GetTable(tid, pid, false);
+        table = GetTableUnLock(tid, pid);
         if (!table) {
             LOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
             return -1;
@@ -445,7 +447,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
             table->UnRef();
             return -1;
         }
-        replicator = GetReplicator(tid, pid);
+        replicator = GetReplicatorUnLock(tid, pid);
         if (replicator == NULL) {
             LOG(WARNING,"no replicator for table tid[%u] pid[%u]", tid, pid);
             table->UnRef();
