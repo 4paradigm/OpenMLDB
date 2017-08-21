@@ -241,9 +241,12 @@ void TabletImpl::Scan(RpcController* controller,
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
-    // TODO(wangtaize) controle the max size
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+        remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
     uint64_t last_time = 0;
@@ -254,7 +257,7 @@ void TabletImpl::Scan(RpcController* controller,
             break;
         }
         // skip duplicate record 
-        if (scount > 1 && last_time == it->GetKey()) {
+        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
             LOG(DEBUG, "filter duplicate record for key %s with ts %lld", request->pk().c_str(), it->GetKey());
             last_time = it->GetKey();
             it->Next();

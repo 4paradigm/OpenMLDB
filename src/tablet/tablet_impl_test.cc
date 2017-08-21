@@ -219,6 +219,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     sr.set_pk("test1");
     sr.set_st(9530);
     sr.set_et(9526);
+    sr.set_enable_remove_duplicated_record(true);
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
