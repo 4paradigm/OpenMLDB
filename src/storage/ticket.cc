@@ -23,6 +23,7 @@ void Ticket::Push(KeyEntry* entry) {
     if (entry == NULL) {
         return;
     }
+    entry->Ref();
     entries_.push_back(entry);
 }
 
