@@ -453,10 +453,10 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
             table->UnRef();
             return -1;
         }
-        table->SetRole(true);
+        table->SetLeader(true);
         table->SetReplicas(replicas);
     }
-    for (auto iter = replicas.begin(); iter != replicas.end(); iter++) {
+    for (auto iter = replicas.begin(); iter != replicas.end(); ++iter) {
         if (!replicator->AddReplicateNode(*iter)) {
             LOG(WARNING,"add replicator[%s] for table tid[%u] pid[%u] failed!", 
                         iter->c_str(), tid, pid);
@@ -1128,7 +1128,7 @@ int TabletImpl::LoadSnapshot() {
         LOG(WARNING, "open dir[%s] failed!", FLAGS_snapshot_root_path.c_str());
         return -1;
     }
-    for (std::vector<std::string>::iterator iter = sub_dir.begin(); iter != sub_dir.end(); iter++) {
+    for (std::vector<std::string>::iterator iter = sub_dir.begin(); iter != sub_dir.end(); ++iter) {
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(*iter, "_", &vec);
         if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {

@@ -148,7 +148,7 @@ public:
         return is_leader_;
     }
 
-    void SetRole(bool is_leader) {
+    void SetLeader(bool is_leader) {
         is_leader_ = is_leader;
     }
 

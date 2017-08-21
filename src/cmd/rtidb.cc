@@ -199,7 +199,7 @@ void HandleClientAddReplica(const std::vector<std::string> parts, ::rtidb::clien
     }
 }
 
-void AddPrintRow(::baidu::common::TPrinter& tp, const ::rtidb::api::TableStatus& table_status) {
+void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common::TPrinter& tp) {
     std::vector<std::string> row;
     char buf[30];
     snprintf(buf, 30, "%u", table_status.tid());
@@ -208,23 +208,8 @@ void AddPrintRow(::baidu::common::TPrinter& tp, const ::rtidb::api::TableStatus&
     row.push_back(buf);
     snprintf(buf, 30, "%lu", table_status.offset());
     row.push_back(buf);
-    table_status.mode() == ::rtidb::api::kTableLeader? row.push_back("leader") : row.push_back("follower");
-    switch (table_status.state()) {
-        case ::rtidb::api::kTableNormal:
-            row.push_back("normal");
-            break;
-        case ::rtidb::api::kTableLoading:
-            row.push_back("loading");
-            break;
-        case ::rtidb::api::kTablePausing:
-            row.push_back("pausing");
-            break;
-        case ::rtidb::api::kTablePaused:
-            row.push_back("paused");
-            break;
-        default:
-            row.push_back("undefined");
-    }
+    row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
+    row.push_back(::rtidb::api::TableState_Name(table_status.state()));
     tp.AddRow(row);
 }
 
@@ -241,7 +226,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
         ::rtidb::api::TableStatus table_status;
         bool ok = client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status);
         if (ok) {
-            AddPrintRow(tp, table_status);
+            AddPrintRow(table_status, tp);
             tp.Print(true);
         } else {
             std::cout << "GetTableStatus failed" << std::endl;
@@ -254,7 +239,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
             return;
         }
         for (int idx = 0; idx < response.all_table_status_size(); idx++) {
-            AddPrintRow(tp, response.all_table_status(idx));
+            AddPrintRow(response.all_table_status(idx), tp);
         }
         tp.Print(true);
     } else {
