@@ -65,6 +65,15 @@ public:
 
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
 
+    bool PauseSnapshot(uint32_t tid, uint32_t pid);
+
+    bool LoadSnapshot(uint32_t tid, uint32_t pid);
+
+    bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t ttl);
+
+    bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t ttl,
+               bool leader, const std::vector<std::string>& endpoints);
+
     void ShowTp();
 
 private:

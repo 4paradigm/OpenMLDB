@@ -18,7 +18,8 @@ add_library(log STATIC log/crc32c.cc
                        log/writable_file.cc)
 add_library(base STATIC base/status.cc)
 
-add_library(replica STATIC replica/log_replicator.cc)
+add_library(replica STATIC replica/replicate_node.cc
+                           replica/log_replicator.cc)
 
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
@@ -50,12 +51,14 @@ target_link_libraries(tablet_impl_test   gtest pthread tablet leveldb gflags sto
 add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
 target_link_libraries(tablet_impl_mem_test   gtest pthread tablet leveldb gflags storage replica log common sofa-pbrpc  protobuf z snappy unwind leveldb tcmalloc)
 
-
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf unwind tcmalloc)
 
 add_executable(log_test  log/log_test.cc)
 target_link_libraries(log_test   gtest pthread storage tablet base log gflags storage common protobuf tcmalloc_minimal)
+
+add_executable(snapshot_replica_test  replica/snapshot_replica_test.cc client/tablet_client.cc base/status.cc flags.cc)
+target_link_libraries(snapshot_replica_test gtest gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb tcmalloc_minimal)
 
 add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc base/status.cc)
 target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb tcmalloc_minimal)

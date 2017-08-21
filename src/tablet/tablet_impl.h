@@ -65,6 +65,11 @@ public:
             ::rtidb::api::CreateTableResponse* response,
             Closure* done);
 
+    void LoadTable(RpcController* controller,
+            const ::rtidb::api::LoadTableRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void DropTable(RpcController* controller,
             const ::rtidb::api::DropTableRequest* request,
             ::rtidb::api::DropTableResponse* response,
@@ -80,6 +85,20 @@ public:
             ::rtidb::api::AppendEntriesResponse* response,
             Closure* done); 
 
+    void GetTableStatus(RpcController* controller,
+            const ::rtidb::api::GetTableStatusRequest* request,
+            ::rtidb::api::GetTableStatusResponse* response,
+            Closure* done);
+
+    void PauseSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done); 
+
+    void LoadSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done); 
     //
     //http api
     // get all table informatiom
@@ -87,12 +106,15 @@ public:
     bool WebService(const sofa::pbrpc::HTTPRequest& request,
             sofa::pbrpc::HTTPResponse& response);
 private:
-    // Get table by table id and Inc reference
+    // Get table by table id and Inc reference , no need external synchronization
     ::rtidb::storage::Table* GetTable(uint32_t tid, uint32_t pid);
+    // Get table by table id and Inc reference , and Need external synchronization  
+    ::rtidb::storage::Table* GetTableUnLock(uint32_t tid, uint32_t pid);
 
     ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
-
+    ::rtidb::replica::LogReplicator* GetReplicatorUnLock(uint32_t tid, uint32_t pid);
     ::rtidb::storage::Snapshot* GetSnapshot(uint32_t tid, uint32_t pid);
+    ::rtidb::storage::Snapshot* GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
     void ShowTables(const sofa::pbrpc::HTTPRequest& request,
@@ -111,6 +133,9 @@ private:
     void CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response);
 
+    void LoadTableInternal(const ::rtidb::api::LoadTableRequest* request,
+            ::rtidb::api::GeneralResponse* response);
+
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
     bool MakeSnapshot(uint32_t tid, uint32_t pid,
@@ -118,6 +143,8 @@ private:
                       const std::string& pk,
                       uint64_t offset,
                       uint64_t ts);
+    int LoadSnapshot();
+    int LoadSnapshot(uint32_t tid, uint32_t pid);
 
 private:
     Tables tables_;
