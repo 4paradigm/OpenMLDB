@@ -81,6 +81,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
     ASSERT_TRUE(ret);
+
     uint32_t count = 0;
     while (count < 10) {
         count++;
@@ -91,6 +92,11 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ret = client.PauseSnapshot(tid, pid);
     ASSERT_TRUE(ret);
     sleep(1);
+    ::rtidb::api::TableStatus table_status;
+    if (client.GetTableStatus(tid, pid, table_status) < 0) {
+        ASSERT_TRUE(0);
+    }
+    ASSERT_EQ(::rtidb::api::kTablePaused, table_status.state());
 
     // copy file and load follower
     std::string old_snaphot_root_path = FLAGS_snapshot_root_path;
@@ -124,33 +130,40 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ASSERT_TRUE(ret);
     ret = client1.LoadTable("table1", tid, pid, 100000, false, endpoints);
     ASSERT_TRUE(ret);
+    sleep(1);
+
+    ::rtidb::base::KvIterator* iter = client1.Scan(tid, pid, "testkey", cur_time+1, cur_time-1, false);
+    ASSERT_TRUE(iter->Valid());
+    ASSERT_EQ("value1", iter->GetValue().ToString());
 
     ret = client.AddReplica(tid, pid, end_point);
     ASSERT_TRUE(ret);
     sleep(1);
 
+    if (client.GetTableStatus(tid, pid, table_status) < 0) {
+        ASSERT_TRUE(0);
+    }
+    ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
+
     ret = client.Put(tid, pid, "testkeynow", cur_time, "valueme");
 
     sleep(1);
-    client1.DropTable(tid, pid);
-    sleep(1);
+    iter = client1.Scan(tid, pid, "testkeynow", cur_time+1, cur_time-1, false);
+    ASSERT_TRUE(iter->Valid());
+    ASSERT_EQ("valueme", iter->GetValue().ToString());
 
-    Snapshot* snapshot = new Snapshot(tid, pid, 0);
-    snapshot->Ref();
-    bool ok = snapshot->Init();
-    ASSERT_TRUE(ok);
-    Table* table = new Table("test", tid, pid, 8, 0, false);
-    table->Ref();
-    table->Init();
-    ok = snapshot->Recover(table);
-    ASSERT_TRUE(ok);
-    Ticket ticket;
-    Table::Iterator* it = table->NewIterator("testkeynow", ticket);
-    it->SeekToFirst();
-    ASSERT_TRUE(it->Valid());
-    DataBlock* value = it->GetValue();
-    std::string value_str(value->data, value->size);
-    ASSERT_EQ("valueme", value_str);
+    if (client1.GetTableStatus(tid, pid, table_status) < 0) {
+        ASSERT_TRUE(0);
+    }
+    ASSERT_EQ(::rtidb::api::kTableFollower, table_status.mode());
+
+    ret = client1.ChangeRole(tid, pid, true);
+    ASSERT_TRUE(ret);
+
+    if (client1.GetTableStatus(tid, pid, table_status) < 0) {
+        ASSERT_TRUE(0);
+    }
+    ASSERT_EQ(::rtidb::api::kTableLeader, table_status.mode());
 
     FLAGS_snapshot_root_path = old_snaphot_root_path;
     FLAGS_binlog_root_path = old_binlog_root_path;

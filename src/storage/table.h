@@ -148,8 +148,16 @@ public:
         return is_leader_;
     }
 
+    void SetLeader(bool is_leader) {
+        is_leader_ = is_leader;
+    }
+
     inline const std::vector<std::string>& GetReplicas() const {
         return replicas_;
+    }
+
+    void SetReplicas(const std::vector<std::string>& replicas) {
+        replicas_ = replicas;
     }
 
     inline uint32_t GetTableStat() {
@@ -176,8 +184,8 @@ private:
     uint32_t const ttl_;
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> data_cnt_;
-    bool const is_leader_;
-    std::vector<std::string> const replicas_;
+    bool is_leader_;
+    std::vector<std::string> replicas_;
     bool wal_;
     uint64_t term_;
     boost::atomic<uint32_t> table_status_;

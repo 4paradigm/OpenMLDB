@@ -280,6 +280,8 @@ void LogReplicator::ReplicateToNode(ReplicateNode* node) {
         if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
             table_->SetTableStat(::rtidb::storage::kPaused);
             node->SetLogMatch(false);
+            LOG(DEBUG, "table status has set[%u]. tid[%u] pid[%u]",
+                        ::rtidb::storage::kPaused, table_->GetId(), table_->GetPid());
             break;
         }
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {

@@ -22,6 +22,8 @@
 #include "base/kv_iterator.h"
 #include "timer.h"
 #include "version.h"
+#include "proto/tablet.pb.h"
+#include "tprinter.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -194,6 +196,111 @@ void HandleClientAddReplica(const std::vector<std::string> parts, ::rtidb::clien
         std::cout << "AddReplica ok" << std::endl;
     }else {
         std::cout << "Fail to Add Replica" << std::endl;
+    }
+}
+
+void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common::TPrinter& tp) {
+    std::vector<std::string> row;
+    char buf[30];
+    snprintf(buf, 30, "%u", table_status.tid());
+    row.push_back(buf);
+    snprintf(buf, 30, "%u", table_status.pid());
+    row.push_back(buf);
+    snprintf(buf, 30, "%lu", table_status.offset());
+    row.push_back(buf);
+    row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
+    row.push_back(::rtidb::api::TableState_Name(table_status.state()));
+    tp.AddRow(row);
+}
+
+void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    std::vector<std::string> row;
+    row.push_back("tid");
+    row.push_back("pid");
+    row.push_back("offset");
+    row.push_back("mode");
+    row.push_back("state");
+    ::baidu::common::TPrinter tp(5);
+    tp.AddRow(row);
+    if (parts.size() == 3) {
+        ::rtidb::api::TableStatus table_status;
+        bool ok = client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status);
+        if (ok) {
+            AddPrintRow(table_status, tp);
+            tp.Print(true);
+        } else {
+            std::cout << "GetTableStatus failed" << std::endl;
+        }
+    
+    } else if (parts.size() == 1) {
+        ::rtidb::api::GetTableStatusResponse response;
+        if (client->GetTableStatus(response) < 0) {
+            std::cout << "GetTableStatus failed" << std::endl;
+            return;
+        }
+        for (int idx = 0; idx < response.all_table_status_size(); idx++) {
+            AddPrintRow(response.all_table_status(idx), tp);
+        }
+        tp.Print(true);
+    } else {
+        std::cout << "Bad addreplica format" << std::endl;
+        return;
+    }
+}
+
+void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad PauseSnapshot format" << std::endl;
+        return;
+    }
+    bool ok = client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+    if (ok) {
+        std::cout << "PauseSnapshot ok" << std::endl;
+    }else {
+        std::cout << "Fail to PauseSnapshot" << std::endl;
+    }
+}
+
+void HandleClientLoadSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad LoadSnapshot format" << std::endl;
+        return;
+    }
+    bool ok = client->LoadSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+    if (ok) {
+        std::cout << "LoadSnapshot ok" << std::endl;
+    }else {
+        std::cout << "Fail to LoadSnapshot" << std::endl;
+    }
+}
+
+void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "Bad LoadTable format" << std::endl;
+        return;
+    }
+    bool ok = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
+                                boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint64_t>(parts[4]));
+    if (ok) {
+        std::cout << "LoadTable ok" << std::endl;
+    }else {
+        std::cout << "Fail to LoadTable" << std::endl;
+    }
+}
+
+void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad LoadTable format" << std::endl;
+        return;
+    }
+    if (parts[3].compare("leader") == 0) {
+        bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
+        if (ok) {
+            std::cout << "ChangeRole ok" << std::endl;
+        }
+        std::cout << "Fail to Change leader" << std::endl;
+    } else {
+        std::cout << "not support to change follower" << std::endl;
     }
 }
 
@@ -387,6 +494,16 @@ void StartClient() {
             HandleClientDropTable(parts, &client);
         }else if (parts[0] == "addreplica") {
             HandleClientAddReplica(parts, &client);
+        }else if (parts[0] == "pausesnapshot") {
+            HandleClientPauseSnapshot(parts, &client);
+        }else if (parts[0] == "loadsnapshot") {
+            HandleClientLoadSnapshot(parts, &client);
+        }else if (parts[0] == "loadtable") {
+            HandleClientLoadTable(parts, &client);
+        }else if (parts[0] == "changerole") {
+            HandleClientChangeRole(parts, &client);
+        }else if (parts[0] == "gettablestatus") {
+            HandleClientGetTableStatus(parts, &client);
         }
 
         if (!FLAGS_interactive) {
