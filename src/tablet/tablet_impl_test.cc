@@ -526,6 +526,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
 }
 
 int main(int argc, char** argv) {
+    srand (time(NULL))
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();

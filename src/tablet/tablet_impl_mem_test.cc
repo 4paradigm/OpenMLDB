@@ -126,6 +126,7 @@ TEST_F(TabletImplMemTest, TestMem) {
 }
 
 int main(int argc, char** argv) {
+    srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();

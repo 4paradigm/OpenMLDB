@@ -148,6 +148,8 @@ private:
                       const std::string& pk,
                       uint64_t offset,
                       uint64_t ts);
+    bool SnapshotTTL(uint32_t tid, uint32_t pid, 
+            const std::vector<std::pair<std::string, uint64_t> >& keys);                  
     int LoadSnapshot();
     int LoadSnapshot(uint32_t tid, uint32_t pid);
     int ChangeToLeader(uint32_t tid, uint32_t pid, 

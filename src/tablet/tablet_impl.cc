@@ -67,7 +67,7 @@ void TabletImpl::Init() {
     if (FLAGS_enable_statdb) {
         // Create a dbstat table with tid = 0 and pid = 0
         Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
-        dbstat->Init();
+        dbstat->Init(boost::bind(&TabletImpl::SnapshotTTL, this, 0, 0, _1));
         dbstat->Ref();
         tables_[0].insert(std::make_pair(0, dbstat));
         if (FLAGS_statdb_ttl > 0) {
@@ -624,6 +624,17 @@ bool TabletImpl::MakeSnapshot(uint32_t tid, uint32_t pid,
     return ret;
 }
 
+bool TabletImpl::SnapshotTTL(uint32_t tid, uint32_t pid, 
+                            const std::vector<std::pair<std::string, uint64_t> >& keys) {
+    Snapshot* snapshot = GetSnapshot(tid, pid);
+    if (snapshot == NULL) {
+        return false;
+    }
+    bool ret = snapshot->BatchDelete(keys);
+    snapshot->UnRef();
+    return ret;
+}
+
 void TabletImpl::LoadTable(RpcController* controller,
             const ::rtidb::api::LoadTableRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -724,7 +735,7 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
                              endpoints, request->wal());
-    table->Init();
+    table->Init(boost::bind(&TabletImpl::SnapshotTTL, this, request->tid(), request->pid(), _1));
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
@@ -830,7 +841,7 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
                              endpoints, request->wal());
-    table->Init();
+    table->Init(boost::bind(&TabletImpl::SnapshotTTL, this, request->tid(), request->pid(), _1));
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();

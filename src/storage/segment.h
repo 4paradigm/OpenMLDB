@@ -15,6 +15,8 @@
 #include "mutex.h"
 #include "boost/atomic.hpp"
 #include "storage/ticket.h"
+#include "boost/function.hpp"
+#include "boost/bind.hpp"
 
 namespace rtidb {
 namespace storage {
@@ -23,6 +25,11 @@ class Segment;
 class Ticket;
 using ::baidu::common::Mutex;
 using ::baidu::common::MutexLock;
+
+typedef boost::function< bool (const std::vector<std::pair<std::string, uint64_t> >& keys) > SnapshotTTLFunc;
+inline bool DefaultSnapshotTTLFunc(const std::vector<std::pair<std::string, uint64_t> >& keys) {
+    return true;
+}
 
 struct DataBlock {
     uint32_t size;
@@ -110,6 +117,7 @@ typedef ::rtidb::base::Skiplist<std::string, KeyEntry*, StringComparator> KeyEnt
 class Segment {
 
 public:
+    Segment(SnapshotTTLFunc ttl_fun);
     Segment();
     ~Segment();
 
@@ -156,13 +164,14 @@ public:
     }
 
 private:
-    uint64_t FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node);
+    uint64_t FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node);
     void SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node);
 private:
     KeyEntries* entries_;
     // only Put need mutex
     Mutex mu_;
     boost::atomic<uint64_t> data_cnt_;
+    SnapshotTTLFunc ttl_fun_;
 };
 
 }// namespace storage
