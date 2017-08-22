@@ -269,6 +269,17 @@ void LogReplicator::MatchLogOffset() {
     }
 }
 
+int LogReplicator::PauseReplicate(ReplicateNode* node) {
+    if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
+        table_->SetTableStat(::rtidb::storage::kPaused);
+        node->SetLogMatch(false);
+        LOG(DEBUG, "table status has set[%u]. tid[%u] pid[%u]",
+                    ::rtidb::storage::kPaused, table_->GetId(), table_->GetPid());
+        return 0;
+    }
+    return -1;
+}
+
 void LogReplicator::ReplicateToNode(ReplicateNode* node) {
     uint32_t coffee_time = 0;
     while (running_.load(boost::memory_order_relaxed)) {
@@ -277,14 +288,15 @@ void LogReplicator::ReplicateToNode(ReplicateNode* node) {
             cv_.TimeWait(coffee_time);
             coffee_time = 0;
         }
-        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
-            table_->SetTableStat(::rtidb::storage::kPaused);
-            node->SetLogMatch(false);
-            LOG(DEBUG, "table status has set[%u]. tid[%u] pid[%u]",
-                        ::rtidb::storage::kPaused, table_->GetId(), table_->GetPid());
+        if (PauseReplicate(node) == 0) {
+            LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
             break;
         }
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
+            if (PauseReplicate(node) == 0) {
+                LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
+                return;
+            }
             cv_.TimeWait(FLAGS_binlog_sync_wait_time);
             if (!running_.load(boost::memory_order_relaxed)) {
                 LOG(INFO, "replicate log exist for path %s", path_.c_str());
