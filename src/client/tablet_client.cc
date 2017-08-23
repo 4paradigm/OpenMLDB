@@ -115,7 +115,7 @@ bool TabletClient::LoadSnapshot(uint32_t tid, uint32_t pid) {
 bool TabletClient::LoadTable(const std::string& name, uint32_t id,
         uint32_t pid, uint32_t ttl) {
     std::vector<std::string> endpoints;
-    return LoadTable(name, id, pid, ttl, true, endpoints);
+    return LoadTable(name, id, pid, ttl, false, endpoints);
 }
 
 bool TabletClient::LoadTable(const std::string& name,

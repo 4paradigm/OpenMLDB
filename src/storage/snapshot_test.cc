@@ -77,11 +77,8 @@ TEST_F(SnapshotTest, Onebox) {
         ASSERT_TRUE(ok);
     }
     {
-        DeleteEntry entry;
-        entry.pk = "test0";
-        entry.ts = 9638;
-        std::vector<DeleteEntry> entries;
-        entries.push_back(entry);
+        std::vector<std::pair<std::string, uint64_t> > entries;
+        entries.push_back(std::make_pair("test0", 9638));
         snapshot->BatchDelete(entries);
     }
     snapshot->UnRef();

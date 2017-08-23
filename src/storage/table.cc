@@ -54,10 +54,10 @@ Table::Table(const std::string& name,
     replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
-void Table::Init() {
+void Table::Init(SnapshotTTLFunc ttl_fun) {
     segments_ = new Segment*[seg_cnt_];
     for (uint32_t i = 0; i < seg_cnt_; i++) {
-        segments_[i] = new Segment();
+        segments_[i] = new Segment(ttl_fun);
     }
     if (ttl_ > 0) {
         enable_gc_ = true;

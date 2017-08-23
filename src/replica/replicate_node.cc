@@ -205,6 +205,7 @@ int FollowerReplicateNode::MatchLogOffsetFromNode() {
     bool ret = rpc_client_->SendRequest(stub, 
                                  &::rtidb::api::TabletServer_Stub::AppendEntries,
                                  &request, &response, 12, 1);
+    delete stub;                             
     if (ret && response.code() == 0) {
         last_sync_offset_ = response.log_offset();
         log_matched_ = true;
@@ -221,11 +222,6 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
         LOG(WARNING, "rpc_client is NULL! tid[%u] pid[%u] endpint[%s]", 
                     tid_, pid_, endpoint.c_str()); 
         return -1;
-    }
-    ::rtidb::api::TabletServer_Stub* stub;
-    if (!rpc_client_->GetStub(endpoint, &stub)) {
-        LOG(WARNING, "fail to get rpc stub with endpoint %s", endpoint.c_str());
-        return 0;
     }
     LOG(DEBUG, "node[%s] offset[%lu] log offset[%lu]", 
                 endpoint.c_str(), last_sync_offset_, log_offset);
@@ -284,9 +280,15 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
         }
     }    
     if (request.entries_size() > 0) {
+        ::rtidb::api::TabletServer_Stub* stub;
+        if (!rpc_client_->GetStub(endpoint, &stub)) {
+            LOG(WARNING, "fail to get rpc stub with endpoint %s", endpoint.c_str());
+            return 0;
+        }
         bool ret = rpc_client_->SendRequest(stub, 
                                      &::rtidb::api::TabletServer_Stub::AppendEntries,
                                      &request, &response, 12, 1);
+        delete stub;                             
         if (ret && response.code() == 0) {
             LOG(DEBUG, "sync log to node[%s] to offset %lld", endpoint.c_str(), sync_log_offset);
             last_sync_offset_ = sync_log_offset;

@@ -16,8 +16,8 @@ cmd: loadsnapshot tid pid
 > loadsnapshot 1 123
 
 5. 在从节点上运行loadtable命令
-cmd: loadtable tid pid
-> loadtable 1 123
+cmd: loadtable name tid pid ttl
+> loadtable table1 1 123 1000
 
 6. 获取从节点的状态为normal时加载完成(正在加载的状态为loading)
 cmd: gettablestatus

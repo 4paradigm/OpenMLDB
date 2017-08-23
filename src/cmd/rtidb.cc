@@ -115,24 +115,28 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
 
 void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     uint32_t size = 400;
-    if (parts.size() >= 3) {
-        size = boost::lexical_cast<uint32_t>(parts[2]);
-    }
-    uint32_t times = 10000;
-    if (parts.size() >= 4) {
-        times = ::boost::lexical_cast<uint32_t>(parts[3]);
-    }
-    char val[size];
-    for (uint32_t i = 0; i < size; i++) {
-        val[i] ='0';
-    }
-    std::string sval(val);
-    for (uint32_t i = 0 ; i < times; i++) {
-        std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-        for (uint32_t j = 0; j < 1000; j++) {
-            client->Put(1, 1, key, j, sval);
+    try {
+        if (parts.size() >= 3) {
+            size = boost::lexical_cast<uint32_t>(parts[2]);
         }
-        client->ShowTp();
+        uint32_t times = 10000;
+        if (parts.size() >= 4) {
+            times = ::boost::lexical_cast<uint32_t>(parts[3]);
+        }
+        char val[size];
+        for (uint32_t i = 0; i < size; i++) {
+            val[i] ='0';
+        }
+        std::string sval(val);
+        for (uint32_t i = 0 ; i < times; i++) {
+            std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
+            for (uint32_t j = 0; j < 1000; j++) {
+                client->Put(1, 1, key, j, sval);
+            }
+            client->ShowTp();
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "put argument error!" << std::endl;
     }
 }
 
@@ -178,11 +182,15 @@ void HandleClientDropTable(const std::vector<std::string>& parts, ::rtidb::clien
         std::cout << "Bad drop command, you should input like 'drop tid pid' "<< std::endl;
         return;
     }
-    bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-    if (ok) {
-        std::cout << "Drop table ok" << std::endl;
-    }else {
-        std::cout << "Fail to drop table" << std::endl;
+    try {
+        bool ok = client->DropTable(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+        if (ok) {
+            std::cout << "Drop table ok" << std::endl;
+        }else {
+            std::cout << "Fail to drop table" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad drop format" << std::endl;
     }
 }
 
@@ -191,11 +199,15 @@ void HandleClientAddReplica(const std::vector<std::string> parts, ::rtidb::clien
         std::cout << "Bad addreplica format" << std::endl;
         return;
     }
-    bool ok = client->AddReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
-    if (ok) {
-        std::cout << "AddReplica ok" << std::endl;
-    }else {
-        std::cout << "Fail to Add Replica" << std::endl;
+    try {
+        bool ok = client->AddReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        if (ok) {
+            std::cout << "AddReplica ok" << std::endl;
+        }else {
+            std::cout << "Fail to Add Replica" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad addreplica format" << std::endl;
     }
 }
 
@@ -224,18 +236,21 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     tp.AddRow(row);
     if (parts.size() == 3) {
         ::rtidb::api::TableStatus table_status;
-        bool ok = client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status);
-        if (ok) {
-            AddPrintRow(table_status, tp);
-            tp.Print(true);
-        } else {
-            std::cout << "GetTableStatus failed" << std::endl;
+        try {
+            if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status) == 0) {
+                AddPrintRow(table_status, tp);
+                tp.Print(true);
+            } else {
+                std::cout << "gettablestatus failed" << std::endl;
+            }
+        } catch (boost::bad_lexical_cast& e) {
+            std::cout << "Bad gettablestatus format" << std::endl;
+
         }
-    
     } else if (parts.size() == 1) {
         ::rtidb::api::GetTableStatusResponse response;
         if (client->GetTableStatus(response) < 0) {
-            std::cout << "GetTableStatus failed" << std::endl;
+            std::cout << "gettablestatus failed" << std::endl;
             return;
         }
         for (int idx = 0; idx < response.all_table_status_size(); idx++) {
@@ -243,7 +258,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
         }
         tp.Print(true);
     } else {
-        std::cout << "Bad addreplica format" << std::endl;
+        std::cout << "Bad gettablestatus format" << std::endl;
         return;
     }
 }
@@ -253,11 +268,15 @@ void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::cl
         std::cout << "Bad PauseSnapshot format" << std::endl;
         return;
     }
-    bool ok = client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-    if (ok) {
-        std::cout << "PauseSnapshot ok" << std::endl;
-    }else {
-        std::cout << "Fail to PauseSnapshot" << std::endl;
+    try {
+        bool ok = client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+        if (ok) {
+            std::cout << "PauseSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to PauseSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad PauseSnapshot format" << std::endl;
     }
 }
 
@@ -279,26 +298,35 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client
         std::cout << "Bad LoadTable format" << std::endl;
         return;
     }
-    bool ok = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-                                boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint64_t>(parts[4]));
-    if (ok) {
-        std::cout << "LoadTable ok" << std::endl;
-    }else {
-        std::cout << "Fail to LoadTable" << std::endl;
+    try {
+        bool ok = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
+                                    boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint64_t>(parts[4]));
+        if (ok) {
+            std::cout << "LoadTable ok" << std::endl;
+        }else {
+            std::cout << "Fail to LoadTable" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad LoadTable format" << std::endl;
     }
 }
 
 void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 4) {
-        std::cout << "Bad LoadTable format" << std::endl;
+        std::cout << "Bad changerole format" << std::endl;
         return;
     }
     if (parts[3].compare("leader") == 0) {
-        bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
-        if (ok) {
-            std::cout << "ChangeRole ok" << std::endl;
+        try {
+            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
+            if (ok) {
+                std::cout << "ChangeRole ok" << std::endl;
+            } else {
+                std::cout << "Fail to Change leader" << std::endl;
+            }
+        } catch (boost::bad_lexical_cast& e) {
+            std::cout << "Bad changerole format" << std::endl;
         }
-        std::cout << "Fail to Change leader" << std::endl;
     } else {
         std::cout << "not support to change follower" << std::endl;
     }
@@ -441,7 +469,12 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
     uint32_t pid = 1;
     uint32_t times = 10;
     if (parts.size() >= 3) {
-        times = ::boost::lexical_cast<uint32_t>(parts[2]);
+        try {
+            times = ::boost::lexical_cast<uint32_t>(parts[2]);
+        } catch (boost::bad_lexical_cast& e) {
+            std::cout << "Bad scan format" << std::endl;
+            return;
+        }
     }
 
     for (uint32_t i = 0; i < 10; i++) {
@@ -504,6 +537,11 @@ void StartClient() {
             HandleClientChangeRole(parts, &client);
         }else if (parts[0] == "gettablestatus") {
             HandleClientGetTableStatus(parts, &client);
+        }else if (parts[0] == "exit" || parts[0] == "quit") {
+            std::cout << "bye" << std::endl;
+            return;
+        } else {
+            std::cout << "unsupported cmd" << std::endl;
         }
 
         if (!FLAGS_interactive) {

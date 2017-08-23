@@ -118,6 +118,8 @@ public:
 
     void ReplicateToNode(ReplicateNode* node);
 
+    int PauseReplicate(ReplicateNode* node);
+
     // Incr ref
     void Ref();
     // Descr ref

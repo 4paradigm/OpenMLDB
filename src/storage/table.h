@@ -53,7 +53,7 @@ public:
           uint32_t ttl,
           bool wal = true);
 
-    void Init();
+    void Init(SnapshotTTLFunc ttl_fun = boost::bind(&DefaultSnapshotTTLFunc, _1));
 
     void SetGcSafeOffset(uint64_t offset);
 

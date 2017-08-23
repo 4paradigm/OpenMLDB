@@ -29,5 +29,6 @@ DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
 
 // snapshot configuration
 DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage path");
+DEFINE_bool(enable_snapshot_ttl, false, "enable snapshot ttl");
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");

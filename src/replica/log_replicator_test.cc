@@ -136,7 +136,7 @@ bool StartRpcServe(MockTabletImpl* tablet,
 
 TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
-    std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+    std::string folder = "/tmp/" + GenRand() + "/";
     Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
@@ -147,7 +147,7 @@ TEST_F(LogReplicatorTest, Init) {
 
 TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
-    std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+    std::string folder = "/tmp/" + GenRand() + "/";
     Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
@@ -171,7 +171,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
-        std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+        std::string folder = "/tmp/" + GenRand() + "/";
         MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
                 folder, g_endpoints, t7);
         bool ok = follower->Init();
@@ -186,7 +186,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
 
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:18527");
-    std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+    std::string folder = "/tmp/" + GenRand() + "/";
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
@@ -212,7 +212,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
-        std::string folder = "/tmp/rtidb/" + GenRand() + "/";
+        std::string folder = "/tmp/" + GenRand() + "/";
         MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
                 folder, g_endpoints, t8);
         bool ok = follower->Init();

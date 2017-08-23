@@ -30,11 +30,11 @@ target_link_libraries(replica_test gtest gflags replica log tablet storage base 
 add_executable(skiplist_test base/skiplist_test.cc)
 target_link_libraries(skiplist_test gtest pthread unwind tcmalloc)
 
-add_executable(segment_test storage/segment_test.cc)
-target_link_libraries(segment_test gtest storage pthread common unwind tcmalloc)
+add_executable(segment_test storage/segment_test.cc flags.cc)
+target_link_libraries(segment_test gtest gflags storage pthread common unwind tcmalloc)
 
-add_executable(table_test  storage/table_test.cc )
-target_link_libraries(table_test gtest pthread storage common unwind tcmalloc)
+add_executable(table_test  storage/table_test.cc flags.cc)
+target_link_libraries(table_test gtest gflags pthread storage common unwind tcmalloc)
 
 add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc)
 target_link_libraries(snapshot_test gtest pthread storage leveldb protobuf common gflags unwind tcmalloc)
