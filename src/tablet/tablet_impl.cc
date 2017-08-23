@@ -67,7 +67,7 @@ void TabletImpl::Init() {
     if (FLAGS_enable_statdb) {
         // Create a dbstat table with tid = 0 and pid = 0
         Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
-        dbstat->Init(boost::bind(&TabletImpl::SnapshotTTL, this, 0, 0, _1));
+        dbstat->Init();
         dbstat->Ref();
         tables_[0].insert(std::make_pair(0, dbstat));
         if (FLAGS_statdb_ttl > 0) {

@@ -8,10 +8,13 @@
 #include "storage/segment.h"
 #include "logging.h"
 #include "timer.h"
+#include <gflags/gflags.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
+
+DECLARE_bool(enable_snapshot_ttl);
 
 namespace rtidb {
 namespace storage {
@@ -100,11 +103,15 @@ uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, 
         if (tmp->GetValue() != NULL) {
             tmp->GetValue()->Release();
         }
-        keys.push_back(std::make_pair(pk, tmp->GetKey()));
+        if (FLAGS_enable_snapshot_ttl) {
+            keys.push_back(std::make_pair(pk, tmp->GetKey()));
+        }
         delete tmp->GetValue();
         delete tmp;
     }
-    ttl_fun_(keys);
+    if (FLAGS_enable_snapshot_ttl) {
+        ttl_fun_(keys);
+    }    
     return count;
 }
 
