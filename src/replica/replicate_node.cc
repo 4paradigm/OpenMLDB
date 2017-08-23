@@ -274,6 +274,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                 break;
             } else {
                 LOG(WARNING, "fail to get record %s", status.ToString().c_str());
+                need_wait = true;
                 break;
             }
             i++;
@@ -346,7 +347,7 @@ int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
             return 1;
         } else {
             LOG(WARNING, "fail to get record %s", status.ToString().c_str());
-            break;
+            return 1;
         }
         i++;
     }

@@ -287,6 +287,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
       // such records are produced by the mmap based writing code in
       // env_posix.cc that preallocates file regions.
       buffer_.clear();
+      LOG(WARNING, "bad record with zero type");
       return kBadRecord;
     }
 
@@ -302,6 +303,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         size_t drop_size = buffer_.size();
         buffer_.clear();
         ReportCorruption(drop_size, "checksum mismatch");
+        LOG(WARNING, "bad record with crc");
         return kBadRecord;
       }
     }
@@ -312,6 +314,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     if (end_of_buffer_offset_ - buffer_.size() - kHeaderSize - length <
         initial_offset_) {
       result->clear();
+      LOG(WARNING, "bad record with initial_offset");
       return kBadRecord;
     }
     *result = Slice(header + kHeaderSize, length);

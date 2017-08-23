@@ -60,6 +60,12 @@ std::string Status::ToString() const {
             case kIOError:
                 type = "IO error: ";
                 break;
+            case kWaitRecord:
+                type = "Wait record";
+                break;
+            case kEof:
+                type = "End of file";
+                break;
             default:
                 snprintf(tmp, sizeof(tmp), "Unknown code(%d): ",
                    static_cast<int>(code()));
