@@ -240,7 +240,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
         }
         const ::rtidb::api::LogEntry& entry = request.entries(request.entries_size() - 1);
         if (entry.log_index() <= last_sync_offset_) {
-            LOG(WARNING, "duplicate log index from node %s cache", endpoint.c_str());
+            LOG(DEBUG, "duplicate log index from node %s cache", endpoint.c_str());
             cache_.clear();
             return -1;
         }
@@ -263,13 +263,13 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                 }
                 LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
                 if (entry->log_index() <= last_sync_offset_) {
-                    LOG(WARNING, "skip duplicate log offset %lld", entry->log_index());
+                    LOG(DEBUG, "skip duplicate log offset %lld", entry->log_index());
                     request.mutable_entries()->RemoveLast();
                     continue;
                 }
                 sync_log_offset = entry->log_index();
             } else if (status.IsWaitRecord()) {
-                LOG(WARNING, "got a coffee time for[%s]", endpoint.c_str());
+                LOG(DEBUG, "got a coffee time for[%s]", endpoint.c_str());
                 need_wait = true;
                 break;
             } else {
@@ -333,13 +333,13 @@ int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
             }
             LOG(DEBUG, "entry val %s log index %lld", entry.value().c_str(), entry.log_index());
             if (entry.log_index() <= last_sync_offset_) {
-                LOG(WARNING, "skip duplicate log offset %lld", entry.log_index());
+                LOG(DEBUG, "skip duplicate log offset %lld", entry.log_index());
                 continue;
             }
             snapshot_fun_(record.ToString(), entry.pk().c_str(), entry.log_index(), entry.ts());
             last_sync_offset_ = entry.log_index();
         } else if (status.IsWaitRecord()) {
-            LOG(WARNING, "got a coffee time for[%s]", endpoint.c_str());
+            LOG(DEBUG, "got a coffee time for[%s]", endpoint.c_str());
             return 1;
         } else {
             LOG(WARNING, "fail to get record %s", status.ToString().c_str());
