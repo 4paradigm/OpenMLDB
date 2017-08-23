@@ -70,6 +70,7 @@ inline static int GetSubDir(const std::string& path, std::vector<std::string>& s
             sub_dir.push_back(ptr->d_name);
         }
     }
+    closedir(dir);
     return 0;
 }
 
