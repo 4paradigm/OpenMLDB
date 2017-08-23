@@ -295,10 +295,13 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
             if (request_from_cache) {
                 cache_.clear(); 
             }
-        } else if (!request_from_cache) {
-            cache_.push_back(request);
+        } else {
+            if (!request_from_cache) {
+                cache_.push_back(request);
+            }
+            need_wait = true;
             LOG(WARNING, "fail to sync log to node %s", endpoint.c_str());
-        }    
+        }
     }
     if (need_wait) {
         return 1;
