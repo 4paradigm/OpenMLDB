@@ -58,7 +58,7 @@ void SetupLog() {
         ::baidu::common::SetWarningFile(warning_file.c_str());
     }
     ::baidu::common::SetLogCount(FLAGS_log_file_count);
-    ::baidu::common::SetLogSizeLimit(FLAGS_log_file_size);
+    ::baidu::common::SetLogSize(FLAGS_log_file_size);
 }
 
 void StartTablet() {

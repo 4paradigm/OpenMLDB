@@ -152,6 +152,7 @@ private:
     // sync mutex
     Mutex mu_;
     CondVar cv_;
+    CondVar coffee_cv_;
 
     ::rtidb::RpcClient* rpc_client_;
 

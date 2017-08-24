@@ -11,6 +11,7 @@
 #include <gflags/gflags.h>
 
 DECLARE_int32(binlog_sync_batch_size);
+DECLARE_bool(binlog_enable_crc);
 
 namespace rtidb {
 namespace replica {
@@ -34,6 +35,13 @@ ReplicateNode::~ReplicateNode() {
     delete reader_;
 }
 
+void ReplicateNode::GoBackToLastBlock() {
+    if (sf_ == NULL || reader_ == NULL) {
+        return;
+    }
+    reader_->GoBackToLastBlock();
+}
+
 ::rtidb::base::Status ReplicateNode::ReadNextRecord(
         ::rtidb::base::Slice* record, std::string* buffer) {
     // first read record 
@@ -48,16 +56,17 @@ ReplicateNode::~ReplicateNode() {
             LOG(WARNING, "fail to roll read log tid[%u] pid[%u]", tid_, pid_);
             return ::rtidb::base::Status::IOError("no log avaliable");
         }
-        reader_ = new Reader(sf_, NULL, false, 0);
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
         // when change log part index , reset
         // last_log_byte_offset to 0
         log_part_index_ = new_log_part_index;
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
-    if (!status.ok()) {
-        LOG(DEBUG, "reach the end of file tid[%u] pid[%u]", tid_, pid_);
+    if (status.IsEof()) {
         // reache the end of file 
         int32_t new_log_part_index = RollRLogFile();
+        LOG(WARNING, "reach the end of file tid[%u] pid[%u]  new index %d  old index %d", tid_, pid_, new_log_part_index,
+                log_part_index_);
         // reache the latest log part
         if (new_log_part_index == log_part_index_) {
             LOG(DEBUG, "no new log entry tid[%u] pid[%u]", tid_, pid_);
@@ -69,8 +78,7 @@ ReplicateNode::~ReplicateNode() {
         delete reader_;
         // roll a new log part file, reset status
         log_part_index_ = new_log_part_index;
-        reader_ = new Reader(sf_, NULL, false, 0);
-        status = reader_->ReadRecord(record, buffer);
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
     }
     return status;
 }
@@ -227,7 +235,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                 endpoint.c_str(), last_sync_offset_, log_offset);
     ::rtidb::api::AppendEntriesRequest request;
     ::rtidb::api::AppendEntriesResponse response;
-    uint64_t sync_log_offset = 0;
+    uint64_t sync_log_offset =  last_sync_offset_;
     bool request_from_cache = false;
     bool need_wait = false;
     if (cache_.size() > 0) {
@@ -244,6 +252,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
             cache_.clear();
             return -1;
         }
+        LOG(INFO, "use cached request to send last index  %lu", entry.log_index());
         sync_log_offset = entry.log_index();
     } else {
         request.set_tid(tid_);
@@ -259,6 +268,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                 ::rtidb::api::LogEntry* entry = request.add_entries();
                 if (!entry->ParseFromString(record.ToString())) {
                     LOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                    request.mutable_entries()->RemoveLast();
                     break;
                 }
                 LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
@@ -267,13 +277,21 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                     request.mutable_entries()->RemoveLast();
                     continue;
                 }
+                // the log index should incr by 1
+                if ((sync_log_offset + 1) != entry->log_index()) {
+                    LOG(WARNING, "log missing expect offset %lu but %ld", sync_log_offset + 1, entry->log_index());
+                    request.mutable_entries()->RemoveLast();
+                    need_wait = true;
+                    GoBackToLastBlock();
+                    break;
+                }
                 sync_log_offset = entry->log_index();
             } else if (status.IsWaitRecord()) {
                 LOG(DEBUG, "got a coffee time for[%s]", endpoint.c_str());
                 need_wait = true;
                 break;
             } else {
-                LOG(WARNING, "fail to get record %s", status.ToString().c_str());
+                LOG(WARNING, "fail to get record %s current log part index %d", status.ToString().c_str(), log_part_index_);
                 need_wait = true;
                 break;
             }
@@ -289,7 +307,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
         bool ret = rpc_client_->SendRequest(stub, 
                                      &::rtidb::api::TabletServer_Stub::AppendEntries,
                                      &request, &response, 12, 1);
-        delete stub;                             
+        delete stub;
         if (ret && response.code() == 0) {
             LOG(DEBUG, "sync log to node[%s] to offset %lld", endpoint.c_str(), sync_log_offset);
             last_sync_offset_ = sync_log_offset;
@@ -340,6 +358,7 @@ int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
                 LOG(DEBUG, "skip duplicate log offset %lld", entry.log_index());
                 continue;
             }
+
             snapshot_fun_(record.ToString(), entry.pk().c_str(), entry.log_index(), entry.ts());
             last_sync_offset_ = entry.log_index();
         } else if (status.IsWaitRecord()) {

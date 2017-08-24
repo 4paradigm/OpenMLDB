@@ -218,6 +218,21 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
   }
 }
 
+void Reader::GoBackToLastBlock() {
+    size_t offset_in_block = end_of_buffer_offset_ % kBlockSize;
+    size_t block_count = end_of_buffer_offset_ / kBlockSize;
+    size_t jump_offset = offset_in_block;
+    if (block_count < 4) {
+        jump_offset = end_of_buffer_offset_; 
+    }else {
+        jump_offset += 4 * kBlockSize; 
+    }
+    end_of_buffer_offset_ -= jump_offset;
+    file_->Seek(end_of_buffer_offset_);
+    LOG(DEBUG, "go last block to pos %lld", end_of_buffer_offset_);
+    buffer_.clear();
+}
+
 unsigned int Reader::ReadPhysicalRecord(Slice* result) {
   while (true) {
     if (buffer_.size() < kHeaderSize) {
@@ -253,7 +268,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         // middle of writing the header. Instead of considering this an error,
         // just report EOF.
         buffer_.clear();
-        LOG(DEBUG, "end of file");
+        LOG(WARNING, "end of file");
         return kEof;
       }
     }
@@ -267,30 +282,9 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     if (kHeaderSize + length > buffer_.size()) {
       LOG(DEBUG, "end of file %d, header size %d data length %d", buffer_.size(), kHeaderSize,
               length);
-      size_t offset_in_block = end_of_buffer_offset_ % kBlockSize;
-      end_of_buffer_offset_ -= offset_in_block;
-      file_->Seek(end_of_buffer_offset_);
-      LOG(DEBUG, "go last block to pos %lld", end_of_buffer_offset_);
-      buffer_.clear();
+      GoBackToLastBlock();
       return kWaitRecord;
     }
-    // Get Eof flag
-    if (type == kEofType) {
-      buffer_.clear();
-      eof_ = true;
-      LOG(DEBUG, "end of file");
-      return kEof;
-    }
-
-    if (type == kZeroType && length == 0) {
-      // Skip zero length record without reporting any drops since
-      // such records are produced by the mmap based writing code in
-      // env_posix.cc that preallocates file regions.
-      buffer_.clear();
-      LOG(WARNING, "bad record with zero type");
-      return kBadRecord;
-    }
-
     // Check crc
     if (checksum_) {
       uint32_t expected_crc = Unmask(DecodeFixed32(header));
@@ -308,8 +302,23 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
       }
     }
 
-    buffer_.remove_prefix(kHeaderSize + length);
+    // Get Eof flag
+    if (type == kEofType && length == 0) {
+      buffer_.clear();
+      LOG(WARNING, "end of file");
+      return kEof;
+    }
 
+    if (type == kZeroType && length == 0) {
+      // Skip zero length record without reporting any drops since
+      // such records are produced by the mmap based writing code in
+      // env_posix.cc that preallocates file regions.
+      buffer_.clear();
+      LOG(WARNING, "bad record with zero type");
+      return kBadRecord;
+    }
+
+    buffer_.remove_prefix(kHeaderSize + length);
     // Skip physical record that started before initial_offset_
     if (end_of_buffer_offset_ - buffer_.size() - kHeaderSize - length <
         initial_offset_) {

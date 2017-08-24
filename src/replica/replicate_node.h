@@ -56,6 +56,7 @@ public:
     }
     virtual int SyncData(uint64_t log_offset) = 0;
     virtual int MatchLogOffsetFromNode() = 0;
+    void GoBackToLastBlock();
     bool IsLogMatched();
     void SetLogMatch(bool log_match);
     std::string GetEndPoint();

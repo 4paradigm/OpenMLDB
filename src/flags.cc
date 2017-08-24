@@ -21,6 +21,7 @@ DEFINE_int32(binlog_single_file_max_size, 1024*4, "the max size of single binlog
 DEFINE_int32(binlog_sync_batch_size, 32, "the batch size of sync binlog");
 DEFINE_int32(binlog_apply_batch_size, 32, "the batch size of apply binlog");
 DEFINE_bool(binlog_notify_on_put, false, "config the sync log to follower strategy");
+DEFINE_bool(binlog_enable_crc, false, "enable crc");
 DEFINE_int32(binlog_coffee_time, 1000, "config the coffee time");
 DEFINE_int32(binlog_sync_wait_time, 100, "config the sync log wait time");
 DEFINE_int32(binlog_sync_to_disk_interval, 5000, "config the interval of sync binlog to disk time");
