@@ -123,7 +123,7 @@ TEST_F(LogWRTest, TestLogEntry) {
     }
 }
 
-TEST_F(LogWRTest, ReadAllLogs) {
+/*TEST_F(LogWRTest, ReadAllLogs) {
     std::string log_dir = "/tmp/";
     ::rtidb::base::MkdirRecur(log_dir);
     std::string fname = "00000000.log";
@@ -148,7 +148,7 @@ TEST_F(LogWRTest, ReadAllLogs) {
         }
     }
     
-}
+}*/
 
 
 

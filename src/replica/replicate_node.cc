@@ -271,7 +271,7 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
                     request.mutable_entries()->RemoveLast();
                     break;
                 }
-                LOG(INFO, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
+                LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
                 if (entry->log_index() <= last_sync_offset_) {
                     LOG(DEBUG, "skip duplicate log offset %lld", entry->log_index());
                     request.mutable_entries()->RemoveLast();
