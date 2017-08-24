@@ -235,7 +235,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     row.push_back("mode");
     row.push_back("state");
     row.push_back("ttl");
-    ::baidu::common::TPrinter tp(6);
+    ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     if (parts.size() == 3) {
         ::rtidb::api::TableStatus table_status;
