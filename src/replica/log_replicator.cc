@@ -39,7 +39,8 @@ LogReplicator::LogReplicator(const std::string& path,
                              Table* table,
                              SnapshotFunc ssf):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0), role_(role), 
-    endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
+    endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),coffee_cv_(&mu_),
+    rpc_client_(NULL),
     running_(true), tp_(4), refs_(0), wmu_(),
     ssf_(ssf) {
     table_ = table;
@@ -206,7 +207,8 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
-    wsize_ += buffer.size();
+    // add record header size
+    wsize_ += buffer.size() + 7;
     LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }
@@ -285,7 +287,7 @@ void LogReplicator::ReplicateToNode(ReplicateNode* node) {
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
         if (coffee_time > 0) {
-            cv_.TimeWait(coffee_time);
+            coffee_cv_.TimeWait(coffee_time);
             coffee_time = 0;
         }
         if (PauseReplicate(node) == 0) {

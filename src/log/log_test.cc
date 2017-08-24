@@ -47,7 +47,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
-    Reader reader(rf, NULL, false, 0);
+    Reader reader(rf, NULL, true, 0);
     Status status = writer.AddRecord("hello");
     ASSERT_TRUE(status.ok());
     std::string scratch;
@@ -59,7 +59,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     std::cout << "last record offset " << last_record_offset << std::endl;
     status = writer.AddRecord("hello1");
     ASSERT_TRUE(status.ok());
-    Reader reader2(rf, NULL, false, last_record_offset);
+    Reader reader2(rf, NULL, true, last_record_offset);
     std::string scratch2;
     Slice value2;
     status = reader2.ReadRecord(&value2, &scratch2);
@@ -91,7 +91,7 @@ TEST_F(LogWRTest, TestLogEntry) {
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
     std::string scratch2;
-    Reader reader(rf, NULL, false, 0);
+    Reader reader(rf, NULL, true, 0);
     {
         Slice value2;
         status = reader.ReadRecord(&value2, &scratch2);
@@ -122,6 +122,35 @@ TEST_F(LogWRTest, TestLogEntry) {
         ASSERT_TRUE(status.IsWaitRecord());
     }
 }
+
+TEST_F(LogWRTest, ReadAllLogs) {
+    std::string log_dir = "/tmp/";
+    ::rtidb::base::MkdirRecur(log_dir);
+    std::string fname = "00000000.log";
+    std::string full_path = log_dir + "/" + fname;
+    FILE* fd_r = fopen(full_path.c_str(), "rb");
+    ASSERT_TRUE(fd_r != NULL);
+    SequentialFile* rf = NewSeqFile(fname, fd_r);
+    Reader reader(rf, NULL, true, 0);
+    Slice value2;
+    std::string scratch2;
+    while (true) {
+        Status status = reader.ReadRecord(&value2, &scratch2);
+        if (status.ok()) {
+            ::rtidb::api::LogEntry entry2;
+            bool ok = entry2.ParseFromString(value2.ToString());
+            if (ok) {
+                std::cout << entry2.log_index() << std::endl;
+            }
+        }
+        if (status.IsEof()) {
+            return;
+        }
+    }
+    
+}
+
+
 
 
 }
