@@ -99,6 +99,11 @@ public:
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done); 
+    
+    void ChangeRole(RpcController* controller,
+            const ::rtidb::api::ChangeRoleRequest* request,
+            ::rtidb::api::ChangeRoleResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom
@@ -143,8 +148,12 @@ private:
                       const std::string& pk,
                       uint64_t offset,
                       uint64_t ts);
+    bool SnapshotTTL(uint32_t tid, uint32_t pid, 
+            const std::vector<std::pair<std::string, uint64_t> >& keys);                  
     int LoadSnapshot();
     int LoadSnapshot(uint32_t tid, uint32_t pid);
+    int ChangeToLeader(uint32_t tid, uint32_t pid, 
+                       const std::vector<std::string>& replicas);
 
 private:
     Tables tables_;

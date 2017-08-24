@@ -9,6 +9,7 @@
 
 #include "base/file_util.h"
 #include "base/strings.h"
+#include "log/log_format.h"
 #include "leveldb/options.h"
 #include "logging.h"
 #include <boost/ref.hpp>
@@ -39,7 +40,8 @@ LogReplicator::LogReplicator(const std::string& path,
                              Table* table,
                              SnapshotFunc ssf):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0), role_(role), 
-    endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),rpc_client_(NULL),
+    endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),coffee_cv_(&mu_),
+    rpc_client_(NULL),
     running_(true), tp_(4), refs_(0), wmu_(),
     ssf_(ssf) {
     table_ = table;
@@ -70,6 +72,10 @@ LogReplicator::~LogReplicator() {
     if (table_) {
         table_->UnRef();
     }
+}
+
+void LogReplicator::SetRole(const ReplicatorRole& role) {
+    role_ = role;
 }
 
 void LogReplicator::SyncToDisk() {
@@ -157,7 +163,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
-        wsize_ += buffer.size();
+        wsize_ += buffer.size() + ::rtidb::log::kHeaderSize;
         table_->Put(request->entries(i).pk(), request->entries(i).ts(), 
                 request->entries(i).value().c_str(), request->entries(i).value().length());
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
@@ -206,7 +212,8 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
-    wsize_ += buffer.size();
+    // add record header size
+    wsize_ += buffer.size() + ::rtidb::log::kHeaderSize;
     LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }
@@ -269,20 +276,34 @@ void LogReplicator::MatchLogOffset() {
     }
 }
 
+int LogReplicator::PauseReplicate(ReplicateNode* node) {
+    if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
+        table_->SetTableStat(::rtidb::storage::kPaused);
+        node->SetLogMatch(false);
+        LOG(DEBUG, "table status has set[%u]. tid[%u] pid[%u]",
+                    ::rtidb::storage::kPaused, table_->GetId(), table_->GetPid());
+        return 0;
+    }
+    return -1;
+}
+
 void LogReplicator::ReplicateToNode(ReplicateNode* node) {
     uint32_t coffee_time = 0;
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
         if (coffee_time > 0) {
-            cv_.TimeWait(coffee_time);
+            coffee_cv_.TimeWait(coffee_time);
             coffee_time = 0;
         }
-        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
-            table_->SetTableStat(::rtidb::storage::kPaused);
-            node->SetLogMatch(false);
+        if (PauseReplicate(node) == 0) {
+            LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
             break;
         }
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
+            if (PauseReplicate(node) == 0) {
+                LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
+                return;
+            }
             cv_.TimeWait(FLAGS_binlog_sync_wait_time);
             if (!running_.load(boost::memory_order_relaxed)) {
                 LOG(INFO, "replicate log exist for path %s", path_.c_str());

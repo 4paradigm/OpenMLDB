@@ -85,6 +85,7 @@ message ScanRequest {
 	optional RpcMetric metric = 5;
 	optional uint32 tid = 6;
 	optional uint32 pid = 7;
+    optional bool enable_remove_duplicated_record = 8 [default=false];
 }
 
 
@@ -212,6 +213,8 @@ message AppendEntriesResponse {
 }
 
 message ChangeRoleRequest {
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
     optional uint64 term = 1;
     optional TableMode mode = 2;
     repeated string replicas = 3;
@@ -233,6 +236,7 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
+    optional uint32 ttl = 6;
 }
 
 message GetTableStatusResponse {

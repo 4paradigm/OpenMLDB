@@ -85,11 +85,11 @@ bool Snapshot::Put(const std::string& entry, uint64_t offset,
     return false;
 }
 
-bool Snapshot::BatchDelete(const std::vector<DeleteEntry>& entries) {
+bool Snapshot::BatchDelete(const std::vector<std::pair<std::string, uint64_t> >& entries) {
+    LOG(DEBUG, "batch delete key num[%u]. tid[%u], pid[%u]", entries.size(), tid_, pid_);
     leveldb::WriteBatch batch;
     for (size_t i = 0; i < entries.size(); i++) {
-        const DeleteEntry& entry = entries[i];
-        std::string key = LOG_PREFIX + entry.pk + "/" + boost::lexical_cast<std::string>(entry.ts);
+        std::string key = LOG_PREFIX + entries[i].first + "/" + boost::lexical_cast<std::string>(entries[i].second);
         batch.Delete(key);
     }
     leveldb::Status status = db_->Write(leveldb::WriteOptions(), &batch);

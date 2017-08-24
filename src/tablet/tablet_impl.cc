@@ -270,9 +270,12 @@ void TabletImpl::Scan(RpcController* controller,
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
-    // TODO(wangtaize) controle the max size
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+        remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
     LOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
     uint64_t last_time = 0;
@@ -283,7 +286,7 @@ void TabletImpl::Scan(RpcController* controller,
             break;
         }
         // skip duplicate record 
-        if (scount > 1 && last_time == it->GetKey()) {
+        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
             LOG(DEBUG, "filter duplicate record for key %s with ts %lld", request->pk().c_str(), it->GetKey());
             last_time = it->GetKey();
             it->Next();
@@ -392,10 +395,80 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         return;
     }
     table->SetTableStat(::rtidb::storage::kPausing);
+    LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+               table->GetTableStat(), request->tid(), request->pid());
     table->UnRef();
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
+}
+
+void TabletImpl::ChangeRole(RpcController* controller, 
+            const ::rtidb::api::ChangeRoleRequest* request,
+            ::rtidb::api::ChangeRoleResponse* response,
+            Closure* done) {
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    bool is_leader = false;
+    if (request->mode() == ::rtidb::api::TableMode::kTableLeader) {
+        is_leader = true;
+    }
+    std::vector<std::string> vec;
+    for (int idx = 0; idx < request->replicas_size(); idx++) {
+        vec.push_back(request->replicas(idx).c_str());
+    }
+    if (is_leader) {
+        if (ChangeToLeader(tid, pid, vec) < 0) {
+            response->set_code(-1);
+            response->set_msg("table change to leader failed!");
+            done->Run();
+            return;
+        }
+        response->set_code(0);
+        response->set_msg("ok");
+        done->Run();
+    } else {
+        response->set_code(-1);
+        response->set_msg("not support change to follower");
+        done->Run();
+    }
+}
+
+int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std::string>& replicas) {
+    Table* table = NULL;
+    LogReplicator* replicator = NULL;
+    {
+        MutexLock lock(&mu_);
+        table = GetTableUnLock(tid, pid);
+        if (!table) {
+            LOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
+            return -1;
+        }
+        if (table->IsLeader() || table->GetTableStat() != ::rtidb::storage::kNormal) {
+            LOG(WARNING, "table is leader or  state[%u] can not change role. tid[%u] pid[%u]", 
+                        table->GetTableStat(), tid, pid);
+            table->UnRef();
+            return -1;
+        }
+        replicator = GetReplicatorUnLock(tid, pid);
+        if (replicator == NULL) {
+            LOG(WARNING,"no replicator for table tid[%u] pid[%u]", tid, pid);
+            table->UnRef();
+            return -1;
+        }
+        table->SetLeader(true);
+        table->SetReplicas(replicas);
+        replicator->SetRole(ReplicatorRole::kLeaderNode);
+    }
+    for (auto iter = replicas.begin(); iter != replicas.end(); ++iter) {
+        if (!replicator->AddReplicateNode(*iter)) {
+            LOG(WARNING,"add replicator[%s] for table tid[%u] pid[%u] failed!", 
+                        iter->c_str(), tid, pid);
+        }
+    }
+    table->UnRef();
+    replicator->UnRef();
+    return 0;
 }
 
 void TabletImpl::AddReplica(RpcController* controller, 
@@ -408,7 +481,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         if (table) {
             table->UnRef();
         }
-        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
+        LOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
                 request->pid());
         response->set_code(-1);
         response->set_msg("table not exist or table is leader");
@@ -511,6 +584,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             }
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
+            status->set_ttl(table->GetTTL());
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
@@ -548,6 +622,17 @@ bool TabletImpl::MakeSnapshot(uint32_t tid, uint32_t pid,
         return false;
     }
     bool ret = snapshot->Put(entry, offset, pk, ts);
+    snapshot->UnRef();
+    return ret;
+}
+
+bool TabletImpl::SnapshotTTL(uint32_t tid, uint32_t pid, 
+                            const std::vector<std::pair<std::string, uint64_t> >& keys) {
+    Snapshot* snapshot = GetSnapshot(tid, pid);
+    if (snapshot == NULL) {
+        return false;
+    }
+    bool ret = snapshot->BatchDelete(keys);
     snapshot->UnRef();
     return ret;
 }
@@ -652,7 +737,7 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
                              endpoints, request->wal());
-    table->Init();
+    table->Init(boost::bind(&TabletImpl::SnapshotTTL, this, request->tid(), request->pid(), _1));
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
@@ -758,7 +843,7 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
                              endpoints, request->wal());
-    table->Init();
+    table->Init(boost::bind(&TabletImpl::SnapshotTTL, this, request->tid(), request->pid(), _1));
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
@@ -1059,7 +1144,7 @@ int TabletImpl::LoadSnapshot() {
         LOG(WARNING, "open dir[%s] failed!", FLAGS_snapshot_root_path.c_str());
         return -1;
     }
-    for (std::vector<std::string>::iterator iter = sub_dir.begin(); iter != sub_dir.end(); iter++) {
+    for (std::vector<std::string>::iterator iter = sub_dir.begin(); iter != sub_dir.end(); ++iter) {
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(*iter, "_", &vec);
         if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {

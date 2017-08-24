@@ -19,11 +19,6 @@ using ::rtidb::api::LogEntry;
 namespace rtidb {
 namespace storage {
 
-struct DeleteEntry {
-    std::string pk;
-    uint64_t ts;
-};
-
 // table snapshot
 class Snapshot {
 
@@ -35,7 +30,7 @@ public:
     bool Put(const std::string& entry, uint64_t offset,
              const std::string& pk, uint64_t ts);
 
-    bool BatchDelete(const std::vector<DeleteEntry>& entries);
+    bool BatchDelete(const std::vector<std::pair<std::string, uint64_t> >& entries);
 
     bool Recover(Table* table);
 

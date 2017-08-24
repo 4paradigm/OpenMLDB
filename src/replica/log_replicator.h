@@ -118,6 +118,8 @@ public:
 
     void ReplicateToNode(ReplicateNode* node);
 
+    int PauseReplicate(ReplicateNode* node);
+
     // Incr ref
     void Ref();
     // Descr ref
@@ -130,6 +132,7 @@ public:
     inline uint64_t GetLogOffset() {
         return  log_offset_.load(boost::memory_order_relaxed);
     }
+    void SetRole(const ReplicatorRole& role);
 
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
@@ -149,6 +152,7 @@ private:
     // sync mutex
     Mutex mu_;
     CondVar cv_;
+    CondVar coffee_cv_;
 
     ::rtidb::RpcClient* rpc_client_;
 
