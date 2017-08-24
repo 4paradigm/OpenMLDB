@@ -132,6 +132,7 @@ public:
     inline uint64_t GetLogOffset() {
         return  log_offset_.load(boost::memory_order_relaxed);
     }
+    void SetRole(const ReplicatorRole& role);
 
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);

@@ -73,6 +73,10 @@ LogReplicator::~LogReplicator() {
     }
 }
 
+void LogReplicator::SetRole(const ReplicatorRole& role) {
+    role_ = role;
+}
+
 void LogReplicator::SyncToDisk() {
     MutexLock lock(&wmu_);
     if (wh_ != NULL) {
