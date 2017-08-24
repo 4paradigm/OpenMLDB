@@ -458,6 +458,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
         }
         table->SetLeader(true);
         table->SetReplicas(replicas);
+        replicator->SetRole(ReplicatorRole::kLeaderNode);
     }
     for (auto iter = replicas.begin(); iter != replicas.end(); ++iter) {
         if (!replicator->AddReplicateNode(*iter)) {
