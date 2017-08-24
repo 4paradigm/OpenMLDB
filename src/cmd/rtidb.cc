@@ -222,6 +222,8 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     row.push_back(buf);
     row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
     row.push_back(::rtidb::api::TableState_Name(table_status.state()));
+    snprintf(buf, 30, "%u", table_status.ttl());
+    row.push_back(buf);
     tp.AddRow(row);
 }
 
@@ -232,7 +234,8 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     row.push_back("offset");
     row.push_back("mode");
     row.push_back("state");
-    ::baidu::common::TPrinter tp(5);
+    row.push_back("ttl");
+    ::baidu::common::TPrinter tp(6);
     tp.AddRow(row);
     if (parts.size() == 3) {
         ::rtidb::api::TableStatus table_status;

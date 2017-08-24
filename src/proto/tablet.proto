@@ -236,6 +236,7 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
+    optional uint32 ttl = 6;
 }
 
 message GetTableStatusResponse {
