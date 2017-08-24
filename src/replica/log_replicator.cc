@@ -9,6 +9,7 @@
 
 #include "base/file_util.h"
 #include "base/strings.h"
+#include "log/log_format.h"
 #include "leveldb/options.h"
 #include "logging.h"
 #include <boost/ref.hpp>
@@ -162,7 +163,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
-        wsize_ += buffer.size();
+        wsize_ += buffer.size() + ::rtidb::log::kHeaderSize;
         table_->Put(request->entries(i).pk(), request->entries(i).ts(), 
                 request->entries(i).value().c_str(), request->entries(i).value().length());
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
@@ -212,7 +213,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         return false;
     }
     // add record header size
-    wsize_ += buffer.size() + 7;
+    wsize_ += buffer.size() + ::rtidb::log::kHeaderSize;
     LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }
