@@ -68,6 +68,8 @@ public:
     // Undefined before the first call to ReadRecord.
     uint64_t LastRecordOffset();
 
+    void GoBackToLastBlock();
+
 private:
     SequentialFile* const file_;
     Reporter* const reporter_;

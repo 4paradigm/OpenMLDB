@@ -28,13 +28,11 @@ public class PartitionLocator {
      * @return the readClientArray
      */
     public TabletAsyncClientImpl[] getReadClientArray() {
-        return readClientArray;
+        return readClient.toArray(new TabletAsyncClientImpl[0]);
     }
 
 
    
-
-
     /**
      * @return the counter
      */
