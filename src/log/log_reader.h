@@ -76,12 +76,12 @@ private:
     bool const checksum_;
     char* const backing_store_;
     Slice buffer_;
-    bool eof_;   // Last Read() indicated EOF by returning < kBlockSize
 
     // Offset of the last record returned by ReadRecord.
     uint64_t last_record_offset_;
     // Offset of the first location past the end of buffer_.
     uint64_t end_of_buffer_offset_;
+    uint64_t last_end_of_buffer_offset_;
 
     // Offset at which to start looking for the first record to return
     uint64_t initial_offset_;
@@ -109,7 +109,7 @@ private:
     bool SkipToInitialBlock();
 
     // Return type, or one of the preceding special values
-    unsigned int ReadPhysicalRecord(Slice* result);
+    unsigned int ReadPhysicalRecord(Slice* result, uint64_t& offset);
 
     // Reports dropped bytes to the reporter.
     // buffer_ must be updated to remove the dropped bytes prior to invocation.
