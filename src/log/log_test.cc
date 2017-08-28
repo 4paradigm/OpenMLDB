@@ -119,10 +119,61 @@ TEST_F(LogWRTest, TestLogEntry) {
         std::cout << status.ToString() << std::endl;
         ASSERT_TRUE(status.IsWaitRecord());
         status = reader.ReadRecord(&value2, &scratch2);
-        ASSERT_TRUE(status.IsWaitRecord());
+        ASSERT_TRUE(status.ok());
+        ok = entry2.ParseFromString(value2.ToString());
+        ASSERT_TRUE(ok);
+        ASSERT_EQ("test0", entry2.pk());
+        ASSERT_EQ("test1", entry2.value());
+        ASSERT_EQ(9527, entry2.ts());
     }
 }
 
+TEST_F(LogWRTest, TestWait) {
+    std::string log_dir = "/tmp/" + GenRand() + "/";
+    ::rtidb::base::MkdirRecur(log_dir);
+    std::string fname = "test.log";
+    std::string full_path = log_dir + "/" + fname;
+    FILE* fd_w = fopen(full_path.c_str(), "ab+");
+    ASSERT_TRUE(fd_w != NULL);
+    WritableFile* wf = NewWritableFile(fname, fd_w);
+    Writer writer(wf);
+    std::string val(1024 * 5, 'a');
+    Slice sval(val.c_str(), val.size());
+    Status status = writer.AddRecord(sval);
+    ASSERT_TRUE(status.ok());
+    std::string val1(1024 * 4, 'b');
+    Slice sval1(val1.c_str(), val1.size());
+    status = writer.AddRecord(sval1);
+    ASSERT_TRUE(status.ok());
+
+    FILE* fd_r = fopen(full_path.c_str(), "rb");
+    ASSERT_TRUE(fd_r != NULL);
+    SequentialFile* rf = NewSeqFile(fname, fd_r);
+    std::string scratch2;
+    Reader reader(rf, NULL, true, 0);
+    Slice value;
+    status = reader.ReadRecord(&value, &scratch2);
+    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(1024 * 5, value.size());
+    value.clear();
+    scratch2.clear();
+
+    status = reader.ReadRecord(&value, &scratch2);
+    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(1024 * 4, value.size());
+    value.clear();
+    scratch2.clear();
+
+    // write partial record less than kHeadsize
+    status = wf->Append(Slice("xxx", strlen("xxx")));
+    ASSERT_TRUE(status.ok());
+    wf->Flush();
+    status = reader.ReadRecord(&value, &scratch2);
+    ASSERT_TRUE(status.IsWaitRecord());
+
+    status = reader.ReadRecord(&value, &scratch2);
+    ASSERT_TRUE(status.IsWaitRecord());
+}
 /*TEST_F(LogWRTest, ReadAllLogs) {
     std::string log_dir = "/tmp/";
     ::rtidb::base::MkdirRecur(log_dir);

@@ -226,9 +226,9 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 }
 
 void Reader::GoBackToLastBlock() {
-  size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
-  uint64_t block_start_location = last_end_of_buffer_offset_ - offset_in_block;
-
+    size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
+    uint64_t block_start_location = last_end_of_buffer_offset_ - offset_in_block;
+    LOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_, block_start_location);
     end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
     file_->Seek(block_start_location);
