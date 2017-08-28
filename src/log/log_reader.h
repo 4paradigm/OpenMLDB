@@ -82,7 +82,6 @@ private:
     // Offset of the first location past the end of buffer_.
     uint64_t end_of_buffer_offset_;
     uint64_t last_end_of_buffer_offset_;
-    uint64_t last_read_pos_;
 
     // Offset at which to start looking for the first record to return
     uint64_t initial_offset_;
@@ -110,7 +109,7 @@ private:
     bool SkipToInitialBlock();
 
     // Return type, or one of the preceding special values
-    unsigned int ReadPhysicalRecord(Slice* result,  uint64_t& pos, uint64_t& offset);
+    unsigned int ReadPhysicalRecord(Slice* result, uint64_t& offset);
 
     // Reports dropped bytes to the reporter.
     // buffer_ must be updated to remove the dropped bytes prior to invocation.

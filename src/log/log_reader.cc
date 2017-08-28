@@ -85,9 +85,8 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
   Slice fragment;
   while (true) {
-    uint64_t pos = 0;
     uint64_t offset = 0;
-    const unsigned int record_type = ReadPhysicalRecord(&fragment, pos, offset);
+    const unsigned int record_type = ReadPhysicalRecord(&fragment, offset);
 
     // ReadPhysicalRecord may have only had an empty trailer remaining in its
     // internal buffer. Calculate the offset of the next physical record now
@@ -123,10 +122,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         scratch->clear();
         *record = fragment;
         last_record_offset_ = prospective_record_offset;
-        if (pos) {
-            last_read_pos_ = pos;
+        if (offset) {
             last_end_of_buffer_offset_ = offset;
-        }
+        }    
         return Status::OK();
 
       case kWaitRecord:
@@ -151,10 +149,6 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
             ReportCorruption(scratch->size(), "partial record without end(2)");
           }
         }
-        if (pos) {
-            last_end_of_buffer_offset_ = offset;
-            last_read_pos_ = pos;
-        }
         prospective_record_offset = physical_record_offset;
         scratch->assign(fragment.data(), fragment.size());
         in_fragmented_record = true;
@@ -177,6 +171,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
           last_record_offset_ = prospective_record_offset;
+          if (offset) {
+            last_end_of_buffer_offset_ = offset;
+          }
           return Status::OK();
         }
         break;
@@ -229,19 +226,16 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 }
 
 void Reader::GoBackToLastBlock() {
-    end_of_buffer_offset_ = last_end_of_buffer_offset_;
+  size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
+  uint64_t block_start_location = last_end_of_buffer_offset_ - offset_in_block;
+
+    end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
-    file_->Seek(last_read_pos_);
+    file_->Seek(block_start_location);
 }
 
-unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& pos, uint64_t& offset) {
+unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     if (buffer_.size() < kHeaderSize) {
-        Status ok = file_->Tell(&pos);
-        if (!ok.ok()) { 
-            pos = 0;
-            LOG(WARNING, "fail to tell file %s", ok.ToString().c_str());
-            return kWaitRecord;
-        }
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
@@ -256,7 +250,8 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& pos, uint64_t& 
         }
         if (buffer_.size() < kHeaderSize) { 
             if (buffer_.size() > 0) {
-                LOG(DEBUG, "go back to pos %lld, buffer %d", pos, buffer_.size());
+                LOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]", 
+                            buffer_.size(), kHeaderSize);
             }
             return kWaitRecord;
         }
