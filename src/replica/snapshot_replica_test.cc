@@ -99,6 +99,53 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
 }
 
+TEST_F(SnapshotReplicaTest, RecoverSnapshot) {
+    sofa::pbrpc::RpcServerOptions options;
+    sofa::pbrpc::RpcServer rpc_server(options);
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    tablet->Init();
+    sofa::pbrpc::Servlet webservice =
+            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
+    if (!rpc_server.RegisterService(tablet)) {
+       LOG(WARNING, "fail to register tablet rpc service");
+       exit(1);
+    }
+    rpc_server.RegisterWebServlet("/tablet", webservice);
+    std::string leader_point = "127.0.0.1:18529";
+    if (!rpc_server.Start(leader_point)) {
+        LOG(WARNING, "fail to listen port %s", leader_point.c_str());
+        exit(1);
+    }
+
+    uint32_t tid = 3;
+    uint32_t pid = 123;
+
+    ::rtidb::client::TabletClient client(leader_point);
+    std::vector<std::string> endpoints;
+    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+    ASSERT_TRUE(ret);
+
+    ret = client.RecoverSnapshot(tid, pid);
+    ASSERT_FALSE(ret);
+
+    ret = client.PauseSnapshot(tid, pid);
+    ASSERT_TRUE(ret);
+    sleep(1);
+    ::rtidb::api::TableStatus table_status;
+    if (client.GetTableStatus(tid, pid, table_status) < 0) {
+        ASSERT_TRUE(0);
+    }
+    ASSERT_EQ(::rtidb::api::kTablePaused, table_status.state());
+
+    ret = client.RecoverSnapshot(tid, pid);
+    ASSERT_TRUE(ret);
+
+    if (client.GetTableStatus(tid, pid, table_status) < 0) {
+        ASSERT_TRUE(0);
+    }
+    ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
+}
+
 TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);

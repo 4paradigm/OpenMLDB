@@ -403,6 +403,41 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
     done->Run();
 }
 
+void TabletImpl::RecoverSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL ||
+        !table->IsLeader()) {
+        if (table) {
+            table->UnRef();
+        }
+        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist or table is leader");
+        done->Run();
+        return;
+    }
+    if (table->GetTableStat() != ::rtidb::storage::kPaused) {
+        LOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
+                table->GetTableStat(), request->tid(), request->pid());
+        table->UnRef();
+        response->set_code(-2);
+        response->set_msg("table status is not kPaused");
+        done->Run();
+        return;
+    }
+    table->SetTableStat(::rtidb::storage::kNormal);
+    LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+               table->GetTableStat(), request->tid(), request->pid());
+    table->UnRef();
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
+
 void TabletImpl::ChangeRole(RpcController* controller, 
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,

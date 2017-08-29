@@ -95,6 +95,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done); 
 
+    void RecoverSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done); 
+
     void LoadSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
