@@ -264,4 +264,5 @@ service TabletServer {
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
+    rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
 }

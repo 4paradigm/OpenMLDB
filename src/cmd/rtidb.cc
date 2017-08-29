@@ -283,6 +283,23 @@ void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::cl
     }
 }
 
+void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+        if (ok) {
+            std::cout << "RecoverSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to RecoverSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
+    }
+}
+
 void HandleClientLoadSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad LoadSnapshot format" << std::endl;
@@ -532,6 +549,8 @@ void StartClient() {
             HandleClientAddReplica(parts, &client);
         }else if (parts[0] == "pausesnapshot") {
             HandleClientPauseSnapshot(parts, &client);
+        }else if (parts[0] == "recoversnapshot") {
+            HandleClientRecoverSnapshot(parts, &client);
         }else if (parts[0] == "loadsnapshot") {
             HandleClientLoadSnapshot(parts, &client);
         }else if (parts[0] == "loadtable") {
