@@ -17,6 +17,7 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_apply_batch_size);
@@ -195,6 +196,47 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
     return true;
 }
 
+bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
+    FollowerReplicateNode* node = NULL;
+    {
+        MutexLock lock(&mu_);
+        if (role_ != kLeaderNode) {
+            return false;
+        }
+        std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+        for (; it != nodes_.end(); ++it) {
+            std::string ep = (*it)->GetEndPoint();
+            if ((*it)->GetMode() == FOLLOWER_REPLICATE_MODE && ep.compare(endpoint) == 0) {
+                node = (FollowerReplicateNode*)(*it);
+                break;
+            }
+        }
+        if (node == NULL) {
+            LOG(DEBUG, "replica endpoint[%s] does not exist", endpoint.c_str());
+            return false;
+        }
+        if (node->GetStatus() == REPLICATE_UNDEFINED) {
+            nodes_.erase(it);
+            LOG(DEBUG, "delete replica endpoint[%s]", endpoint.c_str());
+            delete node;
+            LOG(WARNING, "replica endpoint[%s] have not match offset", endpoint.c_str());
+            return true;
+        }
+        if (node->GetStatus() != REPLICATE_RUNNING) {
+            LOG(WARNING, "node status is[%u], cannot del", node->GetStatus());
+            return false;
+        }
+        node->SetStatus(REPLICATE_PAUSING);
+        nodes_.erase(it);
+        LOG(DEBUG, "delete replica endpoint[%s]", endpoint.c_str());
+    }
+    while(node->GetStatus() == REPLICATE_PAUSING) {
+        usleep(10);
+    }
+    delete node;
+    return true;
+}
+
 bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
     MutexLock lock(&wmu_);
     if (wh_ == NULL || wsize_ / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
@@ -282,6 +324,10 @@ int LogReplicator::PauseReplicate(ReplicateNode* node) {
         node->SetLogMatch(false);
         LOG(DEBUG, "table status has set[%u]. tid[%u] pid[%u]",
                     ::rtidb::storage::kPaused, table_->GetId(), table_->GetPid());
+        return 0;
+    } else if (node->GetMode() == FOLLOWER_REPLICATE_MODE && ((FollowerReplicateNode*)node)->GetStatus() == REPLICATE_PAUSING) {
+        ((FollowerReplicateNode*)node)->SetStatus(REPLICATE_PAUSED);
+        LOG(DEBUG, "follower replicate node[%s] has set paused", node->GetEndPoint().c_str());
         return 0;
     }
     return -1;

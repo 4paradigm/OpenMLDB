@@ -97,6 +97,9 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
         ASSERT_TRUE(0);
     }
     ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
+
+    ret = client.DelReplica(tid, pid, end_point);
+    ASSERT_TRUE(ret);
 }
 
 TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
@@ -197,6 +200,9 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     iter = client1.Scan(tid, pid, "testkeynow", cur_time+1, cur_time-1, false);
     ASSERT_TRUE(iter->Valid());
     ASSERT_EQ("valueme", iter->GetValue().ToString());
+
+    ret = client.DelReplica(tid, pid, end_point);
+    ASSERT_TRUE(ret);
 
     if (client1.GetTableStatus(tid, pid, table_status) < 0) {
         ASSERT_TRUE(0);

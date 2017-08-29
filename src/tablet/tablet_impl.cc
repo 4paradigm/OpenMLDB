@@ -472,7 +472,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
 }
 
 void TabletImpl::AddReplica(RpcController* controller, 
-            const ::rtidb::api::AddReplicaRequest* request,
+            const ::rtidb::api::ReplicaRequest* request,
             ::rtidb::api::AddReplicaResponse* response,
             Closure* done) {
     Table* table = GetTable(request->tid(), request->pid());
@@ -520,6 +520,46 @@ void TabletImpl::AddReplica(RpcController* controller,
     }  
     table->SetTableStat(::rtidb::storage::kNormal);
     table->UnRef();
+}
+
+void TabletImpl::DelReplica(RpcController* controller, 
+            const ::rtidb::api::ReplicaRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL ||
+        !table->IsLeader()) {
+        if (table) {
+            table->UnRef();
+        }
+        LOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist or table is leader");
+        done->Run();
+        return;
+    }
+    table->UnRef();
+    LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
+    if (replicator == NULL) {
+        response->set_code(-2);
+        response->set_msg("no replicator for table");
+        LOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
+        done->Run();
+        return;
+    }
+    bool ok = replicator->DelReplicateNode(request->endpoint());
+    replicator->UnRef();
+    if (ok) {
+        response->set_code(0);
+        response->set_msg("ok");
+        done->Run();
+    } else {
+        response->set_code(-3);
+        LOG(WARNING, "fail to del endpoint for table %d pid %d", request->tid(), request->pid());
+        response->set_msg("fail to del endpoint");
+        done->Run();
+    }  
 }
 
 void TabletImpl::AppendEntries(RpcController* controller,

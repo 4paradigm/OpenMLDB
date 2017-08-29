@@ -65,6 +65,8 @@ public:
 
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
 
+    bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
+
     bool PauseSnapshot(uint32_t tid, uint32_t pid);
 
     bool LoadSnapshot(uint32_t tid, uint32_t pid);

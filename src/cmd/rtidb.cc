@@ -211,6 +211,23 @@ void HandleClientAddReplica(const std::vector<std::string> parts, ::rtidb::clien
     }
 }
 
+void HandleClientDelReplica(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad delreplica format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->DelReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        if (ok) {
+            std::cout << "DelReplica ok" << std::endl;
+        }else {
+            std::cout << "Fail to Del Replica" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad delreplica format" << std::endl;
+    }
+}
+
 void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common::TPrinter& tp) {
     std::vector<std::string> row;
     char buf[30];
@@ -530,6 +547,8 @@ void StartClient() {
             HandleClientDropTable(parts, &client);
         }else if (parts[0] == "addreplica") {
             HandleClientAddReplica(parts, &client);
+        }else if (parts[0] == "delreplica") {
+            HandleClientDelReplica(parts, &client);
         }else if (parts[0] == "pausesnapshot") {
             HandleClientPauseSnapshot(parts, &client);
         }else if (parts[0] == "loadsnapshot") {

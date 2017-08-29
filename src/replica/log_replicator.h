@@ -114,6 +114,8 @@ public:
     // add replication
     bool AddReplicateNode(const std::string& endpoint);
 
+    bool DelReplicateNode(const std::string& endpoint);
+
     void MatchLogOffset();
 
     void ReplicateToNode(ReplicateNode* node);

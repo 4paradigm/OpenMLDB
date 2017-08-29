@@ -197,6 +197,7 @@ FollowerReplicateNode::FollowerReplicateNode(const std::string& point, LogParts*
         uint32_t tid, uint32_t pid, ::rtidb::RpcClient* rpc_client):ReplicateNode(point, logs, log_path, tid, pid) {
     rpc_client_ = rpc_client;
     replicate_node_mode_ = FOLLOWER_REPLICATE_MODE;
+    task_status_ = REPLICATE_UNDEFINED;
 }
 
 int FollowerReplicateNode::MatchLogOffsetFromNode() {
@@ -219,6 +220,7 @@ int FollowerReplicateNode::MatchLogOffsetFromNode() {
         log_matched_ = true;
         LOG(INFO, "match node %s log offset %lld for table tid %d pid %d",
                   endpoint.c_str(), last_sync_offset_, tid_, pid_);
+        task_status_ = REPLICATE_RUNNING;
         return 0;
     }
     return -1;

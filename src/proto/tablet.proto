@@ -128,7 +128,7 @@ message BatchGetResponse {
     optional bytes pairs = 3;
 }
 
-message AddReplicaRequest {
+message ReplicaRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string endpoint = 3;
@@ -259,7 +259,8 @@ service TabletServer {
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
-    rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
+    rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
+    rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadSnapshot(GeneralRequest) returns(GeneralResponse);
