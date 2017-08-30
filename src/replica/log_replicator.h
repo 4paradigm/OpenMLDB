@@ -118,7 +118,7 @@ public:
 
     void MatchLogOffset();
 
-    void ReplicateToNode(ReplicateNode* node);
+    void ReplicateToNode(const std::string& endpoint);
 
     int PauseReplicate(ReplicateNode* node);
 

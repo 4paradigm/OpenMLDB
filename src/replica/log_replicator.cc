@@ -17,7 +17,6 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_apply_batch_size);
@@ -190,6 +189,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
         }
         ReplicateNode* node = new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_);
         nodes_.push_back(node);
+        endpoints_.push_back(endpoint);
         LOG(INFO, "add ReplicateNode with endpoint %s ok", endpoint.c_str());
     }
     tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
@@ -197,17 +197,17 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
 }
 
 bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
-    FollowerReplicateNode* node = NULL;
     {
         MutexLock lock(&mu_);
         if (role_ != kLeaderNode) {
+            LOG(DEBUG, "replica endpoint[%s] is not leaderNode", endpoint.c_str());
             return false;
         }
+        ReplicateNode* node = NULL;
         std::vector<ReplicateNode*>::iterator it = nodes_.begin();
         for (; it != nodes_.end(); ++it) {
-            std::string ep = (*it)->GetEndPoint();
-            if ((*it)->GetMode() == FOLLOWER_REPLICATE_MODE && ep.compare(endpoint) == 0) {
-                node = (FollowerReplicateNode*)(*it);
+            if ((*it)->GetEndPoint().compare(endpoint) == 0) {
+                node = *it;
                 break;
             }
         }
@@ -215,25 +215,14 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
             LOG(DEBUG, "replica endpoint[%s] does not exist", endpoint.c_str());
             return false;
         }
-        if (node->GetStatus() == REPLICATE_UNDEFINED) {
-            nodes_.erase(it);
-            LOG(DEBUG, "delete replica endpoint[%s]", endpoint.c_str());
-            delete node;
-            LOG(WARNING, "replica endpoint[%s] have not match offset", endpoint.c_str());
-            return true;
-        }
-        if (node->GetStatus() != REPLICATE_RUNNING) {
-            LOG(WARNING, "node status is[%u], cannot del", node->GetStatus());
-            return false;
-        }
-        node->SetStatus(REPLICATE_PAUSING);
         nodes_.erase(it);
+        endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
+        if (!node->IsLogMatched()) {
+            LOG(INFO, "replica endpoint[%s] has not logmatched! deleted", endpoint.c_str());
+            delete node;
+        }
         LOG(DEBUG, "delete replica endpoint[%s]", endpoint.c_str());
     }
-    while(node->GetStatus() == REPLICATE_PAUSING) {
-        usleep(10);
-    }
-    delete node;
     return true;
 }
 
@@ -309,7 +298,7 @@ void LogReplicator::MatchLogOffset() {
         if (node->MatchLogOffsetFromNode() < 0) {
             all_matched = false;
         } else {
-            tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node));
+            tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node->GetEndPoint()));
         }
     }
     if (!all_matched) {
@@ -325,18 +314,27 @@ int LogReplicator::PauseReplicate(ReplicateNode* node) {
         LOG(DEBUG, "table status has set[%u]. tid[%u] pid[%u]",
                     ::rtidb::storage::kPaused, table_->GetId(), table_->GetPid());
         return 0;
-    } else if (node->GetMode() == FOLLOWER_REPLICATE_MODE && ((FollowerReplicateNode*)node)->GetStatus() == REPLICATE_PAUSING) {
-        ((FollowerReplicateNode*)node)->SetStatus(REPLICATE_PAUSED);
-        LOG(DEBUG, "follower replicate node[%s] has set paused", node->GetEndPoint().c_str());
-        return 0;
     }
     return -1;
 }
 
-void LogReplicator::ReplicateToNode(ReplicateNode* node) {
+void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     uint32_t coffee_time = 0;
+    ReplicateNode* node = NULL;
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
+        std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+        for ( ; it != nodes_.end(); ++it) {
+            if ((*it)->GetEndPoint().compare(endpoint) == 0) {
+                node = *it;
+                break;
+            }
+        }
+        if (it == nodes_.end()) {
+            LOG(INFO, "replicate node[%s] not in nodes_. task exit!", node->GetEndPoint().c_str());
+            delete node;
+            return;
+        }
         if (coffee_time > 0) {
             coffee_cv_.TimeWait(coffee_time);
             coffee_time = 0;

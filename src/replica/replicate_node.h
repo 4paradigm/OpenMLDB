@@ -26,11 +26,6 @@ using ::rtidb::log::Reader;
 const static uint32_t FOLLOWER_REPLICATE_MODE = 0;
 const static uint32_t SNAPSHOT_REPLICATE_MODE = 1;
 
-const static uint32_t REPLICATE_UNDEFINED = 0;
-const static uint32_t REPLICATE_RUNNING = 1;
-const static uint32_t REPLICATE_PAUSING = 2;
-const static uint32_t REPLICATE_PAUSED = 3;
-
 struct StringComparator {
     int operator()(const std::string& a, const std::string& b) const {
         return a.compare(b);
@@ -92,17 +87,10 @@ public:
     int SyncData(uint64_t log_offset);
     FollowerReplicateNode(const FollowerReplicateNode&) = delete;
     FollowerReplicateNode& operator= (const FollowerReplicateNode&) = delete;
-    void SetStatus(uint32_t status) {
-        task_status_ = status;
-    }
-    uint32_t GetStatus() {
-        return task_status_;
-    }
 
 private:
     std::vector<::rtidb::api::AppendEntriesRequest> cache_;
     ::rtidb::RpcClient* rpc_client_;
-    uint32_t task_status_;
 };
 
 class SnapshotReplicateNode: public ReplicateNode {
