@@ -203,6 +203,8 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     ret = client.DelReplica(tid, pid, end_point);
     ASSERT_TRUE(ret);
+    ret = client.Put(tid, pid, "testkeynow", cur_time, "valueme");
+    sleep(1);
 
     if (client1.GetTableStatus(tid, pid, table_status) < 0) {
         ASSERT_TRUE(0);
@@ -227,7 +229,6 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
 }
-
 
 int main(int argc, char** argv) {
     srand (time(NULL));

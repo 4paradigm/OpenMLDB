@@ -64,10 +64,7 @@ LogReplicator::~LogReplicator() {
     logs_ = NULL;
     delete wh_;
     wh_ = NULL;
-    std::vector<ReplicateNode*>::iterator nit = nodes_.begin();
-    for (; nit != nodes_.end(); ++nit) {
-        delete (*nit);
-    }
+    nodes_.clear();
     delete rpc_client_;
     if (table_) {
         table_->UnRef();
@@ -100,12 +97,13 @@ bool LogReplicator::Init() {
        LOG(WARNING, "fail to log dir %s", log_path_.c_str());
        return false;
     }
-    nodes_.push_back(new SnapshotReplicateNode("snapshot_replicate_node", logs_, log_path_, table_->GetId(), table_->GetPid(), ssf_));
+    nodes_.push_back(std::shared_ptr<ReplicateNode>(
+            new SnapshotReplicateNode("snapshot_replicate_node", logs_, log_path_, table_->GetId(), table_->GetPid(), ssf_)));
     if (role_ == kLeaderNode) {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
-            ReplicateNode* node = new FollowerReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_);
-            nodes_.push_back(node);
+            nodes_.push_back(std::shared_ptr<ReplicateNode>(
+                    new FollowerReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
             LOG(INFO, "add replica node with endpoint %s", it->c_str());
         }
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
@@ -179,7 +177,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
         if (role_ != kLeaderNode) {
             return false;
         }
-        std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
         for (; it != nodes_.end(); ++it) {
             std::string ep = (*it)->GetEndPoint();
             if (ep.compare(endpoint) == 0) {
@@ -187,8 +185,8 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
                 return false;
             }
         }
-        ReplicateNode* node = new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_);
-        nodes_.push_back(node);
+        nodes_.push_back(std::shared_ptr<ReplicateNode>(
+                    new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
         endpoints_.push_back(endpoint);
         LOG(INFO, "add ReplicateNode with endpoint %s ok", endpoint.c_str());
     }
@@ -203,24 +201,18 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
             LOG(DEBUG, "replica endpoint[%s] is not leaderNode", endpoint.c_str());
             return false;
         }
-        ReplicateNode* node = NULL;
-        std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
         for (; it != nodes_.end(); ++it) {
             if ((*it)->GetEndPoint().compare(endpoint) == 0) {
-                node = *it;
                 break;
             }
         }
-        if (node == NULL) {
+        if (it == nodes_.end()) {
             LOG(DEBUG, "replica endpoint[%s] does not exist", endpoint.c_str());
             return false;
         }
         nodes_.erase(it);
         endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
-        if (!node->IsLogMatched()) {
-            LOG(INFO, "replica endpoint[%s] has not logmatched! deleted", endpoint.c_str());
-            delete node;
-        }
         LOG(DEBUG, "delete replica endpoint[%s]", endpoint.c_str());
     }
     return true;
@@ -280,9 +272,9 @@ void LogReplicator::Notify() {
 void LogReplicator::MatchLogOffset() {
     MutexLock lock(&mu_);
     bool all_matched = true;
-    std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+    std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
     for (; it != nodes_.end(); ++it) {
-        ReplicateNode* node = *it;
+        std::shared_ptr<ReplicateNode> node = *it;
         if (node->IsLogMatched()) {
             continue;
         }
@@ -307,7 +299,7 @@ void LogReplicator::MatchLogOffset() {
     }
 }
 
-int LogReplicator::PauseReplicate(ReplicateNode* node) {
+int LogReplicator::PauseReplicate(std::shared_ptr<ReplicateNode> node) {
     if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
         table_->SetTableStat(::rtidb::storage::kPaused);
         node->SetLogMatch(false);
@@ -320,10 +312,10 @@ int LogReplicator::PauseReplicate(ReplicateNode* node) {
 
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     uint32_t coffee_time = 0;
-    ReplicateNode* node = NULL;
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
-        std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+        std::shared_ptr<ReplicateNode> node;
+        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
         for ( ; it != nodes_.end(); ++it) {
             if ((*it)->GetEndPoint().compare(endpoint) == 0) {
                 node = *it;
@@ -331,8 +323,7 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             }
         }
         if (it == nodes_.end()) {
-            LOG(INFO, "replicate node[%s] not in nodes_. task exit!", node->GetEndPoint().c_str());
-            delete node;
+            LOG(INFO, "replicate node[%s] has deleted. task exit!", endpoint.c_str());
             return;
         }
         if (coffee_time > 0) {
