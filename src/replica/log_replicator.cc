@@ -334,6 +334,10 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
             break;
         }
+        int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
+        if (ret == 1) {
+            coffee_time = FLAGS_binlog_coffee_time;
+        }
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
             if (PauseReplicate(node) == 0) {
                 LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
@@ -344,10 +348,6 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
                 LOG(INFO, "replicate log exist for path %s", path_.c_str());
                 return;
             }
-        }
-        int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
-        if (ret == 1) {
-            coffee_time = FLAGS_binlog_coffee_time;
         }
     }
 }

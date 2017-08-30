@@ -138,6 +138,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
         snprintf(key, 100, "test%u", count);
         client.Put(tid, pid, key, cur_time, key);
     }
+    sleep(1);
     ret = client.PauseSnapshot(tid, pid);
     ASSERT_TRUE(ret);
     sleep(1);
@@ -203,8 +204,11 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     ret = client.DelReplica(tid, pid, end_point);
     ASSERT_TRUE(ret);
-    ret = client.Put(tid, pid, "testkeynow", cur_time, "valueme");
+    ret = client.Put(tid, pid, "testkeynow_new1", cur_time, "valueme1111111");
     sleep(1);
+
+    iter = client1.Scan(tid, pid, "testkeynow_new1", cur_time+1, cur_time-1, false);
+    ASSERT_FALSE(iter->Valid());
 
     if (client1.GetTableStatus(tid, pid, table_status) < 0) {
         ASSERT_TRUE(0);
