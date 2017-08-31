@@ -114,29 +114,16 @@ int ReplicateNode::RollRLogFile() {
     }
     it->SeekToFirst();
     // use log entry offset to find the log part file
-    LogPart* last_part = NULL;
     LogPart* part = NULL;
     if (log_part_index_ < 0) {
         while (it->Valid()) {
-            part = it->GetValue();
             LOG(DEBUG, "log with name %s and start offset %lld", it->GetKey().c_str(),
                     part->slog_id_);
             if (part->slog_id_ < last_sync_offset_) {
-                it->Next();
-                last_part = part;
-            } else if (part->slog_id_ > last_sync_offset_) {
-                if (last_part && last_part->slog_id_ < last_sync_offset_) {
-                    part = last_part;
-                    break;
-                } else {
-                    delete it;
-                    LOG(WARNING, "fail to find log include offset [%lu] path[%s]", 
-                                 last_sync_offset_, log_path_.c_str());
-                    return -1;
-                }
-            } else {
+                part = it->GetValue();
                 break;
             }
+            it->Next();
         }
         std::string log_name = it->GetKey();
         delete it;
@@ -148,21 +135,16 @@ int ReplicateNode::RollRLogFile() {
             }
             return part->log_index_;
         } else {
-            LOG(WARNING, "no log part"); 
+            LOG(WARNING, "no log part matched! last_sync_offset[%lu]", last_sync_offset_); 
             return -1;
         }
     } else {
         uint32_t current_index = (uint32_t)log_part_index_;
-        // the latest log part was already opened
-        if (current_index == logs_->GetLast()->GetValue()->log_index_) {
-            delete it;
-            return current_index;
-        }
         while (it->Valid()) {
             LogPart* part = it->GetValue();
             std::string log_name = it->GetKey();
             // find the next of current index log file part
-            if (part->log_index_ > current_index) {
+            if (part->log_index_ == current_index + 1 || part->log_index_ == current_index) {
                 delete it;
                 // open a new log part file
                 std::string full_path = log_path_ + "/" + log_name;

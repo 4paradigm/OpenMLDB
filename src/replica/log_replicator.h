@@ -111,6 +111,8 @@ public:
 
     bool RollWLogFile();
 
+    void DeleteBinlog();
+
     // add replication
     bool AddReplicateNode(const std::string& endpoint);
 
