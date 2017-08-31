@@ -34,9 +34,9 @@ struct StringComparator {
 struct LogPart {
     // the first log id in the log file
     uint64_t slog_id_;
-    std::string log_name_;
-    LogPart(uint64_t slog_id, const std::string& log_name):slog_id_(slog_id),
-        log_name_(log_name) {}
+    uint32_t log_index_;
+    LogPart(uint64_t slog_id, uint32_t log_index):slog_id_(slog_id),
+        log_index_(log_index) {}
     LogPart() {}
     ~LogPart() {}
 };
@@ -61,6 +61,7 @@ public:
     void SetLogMatch(bool log_match);
     std::string GetEndPoint();
     uint64_t GetLastSyncOffset();
+    int GetLogIndex();
     void SetLastSyncOffset(uint64_t offset);
     ReplicateNode(const ReplicateNode&) = delete;
     ReplicateNode& operator= (const ReplicateNode&) = delete;

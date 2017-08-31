@@ -42,6 +42,10 @@ void ReplicateNode::GoBackToLastBlock() {
     reader_->GoBackToLastBlock();
 }
 
+int ReplicateNode::GetLogIndex() {
+    return log_part_index_;
+}
+
 ::rtidb::base::Status ReplicateNode::ReadNextRecord(
         ::rtidb::base::Slice* record, std::string* buffer) {
     // first read record 
@@ -104,7 +108,6 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
 }
 
 int ReplicateNode::RollRLogFile() {
-    int32_t index = -1;
     LogParts::Iterator* it = logs_->NewIterator();
     if (logs_->GetSize() <= 0) {
         return -2;
@@ -115,9 +118,8 @@ int ReplicateNode::RollRLogFile() {
     LogPart* part = NULL;
     if (log_part_index_ < 0) {
         while (it->Valid()) {
-            index ++;
             part = it->GetValue();
-            LOG(DEBUG, "log with name %s and start offset %lld", part->log_name_.c_str(),
+            LOG(DEBUG, "log with name %s and start offset %lld", it->GetKey().c_str(),
                     part->slog_id_);
             if (part->slog_id_ < last_sync_offset_) {
                 it->Next();
@@ -125,7 +127,6 @@ int ReplicateNode::RollRLogFile() {
             } else if (part->slog_id_ > last_sync_offset_) {
                 if (last_part && last_part->slog_id_ < last_sync_offset_) {
                     part = last_part;
-                    index--;
                     break;
                 } else {
                     delete it;
@@ -137,14 +138,15 @@ int ReplicateNode::RollRLogFile() {
                 break;
             }
         }
+        std::string log_name = it->GetKey();
         delete it;
         if (part) {
-            std::string full_path = log_path_ + "/" + part->log_name_;
+            std::string full_path = log_path_ + "/" + log_name;
             if (OpenSeqFile(full_path) < 0) {
                 LOG(WARNING, "OpenSeqFile failed! full path[%s]", full_path.c_str()); 
                 return -1;
             }
-            return index;
+            return part->log_index_;
         } else {
             LOG(WARNING, "no log part"); 
             return -1;
@@ -152,29 +154,28 @@ int ReplicateNode::RollRLogFile() {
     } else {
         uint32_t current_index = (uint32_t)log_part_index_;
         // the latest log part was already opened
-        if (current_index == (logs_->GetSize() - 1)) {
+        if (current_index == logs_->GetLast()->GetValue()->log_index_) {
             delete it;
             return current_index;
         }
         while (it->Valid()) {
-            index ++;
             LogPart* part = it->GetValue();
+            std::string log_name = it->GetKey();
             // find the next of current index log file part
-            if ((uint32_t)index > current_index) {
+            if (part->log_index_ > current_index) {
                 delete it;
                 // open a new log part file
-                std::string full_path = log_path_ + "/" + part->log_name_;
+                std::string full_path = log_path_ + "/" + log_name;
                 if (OpenSeqFile(full_path) < 0) {
                     return -1;
                 }
-                return index;
+                return part->log_index_;
             }
             it->Next();
         }
         delete it;
         return -1;
     }
-
 }
 
 int ReplicateNode::OpenSeqFile(const std::string& path) {

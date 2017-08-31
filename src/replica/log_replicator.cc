@@ -24,6 +24,7 @@ DECLARE_int32(binlog_coffee_time);
 DECLARE_int32(binlog_sync_wait_time);
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_match_logoffset_interval);
+DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace replica {
@@ -46,6 +47,7 @@ LogReplicator::LogReplicator(const std::string& path,
     ssf_(ssf) {
     table_ = table;
     table_->Ref();
+    binlog_index_ = 0;
 }
 
 LogReplicator::~LogReplicator() {
@@ -132,6 +134,18 @@ void LogReplicator::UnRef() {
         delete this;
     }
 }
+
+void LogReplicator::DeleteBinlog() {
+    MutexLock lock(&wmu_);
+    int min_log_index = -1;
+    for (auto iter = nodes_.begin(); iter != nodes_end(); ++iter) {
+        if (iter->GetLogIndex() < min_log_index) {
+            min_log_index = GetLogIndex();
+        }
+    }
+    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+}
+
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
@@ -224,7 +238,7 @@ bool LogReplicator::RollWLogFile() {
         delete wh_;
         wh_ = NULL;
     }
-    std::string name = ::rtidb::base::FormatToString(logs_->GetSize(), 8) + ".log";
+    std::string name = ::rtidb::base::FormatToString(binlog_index_, 8) + ".log";
     std::string full_path = log_path_ + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -232,8 +246,9 @@ bool LogReplicator::RollWLogFile() {
         return false;
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
-    LogPart* part = new LogPart(offset, name);
+    LogPart* part = new LogPart(offset, binlog_index_);
     logs_->Insert(name, part);
+    binlog_index_++;
     LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), part->slog_id_);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;
