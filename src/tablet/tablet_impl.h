@@ -76,8 +76,13 @@ public:
             Closure* done);
 
     void AddReplica(RpcController* controller, 
-            const ::rtidb::api::AddReplicaRequest* request,
+            const ::rtidb::api::ReplicaRequest* request,
             ::rtidb::api::AddReplicaResponse* response,
+            Closure* done);
+
+    void DelReplica(RpcController* controller, 
+            const ::rtidb::api::ReplicaRequest* request,
+            ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
     void AppendEntries(RpcController* controller,

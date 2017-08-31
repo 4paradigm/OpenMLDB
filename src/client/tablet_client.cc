@@ -308,12 +308,26 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid) {
 }
 
 bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint) {
-    ::rtidb::api::AddReplicaRequest request;
+    ::rtidb::api::ReplicaRequest request;
     ::rtidb::api::AddReplicaResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::AddReplica,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint) {
+    ::rtidb::api::ReplicaRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_endpoint(endpoint);
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::DelReplica,
             &request, &response, 12, 1);
     if (!ok || response.code()  != 0) {
         return false;
