@@ -97,6 +97,9 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
         ASSERT_TRUE(0);
     }
     ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
+
+    ret = client.DelReplica(tid, pid, end_point);
+    ASSERT_TRUE(ret);
 }
 
 TEST_F(SnapshotReplicaTest, RecoverSnapshot) {
@@ -182,6 +185,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
         snprintf(key, 100, "test%u", count);
         client.Put(tid, pid, key, cur_time, key);
     }
+    sleep(1);
     ret = client.PauseSnapshot(tid, pid);
     ASSERT_TRUE(ret);
     sleep(1);
@@ -245,6 +249,14 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ASSERT_TRUE(iter->Valid());
     ASSERT_EQ("valueme", iter->GetValue().ToString());
 
+    ret = client.DelReplica(tid, pid, end_point);
+    ASSERT_TRUE(ret);
+    ret = client.Put(tid, pid, "testkeynow_new1", cur_time, "valueme1111111");
+    sleep(1);
+
+    iter = client1.Scan(tid, pid, "testkeynow_new1", cur_time+1, cur_time-1, false);
+    ASSERT_FALSE(iter->Valid());
+
     if (client1.GetTableStatus(tid, pid, table_status) < 0) {
         ASSERT_TRUE(0);
     }
@@ -268,7 +280,6 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
 }
-
 
 int main(int argc, char** argv) {
     srand (time(NULL));

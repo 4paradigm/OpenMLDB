@@ -114,11 +114,13 @@ public:
     // add replication
     bool AddReplicateNode(const std::string& endpoint);
 
+    bool DelReplicateNode(const std::string& endpoint);
+
     void MatchLogOffset();
 
-    void ReplicateToNode(ReplicateNode* node);
+    void ReplicateToNode(const std::string& endpoint);
 
-    int PauseReplicate(ReplicateNode* node);
+    int PauseReplicate(std::shared_ptr<ReplicateNode> node);
 
     // Incr ref
     void Ref();
@@ -148,7 +150,7 @@ private:
     uint32_t wsize_;
     ReplicatorRole role_;
     std::vector<std::string> endpoints_;
-    std::vector<ReplicateNode*> nodes_;
+    std::vector<std::shared_ptr<ReplicateNode> > nodes_;
     // sync mutex
     Mutex mu_;
     CondVar cv_;
