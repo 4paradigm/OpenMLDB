@@ -114,49 +114,44 @@ int ReplicateNode::RollRLogFile() {
     }
     it->SeekToFirst();
     // use log entry offset to find the log part file
-    LogPart* part = NULL;
     if (log_part_index_ < 0) {
         while (it->Valid()) {
-            LOG(DEBUG, "log with name %s and start offset %lld", it->GetKey().c_str(),
-                    part->slog_id_);
-            if (part->slog_id_ < last_sync_offset_) {
-                part = it->GetValue();
+            LOG(DEBUG, "log index[%u] and start offset %lld", it->GetKey(),
+                    it->GetValue());
+            if (it->GetValue() <= last_sync_offset_) {
                 break;
             }
             it->Next();
         }
-        std::string log_name = it->GetKey();
-        delete it;
-        if (part) {
-            std::string full_path = log_path_ + "/" + log_name;
+        int ret = -1;
+        if (it->Valid()) {
+            std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 10) + ".log";
             if (OpenSeqFile(full_path) < 0) {
                 LOG(WARNING, "OpenSeqFile failed! full path[%s]", full_path.c_str()); 
-                return -1;
             }
-            return part->log_index_;
+            ret = (int)it->GetKey();
         } else {
             LOG(WARNING, "no log part matched! last_sync_offset[%lu]", last_sync_offset_); 
-            return -1;
         }
+        delete it;
+        return ret;
     } else {
         uint32_t current_index = (uint32_t)log_part_index_;
+        int ret = -1;
         while (it->Valid()) {
-            LogPart* part = it->GetValue();
-            std::string log_name = it->GetKey();
             // find the next of current index log file part
-            if (part->log_index_ == current_index + 1 || part->log_index_ == current_index) {
-                delete it;
+            if (it->GetKey() == current_index + 1 || it->GetKey() == current_index) {
                 // open a new log part file
-                std::string full_path = log_path_ + "/" + log_name;
-                if (OpenSeqFile(full_path) < 0) {
-                    return -1;
+                std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 10) + ".log";
+                if (OpenSeqFile(full_path) == 0) {
+                    ret = (int)it->GetKey();
                 }
-                return part->log_index_;
+                break;
             }
             it->Next();
         }
         delete it;
-        return -1;
+        return ret;
     }
 }
 

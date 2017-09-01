@@ -17,6 +17,8 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_apply_batch_size);
@@ -33,7 +35,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-const static StringComparator scmp;
+const static ::rtidb::base::DefaultComparator scmp;
 
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
@@ -52,14 +54,6 @@ LogReplicator::LogReplicator(const std::string& path,
 
 LogReplicator::~LogReplicator() {
     if (logs_ != NULL) {
-        LogParts::Iterator* it = logs_->NewIterator();
-        it->SeekToFirst();
-        while (it->Valid()) {
-            LogPart* lp = it->GetValue();
-            delete lp;
-            it->Next();
-        }
-        delete it;
         logs_->Clear();
     }
     delete logs_;
@@ -111,6 +105,7 @@ bool LogReplicator::Init() {
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
     }
     tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
+    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
     return true;
 }
 
@@ -134,7 +129,7 @@ void LogReplicator::UnRef() {
 }
 
 void LogReplicator::DeleteBinlog() {
-    int min_log_index = binlog_index_;
+    int min_log_index = (int)binlog_index_;
     {
         MutexLock lock(&mu_);
         for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
@@ -144,21 +139,27 @@ void LogReplicator::DeleteBinlog() {
         }
     }
     LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", min_log_index, binlog_index_);
-    std::string name = ::rtidb::base::FormatToString(binlog_index_, 10) + ".log";
-    std::vector<std::string> binlog_vec;
-    ::rtidb::base::Node<std::string, LogPart*>* node = NULL;
+    if (min_log_index == (int)binlog_index_ || min_log_index == -1) {
+        LOG(DEBUG, "min_log_index equal cur binlog_index, need not delete!");
+        tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+        return;
+    }
+    ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
     {
         MutexLock lock(&wmu_);
-        node = logs_->Split(name);
+        node = logs_->Split(min_log_index);
     }
 
     while (node) {
-        LogPart* log_part = node->GetValue();
-        ::rtidb::base::Node<std::string, LogPart*>* tmp_node = node;
+        ::rtidb::base::Node<uint32_t, uint64_t>* tmp_node = node;
         node = node->GetNextNoBarrier(0);
-        // TODO. delete binlog file here
-
-        delete log_part;
+        std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(tmp_node->GetKey(), 10) + ".log";
+        if (unlink(full_path.c_str()) < 0) {
+            LOG(WARNING, "delete binlog[%s] failed! errno[%d] errinfo[%s]", 
+                         full_path.c_str(), errno, strerror(errno));
+        } else {
+            LOG(INFO, "delete binlog[%s] success", full_path.c_str()); 
+        }
         delete tmp_node;
     }
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
@@ -289,10 +290,9 @@ bool LogReplicator::RollWLogFile() {
         return false;
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
-    LogPart* part = new LogPart(offset, binlog_index_);
-    logs_->Insert(name, part);
+    logs_->Insert(binlog_index_, offset);
     binlog_index_++;
-    LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), part->slog_id_);
+    LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;
     return true;

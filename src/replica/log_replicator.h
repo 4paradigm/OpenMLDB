@@ -79,8 +79,6 @@ struct WriteHandle {
     }
 };
 
-typedef ::rtidb::base::Skiplist<std::string, LogPart*, StringComparator> LogParts;
-
 class LogReplicator {
 
 public:
