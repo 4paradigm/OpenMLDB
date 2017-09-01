@@ -88,7 +88,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     while(count) {
         char key[20];
         snprintf(key, 20, "testkey_%d", count);
-        ret = client.Put(tid, pid, "testkey", cur_time, std::string(10 * 1024, 'a'));
+        ret = client.Put(tid, pid, key, cur_time, std::string(10 * 1024, 'a'));
         count--;
     }
     sleep(2);
@@ -96,11 +96,10 @@ TEST_F(BinlogTest, DeleteBinlog) {
     ::rtidb::base::GetFileName(FLAGS_binlog_root_path, vec);
     ASSERT_EQ(1, vec.size());
     char file_name[100];
-    snprintf(file_name, 100, "%s/%u\_%u/%s", FLAGS_binlog_root_path.c_str(), tid, pid, "logs/0000000004.log");
+    snprintf(file_name, 100, "%s/%u_%u/%s", FLAGS_binlog_root_path.c_str(), tid, pid, "logs/0000000004.log");
     ASSERT_STREQ(file_name, vec[0].c_str());
 
 }
-
 
 }
 }

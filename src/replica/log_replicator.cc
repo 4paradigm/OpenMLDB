@@ -139,8 +139,8 @@ void LogReplicator::DeleteBinlog() {
         }
     }
     LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", min_log_index, binlog_index_);
-    if (min_log_index == (int)binlog_index_ || min_log_index == -1) {
-        LOG(DEBUG, "min_log_index equal cur binlog_index, need not delete!");
+    if (min_log_index < 0) {
+        LOG(DEBUG, "min_log_index is negative, need not delete!");
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
