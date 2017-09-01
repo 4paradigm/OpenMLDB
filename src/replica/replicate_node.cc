@@ -126,10 +126,9 @@ int ReplicateNode::RollRLogFile() {
         int ret = -1;
         if (it->Valid()) {
             std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 10) + ".log";
-            if (OpenSeqFile(full_path) < 0) {
-                LOG(WARNING, "OpenSeqFile failed! full path[%s]", full_path.c_str()); 
+            if (OpenSeqFile(full_path) == 0) {
+                ret = (int)it->GetKey();
             }
-            ret = (int)it->GetKey();
         } else {
             LOG(WARNING, "no log part matched! last_sync_offset[%lu]", last_sync_offset_); 
         }
@@ -140,12 +139,15 @@ int ReplicateNode::RollRLogFile() {
         int ret = -1;
         while (it->Valid()) {
             // find the next of current index log file part
-            if (it->GetKey() == current_index + 1 || it->GetKey() == current_index) {
+            if (it->GetKey() == current_index + 1) {
                 // open a new log part file
                 std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 10) + ".log";
                 if (OpenSeqFile(full_path) == 0) {
                     ret = (int)it->GetKey();
                 }
+                break;
+            } else if (it->GetKey() == current_index) {
+                ret = current_index;
                 break;
             }
             it->Next();

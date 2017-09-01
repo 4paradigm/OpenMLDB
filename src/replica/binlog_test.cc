@@ -1,5 +1,5 @@
 //
-// snapshot_replica_test.cc
+// binlog_test.cc
 // Copyright (C) 2017 4paradigm.com
 // Author denglong
 // Date 2017-09-01
