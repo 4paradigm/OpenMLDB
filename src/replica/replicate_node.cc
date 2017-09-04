@@ -50,7 +50,7 @@ int ReplicateNode::GetLogIndex() {
         ::rtidb::base::Slice* record, std::string* buffer) {
     // first read record 
     if (sf_ == NULL) {
-        int32_t new_log_part_index = RollRLogFile();
+        int new_log_part_index = RollRLogFile();
         if (new_log_part_index == -2) {
             LOG(WARNING, "no log avaliable tid[%u] pid[%u]", tid_, pid_);
             return ::rtidb::base::Status::IOError("no log avaliable");
@@ -68,7 +68,7 @@ int ReplicateNode::GetLogIndex() {
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
         // reache the end of file 
-        int32_t new_log_part_index = RollRLogFile();
+        int new_log_part_index = RollRLogFile();
         LOG(WARNING, "reach the end of file tid[%u] pid[%u]  new index %d  old index %d", tid_, pid_, new_log_part_index,
                 log_part_index_);
         // reache the latest log part

@@ -129,7 +129,10 @@ void LogReplicator::UnRef() {
 }
 
 void LogReplicator::DeleteBinlog() {
-    int min_log_index = (int)binlog_index_;
+    if (!running_.load(boost::memory_order_relaxed)) {
+        return;
+    }
+    int min_log_index = (int)binlog_index_.load(boost::memory_order_relaxed);
     {
         MutexLock lock(&mu_);
         for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
@@ -138,7 +141,8 @@ void LogReplicator::DeleteBinlog() {
             }
         }
     }
-    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", min_log_index, binlog_index_);
+    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
+                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
     if (min_log_index < 0) {
         LOG(DEBUG, "min_log_index is negative, need not delete!");
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
@@ -277,12 +281,14 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
 }
 
 bool LogReplicator::RollWLogFile() {
+    wmu_.AssertHeld();
     if (wh_ != NULL) {
         wh_->EndLog();
         delete wh_;
         wh_ = NULL;
     }
-    std::string name = ::rtidb::base::FormatToString(binlog_index_, 10) + ".log";
+    std::string name = ::rtidb::base::FormatToString(
+                binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
     std::string full_path = log_path_ + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -290,8 +296,8 @@ bool LogReplicator::RollWLogFile() {
         return false;
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
-    logs_->Insert(binlog_index_, offset);
-    binlog_index_++;
+    logs_->Insert(binlog_index_.load(boost::memory_order_relaxed), offset);
+    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;

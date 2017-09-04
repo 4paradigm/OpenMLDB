@@ -145,7 +145,7 @@ private:
     std::string log_path_;
     // the term for leader judgement
     boost::atomic<uint64_t> log_offset_;
-    uint32_t binlog_index_;
+    boost::atomic<uint32_t> binlog_index_;
     LogParts* logs_;
     WriteHandle* wh_;
     uint32_t wsize_;
