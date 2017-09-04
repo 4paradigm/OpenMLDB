@@ -17,6 +17,8 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_apply_batch_size);
@@ -24,6 +26,7 @@ DECLARE_int32(binlog_coffee_time);
 DECLARE_int32(binlog_sync_wait_time);
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_match_logoffset_interval);
+DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace replica {
@@ -32,7 +35,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-const static StringComparator scmp;
+const static ::rtidb::base::DefaultComparator scmp;
 
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
@@ -46,18 +49,11 @@ LogReplicator::LogReplicator(const std::string& path,
     ssf_(ssf) {
     table_ = table;
     table_->Ref();
+    binlog_index_ = 0;
 }
 
 LogReplicator::~LogReplicator() {
     if (logs_ != NULL) {
-        LogParts::Iterator* it = logs_->NewIterator();
-        it->SeekToFirst();
-        while (it->Valid()) {
-            LogPart* lp = it->GetValue();
-            delete lp;
-            it->Next();
-        }
-        delete it;
         logs_->Clear();
     }
     delete logs_;
@@ -109,6 +105,7 @@ bool LogReplicator::Init() {
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
     }
     tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
+    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
     return true;
 }
 
@@ -130,6 +127,48 @@ void LogReplicator::UnRef() {
         delete this;
     }
 }
+
+void LogReplicator::DeleteBinlog() {
+    if (!running_.load(boost::memory_order_relaxed)) {
+        return;
+    }
+    int min_log_index = (int)binlog_index_.load(boost::memory_order_relaxed);
+    {
+        MutexLock lock(&mu_);
+        for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
+            if ((*iter)->GetLogIndex() < min_log_index) {
+                min_log_index = (*iter)->GetLogIndex();
+            }
+        }
+    }
+    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
+                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
+    if (min_log_index < 0) {
+        LOG(DEBUG, "min_log_index is negative, need not delete!");
+        tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+        return;
+    }
+    ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
+    {
+        MutexLock lock(&wmu_);
+        node = logs_->Split(min_log_index);
+    }
+
+    while (node) {
+        ::rtidb::base::Node<uint32_t, uint64_t>* tmp_node = node;
+        node = node->GetNextNoBarrier(0);
+        std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(tmp_node->GetKey(), 10) + ".log";
+        if (unlink(full_path.c_str()) < 0) {
+            LOG(WARNING, "delete binlog[%s] failed! errno[%d] errinfo[%s]", 
+                         full_path.c_str(), errno, strerror(errno));
+        } else {
+            LOG(INFO, "delete binlog[%s] success", full_path.c_str()); 
+        }
+        delete tmp_node;
+    }
+    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+}
+
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
@@ -242,12 +281,14 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
 }
 
 bool LogReplicator::RollWLogFile() {
+    wmu_.AssertHeld();
     if (wh_ != NULL) {
         wh_->EndLog();
         delete wh_;
         wh_ = NULL;
     }
-    std::string name = ::rtidb::base::FormatToString(logs_->GetSize(), 8) + ".log";
+    std::string name = ::rtidb::base::FormatToString(
+                binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
     std::string full_path = log_path_ + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -255,9 +296,9 @@ bool LogReplicator::RollWLogFile() {
         return false;
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
-    LogPart* part = new LogPart(offset, name);
-    logs_->Insert(name, part);
-    LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), part->slog_id_);
+    logs_->Insert(binlog_index_.load(boost::memory_order_relaxed), offset);
+    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
+    LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;
     return true;

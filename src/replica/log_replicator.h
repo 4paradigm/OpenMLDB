@@ -79,8 +79,6 @@ struct WriteHandle {
     }
 };
 
-typedef ::rtidb::base::Skiplist<std::string, LogPart*, StringComparator> LogParts;
-
 class LogReplicator {
 
 public:
@@ -110,6 +108,8 @@ public:
     void Stop();
 
     bool RollWLogFile();
+
+    void DeleteBinlog();
 
     // add replication
     bool AddReplicateNode(const std::string& endpoint);
@@ -145,6 +145,7 @@ private:
     std::string log_path_;
     // the term for leader judgement
     boost::atomic<uint64_t> log_offset_;
+    boost::atomic<uint32_t> binlog_index_;
     LogParts* logs_;
     WriteHandle* wh_;
     uint32_t wsize_;
