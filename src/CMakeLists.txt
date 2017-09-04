@@ -17,12 +17,16 @@ add_library(log STATIC log/crc32c.cc
                        log/log_reader.cc
                        log/writable_file.cc)
 add_library(base STATIC base/status.cc)
+add_library(zk STATIC zk/zk_client.cc)
 
 add_library(replica STATIC replica/replicate_node.cc
                            replica/log_replicator.cc)
 
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
+
+add_executable(zk_test zk/zk_client_test.cc)
+target_link_libraries(zk_test gtest zk zookeeper_mt pthread common)
 
 add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
 target_link_libraries(replica_test gtest gflags replica log tablet storage base pthread sofa-pbrpc protobuf z snappy common leveldb)
