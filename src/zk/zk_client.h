@@ -18,6 +18,7 @@ extern "C" {
 
 using ::baidu::common::MutexLock;
 using ::baidu::common::Mutex;
+using ::baidu::common::CondVar;
 
 namespace rtidb {
 namespace zk {
@@ -48,12 +49,21 @@ public:
     // always watch the all nodes in {zk_root_path}/nodes/
     void WatchNodes(NodesChangedCallback callback);
 
-    void HandleNodesChanged();
+    // handle node change events
+    void HandleNodesChanged(int type, int state);
 
     // get all alive nodes
     bool GetNodes(std::vector<std::string>& endpoints);
 
+    // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
+
+    bool Mkdir(const std::string& path);
+
+    // add watch
+    void WatchNodes();
+
+    void Connected();
 
 private:
 
@@ -69,7 +79,12 @@ private:
 
     //
     Mutex mu_;
+    CondVar cv_;
     zhandle_t* zk_;
+    bool nodes_watching_;
+
+    struct String_vector data_;
+    bool connected_;
 };
 
 }
