@@ -81,11 +81,14 @@ void ZkClient::HandleNodesChanged(int type, int state) {
             (*it)(endpoints);
         }
     }
-
 }
 
 
 bool ZkClient::Register() {
+    MutexLock lock(&mu_);
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
     std::string node = nodes_root_path_ + "/" + endpoint_;
     bool ok = Mkdir(nodes_root_path_);
     if (!ok) {
@@ -102,12 +105,18 @@ bool ZkClient::Register() {
     return false;
 }
 
-void ZkClient::WatchNodes() {
+bool ZkClient::WatchNodes() {
+    MutexLock lock(&mu_);
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
     deallocate_String_vector(&data_);
     int ret = zoo_wget_children(zk_, nodes_root_path_.c_str(), NodeWatcher, NULL, &data_);
     if (ret != ZOK) {
         LOG(WARNING, "fail to watch path %s", nodes_root_path_.c_str());
+        return false;
     }
+    return true;
 }
 
 void ZkClient::WatchNodes(NodesChangedCallback callback) {
@@ -131,10 +140,28 @@ bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     return true;
 }
 
+bool ZkClient::Reconnect() {
+    MutexLock lock(&mu_);
+    if (zk_ != NULL) {
+        zookeeper_close(zk_);
+    }
+    zk_ = zookeeper_init(hosts_.c_str(),
+                         LogEventWrapper, 
+                         session_timeout_, 0, (void *)this, 0);
+    if (zk_ == NULL) {
+        return false;
+    }
+    return true;
+}
+
 void ZkClient::LogEvent(int type, int state, const char* path) {
     LOG(INFO, "zookeeper event with type %d, state %d, path %s", type, state, path);
-    if (type == ZOO_SESSION_EVENT && state == ZOO_CONNECTED_STATE) {
-        Connected(); 
+    if (type == ZOO_SESSION_EVENT) {
+        if (state == ZOO_CONNECTED_STATE) {
+            Connected(); 
+        }else if (state == ZOO_EXPIRED_SESSION_STATE) {
+            connected_ = false;
+        }
     }
 }
 
@@ -145,6 +172,10 @@ void ZkClient::Connected() {
 }
 
 bool ZkClient::Mkdir(const std::string& path) {
+    mu_.AssertHeld();
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
     std::vector<std::string> parts;
     boost::split(parts, path, boost::is_any_of("/"));
     std::string full_path = "/";

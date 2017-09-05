@@ -18,6 +18,7 @@ namespace rtidb {
 namespace zk {
 
 static bool call_invoked = false;
+static int32_t endpoint_size = 2;
 class ZkClientTest : public ::testing::Test {
 
 public:
@@ -28,7 +29,7 @@ public:
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
     LOG(INFO, "call back with endpoints size %d", endpoints.size());
-    ASSERT_EQ(2, endpoints.size());
+    ASSERT_EQ(endpoint_size, endpoints.size());
     call_invoked = true;
 }
 
@@ -46,14 +47,18 @@ TEST_F(ZkClientTest, Init) {
     ASSERT_EQ("127.0.0.1:9527", endpoints[0]);
     client.WatchNodes(boost::bind(&WatchCallback, _1));
     // trigger watch
-    client.WatchNodes();
-
-    ZkClient client2("127.0.0.1:2181", 1000, "127.0.0.1:9528", "/rtidb");
-    ok = client2.Init();
-    client2.Register();
+    ok = client.WatchNodes();
     ASSERT_TRUE(ok);
-    sleep(10);
-    ASSERT_TRUE(call_invoked);
+    {
+        ZkClient client2("127.0.0.1:2181", 1000, "127.0.0.1:9528", "/rtidb");
+        ok = client2.Init();
+        client2.Register();
+        ASSERT_TRUE(ok);
+        sleep(5);
+        ASSERT_TRUE(call_invoked);
+        endpoint_size = 1;
+    }
+    sleep(5);
 }
 }
 }

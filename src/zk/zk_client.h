@@ -61,10 +61,11 @@ public:
     bool Mkdir(const std::string& path);
 
     // add watch
-    void WatchNodes();
+    bool WatchNodes();
 
+    bool Reconnect();
+private:
     void Connected();
-
 private:
 
     // input args
