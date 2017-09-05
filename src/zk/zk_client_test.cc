@@ -34,7 +34,7 @@ void WatchCallback(const std::vector<std::string>& endpoints) {
 }
 
 TEST_F(ZkClientTest, Init) {
-    ZkClient client("127.0.0.1:2181", 1000, "127.0.0.1:9527", "/rtidb");
+    ZkClient client("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
     ok = client.Register();
@@ -50,7 +50,7 @@ TEST_F(ZkClientTest, Init) {
     ok = client.WatchNodes();
     ASSERT_TRUE(ok);
     {
-        ZkClient client2("127.0.0.1:2181", 1000, "127.0.0.1:9528", "/rtidb");
+        ZkClient client2("127.0.0.1:12181", 1000, "127.0.0.1:9528", "/rtidb");
         ok = client2.Init();
         client2.Register();
         ASSERT_TRUE(ok);
