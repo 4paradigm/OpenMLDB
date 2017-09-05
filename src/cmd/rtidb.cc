@@ -17,7 +17,7 @@
 #include "logging.h"
 
 #include "tablet/tablet_impl.h"
-#include "server/name_server_impl.h"
+#include "nameserver/name_server_impl.h"
 #include "client/tablet_client.h"
 #include "base/strings.h"
 #include "base/kv_iterator.h"
