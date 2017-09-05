@@ -9,6 +9,7 @@ if (TCMALLOC_ENABLE)
 endif()
 
 add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
+add_library(server STATIC proto/name_server.pb.cc server/name_server_impl.cc flags.cc)
 add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc storage/snapshot.cc)
 
 add_library(log STATIC log/crc32c.cc 
@@ -64,5 +65,5 @@ add_executable(binlog_test  replica/binlog_test.cc client/tablet_client.cc base/
 target_link_libraries(binlog_test gtest gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb tcmalloc_minimal)
 
 add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc base/status.cc)
-target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb tcmalloc_minimal)
+target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb tcmalloc_minimal server)
 

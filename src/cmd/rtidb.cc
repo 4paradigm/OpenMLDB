@@ -17,6 +17,7 @@
 #include "logging.h"
 
 #include "tablet/tablet_impl.h"
+#include "server/name_server_impl.h"
 #include "client/tablet_client.h"
 #include "base/strings.h"
 #include "base/kv_iterator.h"
@@ -59,6 +60,34 @@ void SetupLog() {
     }
     ::baidu::common::SetLogCount(FLAGS_log_file_count);
     ::baidu::common::SetLogSize(FLAGS_log_file_size);
+}
+
+void StartNameServer() {
+    SetupLog();
+    sofa::pbrpc::RpcServerOptions options;
+    sofa::pbrpc::RpcServer rpc_server(options);
+    ::rtidb::server::NameServerImpl* server = new ::rtidb::server::NameServerImpl();
+    server->Init();
+    sofa::pbrpc::Servlet webservice =
+                sofa::pbrpc::NewPermanentExtClosure(server, &rtidb::server::NameServerImpl::WebService);
+    if (!rpc_server.RegisterService(server)) {
+        LOG(WARNING, "fail to register nameserver rpc service");
+        exit(1);
+    }
+    rpc_server.RegisterWebServlet("/nameserver", webservice);
+    if (!rpc_server.Start(FLAGS_endpoint)) {
+        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+        exit(1);
+    }
+    LOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+            RTIDB_VERSION_MAJOR,
+            RTIDB_VERSION_MINOR,
+            RTIDB_VERSION_BUG);
+    signal(SIGINT, SignalIntHandler);
+    signal(SIGTERM, SignalIntHandler);
+    while (!s_quit) {
+        sleep(1);
+    }
 }
 
 void StartTablet() {
@@ -599,6 +628,8 @@ int main(int argc, char* argv[]) {
         StartTablet();
     }else if (FLAGS_role == "client") {
         StartClient();
+    }else if (FLAGS_role == "nameserver") {
+        StartNameServer();
     }
     return 0;
 }
