@@ -202,4 +202,17 @@ else
     touch leveldb_succ
 fi
 
+if [ -f "zk_succ" ]
+then
+    echo "zk exist"
+else
+    wget --no-check-certificate -O zookeeper-3.4.10.tar.gz http://www-eu.apache.org/dist/zookeeper/zookeeper-3.4.10/zookeeper-3.4.10.tar.gz
+    tar -zxvf zookeeper-3.4.10.tar.gz
+    cd zookeeper-3.4.10/src/c/
+    ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
+    make -j4 >/dev/null 
+    make install
+    cd -
+    touch zk_succ
+fi
 
