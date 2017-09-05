@@ -18,6 +18,21 @@ namespace nameserver {
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
 
+struct TableInfo {
+    TableInfo() {
+
+    }
+    std::string name_;
+    std::string endpoint_;
+    uint32_t tid_;
+    uint32_t pid_;
+    bool is_leader_;
+    uint32_t ttl_;
+    uint32_t replicate_num_;
+    uint32_t partition_num_;
+    uint32_t seg_cnt_;
+};
+
 class NameServerImpl : public NameServer {
 public:
     NameServerImpl();
@@ -35,8 +50,10 @@ public:
     std::string GetMaster();
 
 private:    
+    uint32_t table_index_;
     ::baidu::common::Mutex mu_;
-    std::vector<std::pair<std::string, std::shared_ptr<::rtidb::client::TabletClient> > > tablet_client_;
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient> > tablet_client_;
+    std::map<std::string, std::vector<TableInfo> > table_info_;
 
 };
 
