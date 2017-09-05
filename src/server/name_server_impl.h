@@ -13,7 +13,7 @@
 #include "mutex.h"
 
 namespace rtidb {
-namespace server {
+namespace nameserver {
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;

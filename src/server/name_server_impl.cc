@@ -8,7 +8,7 @@
 #include "name_server_impl.h"
 
 namespace rtidb {
-namespace server {
+namespace nameserver {
 
 NameServerImpl::NameServerImpl() {
 

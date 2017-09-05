@@ -66,11 +66,11 @@ void StartNameServer() {
     SetupLog();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
-    ::rtidb::server::NameServerImpl* server = new ::rtidb::server::NameServerImpl();
-    server->Init();
+    ::rtidb::nameserver::NameServerImpl* name_server = new ::rtidb::nameserver::NameServerImpl();
+    name_server->Init();
     sofa::pbrpc::Servlet webservice =
-                sofa::pbrpc::NewPermanentExtClosure(server, &rtidb::server::NameServerImpl::WebService);
-    if (!rpc_server.RegisterService(server)) {
+                sofa::pbrpc::NewPermanentExtClosure(name_server, &rtidb::nameserver::NameServerImpl::WebService);
+    if (!rpc_server.RegisterService(name_server)) {
         LOG(WARNING, "fail to register nameserver rpc service");
         exit(1);
     }

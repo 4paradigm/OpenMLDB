@@ -1,4 +1,4 @@
-package rtidb.server;
+package rtidb.nameserver;
 
 option cc_generic_services = true;
 option java_generic_services = true;
