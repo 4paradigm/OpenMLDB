@@ -126,7 +126,7 @@ void ZkClient::WatchNodes(NodesChangedCallback callback) {
 
 bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     MutexLock lock(&mu_);
-    if (zk_ == NULL || connected_) {
+    if (zk_ == NULL || !connected_) {
         return false;
     }
     struct String_vector data;

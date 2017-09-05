@@ -63,6 +63,7 @@ public:
     // add watch
     bool WatchNodes();
 
+    // when reconnect, need Register and Watchnodes again
     bool Reconnect();
 private:
     void Connected();

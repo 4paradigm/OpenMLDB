@@ -33,6 +33,12 @@ void WatchCallback(const std::vector<std::string>& endpoints) {
     call_invoked = true;
 }
 
+TEST_F(ZkClientTest, BadZk) {
+    ZkClient client("127.0.0.1:13181", 1000, "127.0.0.1:9527", "/rtidb");
+    bool ok = client.Init();
+    ASSERT_FALSE(ok);
+}
+
 TEST_F(ZkClientTest, Init) {
     ZkClient client("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb");
     bool ok = client.Init();
