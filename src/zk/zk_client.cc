@@ -85,13 +85,13 @@ void ZkClient::HandleNodesChanged(int type, int state) {
 
 
 bool ZkClient::Register() {
-    MutexLock lock(&mu_);
-    if (zk_ == NULL || !connected_) {
-        return false;
-    }
     std::string node = nodes_root_path_ + "/" + endpoint_;
     bool ok = Mkdir(nodes_root_path_);
     if (!ok) {
+        return false;
+    }
+    MutexLock lock(&mu_);
+    if (zk_ == NULL || !connected_) {
         return false;
     }
     int ret = zoo_create(zk_, node.c_str(), endpoint_.c_str(),
@@ -113,7 +113,7 @@ bool ZkClient::WatchNodes() {
     deallocate_String_vector(&data_);
     int ret = zoo_wget_children(zk_, nodes_root_path_.c_str(), NodeWatcher, NULL, &data_);
     if (ret != ZOK) {
-        LOG(WARNING, "fail to watch path %s", nodes_root_path_.c_str());
+        LOG(WARNING, "fail to watch path %s errno %d", nodes_root_path_.c_str(), ret);
         return false;
     }
     return true;
@@ -152,7 +152,9 @@ bool ZkClient::Reconnect() {
     zk_ = zookeeper_init(hosts_.c_str(),
                          LogEventWrapper, 
                          session_timeout_, 0, (void *)this, 0);
-    if (zk_ == NULL) {
+
+    cv_.TimeWait(1000 * 5);
+    if (zk_ == NULL || !connected_) {
         return false;
     }
     return true;
@@ -176,7 +178,7 @@ void ZkClient::Connected() {
 }
 
 bool ZkClient::Mkdir(const std::string& path) {
-    mu_.AssertHeld();
+    MutexLock lock(&mu_);
     if (zk_ == NULL || !connected_) {
         return false;
     }

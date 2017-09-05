@@ -30,7 +30,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
+DECLARE_string(endpoint);
 DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");

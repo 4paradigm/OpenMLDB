@@ -63,8 +63,14 @@ public:
     // add watch
     bool WatchNodes();
 
+    inline bool IsConnected() {
+        MutexLock lock(&mu_);
+        return connected_;
+    }
+
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
+
 private:
     void Connected();
 private:
