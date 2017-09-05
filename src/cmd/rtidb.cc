@@ -95,7 +95,11 @@ void StartTablet() {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    tablet->Init();
+    bool ok = tablet->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to init tablet");
+        exit(1);
+    }
     sofa::pbrpc::Servlet webservice =
                 sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
     if (!rpc_server.RegisterService(tablet)) {
