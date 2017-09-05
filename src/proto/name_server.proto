@@ -1,0 +1,23 @@
+package rtidb.nameserver;
+
+option cc_generic_services = true;
+option java_generic_services = true;
+option java_package = "com._4paradigm.rtidb";
+option java_outer_classname = "NameServer";
+
+message CreateTableRequest {
+	required string name = 1;
+	optional uint32 replicate_num = 2 [default = 3];
+	optional uint32 ttl = 3 [default = 1000];
+	optional uint32 seg_cnt = 4 [default = 8];
+	//optional TTLType ttl_type = 6 [default = kAbsoluteTime];
+}
+
+message GeneralResponse {
+	required int32 code = 1;
+	optional string msg = 2;
+}
+
+service NameServer {
+	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+}
