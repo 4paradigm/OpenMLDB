@@ -43,11 +43,19 @@ DECLARE_bool(enable_statdb);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_string(snapshot_root_path);
 
+// cluster config
+DECLARE_string(endpoint);
+DECLARE_string(zk_cluster);
+DECLARE_string(zk_root_path);
+DECLARE_int32(zk_session_timeout);
+DECLARE_int32(zk_keep_alive_check_interval);
+
 namespace rtidb {
 namespace tablet {
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
-    metric_(NULL), replicators_(), snapshots_(){}
+    metric_(NULL), replicators_(), snapshots_(), zk_client_(NULL),
+    keep_alive_pool_(1){}
 
 TabletImpl::~TabletImpl() {
     if (FLAGS_enable_statdb) {
@@ -62,8 +70,26 @@ TabletImpl::~TabletImpl() {
     }
 }
 
-void TabletImpl::Init() {
+bool TabletImpl::Init() {
     MutexLock lock(&mu_);
+    if (!FLAGS_zk_cluster.empty()) {
+        zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
+                FLAGS_endpoint, FLAGS_zk_root_path);
+        bool ok = zk_client_->Init();
+        if (!ok) {
+            LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
+            return false;
+        }
+        ok = zk_client_->Register();
+        if (!ok) {
+            LOG(WARNING, "fail to register tablet with endpoint %s", FLAGS_endpoint.c_str());
+            return false;
+        }
+        LOG(INFO, "tablet with endpoint %s register to zk cluster %s ok", FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
+        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+    }else {
+        LOG(INFO, "zk cluster disabled");
+    }
     if (FLAGS_enable_statdb) {
         // Create a dbstat table with tid = 0 and pid = 0
         Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
@@ -83,6 +109,7 @@ void TabletImpl::Init() {
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
 #endif 
+    return true;
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -1275,6 +1302,17 @@ void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
     response.content->Append(stat);
     response.content->Append("</pre></body></html>");
 #endif
+}
+
+void TabletImpl::CheckZkClient() {
+    if (!zk_client_->IsConnected()) {
+        bool ok = zk_client_->Reconnect();
+        if (ok) {
+            zk_client_->Register();
+        }
+    }
+    keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+
 }
 
 }

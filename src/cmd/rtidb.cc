@@ -30,7 +30,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
+DECLARE_string(endpoint);
 DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -95,7 +95,11 @@ void StartTablet() {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    tablet->Init();
+    bool ok = tablet->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to init tablet");
+        exit(1);
+    }
     sofa::pbrpc::Servlet webservice =
                 sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
     if (!rpc_server.RegisterService(tablet)) {
