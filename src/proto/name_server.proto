@@ -5,7 +5,7 @@ option java_generic_services = true;
 option java_package = "com._4paradigm.rtidb";
 option java_outer_classname = "NameServer";
 
-message TableMeta {
+message TablePartition {
     required string endpoint = 1;
     required bool is_leader = 2;
     required uint32 pid = 3;
@@ -13,9 +13,9 @@ message TableMeta {
 
 message CreateTableRequest {
 	required string name = 1;
-	optional uint32 ttl = 2 [default = 1000];
+	optional uint32 ttl = 2 [default = 0];
 	optional uint32 seg_cnt = 3 [default = 8];
-    repeated TableMeta table_meta = 4;
+    repeated TablePartition table_partition = 4;
 }
 
 message GeneralResponse {

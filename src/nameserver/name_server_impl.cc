@@ -56,56 +56,56 @@ void NameServerImpl::CreateTable(RpcController* controller,
     table_info.is_leader_ = false;
     table_info.ttl_ = request->ttl();
     table_info.seg_cnt_ = request->seg_cnt();
-    for (int idx = 0; idx < request->table_meta_size(); idx++) {
-        const ::rtidb::nameserver::TableMeta& table_meta = request->table_meta(idx);
-        if (table_meta.is_leader()) {
+    for (int idx = 0; idx < request->table_partition_size(); idx++) {
+        const ::rtidb::nameserver::TablePartition& table_partition = request->table_partition(idx);
+        if (table_partition.is_leader()) {
             continue;
         }
-        auto iter = tablet_client_.find(table_meta.endpoint());
+        auto iter = tablet_client_.find(table_partition.endpoint());
         if (iter == tablet_client_.end()) {
-            LOG(WARNING, "endpoint[%s] can not find client", table_meta.endpoint().c_str());
+            LOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
             continue;
         }
         if (!iter->second->CreateTable(
-                request->name(), table_index_, table_meta.pid(), request->ttl(), false, std::vector<std::string>())) {
+                request->name(), table_index_, table_partition.pid(), request->ttl(), false, std::vector<std::string>())) {
             LOG(WARNING, "create table[%s] failed! tid[%s] pid[%s] endpoint[%s]", 
-                        request->name().c_str(), table_index_, table_meta.pid(), table_meta.endpoint().c_str());
+                        request->name().c_str(), table_index_, table_partition.pid(), table_partition.endpoint().c_str());
             // TODO: drop table when create failed
             break;
         }
-        table_info.endpoint_ = table_meta.endpoint();
-        table_info.pid_ = table_meta.pid();
+        table_info.endpoint_ = table_partition.endpoint();
+        table_info.pid_ = table_partition.pid();
         table_info_vec.push_back(table_info);
-        if (endpoint_vec.find(table_meta.pid()) == endpoint_vec.end()) {
-            endpoint_vec.insert(std::make_pair(table_meta.pid(), std::vector<std::string>()));
+        if (endpoint_vec.find(table_partition.pid()) == endpoint_vec.end()) {
+            endpoint_vec.insert(std::make_pair(table_partition.pid(), std::vector<std::string>()));
         }
-        endpoint_vec[table_meta.pid()].push_back(table_meta.endpoint());
+        endpoint_vec[table_partition.pid()].push_back(table_partition.endpoint());
     }
 
     // create master table
-    for (int idx = 0; idx < request->table_meta_size(); idx++) {
-        const ::rtidb::nameserver::TableMeta& table_meta = request->table_meta(idx);
-        if (!table_meta.is_leader()) {
+    for (int idx = 0; idx < request->table_partition_size(); idx++) {
+        const ::rtidb::nameserver::TablePartition& table_partition = request->table_partition(idx);
+        if (!table_partition.is_leader()) {
             continue;
         }
-        auto iter = tablet_client_.find(table_meta.endpoint());
+        auto iter = tablet_client_.find(table_partition.endpoint());
         if (iter == tablet_client_.end()) {
-            LOG(WARNING, "endpoint[%s] can not find client", table_meta.endpoint().c_str());
+            LOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
             continue;
         }
         std::vector<std::string> endpoint;
-        if (endpoint_vec.find(table_meta.pid()) != endpoint_vec.end()) {
-            endpoint_vec[table_meta.pid()].swap(endpoint);
+        if (endpoint_vec.find(table_partition.pid()) != endpoint_vec.end()) {
+            endpoint_vec[table_partition.pid()].swap(endpoint);
         }
         if (!iter->second->CreateTable(
-                request->name(), table_index_, table_meta.pid(), request->ttl(), true, endpoint)) {
+                request->name(), table_index_, table_partition.pid(), request->ttl(), true, endpoint)) {
             LOG(WARNING, "create table[%s] failed! tid[%s] pid[%s] endpoint[%s]", 
-                        request->name().c_str(), table_index_, table_meta.pid(), table_meta.endpoint().c_str());
+                        request->name().c_str(), table_index_, table_partition.pid(), table_partition.endpoint().c_str());
             // TODO: drop table when create failed
             break;
         }
-        table_info.endpoint_ = table_meta.endpoint();
-        table_info.pid_ = table_meta.pid();
+        table_info.endpoint_ = table_partition.endpoint();
+        table_info.pid_ = table_partition.pid();
         table_info.is_leader_ = true;
         table_info_vec.push_back(table_info);
     }
