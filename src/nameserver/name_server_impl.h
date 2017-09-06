@@ -11,33 +11,20 @@
 #include <sofa/pbrpc/pbrpc.h>
 #include "client/tablet_client.h"
 #include "mutex.h"
+#include "zk/zk_client.h"
 
 namespace rtidb {
 namespace nameserver {
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
-
-struct TableInfo {
-    TableInfo() {
-
-    }
-    std::string name_;
-    std::string endpoint_;
-    uint32_t tid_;
-    uint32_t pid_;
-    bool is_leader_;
-    uint32_t ttl_;
-    uint32_t replicate_num_;
-    uint32_t partition_num_;
-    uint32_t seg_cnt_;
-};
+using ::rtidb::zk::ZkClient;
 
 class NameServerImpl : public NameServer {
 public:
     NameServerImpl();
     ~NameServerImpl();
-    int Init();
+    bool Init();
     NameServerImpl(const NameServerImpl&) = delete;
     NameServerImpl& operator= (const NameServerImpl&) = delete; 
     bool WebService(const sofa::pbrpc::HTTPRequest& request,
@@ -47,13 +34,17 @@ public:
         const CreateTableRequest* request,
         GeneralResponse* response, 
         Closure* done);
-    std::string GetMaster();
+    void CheckZkClient();
 
 private:    
-    uint32_t table_index_;
     ::baidu::common::Mutex mu_;
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient> > tablet_client_;
-    std::map<std::string, std::vector<TableInfo> > table_info_;
+    std::map<std::string, ::rtidb::nameserver::TableMeta> table_info_;
+    ZkClient* zk_client_;
+    ::baidu::common::ThreadPool thread_pool_;
+    std::string zk_table_path_;
+    std::string zk_data_path_;
+    std::string zk_table_index_node_;
 
 };
 

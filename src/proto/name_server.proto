@@ -11,11 +11,16 @@ message TablePartition {
     required uint32 pid = 3;
 }
 
-message CreateTableRequest {
+message TableMeta {
 	required string name = 1;
 	optional uint32 ttl = 2 [default = 0];
 	optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
+	optional uint32 tid = 5;
+}
+
+message CreateTableRequest {
+    required TableMeta table_meta = 1;
 }
 
 message GeneralResponse {

@@ -105,6 +105,63 @@ bool ZkClient::Register() {
     return false;
 }
 
+bool ZkClient::CreateNode(const std::string& node, const std::string& value) {
+    if (node.empty() || value.empty()) {
+        return false;
+    }
+    size_t pos = node.find_last_of('/');
+    if (pos != std::string::npos && pos == node.length() - 1) {
+        LOG(WARNING, "node path[%s] is illegal", node);
+        return false;
+    }
+    if (pos != std::string::npos && pos != node.find_first_of('/')) {
+        if(!Mkdir(node.substr(0, pos))) {
+            return false;
+        }
+    }
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    int ret = zoo_create(zk_, node.c_str(), value.c_str(),
+                         value.size(), &ZOO_OPEN_ACL_UNSAFE, 
+                         0, NULL, 0);
+    if (ret == ZOK) {
+        LOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
+        return true;
+    }
+    LOG(WARNING, "fail to register self with endpoint %s, err from zk %d", endpoint_.c_str(), ret);
+    return false;
+}
+
+bool ZkClient::SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx) {
+    Stat stat;
+    int ret = zoo_wexists(zk_, node.c_str(), watcher, watcherCtx, &stat);
+    if (ret == ZOK || ret == ZNONODE) {
+        return true;
+    }
+    return false;
+}
+
+bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
+    int buffer_len = ZK_MAX_BUFFER_SIZE;
+    Stat stat;
+    if (zoo_get(zk_, node.c_str(), 0, buffer, &buffer_len, &stat) == ZOK) {
+        value.assign(buffer, buffer_len);
+        return true;
+    }
+    return false;
+}
+
+bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
+    if (node.empty()) {
+        return false;
+    }
+    if (zoo_set(zk_, node.c_str(), value.c_str(), value.length(), -1) == ZOK) {
+        return true;
+    }
+    return false;
+}
+
 bool ZkClient::WatchNodes() {
     MutexLock lock(&mu_);
     if (zk_ == NULL || !connected_) {

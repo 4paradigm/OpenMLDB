@@ -25,6 +25,8 @@ namespace zk {
 
 typedef boost::function<void (const std::vector<std::string>& endpoint)> NodesChangedCallback;
 
+const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 10;
+
 class ZkClient {
 
 public:
@@ -60,6 +62,11 @@ public:
 
     bool Mkdir(const std::string& path);
 
+    bool GetNodeValue(const std::string& node, std::string& value);
+    bool SetNodeValue(const std::string& node, const std::string& value);
+    bool SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx);
+    bool CreateNode(const std::string& node, const std::string& value);
+
     // add watch
     bool WatchNodes();
 
@@ -93,6 +100,7 @@ private:
 
     struct String_vector data_;
     bool connected_;
+    char buffer[ZK_MAX_BUFFER_SIZE];
 };
 
 }
