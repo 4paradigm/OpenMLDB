@@ -126,10 +126,10 @@ bool ZkClient::CreateNode(const std::string& node, const std::string& value) {
                          value.size(), &ZOO_OPEN_ACL_UNSAFE, 
                          0, NULL, 0);
     if (ret == ZOK) {
-        LOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
+        LOG(INFO, "create node %s ok", node.c_str());
         return true;
     }
-    LOG(WARNING, "fail to register self with endpoint %s, err from zk %d", endpoint_.c_str(), ret);
+    LOG(WARNING, "fail to create node %s, err from zk %d", node.c_str(), ret);
     return false;
 }
 

@@ -27,6 +27,7 @@ public:
     NameServerImpl();
     ~NameServerImpl();
     bool Init();
+    void SetOnline();
     NameServerImpl(const NameServerImpl&) = delete;
     NameServerImpl& operator= (const NameServerImpl&) = delete; 
     bool WebService(const sofa::pbrpc::HTTPRequest& request,

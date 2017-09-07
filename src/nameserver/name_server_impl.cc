@@ -32,6 +32,10 @@ NameServerImpl::~NameServerImpl() {
     delete zk_client_;
 }
 
+void NameServerImpl::SetOnline() {
+    running_.store(true, std::memory_order_release);
+}
+
 bool NameServerImpl::Init() {
     if (FLAGS_zk_cluster.empty()) {
         LOG(WARNING, "zk cluster disabled");
@@ -65,6 +69,7 @@ bool NameServerImpl::Init() {
         return false;
     }
     for (auto iter = endpoints.begin(); iter != endpoints.end(); ++iter) {
+        LOG(DEBUG, "create endpoint[%s] client", iter->c_str());
         tablet_client_.insert(std::make_pair(*iter, std::make_shared<::rtidb::client::TabletClient>(*iter)));
     }
 
@@ -94,6 +99,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_code(-1);
         response->set_msg("nameserver is offline");
         LOG(WARNING, "cur nameserver is offline");
+        done->Run();
         return;
     }
     MutexLock lock(&mu_);
@@ -102,15 +108,17 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_code(-1);
         response->set_msg("table is already exisit!");
         LOG(WARNING, "table[%s] is already exisit!", table_meta.name().c_str());
+        done->Run();
         return;
     }
 
-    uint32_t table_index;
+    uint32_t table_index = 0;
     std::string index_value;
     if (!zk_client_->GetNodeValue(zk_table_index_node_, index_value)) {
         response->set_code(-1);
         response->set_msg("get table index node failed");
         LOG(WARNING, "get table index node failed!");
+        done->Run();
         return;
     }
     try {
@@ -119,6 +127,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_code(-1);
         response->set_msg("get table index node failed");
         LOG(WARNING, "get table index node failed!");
+        done->Run();
         return;
     }
     char buff[30];
@@ -127,6 +136,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_code(-1);
         response->set_msg("set table index node failed");
         LOG(WARNING, "set table index node failed! table_index[%s]", buff);
+        done->Run();
         return;
     }
     std::map<uint32_t, std::vector<std::string> > endpoint_vec;
@@ -142,11 +152,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
         }
         if (!iter->second->CreateTable(
                 table_meta.name(), table_index, table_partition.pid(), table_meta.ttl(), false, std::vector<std::string>())) {
-            LOG(WARNING, "create table[%s] failed! tid[%s] pid[%s] endpoint[%s]", 
+            LOG(WARNING, "create table[%s] failed! tid[%u] pid[%u] endpoint[%s]", 
                         table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
             // TODO: drop table when create failed
             break;
         }
+        LOG(DEBUG, "create table[%s] tid[%u] pid[%u] endpoint[%s] success", 
+                    table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
         if (endpoint_vec.find(table_partition.pid()) == endpoint_vec.end()) {
             endpoint_vec.insert(std::make_pair(table_partition.pid(), std::vector<std::string>()));
         }
@@ -170,11 +182,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
         }
         if (!iter->second->CreateTable(
                 table_meta.name(), table_index, table_partition.pid(), table_meta.ttl(), true, endpoint)) {
-            LOG(WARNING, "create table[%s] failed! tid[%s] pid[%s] endpoint[%s]", 
+            LOG(WARNING, "create table[%s] failed! tid[%u] pid[%u] endpoint[%s]", 
                         table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
             // TODO: drop table when create failed
             break;
         }
+        LOG(DEBUG, "create table[%s] tid[%u] pid[%u] endpoint[%s] success", 
+                    table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
     }
 
     table_info_.insert(std::make_pair(table_meta.name(), table_meta));
@@ -183,13 +197,16 @@ void NameServerImpl::CreateTable(RpcController* controller,
     std::string table_value;
     table_info_[table_meta.name()].SerializeToString(&table_value);
     if (!zk_client_->CreateNode(zk_table_path_ + "/" + table_meta.name(), table_value)) {
-        LOG(WARNING, "create table node[%s/%s] failed!", zk_table_path_.c_str(), table_meta.name().c_str());
+        LOG(WARNING, "create table node[%s/%s] failed! value[%s]", zk_table_path_.c_str(), table_meta.name().c_str(), table_value.c_str());
         response->set_code(-1);
         response->set_msg("create table node failed");
+        done->Run();
         return;
     }
+    LOG(DEBUG, "create table node[%s/%s] success! value[%s]", zk_table_path_.c_str(), table_meta.name().c_str(), table_value.c_str());
     response->set_code(0);
     response->set_msg("ok");
+    done->Run();
 }
 
 }
