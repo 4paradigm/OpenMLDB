@@ -11,6 +11,8 @@
 #include <sofa/pbrpc/pbrpc.h>
 #include "client/tablet_client.h"
 #include "mutex.h"
+#include <map>
+#include <atomic>
 #include "zk/zk_client.h"
 
 namespace rtidb {
@@ -45,6 +47,7 @@ private:
     std::string zk_table_path_;
     std::string zk_data_path_;
     std::string zk_table_index_node_;
+    std::atomic<bool> running_;
 
 };
 

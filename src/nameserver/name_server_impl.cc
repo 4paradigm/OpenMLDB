@@ -25,6 +25,7 @@ NameServerImpl::NameServerImpl():thread_pool_(1)  {
     zk_table_path_ = FLAGS_zk_root_path + "/table";
     zk_data_path_ = FLAGS_zk_root_path + "/table/data";
     zk_table_index_node_ = zk_data_path_ + "/table_index";
+    running_.store(false, std::memory_order_release);
 }
 
 NameServerImpl::~NameServerImpl() {
@@ -32,34 +33,41 @@ NameServerImpl::~NameServerImpl() {
 }
 
 bool NameServerImpl::Init() {
-    if (!FLAGS_zk_cluster.empty()) {
-        zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                FLAGS_endpoint, FLAGS_zk_root_path);
-        bool ok = zk_client_->Init();
-        if (!ok) {
-            LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
-            return false;
-        }
-        ok = zk_client_->Register();
-        if (!ok) {
-            LOG(WARNING, "fail to register nameserver with endpoint %s", FLAGS_endpoint.c_str());
-            return false;
-        }
-        LOG(INFO, "nameserver with endpoint %s register to zk cluster %s ok", FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
-        thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
-        std::string value;
-        if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
-            char buffer[30];
-            snprintf(buffer, 30, "%d", 1);
-            if (!zk_client_->CreateNode(zk_table_index_node_, std::string(buffer))) {
-                LOG(WARNING, "create table index node failed!");
-                return false;
-            }
-        }
-
-    }else {
-        LOG(INFO, "zk cluster disabled");
+    if (FLAGS_zk_cluster.empty()) {
+        LOG(WARNING, "zk cluster disabled");
+        return false;
+    }    
+    zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
+            FLAGS_endpoint, FLAGS_zk_root_path);
+    if (!zk_client_->Init()) {
+        LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
+        return false;
     }
+    if (!zk_client_->Register()) {
+        LOG(WARNING, "fail to register nameserver with endpoint %s", FLAGS_endpoint.c_str());
+        return false;
+    }
+    LOG(INFO, "nameserver with endpoint %s register to zk cluster %s ok", FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
+    thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
+    std::string value;
+    if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
+        char buffer[30];
+        snprintf(buffer, 30, "%d", 1);
+        if (!zk_client_->CreateNode(zk_table_index_node_, std::string(buffer))) {
+            LOG(WARNING, "create table index node failed!");
+            return false;
+        }
+    }
+
+    std::vector<std::string> endpoints;
+    if (!zk_client_->GetNodes(endpoints)) {
+        LOG(WARNING, "get endpoints node failed!");
+        return false;
+    }
+    for (auto iter = endpoints.begin(); iter != endpoints.end(); ++iter) {
+        tablet_client_.insert(std::make_pair(*iter, std::make_shared<::rtidb::client::TabletClient>(*iter)));
+    }
+
     return true;
 }
 
@@ -82,6 +90,12 @@ void NameServerImpl::CreateTable(RpcController* controller,
         const CreateTableRequest* request, 
         GeneralResponse* response, 
         Closure* done) {
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is offline");
+        LOG(WARNING, "cur nameserver is offline");
+        return;
+    }
     MutexLock lock(&mu_);
     const ::rtidb::nameserver::TableMeta& table_meta = request->table_meta();
     if (table_info_.find(table_meta.name()) != table_info_.end()) {
