@@ -37,6 +37,8 @@ public:
         const CreateTableRequest* request,
         GeneralResponse* response, 
         Closure* done);
+    int CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
+                bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
     void CheckZkClient();
 
 private:    

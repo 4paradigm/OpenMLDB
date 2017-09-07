@@ -89,7 +89,42 @@ void NameServerImpl::CheckZkClient() {
 bool NameServerImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
         sofa::pbrpc::HTTPResponse& response) {
     return true;        
-}        
+}
+
+int NameServerImpl::CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
+            bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec) {
+    for (int idx = 0; idx < table_meta.table_partition_size(); idx++) {
+        const ::rtidb::nameserver::TablePartition& table_partition = table_meta.table_partition(idx);
+        if (table_partition.is_leader() != is_leader) {
+            continue;
+        }
+        auto iter = tablet_client_.find(table_partition.endpoint());
+        if (iter == tablet_client_.end()) {
+            LOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
+            continue;
+        }
+        std::vector<std::string> endpoint;
+        if (is_leader && endpoint_vec.find(table_partition.pid()) != endpoint_vec.end()) {
+            endpoint_vec[table_partition.pid()].swap(endpoint);
+        }
+        if (!iter->second->CreateTable(
+                table_meta.name(), tid, table_partition.pid(), table_meta.ttl(), is_leader, endpoint)) {
+            LOG(WARNING, "create table[%s] failed! tid[%u] pid[%u] endpoint[%s]", 
+                        table_meta.name().c_str(), tid, table_partition.pid(), table_partition.endpoint().c_str());
+            // TODO: drop table when create failed
+            break;
+        }
+        LOG(DEBUG, "create table[%s] tid[%u] pid[%u] endpoint[%s] success", 
+                    table_meta.name().c_str(), tid, table_partition.pid(), table_partition.endpoint().c_str());
+        if (!is_leader) {            
+            if (endpoint_vec.find(table_partition.pid()) == endpoint_vec.end()) {
+                endpoint_vec.insert(std::make_pair(table_partition.pid(), std::vector<std::string>()));
+            }
+            endpoint_vec[table_partition.pid()].push_back(table_partition.endpoint());
+        }
+    }
+    return 0;
+}
 
 void NameServerImpl::CreateTable(RpcController* controller, 
         const CreateTableRequest* request, 
@@ -140,56 +175,9 @@ void NameServerImpl::CreateTable(RpcController* controller,
         return;
     }
     std::map<uint32_t, std::vector<std::string> > endpoint_vec;
-    for (int idx = 0; idx < table_meta.table_partition_size(); idx++) {
-        const ::rtidb::nameserver::TablePartition& table_partition = table_meta.table_partition(idx);
-        if (table_partition.is_leader()) {
-            continue;
-        }
-        auto iter = tablet_client_.find(table_partition.endpoint());
-        if (iter == tablet_client_.end()) {
-            LOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
-            continue;
-        }
-        if (!iter->second->CreateTable(
-                table_meta.name(), table_index, table_partition.pid(), table_meta.ttl(), false, std::vector<std::string>())) {
-            LOG(WARNING, "create table[%s] failed! tid[%u] pid[%u] endpoint[%s]", 
-                        table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
-            // TODO: drop table when create failed
-            break;
-        }
-        LOG(DEBUG, "create table[%s] tid[%u] pid[%u] endpoint[%s] success", 
-                    table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
-        if (endpoint_vec.find(table_partition.pid()) == endpoint_vec.end()) {
-            endpoint_vec.insert(std::make_pair(table_partition.pid(), std::vector<std::string>()));
-        }
-        endpoint_vec[table_partition.pid()].push_back(table_partition.endpoint());
-    }
-
+    CreateTable(table_meta, table_index, false, endpoint_vec);
     // create master table
-    for (int idx = 0; idx < table_meta.table_partition_size(); idx++) {
-        const ::rtidb::nameserver::TablePartition& table_partition = table_meta.table_partition(idx);
-        if (!table_partition.is_leader()) {
-            continue;
-        }
-        auto iter = tablet_client_.find(table_partition.endpoint());
-        if (iter == tablet_client_.end()) {
-            LOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
-            continue;
-        }
-        std::vector<std::string> endpoint;
-        if (endpoint_vec.find(table_partition.pid()) != endpoint_vec.end()) {
-            endpoint_vec[table_partition.pid()].swap(endpoint);
-        }
-        if (!iter->second->CreateTable(
-                table_meta.name(), table_index, table_partition.pid(), table_meta.ttl(), true, endpoint)) {
-            LOG(WARNING, "create table[%s] failed! tid[%u] pid[%u] endpoint[%s]", 
-                        table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
-            // TODO: drop table when create failed
-            break;
-        }
-        LOG(DEBUG, "create table[%s] tid[%u] pid[%u] endpoint[%s] success", 
-                    table_meta.name().c_str(), table_index, table_partition.pid(), table_partition.endpoint().c_str());
-    }
+    CreateTable(table_meta, table_index, true, endpoint_vec);
 
     table_info_.insert(std::make_pair(table_meta.name(), table_meta));
     table_info_[table_meta.name()].set_tid(table_index);
