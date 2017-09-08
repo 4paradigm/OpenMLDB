@@ -51,13 +51,13 @@ add_executable(kv_iterator_test  base/kv_iterator_test.cc proto/tablet.pb.cc)
 target_link_libraries(kv_iterator_test gtest pthread common protobuf)
 
 add_executable(tablet_impl_test  tablet/tablet_impl_test.cc base/status.cc)
-target_link_libraries(tablet_impl_test   gtest pthread zookeeper_mt tablet leveldb gflags storage replica log common sofa-pbrpc  protobuf z snappy leveldb zk_client unwind tcmalloc)
+target_link_libraries(tablet_impl_test  gtest pthread  tablet leveldb gflags storage replica log common sofa-pbrpc  protobuf z snappy leveldb zk_client  zookeeper_mt unwind tcmalloc)
 
 add_executable(tablet_impl_keep_alive_test tablet/tablet_impl_keep_alive_test.cc base/status.cc)
 target_link_libraries(tablet_impl_keep_alive_test   gtest pthread tablet leveldb gflags storage replica log common sofa-pbrpc  protobuf z snappy leveldb zk_client zookeeper_mt unwind tcmalloc)
 
 add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
-target_link_libraries(tablet_impl_mem_test   gtest pthread tablet leveldb gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt unwind leveldb tcmalloc)
+target_link_libraries(tablet_impl_mem_test   gtest pthread tablet leveldb gflags storage replica log common sofa-pbrpc  protobuf z snappy leveldb zk_client zookeeper_mt unwind tcmalloc)
 
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf unwind tcmalloc)
