@@ -18,7 +18,7 @@ add_library(log STATIC log/crc32c.cc
                        log/log_reader.cc
                        log/writable_file.cc)
 add_library(base STATIC base/status.cc)
-add_library(zk STATIC zk/zk_client.cc)
+add_library(zk STATIC zk/zk_client.cc zk/dist_lock.cc)
 
 add_library(replica STATIC replica/replicate_node.cc
                            replica/log_replicator.cc)
@@ -28,6 +28,9 @@ target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
 
 add_executable(zk_test zk/zk_client_test.cc)
 target_link_libraries(zk_test gtest zk zookeeper_mt pthread common)
+
+add_executable(dist_lock_test zk/dist_lock_test.cc)
+target_link_libraries(dist_lock_test gtest zk zookeeper_mt pthread common)
 
 add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
 target_link_libraries(replica_test gtest gflags replica log tablet storage base pthread sofa-pbrpc protobuf z snappy common leveldb)

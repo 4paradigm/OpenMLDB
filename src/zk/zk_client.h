@@ -11,6 +11,7 @@
 
 #include "boost/function.hpp"
 #include "mutex.h"
+#include <map>
 
 extern "C" {
 #include "zookeeper/zookeeper.h"
@@ -57,14 +58,28 @@ public:
     // get all alive nodes
     bool GetNodes(std::vector<std::string>& endpoints);
 
+    bool GetChildren(const std::string& path, std::vector<std::string>& children);
+
     // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
 
     bool Mkdir(const std::string& path);
 
     bool GetNodeValue(const std::string& node, std::string& value);
+
     bool SetNodeValue(const std::string& node, const std::string& value);
-    bool SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx);
+
+    bool SetNodeWatcher(const std::string& node, 
+                        watcher_fn watcher, 
+                        void* watcherCtx);
+
+    bool WatchChildren(const std::string& node, 
+                       NodesChangedCallback callback);
+
+    void CancelWatchChildren(const std::string& node);
+
+    void HandleChildrenChanged(const std::string& path, 
+                               int type, int state);
 
     // create a persistence node
     bool CreateNode(const std::string& node,
@@ -85,8 +100,8 @@ public:
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
 private:
-    void Connected();
 
+    void Connected();
 private:
 
     // input args
@@ -108,6 +123,7 @@ private:
     struct String_vector data_;
     bool connected_;
     char buffer[ZK_MAX_BUFFER_SIZE];
+    std::map<std::string, NodesChangedCallback> children_callbacks_;
 };
 
 }
