@@ -11,6 +11,9 @@
 #include <sched.h>
 #include <unistd.h>
 #include "logging.h"
+extern "C" {
+#include "zookeeper/zookeeper.h"
+} 
 
 using ::baidu::common::INFO;
 
@@ -66,6 +69,28 @@ TEST_F(ZkClientTest, Init) {
     }
     sleep(5);
 }
+
+TEST_F(ZkClientTest, CreateNode) {
+    ZkClient client("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb1");
+    bool ok = client.Init();
+    ASSERT_TRUE(ok);
+    // test create tmp node
+    //
+    
+    std::string assigned_path;
+    ok = client.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
+    ASSERT_TRUE(ok);
+    
+    ZkClient client2("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb1");
+    ok = client2.Init();
+    ASSERT_TRUE(ok);
+
+    std::string assigned_path1;
+    ok = client2.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path1);
+    ASSERT_TRUE(ok);
+
+}
+
 }
 }
 

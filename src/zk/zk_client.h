@@ -25,6 +25,8 @@ namespace zk {
 
 typedef boost::function<void (const std::vector<std::string>& endpoint)> NodesChangedCallback;
 
+const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 10;
+
 class ZkClient {
 
 public:
@@ -42,7 +44,7 @@ public:
     // init zookeeper connections
     bool Init();
 
-    // the client will create a ephemeral sequence node in zk_root_path
+    // the client will create a ephemeral node in zk_root_path
     // eg {zk_root_path}/nodes/000000 -> endpoint
     bool Register();
 
@@ -60,13 +62,31 @@ public:
 
     bool Mkdir(const std::string& path);
 
-    // add watch
+    bool GetNodeValue(const std::string& node, std::string& value);
+    bool SetNodeValue(const std::string& node, const std::string& value);
+    bool SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx);
+
+    // create a persistence node
+    bool CreateNode(const std::string& node,
+                    const std::string& value);
+
+    bool CreateNode(const std::string& node, 
+                    const std::string& value, 
+                    int flags,
+                    std::string& assigned_path_name);
+
     bool WatchNodes();
+
+    inline bool IsConnected() {
+        MutexLock lock(&mu_);
+        return connected_;
+    }
 
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
 private:
     void Connected();
+
 private:
 
     // input args
@@ -87,6 +107,7 @@ private:
 
     struct String_vector data_;
     bool connected_;
+    char buffer[ZK_MAX_BUFFER_SIZE];
 };
 
 }
