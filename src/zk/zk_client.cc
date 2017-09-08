@@ -193,7 +193,7 @@ bool ZkClient::WatchChildren(const std::string& node, NodesChangedCallback callb
         return false;
     }
     deallocate_String_vector(&data_);
-    int ret = zoo_wget_children(zk_, node.c_str(), NodeWatcher, NULL, &data_);
+    int ret = zoo_wget_children(zk_, node.c_str(), ChildrenWatcher, NULL, &data_);
     if (ret != ZOK) {
         LOG(WARNING, "fail to watch path %s errno %d", node.c_str(), ret);
         return false;

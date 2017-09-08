@@ -37,8 +37,8 @@ void DistLock::Stop() {
 }
 
 void DistLock::InternalLock() {
-    MutexLock lock(&mu_);
     while (running_.load(boost::memory_order_relaxed)) {
+        MutexLock lock(&mu_);
         if (lock_state_ == kLostLock) {
             zk_client_->CancelWatchChildren(root_path_);
             bool ok = zk_client_->CreateNode(root_path_ + "/lock_request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path_);
@@ -54,7 +54,7 @@ void DistLock::InternalLock() {
                 continue;
             }
             lock_state_ = kTryLock;
-            HandleChildrenChanged(children);
+            HandleChildrenChangedLocked(children);
             zk_client_->WatchChildren(root_path_, boost::bind(&DistLock::HandleChildrenChanged, this, _1));
         }else {
             sleep(1);
@@ -62,7 +62,10 @@ void DistLock::InternalLock() {
     }
 }
 
-void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
+void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& children) {
+    if (!running_.load(boost::memory_order_relaxed)) {
+        return ;
+    }
     mu_.AssertHeld();
     std::string firstChild;
     if (children.size() > 0) {
@@ -83,7 +86,14 @@ void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
             on_lost_lock_cl_();
             lock_state_ = kLostLock;
         }
+        LOG(INFO, "wait a channce to get a lock");
     }
+
+}
+
+void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
+    MutexLock lock(&mu_);
+    HandleChildrenChangedLocked(children);
 }
 
 
