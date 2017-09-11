@@ -105,6 +105,67 @@ bool ZkClient::Register() {
     return false;
 }
 
+bool ZkClient::CreateNode(const std::string& node, const std::string& value) {
+    if (node.empty()) {
+        return false;
+    }
+    size_t pos = node.find_last_of('/');
+    if (pos != std::string::npos && pos == node.length() - 1) {
+        LOG(WARNING, "node path[%s] is illegal", node);
+        return false;
+    }
+    if (pos != std::string::npos && pos != node.find_first_of('/')) {
+        if(!Mkdir(node.substr(0, pos))) {
+            return false;
+        }
+    }
+    MutexLock lock(&mu_);
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    int ret = zoo_create(zk_, node.c_str(), value.c_str(),
+                         value.size(), &ZOO_OPEN_ACL_UNSAFE, 
+                         0, NULL, 0);
+    if (ret == ZOK) {
+        LOG(INFO, "create node %s ok", node.c_str());
+        return true;
+    }
+    LOG(WARNING, "fail to create node %s, err from zk %d", node.c_str(), ret);
+    return false;
+}
+
+bool ZkClient::SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx) {
+    Stat stat;
+    MutexLock lock(&mu_);
+    int ret = zoo_wexists(zk_, node.c_str(), watcher, watcherCtx, &stat);
+    if (ret == ZOK || ret == ZNONODE) {
+        return true;
+    }
+    return false;
+}
+
+bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
+    int buffer_len = ZK_MAX_BUFFER_SIZE;
+    Stat stat;
+    MutexLock lock(&mu_);
+    if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
+        value.assign(buffer_, buffer_len);
+        return true;
+    }
+    return false;
+}
+
+bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
+    if (node.empty()) {
+        return false;
+    }
+    MutexLock lock(&mu_);
+    if (zoo_set(zk_, node.c_str(), value.c_str(), value.length(), -1) == ZOK) {
+        return true;
+    }
+    return false;
+}
+
 bool ZkClient::WatchNodes() {
     MutexLock lock(&mu_);
     if (zk_ == NULL || !connected_) {

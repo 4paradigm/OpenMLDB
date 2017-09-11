@@ -71,6 +71,9 @@ target_link_libraries(snapshot_replica_test gtest gflags pthread common sofa-pbr
 add_executable(binlog_test  replica/binlog_test.cc client/tablet_client.cc base/status.cc flags.cc)
 target_link_libraries(binlog_test gtest gflags pthread common sofa-pbrpc protobuf z snappy tablet zk_client zookeeper_mt storage replica log leveldb tcmalloc_minimal)
 
+add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc base/status.cc)
+target_link_libraries(nameserver_test  gtest pthread tablet nameserver leveldb gflags storage replica log common sofa-pbrpc  protobuf z snappy leveldb zk_client zookeeper_mt unwind tcmalloc)
+
 add_executable(rtidb cmd/rtidb.cc client/tablet_client.cc base/status.cc)
 target_link_libraries(rtidb gflags pthread common sofa-pbrpc protobuf z snappy tablet storage replica log leveldb nameserver zk_client zookeeper_mt tcmalloc_minimal)
 
