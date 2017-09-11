@@ -47,11 +47,6 @@ bool NameServerImpl::Init() {
         LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
         return false;
     }
-    if (!zk_client_->Register()) {
-        LOG(WARNING, "fail to register nameserver with endpoint %s", FLAGS_endpoint.c_str());
-        return false;
-    }
-    LOG(INFO, "nameserver with endpoint %s register to zk cluster %s ok", FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
     std::string value;
     if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
@@ -78,10 +73,7 @@ bool NameServerImpl::Init() {
 
 void NameServerImpl::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
-        bool ok = zk_client_->Reconnect();
-        if (ok) {
-            zk_client_->Register();
-        }
+        zk_client_->Reconnect();
     }
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
 }
