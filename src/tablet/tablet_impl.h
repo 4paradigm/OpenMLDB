@@ -9,14 +9,15 @@
 #ifndef RTIDB_TABLET_IMPL_H
 #define RTIDB_TABLET_IMPL_H
 
-#include <map>
-#include "proto/tablet.pb.h"
-#include "storage/table.h"
-#include "storage/snapshot.h"
 #include "mutex.h"
-#include "thread_pool.h"
-#include "tablet/tablet_metric.h"
+#include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
+#include "storage/snapshot.h"
+#include "storage/table.h"
+#include "tablet/tablet_metric.h"
+#include "thread_pool.h"
+#include "zk/zk_client.h"
+#include <map>
 #include <sofa/pbrpc/pbrpc.h>
 
 using ::google::protobuf::RpcController;
@@ -28,6 +29,7 @@ using ::rtidb::storage::Table;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
+using ::rtidb::zk::ZkClient;
 
 namespace rtidb {
 namespace tablet {
@@ -43,7 +45,7 @@ public:
 
     ~TabletImpl();
 
-    void Init();
+    bool Init();
 
     void Put(RpcController* controller,
              const ::rtidb::api::PutRequest* request,
@@ -164,7 +166,7 @@ private:
     int LoadSnapshot(uint32_t tid, uint32_t pid);
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
                        const std::vector<std::string>& replicas);
-
+    void CheckZkClient();
 private:
     Tables tables_;
     Mutex mu_;
@@ -172,6 +174,8 @@ private:
     TabletMetric* metric_;
     Replicators replicators_;
     Snapshots snapshots_;
+    ZkClient* zk_client_;
+    ThreadPool keep_alive_pool_;
 };
 
 

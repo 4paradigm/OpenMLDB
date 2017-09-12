@@ -11,20 +11,31 @@
 #include <sofa/pbrpc/pbrpc.h>
 #include "client/tablet_client.h"
 #include "mutex.h"
+#include "zk/zk_client.h"
+#include "zk/dist_lock.h"
 
 namespace rtidb {
 namespace nameserver {
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
+using ::rtidb::zk::ZkClient;
+using ::rtidb::zk::DistLock;
 
 class NameServerImpl : public NameServer {
+
 public:
+
     NameServerImpl();
+
     ~NameServerImpl();
+
     int Init();
+
     NameServerImpl(const NameServerImpl&) = delete;
+
     NameServerImpl& operator= (const NameServerImpl&) = delete; 
+
     bool WebService(const sofa::pbrpc::HTTPRequest& request,
                 sofa::pbrpc::HTTPResponse& response);
 
@@ -32,12 +43,19 @@ public:
         const CreateTableRequest* request,
         GeneralResponse* response, 
         Closure* done);
+
     std::string GetMaster();
 
-private:    
+private:
+    // Get the lock
+    void OnLocked();
+    // Lost the lock
+    void OnLostLock();
+private:
     ::baidu::common::Mutex mu_;
     std::vector<std::pair<std::string, std::shared_ptr<::rtidb::client::TabletClient> > > tablet_client_;
-
+    ZkClient* zk_client_;
+    DistLock* dist_lock_;
 };
 
 }

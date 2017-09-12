@@ -99,6 +99,7 @@ public:
 
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
+
 private:
 
     void Connected();

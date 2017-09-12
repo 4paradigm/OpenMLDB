@@ -37,13 +37,16 @@ class DistLock {
 public:
     DistLock(const std::string& root_path, ZkClient* zk_client,
             NotifyCallback on_locked_cl,
-            NotifyCallback on_lost_lock_cl);
+            NotifyCallback on_lost_lock_cl,
+            const std::string& lock_value);
 
     ~DistLock();
 
     void Lock();
 
     void Stop();
+
+    bool IsLocked();
 
 private:
     void InternalLock();
@@ -62,9 +65,10 @@ private:
     ZkClient* zk_client_;
     // sequence path from zookeeper
     std::string assigned_path_;
-    LockState lock_state_;
+    boost::atomic<LockState> lock_state_;
     ThreadPool pool_;
     boost::atomic<bool> running_;
+    std::string lock_value_;
 };
 
 }

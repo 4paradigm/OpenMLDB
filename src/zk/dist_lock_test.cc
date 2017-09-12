@@ -41,15 +41,16 @@ TEST_F(DistLockTest, Lock) {
     ZkClient client("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb_lock");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    DistLock lock("/rtidb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback));
+    DistLock lock("/rtidb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback), "endpoint");
     lock.Lock();
     sleep(5);
     ASSERT_TRUE(call_invoked);
+    ASSERT_TRUE(lock.IsLocked());
     call_invoked = false;
     ZkClient client2("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb_lock");
     ok = client2.Init();
     ASSERT_TRUE(ok);
-    DistLock lock2("/rtidb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback));
+    DistLock lock2("/rtidb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback), "endpoint");
     lock2.Lock();
     sleep(5);
     ASSERT_FALSE(call_invoked);
