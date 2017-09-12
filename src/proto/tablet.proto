@@ -144,7 +144,7 @@ message CreateTableRequest {
 	optional string name = 2;
 	optional int32 pid = 3;
 	// time to live for every row
-	optional int32 ttl = 4;
+	optional uint64 ttl = 4;
 	optional int32 seg_cnt = 5;
 	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
     // the slave endpoints
@@ -165,7 +165,7 @@ message LoadTableRequest {
 	optional string name = 2;
 	optional int32 pid = 3;
 	// time to live for every row
-	optional int32 ttl = 4;
+	optional uint64 ttl = 4;
 	optional int32 seg_cnt = 5;
 	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
     // the slave endpoints
@@ -236,7 +236,7 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
-    optional uint32 ttl = 6;
+    optional uint64 ttl = 6;
 }
 
 message GetTableStatusResponse {

@@ -222,7 +222,7 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     row.push_back(buf);
     row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
     row.push_back(::rtidb::api::TableState_Name(table_status.state()));
-    snprintf(buf, 30, "%u", table_status.ttl());
+    snprintf(buf, 30, "%lu", table_status.ttl());
     row.push_back(buf);
     tp.AddRow(row);
 }
