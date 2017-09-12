@@ -35,6 +35,7 @@ void DistLock::Lock() {
 void DistLock::Stop() {
     running_.store(false, boost::memory_order_relaxed);
     pool_.Stop(true);
+    lock_state_.store(kLostLock, boost::memory_order_relaxed);
 }
 
 void DistLock::InternalLock() {
