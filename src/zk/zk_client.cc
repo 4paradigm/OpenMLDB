@@ -7,8 +7,9 @@
 
 #include "zk/zk_client.h"
 
-#include "logging.h"
 #include "boost/bind.hpp"
+#include "logging.h"
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 
 using ::baidu::common::INFO;
@@ -176,7 +177,7 @@ void ZkClient::HandleChildrenChanged(const std::string& path, int type, int stat
             return;
         }
         LOG(INFO, "handle node changed event with type %d, and state %d for path %s", 
-                type, state, path.c_str());
+            type, state, path.c_str());
         callback(children);
     }
     WatchChildren(path, callback);
@@ -278,6 +279,7 @@ bool ZkClient::GetChildren(const std::string& path, std::vector<std::string>& ch
     for (int32_t i = 0; i < data.count; i++) {
         children.push_back(std::string(data.data[i]));
     }
+    std::sort(children.begin(), children.end());
     return true;
 
 }

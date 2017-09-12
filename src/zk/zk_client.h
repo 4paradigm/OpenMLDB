@@ -24,7 +24,7 @@ using ::baidu::common::CondVar;
 namespace rtidb {
 namespace zk {
 
-typedef boost::function<void (std::vector<std::string>& endpoint)> NodesChangedCallback;
+typedef boost::function<void (const std::vector<std::string>& endpoint)> NodesChangedCallback;
 
 const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 10;
 

@@ -5,7 +5,6 @@
 // Date 2017-09-08
 //
 
-#include <algorithm>
 #include "zk/dist_lock.h"
 #include "boost/bind.hpp"
 #include "logging.h"
@@ -62,11 +61,10 @@ void DistLock::InternalLock() {
     }
 }
 
-void DistLock::HandleChildrenChangedLocked(std::vector<std::string>& children) {
+void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& children) {
     if (!running_.load(boost::memory_order_relaxed)) {
         return ;
     }
-    std::sort(children.begin(), children.end());
     mu_.AssertHeld();
     current_lock_node_ = "";
     if (children.size() > 0) {
@@ -97,7 +95,7 @@ void DistLock::HandleChildrenChangedLocked(std::vector<std::string>& children) {
                assigned_path_.c_str(), current_lock_node_.c_str(), current_lock_value_.c_str());
 }
 
-void DistLock::HandleChildrenChanged(std::vector<std::string>& children) {
+void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
     MutexLock lock(&mu_);
     HandleChildrenChangedLocked(children);
 }
