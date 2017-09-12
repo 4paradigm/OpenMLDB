@@ -51,10 +51,10 @@ public:
     void CurrentLockValue(std::string& value);
 
 private:
+
     void InternalLock();
     void HandleChildrenChanged(const std::vector<std::string>& children);
     void HandleChildrenChangedLocked(const std::vector<std::string>& children);
-
 private:
     // input args
     std::string root_path_;
