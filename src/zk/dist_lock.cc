@@ -104,7 +104,6 @@ bool DistLock::IsLocked() {
 }
 
 void DistLock::CurrentLockValue(std::string& value) {
-    mu_.AssertHeld();
     value.assign(current_lock_value_);
 }
 
