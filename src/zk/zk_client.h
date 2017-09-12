@@ -11,6 +11,7 @@
 
 #include "boost/function.hpp"
 #include "mutex.h"
+#include <map>
 
 extern "C" {
 #include "zookeeper/zookeeper.h"
@@ -44,7 +45,7 @@ public:
     // init zookeeper connections
     bool Init();
 
-    // the client will create a ephemeral sequence node in zk_root_path
+    // the client will create a ephemeral node in zk_root_path
     // eg {zk_root_path}/nodes/000000 -> endpoint
     bool Register();
 
@@ -57,17 +58,39 @@ public:
     // get all alive nodes
     bool GetNodes(std::vector<std::string>& endpoints);
 
+    bool GetChildren(const std::string& path, std::vector<std::string>& children);
+
     // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
 
     bool Mkdir(const std::string& path);
 
     bool GetNodeValue(const std::string& node, std::string& value);
-    bool SetNodeValue(const std::string& node, const std::string& value);
-    bool SetNodeWatcher(const std::string& node, watcher_fn watcher, void* watcherCtx);
-    bool CreateNode(const std::string& node, const std::string& value);
+    bool GetNodeValueLocked(const std::string& node, std::string& value);
 
-    // add watch
+    bool SetNodeValue(const std::string& node, const std::string& value);
+
+    bool SetNodeWatcher(const std::string& node, 
+                        watcher_fn watcher, 
+                        void* watcherCtx);
+
+    bool WatchChildren(const std::string& node, 
+                       NodesChangedCallback callback);
+
+    void CancelWatchChildren(const std::string& node);
+
+    void HandleChildrenChanged(const std::string& path, 
+                               int type, int state);
+
+    // create a persistence node
+    bool CreateNode(const std::string& node,
+                    const std::string& value);
+
+    bool CreateNode(const std::string& node, 
+                    const std::string& value, 
+                    int flags,
+                    std::string& assigned_path_name);
+
     bool WatchNodes();
 
     inline bool IsConnected() {
@@ -79,6 +102,7 @@ public:
     bool Reconnect();
 
 private:
+
     void Connected();
 private:
 
@@ -100,6 +124,7 @@ private:
 
     struct String_vector data_;
     bool connected_;
+    std::map<std::string, NodesChangedCallback> children_callbacks_;
     char buffer_[ZK_MAX_BUFFER_SIZE];
 };
 

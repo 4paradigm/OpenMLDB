@@ -29,9 +29,9 @@ DECLARE_int32(zk_keep_alive_check_interval);
 using ::rtidb::zk::ZkClient;
 
 
-
 namespace rtidb {
 namespace nameserver {
+
 
 uint32_t counter = 10;
 static bool call_invoked = false;
@@ -51,7 +51,14 @@ void WatchCallback(const std::vector<std::string>& endpoints) {
     call_invoked = true;
 }
 
+class MockClosure : public ::google::protobuf::Closure {
 
+public:
+    MockClosure() {}
+    ~MockClosure() {}
+    void Run() {}
+
+};
 class NameServerImplTest : public ::testing::Test {
 
 public:
@@ -97,9 +104,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     ok = nameserver->Init();
     ASSERT_TRUE(ok);
     endpoint_size++;
-    nameserver->SetOnline();
-
-    sleep(2);
+    sleep(4);
     ASSERT_TRUE(call_invoked);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
@@ -132,6 +137,28 @@ TEST_F(NameServerImplTest, CreateTable) {
             &::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, 12, 1);
     ASSERT_TRUE(ok);
+
+    FLAGS_endpoint = "127.0.0.1:9532";
+    NameServerImpl* nameserver2 = new NameServerImpl();
+    ok = nameserver2->Init();
+    ASSERT_TRUE(ok);
+    sleep(3);
+    
+    CreateTableRequest request1;
+    GeneralResponse response1;
+
+    TableMeta *meta1 = request1.mutable_table_meta();
+    meta1->set_name("test" + GenRand());
+    TablePartition* partion1 = meta1->add_table_partition();
+    partion1->set_endpoint("127.0.0.1:9530");
+    partion1->set_is_leader(true);
+    partion1->set_pid(0);
+    MockClosure closure;
+    nameserver2->CreateTable(NULL, &request1, &response1, &closure);
+    ASSERT_EQ(-1, response1.code());
+
+
+
 }
 
 }

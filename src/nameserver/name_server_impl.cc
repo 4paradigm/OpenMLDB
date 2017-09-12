@@ -5,9 +5,11 @@
 // Date 2017-09-05
 //
 
-#include "name_server_impl.h"
+#include "nameserver/name_server_impl.h"
+
 #include <gflags/gflags.h>
 #include <boost/lexical_cast.hpp>
+#include "gflags/gflags.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -20,8 +22,8 @@ namespace nameserver {
 
 using ::baidu::common::MutexLock;
 
-NameServerImpl::NameServerImpl():thread_pool_(1)  {
-    zk_client_ = NULL;
+NameServerImpl::NameServerImpl():mu_(), tablet_client_(),
+    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1)  {
     zk_table_path_ = FLAGS_zk_root_path + "/table";
     zk_data_path_ = FLAGS_zk_root_path + "/table/data";
     zk_table_index_node_ = zk_data_path_ + "/table_index";
@@ -32,22 +34,8 @@ NameServerImpl::~NameServerImpl() {
     delete zk_client_;
 }
 
-void NameServerImpl::SetOnline() {
-    running_.store(true, std::memory_order_release);
-}
-
-bool NameServerImpl::Init() {
-    if (FLAGS_zk_cluster.empty()) {
-        LOG(WARNING, "zk cluster disabled");
-        return false;
-    }    
-    zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-            FLAGS_endpoint, FLAGS_zk_root_path);
-    if (!zk_client_->Init()) {
-        LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
-        return false;
-    }
-    thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
+// become name server leader
+bool NameServerImpl::Recover() {
     std::string value;
     if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
         char buffer[30];
@@ -58,16 +46,37 @@ bool NameServerImpl::Init() {
         }
     }
 
+    LOG(INFO, "recover table id counter %s", value.c_str());
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
         LOG(WARNING, "get endpoints node failed!");
         return false;
     }
+    MutexLock lock(&mu_);
     for (auto iter = endpoints.begin(); iter != endpoints.end(); ++iter) {
         LOG(DEBUG, "create endpoint[%s] client", iter->c_str());
         tablet_client_.insert(std::make_pair(*iter, std::make_shared<::rtidb::client::TabletClient>(*iter)));
     }
+    //TODO recover tablet status
+    return true;
+}
 
+bool NameServerImpl::Init() {
+    if (FLAGS_zk_cluster.empty()) {
+        LOG(WARNING, "zk cluster disabled");
+        return false;
+    }
+    zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
+            FLAGS_endpoint, FLAGS_zk_root_path);
+    if (!zk_client_->Init()) {
+        LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
+        return false;
+    }
+    thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
+    dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_, 
+            boost::bind(&NameServerImpl::OnLocked, this), boost::bind(&NameServerImpl::OnLostLock, this),
+            FLAGS_endpoint);
+    dist_lock_->Lock();
     return true;
 }
 
@@ -187,6 +196,20 @@ void NameServerImpl::CreateTable(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
+}
+
+void NameServerImpl::OnLocked() {
+    LOG(INFO, "become the leader name server");
+    bool ok = Recover();
+    if (!ok) {
+        //TODO fail to recover discard the lock
+    }
+    running_.store(true, std::memory_order_release);
+}
+
+void NameServerImpl::OnLostLock() {
+    LOG(INFO, "become the stand by name sever");
+    running_.store(false, std::memory_order_release);
 }
 
 }
