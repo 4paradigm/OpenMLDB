@@ -157,25 +157,29 @@ bool ZkClient::CreateNode(const std::string& node,
 }
 
 void ZkClient::HandleChildrenChanged(const std::string& path, int type, int state) {
-    std::map<std::string, NodesChangedCallback>::iterator it = children_callbacks_.find(path);
-    if (it == children_callbacks_.end()) {
-        LOG(INFO, "watch for path %s exist", path.c_str());
-        return;
+    NodesChangedCallback callback ;
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, NodesChangedCallback>::iterator it = children_callbacks_.find(path);
+        if (it == children_callbacks_.end()) {
+            LOG(INFO, "watch for path %s exist", path.c_str());
+            return;
+        }
+        callback = it->second;
     }
     if (type == ZOO_CHILD_EVENT) {
         std::vector<std::string> children;
         bool ok = GetChildren(path, children);
         if (!ok) {
             LOG(WARNING, "fail to get nodes for path %s", path.c_str());
-            WatchChildren(path, it->second);
+            WatchChildren(path, callback);
             return;
         }
-        MutexLock lock(&mu_);
         LOG(INFO, "handle node changed event with type %d, and state %d for path %s", 
                 type, state, path.c_str());
-        it->second(children);
+        callback(children);
     }
-    WatchChildren(path, it->second);
+    WatchChildren(path, callback);
 }
 
 

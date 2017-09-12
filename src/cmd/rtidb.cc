@@ -31,7 +31,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(endpoint);
-DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
+DEFINE_string(role, "tablet | nameserver | client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 

@@ -83,8 +83,6 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
         if (!ok) {
             LOG(WARNING, "fail to get lock value");
         }
-        LOG(INFO, "lost lock with my path %s , first child %s , lock value %s", 
-                    assigned_path_.c_str(), current_lock_node_.c_str(), current_lock_value_.c_str());
         // lost lock
         if (lock_state_.load(boost::memory_order_relaxed) == kLocked) {
                        on_lost_lock_cl_();
@@ -92,6 +90,8 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
         }
         LOG(INFO, "wait a channce to get a lock");
     }
+    LOG(INFO, "my path %s , first child %s , lock value %s", 
+               assigned_path_.c_str(), current_lock_node_.c_str(), current_lock_value_.c_str());
 }
 
 void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
@@ -104,7 +104,7 @@ bool DistLock::IsLocked() {
 }
 
 void DistLock::CurrentLockValue(std::string& value) {
-    MutexLock lock(&mu_);
+    mu_.AssertHeld();
     value.assign(current_lock_value_);
 }
 

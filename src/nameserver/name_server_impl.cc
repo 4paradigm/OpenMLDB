@@ -34,6 +34,33 @@ NameServerImpl::~NameServerImpl() {
     delete zk_client_;
 }
 
+// become name server leader
+bool NameServerImpl::Recover() {
+    std::string value;
+    if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
+        char buffer[30];
+        snprintf(buffer, 30, "%d", 1);
+        if (!zk_client_->CreateNode(zk_table_index_node_, std::string(buffer))) {
+            LOG(WARNING, "create table index node failed!");
+            return false;
+        }
+    }
+
+    LOG(INFO, "recover table id counter %s", value.c_str());
+    std::vector<std::string> endpoints;
+    if (!zk_client_->GetNodes(endpoints)) {
+        LOG(WARNING, "get endpoints node failed!");
+        return false;
+    }
+    MutexLock lock(&mu_);
+    for (auto iter = endpoints.begin(); iter != endpoints.end(); ++iter) {
+        LOG(DEBUG, "create endpoint[%s] client", iter->c_str());
+        tablet_client_.insert(std::make_pair(*iter, std::make_shared<::rtidb::client::TabletClient>(*iter)));
+    }
+    //TODO recover tablet status
+    return true;
+}
+
 bool NameServerImpl::Init() {
     if (FLAGS_zk_cluster.empty()) {
         LOG(WARNING, "zk cluster disabled");
@@ -50,26 +77,6 @@ bool NameServerImpl::Init() {
             boost::bind(&NameServerImpl::OnLocked, this), boost::bind(&NameServerImpl::OnLostLock, this),
             FLAGS_endpoint);
     dist_lock_->Lock();
-    std::string value;
-    if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
-        char buffer[30];
-        snprintf(buffer, 30, "%d", 1);
-        if (!zk_client_->CreateNode(zk_table_index_node_, std::string(buffer))) {
-            LOG(WARNING, "create table index node failed!");
-            return false;
-        }
-    }
-
-    std::vector<std::string> endpoints;
-    if (!zk_client_->GetNodes(endpoints)) {
-        LOG(WARNING, "get endpoints node failed!");
-        return false;
-    }
-
-    for (auto iter = endpoints.begin(); iter != endpoints.end(); ++iter) {
-        LOG(DEBUG, "create endpoint[%s] client", iter->c_str());
-        tablet_client_.insert(std::make_pair(*iter, std::make_shared<::rtidb::client::TabletClient>(*iter)));
-    }
     return true;
 }
 
@@ -192,10 +199,16 @@ void NameServerImpl::CreateTable(RpcController* controller,
 }
 
 void NameServerImpl::OnLocked() {
+    LOG(INFO, "become the leader name server");
+    bool ok = Recover();
+    if (!ok) {
+        //TODO fail to recover discard the lock
+    }
     running_.store(true, std::memory_order_release);
 }
 
 void NameServerImpl::OnLostLock() {
+    LOG(INFO, "become the stand by name sever");
     running_.store(false, std::memory_order_release);
 }
 
