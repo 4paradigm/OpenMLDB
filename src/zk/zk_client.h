@@ -66,6 +66,7 @@ public:
     bool Mkdir(const std::string& path);
 
     bool GetNodeValue(const std::string& node, std::string& value);
+    bool GetNodeValueLocked(const std::string& node, std::string& value);
 
     bool SetNodeValue(const std::string& node, const std::string& value);
 

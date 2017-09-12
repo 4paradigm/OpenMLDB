@@ -34,8 +34,6 @@ public:
 
     bool Init();
 
-    void SetOnline();
-
     NameServerImpl(const NameServerImpl&) = delete;
 
     NameServerImpl& operator= (const NameServerImpl&) = delete; 
@@ -54,6 +52,11 @@ public:
     void CheckZkClient();
 
 private:
+
+    // Recover all memory status, the steps
+    // 1.recover table meta from zookeeper
+    // 2.recover table status from all tablets
+    bool Recover();
 
     // Get the lock
     void OnLocked();

@@ -178,6 +178,7 @@ void ZkClient::HandleChildrenChanged(const std::string& path, int type, int stat
     WatchChildren(path, it->second);
 }
 
+
 void ZkClient::CancelWatchChildren(const std::string& node) {
     MutexLock lock(&mu_);
     children_callbacks_.erase(node);
@@ -210,15 +211,20 @@ bool ZkClient::SetNodeWatcher(const std::string& node, watcher_fn watcher, void*
     return false;
 }
 
-bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
+bool ZkClient::GetNodeValueLocked(const std::string& node, std::string& value) {
+    mu_.AssertHeld();
     int buffer_len = ZK_MAX_BUFFER_SIZE;
     Stat stat;
-    MutexLock lock(&mu_);
     if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
         value.assign(buffer_, buffer_len);
         return true;
     }
     return false;
+
+}
+bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
+    MutexLock lock(&mu_);
+    return GetNodeValueLocked(node, value);
 }
 
 bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {

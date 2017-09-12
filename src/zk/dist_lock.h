@@ -48,6 +48,8 @@ public:
 
     bool IsLocked();
 
+    void CurrentLockValue(std::string& value);
+
 private:
     void InternalLock();
     void HandleChildrenChanged(const std::vector<std::string>& children);
@@ -69,6 +71,8 @@ private:
     ThreadPool pool_;
     boost::atomic<bool> running_;
     std::string lock_value_;
+    std::string current_lock_node_;
+    std::string current_lock_value_;
 };
 
 }

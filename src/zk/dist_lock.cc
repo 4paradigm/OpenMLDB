@@ -24,7 +24,7 @@ DistLock::DistLock(const std::string& root_path, ZkClient* zk_client,
         const std::string& lock_value):root_path_(root_path),
     on_locked_cl_(on_locked_cl), on_lost_lock_cl_(on_lost_lock_cl),
     mu_(), cv_(&mu_), zk_client_(zk_client), assigned_path_(), lock_state_(kLostLock), pool_(1),
-    running_(true), lock_value_(lock_value){}
+    running_(true), lock_value_(lock_value), current_lock_node_(){}
 
 DistLock::~DistLock() {}
 
@@ -65,28 +65,33 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
         return ;
     }
     mu_.AssertHeld();
-    std::string firstChild;
+    current_lock_node_ = "";
     if (children.size() > 0) {
-        firstChild = root_path_ + "/" + children[0];
+        current_lock_node_ = root_path_ + "/" + children[0];
     }
-    LOG(INFO, "first child %s", firstChild.c_str());
-    if (firstChild.compare(assigned_path_) == 0) {
+    LOG(INFO, "first child %s", current_lock_node_.c_str());
+    if (current_lock_node_.compare(assigned_path_) == 0) {
         // first get lock
         if (lock_state_.load(boost::memory_order_relaxed) == kTryLock) {
             LOG(INFO, "get lock with assigned_path %s", assigned_path_.c_str());
             on_locked_cl_();
             lock_state_.store(kLocked, boost::memory_order_relaxed);
+            current_lock_value_ = lock_value_;
         }
     }else {
+        bool ok = zk_client_->GetNodeValue(current_lock_node_, current_lock_value_);
+        if (!ok) {
+            LOG(WARNING, "fail to get lock value");
+        }
+        LOG(INFO, "lost lock with my path %s , first child %s , lock value %s", 
+                    assigned_path_.c_str(), current_lock_node_.c_str(), current_lock_value_.c_str());
         // lost lock
         if (lock_state_.load(boost::memory_order_relaxed) == kLocked) {
-            LOG(INFO, "lost lock with my path %s , first child %s", assigned_path_.c_str(), firstChild.c_str());
-            on_lost_lock_cl_();
+                       on_lost_lock_cl_();
             lock_state_.store(kLostLock, boost::memory_order_relaxed);
         }
         LOG(INFO, "wait a channce to get a lock");
     }
-
 }
 
 void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
@@ -96,6 +101,11 @@ void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
 
 bool DistLock::IsLocked() {
     return lock_state_.load(boost::memory_order_relaxed) == kLocked;
+}
+
+void DistLock::CurrentLockValue(std::string& value) {
+    MutexLock lock(&mu_);
+    value.assign(current_lock_value_);
 }
 
 
