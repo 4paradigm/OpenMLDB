@@ -7,12 +7,14 @@
 #ifndef RTIDB_NAME_SERVER_H
 #define RTIDB_NAME_SERVER_H
 
-#include "proto/name_server.pb.h"
-#include <sofa/pbrpc/pbrpc.h>
 #include "client/tablet_client.h"
 #include "mutex.h"
-#include "zk/zk_client.h"
+#include "proto/name_server.pb.h"
 #include "zk/dist_lock.h"
+#include "zk/zk_client.h"
+#include <atomic>
+#include <map>
+#include <sofa/pbrpc/pbrpc.h>
 
 namespace rtidb {
 namespace nameserver {
@@ -30,7 +32,9 @@ public:
 
     ~NameServerImpl();
 
-    int Init();
+    bool Init();
+
+    void SetOnline();
 
     NameServerImpl(const NameServerImpl&) = delete;
 
@@ -44,18 +48,29 @@ public:
         GeneralResponse* response, 
         Closure* done);
 
-    std::string GetMaster();
+    int CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
+                bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
+
+    void CheckZkClient();
 
 private:
+
     // Get the lock
     void OnLocked();
     // Lost the lock
     void OnLostLock();
+
 private:
     ::baidu::common::Mutex mu_;
-    std::vector<std::pair<std::string, std::shared_ptr<::rtidb::client::TabletClient> > > tablet_client_;
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient> > tablet_client_;
+    std::map<std::string, ::rtidb::nameserver::TableMeta> table_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
+    ::baidu::common::ThreadPool thread_pool_;
+    std::string zk_table_path_;
+    std::string zk_data_path_;
+    std::string zk_table_index_node_;
+    std::atomic<bool> running_;
 };
 
 }

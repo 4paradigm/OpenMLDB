@@ -123,8 +123,8 @@ private:
 
     struct String_vector data_;
     bool connected_;
-    char buffer[ZK_MAX_BUFFER_SIZE];
     std::map<std::string, NodesChangedCallback> children_callbacks_;
+    char buffer_[ZK_MAX_BUFFER_SIZE];
 };
 
 }

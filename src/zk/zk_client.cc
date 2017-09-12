@@ -213,8 +213,9 @@ bool ZkClient::SetNodeWatcher(const std::string& node, watcher_fn watcher, void*
 bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
     int buffer_len = ZK_MAX_BUFFER_SIZE;
     Stat stat;
-    if (zoo_get(zk_, node.c_str(), 0, buffer, &buffer_len, &stat) == ZOK) {
-        value.assign(buffer, buffer_len);
+    MutexLock lock(&mu_);
+    if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
+        value.assign(buffer_, buffer_len);
         return true;
     }
     return false;
@@ -224,6 +225,7 @@ bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
     if (node.empty()) {
         return false;
     }
+    MutexLock lock(&mu_);
     if (zoo_set(zk_, node.c_str(), value.c_str(), value.length(), -1) == ZOK) {
         return true;
     }
