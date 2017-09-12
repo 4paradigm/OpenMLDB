@@ -52,8 +52,8 @@ public:
 
 private:
     void InternalLock();
-    void HandleChildrenChanged(const std::vector<std::string>& children);
-    void HandleChildrenChangedLocked(const std::vector<std::string>& children);
+    void HandleChildrenChanged(std::vector<std::string>& children);
+    void HandleChildrenChangedLocked(std::vector<std::string>& children);
 
 private:
     // input args
