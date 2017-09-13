@@ -109,12 +109,12 @@ inline std::string GenRand() {
 }
 
 int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_snapshot_root_path = "/tmp/" + ::GenRand();
     FLAGS_binlog_root_path = "/tmp/" + ::GenRand();
-    ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
 
