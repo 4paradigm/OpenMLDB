@@ -23,13 +23,13 @@ TabletClient::~TabletClient() {
 }
 
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint32_t ttl) {
+        uint32_t pid, uint64_t ttl) {
     std::vector<std::string> endpoints;
     return CreateTable(name, id, pid, ttl, true, endpoints);
 }
 
 bool TabletClient::CreateTable(const std::string& name,
-                               uint32_t tid, uint32_t pid, uint32_t ttl,
+                               uint32_t tid, uint32_t pid, uint64_t ttl,
                                bool leader, const std::vector<std::string>& endpoints) {
     ::rtidb::api::CreateTableRequest request;
     request.set_name(name);
@@ -126,13 +126,13 @@ bool TabletClient::LoadSnapshot(uint32_t tid, uint32_t pid) {
 }
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint32_t ttl) {
+        uint32_t pid, uint64_t ttl) {
     std::vector<std::string> endpoints;
     return LoadTable(name, id, pid, ttl, false, endpoints);
 }
 
 bool TabletClient::LoadTable(const std::string& name,
-                               uint32_t tid, uint32_t pid, uint32_t ttl,
+                               uint32_t tid, uint32_t pid, uint64_t ttl,
                                bool leader, const std::vector<std::string>& endpoints) {
     ::rtidb::api::LoadTableRequest request;
     request.set_name(name);

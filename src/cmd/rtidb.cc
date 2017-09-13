@@ -191,9 +191,9 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 
     try {
-        uint32_t ttl = 0;
+        uint64_t ttl = 0;
         if (parts.size() > 4) {
-            ttl = boost::lexical_cast<uint32_t>(parts[4]);
+            ttl = boost::lexical_cast<uint64_t>(parts[4]);
         }
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
