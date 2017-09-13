@@ -25,23 +25,8 @@ using ::rtidb::log::Reader;
 
 const static uint32_t FOLLOWER_REPLICATE_MODE = 0;
 const static uint32_t SNAPSHOT_REPLICATE_MODE = 1;
-struct StringComparator {
-    int operator()(const std::string& a, const std::string& b) const {
-        return a.compare(b);
-    }
-};
 
-struct LogPart {
-    // the first log id in the log file
-    uint64_t slog_id_;
-    std::string log_name_;
-    LogPart(uint64_t slog_id, const std::string& log_name):slog_id_(slog_id),
-        log_name_(log_name) {}
-    LogPart() {}
-    ~LogPart() {}
-};
-
-typedef ::rtidb::base::Skiplist<std::string, LogPart*, StringComparator> LogParts;
+typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
 typedef boost::function< bool (const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts)> SnapshotFunc;
 
 class ReplicateNode {
@@ -61,6 +46,7 @@ public:
     void SetLogMatch(bool log_match);
     std::string GetEndPoint();
     uint64_t GetLastSyncOffset();
+    int GetLogIndex();
     void SetLastSyncOffset(uint64_t offset);
     ReplicateNode(const ReplicateNode&) = delete;
     ReplicateNode& operator= (const ReplicateNode&) = delete;

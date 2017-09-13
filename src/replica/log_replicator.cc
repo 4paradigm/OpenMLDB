@@ -17,6 +17,8 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_apply_batch_size);
@@ -24,6 +26,7 @@ DECLARE_int32(binlog_coffee_time);
 DECLARE_int32(binlog_sync_wait_time);
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_match_logoffset_interval);
+DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace replica {
@@ -32,7 +35,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-const static StringComparator scmp;
+const static ::rtidb::base::DefaultComparator scmp;
 
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
@@ -46,28 +49,18 @@ LogReplicator::LogReplicator(const std::string& path,
     ssf_(ssf) {
     table_ = table;
     table_->Ref();
+    binlog_index_ = 0;
 }
 
 LogReplicator::~LogReplicator() {
     if (logs_ != NULL) {
-        LogParts::Iterator* it = logs_->NewIterator();
-        it->SeekToFirst();
-        while (it->Valid()) {
-            LogPart* lp = it->GetValue();
-            delete lp;
-            it->Next();
-        }
-        delete it;
         logs_->Clear();
     }
     delete logs_;
     logs_ = NULL;
     delete wh_;
     wh_ = NULL;
-    std::vector<ReplicateNode*>::iterator nit = nodes_.begin();
-    for (; nit != nodes_.end(); ++nit) {
-        delete (*nit);
-    }
+    nodes_.clear();
     delete rpc_client_;
     if (table_) {
         table_->UnRef();
@@ -100,17 +93,19 @@ bool LogReplicator::Init() {
        LOG(WARNING, "fail to log dir %s", log_path_.c_str());
        return false;
     }
-    nodes_.push_back(new SnapshotReplicateNode("snapshot_replicate_node", logs_, log_path_, table_->GetId(), table_->GetPid(), ssf_));
+    nodes_.push_back(std::shared_ptr<ReplicateNode>(
+            new SnapshotReplicateNode("snapshot_replicate_node", logs_, log_path_, table_->GetId(), table_->GetPid(), ssf_)));
     if (role_ == kLeaderNode) {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
-            ReplicateNode* node = new FollowerReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_);
-            nodes_.push_back(node);
+            nodes_.push_back(std::shared_ptr<ReplicateNode>(
+                    new FollowerReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
             LOG(INFO, "add replica node with endpoint %s", it->c_str());
         }
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
     }
     tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
+    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
     return true;
 }
 
@@ -132,6 +127,48 @@ void LogReplicator::UnRef() {
         delete this;
     }
 }
+
+void LogReplicator::DeleteBinlog() {
+    if (!running_.load(boost::memory_order_relaxed)) {
+        return;
+    }
+    int min_log_index = (int)binlog_index_.load(boost::memory_order_relaxed);
+    {
+        MutexLock lock(&mu_);
+        for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
+            if ((*iter)->GetLogIndex() < min_log_index) {
+                min_log_index = (*iter)->GetLogIndex();
+            }
+        }
+    }
+    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
+                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
+    if (min_log_index < 0) {
+        LOG(DEBUG, "min_log_index is negative, need not delete!");
+        tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+        return;
+    }
+    ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
+    {
+        MutexLock lock(&wmu_);
+        node = logs_->Split(min_log_index);
+    }
+
+    while (node) {
+        ::rtidb::base::Node<uint32_t, uint64_t>* tmp_node = node;
+        node = node->GetNextNoBarrier(0);
+        std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(tmp_node->GetKey(), 10) + ".log";
+        if (unlink(full_path.c_str()) < 0) {
+            LOG(WARNING, "delete binlog[%s] failed! errno[%d] errinfo[%s]", 
+                         full_path.c_str(), errno, strerror(errno));
+        } else {
+            LOG(INFO, "delete binlog[%s] success", full_path.c_str()); 
+        }
+        delete tmp_node;
+    }
+    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+}
+
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
@@ -179,7 +216,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
         if (role_ != kLeaderNode) {
             return false;
         }
-        std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
         for (; it != nodes_.end(); ++it) {
             std::string ep = (*it)->GetEndPoint();
             if (ep.compare(endpoint) == 0) {
@@ -187,11 +224,36 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
                 return false;
             }
         }
-        ReplicateNode* node = new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_);
-        nodes_.push_back(node);
+        nodes_.push_back(std::shared_ptr<ReplicateNode>(
+                    new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
+        endpoints_.push_back(endpoint);
         LOG(INFO, "add ReplicateNode with endpoint %s ok", endpoint.c_str());
     }
     tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
+    return true;
+}
+
+bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
+    {
+        MutexLock lock(&mu_);
+        if (role_ != kLeaderNode) {
+            LOG(DEBUG, "replica endpoint[%s] is not leaderNode", endpoint.c_str());
+            return false;
+        }
+        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
+        for (; it != nodes_.end(); ++it) {
+            if ((*it)->GetEndPoint().compare(endpoint) == 0) {
+                break;
+            }
+        }
+        if (it == nodes_.end()) {
+            LOG(DEBUG, "replica endpoint[%s] does not exist", endpoint.c_str());
+            return false;
+        }
+        nodes_.erase(it);
+        endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
+        LOG(DEBUG, "delete replica endpoint[%s]", endpoint.c_str());
+    }
     return true;
 }
 
@@ -219,12 +281,14 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
 }
 
 bool LogReplicator::RollWLogFile() {
+    wmu_.AssertHeld();
     if (wh_ != NULL) {
         wh_->EndLog();
         delete wh_;
         wh_ = NULL;
     }
-    std::string name = ::rtidb::base::FormatToString(logs_->GetSize(), 8) + ".log";
+    std::string name = ::rtidb::base::FormatToString(
+                binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
     std::string full_path = log_path_ + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -232,9 +296,9 @@ bool LogReplicator::RollWLogFile() {
         return false;
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
-    LogPart* part = new LogPart(offset, name);
-    logs_->Insert(name, part);
-    LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), part->slog_id_);
+    logs_->Insert(binlog_index_.load(boost::memory_order_relaxed), offset);
+    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
+    LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;
     return true;
@@ -249,9 +313,9 @@ void LogReplicator::Notify() {
 void LogReplicator::MatchLogOffset() {
     MutexLock lock(&mu_);
     bool all_matched = true;
-    std::vector<ReplicateNode*>::iterator it = nodes_.begin();
+    std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
     for (; it != nodes_.end(); ++it) {
-        ReplicateNode* node = *it;
+        std::shared_ptr<ReplicateNode> node = *it;
         if (node->IsLogMatched()) {
             continue;
         }
@@ -267,7 +331,7 @@ void LogReplicator::MatchLogOffset() {
         if (node->MatchLogOffsetFromNode() < 0) {
             all_matched = false;
         } else {
-            tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node));
+            tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node->GetEndPoint()));
         }
     }
     if (!all_matched) {
@@ -276,7 +340,7 @@ void LogReplicator::MatchLogOffset() {
     }
 }
 
-int LogReplicator::PauseReplicate(ReplicateNode* node) {
+int LogReplicator::PauseReplicate(std::shared_ptr<ReplicateNode> node) {
     if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
         table_->SetTableStat(::rtidb::storage::kPaused);
         node->SetLogMatch(false);
@@ -287,10 +351,22 @@ int LogReplicator::PauseReplicate(ReplicateNode* node) {
     return -1;
 }
 
-void LogReplicator::ReplicateToNode(ReplicateNode* node) {
+void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     uint32_t coffee_time = 0;
     while (running_.load(boost::memory_order_relaxed)) {
         MutexLock lock(&mu_);
+        std::shared_ptr<ReplicateNode> node;
+        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
+        for ( ; it != nodes_.end(); ++it) {
+            if ((*it)->GetEndPoint().compare(endpoint) == 0) {
+                node = *it;
+                break;
+            }
+        }
+        if (it == nodes_.end()) {
+            LOG(INFO, "replicate node[%s] has deleted. task exit!", endpoint.c_str());
+            return;
+        }
         if (coffee_time > 0) {
             coffee_cv_.TimeWait(coffee_time);
             coffee_time = 0;
@@ -298,6 +374,10 @@ void LogReplicator::ReplicateToNode(ReplicateNode* node) {
         if (PauseReplicate(node) == 0) {
             LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
             break;
+        }
+        int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
+        if (ret == 1) {
+            coffee_time = FLAGS_binlog_coffee_time;
         }
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
             if (PauseReplicate(node) == 0) {
@@ -309,10 +389,6 @@ void LogReplicator::ReplicateToNode(ReplicateNode* node) {
                 LOG(INFO, "replicate log exist for path %s", path_.c_str());
                 return;
             }
-        }
-        int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
-        if (ret == 1) {
-            coffee_time = FLAGS_binlog_coffee_time;
         }
     }
 }

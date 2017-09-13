@@ -37,7 +37,6 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       checksum_(checksum),
       backing_store_(new char[kBlockSize]),
       buffer_(),
-      eof_(false),
       last_record_offset_(0),
       end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
@@ -86,7 +85,8 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
   Slice fragment;
   while (true) {
-    const unsigned int record_type = ReadPhysicalRecord(&fragment);
+    uint64_t offset = 0;
+    const unsigned int record_type = ReadPhysicalRecord(&fragment, offset);
 
     // ReadPhysicalRecord may have only had an empty trailer remaining in its
     // internal buffer. Calculate the offset of the next physical record now
@@ -122,6 +122,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         scratch->clear();
         *record = fragment;
         last_record_offset_ = prospective_record_offset;
+        if (offset) {
+            last_end_of_buffer_offset_ = offset;
+        }    
         return Status::OK();
 
       case kWaitRecord:
@@ -131,6 +134,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           // treat it as a corruption, just ignore the entire logical record.
           scratch->clear();
         }
+        GoBackToLastBlock();
         return Status::WaitRecord(); 
 
       case kFirstType:
@@ -167,6 +171,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
           last_record_offset_ = prospective_record_offset;
+          if (offset) {
+            last_end_of_buffer_offset_ = offset;
+          }
           return Status::OK();
         }
         break;
@@ -219,33 +226,20 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 }
 
 void Reader::GoBackToLastBlock() {
-    size_t offset_in_block = end_of_buffer_offset_ % kBlockSize;
-    size_t block_count = end_of_buffer_offset_ / kBlockSize;
-    size_t jump_offset = offset_in_block;
-    if (block_count < 4) {
-        jump_offset = end_of_buffer_offset_; 
-    }else {
-        jump_offset += 4 * kBlockSize; 
-    }
-    end_of_buffer_offset_ -= jump_offset;
-    file_->Seek(end_of_buffer_offset_);
-    LOG(DEBUG, "go last block to pos %lld", end_of_buffer_offset_);
+    size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
+    uint64_t block_start_location = last_end_of_buffer_offset_ - offset_in_block;
+    LOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_, block_start_location);
+    end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
+    file_->Seek(block_start_location);
 }
 
-unsigned int Reader::ReadPhysicalRecord(Slice* result) {
-  while (true) {
+unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     if (buffer_.size() < kHeaderSize) {
-      if (!eof_) {
-        uint64_t pos = 0;
-        Status ok = file_->Tell(&pos);
-        if (!ok.ok()) { 
-            LOG(WARNING, "fail to tell file %s", ok.ToString().c_str());
-            return kWaitRecord;
-        }
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
+        offset = end_of_buffer_offset_;
         end_of_buffer_offset_ += buffer_.size();
         // Read log error
         if (!status.ok()) {
@@ -256,21 +250,11 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         }
         if (buffer_.size() < kHeaderSize) { 
             if (buffer_.size() > 0) {
-                LOG(DEBUG, "go back to pos %lld, buffer %d", pos, buffer_.size());
-                buffer_.clear();
-                file_->Seek(pos);
+                LOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]", 
+                            buffer_.size(), kHeaderSize);
             }
             return kWaitRecord;
         }
-      } else {
-        // Note that if buffer_ is non-empty, we have a truncated header at the
-        // end of the file, which can be caused by the writer crashing in the
-        // middle of writing the header. Instead of considering this an error,
-        // just report EOF.
-        buffer_.clear();
-        LOG(WARNING, "end of file");
-        return kEof;
-      }
     }
 
     // Parse the header
@@ -282,7 +266,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     if (kHeaderSize + length > buffer_.size()) {
       LOG(DEBUG, "end of file %d, header size %d data length %d", buffer_.size(), kHeaderSize,
               length);
-      GoBackToLastBlock();
       return kWaitRecord;
     }
     // Check crc
@@ -328,7 +311,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     }
     *result = Slice(header + kHeaderSize, length);
     return type;
-  }
 }
 
 }  // namespace log

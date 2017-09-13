@@ -79,8 +79,6 @@ struct WriteHandle {
     }
 };
 
-typedef ::rtidb::base::Skiplist<std::string, LogPart*, StringComparator> LogParts;
-
 class LogReplicator {
 
 public:
@@ -111,14 +109,18 @@ public:
 
     bool RollWLogFile();
 
+    void DeleteBinlog();
+
     // add replication
     bool AddReplicateNode(const std::string& endpoint);
 
+    bool DelReplicateNode(const std::string& endpoint);
+
     void MatchLogOffset();
 
-    void ReplicateToNode(ReplicateNode* node);
+    void ReplicateToNode(const std::string& endpoint);
 
-    int PauseReplicate(ReplicateNode* node);
+    int PauseReplicate(std::shared_ptr<ReplicateNode> node);
 
     // Incr ref
     void Ref();
@@ -143,12 +145,13 @@ private:
     std::string log_path_;
     // the term for leader judgement
     boost::atomic<uint64_t> log_offset_;
+    boost::atomic<uint32_t> binlog_index_;
     LogParts* logs_;
     WriteHandle* wh_;
     uint32_t wsize_;
     ReplicatorRole role_;
     std::vector<std::string> endpoints_;
-    std::vector<ReplicateNode*> nodes_;
+    std::vector<std::shared_ptr<ReplicateNode> > nodes_;
     // sync mutex
     Mutex mu_;
     CondVar cv_;

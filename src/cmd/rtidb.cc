@@ -17,6 +17,7 @@
 #include "logging.h"
 
 #include "tablet/tablet_impl.h"
+#include "nameserver/name_server_impl.h"
 #include "client/tablet_client.h"
 #include "base/strings.h"
 #include "base/kv_iterator.h"
@@ -29,8 +30,8 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
-DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
+DECLARE_string(endpoint);
+DEFINE_string(role, "tablet | nameserver | client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
@@ -61,12 +62,44 @@ void SetupLog() {
     ::baidu::common::SetLogSize(FLAGS_log_file_size);
 }
 
+void StartNameServer() {
+    SetupLog();
+    sofa::pbrpc::RpcServerOptions options;
+    sofa::pbrpc::RpcServer rpc_server(options);
+    ::rtidb::nameserver::NameServerImpl* name_server = new ::rtidb::nameserver::NameServerImpl();
+    name_server->Init();
+    sofa::pbrpc::Servlet webservice =
+                sofa::pbrpc::NewPermanentExtClosure(name_server, &rtidb::nameserver::NameServerImpl::WebService);
+    if (!rpc_server.RegisterService(name_server)) {
+        LOG(WARNING, "fail to register nameserver rpc service");
+        exit(1);
+    }
+    rpc_server.RegisterWebServlet("/nameserver", webservice);
+    if (!rpc_server.Start(FLAGS_endpoint)) {
+        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+        exit(1);
+    }
+    LOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+            RTIDB_VERSION_MAJOR,
+            RTIDB_VERSION_MINOR,
+            RTIDB_VERSION_BUG);
+    signal(SIGINT, SignalIntHandler);
+    signal(SIGTERM, SignalIntHandler);
+    while (!s_quit) {
+        sleep(1);
+    }
+}
+
 void StartTablet() {
     SetupLog();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    tablet->Init();
+    bool ok = tablet->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to init tablet");
+        exit(1);
+    }
     sofa::pbrpc::Servlet webservice =
                 sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
     if (!rpc_server.RegisterService(tablet)) {
@@ -211,6 +244,23 @@ void HandleClientAddReplica(const std::vector<std::string> parts, ::rtidb::clien
     }
 }
 
+void HandleClientDelReplica(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad delreplica format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->DelReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        if (ok) {
+            std::cout << "DelReplica ok" << std::endl;
+        }else {
+            std::cout << "Fail to Del Replica" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad delreplica format" << std::endl;
+    }
+}
+
 void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common::TPrinter& tp) {
     std::vector<std::string> row;
     char buf[30];
@@ -222,7 +272,7 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     row.push_back(buf);
     row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
     row.push_back(::rtidb::api::TableState_Name(table_status.state()));
-    snprintf(buf, 30, "%lu", table_status.ttl());
+    snprintf(buf, 30, "%u", table_status.ttl());
     row.push_back(buf);
     tp.AddRow(row);
 }
@@ -280,6 +330,23 @@ void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::cl
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad PauseSnapshot format" << std::endl;
+    }
+}
+
+void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+        if (ok) {
+            std::cout << "RecoverSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to RecoverSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
     }
 }
 
@@ -530,8 +597,12 @@ void StartClient() {
             HandleClientDropTable(parts, &client);
         }else if (parts[0] == "addreplica") {
             HandleClientAddReplica(parts, &client);
+        }else if (parts[0] == "delreplica") {
+            HandleClientDelReplica(parts, &client);
         }else if (parts[0] == "pausesnapshot") {
             HandleClientPauseSnapshot(parts, &client);
+        }else if (parts[0] == "recoversnapshot") {
+            HandleClientRecoverSnapshot(parts, &client);
         }else if (parts[0] == "loadsnapshot") {
             HandleClientLoadSnapshot(parts, &client);
         }else if (parts[0] == "loadtable") {
@@ -561,6 +632,8 @@ int main(int argc, char* argv[]) {
         StartTablet();
     }else if (FLAGS_role == "client") {
         StartClient();
+    }else if (FLAGS_role == "nameserver") {
+        StartNameServer();
     }
     return 0;
 }

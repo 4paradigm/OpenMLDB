@@ -6,6 +6,12 @@
 //
 
 #include <gflags/gflags.h>
+// cluster config
+DEFINE_string(endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves for");
+DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
+DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
+DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
+DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep alive check");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
@@ -25,6 +31,7 @@ DEFINE_bool(binlog_enable_crc, false, "enable crc");
 DEFINE_int32(binlog_coffee_time, 1000, "config the coffee time");
 DEFINE_int32(binlog_sync_wait_time, 100, "config the sync log wait time");
 DEFINE_int32(binlog_sync_to_disk_interval, 5000, "config the interval of sync binlog to disk time");
+DEFINE_int32(binlog_delete_interval, 10000, "config the interval of delete binlog");
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
 DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
 
