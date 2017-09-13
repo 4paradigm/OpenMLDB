@@ -61,6 +61,20 @@ bool NameServerImpl::Recover() {
     return true;
 }
 
+void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
+    mu_.AssertHeld();
+    // check exist and newly add tablets
+    std::set<std::string> alive;
+    std::vector<std::string>::iterator it = endpoints.begin();
+    for (; it != endpoints.end(); ++it) {
+        Tablets::iterator tit = tablets_.find(*it);
+        // find a new tablet
+        if (tit == tablets_.end()) {
+
+        }
+    }
+}
+
 bool NameServerImpl::Init() {
     if (FLAGS_zk_cluster.empty()) {
         LOG(WARNING, "zk cluster disabled");
