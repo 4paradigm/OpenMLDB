@@ -165,12 +165,13 @@ TEST_F(NameServerImplTest, CreateTable) {
 }
 
 int main(int argc, char** argv) {
+
+    ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     FLAGS_binlog_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
 
