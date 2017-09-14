@@ -26,11 +26,13 @@ public:
     bool CreateTable(const std::string& name, 
                      uint32_t id, 
                      uint32_t pid,
-                     uint32_t ttl);
+                     uint32_t ttl,
+                     uint32_t seg_cnt=128);
 
     bool CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid, uint32_t ttl,
-                     bool leader, const std::vector<std::string>& endpoints);
+                     bool leader, const std::vector<std::string>& endpoints,
+                     uint32_t seg_cnt=128);
 
     bool Put(uint32_t tid,
              uint32_t pid,

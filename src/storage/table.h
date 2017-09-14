@@ -41,7 +41,7 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t ttl,
+          uint64_t ttl,
           bool is_leader,
           const std::vector<std::string>& replicas,
           bool wal = true);
@@ -50,7 +50,7 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t ttl,
+          uint64_t ttl,
           bool wal = true);
 
     void Init(SnapshotTTLFunc ttl_fun = boost::bind(&DefaultSnapshotTTLFunc, _1));
@@ -181,7 +181,7 @@ private:
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
     bool enable_gc_;
-    uint32_t const ttl_;
+    uint64_t const ttl_;
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> data_cnt_;
     bool is_leader_;

@@ -5,7 +5,7 @@ project(rtidb)
 set(CMAKE_BUILD_TYPE Release)
 set(RTIDB_VERSION_MAJOR 1)
 set(RTIDB_VERSION_MINOR 0)
-set(RTIDB_VERSION_BUG 0)
+set(RTIDB_VERSION_BUG 2)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"

@@ -147,25 +147,19 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         return;
     }
 
-    bool leader = true;
-    if (parts.size() > 5 && parts[5] == "false") {
-        leader = false;
-    }
-
-    std::vector<std::string> endpoints;
-    for (size_t i = 6; i < parts.size(); i++) {
-        endpoints.push_back(parts[i]);
-    }
-
     try {
         uint32_t ttl = 0;
         if (parts.size() > 4) {
             ttl = boost::lexical_cast<uint32_t>(parts[4]);
         }
+        uint32_t seg_cnt = 128;
+        if (parts.size() > 5) {
+            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
+        }
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl, leader, endpoints);
+                                      ttl, seg_cnt);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {

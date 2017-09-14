@@ -649,7 +649,7 @@ void TabletImpl::LoadTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    uint32_t ttl = request->ttl();
+    uint64_t ttl = request->ttl();
     std::string name = request->name();
     uint32_t seg_cnt = 8;
     if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
@@ -680,7 +680,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         }       
     }
     done->Run();
-    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %d", tid, 
+    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
             pid, name.c_str(), seg_cnt, ttl);
     
     // load snapshot data
@@ -713,7 +713,7 @@ void TabletImpl::LoadTable(RpcController* controller,
     table->UnRef();
     if (ttl > 0) {
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
-        LOG(INFO, "table %s with tid %ld pid %ld enable ttl %ld", name.c_str(), tid, pid, ttl);
+        LOG(INFO, "table %s with tid %ld pid %ld enable ttl %llu", name.c_str(), tid, pid, ttl);
     }
 }
 
@@ -722,7 +722,7 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
     mu_.AssertHeld();
     uint32_t seg_cnt = 8;
     std::string name = request->name();
-    if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
+    if (request->seg_cnt() > 0) {
         seg_cnt = request->seg_cnt();
     }
     bool is_leader = false;
@@ -787,10 +787,10 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    uint32_t ttl = request->ttl();
+    uint64_t ttl = request->ttl();
     std::string name = request->name();
     uint32_t seg_cnt = 8;
-    if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
+    if (request->seg_cnt() > 0) {
         seg_cnt = request->seg_cnt();
     }
     // Note after create , request and response is unavaliable
@@ -815,11 +815,11 @@ void TabletImpl::CreateTable(RpcController* controller,
         CreateTableInternal(request, response);
     }
     done->Run();
-    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %d", tid, 
+    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
             pid, name.c_str(), seg_cnt, ttl);
     if (ttl > 0) {
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
-        LOG(INFO, "table %s with tid %ld pid %ld enable ttl %ld", name.c_str(), tid, pid, ttl);
+        LOG(INFO, "table %s with tid %ld pid %ld enable ttl %llu", name.c_str(), tid, pid, ttl);
     }
 }
 
@@ -828,7 +828,7 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     mu_.AssertHeld();
     uint32_t seg_cnt = 8;
     std::string name = request->name();
-    if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
+    if (request->seg_cnt() > 0) {
         seg_cnt = request->seg_cnt();
     }
     bool is_leader = false;
