@@ -23,7 +23,8 @@ namespace nameserver {
 using ::baidu::common::MutexLock;
 
 NameServerImpl::NameServerImpl():mu_(), tablet_client_(),
-    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1)  {
+    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1),
+    cv_(&mu_) {
     zk_table_path_ = FLAGS_zk_root_path + "/table";
     zk_data_path_ = FLAGS_zk_root_path + "/table/data";
     zk_table_index_node_ = zk_data_path_ + "/table_index";
@@ -90,6 +91,28 @@ void NameServerImpl::CheckZkClient() {
 bool NameServerImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
         sofa::pbrpc::HTTPResponse& response) {
     return true;        
+}
+
+void NameServerImpl::ProcessTask() {
+    while (1) {
+        mu_.Lock();
+        while (task_map_.empty()) {
+            cv.Wait();
+        }
+        mu_.Unlock();
+        if (running_.load(std::memory_order_acquire)) {
+            break;
+        }
+
+        for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
+            if (iter->second().empty()) {
+                task_map.erase(iter);
+                break;
+            }
+            Task* task = iter->second().front().get();
+
+        }
+    }
 }
 
 int NameServerImpl::CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,

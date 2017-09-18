@@ -24,6 +24,25 @@ using ::google::protobuf::Closure;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::zk::DistLock;
 
+enum TaskType {
+    kPauseSnapshot = 1;
+    kGetSnapshotPath = 2;
+    kSyncSnapshotData = 3;
+};
+
+enum OPType {
+    kAddReplicate = 1;
+    kChangeRole = 2;
+};
+
+struct Task {
+    uint64_t op_id_;
+    OPType op_type_;
+    TaskType task_type_;
+    std::string endpoint_;
+    TaskStatus task_stat;
+};
+
 class NameServerImpl : public NameServer {
 
 public:
@@ -74,6 +93,8 @@ private:
     std::string zk_data_path_;
     std::string zk_table_index_node_;
     std::atomic<bool> running_;
+    std::map<std::string, std::list<std::shared_ptr<Task> > > task_map_;
+    CondVar cv_;
 };
 
 }
