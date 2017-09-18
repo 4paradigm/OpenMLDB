@@ -181,8 +181,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
         Closure* done) {
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(-1);
-        response->set_msg("nameserver is offline");
-        LOG(WARNING, "cur nameserver is offline");
+        response->set_msg("nameserver is not leader");
+        LOG(WARNING, "cur nameserver is not leader");
         done->Run();
         return;
     }
