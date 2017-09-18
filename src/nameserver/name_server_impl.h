@@ -24,11 +24,15 @@ using ::google::protobuf::Closure;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::zk::DistLock;
 using ::rtidb::api::TabletState;
+using ::rtidb::client::TabletClient;
 
 // tablet info
 struct TabletInfo {
+    // tablet state
     TabletState state_;
+    // tablet rpc handle
     std::shared_ptr<TabletClient> client_; 
+    // here more field
 };
 
 // the container of tablet
@@ -75,10 +79,10 @@ private:
 
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
+    void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
 private:
     ::baidu::common::Mutex mu_;
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient> > tablet_client_;
     Tablets tablets_;
     std::map<std::string, ::rtidb::nameserver::TableMeta> table_info_;
     ZkClient* zk_client_;

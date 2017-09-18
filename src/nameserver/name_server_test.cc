@@ -157,8 +157,6 @@ TEST_F(NameServerImplTest, CreateTable) {
     nameserver2->CreateTable(NULL, &request1, &response1, &closure);
     ASSERT_EQ(-1, response1.code());
 
-
-
 }
 
 }
