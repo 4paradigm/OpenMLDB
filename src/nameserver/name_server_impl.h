@@ -32,7 +32,8 @@ struct TabletInfo {
     TabletState state_;
     // tablet rpc handle
     std::shared_ptr<TabletClient> client_; 
-    // here more field
+    // the date create
+    uint64_t ctime_;
 };
 
 // the container of tablet

@@ -10,6 +10,7 @@
 #include <gflags/gflags.h>
 #include <boost/lexical_cast.hpp>
 #include "gflags/gflags.h"
+#include "timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -79,11 +80,15 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             TabletInfo* tablet = new TabletInfo();
             tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
             tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it);
+            tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             std::shared_ptr<TabletInfo> tablet_ptr(tablet);
             tablets_.insert(std::make_pair(*it, tablet_ptr));
         }else {
             //TODO wangtaize notify if state changes
-            //::rtidb::api::TabletState old = tit->second->state_;
+            ::rtidb::api::TabletState old = tit->second->state_;
+            if (old != ::rtidb::api::TabletState::kTabletHealthy) {
+                tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            }
             tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
         }
         LOG(INFO, "healthy tablet with endpoint %s", it->c_str());
@@ -195,7 +200,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
-
     uint32_t table_index = 0;
     std::string index_value;
     if (!zk_client_->GetNodeValue(zk_table_index_node_, index_value)) {

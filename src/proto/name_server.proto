@@ -28,6 +28,21 @@ message GeneralResponse {
 	optional string msg = 2;
 }
 
+message ShowTabletRequest {}
+
+message TabletStatus {
+    optional string endpoint = 1;
+    optional string state = 2;
+    optional uint64 age = 3;
+}
+
+message ShowTabletResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
 service NameServer {
 	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+    rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
 }
