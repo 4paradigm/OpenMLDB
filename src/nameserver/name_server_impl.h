@@ -61,8 +61,13 @@ public:
         GeneralResponse* response, 
         Closure* done);
 
+    void ShowTablet(RpcController* controller,
+            const ShowTabletRequest* request,
+            ShowTabletResponse* response,
+            Closure* done);
+
     int CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
-                bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
+                    bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
 
     void CheckZkClient();
 

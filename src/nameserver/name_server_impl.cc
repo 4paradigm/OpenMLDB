@@ -103,6 +103,23 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         }
     }
 }
+void NameServerImpl::ShowTablet(RpcController* controller,
+            const ShowTabletRequest* request,
+            ShowTabletResponse* response,
+            Closure* done) {
+    MutexLock lock(&mu_);
+    Tablets::iterator it = tablets_.begin();
+    for (; it !=  tablets_.end(); ++it) {
+        TabletStatus* status = response->add_tablets();
+        status->set_endpoint(it->first);
+        status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
+        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
+
 
 bool NameServerImpl::Init() {
     if (FLAGS_zk_cluster.empty()) {

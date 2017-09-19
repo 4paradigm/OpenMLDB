@@ -652,6 +652,7 @@ void StartClient() {
 void StartNsClient() {
     
     ::rtidb::client::NsClient client(FLAGS_endpoint);
+    client.Init();
     while (!s_quit) {
         std::cout << ">";
         std::string buffer;
@@ -686,6 +687,9 @@ int main(int argc, char* argv[]) {
         StartClient();
     }else if (FLAGS_role == "nameserver") {
         StartNameServer();
+    }else if (FLAGS_role == "ns_client") {
+        StartNsClient();
     }
+
     return 0;
 }
