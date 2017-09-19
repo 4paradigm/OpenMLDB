@@ -17,6 +17,8 @@ namespace rtidb {
 namespace base {
 
 const static char LABELS[10] = {'0','1','2','3','4','5','6','7','8','9'};
+const static uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
+const static char TIME_LABEL[] = {'s', 'm', 'h', 'd'};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
@@ -133,6 +135,18 @@ static inline std::string HumanReadableString(int64_t num) {
         shift++;
     }
     return NumToString(v) + prefix[shift];
+}
+
+static inline std::string HumanReadableTime(uint64_t age) {
+    uint64_t value = age;
+    for (uint32_t i = 0; i < 4; i++) {
+        uint64_t v = value / TIME_OFFSET[i];
+        if (v == 0) {
+            return NumToString(value) + TIME_LABEL[i];
+        }
+        value = v;
+    }
+    return NumToString(value) + TIME_LABEL[3];
 }
 
 static inline bool IsNumber(const std::string& str) {

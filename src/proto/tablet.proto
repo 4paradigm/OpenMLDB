@@ -18,6 +18,11 @@ enum TableState {
     kTablePaused = 4;
 }
 
+enum TabletState {
+    kTabletOffline = 1;
+    kTabletHealthy = 10;
+}
+
 enum TableType {
     // KV table 
     kKVTable = 1;

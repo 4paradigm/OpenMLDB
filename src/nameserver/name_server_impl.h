@@ -23,6 +23,21 @@ using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
 using ::rtidb::zk::ZkClient;
 using ::rtidb::zk::DistLock;
+using ::rtidb::api::TabletState;
+using ::rtidb::client::TabletClient;
+
+// tablet info
+struct TabletInfo {
+    // tablet state
+    TabletState state_;
+    // tablet rpc handle
+    std::shared_ptr<TabletClient> client_; 
+    // the date create
+    uint64_t ctime_;
+};
+
+// the container of tablet
+typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
 
 class NameServerImpl : public NameServer {
 
@@ -46,8 +61,13 @@ public:
         GeneralResponse* response, 
         Closure* done);
 
+    void ShowTablet(RpcController* controller,
+            const ShowTabletRequest* request,
+            ShowTabletResponse* response,
+            Closure* done);
+
     int CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
-                bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
+                    bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
 
     void CheckZkClient();
 
@@ -63,9 +83,13 @@ private:
     // Lost the lock
     void OnLostLock();
 
+    // Update tablets from zookeeper
+    void UpdateTablets(const std::vector<std::string>& endpoints);
+    void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
+
 private:
     ::baidu::common::Mutex mu_;
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient> > tablet_client_;
+    Tablets tablets_;
     std::map<std::string, ::rtidb::nameserver::TableMeta> table_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;

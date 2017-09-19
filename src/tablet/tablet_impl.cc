@@ -1221,6 +1221,7 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
         response.content->Append(sb.GetString());
         return;
     }
+
     ::rtidb::storage::Ticket ticket;
     Table::Iterator* it = stat->NewIterator(pk, ticket);
     it->SeekToFirst();

@@ -34,21 +34,11 @@ namespace nameserver {
 
 
 uint32_t counter = 10;
-static bool call_invoked = false;
 static int32_t endpoint_size = 1;
 
 
 inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
-}
-
-void WatchCallback(const std::vector<std::string>& endpoints) {
-    if (call_invoked) {
-        return;
-    }
-    ASSERT_EQ(endpoint_size, endpoints.size());
-    ASSERT_EQ("127.0.0.1:9530", endpoints[0]);
-    call_invoked = true;
 }
 
 class MockClosure : public ::google::protobuf::Closure {
@@ -76,28 +66,6 @@ TEST_F(NameServerImplTest, CreateTable) {
     ASSERT_TRUE(ok);
     ok = zk_client.Mkdir(FLAGS_zk_root_path + "/nodes");
     ASSERT_TRUE(ok);
-    zk_client.WatchNodes(boost::bind(&WatchCallback, _1));
-    ok = zk_client.WatchNodes();
-    ASSERT_TRUE(ok);
-
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    ok = tablet->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
-    ASSERT_TRUE(call_invoked);
-    sofa::pbrpc::RpcServerOptions options1;
-    sofa::pbrpc::RpcServer rpc_server1(options1);
-    sofa::pbrpc::Servlet webservice1 =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server1.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register nameserver rpc service");
-       exit(1);
-    }
-    rpc_server1.RegisterWebServlet("/tablet", webservice1);
-    if (!rpc_server1.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
-        exit(1);
-    }
 
     FLAGS_endpoint = "127.0.0.1:9531";
     NameServerImpl* nameserver = new NameServerImpl();
@@ -105,7 +73,6 @@ TEST_F(NameServerImplTest, CreateTable) {
     ASSERT_TRUE(ok);
     endpoint_size++;
     sleep(4);
-    ASSERT_TRUE(call_invoked);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     sofa::pbrpc::Servlet webservice =
@@ -119,11 +86,31 @@ TEST_F(NameServerImplTest, CreateTable) {
         LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
         exit(1);
     }
-
     ::rtidb::RpcClient name_server_client;
     ::rtidb::nameserver::NameServer_Stub *stub = NULL;
     name_server_client.GetStub(FLAGS_endpoint, &stub);
 
+    FLAGS_endpoint="127.0.0.1:9530";
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ok = tablet->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+    sofa::pbrpc::RpcServerOptions options1;
+    sofa::pbrpc::RpcServer rpc_server1(options1);
+    sofa::pbrpc::Servlet webservice1 =
+            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
+    if (!rpc_server1.RegisterService(tablet)) {
+       LOG(WARNING, "fail to register nameserver rpc service");
+       exit(1);
+    }
+    rpc_server1.RegisterWebServlet("/tablet", webservice1);
+    if (!rpc_server1.Start(FLAGS_endpoint)) {
+        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+        exit(1);
+    }
+    sleep(2);
+
+    
     CreateTableRequest request;
     GeneralResponse response;
 
@@ -156,8 +143,6 @@ TEST_F(NameServerImplTest, CreateTable) {
     MockClosure closure;
     nameserver2->CreateTable(NULL, &request1, &response1, &closure);
     ASSERT_EQ(-1, response1.code());
-
-
 
 }
 

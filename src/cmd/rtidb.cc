@@ -19,6 +19,7 @@
 #include "tablet/tablet_impl.h"
 #include "nameserver/name_server_impl.h"
 #include "client/tablet_client.h"
+#include "client/ns_client.h"
 #include "base/strings.h"
 #include "base/kv_iterator.h"
 #include "timer.h"
@@ -31,7 +32,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(endpoint);
-DEFINE_string(role, "tablet | nameserver | client", "Set the rtidb role for start");
+DEFINE_string(role, "tablet | nameserver | client | ns_client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
@@ -120,6 +121,29 @@ void StartTablet() {
     while (!s_quit) {
         sleep(1);
     }
+}
+
+void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row;
+    row.push_back("endpoint");
+    row.push_back("state");
+    row.push_back("age");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    std::vector<::rtidb::client::TabletInfo> tablets;
+    bool ok = client->ShowTablet(tablets);
+    if (!ok) {
+        std::cout << "Fail to show tablets" << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < tablets.size(); i++) { 
+        std::vector<std::string> row;
+        row.push_back(tablets[i].endpoint);
+        row.push_back(tablets[i].state);
+        row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
 }
 
 // the input format like put 1 1 key time value
@@ -625,6 +649,35 @@ void StartClient() {
 
 }
 
+void StartNsClient() {
+    
+    ::rtidb::client::NsClient client(FLAGS_endpoint);
+    client.Init();
+    while (!s_quit) {
+        std::cout << ">";
+        std::string buffer;
+        if (!FLAGS_interactive) {
+            buffer = FLAGS_cmd;
+        }else {
+            std::getline(std::cin, buffer);
+            if (buffer.empty()) {
+                continue;
+            }
+        }
+        std::vector<std::string> parts;
+        ::rtidb::base::SplitString(buffer, " ", &parts);
+        if (parts[0] == "showtablet") {
+            HandleNSShowTablet(parts, &client);
+        }else {
+            std::cout << "unsupported cmd" << std::endl;
+        }
+        if (!FLAGS_interactive) {
+            return;
+        }
+    }
+
+}
+
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
@@ -634,6 +687,9 @@ int main(int argc, char* argv[]) {
         StartClient();
     }else if (FLAGS_role == "nameserver") {
         StartNameServer();
+    }else if (FLAGS_role == "ns_client") {
+        StartNsClient();
     }
+
     return 0;
 }
