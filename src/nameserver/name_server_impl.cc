@@ -77,13 +77,12 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         Tablets::iterator tit = tablets_.find(*it);
         // register a new tablet
         if (tit == tablets_.end()) {
-            TabletInfo* tablet = new TabletInfo();
+            std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
             tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
             tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it);
             tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
-            std::shared_ptr<TabletInfo> tablet_ptr(tablet);
-            tablets_.insert(std::make_pair(*it, tablet_ptr));
-        }else {
+            tablets_.insert(std::make_pair(*it, tablet));
+        } else {
             //TODO wangtaize notify if state changes
             ::rtidb::api::TabletState old = tit->second->state_;
             if (old != ::rtidb::api::TabletState::kTabletHealthy) {

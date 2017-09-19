@@ -101,7 +101,7 @@ void TabletMetric::Collect() {
 
 void TabletMetric::CollectMemoryStat() {
 #ifdef TCMALLOC_ENABLE
-    uint64_t now = ::baidu::common::timer::now_time();
+    uint64_t now = ::baidu::common::timer::now_time() * 1000;
     char buffer[4];
     size_t allocated = 0;
     MallocExtension* extension_ = MallocExtension::instance();
