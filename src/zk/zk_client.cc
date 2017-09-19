@@ -227,6 +227,16 @@ bool ZkClient::GetNodeValueLocked(const std::string& node, std::string& value) {
     return false;
 
 }
+
+bool ZkClient::DeleteNode(const std::string& node) {
+    MutexLock lock(&mu_);
+    if (zoo_delete(zk_, node.c_str(), -1) == ZOK) {
+        return true;
+    }
+    return false;
+
+}
+
 bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
     MutexLock lock(&mu_);
     return GetNodeValueLocked(node, value);

@@ -82,6 +82,8 @@ public:
     void HandleChildrenChanged(const std::string& path, 
                                int type, int state);
 
+    bool DeleteNode(const std::string& node);                           
+
     // create a persistence node
     bool CreateNode(const std::string& node,
                     const std::string& value);

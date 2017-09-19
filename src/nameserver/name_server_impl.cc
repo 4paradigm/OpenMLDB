@@ -28,6 +28,7 @@ NameServerImpl::NameServerImpl():mu_(), tablet_client_(),
     zk_table_path_ = FLAGS_zk_root_path + "/table";
     zk_data_path_ = FLAGS_zk_root_path + "/table/data";
     zk_table_index_node_ = zk_data_path_ + "/table_index";
+    zk_op_path_ = zk_data_path_ + "/op_task";
     running_.store(false, std::memory_order_release);
 }
 
@@ -93,25 +94,130 @@ bool NameServerImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
     return true;        
 }
 
+int NameServerImpl::GetTabletClient(std::vector<std::shared_ptr<::rtidb::client::TabletClient> >& client_vec) {
+    MutexLock lock(&mu_);
+    for (auto iter = tablet_client_.begin(); iter != tablet_client_.end(); ++iter) {
+        client_vec.push_back(iter->second);
+    }
+    return 0;
+}
+
+int NameServerImpl::UpdateTaskStatus() {
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient> > client_vec;
+    GetTabletClient(client_vec);
+    for (auto iter = client_vec.begin(); iter != client_vec.end(); ++iter) {
+        ::rtidb::api::TaskStatusResponse response;
+        if ((*iter)->GetTaskStatus(response)) {
+            MutexLock lock(&mu_);
+            for (int idx = 0; idx < response.task_size(); idx++) {
+                auto it = task_map_.find(response.task(idx).op_id());
+                if (it == task_map_.end()) {
+                    LOG(WARNING, "cannot find op_id[%lu] in task_map", response.task(idx).op_id());
+                    continue;
+                }
+                if (it->second.task_list.empty()) {
+                    continue;
+                }
+                // update task status
+                Task* task = it->second.task_list.front().get();
+                if (task->task_type_ == response.task(idx).task_type()) {
+                    LOG(DEBUG, "update task status from[%d] to[%d]. op_id[%lu], task_type[%d]", 
+                                task->status_, response.task(idx).status(), 
+                                response.task(idx).op_id(), task->task_type_);
+                    task->status_ = response.task(idx).status();
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+int NameServerImpl::UpdateZKStatus(const std::vector<uint64_t>& run_task_vec) {
+    if (run_task_vec.empty()) {
+        return 0;
+    }
+    for (auto iter = run_task_vec.begin(); iter != run_task_vec.end(); ++iter) {
+        std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(*iter);
+        std::string value;
+        if (zk_client_->SetNodeValue(node, value)) {
+            LOG(DEBUG, "set zk status value success. node[%s] value[%s]",
+                        node.c_str(), value.c_str());
+            continue;
+        }
+        LOG(WARNING, "set zk status value failed! node[%s] value[%s]", 
+                      node.c_str(), value.c_str()); 
+    }
+    return 0;
+}
+
+int NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
+    if (done_task_vec.empty()) {
+        return 0;
+    }
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient> > client_vec;
+    GetTabletClient(client_vec);
+    uint32_t suc_count = 0;
+    for (auto iter = client_vec.begin(); iter != client_vec.end(); ++iter) {
+        if ((*iter)->DeleteOPTask(done_task_vec)) {
+            LOG(DEBUG, "endpoint[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
+            suc_count++;
+        }
+    }
+    if (suc_count == client_vec.size()) {
+        {
+            MutexLock lock(&mu_);
+            for (auto iter = done_task_vec.begin(); iter != done_task_vec.end(); ++iter) {
+                auto it = task_map_.find(*iter);
+                if (it != task_map_.end()) {
+                    task_map_.erase(it);
+                    LOG(DEBUG, "delete op[%lu]", *iter); 
+                }
+            }
+        }
+        for (auto iter = done_task_vec.begin(); iter != done_task_vec.end(); ++iter) {
+            std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(*iter);
+            zk_client_->DeleteNode(node);
+        }
+    }
+    return 0;
+}
+
 void NameServerImpl::ProcessTask() {
     while (1) {
         mu_.Lock();
         while (task_map_.empty()) {
-            cv.Wait();
+            cv_.Wait();
         }
         mu_.Unlock();
         if (running_.load(std::memory_order_acquire)) {
             break;
         }
-
+        UpdateTaskStatus();
+        
+        std::vector<uint64_t> done_task_vec;
+        std::vector<uint64_t> run_task_vec;
+        mu_.Lock();
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-            if (iter->second().empty()) {
-                task_map.erase(iter);
-                break;
+            if (iter->second.task_list.empty()) {
+                continue;
             }
-            Task* task = iter->second().front().get();
+            if (iter->second.task_list.front()->status_ == ::rtidb::api::kDone) {
+                iter->second.task_list.pop_front();
+            } else if (iter->second.task_list.front()->status_ == ::rtidb::api::kFailed) {
+                // TODO. tackle failed case here;
+            }
+            if (iter->second.task_list.empty()) {
+                LOG(DEBUG, "operation has finished! op_id[%lu]", iter->first);
+                done_task_vec.push_back(iter->first);
+                continue;
+            }
+            task_thread_pool_.AddTask(iter->second.task_list.front()->fun);
+            run_task_vec.push_back(iter->first);
 
         }
+        mu_.Unlock();
+        DeleteTask(done_task_vec);
+        UpdateZKStatus(run_task_vec);
     }
 }
 

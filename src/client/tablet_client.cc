@@ -22,6 +22,10 @@ TabletClient::~TabletClient() {
     delete tablet_;
 }
 
+std::string TabletClient::GetEndpoint() {
+    return endpoint_;
+}
+
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
         uint32_t pid, uint64_t ttl) {
     std::vector<std::string> endpoints;
@@ -214,6 +218,27 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
     }
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
     return kv_it;
+}
+
+bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
+    ::rtidb::api::EmptyRequest request;
+    bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::GetTaskStatus,
+            &request, &response, 12, 1);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
+    ::rtidb::api::DeleteTaskRequest request;
+    ::rtidb::api::GeneralResponse response;
+    bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::DeleteOPTask,
+            &request, &response, 12, 1);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
 }
 
 int TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {
