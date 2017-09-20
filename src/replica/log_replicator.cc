@@ -122,6 +122,7 @@ void LogReplicator::UnRef() {
         delete this;
     }
 }
+
 void LogReplicator::DeleteBinlog() {
     if (!running_.load(boost::memory_order_relaxed)) {
         return;
