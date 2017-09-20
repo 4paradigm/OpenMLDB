@@ -13,7 +13,6 @@
 #include "base/skiplist.h"
 #include "boost/atomic.hpp"
 #include "boost/function.hpp"
-#include "leveldb/db.h"
 #include "mutex.h"
 #include "thread_pool.h"
 #include "log/log_writer.h"
@@ -38,16 +37,11 @@ using ::rtidb::log::Reader;
 using ::rtidb::storage::Table;
 
 typedef boost::function< bool (const ::rtidb::api::LogEntry& entry)> ApplyLogFunc;
-typedef boost::function< bool (const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts)> SnapshotFunc;
 
 enum ReplicatorRole {
     kLeaderNode = 1,
     kFollowerNode
 };
-
-inline bool DefaultSnapshotFunc(const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts) {
-    return true;
-} 
 
 class LogReplicator;
 
@@ -86,8 +80,7 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  Table* table,
-                  SnapshotFunc ssf = boost::bind(&DefaultSnapshotFunc, _1, _2, _3, _4));
+                  Table* table);
 
     ~LogReplicator();
 
@@ -109,8 +102,6 @@ public:
 
     bool RollWLogFile();
 
-    void DeleteBinlog();
-
     // add replication
     bool AddReplicateNode(const std::string& endpoint);
 
@@ -119,8 +110,6 @@ public:
     void MatchLogOffset();
 
     void ReplicateToNode(const std::string& endpoint);
-
-    int PauseReplicate(std::shared_ptr<ReplicateNode> node);
 
     // Incr ref
     void Ref();
@@ -171,8 +160,6 @@ private:
     boost::atomic<uint64_t> refs_;
 
     Mutex wmu_;
-
-    SnapshotFunc ssf_;
 
     Table* table_;
 };

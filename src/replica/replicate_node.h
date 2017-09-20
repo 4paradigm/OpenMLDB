@@ -78,21 +78,6 @@ private:
     ::rtidb::RpcClient* rpc_client_;
 };
 
-class SnapshotReplicateNode: public ReplicateNode {
-public:
-    SnapshotReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, 
-        uint32_t tid, uint32_t pid, SnapshotFunc snapshot_fun);
-    ~SnapshotReplicateNode(){}
-    int MatchLogOffsetFromNode();        
-    int SyncData(uint64_t log_offset);
-    SnapshotReplicateNode(const SnapshotReplicateNode&) = delete;
-    SnapshotReplicateNode& operator= (const SnapshotReplicateNode&) = delete;
-
-private:
-    SnapshotFunc snapshot_fun_;
-
-};
-
 }
 }
 

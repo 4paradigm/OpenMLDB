@@ -14,22 +14,14 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-DECLARE_bool(enable_snapshot_ttl);
-
 namespace rtidb {
 namespace storage {
 
 const static StringComparator scmp;
 const static uint32_t data_block_size = sizeof(DataBlock);
 
-Segment::Segment(SnapshotTTLFunc ttl_fun):entries_(NULL),mu_(), data_cnt_(0){
-    entries_ = new KeyEntries(12, 4, scmp);
-    ttl_fun_ = ttl_fun; 
-}
-
 Segment::Segment():entries_(NULL),mu_(), data_cnt_(0){
     entries_ = new KeyEntries(12, 4, scmp);
-    ttl_fun_ = boost::bind(&DefaultSnapshotTTLFunc, _1);
 }
 
 Segment::~Segment() {
@@ -92,7 +84,6 @@ bool Segment::Get(const std::string& key,
 
 uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node) {
     uint64_t count = 0;
-    std::vector<std::pair<std::string, uint64_t> > keys;
     while (node != NULL) {
         count ++;
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
@@ -103,15 +94,9 @@ uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, 
         if (tmp->GetValue() != NULL) {
             tmp->GetValue()->Release();
         }
-        if (FLAGS_enable_snapshot_ttl) {
-            keys.push_back(std::make_pair(pk, tmp->GetKey()));
-        }
         delete tmp->GetValue();
         delete tmp;
     }
-    if (FLAGS_enable_snapshot_ttl) {
-        ttl_fun_(keys);
-    }    
     return count;
 }
 

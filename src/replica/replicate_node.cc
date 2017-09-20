@@ -308,50 +308,5 @@ int FollowerReplicateNode::SyncData(uint64_t log_offset) {
     return 0;
 }
 
-SnapshotReplicateNode::SnapshotReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, 
-        uint32_t tid, uint32_t pid, SnapshotFunc snapshot_fun):ReplicateNode(point, logs, log_path, tid, pid) {
-    replicate_node_mode_ = SNAPSHOT_REPLICATE_MODE;
-    snapshot_fun_ = snapshot_fun;
-}
-
-int SnapshotReplicateNode::MatchLogOffsetFromNode() {
-    log_matched_ = true;
-    return 0;
-}
-
-int SnapshotReplicateNode::SyncData(uint64_t log_offset) {
-    uint32_t batchSize = log_offset - last_sync_offset_;
-    batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
-    for (uint64_t i = 0; i < batchSize; ) {
-        std::string buffer;
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = ReadNextRecord(&record, &buffer);
-        if (status.ok()) {
-            ::rtidb::api::LogEntry entry;
-            if (!entry.ParseFromString(record.ToString())) {
-                LOG(WARNING, "bad protobuf format %s size %ld", 
-                            ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
-                break;
-            }
-            LOG(DEBUG, "entry val %s log index %lld", entry.value().c_str(), entry.log_index());
-            if (entry.log_index() <= last_sync_offset_) {
-                LOG(DEBUG, "skip duplicate log offset %lld", entry.log_index());
-                continue;
-            }
-
-            snapshot_fun_(record.ToString(), entry.pk().c_str(), entry.log_index(), entry.ts());
-            last_sync_offset_ = entry.log_index();
-        } else if (status.IsWaitRecord()) {
-            LOG(DEBUG, "got a coffee time for[%s]", endpoint.c_str());
-            return 1;
-        } else {
-            LOG(WARNING, "fail to get record %s", status.ToString().c_str());
-            return 1;
-        }
-        i++;
-    }
-    return 0;
-}
-
 }
 }
