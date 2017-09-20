@@ -984,7 +984,7 @@ std::shared_ptr<Snapshot> TabletImpl::GetSnapshotUnLock(uint32_t tid, uint32_t p
     mu_.AssertHeld();
     Snapshots::iterator it = snapshots_.find(tid);
     if (it != snapshots_.end()) {
-        std::map<uint32_t, std::shared_ptr<Snapshot>>::iterator tit = it->second.find(pid);
+        std::map<uint32_t, std::shared_ptr<Snapshot> >::iterator tit = it->second.find(pid);
         if (tit == it->second.end()) {
             return std::shared_ptr<Snapshot>();
         }

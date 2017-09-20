@@ -27,7 +27,6 @@ const static uint32_t FOLLOWER_REPLICATE_MODE = 0;
 const static uint32_t SNAPSHOT_REPLICATE_MODE = 1;
 
 typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
-typedef boost::function< bool (const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts)> SnapshotFunc;
 
 class ReplicateNode {
 public:
