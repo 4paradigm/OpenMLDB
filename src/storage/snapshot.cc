@@ -11,6 +11,7 @@
 #include "base/strings.h"
 #include "base/slice.h"
 #include "base/status.h"
+#include "base/count_down_latch.h"
 #include "log/sequential_file.h"
 #include "log/log_reader.h"
 #include "boost/lexical_cast.hpp"
@@ -18,6 +19,8 @@
 #include "gflags/gflags.h"
 #include "logging.h"
 #include "timer.h"
+#include "thread_pool.h"
+
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -29,16 +32,18 @@ DECLARE_int32(recover_table_thread_size);
 namespace rtidb {
 namespace storage {
 
+const std::string META_NAME="MANIFEST";
+
 Snapshot::Snapshot(uint32_t tid, uint32_t pid):tid_(tid), pid_(pid),
-     offset_(0) {}
+     offset_(0), path_() {}
 
 Snapshot::~Snapshot() {}
 
 bool Snapshot::Init() {
-    std::string snapshot_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_);
-    bool ok = ::rtidb::base::MkdirRecur(snapshot_path);
+    path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_);
+    bool ok = ::rtidb::base::MkdirRecur(path_);
     if (!ok) {
-        LOG(WARNING, "fail to create db meta path %s", snapshot_path.c_str());
+        LOG(WARNING, "fail to create db meta path %s", path_.c_str());
         return false;
     }
     return true;
@@ -46,12 +51,35 @@ bool Snapshot::Init() {
 
 bool Snapshot::Recover(Table* table) {
     std::vector<std::string> file_list;
-    std::string snapshot_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_);
-    int ok = ::rtidb::base::GetFileName(snapshot_path, file_list);
+    int ok = ::rtidb::base::GetFileName(path_, file_list);
     if (ok != 0) {
         LOG(WARNING, "fail to get snapshot list for tid %u, pid %u", tid_, pid_);
         return false;
     }
+    std::atomic<uint64_t> g_succ_cnt;
+    std::atomic<uint64_t> g_failed_cnt;
+    ::baidu::common::ThreadPool pool(FLAGS_recover_table_thread_size);
+    for (uint32_t i = 0; i <= file_list.size() / FLAGS_recover_table_thread_size; i++) {
+        uint32_t start = i;
+        uint32_t end = (i + 1) * FLAGS_recover_table_thread_size;
+        if (end > file_list.size()) {
+            end = file_list.size();
+        }
+        ::rtidb::base::CountDownLatch latch(end - start);
+        for (uint32_t j = start; j < end; j++) {
+            pool.AddTask(boost::bind(&Snapshot::RecoverSingleSnapshot, this, file_list[j], table,
+                        &g_succ_cnt, &g_failed_cnt, &latch));
+        }
+        while (latch.GetCount() > 0) {
+            latch.TimeWait(8000);
+            LOG(INFO, "[Recover] progress stat: success count %lu, failed count %lu", 
+                    g_succ_cnt.load(std::memory_order_relaxed),
+                    g_failed_cnt.load(std::memory_order_relaxed));
+        }
+    }
+    LOG(INFO, "[Recover] progress done stat: success count %lu, failed count %lu", 
+                    g_succ_cnt.load(std::memory_order_relaxed),
+                    g_failed_cnt.load(std::memory_order_relaxed));
     return true;
 }
 
@@ -84,9 +112,9 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table,
         while (true) {
             ::rtidb::base::Slice record;
             ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
-            if (status.IsWaitRecord()) {
+            if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time();
-                LOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %u",
+                LOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                         path.c_str(), tid_, pid_, succ_cnt, failed_cnt, consumed);
                 break;
             }

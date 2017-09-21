@@ -20,7 +20,7 @@ namespace base {
 class CountDownLatch {
 
 public:
-    CountDownLatch(uint32_t count):count_(count),
+    CountDownLatch(int32_t count):count_(count),
     mu_(), cv_(&mu_){}
     ~CountDownLatch() {}
 
@@ -54,7 +54,7 @@ public:
     }
 
 private:
-    uint32_t count_;
+    int32_t count_;
     Mutex mu_;
     CondVar cv_;
 };

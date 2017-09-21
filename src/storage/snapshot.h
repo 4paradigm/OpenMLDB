@@ -23,6 +23,7 @@ namespace storage {
 
 typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
 
+
 // table snapshot
 class Snapshot {
 
@@ -51,6 +52,8 @@ private:
     uint32_t pid_;
     boost::atomic<uint64_t> offset_;
     LogParts* log_part_;
+    // the snapshot path
+    std::string path_;
 };
 
 }

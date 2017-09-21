@@ -36,6 +36,12 @@ TEST_F(CountDownLatchTest, IsDone) {
     ASSERT_TRUE(latch.IsDone());
 }
 
+TEST_F(CountDownLatchTest, Invalid) {
+    CountDownLatch latch(-1);
+    ASSERT_TRUE(latch.IsDone());
+}
+
+
 TEST_F(CountDownLatchTest, MultiIsDone) {
     CountDownLatch latch(3);
     ThreadPool pool(1);
@@ -49,6 +55,7 @@ TEST_F(CountDownLatchTest, MultiIsDone) {
     ASSERT_TRUE(latch.IsDone());
     ASSERT_EQ(0, latch.GetCount());
 }
+
 
 }
 }
