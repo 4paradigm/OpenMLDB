@@ -10,9 +10,11 @@
 #define RTIDB_SNAPSHOT_H
 
 #include <vector>
+#include <atomic>
 #include "leveldb/db.h"
 #include "proto/tablet.pb.h"
 #include "boost/atomic.hpp"
+#include "base/count_down_latch.h"
 #include "storage/table.h"
 
 using ::rtidb::api::LogEntry;
@@ -38,12 +40,18 @@ public:
     }
 
 private:
+    // load single snapshot to table
+    void RecoverSingleSnapshot(const std::string& path,
+                               Table* table,
+                               std::atomic<uint64_t>* g_succ_cnt,
+                               std::atomic<uint64_t>* g_failed_cnt,
+                               ::rtidb::base::CountDownLatch* latch);
+private:
     uint32_t tid_;
     uint32_t pid_;
     boost::atomic<uint64_t> offset_;
     LogParts* log_part_;
 };
-
 
 }
 }

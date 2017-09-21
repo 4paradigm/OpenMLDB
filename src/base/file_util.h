@@ -76,10 +76,13 @@ inline static int GetSubDir(const std::string& path, std::vector<std::string>& s
 
 inline static int GetFileName(const std::string& path, std::vector<std::string>& file_vec) {
     if (path.empty()) {
+        LOG(WARNING, "input path is empty");
         return -1;
     }
     DIR *dir = opendir(path.c_str());
     if (dir == NULL) {
+        LOG(WARNING, "fail to open path %s for %s", path.c_str(),
+                strerror(errno));
         return -1;
     }
     struct dirent *ptr;
