@@ -36,7 +36,7 @@ namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, Table*> > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, LogReplicator*> > Replicators;
-typedef std::map<uint32_t, std::map<uint32_t, Snapshot*> > Snapshots;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
 class TabletImpl : public ::rtidb::api::TabletServer {
 
@@ -107,11 +107,6 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done); 
 
-    void LoadSnapshot(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done); 
-    
     void ChangeRole(RpcController* controller,
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
@@ -130,8 +125,8 @@ private:
 
     ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
     ::rtidb::replica::LogReplicator* GetReplicatorUnLock(uint32_t tid, uint32_t pid);
-    ::rtidb::storage::Snapshot* GetSnapshot(uint32_t tid, uint32_t pid);
-    ::rtidb::storage::Snapshot* GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
+    std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
     void ShowTables(const sofa::pbrpc::HTTPRequest& request,
@@ -160,10 +155,6 @@ private:
                       const std::string& pk,
                       uint64_t offset,
                       uint64_t ts);
-    bool SnapshotTTL(uint32_t tid, uint32_t pid, 
-            const std::vector<std::pair<std::string, uint64_t> >& keys);                  
-    int LoadSnapshot();
-    int LoadSnapshot(uint32_t tid, uint32_t pid);
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
                        const std::vector<std::string>& replicas);
     void CheckZkClient();

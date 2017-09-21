@@ -27,7 +27,6 @@ const static uint32_t FOLLOWER_REPLICATE_MODE = 0;
 const static uint32_t SNAPSHOT_REPLICATE_MODE = 1;
 
 typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
-typedef boost::function< bool (const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts)> SnapshotFunc;
 
 class ReplicateNode {
 public:
@@ -76,21 +75,6 @@ public:
 private:
     std::vector<::rtidb::api::AppendEntriesRequest> cache_;
     ::rtidb::RpcClient* rpc_client_;
-};
-
-class SnapshotReplicateNode: public ReplicateNode {
-public:
-    SnapshotReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, 
-        uint32_t tid, uint32_t pid, SnapshotFunc snapshot_fun);
-    ~SnapshotReplicateNode(){}
-    int MatchLogOffsetFromNode();        
-    int SyncData(uint64_t log_offset);
-    SnapshotReplicateNode(const SnapshotReplicateNode&) = delete;
-    SnapshotReplicateNode& operator= (const SnapshotReplicateNode&) = delete;
-
-private:
-    SnapshotFunc snapshot_fun_;
-
 };
 
 }

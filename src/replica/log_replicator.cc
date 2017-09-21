@@ -10,7 +10,6 @@
 #include "base/file_util.h"
 #include "base/strings.h"
 #include "log/log_format.h"
-#include "leveldb/options.h"
 #include "logging.h"
 #include <boost/ref.hpp>
 #include <cstring>
@@ -40,13 +39,11 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             Table* table,
-                             SnapshotFunc ssf):path_(path), log_path_(),
+                             Table* table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0), role_(role), 
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),coffee_cv_(&mu_),
     rpc_client_(NULL),
-    running_(true), tp_(4), refs_(0), wmu_(),
-    ssf_(ssf) {
+    running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
     table_->Ref();
     binlog_index_ = 0;
@@ -93,8 +90,6 @@ bool LogReplicator::Init() {
        LOG(WARNING, "fail to log dir %s", log_path_.c_str());
        return false;
     }
-    nodes_.push_back(std::shared_ptr<ReplicateNode>(
-            new SnapshotReplicateNode("snapshot_replicate_node", logs_, log_path_, table_->GetId(), table_->GetPid(), ssf_)));
     if (role_ == kLeaderNode) {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
@@ -168,7 +163,6 @@ void LogReplicator::DeleteBinlog() {
     }
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
-
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
@@ -319,15 +313,6 @@ void LogReplicator::MatchLogOffset() {
         if (node->IsLogMatched()) {
             continue;
         }
-        if (node->GetMode() == SNAPSHOT_REPLICATE_MODE) {
-            if (table_->GetTableStat() == ::rtidb::storage::kPausing
-                    || table_->GetTableStat() == ::rtidb::storage::kPaused) {
-                all_matched = false;
-                continue;
-            } else {
-                node->SetLastSyncOffset(GetOffset());
-            }
-        }
         if (node->MatchLogOffsetFromNode() < 0) {
             all_matched = false;
         } else {
@@ -338,17 +323,6 @@ void LogReplicator::MatchLogOffset() {
         // retry after 1 second
         tp_.DelayTask(1000, boost::bind(&LogReplicator::MatchLogOffset, this));
     }
-}
-
-int LogReplicator::PauseReplicate(std::shared_ptr<ReplicateNode> node) {
-    if (node->GetMode() == SNAPSHOT_REPLICATE_MODE && table_->GetTableStat() == ::rtidb::storage::kPausing) {
-        table_->SetTableStat(::rtidb::storage::kPaused);
-        node->SetLogMatch(false);
-        LOG(DEBUG, "table status has set[%u]. tid[%u] pid[%u]",
-                    ::rtidb::storage::kPaused, table_->GetId(), table_->GetPid());
-        return 0;
-    }
-    return -1;
 }
 
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
@@ -371,19 +345,11 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             coffee_cv_.TimeWait(coffee_time);
             coffee_time = 0;
         }
-        if (PauseReplicate(node) == 0) {
-            LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
-            break;
-        }
         int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
         if (ret == 1) {
             coffee_time = FLAGS_binlog_coffee_time;
         }
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
-            if (PauseReplicate(node) == 0) {
-                LOG(DEBUG, "pause replicate. tid[%u] pid[%u]", table_->GetId(), table_->GetPid());
-                return;
-            }
             cv_.TimeWait(FLAGS_binlog_sync_wait_time);
             if (!running_.load(boost::memory_order_relaxed)) {
                 LOG(INFO, "replicate log exist for path %s", path_.c_str());
