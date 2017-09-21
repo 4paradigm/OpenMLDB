@@ -94,7 +94,7 @@ bool LogReplicator::Init() {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             nodes_.push_back(std::shared_ptr<ReplicateNode>(
-                    new FollowerReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
+                    new ReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
             LOG(INFO, "add replica node with endpoint %s", it->c_str());
         }
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
@@ -219,7 +219,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
             }
         }
         nodes_.push_back(std::shared_ptr<ReplicateNode>(
-                    new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
+                    new ReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
         endpoints_.push_back(endpoint);
         LOG(INFO, "add ReplicateNode with endpoint %s ok", endpoint.c_str());
     }

@@ -16,7 +16,7 @@ add_library(log STATIC log/crc32c.cc
                        log/sequential_file.cc 
                        log/log_writer.cc 
                        log/log_reader.cc
-                       log/writable_file.cc)
+                       log/writable_file.cc flags.cc)
 add_library(base STATIC base/status.cc)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 

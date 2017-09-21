@@ -17,11 +17,15 @@
 #include "log/log_format.h"
 #include "logging.h"
 #include "base/status.h"
+#include <gflags/gflags.h>
+#include "base/strings.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
 using ::baidu::common::WARNING;
 using ::rtidb::base::Status;
+
+DECLARE_bool(binlog_enable_crc);
 
 namespace rtidb {
 namespace log {
@@ -312,6 +316,142 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     *result = Slice(header + kHeaderSize, length);
     return type;
 }
+
+LogReader::LogReader(LogParts* logs, const std::string& log_path) : log_path_(log_path) {
+    sf_ = NULL;
+    reader_ = NULL;
+    logs_ = logs;
+    log_part_index_ = -1;
+    start_offset_ = 0;
+} 
+
+LogReader::~LogReader() {
+    delete sf_;
+    delete reader_;
+}
+
+void LogReader::SetOffset(uint64_t start_offset) {
+    start_offset_ = start_offset;
+}
+
+void LogReader::GoBackToLastBlock() {
+    if (sf_ == NULL || reader_ == NULL) {
+        return;
+    }
+    reader_->GoBackToLastBlock();
+}
+
+int LogReader::GetLogIndex() {
+    return log_part_index_;
+}
+
+::rtidb::base::Status LogReader::ReadNextRecord(
+        ::rtidb::base::Slice* record, std::string* buffer) {
+    // first read record 
+    if (sf_ == NULL) {
+        int new_log_part_index = RollRLogFile();
+        if (new_log_part_index == -2) {
+            LOG(WARNING, "no log avaliable");
+            return ::rtidb::base::Status::IOError("no log avaliable");
+        }
+
+        if (new_log_part_index < 0) {
+            LOG(WARNING, "fail to roll read log");
+            return ::rtidb::base::Status::IOError("no log avaliable");
+        }
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+        // when change log part index , reset
+        // last_log_byte_offset to 0
+        log_part_index_ = new_log_part_index;
+    }
+    ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
+    if (status.IsEof()) {
+        // reache the end of file 
+        int new_log_part_index = RollRLogFile();
+        LOG(WARNING, "reach the end of file. new index %d  old index %d", new_log_part_index,
+                log_part_index_);
+        // reache the latest log part
+        if (new_log_part_index == log_part_index_) {
+            LOG(DEBUG, "no new log entry");
+            return status;
+        }
+        if (new_log_part_index < 0) {
+            return status;
+        }
+        delete reader_;
+        // roll a new log part file, reset status
+        log_part_index_ = new_log_part_index;
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+    }
+    return status;
+}
+
+int LogReader::RollRLogFile() {
+    LogParts::Iterator* it = logs_->NewIterator();
+    if (logs_->GetSize() <= 0) {
+        return -2;
+    }
+    it->SeekToFirst();
+    // use log entry offset to find the log part file
+    if (log_part_index_ < 0) {
+        while (it->Valid()) {
+            LOG(DEBUG, "log index[%u] and start offset %lld", it->GetKey(),
+                    it->GetValue());
+            if (it->GetValue() <= start_offset_) {
+                break;
+            }
+            it->Next();
+        }
+        int ret = -1;
+        if (it->Valid()) {
+            std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 10) + ".log";
+            if (OpenSeqFile(full_path) == 0) {
+                ret = (int)it->GetKey();
+            }
+        } else {
+            LOG(WARNING, "no log part matched! start_offset[%lu]", start_offset_); 
+        }
+        delete it;
+        return ret;
+    } else {
+        uint32_t current_index = (uint32_t)log_part_index_;
+        int ret = -1;
+        while (it->Valid()) {
+            // find the next of current index log file part
+            if (it->GetKey() == current_index + 1) {
+                // open a new log part file
+                std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 10) + ".log";
+                if (OpenSeqFile(full_path) == 0) {
+                    ret = (int)it->GetKey();
+                }
+                break;
+            } else if (it->GetKey() == current_index) {
+                ret = current_index;
+                break;
+            }
+            it->Next();
+        }
+        delete it;
+        return ret;
+    }
+}
+
+int LogReader::OpenSeqFile(const std::string& path) {
+    FILE* fd = fopen(path.c_str(), "rb");
+    if (fd == NULL) {
+        LOG(WARNING, "fail to open file %s", path.c_str());
+        return -1;
+    }
+    // close old Sequentialfile 
+    if (sf_ != NULL) {
+        delete sf_;
+        sf_ = NULL;
+    }
+    LOG(INFO, "open log file %s", path.c_str());
+    sf_ = ::rtidb::log::NewSeqFile(path, fd);
+    return 0;
+}
+
 
 }  // namespace log
 }  // namespace leveldb
