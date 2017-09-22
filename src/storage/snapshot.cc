@@ -62,15 +62,19 @@ int Snapshot::MakeSnapshot() {
         LOG(INFO, "snapshot is doing now!");
         return 0;
     }
+    making_snapshot_.store(true, boost::memory_order_release);
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name = now_time.substr(0, now_time.length() - 2) + ".sdb";
+    std::string snapshot_name_tmp = snapshot_name + ".tmp";
     std::string full_path = snapshot_path_ + snapshot_name;
-    FILE* fd = fopen(full_path.c_str(), "ab+");
+    std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
+    FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
     if (fd == NULL) {
-        LOG(WARNING, "fail to create file %s", full_path.c_str());
+        LOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
+        making_snapshot_.store(false, boost::memory_order_release);
         return -1;
     }
-    wh_ = new WriteHandle(snapshot_name, fd);
+    wh_ = new WriteHandle(snapshot_name_tmp, fd);
     
     std::string buffer;
     std::string last_record;
@@ -83,7 +87,7 @@ int Snapshot::MakeSnapshot() {
             ::rtidb::base::Status status = wh_->Write(record);
             if (!status.ok()) {
                 LOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
-                full_path.c_str(), status.ToString().c_str());
+                tmp_file_path.c_str(), status.ToString().c_str());
                 break;
             }
             write_count++;
@@ -93,7 +97,7 @@ int Snapshot::MakeSnapshot() {
         } else if (status.IsEof()) {
             continue;
         } else if (status.IsWaitRecord()) {
-            LOG(DEBUG, "has read all recored!");
+            LOG(DEBUG, "has read all record!");
             break;
         } else {
             LOG(WARNING, "fail to get record. status is %s", status.ToString().c_str());
@@ -105,10 +109,15 @@ int Snapshot::MakeSnapshot() {
         delete wh_;
         wh_ = NULL;
     }
-
-    RecordOffset(last_record, snapshot_name, write_count);
+    int ret = 0;
+    if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
+        RecordOffset(last_record, snapshot_name, write_count);
+    } else {
+        LOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
+        ret = -1;
+    }
     making_snapshot_.store(false, boost::memory_order_release);
-    return 0;
+    return ret;
 }
 
 int Snapshot::RecordOffset(const std::string& log_entry, 
