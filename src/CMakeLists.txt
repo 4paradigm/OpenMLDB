@@ -26,6 +26,9 @@ add_library(replica STATIC replica/replicate_node.cc
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
 
+add_executable(strings_test base/strings_test.cc)
+target_link_libraries(strings_test gtest pthread)
+
 add_executable(zk_test zk/zk_client_test.cc)
 target_link_libraries(zk_test gtest zk_client zookeeper_mt pthread common)
 
@@ -45,7 +48,7 @@ add_executable(table_test  storage/table_test.cc flags.cc)
 target_link_libraries(table_test gtest gflags pthread storage common unwind tcmalloc)
 
 add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc)
-target_link_libraries(snapshot_test gtest pthread zk_client zookeeper_mt storage tablet protobuf common gflags unwind tcmalloc)
+target_link_libraries(snapshot_test gtest log base pthread storage tablet protobuf common gflags unwind tcmalloc)
 
 add_executable(table_mem_test  storage/table_mem_test.cc)
 target_link_libraries(table_mem_test gtest pthread storage zookeeper_mt common zk_client unwind tcmalloc)

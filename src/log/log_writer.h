@@ -51,6 +51,35 @@ private:
     void operator=(const Writer&);
 };
 
+struct WriteHandle {
+    FILE* fd_;
+    WritableFile* wf_;
+    Writer* lw_;
+    WriteHandle(const std::string& fname, FILE* fd):fd_(fd),
+    wf_(NULL), lw_(NULL) {
+        wf_ = ::rtidb::log::NewWritableFile(fname, fd);
+        lw_ = new Writer(wf_);
+    }
+
+    ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {
+        return lw_->AddRecord(slice);
+    }
+
+    ::rtidb::base::Status Sync() {
+        return wf_->Sync(); 
+    }
+
+    ::rtidb::base::Status EndLog() {
+        return lw_->EndLog();
+    }
+
+    ~WriteHandle() {
+        delete lw_;
+        delete wf_;
+    }
+};
+
+
 }  // namespace log
 }  // namespace rtidb
 

@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <sys/time.h>
+#include <time.h>
 
 namespace rtidb {
 namespace base {
@@ -153,6 +155,14 @@ static inline bool IsNumber(const std::string& str) {
     std::string::const_iterator it = str.begin();
     while (it != str.end() && std::isdigit(*it)) ++it;
     return !str.empty() && it == str.end();
+}
+
+static inline std::string GetNowTime() {
+    time_t rawtime = time(0);
+    tm* timeinfo = localtime(&rawtime);
+    char buf[20];
+    strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+    return std::string(buf);               
 }
 
 

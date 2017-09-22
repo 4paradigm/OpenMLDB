@@ -16,6 +16,7 @@
 #include "log/sequential_file.h"
 #include "rpc/rpc_client.h"
 #include "proto/tablet.pb.h"
+#include <atomic>
 
 namespace rtidb {
 namespace replica {
@@ -44,6 +45,7 @@ private:
     std::vector<::rtidb::api::AppendEntriesRequest> cache_;
     ::rtidb::RpcClient* rpc_client_;
     std::string endpoint_;
+    std::atomic<bool> making_snapshot_;
     uint64_t last_sync_offset_;
     bool log_matched_;
     uint32_t tid_;
