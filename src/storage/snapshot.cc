@@ -14,6 +14,8 @@
 #include "logging.h"
 #include "timer.h"
 #include <unistd.h>
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -33,7 +35,6 @@ Snapshot::Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pi
 }
 
 Snapshot::~Snapshot() {
-    delete log_reader_;
 }
 
 bool Snapshot::Init() {
@@ -47,7 +48,6 @@ bool Snapshot::Init() {
         LOG(WARNING, "fail to create db meta path %s", log_path_.c_str());
         return false;
     }
-    log_reader_ = new ::rtidb::log::LogReader(log_part_, log_path_);
     making_snapshot_.store(false, boost::memory_order_release);
     return true;
 }
@@ -75,25 +75,34 @@ int Snapshot::MakeSnapshot() {
         return -1;
     }
     wh_ = new WriteHandle(snapshot_name_tmp, fd);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    log_reader.SetOffset(offset_);
+    uint64_t cur_offset = offset_;
     
     std::string buffer;
-    std::string last_record;
     uint64_t write_count = 0;
     while (1) {
         buffer.clear();
         ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = log_reader_->ReadNextRecord(&record, &buffer);
+        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.ok()) {
+            ::rtidb::api::LogEntry entry;
+            if (!entry.ParseFromString(record.ToString())) {
+                LOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]", 
+                        ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                break;
+            }
+            if (entry.log_index() <= cur_offset) {
+                continue;
+            }
             ::rtidb::base::Status status = wh_->Write(record);
             if (!status.ok()) {
                 LOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
                 tmp_file_path.c_str(), status.ToString().c_str());
                 break;
             }
+            cur_offset = entry.log_index();
             write_count++;
-            if (!record.empty()) {
-                last_record = record.ToString(); 
-            }
         } else if (status.IsEof()) {
             continue;
         } else if (status.IsWaitRecord()) {
@@ -111,7 +120,13 @@ int Snapshot::MakeSnapshot() {
     }
     int ret = 0;
     if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
-        RecordOffset(last_record, snapshot_name, write_count);
+        if (RecordOffset(snapshot_name, write_count, cur_offset) == 0) {
+            LOG(INFO, "make snapshot[%s] success. update offset from[%lu] to [%lu]", 
+                      snapshot_name.c_str(), offset_, cur_offset);
+            offset_ = cur_offset;
+        } else {
+            ret = -1;
+        }
     } else {
         LOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
         ret = -1;
@@ -120,45 +135,29 @@ int Snapshot::MakeSnapshot() {
     return ret;
 }
 
-int Snapshot::RecordOffset(const std::string& log_entry, 
-        const std::string& snapshot_name, uint64_t key_count) {
-    ::rtidb::api::LogEntry entry;
-    if (!entry.ParseFromString(log_entry)) {
-        LOG(WARNING, "fail to parse LogEntry");
-        return -1;
-    }
-    offset_ = entry.log_index();
+int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset) {
     LOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
-                offset_, snapshot_name.c_str(), key_count);
+                offset, snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
-    FILE* fd_read = fopen(full_path.c_str(), "r");
+    int fd = open(full_path.c_str(), O_RDONLY);
     ::rtidb::api::Manifest manifest;
     std::string manifest_info;
-    if (fd_read == NULL) {
+    if (fd < 0) {
         LOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
     } else {
-        char buffer[MAX_LINE];
-        while (!feof(fd_read)) {
-            if (fgets(buffer, MAX_LINE, fd_read) == NULL && !feof(fd_read)) {
-                LOG(WARNING, "read error. path[%s]", full_path.c_str());
-                fclose(fd_read);
-                return -1;
-            }
-            manifest_info.append(buffer);
-        }
-        fclose(fd_read);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        // will close fd when destruct
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }    
-    if (!manifest_info.empty() && !manifest.ParseFromString(manifest_info)) {
-        LOG(WARNING, "fail to parse");
-    }
-    manifest.set_offset(offset_);
+    manifest.set_offset(offset);
     ::rtidb::api::SnapshotInfo* snap_info = manifest.add_snapshot_infos();
     snap_info->set_name(snapshot_name);
     snap_info->set_count(key_count);
     manifest_info.clear();
-    manifest.SerializeToString(&manifest_info);
-    LOG(DEBUG, "manifest_info[%s]", ::rtidb::base::DebugString(manifest_info).c_str());
+    google::protobuf::TextFormat::Printer printer;
+    printer.PrintToString(manifest, &manifest_info);
     FILE* fd_write = fopen(tmp_file.c_str(), "w");
     if (fd_write == NULL) {
         LOG(WARNING, "fail to open file %s", tmp_file.c_str());

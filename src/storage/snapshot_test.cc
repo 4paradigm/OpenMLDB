@@ -22,6 +22,8 @@
 #include <time.h>
 #include "base/strings.h"
 #include "base/file_util.h"
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 DECLARE_string(db_root_path);
 
@@ -42,22 +44,15 @@ inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
 }
 
-int GetFileContent(const std::string file, std::string& value) {
-    FILE* fd_read = fopen(file.c_str(), "r");
-    if (fd_read == NULL) {
-        return -1;
-    }
-	value.clear();
-	char buffer[1024];
-	while (!feof(fd_read)) {
-		if (fgets(buffer, 1024, fd_read) == NULL && !feof(fd_read)) {
-			fclose(fd_read);
-			return -1;
-		}
-		value.append(buffer);
+int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
+    int fd = open(file.c_str(), O_RDONLY);
+	if (fd < 0) {
+		return -1;
 	}
-	fclose(fd_read);
-    return 0;
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    google::protobuf::TextFormat::Parse(&fileInput, manifest);
+	return 0;
 }
 
 TEST_F(SnapshotTest, Recover) {
@@ -108,30 +103,21 @@ TEST_F(SnapshotTest, RecordOffset) {
     snapshot.Init();
     uint64_t offset = 1122;
     uint64_t key_count = 3000;
-    ::rtidb::api::LogEntry entry;
-    entry.set_log_index(offset);
-    std::string buffer;
-    entry.SerializeToString(&buffer);
     std::string snapshot_name = ::rtidb::base::GetNowTime() + ".sdb";
-    int ret = snapshot.RecordOffset(buffer, snapshot_name, key_count);
+    int ret = snapshot.RecordOffset(snapshot_name, key_count, offset);
     ASSERT_EQ(0, ret);
 	std::string value;
-	GetFileContent(snapshot_path + "MANIFEST", value);
 	::rtidb::api::Manifest manifest;
-	manifest.ParseFromString(value);
+	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
     sleep(1);
 
     std::string snapshot_name1 = ::rtidb::base::GetNowTime() + ".sdb";
     uint64_t key_count1 = 3001;
 	offset = 1124;
-    entry.set_log_index(offset);
-	buffer.clear();
-    entry.SerializeToString(&buffer);
-    ret = snapshot.RecordOffset(buffer, snapshot_name1, key_count1);
+    ret = snapshot.RecordOffset(snapshot_name1, key_count1, offset);
     ASSERT_EQ(0, ret);
-	GetFileContent(snapshot_path + "MANIFEST", value);
-	manifest.ParseFromString(value);
+	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
     ASSERT_EQ(2, manifest.snapshot_infos_size());
 	if (manifest.snapshot_infos(0).name() == snapshot_name) {

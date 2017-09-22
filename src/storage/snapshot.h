@@ -43,7 +43,7 @@ public:
 
     int MakeSnapshot();
 
-    int RecordOffset(const std::string& log_entry, const std::string& snapshot_name, uint64_t key_count);
+    int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset);
 
 private:
     uint32_t tid_;
@@ -51,7 +51,6 @@ private:
     uint64_t offset_;
     boost::atomic<bool> making_snapshot_;
     LogParts* log_part_;
-    ::rtidb::log::LogReader* log_reader_;
     WriteHandle* wh_;
     std::string snapshot_path_;
     std::string log_path_;
