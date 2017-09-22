@@ -15,10 +15,13 @@
 #include "boost/atomic.hpp"
 #include "storage/table.h"
 #include "log/log_writer.h"
+#include "log/sequential_file.h"
 
 using ::rtidb::api::LogEntry;
 namespace rtidb {
 namespace storage {
+
+using ::rtidb::log::WriteHandle;
 
 typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
 
@@ -26,7 +29,7 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultCompar
 class Snapshot {
 
 public:
-    Snapshot(uint32_t tid, uint32_t pid);
+    Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part);
 
     ~Snapshot();
 
@@ -49,8 +52,9 @@ private:
     boost::atomic<bool> making_snapshot_;
     LogParts* log_part_;
     ::rtidb::log::LogReader* log_reader_;
-    ::rtidb::log::WriteHandle* wh_;
+    WriteHandle* wh_;
     std::string snapshot_path_;
+    std::string log_path_;
 };
 
 

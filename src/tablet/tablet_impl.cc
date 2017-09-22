@@ -886,17 +886,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     table->SetTerm(request->term());
     table->SetTableStat(::rtidb::storage::kNormal);
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
-    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(request->tid(), request->pid());
-    bool ok = snapshot->Init();
-    if (!ok) {
-        LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
-        table->Release();
-        table->UnRef();
-        response->set_code(1);
-        response->set_msg("fail to init snapshot");
-        return;
-
-    }
     LogReplicator* replicator = NULL;
     if (table->IsLeader() && table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
@@ -904,14 +893,14 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
         replicator = new LogReplicator(table_binlog_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
     }
     if (replicator == NULL) {
-        tables_[request->tid()].insert(std::make_pair(request->pid(), table));
-        snapshots_[request->tid()].insert(std::make_pair(request->pid(), snapshot));
-        response->set_code(0);
-        response->set_msg("ok");
+        table->Release();
+        table->UnRef();
+        response->set_code(-1);
+        response->set_msg("fail create replicator for table");
         return;
     }
     replicator->Ref();
-    ok = replicator->Init();
+    bool ok = replicator->Init();
     if (!ok) {
         LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
         // clean memory
@@ -919,8 +908,19 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
         table->UnRef();
         replicator->UnRef();
         response->set_code(-1);
-        response->set_msg("fail create replicator for table");
+        response->set_msg("fail init replicator for table");
         return;
+    }
+    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(request->tid(), request->pid(), replicator->GetLogPart());
+    ok = snapshot->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
+        table->Release();
+        table->UnRef();
+        response->set_code(-1);
+        response->set_msg("fail to init snapshot");
+        return;
+
     }
     replicator->MatchLogOffset();
     tables_[request->tid()].insert(std::make_pair(request->pid(), table));

@@ -104,6 +104,10 @@ bool LogReplicator::Init() {
     return true;
 }
 
+LogParts* LogReplicator::GetLogPart() {
+    return logs_;
+}
+
 void LogReplicator::SetOffset(uint64_t offset) {
     log_offset_.store(offset, boost::memory_order_relaxed);
 }

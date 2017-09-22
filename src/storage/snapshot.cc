@@ -27,18 +27,28 @@ namespace storage {
 const uint32_t MAX_LINE = 1024;
 const std::string MANIFEST = "MANIFEST";
 
-Snapshot::Snapshot(uint32_t tid, uint32_t pid):tid_(tid), pid_(pid),
-     offset_(0) {}
+Snapshot::Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pid_(pid),
+     log_part_(log_part) {
+    offset_ = 0;
+}
 
-Snapshot::~Snapshot() {}
+Snapshot::~Snapshot() {
+    delete log_reader_;
+}
 
 bool Snapshot::Init() {
     snapshot_path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_) + "/snapshot/";
-    bool ok = ::rtidb::base::MkdirRecur(snapshot_path_);
-    if (!ok) {
+    log_path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_) + "/binlog/";
+    if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
         LOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
         return false;
     }
+    if (!::rtidb::base::MkdirRecur(log_path_)) {
+        LOG(WARNING, "fail to create db meta path %s", log_path_.c_str());
+        return false;
+    }
+    log_reader_ = new ::rtidb::log::LogReader(log_part_, log_path_);
+    making_snapshot_.store(false, boost::memory_order_release);
     return true;
 }
 
@@ -48,7 +58,7 @@ bool Snapshot::Recover(Table* table) {
 }
 
 int Snapshot::MakeSnapshot() {
-    /*if (making_snapshot_.load(boost::memory_order_acquire)) {
+    if (making_snapshot_.load(boost::memory_order_acquire)) {
         LOG(INFO, "snapshot is doing now!");
         return 0;
     }
@@ -60,7 +70,7 @@ int Snapshot::MakeSnapshot() {
         LOG(WARNING, "fail to create file %s", full_path.c_str());
         return -1;
     }
-    wh_ = new ::rtidb::log::WriteHandle(snapshot_name, fd);
+    wh_ = new WriteHandle(snapshot_name, fd);
     
     std::string buffer;
     std::string last_record;
@@ -77,7 +87,7 @@ int Snapshot::MakeSnapshot() {
                 break;
             }
             write_count++;
-            if (record.empty()) {
+            if (!record.empty()) {
                 last_record = record.ToString(); 
             }
         } else if (status.IsEof()) {
@@ -96,8 +106,8 @@ int Snapshot::MakeSnapshot() {
         wh_ = NULL;
     }
 
-    RecordOffset(last_record, write_count);
-    making_snapshot_.store(false, boost::memory_order_release);*/
+    RecordOffset(last_record, snapshot_name, write_count);
+    making_snapshot_.store(false, boost::memory_order_release);
     return 0;
 }
 
@@ -109,39 +119,46 @@ int Snapshot::RecordOffset(const std::string& log_entry,
         return -1;
     }
     offset_ = entry.log_index();
+    LOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
+                offset_, snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
+    FILE* fd_read = fopen(full_path.c_str(), "r");
+    ::rtidb::api::Manifest manifest;
+    std::string manifest_info;
+    if (fd_read == NULL) {
+        LOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
+    } else {
+        char buffer[MAX_LINE];
+        while (!feof(fd_read)) {
+            if (fgets(buffer, MAX_LINE, fd_read) == NULL && !feof(fd_read)) {
+                LOG(WARNING, "read error. path[%s]", full_path.c_str());
+                fclose(fd_read);
+                return -1;
+            }
+            manifest_info.append(buffer);
+        }
+        fclose(fd_read);
+    }    
+    if (!manifest_info.empty() && !manifest.ParseFromString(manifest_info)) {
+        LOG(WARNING, "fail to parse");
+    }
+    manifest.set_offset(offset_);
+    ::rtidb::api::SnapshotInfo* snap_info = manifest.add_snapshot_infos();
+    snap_info->set_name(snapshot_name);
+    snap_info->set_count(key_count);
+    manifest_info.clear();
+    manifest.SerializeToString(&manifest_info);
+    LOG(DEBUG, "manifest_info[%s]", ::rtidb::base::DebugString(manifest_info).c_str());
     FILE* fd_write = fopen(tmp_file.c_str(), "w");
     if (fd_write == NULL) {
         LOG(WARNING, "fail to open file %s", tmp_file.c_str());
         return -1;
     }
-    char buffer[MAX_LINE];
-    snprintf(buffer, MAX_LINE, "offset:%lu\n", offset_);
     bool io_error = false;
-    if (fputs(buffer, fd_write) == EOF || 
-        fputs(std::string(snapshot_name + ":" + 
-            boost::lexical_cast<std::string>(key_count) + "\n").c_str(), fd_write) == EOF) {
+    if (fputs(manifest_info.c_str(), fd_write) == EOF) {
         LOG(WARNING, "write error. path[%s]", tmp_file.c_str());
         io_error = true;
-    }
-    FILE* fd_read = fopen(full_path.c_str(), "r");
-    if (fd_read == NULL) {
-        LOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
-    } else if (!io_error) {
-        while (!feof(fd_read)) {
-            if (fgets(buffer, MAX_LINE, fd_read) == NULL && !feof(fd_read)) {
-                LOG(WARNING, "read error. path[%s]", full_path.c_str());
-                io_error = true;
-                break;
-            }
-            if (fputs(buffer, fd_write) == EOF) {
-                LOG(WARNING, "write error. path[%s]", tmp_file.c_str());
-                io_error = true;
-                break;
-            }
-        }
-        fclose(fd_read);
     }
     if (!io_error && ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
         LOG(WARNING, "flush error. path[%s]", tmp_file.c_str());
