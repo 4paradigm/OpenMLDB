@@ -41,12 +41,16 @@ public:
     }
 
 private:
+
     // load single snapshot to table
     void RecoverSingleSnapshot(const std::string& path,
                                Table* table,
                                std::atomic<uint64_t>* g_succ_cnt,
                                std::atomic<uint64_t>* g_failed_cnt,
                                ::rtidb::base::CountDownLatch* latch);
+
+    void GetSnapshots(const std::vector<std::string>& files, 
+                      std::vector<std::string>& snapshots);
 private:
     uint32_t tid_;
     uint32_t pid_;

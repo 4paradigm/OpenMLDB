@@ -33,6 +33,7 @@ namespace rtidb {
 namespace storage {
 
 const std::string META_NAME="MANIFEST";
+const std::string SNAPSHOT_SUBFIX=".sdb";
 
 Snapshot::Snapshot(uint32_t tid, uint32_t pid):tid_(tid), pid_(pid),
      offset_(0), path_() {}
@@ -40,7 +41,7 @@ Snapshot::Snapshot(uint32_t tid, uint32_t pid):tid_(tid), pid_(pid),
 Snapshot::~Snapshot() {}
 
 bool Snapshot::Init() {
-    path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_);
+    path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_) + "/snapshots";
     bool ok = ::rtidb::base::MkdirRecur(path_);
     if (!ok) {
         LOG(WARNING, "fail to create db meta path %s", path_.c_str());
@@ -53,26 +54,34 @@ bool Snapshot::Recover(Table* table) {
     std::vector<std::string> file_list;
     int ok = ::rtidb::base::GetFileName(path_, file_list);
     if (ok != 0) {
-        LOG(WARNING, "fail to get snapshot list for tid %u, pid %u", tid_, pid_);
+        LOG(WARNING, "fail to get snapshot list from path %s for tid %u, pid %u", path_.c_str(), tid_, pid_);
         return false;
+    }
+    std::vector<std::string> snapshots;
+    GetSnapshots(file_list, snapshots);
+    if (snapshots.size() <= 0) {
+        LOG(INFO, "no snapshots to recover for tid %u, pid %u from path %s, file list size %u", tid_, pid_, 
+                path_.c_str(),
+                file_list.size());
+        return true;
     }
     std::atomic<uint64_t> g_succ_cnt;
     std::atomic<uint64_t> g_failed_cnt;
     ::baidu::common::ThreadPool pool(FLAGS_recover_table_thread_size);
-    for (uint32_t i = 0; i <= file_list.size() / FLAGS_recover_table_thread_size; i++) {
+    for (uint32_t i = 0; i <= snapshots.size() / FLAGS_recover_table_thread_size; i++) {
         uint32_t start = i;
         uint32_t end = (i + 1) * FLAGS_recover_table_thread_size;
-        if (end > file_list.size()) {
-            end = file_list.size();
+        if (end > snapshots.size()) {
+            end = snapshots.size();
         }
         ::rtidb::base::CountDownLatch latch(end - start);
         for (uint32_t j = start; j < end; j++) {
-            pool.AddTask(boost::bind(&Snapshot::RecoverSingleSnapshot, this, file_list[j], table,
+            pool.AddTask(boost::bind(&Snapshot::RecoverSingleSnapshot, this, snapshots[j], table,
                         &g_succ_cnt, &g_failed_cnt, &latch));
         }
         while (latch.GetCount() > 0) {
             latch.TimeWait(8000);
-            LOG(INFO, "[Recover] progress stat: success count %lu, failed count %lu", 
+            LOG(INFO, "[Recover] progressing stat: success count %lu, failed count %lu", 
                     g_succ_cnt.load(std::memory_order_relaxed),
                     g_failed_cnt.load(std::memory_order_relaxed));
         }
@@ -81,6 +90,26 @@ bool Snapshot::Recover(Table* table) {
                     g_succ_cnt.load(std::memory_order_relaxed),
                     g_failed_cnt.load(std::memory_order_relaxed));
     return true;
+}
+
+void Snapshot::GetSnapshots(const std::vector<std::string>& files,
+                            std::vector<std::string>& snapshots) {
+    for (uint32_t i = 0; i < files.size(); i++) {
+        const std::string& path = files[i];
+        // check subfix .sdb
+        if (path.length() <= SNAPSHOT_SUBFIX.length()) {
+            LOG(DEBUG, "not valid snapshot %s", path.c_str());
+            continue;
+        }
+        std::string subfix = path.substr(path.length() - SNAPSHOT_SUBFIX.length(),
+                                         std::string::npos);
+        if (subfix != SNAPSHOT_SUBFIX) {
+            LOG(DEBUG, "not valid snapshot %s", path.c_str());
+            continue;
+        }
+        snapshots.push_back(path);
+        LOG(DEBUG, "valid snapshot %s", path.c_str());
+    }
 }
 
 void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table, 
@@ -137,6 +166,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table,
             }
             table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
         }
+        // will close the fd atomic
         delete seq_file;
         if (g_succ_cnt) {
             g_succ_cnt->fetch_add(succ_cnt, std::memory_order_relaxed);
