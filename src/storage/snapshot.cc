@@ -156,8 +156,8 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
     snap_info->set_name(snapshot_name);
     snap_info->set_count(key_count);
     manifest_info.clear();
-    google::protobuf::TextFormat::Printer printer;
-    printer.PrintToString(manifest, &manifest_info);
+
+    google::protobuf::TextFormat::PrintToString(manifest, &manifest_info);
     FILE* fd_write = fopen(tmp_file.c_str(), "w");
     if (fd_write == NULL) {
         LOG(WARNING, "fail to open file %s", tmp_file.c_str());
