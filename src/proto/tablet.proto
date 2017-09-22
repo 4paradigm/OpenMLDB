@@ -37,6 +37,16 @@ enum TTLType {
     kLatestTime = 3;
 }
 
+message SnapshotInfo {
+    optional string name = 1;
+    optional uint64 count = 2;
+}
+
+message Manifest {
+    optional uint64 offset = 1;
+    repeated SnapshotInfo snapshot_infos = 2;
+}
+
 message PutRequest {
 	// the prefix key
 	optional string pk = 1;
