@@ -23,6 +23,11 @@ namespace storage {
 
 typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
 
+struct RecoverStat {
+    uint64_t succ_cnt;
+    uint64_t failed_cnt;
+};
+
 
 // table snapshot
 class Snapshot {
@@ -34,7 +39,7 @@ public:
 
     bool Init();
 
-    bool Recover(Table* table);
+    bool Recover(Table* table, RecoverStat& stat);
 
     inline uint64_t GetOffset() {
         return offset_.load(boost::memory_order_relaxed);

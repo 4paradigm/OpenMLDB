@@ -63,7 +63,6 @@ TEST_F(SnapshotTest, Recover) {
         Slice sval(val.c_str(), val.size());
         Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
-        
         entry.set_pk("test0");
         entry.set_ts(9528);
         entry.set_value("test2");
@@ -134,7 +133,24 @@ TEST_F(SnapshotTest, Recover) {
     table->Init();
     Snapshot snapshot(1, 1);
     ASSERT_TRUE(snapshot.Init());
-    snapshot.Recover(table);
+    RecoverStat rstat;
+    ASSERT_TRUE(snapshot.Recover(table, rstat));
+    ASSERT_EQ(4, rstat.succ_cnt);
+    ASSERT_EQ(0, rstat.failed_cnt);
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("test3", ticket);
+    it->Seek(9528);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(9528, it->GetKey());
+    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("test2", value2_str);
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(9527, it->GetKey());
+    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("test1", value3_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
     table->UnRef();
 }
 

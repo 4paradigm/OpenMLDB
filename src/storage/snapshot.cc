@@ -50,7 +50,7 @@ bool Snapshot::Init() {
     return true;
 }
 
-bool Snapshot::Recover(Table* table) {
+bool Snapshot::Recover(Table* table, RecoverStat& stat) {
     std::vector<std::string> file_list;
     int ok = ::rtidb::base::GetFileName(path_, file_list);
     if (ok != 0) {
@@ -65,8 +65,8 @@ bool Snapshot::Recover(Table* table) {
                 file_list.size());
         return true;
     }
-    std::atomic<uint64_t> g_succ_cnt;
-    std::atomic<uint64_t> g_failed_cnt;
+    std::atomic<uint64_t> g_succ_cnt(0);
+    std::atomic<uint64_t> g_failed_cnt(0);
     ::baidu::common::ThreadPool pool(FLAGS_recover_table_thread_size);
     for (uint32_t i = 0; i <= snapshots.size() / FLAGS_recover_table_thread_size; i++) {
         uint32_t start = i;
@@ -89,6 +89,8 @@ bool Snapshot::Recover(Table* table) {
     LOG(INFO, "[Recover] progress done stat: success count %lu, failed count %lu", 
                     g_succ_cnt.load(std::memory_order_relaxed),
                     g_failed_cnt.load(std::memory_order_relaxed));
+    stat.succ_cnt = g_succ_cnt.load(std::memory_order_relaxed);
+    stat.failed_cnt = g_failed_cnt.load(std::memory_order_relaxed);
     return true;
 }
 
@@ -142,7 +144,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table,
             ::rtidb::base::Slice record;
             ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
-                consumed = ::baidu::common::timer::now_time();
+                consumed = ::baidu::common::timer::now_time() - consumed;
                 LOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                         path.c_str(), tid_, pid_, succ_cnt, failed_cnt, consumed);
                 break;
