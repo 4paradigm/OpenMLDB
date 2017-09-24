@@ -85,7 +85,7 @@ void LogReplicator::SyncToDisk() {
 bool LogReplicator::Init() {
     rpc_client_ = new ::rtidb::RpcClient();
     logs_ = new LogParts(12, 4, scmp);
-    log_path_ = path_ + "/logs/";
+    log_path_ = path_ + "/binlog/";
     if (!::rtidb::base::MkdirRecur(log_path_)) {
        LOG(WARNING, "fail to log dir %s", log_path_.c_str());
        return false;

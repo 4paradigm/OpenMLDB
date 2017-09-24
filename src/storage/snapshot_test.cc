@@ -55,6 +55,26 @@ int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
 	return 0;
 }
 
+bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, 
+			uint32_t& binlog_index, uint64_t offset) {
+    if (*wh != NULL) {
+        (*wh)->EndLog();
+        delete *wh;
+        *wh = NULL;
+    }
+    std::string name = ::rtidb::base::FormatToString(binlog_index, 10) + ".log";
+    std::string full_path = log_path + "/" + name;
+    FILE* fd = fopen(full_path.c_str(), "ab+");
+    if (fd == NULL) {
+        LOG(WARNING, "fail to create file %s", full_path.c_str());
+        return false;
+    }
+    logs->Insert(binlog_index, offset);
+    *wh = new WriteHandle(name, fd);
+    binlog_index++;
+    return true;
+}
+
 TEST_F(SnapshotTest, Recover) {
 }
 
@@ -63,29 +83,37 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     Snapshot snapshot(1, 2, log_part);
     snapshot.Init();
     uint64_t offset = 0;
-    int binlog_index = 0;
-    log_part->Insert(binlog_index, offset);
+    uint32_t binlog_index = 0;
 	std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
 	std::string snapshot_path = FLAGS_db_root_path + "/1_2/snapshot/";
-    std::string name = ::rtidb::base::FormatToString(0, 10) + ".log";
-    std::string full_path = log_path + "/" + name;
-    FILE* fd = fopen(full_path.c_str(), "ab+");
-    if (fd == NULL) {
-        printf("open file[%s] failed!\n", full_path.c_str());
-        return;
-    }
-    WriteHandle* wh_ = new WriteHandle(name, fd);
-    int count = 10;
-    while (count--) {
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    int count = 0;
+    for (; count < 10; count++) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
-        entry.set_pk("11234");
+        std::string key = "key" + boost::lexical_cast<std::string>(count);
+        entry.set_pk(key);
         entry.set_ts(count);
         entry.set_value("value");
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
-        ::rtidb::base::Status status = wh_->Write(slice);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    for (; count < 30; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + boost::lexical_cast<std::string>(count);
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
         offset++;
     }
     
@@ -95,6 +123,20 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
     ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+
+    std::string full_path = snapshot_path + "MANIFEST";
+    int fd = open(full_path.c_str(), O_RDONLY);
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    ::rtidb::api::Manifest manifest;
+    google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    ASSERT_EQ(29, manifest.offset());
+    ASSERT_EQ(1, manifest.snapshot_infos_size());
+    ASSERT_EQ(29, manifest.snapshot_infos(0).count());
+
 }
 
 TEST_F(SnapshotTest, RecordOffset) {

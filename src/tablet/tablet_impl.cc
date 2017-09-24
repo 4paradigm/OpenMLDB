@@ -784,7 +784,7 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
     table->Ref();
     table->SetTerm(request->term());
     table->SetTableStat(::rtidb::storage::kLoading);
-    std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
+    std::string table_binlog_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
     if (table->IsLeader() && table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
@@ -885,7 +885,7 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     table->Ref();
     table->SetTerm(request->term());
     table->SetTableStat(::rtidb::storage::kNormal);
-    std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
+    std::string table_binlog_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
     if (table->IsLeader() && table->GetWal()) {
         replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
