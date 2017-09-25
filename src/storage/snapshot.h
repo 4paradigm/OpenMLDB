@@ -43,6 +43,8 @@ public:
 
     int MakeSnapshot();
 
+    int GetSnapshotRecord(::rtidb::api::Manifest& manifest);
+
     int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset);
 
 private:

@@ -134,8 +134,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ::rtidb::api::Manifest manifest;
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     ASSERT_EQ(29, manifest.offset());
-    ASSERT_EQ(1, manifest.snapshot_infos_size());
-    ASSERT_EQ(29, manifest.snapshot_infos(0).count());
+    ASSERT_EQ(29, manifest.count());
 
 }
 
@@ -161,14 +160,7 @@ TEST_F(SnapshotTest, RecordOffset) {
     ASSERT_EQ(0, ret);
 	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
-    ASSERT_EQ(2, manifest.snapshot_infos_size());
-	if (manifest.snapshot_infos(0).name() == snapshot_name) {
-    	ASSERT_EQ(key_count, manifest.snapshot_infos(0).count());
-    	ASSERT_EQ(key_count1, manifest.snapshot_infos(1).count());
-	} else {
-    	ASSERT_EQ(key_count, manifest.snapshot_infos(1).count());
-    	ASSERT_EQ(key_count1, manifest.snapshot_infos(0).count());
-	}	
+    ASSERT_EQ(key_count1, manifest.count());
 }
 
 
