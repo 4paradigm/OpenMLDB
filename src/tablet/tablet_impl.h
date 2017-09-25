@@ -111,6 +111,11 @@ public:
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
             Closure* done);
+
+    void MakeSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom
@@ -150,11 +155,8 @@ private:
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
-    bool MakeSnapshot(uint32_t tid, uint32_t pid,
-                      const std::string& entry,
-                      const std::string& pk,
-                      uint64_t offset,
-                      uint64_t ts);
+    void MakeSnapshotInternal(uint32_t tid, uint32_t pid);
+
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
                        const std::vector<std::string>& replicas);
     void CheckZkClient();
@@ -167,6 +169,7 @@ private:
     Snapshots snapshots_;
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
+    ThreadPool task_pool_;
 };
 
 

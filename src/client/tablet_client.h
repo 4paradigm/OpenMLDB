@@ -73,6 +73,8 @@ public:
 
     bool LoadSnapshot(uint32_t tid, uint32_t pid);
 
+    bool MakeSnapshot(uint32_t tid, uint32_t pid);
+
     bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl);
 
     bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl,
