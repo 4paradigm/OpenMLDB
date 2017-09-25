@@ -81,6 +81,7 @@ int Snapshot::MakeSnapshot() {
     
     std::string buffer;
     uint64_t write_count = 0;
+    bool has_error = false;
     while (1) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -90,6 +91,7 @@ int Snapshot::MakeSnapshot() {
             if (!entry.ParseFromString(record.ToString())) {
                 LOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]", 
                         ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                has_error = true;        
                 break;
             }
             if (entry.log_index() <= cur_offset) {
@@ -99,6 +101,7 @@ int Snapshot::MakeSnapshot() {
             if (!status.ok()) {
                 LOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
                 tmp_file_path.c_str(), status.ToString().c_str());
+                has_error = true;        
                 break;
             }
             cur_offset = entry.log_index();
@@ -110,6 +113,7 @@ int Snapshot::MakeSnapshot() {
             break;
         } else {
             LOG(WARNING, "fail to get record. status is %s", status.ToString().c_str());
+            has_error = true;        
             break;
         }
     }
@@ -119,17 +123,31 @@ int Snapshot::MakeSnapshot() {
         wh = NULL;
     }
     int ret = 0;
-    if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
-        if (RecordOffset(snapshot_name, write_count, cur_offset) == 0) {
-            LOG(INFO, "make snapshot[%s] success. update offset from[%lu] to [%lu]", 
-                      snapshot_name.c_str(), offset_, cur_offset);
-            offset_ = cur_offset;
+    if (has_error) {
+        if (unlink(tmp_file_path.c_str()) < 0) {
+            LOG(WARNING, "delete file [%s] failed", tmp_file_path.c_str());
+        }
+        ret = -1;
+    } else {
+        if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
+            if (RecordOffset(snapshot_name, write_count, cur_offset) == 0) {
+                LOG(INFO, "make snapshot[%s] success. update offset from[%lu] to [%lu]", 
+                          snapshot_name.c_str(), offset_, cur_offset);
+                offset_ = cur_offset;
+            } else {
+                LOG(WARNING, "RecordOffset failed. delete snapshot file[%s]", full_path.c_str());
+                if (unlink(full_path.c_str()) < 0) {
+                    LOG(WARNING, "delete file [%s] failed", full_path.c_str());
+                }
+                ret = -1;
+            }
         } else {
+            LOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
+            if (unlink(tmp_file_path.c_str()) < 0) {
+                LOG(WARNING, "delete file [%s] failed", tmp_file_path.c_str());
+            }
             ret = -1;
         }
-    } else {
-        LOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
-        ret = -1;
     }
     making_snapshot_.store(false, boost::memory_order_release);
     return ret;
@@ -176,6 +194,9 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
     if (!io_error && rename(tmp_file.c_str(), full_path.c_str()) == 0) {
         LOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
         return 0;
+    }
+    if (unlink(tmp_file.c_str()) < 0) {
+        LOG(WARNING, "delete tmp file[%s] failed", tmp_file.c_str());
     }
     return -1;
 }
