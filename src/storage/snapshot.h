@@ -51,7 +51,6 @@ private:
     uint64_t offset_;
     boost::atomic<bool> making_snapshot_;
     LogParts* log_part_;
-    WriteHandle* wh_;
     std::string snapshot_path_;
     std::string log_path_;
 };

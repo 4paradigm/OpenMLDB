@@ -74,7 +74,7 @@ int Snapshot::MakeSnapshot() {
         making_snapshot_.store(false, boost::memory_order_release);
         return -1;
     }
-    wh_ = new WriteHandle(snapshot_name_tmp, fd);
+    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
@@ -95,7 +95,7 @@ int Snapshot::MakeSnapshot() {
             if (entry.log_index() <= cur_offset) {
                 continue;
             }
-            ::rtidb::base::Status status = wh_->Write(record);
+            ::rtidb::base::Status status = wh->Write(record);
             if (!status.ok()) {
                 LOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
                 tmp_file_path.c_str(), status.ToString().c_str());
@@ -113,10 +113,10 @@ int Snapshot::MakeSnapshot() {
             break;
         }
     }
-    if (wh_ != NULL) {
-        wh_->EndLog();
-        delete wh_;
-        wh_ = NULL;
+    if (wh != NULL) {
+        wh->EndLog();
+        delete wh;
+        wh = NULL;
     }
     int ret = 0;
     if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
