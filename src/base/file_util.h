@@ -74,6 +74,28 @@ inline static int GetSubDir(const std::string& path, std::vector<std::string>& s
     return 0;
 }
 
+inline static int GetFileName(const std::string& path, std::vector<std::string>& file_vec) {
+    if (path.empty()) {
+        return -1;
+    }
+    DIR *dir = opendir(path.c_str());
+    if (dir == NULL) {
+        return -1;
+    }
+    struct dirent *ptr;
+    while ((ptr = readdir(dir)) != NULL) {
+        if(strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+            continue;
+        } else if (ptr->d_type == DT_DIR) {
+            GetFileName(path + "/" + ptr->d_name, file_vec);
+        } else if (ptr->d_type == DT_REG) {
+            file_vec.push_back(path + "/" + ptr->d_name);
+        }
+    }
+    closedir(dir);
+    return 0;
+}
+
 }
 }
 

@@ -14,6 +14,17 @@
 namespace rtidb {
 namespace base {
 
+struct DefaultComparator {
+    int operator()(const uint64_t a, const uint64_t b) const {
+        if (a > b) {
+            return -1;
+        }else if (a == b) {
+            return 0;
+        }
+        return 1;
+    }
+};
+
 // Skiplist node , a thread safe structure 
 template<class K, class V>
 class Node {

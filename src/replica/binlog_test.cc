@@ -1,8 +1,8 @@
 //
-// snapshot_replica_test.cc
+// binlog_test.cc
 // Copyright (C) 2017 4paradigm.com
 // Author denglong
-// Date 2017-08-16
+// Date 2017-09-01
 //
 
 #include "replica/log_replicator.h"
@@ -41,19 +41,23 @@ using ::rtidb::tablet::TabletImpl;
 
 DECLARE_string(binlog_root_path);
 DECLARE_string(snapshot_root_path);
+DECLARE_int32(binlog_single_file_max_size);
+DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace replica {
 
-class SnapshotReplicaTest : public ::testing::Test {
+class BinlogTest : public ::testing::Test {
 
 public:
-    SnapshotReplicaTest() {}
+    BinlogTest() {}
 
-    ~SnapshotReplicaTest() {}
+    ~BinlogTest() {}
 };
 
-TEST_F(SnapshotReplicaTest, AddReplicate) {
+TEST_F(BinlogTest, DeleteBinlog) {
+    FLAGS_binlog_single_file_max_size = 1;
+    FLAGS_binlog_delete_interval = 1;
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
@@ -78,60 +82,23 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     std::vector<std::string> endpoints;
     bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
     ASSERT_TRUE(ret);
-
-    std::string end_point = "127.0.0.1:18530";
-    ret = client.AddReplica(tid, pid, end_point);
-    ASSERT_TRUE(ret);
-    sleep(1);
-
-    ::rtidb::api::TableStatus table_status;
-    if (client.GetTableStatus(tid, pid, table_status) < 0) {
-        ASSERT_TRUE(0);
-    }
-    ASSERT_EQ(::rtidb::api::kTableNormal, table_status.state());
-
-    ret = client.DelReplica(tid, pid, end_point);
-    ASSERT_TRUE(ret);
-}
-
-TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    tablet->Init();
-    sofa::pbrpc::Servlet webservice =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register tablet rpc service");
-       exit(1);
-    }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
-    std::string leader_point = "127.0.0.1:18529";
-    if (!rpc_server.Start(leader_point)) {
-        LOG(WARNING, "fail to listen port %s", leader_point.c_str());
-        exit(1);
-    }
-
-    uint32_t tid = 1;
-    uint32_t pid = 123;
-
-    ::rtidb::client::TabletClient client(leader_point);
-    std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
-    ASSERT_TRUE(ret);
+    
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    ret = client.Put(tid, pid, "testkey", cur_time, "value1");
-    ASSERT_TRUE(ret);
-
-    uint32_t count = 0;
-    while (count < 10) {
-        count++;
-        char key[100];
-        snprintf(key, 100, "test%u", count);
-        client.Put(tid, pid, key, cur_time, key);
+    int count = 1000;
+    while(count) {
+        char key[20];
+        snprintf(key, 20, "testkey_%d", count);
+        ret = client.Put(tid, pid, key, cur_time, std::string(10 * 1024, 'a'));
+        count--;
     }
+    sleep(2);
+    std::vector<std::string> vec;
+    ::rtidb::base::GetFileName(FLAGS_binlog_root_path, vec);
+    //ASSERT_EQ(1, vec.size());
+    char file_name[100];
+    snprintf(file_name, 100, "%s/%u_%u/%s", FLAGS_binlog_root_path.c_str(), tid, pid, "logs/0000000004.log");
+    //ASSERT_STREQ(file_name, vec[0].c_str());
 
-    // TODO. test new add replicate case
 }
 
 }
@@ -144,7 +111,7 @@ inline std::string GenRand() {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_snapshot_root_path = "/tmp/" + ::GenRand();
     FLAGS_binlog_root_path = "/tmp/" + ::GenRand();

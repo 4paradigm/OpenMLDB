@@ -9,14 +9,15 @@
 #ifndef RTIDB_TABLET_IMPL_H
 #define RTIDB_TABLET_IMPL_H
 
-#include <map>
-#include "proto/tablet.pb.h"
-#include "storage/table.h"
-#include "storage/snapshot.h"
 #include "mutex.h"
-#include "thread_pool.h"
-#include "tablet/tablet_metric.h"
+#include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
+#include "storage/snapshot.h"
+#include "storage/table.h"
+#include "tablet/tablet_metric.h"
+#include "thread_pool.h"
+#include "zk/zk_client.h"
+#include <map>
 #include <sofa/pbrpc/pbrpc.h>
 
 using ::google::protobuf::RpcController;
@@ -28,13 +29,14 @@ using ::rtidb::storage::Table;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
+using ::rtidb::zk::ZkClient;
 
 namespace rtidb {
 namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, Table*> > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, LogReplicator*> > Replicators;
-typedef std::map<uint32_t, std::map<uint32_t, Snapshot*> > Snapshots;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
 class TabletImpl : public ::rtidb::api::TabletServer {
 
@@ -43,7 +45,7 @@ public:
 
     ~TabletImpl();
 
-    void Init();
+    bool Init();
 
     void Put(RpcController* controller,
              const ::rtidb::api::PutRequest* request,
@@ -76,8 +78,13 @@ public:
             Closure* done);
 
     void AddReplica(RpcController* controller, 
-            const ::rtidb::api::AddReplicaRequest* request,
+            const ::rtidb::api::ReplicaRequest* request,
             ::rtidb::api::AddReplicaResponse* response,
+            Closure* done);
+
+    void DelReplica(RpcController* controller, 
+            const ::rtidb::api::ReplicaRequest* request,
+            ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
     void AppendEntries(RpcController* controller,
@@ -95,11 +102,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done); 
 
-    void LoadSnapshot(RpcController* controller,
+    void RecoverSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done); 
-    
+
     void ChangeRole(RpcController* controller,
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
@@ -118,8 +125,8 @@ private:
 
     ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
     ::rtidb::replica::LogReplicator* GetReplicatorUnLock(uint32_t tid, uint32_t pid);
-    ::rtidb::storage::Snapshot* GetSnapshot(uint32_t tid, uint32_t pid);
-    ::rtidb::storage::Snapshot* GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
+    std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
     void ShowTables(const sofa::pbrpc::HTTPRequest& request,
@@ -148,13 +155,9 @@ private:
                       const std::string& pk,
                       uint64_t offset,
                       uint64_t ts);
-    bool SnapshotTTL(uint32_t tid, uint32_t pid, 
-            const std::vector<std::pair<std::string, uint64_t> >& keys);                  
-    int LoadSnapshot();
-    int LoadSnapshot(uint32_t tid, uint32_t pid);
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
                        const std::vector<std::string>& replicas);
-
+    void CheckZkClient();
 private:
     Tables tables_;
     Mutex mu_;
@@ -162,6 +165,8 @@ private:
     TabletMetric* metric_;
     Replicators replicators_;
     Snapshots snapshots_;
+    ZkClient* zk_client_;
+    ThreadPool keep_alive_pool_;
 };
 
 

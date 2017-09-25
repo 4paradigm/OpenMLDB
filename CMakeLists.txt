@@ -26,6 +26,12 @@ if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
+option(LOG_FILE_PATH_ENABLE "Enable LOG FILE PATH ENABLE" OFF) 
+#message("LOG_FILE_PATH_ENABLE option is ${LOG_FILE_PATH_ENABLE}")
+if (LOG_FILE_PATH_ENABLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILE__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"' -Wno-builtin-macro-redefined")
+endif()
+
 configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h.in"
     "${PROJECT_SOURCE_DIR}/src/config.h")

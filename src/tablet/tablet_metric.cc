@@ -65,7 +65,7 @@ void TabletMetric::IncrThroughput(const uint64_t& put_count,
 }
 
 void TabletMetric::CollectThroughput() {
-    uint64_t now = ::baidu::common::timer::now_time();
+    uint64_t now = ::baidu::common::timer::now_time() * 1000;
     char buffer[8];
     uint64_t current_put_count = throughput_[0].load(boost::memory_order_relaxed);
     uint64_t put_qps = (current_put_count - last_throughput_[0]) / 60;
@@ -101,7 +101,7 @@ void TabletMetric::Collect() {
 
 void TabletMetric::CollectMemoryStat() {
 #ifdef TCMALLOC_ENABLE
-    uint64_t now = ::baidu::common::timer::now_time();
+    uint64_t now = ::baidu::common::timer::now_time() * 1000;
     char buffer[4];
     size_t allocated = 0;
     MallocExtension* extension_ = MallocExtension::instance();

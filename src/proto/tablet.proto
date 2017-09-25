@@ -18,6 +18,11 @@ enum TableState {
     kTablePaused = 4;
 }
 
+enum TabletState {
+    kTabletOffline = 1;
+    kTabletHealthy = 10;
+}
+
 enum TableType {
     // KV table 
     kKVTable = 1;
@@ -30,6 +35,16 @@ enum TTLType {
     kRelativeTime = 2;
     // keep the latest record
     kLatestTime = 3;
+}
+
+message SnapshotInfo {
+    optional string name = 1;
+    optional uint64 count = 2;
+}
+
+message Manifest {
+    optional uint64 offset = 1;
+    repeated SnapshotInfo snapshot_infos = 2;
 }
 
 message PutRequest {
@@ -128,7 +143,7 @@ message BatchGetResponse {
     optional bytes pairs = 3;
 }
 
-message AddReplicaRequest {
+message ReplicaRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string endpoint = 3;
@@ -259,9 +274,11 @@ service TabletServer {
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
-    rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
+    rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
+    rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
+    rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
 }

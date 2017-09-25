@@ -43,11 +43,19 @@ DECLARE_bool(enable_statdb);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_string(snapshot_root_path);
 
+// cluster config
+DECLARE_string(endpoint);
+DECLARE_string(zk_cluster);
+DECLARE_string(zk_root_path);
+DECLARE_int32(zk_session_timeout);
+DECLARE_int32(zk_keep_alive_check_interval);
+
 namespace rtidb {
 namespace tablet {
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
-    metric_(NULL), replicators_(), snapshots_(){}
+    metric_(NULL), replicators_(), snapshots_(), zk_client_(NULL),
+    keep_alive_pool_(1){}
 
 TabletImpl::~TabletImpl() {
     if (FLAGS_enable_statdb) {
@@ -62,8 +70,26 @@ TabletImpl::~TabletImpl() {
     }
 }
 
-void TabletImpl::Init() {
+bool TabletImpl::Init() {
     MutexLock lock(&mu_);
+    if (!FLAGS_zk_cluster.empty()) {
+        zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
+                FLAGS_endpoint, FLAGS_zk_root_path);
+        bool ok = zk_client_->Init();
+        if (!ok) {
+            LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
+            return false;
+        }
+        ok = zk_client_->Register();
+        if (!ok) {
+            LOG(WARNING, "fail to register tablet with endpoint %s", FLAGS_endpoint.c_str());
+            return false;
+        }
+        LOG(INFO, "tablet with endpoint %s register to zk cluster %s ok", FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
+        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+    }else {
+        LOG(INFO, "zk cluster disabled");
+    }
     if (FLAGS_enable_statdb) {
         // Create a dbstat table with tid = 0 and pid = 0
         Table* dbstat = new Table("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
@@ -83,6 +109,7 @@ void TabletImpl::Init() {
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
 #endif 
+    return true;
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -340,34 +367,6 @@ void TabletImpl::Scan(RpcController* controller,
     }
 }
 
-void TabletImpl::LoadSnapshot(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done) {
-    Snapshot* snapshot = GetSnapshot(request->tid(), request->pid());            
-    if (snapshot) {
-        snapshot->UnRef();
-        LOG(WARNING, "snapshot exisits! tid[%u] pid[%u]", 
-                    request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("snapshot exisits");
-        done->Run();
-        return;
-    }
-    if (LoadSnapshot(request->tid(), request->pid()) < 0) {
-        LOG(WARNING, "snapshot load failed! tid[%u] pid[%u]", 
-                    request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("snapshot load failed!");
-        done->Run();
-        return;
-
-    }
-    response->set_code(0);
-    response->set_msg("ok");
-    done->Run();
-}
-
 void TabletImpl::PauseSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -395,6 +394,41 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         return;
     }
     table->SetTableStat(::rtidb::storage::kPausing);
+    LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+               table->GetTableStat(), request->tid(), request->pid());
+    table->UnRef();
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
+
+void TabletImpl::RecoverSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL ||
+        !table->IsLeader()) {
+        if (table) {
+            table->UnRef();
+        }
+        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist or table is leader");
+        done->Run();
+        return;
+    }
+    if (table->GetTableStat() != ::rtidb::storage::kPaused) {
+        LOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
+                table->GetTableStat(), request->tid(), request->pid());
+        table->UnRef();
+        response->set_code(-2);
+        response->set_msg("table status is not kPaused");
+        done->Run();
+        return;
+    }
+    table->SetTableStat(::rtidb::storage::kNormal);
     LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
                table->GetTableStat(), request->tid(), request->pid());
     table->UnRef();
@@ -472,7 +506,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
 }
 
 void TabletImpl::AddReplica(RpcController* controller, 
-            const ::rtidb::api::AddReplicaRequest* request,
+            const ::rtidb::api::ReplicaRequest* request,
             ::rtidb::api::AddReplicaResponse* response,
             Closure* done) {
     Table* table = GetTable(request->tid(), request->pid());
@@ -487,15 +521,6 @@ void TabletImpl::AddReplica(RpcController* controller,
         response->set_msg("table not exist or table is leader");
         done->Run();
         return;
-    }
-    if (table->GetTableStat() != ::rtidb::storage::kPaused) {
-        table->UnRef();
-        response->set_code(-3);
-        response->set_msg("waiting for pause!");
-        LOG(WARNING,"table %d, pid %d is not paused!", request->tid(), request->pid());
-        done->Run();
-        return;
-
     }
     LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
     if (replicator == NULL) {
@@ -520,6 +545,46 @@ void TabletImpl::AddReplica(RpcController* controller,
     }  
     table->SetTableStat(::rtidb::storage::kNormal);
     table->UnRef();
+}
+
+void TabletImpl::DelReplica(RpcController* controller, 
+            const ::rtidb::api::ReplicaRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL ||
+        !table->IsLeader()) {
+        if (table) {
+            table->UnRef();
+        }
+        LOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist or table is leader");
+        done->Run();
+        return;
+    }
+    table->UnRef();
+    LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
+    if (replicator == NULL) {
+        response->set_code(-2);
+        response->set_msg("no replicator for table");
+        LOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
+        done->Run();
+        return;
+    }
+    bool ok = replicator->DelReplicateNode(request->endpoint());
+    replicator->UnRef();
+    if (ok) {
+        response->set_code(0);
+        response->set_msg("ok");
+        done->Run();
+    } else {
+        response->set_code(-3);
+        LOG(WARNING, "fail to del endpoint for table %d pid %d", request->tid(), request->pid());
+        response->set_msg("fail to del endpoint");
+        done->Run();
+    }  
 }
 
 void TabletImpl::AppendEntries(RpcController* controller,
@@ -617,24 +682,8 @@ bool TabletImpl::MakeSnapshot(uint32_t tid, uint32_t pid,
                               const std::string& pk,
                               uint64_t offset,
                               uint64_t ts) {
-    Snapshot* snapshot = GetSnapshot(tid, pid);
-    if (snapshot == NULL) {
-        return false;
-    }
-    bool ret = snapshot->Put(entry, offset, pk, ts);
-    snapshot->UnRef();
-    return ret;
-}
-
-bool TabletImpl::SnapshotTTL(uint32_t tid, uint32_t pid, 
-                            const std::vector<std::pair<std::string, uint64_t> >& keys) {
-    Snapshot* snapshot = GetSnapshot(tid, pid);
-    if (snapshot == NULL) {
-        return false;
-    }
-    bool ret = snapshot->BatchDelete(keys);
-    snapshot->UnRef();
-    return ret;
+    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+    return true;
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
@@ -659,19 +708,13 @@ void TabletImpl::LoadTable(RpcController* controller,
     {
         MutexLock lock(&mu_);
         Table* table = GetTableUnLock(tid, pid);
-        Snapshot* snapshot = GetSnapshotUnLock(tid, pid);
-        if (table == NULL && snapshot != NULL) {
-            snapshot->UnRef();
+        std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+        if (table == NULL && snapshot) {
             LoadTableInternal(request, response);
         } else {
             if (table) {
                 LOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
                 table->UnRef();
-            }
-            if (snapshot) {
-                snapshot->UnRef();
-            } else {
-                LOG(WARNING, "snapshot with tid[%u] and pid[%u] does not exist", tid, pid);
             }
             response->set_code(1);
             response->set_msg("table with tid and pid exists");
@@ -689,8 +732,8 @@ void TabletImpl::LoadTable(RpcController* controller,
         LOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
         return; 
     }
-    Snapshot* snapshot = GetSnapshot(tid, pid);
-    if (snapshot == NULL) {
+    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+    if (!snapshot) {
         table->UnRef();
         LOG(WARNING, "snapshot with tid %ld and pid %ld does not exist", tid, pid);
         return; 
@@ -698,17 +741,15 @@ void TabletImpl::LoadTable(RpcController* controller,
     LogReplicator* replicator = GetReplicator(request->tid(), request->pid());
     if (replicator == NULL) {
         table->UnRef();
-        snapshot->UnRef();
         LOG(WARNING, "replicator with tid %ld and pid %ld does not exist", tid, pid);
         return;
     }
-    snapshot->Recover(table);
+    // snapshot->Recover(table);
     table->SetTableStat(::rtidb::storage::kNormal);
     replicator->SetOffset(snapshot->GetOffset());
     // start replicate task
     replicator->MatchLogOffset();
     replicator->UnRef();
-    snapshot->UnRef();
     table->SchedGc();
     table->UnRef();
     if (ttl > 0) {
@@ -737,7 +778,7 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
                              endpoints, request->wal());
-    table->Init(boost::bind(&TabletImpl::SnapshotTTL, this, request->tid(), request->pid(), _1));
+    table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
@@ -746,13 +787,9 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
     LogReplicator* replicator = NULL;
     if (table->IsLeader() && table->GetWal()) {
-        replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), 
-                ReplicatorRole::kLeaderNode, table,
-                boost::bind(&TabletImpl::MakeSnapshot, this, request->tid(), request->pid(), _1, _2, _3, _4));
+        replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
     } else if (table->GetWal()) {
-        replicator = new LogReplicator(table_binlog_path, std::vector<std::string>(),
-                ReplicatorRole::kFollowerNode, table,
-                boost::bind(&TabletImpl::MakeSnapshot, this, request->tid(), request->pid(), _1, _2, _3, _4));
+        replicator = new LogReplicator(table_binlog_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
     }
     if (replicator) {
         replicator->Ref();
@@ -797,15 +834,14 @@ void TabletImpl::CreateTable(RpcController* controller,
     {
         MutexLock lock(&mu_);
         Table* table = GetTableUnLock(tid, pid);
-        Snapshot* snapshot = GetSnapshotUnLock(tid, pid);
-        if (table != NULL || snapshot != NULL) {
+        std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
+        if (table != NULL || snapshot) {
             if (table) {
                 LOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
                 table->UnRef();
             }
             if (snapshot) {
                 LOG(WARNING, "snapshot with tid[%u] and pid[%u] exists", tid, pid);
-                snapshot->UnRef();
             }
             response->set_code(1);
             response->set_msg("table with tid and pid exists");
@@ -843,21 +879,19 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
                              request->pid(), seg_cnt, 
                              request->ttl(), is_leader,
                              endpoints, request->wal());
-    table->Init(boost::bind(&TabletImpl::SnapshotTTL, this, request->tid(), request->pid(), _1));
+    table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
     table->Ref();
     table->SetTerm(request->term());
     table->SetTableStat(::rtidb::storage::kNormal);
     std::string table_binlog_path = FLAGS_binlog_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
-    Snapshot* snapshot = new Snapshot(request->tid(), request->pid(), 0);
-    snapshot->Ref();
+    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(request->tid(), request->pid());
     bool ok = snapshot->Init();
     if (!ok) {
         LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
         table->Release();
         table->UnRef();
-        snapshot->UnRef();
         response->set_code(1);
         response->set_msg("fail to init snapshot");
         return;
@@ -865,13 +899,9 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     }
     LogReplicator* replicator = NULL;
     if (table->IsLeader() && table->GetWal()) {
-        replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), 
-                ReplicatorRole::kLeaderNode, table,
-                boost::bind(&TabletImpl::MakeSnapshot, this, request->tid(), request->pid(), _1, _2, _3, _4));
+        replicator = new LogReplicator(table_binlog_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
     }else if(table->GetWal()) {
-        replicator = new LogReplicator(table_binlog_path, std::vector<std::string>(),
-                ReplicatorRole::kFollowerNode, table,
-                boost::bind(&TabletImpl::MakeSnapshot, this, request->tid(), request->pid(), _1, _2, _3, _4));
+        replicator = new LogReplicator(table_binlog_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
     }
     if (replicator == NULL) {
         tables_[request->tid()].insert(std::make_pair(request->pid(), table));
@@ -888,7 +918,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
         table->Release();
         table->UnRef();
         replicator->UnRef();
-        snapshot->UnRef();
         response->set_code(-1);
         response->set_msg("fail create replicator for table");
         return;
@@ -916,7 +945,6 @@ void TabletImpl::DropTable(RpcController* controller,
             request->pid());
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    Snapshot* snapshot = GetSnapshot(tid, pid);
     // do block other requests
     {
         MutexLock lock(&mu_);
@@ -935,11 +963,6 @@ void TabletImpl::DropTable(RpcController* controller,
         replicator->UnRef();
         LOG(INFO, "drop replicator for tid %d, pid %d", tid, pid);
     }
-    if (snapshot != NULL) {
-        snapshot->UnRef();
-        snapshot->UnRef();
-        LOG(INFO, "drop snapshot for tid %d, pid %d", tid, pid);
-    }
 }
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
@@ -952,24 +975,22 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
 }
 
-Snapshot* TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
+std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
     MutexLock lock(&mu_);
     return GetSnapshotUnLock(tid, pid);
 }
 
-Snapshot* TabletImpl::GetSnapshotUnLock(uint32_t tid, uint32_t pid) {
+std::shared_ptr<Snapshot> TabletImpl::GetSnapshotUnLock(uint32_t tid, uint32_t pid) {
     mu_.AssertHeld();
     Snapshots::iterator it = snapshots_.find(tid);
     if (it != snapshots_.end()) {
-        std::map<uint32_t, Snapshot*>::iterator tit = it->second.find(pid);
+        std::map<uint32_t, std::shared_ptr<Snapshot> >::iterator tit = it->second.find(pid);
         if (tit == it->second.end()) {
-            return NULL;
+            return std::shared_ptr<Snapshot>();
         }
-        Snapshot* snapshot = tit->second;
-        snapshot->Ref();
-        return snapshot;
+        return tit->second;
     }
-    return NULL;
+    return std::shared_ptr<Snapshot>();
 }
 
 LogReplicator* TabletImpl::GetReplicatorUnLock(uint32_t tid, uint32_t pid) {
@@ -1119,6 +1140,7 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
         response.content->Append(sb.GetString());
         return;
     }
+
     ::rtidb::storage::Ticket ticket;
     Table::Iterator* it = stat->NewIterator(pk, ticket);
     it->SeekToFirst();
@@ -1138,56 +1160,6 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     stat->UnRef();
 }
 
-int TabletImpl::LoadSnapshot() {
-    std::vector<std::string> sub_dir;
-    if (::rtidb::base::GetSubDir(FLAGS_snapshot_root_path, sub_dir) < 0) {
-        LOG(WARNING, "open dir[%s] failed!", FLAGS_snapshot_root_path.c_str());
-        return -1;
-    }
-    for (std::vector<std::string>::iterator iter = sub_dir.begin(); iter != sub_dir.end(); ++iter) {
-        std::vector<std::string> vec;
-        ::rtidb::base::SplitString(*iter, "_", &vec);
-        if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
-            LOG(DEBUG, "dir[%s] is not a snapshot dir!", iter->c_str());
-            continue;
-        }
-        uint32_t tid = boost::lexical_cast<uint32_t>(vec[0]);
-        uint32_t pid = boost::lexical_cast<uint32_t>(vec[1]);
-        if (LoadSnapshot(tid, pid) < 0) {
-            LOG(WARNING, "load snapshot faild! tid[%u] pid[%u]", tid, pid);
-        }
-    }
-    return 0;
-}
-
-int TabletImpl::LoadSnapshot(uint32_t tid, uint32_t pid) {
-    if (tid == 0 && pid == 0) {
-        LOG(DEBUG, "tid[%u] pid[%u] need not load", tid, pid);
-        return 0;
-    }
-    {
-        MutexLock lock(&mu_);
-        Snapshots::iterator iter = snapshots_.find(tid);
-        if (iter != snapshots_.end()) {
-            std::map<uint32_t, Snapshot*>::iterator pos = iter->second.find(pid);
-            if (pos != iter->second.end()) {
-                LOG(WARNING, "snapshot already exists! tid[%u] pid[%u]", tid, pid);
-                return -1;
-            }
-        } else {
-            snapshots_.insert(std::make_pair(tid, std::map<uint32_t, Snapshot*>()));
-        }
-        Snapshot* snapshot = new Snapshot(tid, pid, 0);
-        snapshot->Ref();
-        if (!snapshot->Init()) {
-            snapshot->UnRef();
-            return -1;
-        }
-        snapshots_[tid].insert(std::make_pair(pid, snapshot));
-    }
-    return 0;
-}
-
 void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
     sofa::pbrpc::HTTPResponse& response) {
 #ifdef TCMALLOC_ENABLE
@@ -1200,6 +1172,17 @@ void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
     response.content->Append(stat);
     response.content->Append("</pre></body></html>");
 #endif
+}
+
+void TabletImpl::CheckZkClient() {
+    if (!zk_client_->IsConnected()) {
+        bool ok = zk_client_->Reconnect();
+        if (ok) {
+            zk_client_->Register();
+        }
+    }
+    keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+
 }
 
 }
