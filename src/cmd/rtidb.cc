@@ -387,6 +387,19 @@ void HandleClientLoadSnapshot(const std::vector<std::string> parts, ::rtidb::cli
     }
 }
 
+void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad MakeSnapshot format" << std::endl;
+        return;
+    }
+    bool ok = client->MakeSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+    if (ok) {
+        std::cout << "MakeSnapshot ok" << std::endl;
+    } else {
+        std::cout << "Fail to MakeSnapshot" << std::endl;
+    }
+}
+
 void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad LoadTable format" << std::endl;
@@ -629,6 +642,8 @@ void StartClient() {
             HandleClientRecoverSnapshot(parts, &client);
         }else if (parts[0] == "loadsnapshot") {
             HandleClientLoadSnapshot(parts, &client);
+        }else if (parts[0] == "makesnapshot") {
+            HandleClientMakeSnapshot(parts, &client);
         }else if (parts[0] == "loadtable") {
             HandleClientLoadTable(parts, &client);
         }else if (parts[0] == "changerole") {

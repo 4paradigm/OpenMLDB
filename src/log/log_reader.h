@@ -13,7 +13,7 @@
 #define RTIDB_LOG_READER_H_
 
 #include <stdint.h>
-
+#include "base/skiplist.h"
 #include "log/log_format.h"
 #include "log/sequential_file.h"
 #include "base/slice.h"
@@ -120,6 +120,30 @@ private:
     Reader(const Reader&);
     void operator=(const Reader&);
 };
+
+typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
+
+class LogReader {
+public:
+    LogReader(LogParts* logs, const std::string& log_path);
+    virtual ~LogReader();
+    ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record, std::string* buffer);
+    int RollRLogFile();
+    int OpenSeqFile(const std::string& path);
+    void GoBackToLastBlock();
+    int GetLogIndex();
+    void SetOffset(uint64_t start_offset);
+    LogReader(const LogReader&) = delete;
+    LogReader& operator= (const LogReader&) = delete;
+protected:
+    std::string log_path_;
+    int log_part_index_;
+    uint64_t start_offset_;
+    SequentialFile* sf_;
+    Reader* reader_;
+    LogParts* logs_;
+};
+
 
 }  // namespace log
 }  // namespace rtidb
