@@ -14,8 +14,7 @@
 #include "timer.h"
 #include <gflags/gflags.h>
 
-DECLARE_string(snapshot_root_path);
-DECLARE_string(binlog_root_path);
+DECLARE_string(db_root_path);
 
 namespace rtidb {
 namespace tablet {
@@ -53,7 +52,8 @@ TEST_F(TabletImplTest, TTL) {
     request.set_name("t0");
     request.set_tid(id);
     request.set_pid(1);
-    request.set_wal(false);
+    request.set_wal(true);
+    request.set_mode(::rtidb::api::TableMode::kTableLeader);
     // 1 minutes
     request.set_ttl(1);
     ::rtidb::api::CreateTableResponse response;
@@ -100,7 +100,7 @@ TEST_F(TabletImplTest, CreateTable) {
         request.set_name("t0");
         request.set_tid(id);
         request.set_pid(1);
-        request.set_wal(false);
+        request.set_wal(true);
         request.set_ttl(0);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -134,7 +134,7 @@ TEST_F(TabletImplTest, Put) {
     request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(0);
-    request.set_wal(false);
+    request.set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -167,7 +167,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(0);
-    request.set_wal(false);
+    request.set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -246,7 +246,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(0);
-    request.set_wal(false);
+    request.set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -312,7 +312,7 @@ TEST_F(TabletImplTest, Scan) {
     request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(0);
-    request.set_wal(false);
+    request.set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -389,7 +389,7 @@ TEST_F(TabletImplTest, GC) {
     request.set_tid(id);
     request.set_pid(1);
     request.set_ttl(1);
-    request.set_wal(false);
+    request.set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -530,8 +530,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
-    FLAGS_binlog_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }
 

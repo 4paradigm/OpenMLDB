@@ -85,7 +85,7 @@ void LogReplicator::SyncToDisk() {
 bool LogReplicator::Init() {
     rpc_client_ = new ::rtidb::RpcClient();
     logs_ = new LogParts(12, 4, scmp);
-    log_path_ = path_ + "/logs/";
+    log_path_ = path_ + "/binlog/";
     if (!::rtidb::base::MkdirRecur(log_path_)) {
        LOG(WARNING, "fail to log dir %s", log_path_.c_str());
        return false;
@@ -94,7 +94,7 @@ bool LogReplicator::Init() {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             nodes_.push_back(std::shared_ptr<ReplicateNode>(
-                    new FollowerReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
+                    new ReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
             LOG(INFO, "add replica node with endpoint %s", it->c_str());
         }
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
@@ -102,6 +102,10 @@ bool LogReplicator::Init() {
     tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
     return true;
+}
+
+LogParts* LogReplicator::GetLogPart() {
+    return logs_;
 }
 
 void LogReplicator::SetOffset(uint64_t offset) {
@@ -219,7 +223,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
             }
         }
         nodes_.push_back(std::shared_ptr<ReplicateNode>(
-                    new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
+                    new ReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
         endpoints_.push_back(endpoint);
         LOG(INFO, "add ReplicateNode with endpoint %s ok", endpoint.c_str());
     }

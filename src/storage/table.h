@@ -28,7 +28,8 @@ enum TableStat {
     kNormal,
     kLoading,
     kPausing,
-    kPaused
+    kPaused,
+    kMakingSnapshot
 };
 
 class Table {

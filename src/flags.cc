@@ -19,6 +19,7 @@ DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_int32(statdb_ttl, 30 * 24 * 60 , "the ttl of statdb");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_bool(enable_statdb, false, "enable statdb");
+DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
