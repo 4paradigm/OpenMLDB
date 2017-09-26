@@ -130,6 +130,17 @@ uint64_t Table::SchedGc() {
     return count;
 }
 
+bool Table::IsTimeout(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
+    if (!enable_gc_) {
+        return false;
+    }
+    uint64_t time = cur_time / 1000 - ttl_offset_ - ttl_ * 60 * 1000; 
+    if (entry.ts() < time) {
+        return true;
+    }
+    return false;
+}
+
 Table::Iterator::Iterator(Segment::Iterator* it):it_(it){}
 
 Table::Iterator::~Iterator() {
