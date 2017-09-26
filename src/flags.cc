@@ -16,6 +16,7 @@ DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep al
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
+DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");
 DEFINE_int32(statdb_ttl, 30 * 24 * 60 , "the ttl of statdb");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_bool(enable_statdb, false, "enable statdb");
@@ -40,4 +41,3 @@ DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
 DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage path");
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
-DEFINE_uint64(recover_count_on_gc, 10000000, "config the count to trigger gc");
