@@ -28,8 +28,6 @@ enum TableStat {
     kUndefined = 0,
     kNormal,
     kLoading,
-    kPausing,
-    kPaused,
     kMakingSnapshot
 };
 

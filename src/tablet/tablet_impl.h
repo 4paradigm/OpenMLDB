@@ -147,6 +147,8 @@ private:
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid);
 
+    void SchedMakeSnapshot();
+
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
                        const std::vector<std::string>& replicas);
     void CheckZkClient();

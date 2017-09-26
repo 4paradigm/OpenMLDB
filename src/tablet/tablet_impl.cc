@@ -41,8 +41,9 @@ DECLARE_string(db_root_path);
 DECLARE_string(binlog_root_path);
 DECLARE_bool(enable_statdb);
 DECLARE_bool(binlog_notify_on_put);
-DECLARE_string(snapshot_root_path);
 DECLARE_int32(task_pool_size);
+DECLARE_int32(make_snapshot_time);
+DECLARE_int32(make_snapshot_check_interval);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -106,6 +107,11 @@ bool TabletImpl::Init() {
         metric_ = new TabletMetric(dbstat);
         metric_->Init();
     }
+    if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
+        LOG(WARNING, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
+        return false;
+    }
+    task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -674,6 +680,49 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
     task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid));
 }
 
+void TabletImpl::SchedMakeSnapshot() {
+    int now_hour = ::rtidb::base::GetNowHour();
+    if (now_hour != FLAGS_make_snapshot_time) {
+        task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+        return;
+    }
+
+    //FLAGS_make_snapshot_time
+    uint32_t tid = 0;
+    uint32_t pid = 0;
+    std::map<uint32_t, std::set<uint32_t> > table_set;
+    bool all_table_done = false;
+    while (!all_table_done) {
+        all_table_done = true;
+        // get one table in lock
+        {
+            MutexLock lock(&mu_);
+            for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
+                for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
+                    std::map<uint32_t, std::set<uint32_t> >::iterator idx = table_set.find(iter->first);
+                    if (idx != table_set.end() && idx->second.find(inner->first) != idx->second.end()) {
+                        continue;
+                    }
+                    tid = iter->first;
+                    pid = inner->first;
+                    if (idx == table_set.end()) {
+                        table_set.insert(std::make_pair(iter->first, std::set<uint32_t>()));
+                    }
+                    table_set[tid].insert(pid);
+                    all_table_done = false;
+                }
+            }
+        }
+        if (!all_table_done) {
+            LOG(INFO, "start make snapshot tid[%u] pid[%u]", tid, pid);
+            MakeSnapshotInternal(tid, pid);
+        }
+    }
+    // delay task one hour later avoid execute  more than one time
+    task_pool_.DelayTask((FLAGS_make_snapshot_check_interval + 60) * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    
+}
+
 void TabletImpl::LoadTable(RpcController* controller,
             const ::rtidb::api::LoadTableRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -933,6 +982,14 @@ void TabletImpl::DropTable(RpcController* controller,
             request->pid());
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
+    if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
+        LOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
+        response->set_code(-1);
+        response->set_msg("table is making snapshot");
+        done->Run();
+        table->UnRef();
+        return;
+    }
     // do block other requests
     {
         MutexLock lock(&mu_);
