@@ -28,6 +28,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
 DECLARE_string(db_root_path);
+DECLARE_uint64(recover_count_on_gc);
 
 namespace rtidb {
 namespace storage {
@@ -127,6 +128,9 @@ bool Snapshot::RecoverFromBinlog(Table* table, uint64_t offset,
         if (succ_cnt % 100000 == 0) {
             LOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
                     succ_cnt, failed_cnt, tid_, pid_);
+        }
+        if (succ_cnt % FLAGS_recover_count_on_gc == 0) {
+            table->SchedGc();
         }
     }
     latest_offset = cur_offset;

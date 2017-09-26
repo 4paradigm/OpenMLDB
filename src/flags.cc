@@ -40,3 +40,4 @@ DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
 DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage path");
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
+DEFINE_uint64(recover_count_on_gc, 10000000, "config the count to trigger gc");
