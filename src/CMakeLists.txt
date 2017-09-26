@@ -44,8 +44,8 @@ target_link_libraries(skiplist_test gtest pthread unwind tcmalloc)
 add_executable(segment_test storage/segment_test.cc flags.cc)
 target_link_libraries(segment_test gtest gflags storage pthread common unwind tcmalloc)
 
-add_executable(table_test  storage/table_test.cc flags.cc)
-target_link_libraries(table_test gtest gflags pthread storage common unwind tcmalloc)
+add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc flags.cc)
+target_link_libraries(table_test gtest gflags pthread storage common unwind tcmalloc protobuf)
 
 add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc base/status.cc)
 target_link_libraries(snapshot_test gtest gflags storage log tablet base pthread sofa-pbrpc protobuf z snappy common)
