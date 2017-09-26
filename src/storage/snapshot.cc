@@ -28,6 +28,7 @@ namespace storage {
 
 const uint32_t MAX_LINE = 1024;
 const std::string MANIFEST = "MANIFEST";
+const uint32_t KEY_NUM_DISPLAY = 1000000;
 
 Snapshot::Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pid_(pid),
      log_part_(log_part) {
@@ -57,7 +58,69 @@ bool Snapshot::Recover(Table* table) {
     return true;
 }
 
-int Snapshot::MakeSnapshot() {
+int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count) {
+	std::string full_path = snapshot_path_ + manifest.name();
+	FILE* fd = fopen(full_path.c_str(), "r+");
+	if (fd == NULL) {
+		LOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
+		return -1;
+	}
+	::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(manifest.name(), fd);
+	::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+
+	std::string buffer;
+	::rtidb::api::LogEntry entry;
+	uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+	uint64_t timeout_key_num = 0;
+    bool has_error = false;
+	while (true) {
+		::rtidb::base::Slice record;
+		::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+		if (status.IsEof()) {
+			break;
+		}
+		if (!status.ok()) {
+			LOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
+			has_error = true;        
+			break;
+		}
+		if (!entry.ParseFromString(record.ToString())) {
+			LOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+					::rtidb::base::DebugString(record.ToString()).c_str());
+			has_error = true;        
+			break;
+		}
+		// delete timeout key
+		if (table->IsExpired(entry, cur_time)) {
+			timeout_key_num++;
+			continue;
+		}
+		status = wh->Write(record);
+		if (!status.ok()) {
+			LOG(WARNING, "fail to write snapshot. status[%s]", 
+			              status.ToString().c_str());
+			has_error = true;        
+			break;
+		}
+        if ((count + timeout_key_num) % KEY_NUM_DISPLAY == 0) {
+			LOG(INFO, "tackled key num[%lu] total[%lu]", count + timeout_key_num, manifest.count()); 
+        }
+		count++;
+	}
+	delete seq_file;
+    if (timeout_key_num + count != manifest.count()) {
+	    LOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
+                    manifest.count(), count, timeout_key_num);
+        has_error = true;
+    }
+	if (has_error) {
+		return -1;
+	}	
+	LOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, timeout_key_num); 
+	return 0;
+}
+
+int Snapshot::MakeSnapshot(Table* table) {
     if (making_snapshot_.load(boost::memory_order_acquire)) {
         LOG(INFO, "snapshot is doing now!");
         return 0;
@@ -74,15 +137,29 @@ int Snapshot::MakeSnapshot() {
         making_snapshot_.store(false, boost::memory_order_release);
         return -1;
     }
+
+    uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
+    ::rtidb::api::Manifest manifest;
+    bool has_error = false;
+    uint64_t write_count = 0;
+    int result = GetSnapshotRecord(manifest);
+    if (result == 0) {
+        // filter old snapshot
+        if (TTLSnapshot(table, manifest, wh, write_count) < 0) {
+            has_error = true;
+        }
+    } else if (result < 0) {
+        // parse manifest error
+        has_error = true;
+    }
+    
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
-    
+
     std::string buffer;
-    uint64_t write_count = 0;
-    bool has_error = false;
-    while (1) {
+    while (!has_error) {
         buffer.clear();
         ::rtidb::base::Slice record;
         ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
@@ -104,7 +181,12 @@ int Snapshot::MakeSnapshot() {
                 has_error = true;        
                 break;
             }
-            cur_offset = entry.log_index();
+            if (cur_offset + 1 != entry.log_index()) {
+                LOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                has_error = true;
+                break;
+            }
+            cur_offset++;
             write_count++;
         } else if (status.IsEof()) {
             continue;
@@ -124,28 +206,28 @@ int Snapshot::MakeSnapshot() {
     }
     int ret = 0;
     if (has_error) {
-        if (unlink(tmp_file_path.c_str()) < 0) {
-            LOG(WARNING, "delete file [%s] failed", tmp_file_path.c_str());
-        }
+        unlink(tmp_file_path.c_str());
         ret = -1;
     } else {
         if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
             if (RecordOffset(snapshot_name, write_count, cur_offset) == 0) {
-                LOG(INFO, "make snapshot[%s] success. update offset from[%lu] to [%lu]", 
-                          snapshot_name.c_str(), offset_, cur_offset);
+                // delete old snapshot
+                if (manifest.has_name() && manifest.name() != snapshot_name) {
+                    LOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str()); 
+                    unlink((snapshot_path_ + manifest.name()).c_str());
+                }
+                uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
+                LOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second", 
+                          snapshot_name.c_str(), offset_, cur_offset, consumed);
                 offset_ = cur_offset;
             } else {
                 LOG(WARNING, "RecordOffset failed. delete snapshot file[%s]", full_path.c_str());
-                if (unlink(full_path.c_str()) < 0) {
-                    LOG(WARNING, "delete file [%s] failed", full_path.c_str());
-                }
+                unlink(full_path.c_str());
                 ret = -1;
             }
         } else {
             LOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
-            if (unlink(tmp_file_path.c_str()) < 0) {
-                LOG(WARNING, "delete file [%s] failed", tmp_file_path.c_str());
-            }
+            unlink(tmp_file_path.c_str());
             ret = -1;
         }
     }
@@ -160,7 +242,7 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     std::string manifest_info;
     if (fd < 0) {
         LOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
-        return -1;
+        return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);
         // will close fd when destruct
@@ -206,9 +288,7 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
         LOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
         return 0;
     }
-    if (unlink(tmp_file.c_str()) < 0) {
-        LOG(WARNING, "delete tmp file[%s] failed", tmp_file.c_str());
-    }
+    unlink(tmp_file.c_str());
     return -1;
 }
 
