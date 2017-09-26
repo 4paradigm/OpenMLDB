@@ -32,6 +32,10 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(endpoint);
+DECLARE_string(put_endpoint);
+DECLARE_string(scan_endpoint);
+DECLARE_int32(put_thread_pool_size);
+DECLARE_int32(scan_thread_pool_size);
 DEFINE_string(role, "tablet | nameserver | client | ns_client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -93,8 +97,9 @@ void StartNameServer() {
 
 void StartTablet() {
     SetupLog();
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
+    sofa::pbrpc::RpcServerOptions put_options;
+    put_options.work_thread_num = FLAGS_put_thread_pool_size;
+    sofa::pbrpc::RpcServer put_rpc_server(put_options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     if (!ok) {
@@ -103,16 +108,29 @@ void StartTablet() {
     }
     sofa::pbrpc::Servlet webservice =
                 sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server.RegisterService(tablet)) {
+    if (!put_rpc_server.RegisterService(tablet)) {
         LOG(WARNING, "fail to register tablet rpc service");
         exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
-    if (!rpc_server.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+    put_rpc_server.RegisterWebServlet("/tablet", webservice);
+    if (!put_rpc_server.Start(FLAGS_put_endpoint)) {
+        LOG(WARNING, "fail to listen port %s", FLAGS_put_endpoint.c_str());
         exit(1);
     }
-    LOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+    sofa::pbrpc::RpcServerOptions scan_options;
+    sofa::pbrpc::RpcServer scan_rpc_server(scan_options);
+    scan_options.work_thread_num = FLAGS_scan_thread_pool_size;
+    if (!scan_rpc_server.RegisterService(tablet)) {
+        LOG(WARNING, "fail to register tablet rpc service");
+        exit(1);
+    }
+    scan_rpc_server.RegisterWebServlet("/tablet", webservice);
+    if (!scan_rpc_server.Start(FLAGS_scan_endpoint)) {
+        LOG(WARNING, "fail to listen port %s", FLAGS_scan_endpoint.c_str());
+        exit(1);
+    }
+    LOG(INFO, "start tablet on put port %s and scan port %s with version %d.%d.%d", FLAGS_put_endpoint.c_str(),
+            FLAGS_scan_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);

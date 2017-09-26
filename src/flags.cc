@@ -7,6 +7,8 @@
 
 #include <gflags/gflags.h>
 // cluster config
+DEFINE_string(put_endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves put for");
+DEFINE_string(scan_endpoint, "127.0.0.1:9517", "config the ip and port that rtidb serves scan for");
 DEFINE_string(endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves for");
 DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
@@ -40,3 +42,7 @@ DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
 DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage path");
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
+
+// thread pool config
+DEFINE_int32(put_thread_pool_size, 8, "the size of thread pool for put");
+DEFINE_int32(scan_thread_pool_size, 8, "the size of thread pool for scan");
