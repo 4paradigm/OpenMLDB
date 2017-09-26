@@ -41,7 +41,11 @@ public:
         return offset_;
     }
 
-    int MakeSnapshot();
+    int MakeSnapshot(Table* table);
+
+    int TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count);
+
+    int GetSnapshotRecord(::rtidb::api::Manifest& manifest);
 
     int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset);
 

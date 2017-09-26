@@ -14,6 +14,7 @@
 #include "storage/segment.h"
 #include "storage/ticket.h"
 #include "boost/atomic.hpp"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace storage {
@@ -96,6 +97,8 @@ public:
     uint32_t GetTTL() const {
         return ttl_;
     }
+
+    bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
 
     inline bool GetWal() {
         return wal_;

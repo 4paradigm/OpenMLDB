@@ -82,6 +82,9 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(1, 2, log_part);
     snapshot.Init();
+    Table* table = new Table("tx_log", 1, 1, 8 , 2);
+    table->Ref();
+    table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
 	std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
@@ -94,7 +97,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_log_index(offset);
         std::string key = "key" + boost::lexical_cast<std::string>(count);
         entry.set_pk(key);
-        entry.set_ts(count);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -108,7 +111,12 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_log_index(offset);
         std::string key = "key" + boost::lexical_cast<std::string>(count);
         entry.set_pk(key);
-        entry.set_ts(count);
+        if (count == 20) {
+            // set one timeout key
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+        } else {
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        }
         entry.set_value("value");
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -117,7 +125,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         offset++;
     }
     
-    int ret = snapshot.MakeSnapshot();
+    int ret = snapshot.MakeSnapshot(table);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -128,14 +136,50 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ASSERT_EQ(2, vec.size());
 
     std::string full_path = snapshot_path + "MANIFEST";
-    int fd = open(full_path.c_str(), O_RDONLY);
-    google::protobuf::io::FileInputStream fileInput(fd);
-    fileInput.SetCloseOnDelete(true);
     ::rtidb::api::Manifest manifest;
-    google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
     ASSERT_EQ(29, manifest.offset());
-    ASSERT_EQ(1, manifest.snapshot_infos_size());
-    ASSERT_EQ(29, manifest.snapshot_infos(0).count());
+    ASSERT_EQ(29, manifest.count());
+
+    for (; count < 50; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + boost::lexical_cast<std::string>(count);
+        entry.set_pk(key);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+
+    ret = snapshot.MakeSnapshot(table);
+    ASSERT_EQ(0, ret);
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+
+    ASSERT_EQ(49, manifest.offset());
+    ASSERT_EQ(48, manifest.count());
+
+    table->UnRef();
 
 }
 
@@ -161,14 +205,7 @@ TEST_F(SnapshotTest, RecordOffset) {
     ASSERT_EQ(0, ret);
 	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
-    ASSERT_EQ(2, manifest.snapshot_infos_size());
-	if (manifest.snapshot_infos(0).name() == snapshot_name) {
-    	ASSERT_EQ(key_count, manifest.snapshot_infos(0).count());
-    	ASSERT_EQ(key_count1, manifest.snapshot_infos(1).count());
-	} else {
-    	ASSERT_EQ(key_count, manifest.snapshot_infos(1).count());
-    	ASSERT_EQ(key_count1, manifest.snapshot_infos(0).count());
-	}	
+    ASSERT_EQ(key_count1, manifest.count());
 }
 
 
