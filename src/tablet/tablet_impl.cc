@@ -766,14 +766,10 @@ void TabletImpl::LoadTable(RpcController* controller,
     {
         MutexLock lock(&mu_);
         Table* table = GetTableUnLock(tid, pid);
-        std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
-        if (table == NULL && snapshot) {
+        if (table == NULL) {
             LoadTableInternal(request, response);
         } else {
-            if (table) {
-                LOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-                table->UnRef();
-            }
+            table->UnRef();
             response->set_code(1);
             response->set_msg("table with tid and pid exists");
             done->Run();
@@ -806,7 +802,7 @@ void TabletImpl::LoadTable(RpcController* controller,
     bool ok = snapshot->Recover(table, latest_offset);
     if (ok) {
         table->SetTableStat(::rtidb::storage::kNormal);
-        replicator->SetOffset(snapshot->GetOffset());
+        replicator->SetOffset(latest_offset);
         replicator->MatchLogOffset();
         table->SchedGc();
         if (ttl > 0) {
@@ -893,8 +889,19 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
         response->set_msg("fail create replicator for table");
         return;
     }
+    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(request->tid(), request->pid(), replicator->GetLogPart());
+    bool ok = snapshot->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
+        table->Release();
+        table->UnRef();
+        response->set_code(-1);
+        response->set_msg("fail to init snapshot");
+        return;
+    }
     tables_[request->tid()].insert(std::make_pair(request->pid(), table));
     replicators_[request->tid()].insert(std::make_pair(request->pid(), replicator));
+    snapshots_[request->tid()].insert(std::make_pair(request->pid(), snapshot));
     response->set_code(0);
     response->set_msg("ok");
 }

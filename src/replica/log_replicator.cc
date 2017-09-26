@@ -111,15 +111,17 @@ bool LogReplicator::Init() {
 
 bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
     if (path.size() <= 4 
-        || path.substr(path.length() - 4, std::string::npos) != ".log" ) {
+        || path.substr(path.length() - 4, 4) != ".log" ) {
         LOG(WARNING, "invalid log name %s", path.c_str());
         return false;
     }
     size_t rindex = path.rfind('/');
     if (rindex == std::string::npos) {
         rindex = 0;
+    }else {
+        rindex += 1;
     }
-    std::string name = path.substr(rindex, path.length() - 4);
+    std::string name = path.substr(rindex, path.length() - rindex - 4);
     size_t no_zero_index = 0;
     for (size_t i = 0; i < name.length(); i++) {
         no_zero_index = i;
@@ -134,7 +136,7 @@ bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
     }
     bool ok = ::rtidb::base::IsNumber(num);
     if (!ok) {
-        LOG(WARNING, "fail to parse binlog index from name %s", num.c_str());
+        LOG(WARNING, "fail to parse binlog index from name %s, num %s", name.c_str(), num.c_str());
         return false;
     }
     index = boost::lexical_cast<uint32_t>(num);
@@ -186,6 +188,9 @@ bool LogReplicator::Recover() {
             return false;
         }
         uint64_t offset = entry.log_index();
+        if (offset > 0) {
+            offset -= 1;
+        }
         logs_->Insert(binlog_index, offset);
         LOG(INFO, "recover binlog index %u and offset %lu from path %s",
                 binlog_index, entry.log_index(), full_path.c_str());
