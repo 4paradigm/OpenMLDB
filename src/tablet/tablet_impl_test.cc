@@ -463,6 +463,103 @@ TEST_F(TabletImplTest, DropTable) {
     ASSERT_EQ(0, response.code());
 }
 
+TEST_F(TabletImplTest, Recover) {
+    uint32_t id = counter++;
+    MockClosure closure;
+    {
+        TabletImpl tablet;
+        tablet.Init();
+        ::rtidb::api::CreateTableRequest request;
+        request.set_name("t0");
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_ttl(0);
+        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9527);
+        prequest.set_value("test0");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    // recover
+    {
+        TabletImpl tablet;
+        tablet.Init();
+        ::rtidb::api::LoadTableRequest request;
+        request.set_name("t0");
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_ttl(0);
+        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::GeneralResponse response;
+        tablet.LoadTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        ::rtidb::api::ScanRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(1);
+        sr.set_pk("test1");
+        sr.set_st(9530);
+        sr.set_et(9526);
+        ::rtidb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(1, srp.count());
+        ::rtidb::api::GeneralRequest grq;
+        grq.set_tid(id);
+        grq.set_pid(1);
+        ::rtidb::api::GeneralResponse grp;
+        grp.set_code(-1);
+        tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
+        ASSERT_EQ(0, grp.code());
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9528);
+        prequest.set_value("test1");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {
+        TabletImpl tablet;
+        tablet.Init();
+        ::rtidb::api::LoadTableRequest request;
+        request.set_name("t0");
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_ttl(0);
+        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::GeneralResponse response;
+        tablet.LoadTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        ::rtidb::api::ScanRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(1);
+        sr.set_pk("test1");
+        sr.set_st(9530);
+        sr.set_et(9526);
+        ::rtidb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(2, srp.count());
+    }
+
+}
+
 TEST_F(TabletImplTest, DropTableFollower) {
     uint32_t id = counter++;
     TabletImpl tablet;

@@ -39,7 +39,10 @@ add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.
 target_link_libraries(replica_test gtest gflags replica log tablet storage base pthread sofa-pbrpc protobuf z snappy common)
 
 add_executable(skiplist_test base/skiplist_test.cc)
-target_link_libraries(skiplist_test gtest pthread unwind tcmalloc)
+target_link_libraries(skiplist_test gtest pthread)
+
+add_executable(count_down_latch_test base/count_down_latch_test.cc)
+target_link_libraries(count_down_latch_test common gtest pthread)
 
 add_executable(segment_test storage/segment_test.cc flags.cc)
 target_link_libraries(segment_test gtest gflags storage pthread common unwind tcmalloc)

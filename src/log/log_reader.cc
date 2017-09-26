@@ -43,6 +43,7 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       buffer_(),
       last_record_offset_(0),
       end_of_buffer_offset_(0),
+      last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
       resyncing_(initial_offset > 0) {
 }
@@ -231,7 +232,10 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 
 void Reader::GoBackToLastBlock() {
     size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
-    uint64_t block_start_location = last_end_of_buffer_offset_ - offset_in_block;
+    uint64_t block_start_location = 0;
+    if (last_end_of_buffer_offset_ >  offset_in_block) {
+        block_start_location = last_end_of_buffer_offset_ - offset_in_block;
+    }
     LOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_, block_start_location);
     end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
@@ -253,10 +257,8 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             return kWaitRecord;
         }
         if (buffer_.size() < kHeaderSize) { 
-            if (buffer_.size() > 0) {
-                LOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]", 
+            LOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]", 
                             buffer_.size(), kHeaderSize);
-            }
             return kWaitRecord;
         }
     }
@@ -352,12 +354,12 @@ int LogReader::GetLogIndex() {
         int new_log_part_index = RollRLogFile();
         if (new_log_part_index == -2) {
             LOG(WARNING, "no log avaliable");
-            return ::rtidb::base::Status::IOError("no log avaliable");
+            return ::rtidb::base::Status::WaitRecord();
         }
 
         if (new_log_part_index < 0) {
             LOG(WARNING, "fail to roll read log");
-            return ::rtidb::base::Status::IOError("no log avaliable");
+            return ::rtidb::base::Status::WaitRecord();
         }
         reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
         // when change log part index , reset
