@@ -82,7 +82,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(1, 2, log_part);
     snapshot.Init();
-    Table* table = new Table("tx_log", 1, 1, 8 , 1440000);
+    Table* table = new Table("tx_log", 1, 1, 8 , 2);
     table->Ref();
     table->Init();
     uint64_t offset = 0;
@@ -111,7 +111,12 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_log_index(offset);
         std::string key = "key" + boost::lexical_cast<std::string>(count);
         entry.set_pk(key);
-        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        if (count == 20) {
+            // set one timeout key
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+        } else {
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        }
         entry.set_value("value");
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -154,6 +159,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         offset++;
     }
+
     ret = snapshot.MakeSnapshot(table);
     ASSERT_EQ(0, ret);
     vec.clear();
@@ -171,7 +177,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     }
 
     ASSERT_EQ(49, manifest.offset());
-    ASSERT_EQ(49, manifest.count());
+    ASSERT_EQ(48, manifest.count());
 
     table->UnRef();
 

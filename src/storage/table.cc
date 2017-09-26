@@ -134,7 +134,7 @@ bool Table::IsTimeout(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
     if (!enable_gc_) {
         return false;
     }
-    uint64_t time = cur_time / 1000 - ttl_offset_ - ttl_ * 60 * 1000; 
+    uint64_t time = cur_time - ttl_offset_ - ttl_ * 60 * 1000; 
     if (entry.ts() < time) {
         return true;
     }

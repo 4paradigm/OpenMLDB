@@ -44,17 +44,16 @@ TEST_F(TableTest, IsTimeout) {
     Table* table = new Table("tx_log", 1, 1, 8, 1);
     table->Ref();
     table->Init();
-    uint64_t now_time = ::baidu::common::timer::get_micros();
+    uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
     ::rtidb::api::LogEntry entry;
-    uint64_t ts_time = now_time / 1000; 
+    uint64_t ts_time = now_time; 
     entry.set_ts(ts_time);
     ASSERT_FALSE(table->IsTimeout(entry, now_time));
     
     // ttl_offset_ is 60 * 1000
-    ts_time = now_time / 1000 - 4 * 60 * 1000; 
-    ::rtidb::api::LogEntry entry1;
-    entry1.set_ts(ts_time);
-    ASSERT_TRUE(table->IsTimeout(entry1, now_time));
+    ts_time = now_time - 4 * 60 * 1000; 
+    entry.set_ts(ts_time);
+    ASSERT_TRUE(table->IsTimeout(entry, now_time));
 
     table->UnRef();
 }

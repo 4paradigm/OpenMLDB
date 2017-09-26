@@ -69,7 +69,7 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 
 	std::string buffer;
 	::rtidb::api::LogEntry entry;
-	uint64_t cur_time = ::baidu::common::timer::get_micros();
+	uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
 	uint64_t timeout_key_num = 0;
     bool has_error = false;
 	while (true) {
@@ -83,8 +83,7 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 			has_error = true;        
 			break;
 		}
-		bool ok = entry.ParseFromString(record.ToString());
-		if (!ok) {
+		if (!entry.ParseFromString(record.ToString())) {
 			LOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
 					::rtidb::base::DebugString(record.ToString()).c_str());
 			has_error = true;        
@@ -134,16 +133,21 @@ int Snapshot::MakeSnapshot(Table* table) {
         making_snapshot_.store(false, boost::memory_order_release);
         return -1;
     }
+
+    uint64_t start_time = ::baidu::common::timer::now_time();
     WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
-    
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
-    if (GetSnapshotRecord(manifest) == 0) {
+    int result = GetSnapshotRecord(manifest);
+    if (result == 0) {
         // filter old snapshot
         if (TTLSnapshot(table, manifest, wh, write_count) < 0) {
             has_error = true;
         }
+    } else if (result < 0) {
+        // parse manifest error
+        has_error = true;
     }
     
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
@@ -198,28 +202,28 @@ int Snapshot::MakeSnapshot(Table* table) {
     }
     int ret = 0;
     if (has_error) {
-        if (unlink(tmp_file_path.c_str()) < 0) {
-            LOG(WARNING, "delete file [%s] failed", tmp_file_path.c_str());
-        }
+        unlink(tmp_file_path.c_str());
         ret = -1;
     } else {
         if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
             if (RecordOffset(snapshot_name, write_count, cur_offset) == 0) {
-                LOG(INFO, "make snapshot[%s] success. update offset from[%lu] to [%lu]", 
-                          snapshot_name.c_str(), offset_, cur_offset);
+                // delete old snapshot
+                if (manifest.has_name() && manifest.name() != snapshot_name) {
+                    LOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str()); 
+                    unlink((snapshot_path_ + manifest.name()).c_str());
+                }
+                uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
+                LOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second", 
+                          snapshot_name.c_str(), offset_, cur_offset, consumed);
                 offset_ = cur_offset;
             } else {
                 LOG(WARNING, "RecordOffset failed. delete snapshot file[%s]", full_path.c_str());
-                if (unlink(full_path.c_str()) < 0) {
-                    LOG(WARNING, "delete file [%s] failed", full_path.c_str());
-                }
+                unlink(full_path.c_str());
                 ret = -1;
             }
         } else {
             LOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
-            if (unlink(tmp_file_path.c_str()) < 0) {
-                LOG(WARNING, "delete file [%s] failed", tmp_file_path.c_str());
-            }
+            unlink(tmp_file_path.c_str());
             ret = -1;
         }
     }
@@ -234,7 +238,7 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     std::string manifest_info;
     if (fd < 0) {
         LOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
-        return -1;
+        return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);
         // will close fd when destruct
@@ -280,9 +284,7 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
         LOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
         return 0;
     }
-    if (unlink(tmp_file.c_str()) < 0) {
-        LOG(WARNING, "delete tmp file[%s] failed", tmp_file.c_str());
-    }
+    unlink(tmp_file.c_str());
     return -1;
 }
 
