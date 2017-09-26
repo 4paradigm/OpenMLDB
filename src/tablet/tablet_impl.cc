@@ -63,7 +63,6 @@ TabletImpl::~TabletImpl() {
     if (FLAGS_enable_statdb) {
         Table* table = GetTable(0, 0);
         if (table != NULL) {
-            table->Release();
             table->UnRef();
             table->UnRef();
         }
@@ -687,36 +686,20 @@ void TabletImpl::SchedMakeSnapshot() {
         return;
     }
 
-    //FLAGS_make_snapshot_time
     uint32_t tid = 0;
     uint32_t pid = 0;
-    std::map<uint32_t, std::set<uint32_t> > table_set;
-    bool all_table_done = false;
-    while (!all_table_done) {
-        all_table_done = true;
-        // get one table in lock
-        {
-            MutexLock lock(&mu_);
-            for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
-                for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
-                    std::map<uint32_t, std::set<uint32_t> >::iterator idx = table_set.find(iter->first);
-                    if (idx != table_set.end() && idx->second.find(inner->first) != idx->second.end()) {
-                        continue;
-                    }
-                    tid = iter->first;
-                    pid = inner->first;
-                    if (idx == table_set.end()) {
-                        table_set.insert(std::make_pair(iter->first, std::set<uint32_t>()));
-                    }
-                    table_set[tid].insert(pid);
-                    all_table_done = false;
-                }
+    std::vector<std::pair<uint32_t, uint32_t> > table_set;
+    {
+        MutexLock lock(&mu_);
+        for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
+            for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
+                table_set.push_back(std::make_pair(iter->first, inner->first));
             }
         }
-        if (!all_table_done) {
-            LOG(INFO, "start make snapshot tid[%u] pid[%u]", tid, pid);
-            MakeSnapshotInternal(tid, pid);
-        }
+    }
+    for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
+        LOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
+        MakeSnapshotInternal(iter->first, iter->second);
     }
     // delay task one hour later avoid execute  more than one time
     task_pool_.DelayTask((FLAGS_make_snapshot_check_interval + 60) * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -834,7 +817,6 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
     if (!replicator || !replicator->Init()) {
         LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
         // clean memory
-        table->Release();
         table->UnRef();
         if (replicator) {
             replicator->UnRef();
@@ -930,7 +912,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
         replicator = new LogReplicator(table_binlog_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
     }
     if (replicator == NULL) {
-        table->Release();
         table->UnRef();
         response->set_code(-1);
         response->set_msg("fail create replicator for table");
@@ -941,7 +922,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     if (!ok) {
         LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
         // clean memory
-        table->Release();
         table->UnRef();
         replicator->UnRef();
         response->set_code(-1);
@@ -952,7 +932,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     ok = snapshot->Init();
     if (!ok) {
         LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
-        table->Release();
         table->UnRef();
         response->set_code(-1);
         response->set_msg("fail to init snapshot");
