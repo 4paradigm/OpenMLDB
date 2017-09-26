@@ -50,7 +50,9 @@ public:
         return offset_;
     }
 
-    int MakeSnapshot();
+    int MakeSnapshot(Table* table);
+
+    int TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count);
 
     // Read manifest from local storage return 0 if ok , 1 if manifest does not exist,
     // or -1 if some error ocurrs 

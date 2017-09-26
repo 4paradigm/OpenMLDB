@@ -82,6 +82,85 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
 }
 
 
+TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/4_3/snapshot/";
+    std::string binlog_dir = FLAGS_db_root_path + "/4_3/binlog/";
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    int count = 0;
+    for (; count < 10; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    Snapshot snapshot(4, 3, log_part);
+    snapshot.Init();
+    std::vector<std::string> fakes;
+    Table* table = new Table("test", 4, 3, 8, 0, true, fakes, true);
+    table->Init();
+    int ret = snapshot.MakeSnapshot(table);
+    ASSERT_EQ(0, ret); 
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    for (; count < 20; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key2";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+
+    ASSERT_TRUE(snapshot.Recover(table, offset));
+    ASSERT_EQ(20, offset);
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("key", ticket);
+    it->Seek(1);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1, it->GetKey());
+    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value1", value2_str);
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(0, it->GetKey());
+    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value0", value3_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+    it = table->NewIterator("key2", ticket);
+    it->Seek(11);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(11, it->GetKey());
+    std::string value4_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value11", value4_str);
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(10, it->GetKey());
+    std::string value5_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value10", value5_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+    table->UnRef();
+
+}
+
 TEST_F(SnapshotTest, Recover_only_binlog) {
     std::string snapshot_dir = FLAGS_db_root_path + "/3_3/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/3_3/binlog/";
@@ -119,12 +198,12 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
     std::string value2_str(it->GetValue()->data, it->GetValue()->size);
-    ASSERT_EQ("test1", value2_str);
+    ASSERT_EQ("value1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(0, it->GetKey());
     std::string value3_str(it->GetValue()->data, it->GetValue()->size);
-    ASSERT_EQ("test0", value3_str);
+    ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
     table->UnRef();
@@ -224,6 +303,9 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(1, 2, log_part);
     snapshot.Init();
+    Table* table = new Table("tx_log", 1, 1, 8 , 2);
+    table->Ref();
+    table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
 	std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
@@ -236,7 +318,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_log_index(offset);
         std::string key = "key" + boost::lexical_cast<std::string>(count);
         entry.set_pk(key);
-        entry.set_ts(count);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -250,7 +332,12 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_log_index(offset);
         std::string key = "key" + boost::lexical_cast<std::string>(count);
         entry.set_pk(key);
-        entry.set_ts(count);
+        if (count == 20) {
+            // set one timeout key
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
+        } else {
+            entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        }
         entry.set_value("value");
         std::string buffer;
         entry.SerializeToString(&buffer);
@@ -258,7 +345,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         offset++;
     }
-    int ret = snapshot.MakeSnapshot();
+
+    int ret = snapshot.MakeSnapshot(table);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -269,13 +357,50 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ASSERT_EQ(2, vec.size());
 
     std::string full_path = snapshot_path + "MANIFEST";
-    int fd = open(full_path.c_str(), O_RDONLY);
-    google::protobuf::io::FileInputStream fileInput(fd);
-    fileInput.SetCloseOnDelete(true);
     ::rtidb::api::Manifest manifest;
-    google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
     ASSERT_EQ(29, manifest.offset());
     ASSERT_EQ(29, manifest.count());
+
+    for (; count < 50; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + boost::lexical_cast<std::string>(count);
+        entry.set_pk(key);
+        entry.set_ts(::baidu::common::timer::get_micros() / 1000);
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+
+    ret = snapshot.MakeSnapshot(table);
+    ASSERT_EQ(0, ret);
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+
+    ASSERT_EQ(49, manifest.offset());
+    ASSERT_EQ(48, manifest.count());
+
+    table->UnRef();
 
 }
 

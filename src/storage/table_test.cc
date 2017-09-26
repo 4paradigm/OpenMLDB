@@ -39,6 +39,24 @@ TEST_F(TableTest, Release) {
     table->UnRef();
 }
 
+TEST_F(TableTest, IsExpired) {
+    // table ttl is 1
+    Table* table = new Table("tx_log", 1, 1, 8, 1);
+    table->Ref();
+    table->Init();
+    uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
+    ::rtidb::api::LogEntry entry;
+    uint64_t ts_time = now_time; 
+    entry.set_ts(ts_time);
+    ASSERT_FALSE(table->IsExpired(entry, now_time));
+    
+    // ttl_offset_ is 60 * 1000
+    ts_time = now_time - 4 * 60 * 1000; 
+    entry.set_ts(ts_time);
+    ASSERT_TRUE(table->IsExpired(entry, now_time));
+
+    table->UnRef();
+}
 
 TEST_F(TableTest, Iterator) {
     Table* table = new Table("tx_log", 1, 1, 8, 10);
