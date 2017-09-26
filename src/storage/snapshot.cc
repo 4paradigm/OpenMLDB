@@ -28,7 +28,6 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
 DECLARE_string(db_root_path);
-DECLARE_int32(recover_table_thread_size);
 
 namespace rtidb {
 namespace storage {
