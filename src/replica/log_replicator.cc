@@ -235,7 +235,7 @@ void LogReplicator::DeleteBinlog() {
             }
         }
     }
-    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%d]", 
+    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
                 min_log_index, binlog_index_.load(boost::memory_order_relaxed));
     if (min_log_index < 0) {
         LOG(DEBUG, "min_log_index is negative, need not delete!");
