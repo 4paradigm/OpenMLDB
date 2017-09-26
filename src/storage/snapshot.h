@@ -21,17 +21,15 @@
 
 using ::rtidb::api::LogEntry;
 namespace rtidb {
+namespace base {
+class Status;
+}
 namespace storage {
 
 using ::rtidb::log::WriteHandle;
 
+
 typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
-
-struct RecoverStat {
-    uint64_t succ_cnt;
-    uint64_t failed_cnt;
-};
-
 
 // table snapshot
 class Snapshot {
@@ -43,16 +41,20 @@ public:
 
     bool Init();
 
-    bool Recover(Table* table, RecoverStat& stat);
+    bool Recover(Table* table, uint64_t& latest_offset);
 
-    bool RecoverFromSnapshot(Table* table, RecoverStat& stat);
-    bool RecoverFromBinlog(Table* table, RecoverStat& stat);
+    void RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, Table* table);
+    bool RecoverFromBinlog(Table* table, uint64_t offset, uint64_t& latest_offset);
 
     inline uint64_t GetOffset() {
         return offset_;
     }
 
     int MakeSnapshot();
+
+    // Read manifest from local storage return 0 if ok , 1 if manifest does not exist,
+    // or -1 if some error ocurrs 
+    int GetSnapshotRecord(::rtidb::api::Manifest& manifest);
 
     int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset);
 
@@ -62,15 +64,7 @@ private:
     void RecoverSingleSnapshot(const std::string& path,
                                Table* table,
                                std::atomic<uint64_t>* g_succ_cnt,
-                               std::atomic<uint64_t>* g_failed_cnt,
-                               ::rtidb::base::CountDownLatch* latch);
-
-    // Read manifest from local storage return 0 if ok , 1 if manifest does not exist,
-    // or -1 if some error ocurrs 
-    int ReadManifest(::rtidb::api::Manifest* manifest);
-
-    void GetSnapshots(const std::vector<std::string>& files, 
-                      std::vector<std::string>& snapshots);
+                               std::atomic<uint64_t>* g_failed_cnt);
 
 private:
     uint32_t tid_;

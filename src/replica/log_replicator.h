@@ -42,7 +42,6 @@ enum ReplicatorRole {
     kFollowerNode
 };
 
-class LogReplicator;
 
 class LogReplicator {
 
@@ -99,6 +98,8 @@ public:
         return  log_offset_.load(boost::memory_order_relaxed);
     }
     void SetRole(const ReplicatorRole& role);
+
+    bool ParseBinlogIndex(const std::string& path, uint32_t& index);
 
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);

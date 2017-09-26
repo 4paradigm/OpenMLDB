@@ -68,6 +68,7 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
         *wh = NULL;
     }
     std::string name = ::rtidb::base::FormatToString(binlog_index, 10) + ".log";
+    ::rtidb::base::MkdirRecur(log_path);
     std::string full_path = log_path + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -80,11 +81,62 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
     return true;
 }
 
-TEST_F(SnapshotTest, Recover) {
-    std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshots";
+
+TEST_F(SnapshotTest, Recover_only_binlog) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/3_3/snapshot/";
+    std::string binlog_dir = FLAGS_db_root_path + "/3_3/binlog/";
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    int count = 0;
+    for (; count < 10; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    std::vector<std::string> fakes;
+    Table* table = new Table("test", 3, 3, 8, 0, true, fakes, true);
+    table->Init();
+    Snapshot snapshot(3, 3, log_part);
+    snapshot.Init();
+    ASSERT_TRUE(snapshot.Recover(table, offset));
+    ASSERT_EQ(10, offset);
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("key", ticket);
+    it->Seek(1);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1, it->GetKey());
+    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("test1", value2_str);
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(0, it->GetKey());
+    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("test0", value3_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+    table->UnRef();
+
+}
+
+TEST_F(SnapshotTest, Recover_only_snapshot) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
+
     ::rtidb::base::MkdirRecur(snapshot_dir);
     {
-        std::string snapshot1 = "1.sdb";
+        std::string snapshot1 = "20170609.sdb";
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
@@ -94,6 +146,7 @@ TEST_F(SnapshotTest, Recover) {
         entry.set_pk("test0");
         entry.set_ts(9527);
         entry.set_value("test1");
+        entry.set_log_index(1);
         std::string val;
         bool ok = entry.SerializeToString(&val);
         ASSERT_TRUE(ok);
@@ -103,6 +156,7 @@ TEST_F(SnapshotTest, Recover) {
         entry.set_pk("test0");
         entry.set_ts(9528);
         entry.set_value("test2");
+        entry.set_log_index(2);
         ok = entry.SerializeToString(&val);
         ASSERT_TRUE(ok);
         Slice sval2(val.c_str(), val.size());
@@ -112,7 +166,7 @@ TEST_F(SnapshotTest, Recover) {
     }
 
     {
-        std::string snapshot1 = "2.sb";
+        std::string snapshot1 = "20170610.sdb.tmp";
         std::string full_path = snapshot_dir + "/" + snapshot1;
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
@@ -129,33 +183,6 @@ TEST_F(SnapshotTest, Recover) {
         Status status = writer.AddRecord(sval);
         ASSERT_TRUE(status.ok());
         entry.set_pk("test1");
-        entry.set_ts(9528);
-        entry.set_value("test2");
-        ok = entry.SerializeToString(&val);
-        ASSERT_TRUE(ok);
-        Slice sval2(val.c_str(), val.size());
-        status = writer.AddRecord(sval2);
-        ASSERT_TRUE(status.ok());
-    }
-
-    {
-        std::string snapshot1 = "3.sdb";
-        std::string full_path = snapshot_dir + "/" + snapshot1;
-        FILE* fd_w = fopen(full_path.c_str(), "ab+");
-        ASSERT_TRUE(fd_w != NULL);
-        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
-        ::rtidb::api::LogEntry entry;
-        entry.set_pk("test3");
-        entry.set_ts(9527);
-        entry.set_value("test1");
-        std::string val;
-        bool ok = entry.SerializeToString(&val);
-        ASSERT_TRUE(ok);
-        Slice sval(val.c_str(), val.size());
-        Status status = writer.AddRecord(sval);
-        ASSERT_TRUE(status.ok());
-        entry.set_pk("test3");
         entry.set_ts(9528);
         entry.set_value("test2");
         ok = entry.SerializeToString(&val);
@@ -168,14 +195,16 @@ TEST_F(SnapshotTest, Recover) {
     std::vector<std::string> fakes;
     Table* table = new Table("test", 2, 2, 8, 0, true, fakes, true);
     table->Init();
-    Snapshot snapshot(2, 2);
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    Snapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    RecoverStat rstat;
-    ASSERT_TRUE(snapshot.Recover(table, rstat));
-    ASSERT_EQ(4, rstat.succ_cnt);
-    ASSERT_EQ(0, rstat.failed_cnt);
+    int ret = snapshot.RecordOffset("20170609.sdb", 2, 2);
+    ASSERT_EQ(0, ret);
+    uint64_t offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, offset));
+    ASSERT_EQ(2, offset);
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("test3", ticket);
+    Table::Iterator* it = table->NewIterator("test0", ticket);
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9528, it->GetKey());
@@ -229,7 +258,6 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         offset++;
     }
-    
     int ret = snapshot.MakeSnapshot();
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
@@ -247,8 +275,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ::rtidb::api::Manifest manifest;
     google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     ASSERT_EQ(29, manifest.offset());
-    ASSERT_EQ(1, manifest.snapshot_infos_size());
-    ASSERT_EQ(29, manifest.snapshot_infos(0).count());
+    ASSERT_EQ(29, manifest.count());
 
 }
 
@@ -274,14 +301,7 @@ TEST_F(SnapshotTest, RecordOffset) {
     ASSERT_EQ(0, ret);
 	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
-    ASSERT_EQ(2, manifest.snapshot_infos_size());
-	if (manifest.snapshot_infos(0).name() == snapshot_name) {
-    	ASSERT_EQ(key_count, manifest.snapshot_infos(0).count());
-    	ASSERT_EQ(key_count1, manifest.snapshot_infos(1).count());
-	} else {
-    	ASSERT_EQ(key_count, manifest.snapshot_infos(1).count());
-    	ASSERT_EQ(key_count1, manifest.snapshot_infos(0).count());
-	}	
+    ASSERT_EQ(key_count1, manifest.count());
 }
 
 
