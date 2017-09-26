@@ -130,7 +130,7 @@ uint64_t Table::SchedGc() {
     return count;
 }
 
-bool Table::IsTimeout(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
+bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
     if (!enable_gc_) {
         return false;
     }

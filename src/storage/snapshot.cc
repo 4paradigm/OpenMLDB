@@ -28,6 +28,7 @@ namespace storage {
 
 const uint32_t MAX_LINE = 1024;
 const std::string MANIFEST = "MANIFEST";
+const uint32_t KEY_NUM_DISPLAY = 1000000;
 
 Snapshot::Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pid_(pid),
      log_part_(log_part) {
@@ -90,7 +91,7 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 			break;
 		}
 		// delete timeout key
-		if (table->IsTimeout(entry, cur_time)) {
+		if (table->IsExpired(entry, cur_time)) {
 			timeout_key_num++;
 			continue;
 		}
@@ -101,6 +102,9 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 			has_error = true;        
 			break;
 		}
+        if ((count + timeout_key_num) % KEY_NUM_DISPLAY == 0) {
+			LOG(INFO, "tackled key num[%lu] total[%lu]", count + timeout_key_num, manifest.count()); 
+        }
 		count++;
 	}
 	delete seq_file;

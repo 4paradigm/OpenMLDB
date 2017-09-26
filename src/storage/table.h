@@ -98,7 +98,7 @@ public:
         return ttl_;
     }
 
-    bool IsTimeout(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
+    bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
 
     inline bool GetWal() {
         return wal_;
