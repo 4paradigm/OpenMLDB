@@ -23,19 +23,21 @@ TabletClient::~TabletClient() {
 }
 
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint64_t ttl) {
+        uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
     std::vector<std::string> endpoints;
-    return CreateTable(name, id, pid, ttl, true, endpoints);
+    return CreateTable(name, id, pid, ttl, true, endpoints, seg_cnt);
 }
 
 bool TabletClient::CreateTable(const std::string& name,
                                uint32_t tid, uint32_t pid, uint64_t ttl,
-                               bool leader, const std::vector<std::string>& endpoints) {
+                               bool leader, const std::vector<std::string>& endpoints,
+                               uint32_t seg_cnt) {
     ::rtidb::api::CreateTableRequest request;
     request.set_name(name);
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_ttl(ttl);
+    request.set_seg_cnt(seg_cnt);
     if (leader) {
         request.set_mode(::rtidb::api::TableMode::kTableLeader);
     }else {
@@ -126,19 +128,21 @@ bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid) {
 }
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint64_t ttl) {
+        uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
     std::vector<std::string> endpoints;
-    return LoadTable(name, id, pid, ttl, false, endpoints);
+    return LoadTable(name, id, pid, ttl, false, endpoints, seg_cnt);
 }
 
 bool TabletClient::LoadTable(const std::string& name,
                                uint32_t tid, uint32_t pid, uint64_t ttl,
-                               bool leader, const std::vector<std::string>& endpoints) {
+                               bool leader, const std::vector<std::string>& endpoints,
+                               uint32_t seg_cnt) {
     ::rtidb::api::LoadTableRequest request;
     request.set_name(name);
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_ttl(ttl);
+    request.set_seg_cnt(seg_cnt);
     if (leader) {
         request.set_mode(::rtidb::api::TableMode::kTableLeader);
     }else {
