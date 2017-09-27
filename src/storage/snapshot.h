@@ -50,7 +50,7 @@ public:
         return offset_;
     }
 
-    int MakeSnapshot(Table* table);
+    int MakeSnapshot(Table* table, int& read_log_index);
 
     int TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count);
 

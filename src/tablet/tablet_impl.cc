@@ -635,7 +635,14 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
         table->UnRef();
         return;
     }
-    snapshot->MakeSnapshot(table);
+    int log_part_index = -1;
+    if (snapshot->MakeSnapshot(table, log_part_index) == 0) {
+        LogReplicator* replicator = GetReplicator(tid, pid);
+        if (replicator) {
+            replicator->SetSnapshotLogPartIndex(log_part_index);
+            replicator->UnRef();
+        }    
+    }
     {
         MutexLock lock(&mu_);
         table->SetTableStat(::rtidb::storage::kNormal);
@@ -686,8 +693,6 @@ void TabletImpl::SchedMakeSnapshot() {
         return;
     }
 
-    uint32_t tid = 0;
-    uint32_t pid = 0;
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
         MutexLock lock(&mu_);
@@ -995,8 +1000,6 @@ void TabletImpl::DropTable(RpcController* controller,
         done->Run();
         return;
     }
-    uint32_t tid = request->tid();
-    uint32_t pid = request->pid();
     if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
         LOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
         response->set_code(-1);

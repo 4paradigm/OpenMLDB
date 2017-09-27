@@ -99,6 +99,8 @@ public:
     }
     void SetRole(const ReplicatorRole& role);
 
+    void SetSnapshotLogPartIndex(int log_part_index);
+
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);
 
 private:
@@ -134,6 +136,8 @@ private:
 
     // reference cnt
     boost::atomic<uint64_t> refs_;
+
+    boost::atomic<int> snapshot_log_part_index_;
 
     Mutex wmu_;
 

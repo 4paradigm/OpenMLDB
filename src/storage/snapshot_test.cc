@@ -110,7 +110,8 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     std::vector<std::string> fakes;
     Table* table = new Table("test", 4, 3, 8, 0, true, fakes, true);
     table->Init();
-    int ret = snapshot.MakeSnapshot(table);
+    int log_part_index;
+    int ret = snapshot.MakeSnapshot(table, log_part_index);
     ASSERT_EQ(0, ret); 
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     for (; count < 20; count++) {
@@ -345,8 +346,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         offset++;
     }
-
-    int ret = snapshot.MakeSnapshot(table);
+    int log_part_index;
+    int ret = snapshot.MakeSnapshot(table, log_part_index);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -381,7 +382,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         offset++;
     }
 
-    ret = snapshot.MakeSnapshot(table);
+    ret = snapshot.MakeSnapshot(table, log_part_index);
     ASSERT_EQ(0, ret);
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -437,7 +438,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::storage::GenRand();
     return RUN_ALL_TESTS();
 }
