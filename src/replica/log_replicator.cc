@@ -49,6 +49,7 @@ LogReplicator::LogReplicator(const std::string& path,
     table_ = table;
     table_->Ref();
     binlog_index_ = 0;
+    snapshot_log_part_index_.store(-1, boost::memory_order_relaxed);;
 }
 
 LogReplicator::~LogReplicator() {
@@ -222,11 +223,23 @@ void LogReplicator::UnRef() {
     }
 }
 
+void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
+    ::rtidb::log::LogReader log_reader(logs_, log_path_);
+    log_reader.SetOffset(offset);
+    int log_part_index = log_reader.RollRLogFile();
+    snapshot_log_part_index_.store(log_part_index, boost::memory_order_relaxed);
+}
+
 void LogReplicator::DeleteBinlog() {
     if (!running_.load(boost::memory_order_relaxed)) {
         return;
     }
-    int min_log_index = (int)binlog_index_.load(boost::memory_order_relaxed);
+    if (logs_->GetSize() <= 1) {
+        LOG(DEBUG, "log part size is one or less, need not delete"); 
+        tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+        return;
+    }
+    int min_log_index = snapshot_log_part_index_.load(boost::memory_order_relaxed);
     {
         MutexLock lock(&mu_);
         for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
@@ -235,13 +248,15 @@ void LogReplicator::DeleteBinlog() {
             }
         }
     }
-    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
-                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
-    if (min_log_index < 0) {
-        LOG(DEBUG, "min_log_index is negative, need not delete!");
+    if (min_log_index < 0 || min_log_index > (int)binlog_index_.load(boost::memory_order_relaxed)) {
+        LOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
+    } else if (min_log_index == (int)binlog_index_.load(boost::memory_order_relaxed)) {
+        min_log_index--;
     }
+    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
+                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
     ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
     {
         MutexLock lock(&wmu_);
@@ -380,6 +395,7 @@ bool LogReplicator::RollWLogFile() {
         delete wh_;
         wh_ = NULL;
     }
+    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     std::string name = ::rtidb::base::FormatToString(
                 binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
     std::string full_path = log_path_ + "/" + name;
@@ -390,7 +406,6 @@ bool LogReplicator::RollWLogFile() {
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
     logs_->Insert(binlog_index_.load(boost::memory_order_relaxed), offset);
-    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;

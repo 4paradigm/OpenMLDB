@@ -48,4 +48,4 @@ DEFINE_int32(scan_thread_pool_size, 8, "the size of thread pool for scan");
 DEFINE_int32(thread_pool_size, 8, "the size of thread pool for other api");
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
-DEFINE_int32(make_snapshot_check_interval, 5, "config the interval to check making snapshot time");
+DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");

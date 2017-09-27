@@ -20,8 +20,11 @@
 --binlog_sync_to_disk_interval=5000
 --binlog_sync_wait_time=100
 
+--db_root_path=./db
+
 # snapshot conf
---snapshot_root_path=./snapshots
+--make_snapshot_time=23
+--make_snapshot_check_interval=600000
 
 # garbage collection conf
 # 10m

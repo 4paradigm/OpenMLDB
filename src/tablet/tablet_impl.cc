@@ -635,7 +635,14 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
         table->UnRef();
         return;
     }
-    snapshot->MakeSnapshot(table);
+    uint64_t offset = 0;
+    if (snapshot->MakeSnapshot(table, offset) == 0) {
+        LogReplicator* replicator = GetReplicator(tid, pid);
+        if (replicator) {
+            replicator->SetSnapshotLogPartIndex(offset);
+            replicator->UnRef();
+        }    
+    }
     {
         MutexLock lock(&mu_);
         table->SetTableStat(::rtidb::storage::kNormal);
@@ -682,7 +689,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
 void TabletImpl::SchedMakeSnapshot() {
     int now_hour = ::rtidb::base::GetNowHour();
     if (now_hour != FLAGS_make_snapshot_time) {
-        task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+        task_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
         return;
     }
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
@@ -699,7 +706,7 @@ void TabletImpl::SchedMakeSnapshot() {
         MakeSnapshotInternal(iter->first, iter->second);
     }
     // delay task one hour later avoid execute  more than one time
-    task_pool_.DelayTask((FLAGS_make_snapshot_check_interval + 60) * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    task_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
@@ -761,6 +768,7 @@ void TabletImpl::LoadTable(RpcController* controller,
     if (ok) {
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->SetOffset(latest_offset);
+        replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
         replicator->MatchLogOffset();
         table->SchedGc();
         if (ttl > 0) {
