@@ -670,21 +670,15 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         done->Run();
         return;
     }
-    if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
+    if (table->GetTableStat() != ::rtidb::storage::kNormal) {
         table->UnRef();
         response->set_code(-1);
-        response->set_msg("making snapshot task is running now");
-        LOG(WARNING, "making snapshot task is running now. %ld, pid %ld", tid, pid);
+        response->set_msg("table status is not normal");
+        LOG(WARNING, "table state is %d, cannot make snapshot. %ld, pid %ld", 
+                     table->GetTableStat(), tid, pid);
         done->Run();
         return;
     }    
-    if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
-        LOG(WARNING, "snapshot has paused. tid[%u] pid[%u]", tid, pid);
-        response->set_code(-1);
-        response->set_msg("snapshot has paused");
-        table->UnRef();
-        return;
-    }
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
