@@ -768,7 +768,7 @@ void TabletImpl::LoadTable(RpcController* controller,
     if (ok) {
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->SetOffset(latest_offset);
-        replicator->SetSnapshotLogPartIndex(latest_offset);
+        replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
         replicator->MatchLogOffset();
         table->SchedGc();
         if (ttl > 0) {
