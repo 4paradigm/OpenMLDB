@@ -97,16 +97,6 @@ public:
             ::rtidb::api::GetTableStatusResponse* response,
             Closure* done);
 
-    void PauseSnapshot(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done); 
-
-    void RecoverSnapshot(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done); 
-
     void ChangeRole(RpcController* controller,
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
@@ -157,9 +147,15 @@ private:
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid);
 
+    void SchedMakeSnapshot();
+
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
                        const std::vector<std::string>& replicas);
+
     void CheckZkClient();
+
+    int32_t DeleteTableInternal(uint32_t tid, uint32_t pid);
+
 private:
     Tables tables_;
     Mutex mu_;

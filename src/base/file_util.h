@@ -76,20 +76,33 @@ inline static int GetSubDir(const std::string& path, std::vector<std::string>& s
 
 inline static int GetFileName(const std::string& path, std::vector<std::string>& file_vec) {
     if (path.empty()) {
+        LOG(WARNING, "input path is empty");
         return -1;
     }
     DIR *dir = opendir(path.c_str());
     if (dir == NULL) {
+        LOG(WARNING, "fail to open path %s for %s", path.c_str(),
+                strerror(errno));
         return -1;
     }
     struct dirent *ptr;
+    struct stat stat_buf;
     while ((ptr = readdir(dir)) != NULL) {
         if(strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
             continue;
-        } else if (ptr->d_type == DT_DIR) {
-            GetFileName(path + "/" + ptr->d_name, file_vec);
-        } else if (ptr->d_type == DT_REG) {
-            file_vec.push_back(path + "/" + ptr->d_name);
+        }
+        std::string file_path = path + "/" + ptr->d_name;
+        int ret = lstat(file_path.c_str(), &stat_buf);
+        if (ret == -1) {
+            LOG(WARNING, "stat path %s failed err[%d: %s]",
+                    file_path.c_str(),
+                    errno,
+                    strerror(errno));
+            closedir(dir);
+            return -1;
+        }
+        if (S_ISREG(stat_buf.st_mode)) {
+            file_vec.push_back(file_path);
         }
     }
     closedir(dir);

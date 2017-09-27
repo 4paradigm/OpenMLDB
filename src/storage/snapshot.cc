@@ -9,10 +9,16 @@
 
 #include "base/file_util.h"
 #include "base/strings.h"
+#include "base/slice.h"
+#include "base/count_down_latch.h"
+#include "log/sequential_file.h"
+#include "log/log_reader.h"
 #include "boost/lexical_cast.hpp"
+#include "proto/tablet.pb.h"
 #include "gflags/gflags.h"
 #include "logging.h"
 #include "timer.h"
+#include "thread_pool.h"
 #include <unistd.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -22,11 +28,12 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
 DECLARE_string(db_root_path);
+DECLARE_uint64(gc_on_table_recover_count);
 
 namespace rtidb {
 namespace storage {
 
-const uint32_t MAX_LINE = 1024;
+const std::string SNAPSHOT_SUBFIX=".sdb";
 const std::string MANIFEST = "MANIFEST";
 const uint32_t KEY_NUM_DISPLAY = 1000000;
 
@@ -53,9 +60,156 @@ bool Snapshot::Init() {
     return true;
 }
 
-bool Snapshot::Recover(Table* table) {
-    //TODO multi thread recover
+bool Snapshot::Recover(Table* table, uint64_t& latest_offset) {
+    ::rtidb::api::Manifest manifest;
+    manifest.set_offset(0);
+    int ret = GetSnapshotRecord(manifest);
+    if (ret == -1) {
+        return false;
+    }
+    if (ret == 0) {
+        RecoverFromSnapshot(manifest.name(), manifest.count(), table);
+        latest_offset = manifest.offset();
+    }
+    return RecoverFromBinlog(table, manifest.offset(), latest_offset);
+}
+
+bool Snapshot::RecoverFromBinlog(Table* table, uint64_t offset,
+                                 uint64_t& latest_offset) {
+    LOG(INFO, "start recover table tid %u, pid %u from binlog with start offset %lu",
+            table->GetId(), table->GetPid(), offset);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    log_reader.SetOffset(offset);
+    ::rtidb::api::LogEntry entry;
+    uint64_t cur_offset = offset;
+    std::string buffer;
+    uint64_t succ_cnt = 0;
+    uint64_t failed_cnt = 0;
+    uint64_t consumed = ::baidu::common::timer::now_time();
+    while (true) {
+        buffer.clear();
+        ::rtidb::base::Slice record;
+        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+        if (status.IsWaitRecord()) {
+            consumed = ::baidu::common::timer::now_time() - consumed;
+            LOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
+                       tid_, pid_, succ_cnt, failed_cnt, consumed);
+            break;
+        }
+
+        if (status.IsEof()) {
+            continue;
+        }
+
+        if (!status.ok()) {
+            failed_cnt++;
+            continue;
+        }
+        bool ok = entry.ParseFromString(record.ToString());
+        if (!ok) {
+            LOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+                        ::rtidb::base::DebugString(record.ToString()).c_str());
+            failed_cnt++;
+            continue;
+        }
+
+        if (cur_offset >= entry.log_index()) {
+            LOG(WARNING, "offset %lu has been made snapshot", entry.log_index());
+            continue;
+        }
+
+        if (cur_offset + 1 != entry.log_index()) {
+            LOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
+                    cur_offset, entry.log_index(), tid_, pid_);
+        }
+        table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
+        cur_offset = entry.log_index();
+        succ_cnt++;
+        if (succ_cnt % 100000 == 0) {
+            LOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
+                    succ_cnt, failed_cnt, tid_, pid_);
+        }
+        if (succ_cnt % FLAGS_gc_on_table_recover_count == 0) {
+            table->SchedGc();
+        }
+    }
+    latest_offset = cur_offset;
     return true;
+}
+
+void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, Table* table) {
+    std::string full_path = snapshot_path_ + "/" + snapshot_name;
+    std::atomic<uint64_t> g_succ_cnt(0);
+    std::atomic<uint64_t> g_failed_cnt(0);
+    RecoverSingleSnapshot(full_path, table, &g_succ_cnt, &g_failed_cnt);
+    LOG(INFO, "[Recover] progress done stat: success count %lu, failed count %lu", 
+                    g_succ_cnt.load(std::memory_order_relaxed),
+                    g_failed_cnt.load(std::memory_order_relaxed));
+    if (g_succ_cnt.load(std::memory_order_relaxed) != expect_cnt) {
+        LOG(WARNING, "snapshot %s , expect cnt %lu but succ_cnt %lu", snapshot_name.c_str(),
+                expect_cnt, g_succ_cnt.load(std::memory_order_relaxed));
+    }
+}
+
+
+void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table, 
+                                     std::atomic<uint64_t>* g_succ_cnt,
+                                     std::atomic<uint64_t>* g_failed_cnt) {
+    do {
+        if (table == NULL) {
+            LOG(WARNING, "table input is NULL");
+            break;
+        }
+        FILE* fd = fopen(path.c_str(), "rb+");
+        if (fd == NULL) {
+            LOG(WARNING, "fail to open path %s for error %s", path.c_str(), strerror(errno));
+            break;
+        }
+        ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
+        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+        std::string buffer;
+        ::rtidb::api::LogEntry entry;
+        uint64_t succ_cnt = 0;
+        uint64_t failed_cnt = 0;
+        // second
+        uint64_t consumed = ::baidu::common::timer::now_time();
+        while (true) {
+            ::rtidb::base::Slice record;
+            ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+            if (status.IsWaitRecord() || status.IsEof()) {
+                consumed = ::baidu::common::timer::now_time() - consumed;
+                LOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
+                        path.c_str(), tid_, pid_, succ_cnt, failed_cnt, consumed);
+                break;
+            }
+            if (!status.ok()) {
+                LOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
+                failed_cnt++;
+                continue;
+            }
+            bool ok = entry.ParseFromString(record.ToString());
+            if (!ok) {
+                LOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+                        ::rtidb::base::DebugString(record.ToString()).c_str());
+                failed_cnt++;
+                continue;
+            }
+            succ_cnt++;
+            if (succ_cnt % 100000 == 0) { 
+                LOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
+                        succ_cnt, failed_cnt);
+            }
+            table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
+        }
+        // will close the fd atomic
+        delete seq_file;
+        if (g_succ_cnt) {
+            g_succ_cnt->fetch_add(succ_cnt, std::memory_order_relaxed);
+        }
+        if (g_failed_cnt) {
+            g_failed_cnt->fetch_add(failed_cnt, std::memory_order_relaxed);
+        }
+    }while(false);
 }
 
 int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count) {
@@ -157,7 +311,6 @@ int Snapshot::MakeSnapshot(Table* table) {
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
-
     std::string buffer;
     while (!has_error) {
         buffer.clear();
@@ -237,7 +390,6 @@ int Snapshot::MakeSnapshot(Table* table) {
 
 int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     std::string full_path = snapshot_path_ + MANIFEST;
-    std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
     int fd = open(full_path.c_str(), O_RDONLY);
     std::string manifest_info;
     if (fd < 0) {
@@ -245,7 +397,6 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
         return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);
-        // will close fd when destruct
         fileInput.SetCloseOnDelete(true);
         if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
             LOG(WARNING, "parse manifest failed");
@@ -262,12 +413,10 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
     ::rtidb::api::Manifest manifest;
     std::string manifest_info;
-
     manifest.set_offset(offset);
     manifest.set_name(snapshot_name);
     manifest.set_count(key_count);
     manifest_info.clear();
-
     google::protobuf::TextFormat::PrintToString(manifest, &manifest_info);
     FILE* fd_write = fopen(tmp_file.c_str(), "w");
     if (fd_write == NULL) {

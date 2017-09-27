@@ -273,9 +273,6 @@ service TabletServer {
     rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
     rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
-    rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
-    rpc LoadSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
-    rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
 }

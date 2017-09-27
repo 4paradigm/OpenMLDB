@@ -7,8 +7,7 @@
 
 #include <gflags/gflags.h>
 // cluster config
-DEFINE_string(put_endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves put for");
-DEFINE_string(scan_endpoint, "127.0.0.1:9517", "config the ip and port that rtidb serves scan for");
+DEFINE_string(scan_endpoint, "127.0.0.1:9526", "config the ip and port that rtidb serves scan for");
 DEFINE_string(endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves for");
 DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
@@ -18,6 +17,7 @@ DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep al
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
+DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");
 DEFINE_int32(statdb_ttl, 30 * 24 * 60 , "the ttl of statdb");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_bool(enable_statdb, false, "enable statdb");
@@ -44,5 +44,8 @@ DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage 
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
 
 // thread pool config
-DEFINE_int32(put_thread_pool_size, 8, "the size of thread pool for put");
 DEFINE_int32(scan_thread_pool_size, 8, "the size of thread pool for scan");
+DEFINE_int32(thread_pool_size, 8, "the size of thread pool for other api");
+// if set 23, the task will execute 23:00 every day
+DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
+DEFINE_int32(make_snapshot_check_interval, 5, "config the interval to check making snapshot time");
