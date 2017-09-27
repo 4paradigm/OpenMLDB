@@ -195,7 +195,7 @@ bool LogReplicator::Recover() {
         logs_->Insert(binlog_index, offset);
         LOG(INFO, "recover binlog index %u and offset %lu from path %s",
                 binlog_index, entry.log_index(), full_path.c_str());
-        binlog_index_.store(binlog_index, boost::memory_order_relaxed);
+        binlog_index_.store(binlog_index + 1, boost::memory_order_relaxed);
     }
     return true;
 }
@@ -248,13 +248,13 @@ void LogReplicator::DeleteBinlog() {
             }
         }
     }
-    if (min_log_index < 0 || min_log_index > (int)binlog_index_.load(boost::memory_order_relaxed)) {
+    min_log_index--;
+    if (min_log_index < 0) {
         LOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
-    } else if (min_log_index == (int)binlog_index_.load(boost::memory_order_relaxed)) {
-        min_log_index--;
     }
+
     LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
                 min_log_index, binlog_index_.load(boost::memory_order_relaxed));
     ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
@@ -395,7 +395,6 @@ bool LogReplicator::RollWLogFile() {
         delete wh_;
         wh_ = NULL;
     }
-    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     std::string name = ::rtidb::base::FormatToString(
                 binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
     std::string full_path = log_path_ + "/" + name;
@@ -406,6 +405,7 @@ bool LogReplicator::RollWLogFile() {
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
     logs_->Insert(binlog_index_.load(boost::memory_order_relaxed), offset);
+    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;

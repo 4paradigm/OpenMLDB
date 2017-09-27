@@ -703,6 +703,9 @@ void TabletImpl::SchedMakeSnapshot() {
         MutexLock lock(&mu_);
         for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
             for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
+                if (iter->first == 0 && inner->first == 0) {
+                    continue;
+                }
                 table_set.push_back(std::make_pair(iter->first, inner->first));
             }
         }
