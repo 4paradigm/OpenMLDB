@@ -685,9 +685,6 @@ void TabletImpl::SchedMakeSnapshot() {
         task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
         return;
     }
-
-    uint32_t tid = 0;
-    uint32_t pid = 0;
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
         MutexLock lock(&mu_);
@@ -703,7 +700,6 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     // delay task one hour later avoid execute  more than one time
     task_pool_.DelayTask((FLAGS_make_snapshot_check_interval + 60) * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
-    
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
@@ -995,8 +991,6 @@ void TabletImpl::DropTable(RpcController* controller,
         done->Run();
         return;
     }
-    uint32_t tid = request->tid();
-    uint32_t pid = request->pid();
     if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
         LOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
         response->set_code(-1);
