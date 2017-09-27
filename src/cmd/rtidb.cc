@@ -128,7 +128,7 @@ void StartTablet() {
         LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
         exit(1);
     }
-    LOG(INFO, "start tablet on port %s and scan port %s with version %d.%d.%d", FLAGS_scan_endpoint.c_str(),
+    LOG(INFO, "start tablet on port %s and scan port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
             FLAGS_scan_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
