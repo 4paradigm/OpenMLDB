@@ -692,7 +692,6 @@ void TabletImpl::SchedMakeSnapshot() {
         task_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
         return;
     }
-
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
         MutexLock lock(&mu_);
@@ -708,7 +707,6 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     // delay task one hour later avoid execute  more than one time
     task_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
-    
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
