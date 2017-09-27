@@ -796,7 +796,7 @@ void TabletImpl::LoadTable(RpcController* controller,
     uint64_t ttl = request->ttl();
     std::string name = request->name();
     uint32_t seg_cnt = 8;
-    if (request->seg_cnt() > 0 && request->seg_cnt() < 32) {
+    if (request->seg_cnt() > 0) {
         seg_cnt = request->seg_cnt();
     }
 
