@@ -1,5 +1,6 @@
 # common conf 
 --endpoint=0.0.0.0:9527
+--scan_endpoint=0.0.0.0:9526
 --role=tablet
 
 # log conf
@@ -19,8 +20,12 @@
 --binlog_sync_to_disk_interval=5000
 --binlog_sync_wait_time=100
 
+--db_root_path=./db
+
 # snapshot conf
 --snapshot_root_path=/tmp/snapshots
+--make_snapshot_time=23
+--make_snapshot_check_interval=600000
 
 # garbage collection conf
 # 10m

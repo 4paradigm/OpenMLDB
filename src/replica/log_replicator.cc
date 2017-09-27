@@ -12,12 +12,14 @@
 #include "log/log_format.h"
 #include "logging.h"
 #include <boost/ref.hpp>
+#include <boost/lexical_cast.hpp>
 #include <cstring>
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <algorithm> 
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_apply_batch_size);
@@ -47,6 +49,7 @@ LogReplicator::LogReplicator(const std::string& path,
     table_ = table;
     table_->Ref();
     binlog_index_ = 0;
+    snapshot_log_part_index_.store(-1, boost::memory_order_relaxed);;
 }
 
 LogReplicator::~LogReplicator() {
@@ -85,7 +88,7 @@ void LogReplicator::SyncToDisk() {
 bool LogReplicator::Init() {
     rpc_client_ = new ::rtidb::RpcClient();
     logs_ = new LogParts(12, 4, scmp);
-    log_path_ = path_ + "/logs/";
+    log_path_ = path_ + "/binlog/";
     if (!::rtidb::base::MkdirRecur(log_path_)) {
        LOG(WARNING, "fail to log dir %s", log_path_.c_str());
        return false;
@@ -94,14 +97,111 @@ bool LogReplicator::Init() {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             nodes_.push_back(std::shared_ptr<ReplicateNode>(
-                    new FollowerReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
+                    new ReplicateNode(*it, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
             LOG(INFO, "add replica node with endpoint %s", it->c_str());
         }
         LOG(INFO, "init leader node for path %s ok", path_.c_str());
     }
+    if (!Recover()) {
+        return false;
+    }
     tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
     return true;
+}
+
+bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
+    if (path.size() <= 4 
+        || path.substr(path.length() - 4, 4) != ".log" ) {
+        LOG(WARNING, "invalid log name %s", path.c_str());
+        return false;
+    }
+    size_t rindex = path.rfind('/');
+    if (rindex == std::string::npos) {
+        rindex = 0;
+    }else {
+        rindex += 1;
+    }
+    std::string name = path.substr(rindex, path.length() - rindex - 4);
+    size_t no_zero_index = 0;
+    for (size_t i = 0; i < name.length(); i++) {
+        no_zero_index = i;
+        if (name[no_zero_index] != '0') {
+            break;
+        }
+    }
+    std::string num = name.substr(no_zero_index, name.length());
+    if (num.length() == 0) {
+        index = 0;
+        return true;
+    }
+    bool ok = ::rtidb::base::IsNumber(num);
+    if (!ok) {
+        LOG(WARNING, "fail to parse binlog index from name %s, num %s", name.c_str(), num.c_str());
+        return false;
+    }
+    index = boost::lexical_cast<uint32_t>(num);
+    return true;
+}
+
+bool LogReplicator::Recover() {
+    std::vector<std::string> logs;
+    int ret = ::rtidb::base::GetFileName(log_path_, logs);
+    if (ret != 0) {
+        LOG(WARNING, "fail to get binlog log list for tid %u pid %u", table_->GetId(), table_->GetPid());
+        return false;
+    }
+    if (logs.size() <= 0) {
+        return true;
+    }
+    std::sort(logs.begin(), logs.end());
+    std::string buffer;
+    ::rtidb::api::LogEntry entry;
+    for (uint32_t i = 0; i < logs.size(); i++) {
+        std::string& full_path = logs[i];
+        uint32_t binlog_index = 0;
+        bool ok = ParseBinlogIndex(full_path, binlog_index);
+        if (!ok) {
+            break;
+        }
+        FILE* fd = fopen(full_path.c_str(), "rb+");
+        if (fd == NULL) {
+            LOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
+            break;
+        }
+        ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(full_path, fd);
+        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+        ::rtidb::base::Slice record;
+        ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+        delete seq_file;
+        if (!status.ok()) {
+            LOG(WARNING, "fail to get offset from file %s", full_path.c_str());
+            return false;
+        }
+        ok = entry.ParseFromString(record.ToString());
+        if (!ok) {
+            LOG(WARNING, "fail to parse log entry %s ", 
+                    ::rtidb::base::DebugString(record.ToString()).c_str());
+            return false;
+        }
+        if (entry.log_index() <= 0) {
+            LOG(WARNING, "invalid entry offset %lu ", entry.log_index());
+            return false;
+        }
+        uint64_t offset = entry.log_index();
+        if (offset > 0) {
+            offset -= 1;
+        }
+        logs_->Insert(binlog_index, offset);
+        LOG(INFO, "recover binlog index %u and offset %lu from path %s",
+                binlog_index, entry.log_index(), full_path.c_str());
+        binlog_index_.store(binlog_index, boost::memory_order_relaxed);
+    }
+    return true;
+}
+
+LogParts* LogReplicator::GetLogPart() {
+    return logs_;
 }
 
 void LogReplicator::SetOffset(uint64_t offset) {
@@ -123,11 +223,23 @@ void LogReplicator::UnRef() {
     }
 }
 
+void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
+    ::rtidb::log::LogReader log_reader(logs_, log_path_);
+    log_reader.SetOffset(offset);
+    int log_part_index = log_reader.RollRLogFile();
+    snapshot_log_part_index_.store(log_part_index, boost::memory_order_relaxed);
+}
+
 void LogReplicator::DeleteBinlog() {
     if (!running_.load(boost::memory_order_relaxed)) {
         return;
     }
-    int min_log_index = (int)binlog_index_.load(boost::memory_order_relaxed);
+    if (logs_->GetSize() <= 1) {
+        LOG(DEBUG, "log part size is one or less, need not delete"); 
+        tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+        return;
+    }
+    int min_log_index = snapshot_log_part_index_.load(boost::memory_order_relaxed);
     {
         MutexLock lock(&mu_);
         for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
@@ -136,13 +248,15 @@ void LogReplicator::DeleteBinlog() {
             }
         }
     }
-    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
-                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
-    if (min_log_index < 0) {
-        LOG(DEBUG, "min_log_index is negative, need not delete!");
+    if (min_log_index < 0 || min_log_index > (int)binlog_index_.load(boost::memory_order_relaxed)) {
+        LOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
+    } else if (min_log_index == (int)binlog_index_.load(boost::memory_order_relaxed)) {
+        min_log_index--;
     }
+    LOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
+                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
     ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
     {
         MutexLock lock(&wmu_);
@@ -219,7 +333,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
             }
         }
         nodes_.push_back(std::shared_ptr<ReplicateNode>(
-                    new FollowerReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
+                    new ReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
         endpoints_.push_back(endpoint);
         LOG(INFO, "add ReplicateNode with endpoint %s ok", endpoint.c_str());
     }
@@ -281,6 +395,7 @@ bool LogReplicator::RollWLogFile() {
         delete wh_;
         wh_ = NULL;
     }
+    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     std::string name = ::rtidb::base::FormatToString(
                 binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
     std::string full_path = log_path_ + "/" + name;
@@ -291,7 +406,6 @@ bool LogReplicator::RollWLogFile() {
     }
     uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
     logs_->Insert(binlog_index_.load(boost::memory_order_relaxed), offset);
-    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     wsize_ = 0;

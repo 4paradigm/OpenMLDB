@@ -27,13 +27,12 @@ public:
                      uint32_t id, 
                      uint32_t pid,
                      uint64_t ttl,
-                     uint32_t seg_cnt=128);
+                     uint32_t seg_cnt=16);
 
     bool CreateTable(const std::string& name,
-                     uint32_t tid, uint32_t pid, uint32_t ttl,
+                     uint32_t tid, uint32_t pid, uint64_t ttl,
                      bool leader, const std::vector<std::string>& endpoints,
-                     uint32_t seg_cnt=128);
-                     uint64_t ttl);
+                     uint32_t seg_cnt=16);
 
     bool Put(uint32_t tid,
              uint32_t pid,
@@ -70,11 +69,11 @@ public:
 
     bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
 
+    bool MakeSnapshot(uint32_t tid, uint32_t pid);
+
     bool PauseSnapshot(uint32_t tid, uint32_t pid);
 
     bool RecoverSnapshot(uint32_t tid, uint32_t pid);
-
-    bool LoadSnapshot(uint32_t tid, uint32_t pid);
 
     bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl);
 

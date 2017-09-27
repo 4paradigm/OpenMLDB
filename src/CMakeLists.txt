@@ -16,7 +16,7 @@ add_library(log STATIC log/crc32c.cc
                        log/sequential_file.cc 
                        log/log_writer.cc 
                        log/log_reader.cc
-                       log/writable_file.cc)
+                       log/writable_file.cc flags.cc)
 add_library(base STATIC base/status.cc)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 
@@ -25,6 +25,9 @@ add_library(replica STATIC replica/replicate_node.cc
 
 add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
 target_link_libraries(rtidb_py pthread common sofa-pbrpc protobuf z snappy)
+
+add_executable(strings_test base/strings_test.cc)
+target_link_libraries(strings_test gtest pthread)
 
 add_executable(zk_test zk/zk_client_test.cc)
 target_link_libraries(zk_test gtest zk_client zookeeper_mt pthread common)
@@ -36,16 +39,19 @@ add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.
 target_link_libraries(replica_test gtest gflags replica log tablet storage base pthread sofa-pbrpc protobuf z snappy common)
 
 add_executable(skiplist_test base/skiplist_test.cc)
-target_link_libraries(skiplist_test gtest pthread unwind tcmalloc)
+target_link_libraries(skiplist_test gtest pthread)
+
+add_executable(count_down_latch_test base/count_down_latch_test.cc)
+target_link_libraries(count_down_latch_test common gtest pthread)
 
 add_executable(segment_test storage/segment_test.cc flags.cc)
 target_link_libraries(segment_test gtest gflags storage pthread common unwind tcmalloc)
 
-add_executable(table_test  storage/table_test.cc flags.cc)
-target_link_libraries(table_test gtest gflags pthread storage common unwind tcmalloc)
+add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc flags.cc)
+target_link_libraries(table_test gtest gflags pthread storage common unwind tcmalloc protobuf)
 
-add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc)
-target_link_libraries(snapshot_test gtest pthread zk_client zookeeper_mt storage tablet protobuf common gflags unwind tcmalloc)
+add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc base/status.cc)
+target_link_libraries(snapshot_test gtest gflags storage log tablet base pthread sofa-pbrpc protobuf z snappy common)
 
 add_executable(table_mem_test  storage/table_mem_test.cc)
 target_link_libraries(table_mem_test gtest pthread storage zookeeper_mt common zk_client unwind tcmalloc)

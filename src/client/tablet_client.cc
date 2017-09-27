@@ -88,6 +88,19 @@ bool TabletClient::Put(uint32_t tid,
     return Put(tid, pid, pk.c_str(), time, value.c_str());
 }
 
+bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid) {
+    ::rtidb::api::GeneralRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::MakeSnapshot,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
@@ -107,19 +120,6 @@ bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid) {
     request.set_pid(pid);
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::RecoverSnapshot,
-            &request, &response, 12, 1);
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    return false;
-}
-
-bool TabletClient::LoadSnapshot(uint32_t tid, uint32_t pid) {
-    ::rtidb::api::GeneralRequest request;
-    request.set_tid(tid);
-    request.set_pid(pid);
-    ::rtidb::api::GeneralResponse response;
-    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::LoadSnapshot,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         return true;
