@@ -340,53 +340,6 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     }
 }
 
-void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 3) {
-        std::cout << "Bad PauseSnapshot format" << std::endl;
-        return;
-    }
-    try {
-        bool ok = client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-        if (ok) {
-            std::cout << "PauseSnapshot ok" << std::endl;
-        }else {
-            std::cout << "Fail to PauseSnapshot" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad PauseSnapshot format" << std::endl;
-    }
-}
-
-void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 3) {
-        std::cout << "Bad RecoverSnapshot format" << std::endl;
-        return;
-    }
-    try {
-        bool ok = client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-        if (ok) {
-            std::cout << "RecoverSnapshot ok" << std::endl;
-        }else {
-            std::cout << "Fail to RecoverSnapshot" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad RecoverSnapshot format" << std::endl;
-    }
-}
-
-void HandleClientLoadSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 3) {
-        std::cout << "Bad LoadSnapshot format" << std::endl;
-        return;
-    }
-    bool ok = client->LoadSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-    if (ok) {
-        std::cout << "LoadSnapshot ok" << std::endl;
-    }else {
-        std::cout << "Fail to LoadSnapshot" << std::endl;
-    }
-}
-
 void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad MakeSnapshot format" << std::endl;
@@ -636,12 +589,6 @@ void StartClient() {
             HandleClientAddReplica(parts, &client);
         }else if (parts[0] == "delreplica") {
             HandleClientDelReplica(parts, &client);
-        }else if (parts[0] == "pausesnapshot") {
-            HandleClientPauseSnapshot(parts, &client);
-        }else if (parts[0] == "recoversnapshot") {
-            HandleClientRecoverSnapshot(parts, &client);
-        }else if (parts[0] == "loadsnapshot") {
-            HandleClientLoadSnapshot(parts, &client);
         }else if (parts[0] == "makesnapshot") {
             HandleClientMakeSnapshot(parts, &client);
         }else if (parts[0] == "loadtable") {

@@ -165,6 +165,15 @@ static inline std::string GetNowTime() {
     return std::string(buf);               
 }
 
+static inline int GetNowHour() {
+	struct timeval tv;
+    gettimeofday(&tv, NULL);
+    const time_t seconds = tv.tv_sec;
+    struct tm t;
+    localtime_r(&seconds, &t);
+ 	return t.tm_hour;
+}
+
 
 }
 }

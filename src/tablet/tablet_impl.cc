@@ -41,8 +41,9 @@ DECLARE_string(db_root_path);
 DECLARE_string(binlog_root_path);
 DECLARE_bool(enable_statdb);
 DECLARE_bool(binlog_notify_on_put);
-DECLARE_string(snapshot_root_path);
 DECLARE_int32(task_pool_size);
+DECLARE_int32(make_snapshot_time);
+DECLARE_int32(make_snapshot_check_interval);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -62,7 +63,6 @@ TabletImpl::~TabletImpl() {
     if (FLAGS_enable_statdb) {
         Table* table = GetTable(0, 0);
         if (table != NULL) {
-            table->Release();
             table->UnRef();
             table->UnRef();
         }
@@ -106,6 +106,11 @@ bool TabletImpl::Init() {
         metric_ = new TabletMetric(dbstat);
         metric_->Init();
     }
+    if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
+        LOG(WARNING, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
+        return false;
+    }
+    task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
@@ -366,76 +371,6 @@ void TabletImpl::Scan(RpcController* controller,
     if (FLAGS_enable_statdb) {
         metric_->IncrThroughput(0, 0, 1, total_size);
     }
-}
-
-void TabletImpl::PauseSnapshot(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done) {
-    Table* table = GetTable(request->tid(), request->pid());
-    if (table == NULL ||
-        !table->IsLeader()) {
-        if (table) {
-            table->UnRef();
-        }
-        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
-                request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist or table is leader");
-        done->Run();
-        return;
-    }
-    if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-        LOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
-                table->GetTableStat(), request->tid(), request->pid());
-        table->UnRef();
-        response->set_code(-2);
-        response->set_msg("table status is not kNormal");
-        done->Run();
-        return;
-    }
-    table->SetTableStat(::rtidb::storage::kPausing);
-    LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-               table->GetTableStat(), request->tid(), request->pid());
-    table->UnRef();
-    response->set_code(0);
-    response->set_msg("ok");
-    done->Run();
-}
-
-void TabletImpl::RecoverSnapshot(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done) {
-    Table* table = GetTable(request->tid(), request->pid());
-    if (table == NULL ||
-        !table->IsLeader()) {
-        if (table) {
-            table->UnRef();
-        }
-        LOG(WARNING, "table not exist or table is leader tid %ld, pid %ld", request->tid(),
-                request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist or table is leader");
-        done->Run();
-        return;
-    }
-    if (table->GetTableStat() != ::rtidb::storage::kPaused) {
-        LOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
-                table->GetTableStat(), request->tid(), request->pid());
-        table->UnRef();
-        response->set_code(-2);
-        response->set_msg("table status is not kPaused");
-        done->Run();
-        return;
-    }
-    table->SetTableStat(::rtidb::storage::kNormal);
-    LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-               table->GetTableStat(), request->tid(), request->pid());
-    table->UnRef();
-    response->set_code(0);
-    response->set_msg("ok");
-    done->Run();
 }
 
 void TabletImpl::ChangeRole(RpcController* controller, 
@@ -744,6 +679,33 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
     task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid));
 }
 
+void TabletImpl::SchedMakeSnapshot() {
+    int now_hour = ::rtidb::base::GetNowHour();
+    if (now_hour != FLAGS_make_snapshot_time) {
+        task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+        return;
+    }
+
+    uint32_t tid = 0;
+    uint32_t pid = 0;
+    std::vector<std::pair<uint32_t, uint32_t> > table_set;
+    {
+        MutexLock lock(&mu_);
+        for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
+            for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
+                table_set.push_back(std::make_pair(iter->first, inner->first));
+            }
+        }
+    }
+    for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
+        LOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
+        MakeSnapshotInternal(iter->first, iter->second);
+    }
+    // delay task one hour later avoid execute  more than one time
+    task_pool_.DelayTask((FLAGS_make_snapshot_check_interval + 60) * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    
+}
+
 void TabletImpl::LoadTable(RpcController* controller,
             const ::rtidb::api::LoadTableRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -880,7 +842,6 @@ void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request
     if (!replicator || !replicator->Init()) {
         LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
         // clean memory
-        table->Release();
         table->UnRef();
         if (replicator) {
             replicator->UnRef();
@@ -987,7 +948,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
         replicator = new LogReplicator(table_binlog_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
     }
     if (replicator == NULL) {
-        table->Release();
         table->UnRef();
         response->set_code(-1);
         response->set_msg("fail create replicator for table");
@@ -998,7 +958,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     if (!ok) {
         LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
         // clean memory
-        table->Release();
         table->UnRef();
         replicator->UnRef();
         response->set_code(-1);
@@ -1009,7 +968,6 @@ void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* req
     ok = snapshot->Init();
     if (!ok) {
         LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
-        table->Release();
         table->UnRef();
         response->set_code(-1);
         response->set_msg("fail to init snapshot");
@@ -1037,7 +995,18 @@ void TabletImpl::DropTable(RpcController* controller,
         done->Run();
         return;
     }
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
+        LOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
+        response->set_code(-1);
+        response->set_msg("table is making snapshot");
+        done->Run();
+        table->UnRef();
+        return;
+    }
     response->set_code(0);
+    response->set_msg("ok");
     done->Run();
     table->UnRef();
     DeleteTableInternal(tid, pid);
