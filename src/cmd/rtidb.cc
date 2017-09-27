@@ -216,30 +216,33 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
 
 // the input format like create name tid pid ttl leader endpoints 
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 4) {
-        std::cout << "Bad create format" << std::endl;
+    if (parts.size() < 6) {
+        std::cout << "Bad create format, input like create <name> <tid> <pid> <ttl> <seg_cnt>" << std::endl;
         return;
     }
 
-    bool leader = true;
-    if (parts.size() > 5 && parts[5] == "false") {
-        leader = false;
-    }
-
-    std::vector<std::string> endpoints;
-    for (size_t i = 6; i < parts.size(); i++) {
-        endpoints.push_back(parts[i]);
-    }
-
     try {
+
         uint64_t ttl = 0;
         if (parts.size() > 4) {
             ttl = boost::lexical_cast<uint64_t>(parts[4]);
         }
+        uint32_t seg_cnt = 16;
+        if (parts.size() > 5) {
+            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
+        }
+        bool is_leader = true;
+        if (parts.size() > 6 && parts[6] == "false") {
+            is_leader = false;
+        }
+        std::vector<std::string> endpoints;
+        for (size_t i = 7; i < parts.size(); i++) {
+            endpoints.push_back(parts[i]);
+        }
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl, leader, endpoints);
+                                      ttl, is_leader, endpoints, seg_cnt);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -405,13 +408,32 @@ void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::
 }
 
 void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "Bad LoadTable format" << std::endl;
+    if (parts.size() < 6) {
+        std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> <ttl> <seg_cnt> " << std::endl;
         return;
     }
     try {
+        uint64_t ttl = 0;
+        if (parts.size() > 4) {
+            ttl = boost::lexical_cast<uint64_t>(parts[4]);
+        }
+        uint32_t seg_cnt = 16;
+        if (parts.size() > 5) {
+            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
+        }
+        bool is_leader = true;
+        if (parts.size() > 6 && parts[6] == "false") {
+            is_leader = false;
+        }
+        std::vector<std::string> endpoints;
+        for (size_t i = 7; i < parts.size(); i++) {
+            endpoints.push_back(parts[i]);
+        }
+
         bool ok = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-                                    boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint64_t>(parts[4]));
+                                    boost::lexical_cast<uint32_t>(parts[3]), 
+                                    ttl,
+                                    is_leader, endpoints, seg_cnt);
         if (ok) {
             std::cout << "LoadTable ok" << std::endl;
         }else {
