@@ -115,7 +115,7 @@ bool Snapshot::RecoverFromBinlog(Table* table, uint64_t offset,
         }
 
         if (cur_offset >= entry.log_index()) {
-            LOG(WARNING, "offset %lu has been made snapshot", entry.log_index());
+            LOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
             continue;
         }
 
