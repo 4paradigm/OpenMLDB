@@ -622,6 +622,11 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
             LOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
             return;
         }
+        if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
+            LOG(WARNING, "snapshot has paused. tid[%u] pid[%u]", tid, pid);
+            table->UnRef();
+            return;
+        }
         if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
             LOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
             table->UnRef();
@@ -673,6 +678,13 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         done->Run();
         return;
     }    
+    if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
+        LOG(WARNING, "snapshot has paused. tid[%u] pid[%u]", tid, pid);
+        response->set_code(-1);
+        response->set_msg("snapshot has paused");
+        table->UnRef();
+        return;
+    }
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
@@ -700,6 +712,72 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     // delay task one hour later avoid execute  more than one time
     task_pool_.DelayTask((FLAGS_make_snapshot_check_interval + 60) * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+}
+
+void TabletImpl::PauseSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL) {
+        LOG(WARNING, "table not exist. tid %ld, pid %ld", request->tid(), request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist");
+        done->Run();
+        return;
+    }
+	{
+        MutexLock lock(&mu_);
+		if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+			LOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
+					table->GetTableStat(), request->tid(), request->pid());
+			table->UnRef();
+			response->set_code(-2);
+			response->set_msg("table status is not kNormal");
+			done->Run();
+			return;
+		}
+		table->SetTableStat(::rtidb::storage::kSnapshotPaused);
+		LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+				   table->GetTableStat(), request->tid(), request->pid());
+	}
+    table->UnRef();
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
+
+void TabletImpl::RecoverSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    Table* table = GetTable(request->tid(), request->pid());
+    if (table == NULL) {
+        LOG(WARNING, "table not exist tid %ld, pid %ld", request->tid(), request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist");
+        done->Run();
+        return;
+    }
+	{
+        MutexLock lock(&mu_);
+		if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
+			LOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
+					table->GetTableStat(), request->tid(), request->pid());
+			table->UnRef();
+			response->set_code(-1);
+			response->set_msg("table status is not kSnapshotPaused");
+			done->Run();
+			return;
+		}
+		table->SetTableStat(::rtidb::storage::kNormal);
+		LOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+				   table->GetTableStat(), request->tid(), request->pid());
+	}
+    table->UnRef();
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
 }
 
 void TabletImpl::LoadTable(RpcController* controller,

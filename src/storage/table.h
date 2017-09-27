@@ -28,7 +28,8 @@ enum TableStat {
     kUndefined = 0,
     kNormal,
     kLoading,
-    kMakingSnapshot
+    kMakingSnapshot,
+    kSnapshotPaused
 };
 
 class Table {

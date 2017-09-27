@@ -617,6 +617,59 @@ TEST_F(TabletImplTest, DropTableFollower) {
 
 }
 
+TEST_F(TabletImplTest, Snapshot) {
+    TabletImpl tablet;
+    uint32_t id = counter++;
+    tablet.Init();
+    ::rtidb::api::CreateTableRequest request;
+    request.set_name("t0");
+    request.set_tid(id);
+    request.set_pid(1);
+    request.set_ttl(0);
+    request.set_wal(true);
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+
+    ::rtidb::api::PutRequest prequest;
+    prequest.set_pk("test1");
+    prequest.set_time(9527);
+    prequest.set_value("test0");
+    prequest.set_tid(id);
+    prequest.set_pid(2);
+    ::rtidb::api::PutResponse presponse;
+    tablet.Put(NULL, &prequest, &presponse,
+            &closure);
+    ASSERT_EQ(10, presponse.code());
+    prequest.set_tid(id);
+    prequest.set_pid(1);
+    tablet.Put(NULL, &prequest, &presponse,
+            &closure);
+    ASSERT_EQ(0, presponse.code());
+
+    ::rtidb::api::GeneralRequest grequest;
+    ::rtidb::api::GeneralResponse gresponse;
+    grequest.set_tid(id);
+    grequest.set_pid(1);
+    tablet.PauseSnapshot(NULL, &grequest, &gresponse,
+            &closure);
+    ASSERT_EQ(0, gresponse.code());
+
+    tablet.MakeSnapshot(NULL, &grequest, &gresponse,
+            &closure);
+    ASSERT_EQ(-1, gresponse.code());
+
+    tablet.RecoverSnapshot(NULL, &grequest, &gresponse,
+            &closure);
+    ASSERT_EQ(0, gresponse.code());
+
+    tablet.MakeSnapshot(NULL, &grequest, &gresponse,
+            &closure);
+    ASSERT_EQ(0, gresponse.code());
+}
+
 
 
 }
