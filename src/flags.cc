@@ -43,4 +43,4 @@ DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage 
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
-DEFINE_int32(make_snapshot_check_interval, 5, "config the interval to check making snapshot time");
+DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");

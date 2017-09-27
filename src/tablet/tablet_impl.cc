@@ -689,7 +689,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
 void TabletImpl::SchedMakeSnapshot() {
     int now_hour = ::rtidb::base::GetNowHour();
     if (now_hour != FLAGS_make_snapshot_time) {
-        task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+        task_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
         return;
     }
 
@@ -707,7 +707,7 @@ void TabletImpl::SchedMakeSnapshot() {
         MakeSnapshotInternal(iter->first, iter->second);
     }
     // delay task one hour later avoid execute  more than one time
-    task_pool_.DelayTask((FLAGS_make_snapshot_check_interval + 60) * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    task_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     
 }
 
