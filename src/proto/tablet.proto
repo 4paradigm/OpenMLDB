@@ -14,8 +14,8 @@ enum TableState {
     kTableUndefined = 0;
     kTableNormal = 1;
     kTableLoading = 2;
-    kTablePausing = 3;
-    kTablePaused = 4;
+    kMakingSnapshot = 3;
+    kSnapshotPaused  = 4;
 }
 
 enum TabletState {

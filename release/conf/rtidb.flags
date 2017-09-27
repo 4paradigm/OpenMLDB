@@ -1,5 +1,5 @@
 # common conf 
---put_endpoint=0.0.0.0:9527
+--endpoint=0.0.0.0:9527
 --scan_endpoint=0.0.0.0:9526
 --role=tablet
 
