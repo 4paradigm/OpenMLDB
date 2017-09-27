@@ -635,11 +635,11 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
         table->UnRef();
         return;
     }
-    int log_part_index = -1;
-    if (snapshot->MakeSnapshot(table, log_part_index) == 0) {
+    uint64_t offset = 0;
+    if (snapshot->MakeSnapshot(table, offset) == 0) {
         LogReplicator* replicator = GetReplicator(tid, pid);
         if (replicator) {
-            replicator->SetSnapshotLogPartIndex(log_part_index);
+            replicator->SetSnapshotLogPartIndex(offset);
             replicator->UnRef();
         }    
     }
@@ -768,6 +768,7 @@ void TabletImpl::LoadTable(RpcController* controller,
     if (ok) {
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->SetOffset(latest_offset);
+        replicator->SetSnapshotLogPartIndex(latest_offset);
         replicator->MatchLogOffset();
         table->SchedGc();
         if (ttl > 0) {

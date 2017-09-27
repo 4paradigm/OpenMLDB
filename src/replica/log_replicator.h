@@ -99,7 +99,7 @@ public:
     }
     void SetRole(const ReplicatorRole& role);
 
-    void SetSnapshotLogPartIndex(int log_part_index);
+    void SetSnapshotLogPartIndex(uint64_t offset);
 
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);
 

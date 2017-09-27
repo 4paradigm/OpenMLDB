@@ -274,7 +274,7 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 	return 0;
 }
 
-int Snapshot::MakeSnapshot(Table* table, int& log_part_index) {
+int Snapshot::MakeSnapshot(Table* table, uint64_t& out_offset) {
     if (making_snapshot_.load(boost::memory_order_acquire)) {
         LOG(INFO, "snapshot is doing now!");
         return 0;
@@ -370,10 +370,10 @@ int Snapshot::MakeSnapshot(Table* table, int& log_part_index) {
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
                 uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
-                log_part_index = log_reader.GetLogIndex();
-                LOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second. read log_index[%d]", 
-                          snapshot_name.c_str(), offset_, cur_offset, consumed, log_part_index);
+                LOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second.", 
+                          snapshot_name.c_str(), offset_, cur_offset, consumed);
                 offset_ = cur_offset;
+                out_offset = cur_offset;
             } else {
                 LOG(WARNING, "RecordOffset failed. delete snapshot file[%s]", full_path.c_str());
                 unlink(full_path.c_str());

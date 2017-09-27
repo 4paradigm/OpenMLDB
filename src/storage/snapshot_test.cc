@@ -110,8 +110,8 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     std::vector<std::string> fakes;
     Table* table = new Table("test", 4, 3, 8, 0, true, fakes, true);
     table->Init();
-    int log_part_index;
-    int ret = snapshot.MakeSnapshot(table, log_part_index);
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value);
     ASSERT_EQ(0, ret); 
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     for (; count < 20; count++) {
@@ -346,8 +346,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         offset++;
     }
-    int log_part_index;
-    int ret = snapshot.MakeSnapshot(table, log_part_index);
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value);
     ASSERT_EQ(0, ret);
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
@@ -382,7 +382,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         offset++;
     }
 
-    ret = snapshot.MakeSnapshot(table, log_part_index);
+    ret = snapshot.MakeSnapshot(table, offset_value);
     ASSERT_EQ(0, ret);
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);

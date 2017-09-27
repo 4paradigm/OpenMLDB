@@ -223,7 +223,10 @@ void LogReplicator::UnRef() {
     }
 }
 
-void LogReplicator::SetSnapshotLogPartIndex(int log_part_index) {
+void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
+    ::rtidb::log::LogReader log_reader(logs_, log_path_);
+    log_reader.SetOffset(offset);
+    int log_part_index = log_reader.RollRLogFile();
     snapshot_log_part_index_.store(log_part_index, boost::memory_order_relaxed);
 }
 
