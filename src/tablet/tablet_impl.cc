@@ -110,7 +110,7 @@ bool TabletImpl::Init() {
         LOG(WARNING, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
         return false;
     }
-    task_pool_.DelayTask(FLAGS_make_snapshot_check_interval * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+    task_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
