@@ -370,6 +370,40 @@ void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::rtidb::cli
     }
 }
 
+void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad PauseSnapshot format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->PauseSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+        if (ok) {
+            std::cout << "PauseSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to PauseSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad PauseSnapshot format" << std::endl;
+    }
+}
+
+void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+        if (ok) {
+            std::cout << "RecoverSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to RecoverSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
+    }
+}
+
 void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad LoadTable format" << std::endl;
@@ -590,31 +624,35 @@ void StartClient() {
         ::rtidb::base::SplitString(buffer, " ", &parts);
         if (parts[0] == "put") {
             HandleClientPut(parts, &client);
-        }else if (parts[0] == "create") {
+        } else if (parts[0] == "create") {
             HandleClientCreateTable(parts, &client);
-        }else if (parts[0] == "scan") {
+        } else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
-        }else if (parts[0] == "benput") {
+        } else if (parts[0] == "benput") {
             HandleClientBenPut(parts, &client);
-        }else if (parts[0] == "benscan") {
+        } else if (parts[0] == "benscan") {
             HandleClientBenScan(parts, &client);
-        }else if (parts[0] == "benchmark") {
+        } else if (parts[0] == "benchmark") {
             HandleClientBenchmark(&client);
-        }else if (parts[0] == "drop") {
+        } else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
-        }else if (parts[0] == "addreplica") {
+        } else if (parts[0] == "addreplica") {
             HandleClientAddReplica(parts, &client);
-        }else if (parts[0] == "delreplica") {
+        } else if (parts[0] == "delreplica") {
             HandleClientDelReplica(parts, &client);
-        }else if (parts[0] == "makesnapshot") {
+        } else if (parts[0] == "makesnapshot") {
             HandleClientMakeSnapshot(parts, &client);
-        }else if (parts[0] == "loadtable") {
+		} else if (parts[0] == "pausesnapshot") {
+            HandleClientPauseSnapshot(parts, &client);
+        } else if (parts[0] == "recoversnapshot") {
+            HandleClientRecoverSnapshot(parts, &client);
+        } else if (parts[0] == "loadtable") {
             HandleClientLoadTable(parts, &client);
-        }else if (parts[0] == "changerole") {
+        } else if (parts[0] == "changerole") {
             HandleClientChangeRole(parts, &client);
-        }else if (parts[0] == "gettablestatus") {
+        } else if (parts[0] == "gettablestatus") {
             HandleClientGetTableStatus(parts, &client);
-        }else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else {

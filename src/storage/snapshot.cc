@@ -70,6 +70,7 @@ bool Snapshot::Recover(Table* table, uint64_t& latest_offset) {
     if (ret == 0) {
         RecoverFromSnapshot(manifest.name(), manifest.count(), table);
         latest_offset = manifest.offset();
+        offset_ = latest_offset;
     }
     return RecoverFromBinlog(table, manifest.offset(), latest_offset);
 }

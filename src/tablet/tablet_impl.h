@@ -106,6 +106,16 @@ public:
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
+           
+    void PauseSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void RecoverSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom
