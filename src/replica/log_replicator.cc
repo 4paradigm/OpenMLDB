@@ -266,7 +266,7 @@ void LogReplicator::DeleteBinlog() {
     while (node) {
         ::rtidb::base::Node<uint32_t, uint64_t>* tmp_node = node;
         node = node->GetNextNoBarrier(0);
-        std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(tmp_node->GetKey(), 10) + ".log";
+        std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(tmp_node->GetKey(), 8) + ".log";
         if (unlink(full_path.c_str()) < 0) {
             LOG(WARNING, "delete binlog[%s] failed! errno[%d] errinfo[%s]", 
                          full_path.c_str(), errno, strerror(errno));
@@ -397,7 +397,7 @@ bool LogReplicator::RollWLogFile() {
         wh_ = NULL;
     }
     std::string name = ::rtidb::base::FormatToString(
-                binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
+                binlog_index_.load(boost::memory_order_relaxed), 8) + ".log";
     std::string full_path = log_path_ + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {

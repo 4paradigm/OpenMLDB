@@ -97,7 +97,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     std::string binlog_path = FLAGS_db_root_path + "/2_123/binlog";
     ::rtidb::base::GetFileName(binlog_path, vec);
     ASSERT_EQ(1, vec.size());
-    std::string file_name = binlog_path + "/0000000004.log";
+    std::string file_name = binlog_path + "/00000004.log";
     ASSERT_STREQ(file_name.c_str(), vec[0].c_str());
 
 }
