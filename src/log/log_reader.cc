@@ -368,6 +368,9 @@ int LogReader::GetLogIndex() {
         log_part_index_ = new_log_part_index;
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
+
+    // 用binlog恢复数据时, 恢复之后再写入数据会写到新binlog文件里
+    // 如果再次loadtable或者makesnapshot时读到中间一个binlog的状态可能是waitrecord, 这时要切换到下一个文件并返回Eof
     if (status.IsEof() || status.IsWaitRecord()) {
         // reache the end of file 
         int new_log_part_index = RollRLogFile();
