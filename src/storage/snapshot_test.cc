@@ -366,7 +366,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
     ASSERT_EQ(29, manifest.offset());
-    ASSERT_EQ(29, manifest.count());
+    ASSERT_EQ(28, manifest.count());
 
     for (; count < 50; count++) {
         ::rtidb::api::LogEntry entry;

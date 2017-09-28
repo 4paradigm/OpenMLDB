@@ -52,7 +52,8 @@ public:
 
     int MakeSnapshot(Table* table, uint64_t&out_offset);
 
-    int TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count);
+    int TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
+                uint64_t& count, uint64_t& expired_key_num);
 
     // Read manifest from local storage return 0 if ok , 1 if manifest does not exist,
     // or -1 if some error ocurrs 

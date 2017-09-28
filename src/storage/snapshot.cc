@@ -213,7 +213,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table,
     }while(false);
 }
 
-int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count) {
+int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
+            uint64_t& count, uint64_t& expired_key_num) {
 	std::string full_path = snapshot_path_ + manifest.name();
 	FILE* fd = fopen(full_path.c_str(), "rb");
 	if (fd == NULL) {
@@ -226,7 +227,6 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 	std::string buffer;
 	::rtidb::api::LogEntry entry;
 	uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-	uint64_t timeout_key_num = 0;
     bool has_error = false;
 	while (true) {
 		::rtidb::base::Slice record;
@@ -247,7 +247,7 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 		}
 		// delete timeout key
 		if (table->IsExpired(entry, cur_time)) {
-			timeout_key_num++;
+			expired_key_num++;
 			continue;
 		}
 		status = wh->Write(record);
@@ -257,21 +257,21 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 			has_error = true;        
 			break;
 		}
-        if ((count + timeout_key_num) % KEY_NUM_DISPLAY == 0) {
-			LOG(INFO, "tackled key num[%lu] total[%lu]", count + timeout_key_num, manifest.count()); 
+        if ((count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
+			LOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count()); 
         }
 		count++;
 	}
 	delete seq_file;
-    if (timeout_key_num + count != manifest.count()) {
+    if (expired_key_num + count != manifest.count()) {
 	    LOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
-                    manifest.count(), count, timeout_key_num);
+                    manifest.count(), count, expired_key_num);
         has_error = true;
     }
 	if (has_error) {
 		return -1;
 	}	
-	LOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, timeout_key_num); 
+	LOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num); 
 	return 0;
 }
 
@@ -298,10 +298,11 @@ int Snapshot::MakeSnapshot(Table* table, uint64_t& out_offset) {
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
+    uint64_t expired_key_num = 0;
     int result = GetSnapshotRecord(manifest);
     if (result == 0) {
         // filter old snapshot
-        if (TTLSnapshot(table, manifest, wh, write_count) < 0) {
+        if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num) < 0) {
             has_error = true;
         }
     } else if (result < 0) {
@@ -313,6 +314,7 @@ int Snapshot::MakeSnapshot(Table* table, uint64_t& out_offset) {
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
+	uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     while (!has_error) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -328,6 +330,16 @@ int Snapshot::MakeSnapshot(Table* table, uint64_t& out_offset) {
             if (entry.log_index() <= cur_offset) {
                 continue;
             }
+            if (cur_offset + 1 != entry.log_index()) {
+                LOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                has_error = true;
+                break;
+            }
+            cur_offset = entry.log_index();
+            if (table->IsExpired(entry, cur_time)) {
+                expired_key_num++;
+                continue;
+            }
             ::rtidb::base::Status status = wh->Write(record);
             if (!status.ok()) {
                 LOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
@@ -335,13 +347,10 @@ int Snapshot::MakeSnapshot(Table* table, uint64_t& out_offset) {
                 has_error = true;        
                 break;
             }
-            if (cur_offset + 1 != entry.log_index()) {
-                LOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
-                has_error = true;
-                break;
-            }
-            cur_offset++;
             write_count++;
+            if ((write_count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
+                LOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
+            }
         } else if (status.IsEof()) {
             continue;
         } else if (status.IsWaitRecord()) {
@@ -371,8 +380,8 @@ int Snapshot::MakeSnapshot(Table* table, uint64_t& out_offset) {
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
                 uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
-                LOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second.", 
-                          snapshot_name.c_str(), offset_, cur_offset, consumed);
+                LOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second. write key %lu expired key %lu", 
+                          snapshot_name.c_str(), offset_, cur_offset, consumed, write_count, expired_key_num);
                 offset_ = cur_offset;
                 out_offset = cur_offset;
             } else {
