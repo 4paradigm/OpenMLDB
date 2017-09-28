@@ -161,7 +161,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table,
             LOG(WARNING, "table input is NULL");
             break;
         }
-        FILE* fd = fopen(path.c_str(), "rb+");
+        FILE* fd = fopen(path.c_str(), "rb");
         if (fd == NULL) {
             LOG(WARNING, "fail to open path %s for error %s", path.c_str(), strerror(errno));
             break;
@@ -215,7 +215,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table,
 
 int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, uint64_t& count) {
 	std::string full_path = snapshot_path_ + manifest.name();
-	FILE* fd = fopen(full_path.c_str(), "r+");
+	FILE* fd = fopen(full_path.c_str(), "rb");
 	if (fd == NULL) {
 		LOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
 		return -1;
