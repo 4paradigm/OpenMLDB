@@ -44,6 +44,7 @@ DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
+DECLARE_uint32(metric_max_record_cnt);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -1240,7 +1241,7 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
 }
 
 void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
-            sofa::pbrpc::HTTPResponse& response) {
+                            sofa::pbrpc::HTTPResponse& response) {
     const std::string key = "key";
     ::rapidjson::StringBuffer sb;
     ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
@@ -1268,8 +1269,8 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     ::rtidb::storage::Ticket ticket;
     Table::Iterator* it = stat->NewIterator(pk, ticket);
     it->SeekToFirst();
-
-    while (it->Valid()) {
+    uint32_t read_cnt = 0;
+    while (it->Valid() && read_cnt < FLAGS_metric_max_record_cnt) {
         writer.StartArray();
         uint32_t val = 0;
         memcpy(static_cast<void*>(&val), it->GetValue()->data, 4);
@@ -1277,6 +1278,7 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
         writer.Uint(it->GetKey());
         writer.EndArray();
         it->Next();
+        read_cnt++;
     }
     writer.EndArray();
     writer.EndObject();
