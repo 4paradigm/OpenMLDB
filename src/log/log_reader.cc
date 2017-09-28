@@ -26,6 +26,7 @@ using ::baidu::common::WARNING;
 using ::rtidb::base::Status;
 
 DECLARE_bool(binlog_enable_crc);
+DECLARE_int32(binlog_name_length);
 
 namespace rtidb {
 namespace log {
@@ -406,7 +407,8 @@ int LogReader::RollRLogFile() {
         }
         int ret = -1;
         if (it->Valid()) {
-            std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 8) + ".log";
+            std::string full_path = log_path_ + "/" + 
+                ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
             if (OpenSeqFile(full_path) == 0) {
                 ret = (int)it->GetKey();
             }
@@ -422,7 +424,8 @@ int LogReader::RollRLogFile() {
             // find the next of current index log file part
             if (it->GetKey() == current_index + 1) {
                 // open a new log part file
-                std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(it->GetKey(), 8) + ".log";
+                std::string full_path = log_path_ + "/" + 
+                    ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
                 if (OpenSeqFile(full_path) == 0) {
                     ret = (int)it->GetKey();
                 }
