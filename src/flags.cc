@@ -49,3 +49,7 @@ DEFINE_int32(thread_pool_size, 8, "the size of thread pool for other api");
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
+
+// metric configuration
+
+DEFINE_uint32(metric_max_record_cnt, 2000, "limit the max record cnt to read");
