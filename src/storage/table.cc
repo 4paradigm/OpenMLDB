@@ -131,7 +131,7 @@ uint64_t Table::SchedGc() {
 }
 
 bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
-    if (!enable_gc_) {
+    if (!enable_gc_ || ttl_ == 0) {
         return false;
     }
     uint64_t time = cur_time - ttl_offset_ - ttl_ * 60 * 1000; 
