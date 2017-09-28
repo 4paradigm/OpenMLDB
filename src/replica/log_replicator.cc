@@ -28,6 +28,7 @@ DECLARE_int32(binlog_sync_wait_time);
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_match_logoffset_interval);
 DECLARE_int32(binlog_delete_interval);
+DECLARE_int32(binlog_name_length);
 
 namespace rtidb {
 namespace replica {
@@ -266,7 +267,8 @@ void LogReplicator::DeleteBinlog() {
     while (node) {
         ::rtidb::base::Node<uint32_t, uint64_t>* tmp_node = node;
         node = node->GetNextNoBarrier(0);
-        std::string full_path = log_path_ + "/" + ::rtidb::base::FormatToString(tmp_node->GetKey(), 10) + ".log";
+        std::string full_path = log_path_ + "/" + 
+                ::rtidb::base::FormatToString(tmp_node->GetKey(), FLAGS_binlog_name_length) + ".log";
         if (unlink(full_path.c_str()) < 0) {
             LOG(WARNING, "delete binlog[%s] failed! errno[%d] errinfo[%s]", 
                          full_path.c_str(), errno, strerror(errno));
@@ -294,7 +296,8 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
                 last_log_offset, request->pre_log_index());
         response->set_log_offset(last_log_offset);
         if (request->pre_log_index() == 0) {
-            LOG(DEBUG, "first sync log_index! set log_offset[%lu]", last_log_offset);
+            LOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]", 
+                        last_log_offset, table_->GetId(), table_->GetPid());
             return true;
         }
         return false;
@@ -396,7 +399,7 @@ bool LogReplicator::RollWLogFile() {
         wh_ = NULL;
     }
     std::string name = ::rtidb::base::FormatToString(
-                binlog_index_.load(boost::memory_order_relaxed), 10) + ".log";
+                binlog_index_.load(boost::memory_order_relaxed), FLAGS_binlog_name_length) + ".log";
     std::string full_path = log_path_ + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
@@ -435,7 +438,7 @@ void LogReplicator::MatchLogOffset() {
     }
     if (!all_matched) {
         // retry after 1 second
-        tp_.DelayTask(1000, boost::bind(&LogReplicator::MatchLogOffset, this));
+        tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
     }
 }
 

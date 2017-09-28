@@ -67,7 +67,7 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
         delete *wh;
         *wh = NULL;
     }
-    std::string name = ::rtidb::base::FormatToString(binlog_index, 10) + ".log";
+    std::string name = ::rtidb::base::FormatToString(binlog_index, 8) + ".log";
     ::rtidb::base::MkdirRecur(log_path);
     std::string full_path = log_path + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");

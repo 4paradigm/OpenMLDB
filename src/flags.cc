@@ -37,6 +37,7 @@ DEFINE_int32(binlog_sync_to_disk_interval, 5000, "config the interval of sync bi
 DEFINE_int32(binlog_delete_interval, 10000, "config the interval of delete binlog");
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
 DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
+DEFINE_int32(binlog_name_length, 8, "binlog name length");
 
 // snapshot configuration
 DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage path");

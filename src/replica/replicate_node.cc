@@ -21,8 +21,9 @@ using ::baidu::common::DEBUG;
 
 ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs, 
         const std::string& log_path, uint32_t tid, uint32_t pid, 
-        ::rtidb::RpcClient* rpc_client) : log_reader_(logs, log_path), endpoint_(point) {
+        ::rtidb::RpcClient* rpc_client) : log_reader_(logs, log_path), endpoint_(point), tid_(tid), pid_(pid) {
     rpc_client_ = rpc_client;
+    log_matched_ = false;
 }
 
 int ReplicateNode::GetLogIndex() {
