@@ -368,7 +368,7 @@ int LogReader::GetLogIndex() {
         log_part_index_ = new_log_part_index;
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
-    if (status.IsEof()) {
+    if (status.IsEof() || status.IsWaitRecord()) {
         // reache the end of file 
         int new_log_part_index = RollRLogFile();
         LOG(WARNING, "reach the end of file. new index %d  old index %d", new_log_part_index,
@@ -385,6 +385,7 @@ int LogReader::GetLogIndex() {
         // roll a new log part file, reset status
         log_part_index_ = new_log_part_index;
         reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+        return ::rtidb::base::Status::Eof();
     }
     return status;
 }
@@ -392,6 +393,7 @@ int LogReader::GetLogIndex() {
 int LogReader::RollRLogFile() {
     LogParts::Iterator* it = logs_->NewIterator();
     if (logs_->GetSize() <= 0) {
+        delete it;
         return -2;
     }
     it->SeekToFirst();
