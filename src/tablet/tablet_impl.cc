@@ -541,6 +541,13 @@ void TabletImpl::AppendEntries(RpcController* controller,
             done->Run();
             break;
         }
+        if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+            response->set_code(-1);
+            response->set_msg("table is loading now");
+            LOG(WARNING, "table is loading now. tid %ld, pid %ld", request->tid(), request->pid());
+            done->Run();
+            break;
+        }    
         replicator = GetReplicator(request->tid(), request->pid());
         if (replicator == NULL) {
             response->set_code(-2);
