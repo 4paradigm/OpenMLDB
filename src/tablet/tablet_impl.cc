@@ -622,16 +622,12 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
             LOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
             return;
         }
-        if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
-            LOG(WARNING, "snapshot has paused. tid[%u] pid[%u]", tid, pid);
+        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            LOG(WARNING, "table state is %d, cannot make snapshot. %ld, pid %ld", 
+                         table->GetTableStat(), tid, pid);
             table->UnRef();
             return;
-        }
-        if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
-            LOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
-            table->UnRef();
-            return;
-        }
+        }    
         table->SetTableStat(::rtidb::storage::kMakingSnapshot);
     }    
     std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
