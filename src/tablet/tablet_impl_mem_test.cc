@@ -126,12 +126,12 @@ TEST_F(TabletImplMemTest, TestMem) {
 }
 
 int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     FLAGS_binlog_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
-    ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
 

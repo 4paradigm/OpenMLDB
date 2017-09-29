@@ -17,11 +17,16 @@
 #include "log/log_format.h"
 #include "logging.h"
 #include "base/status.h"
+#include <gflags/gflags.h>
+#include "base/strings.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
 using ::baidu::common::WARNING;
 using ::rtidb::base::Status;
+
+DECLARE_bool(binlog_enable_crc);
+DECLARE_int32(binlog_name_length);
 
 namespace rtidb {
 namespace log {
@@ -37,9 +42,9 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       checksum_(checksum),
       backing_store_(new char[kBlockSize]),
       buffer_(),
-      eof_(false),
       last_record_offset_(0),
       end_of_buffer_offset_(0),
+      last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
       resyncing_(initial_offset > 0) {
 }
@@ -86,7 +91,8 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
   Slice fragment;
   while (true) {
-    const unsigned int record_type = ReadPhysicalRecord(&fragment);
+    uint64_t offset = 0;
+    const unsigned int record_type = ReadPhysicalRecord(&fragment, offset);
 
     // ReadPhysicalRecord may have only had an empty trailer remaining in its
     // internal buffer. Calculate the offset of the next physical record now
@@ -122,6 +128,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         scratch->clear();
         *record = fragment;
         last_record_offset_ = prospective_record_offset;
+        if (offset) {
+            last_end_of_buffer_offset_ = offset;
+        }    
         return Status::OK();
 
       case kWaitRecord:
@@ -131,6 +140,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           // treat it as a corruption, just ignore the entire logical record.
           scratch->clear();
         }
+        GoBackToLastBlock();
         return Status::WaitRecord(); 
 
       case kFirstType:
@@ -167,6 +177,9 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
           last_record_offset_ = prospective_record_offset;
+          if (offset) {
+            last_end_of_buffer_offset_ = offset;
+          }
           return Status::OK();
         }
         break;
@@ -219,33 +232,23 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 }
 
 void Reader::GoBackToLastBlock() {
-    size_t offset_in_block = end_of_buffer_offset_ % kBlockSize;
-    size_t block_count = end_of_buffer_offset_ / kBlockSize;
-    size_t jump_offset = offset_in_block;
-    if (block_count < 4) {
-        jump_offset = end_of_buffer_offset_; 
-    }else {
-        jump_offset += 4 * kBlockSize; 
+    size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
+    uint64_t block_start_location = 0;
+    if (last_end_of_buffer_offset_ >  offset_in_block) {
+        block_start_location = last_end_of_buffer_offset_ - offset_in_block;
     }
-    end_of_buffer_offset_ -= jump_offset;
-    file_->Seek(end_of_buffer_offset_);
-    LOG(DEBUG, "go last block to pos %lld", end_of_buffer_offset_);
+    LOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_, block_start_location);
+    end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
+    file_->Seek(block_start_location);
 }
 
-unsigned int Reader::ReadPhysicalRecord(Slice* result) {
-  while (true) {
+unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     if (buffer_.size() < kHeaderSize) {
-      if (!eof_) {
-        uint64_t pos = 0;
-        Status ok = file_->Tell(&pos);
-        if (!ok.ok()) { 
-            LOG(WARNING, "fail to tell file %s", ok.ToString().c_str());
-            return kWaitRecord;
-        }
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
+        offset = end_of_buffer_offset_;
         end_of_buffer_offset_ += buffer_.size();
         // Read log error
         if (!status.ok()) {
@@ -255,22 +258,10 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
             return kWaitRecord;
         }
         if (buffer_.size() < kHeaderSize) { 
-            if (buffer_.size() > 0) {
-                LOG(DEBUG, "go back to pos %lld, buffer %d", pos, buffer_.size());
-                buffer_.clear();
-                file_->Seek(pos);
-            }
+            LOG(DEBUG, "read buffer size[%d] less than kHeaderSize[%d]", 
+                            buffer_.size(), kHeaderSize);
             return kWaitRecord;
         }
-      } else {
-        // Note that if buffer_ is non-empty, we have a truncated header at the
-        // end of the file, which can be caused by the writer crashing in the
-        // middle of writing the header. Instead of considering this an error,
-        // just report EOF.
-        buffer_.clear();
-        LOG(WARNING, "end of file");
-        return kEof;
-      }
     }
 
     // Parse the header
@@ -282,7 +273,6 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     if (kHeaderSize + length > buffer_.size()) {
       LOG(DEBUG, "end of file %d, header size %d data length %d", buffer_.size(), kHeaderSize,
               length);
-      GoBackToLastBlock();
       return kWaitRecord;
     }
     // Check crc
@@ -328,8 +318,150 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     }
     *result = Slice(header + kHeaderSize, length);
     return type;
-  }
 }
+
+LogReader::LogReader(LogParts* logs, const std::string& log_path) : log_path_(log_path) {
+    sf_ = NULL;
+    reader_ = NULL;
+    logs_ = logs;
+    log_part_index_ = -1;
+    start_offset_ = 0;
+} 
+
+LogReader::~LogReader() {
+    delete sf_;
+    delete reader_;
+}
+
+void LogReader::SetOffset(uint64_t start_offset) {
+    start_offset_ = start_offset;
+}
+
+void LogReader::GoBackToLastBlock() {
+    if (sf_ == NULL || reader_ == NULL) {
+        return;
+    }
+    reader_->GoBackToLastBlock();
+}
+
+int LogReader::GetLogIndex() {
+    return log_part_index_;
+}
+
+::rtidb::base::Status LogReader::ReadNextRecord(
+        ::rtidb::base::Slice* record, std::string* buffer) {
+    // first read record 
+    if (sf_ == NULL) {
+        int new_log_part_index = RollRLogFile();
+        if (new_log_part_index == -2) {
+            LOG(WARNING, "no log avaliable");
+            return ::rtidb::base::Status::WaitRecord();
+        }
+
+        if (new_log_part_index < 0) {
+            LOG(WARNING, "fail to roll read log");
+            return ::rtidb::base::Status::WaitRecord();
+        }
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+        // when change log part index , reset
+        // last_log_byte_offset to 0
+        log_part_index_ = new_log_part_index;
+    }
+    ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
+
+    // 用binlog恢复数据时, 恢复之后再写入数据会写到新binlog文件里
+    // 如果再次loadtable或者makesnapshot时读到中间一个binlog的状态可能是waitrecord, 这时要切换到下一个文件并返回Eof
+    if (status.IsEof() || status.IsWaitRecord()) {
+        // reache the end of file 
+        int new_log_part_index = RollRLogFile();
+        LOG(WARNING, "reach the end of file. new index %d  old index %d", new_log_part_index,
+                log_part_index_);
+        // reache the latest log part
+        if (new_log_part_index == log_part_index_) {
+            LOG(DEBUG, "no new log entry");
+            return status;
+        }
+        if (new_log_part_index < 0) {
+            return status;
+        }
+        delete reader_;
+        // roll a new log part file, reset status
+        log_part_index_ = new_log_part_index;
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+        return ::rtidb::base::Status::Eof();
+    }
+    return status;
+}
+
+int LogReader::RollRLogFile() {
+    LogParts::Iterator* it = logs_->NewIterator();
+    if (logs_->GetSize() <= 0) {
+        delete it;
+        return -2;
+    }
+    it->SeekToFirst();
+    // use log entry offset to find the log part file
+    if (log_part_index_ < 0) {
+        while (it->Valid()) {
+            LOG(DEBUG, "log index[%u] and start offset %lld", it->GetKey(),
+                    it->GetValue());
+            if (it->GetValue() <= start_offset_) {
+                break;
+            }
+            it->Next();
+        }
+        int ret = -1;
+        if (it->Valid()) {
+            std::string full_path = log_path_ + "/" + 
+                ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
+            if (OpenSeqFile(full_path) == 0) {
+                ret = (int)it->GetKey();
+            }
+        } else {
+            LOG(WARNING, "no log part matched! start_offset[%lu]", start_offset_); 
+        }
+        delete it;
+        return ret;
+    } else {
+        uint32_t current_index = (uint32_t)log_part_index_;
+        int ret = -1;
+        while (it->Valid()) {
+            // find the next of current index log file part
+            if (it->GetKey() == current_index + 1) {
+                // open a new log part file
+                std::string full_path = log_path_ + "/" + 
+                    ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
+                if (OpenSeqFile(full_path) == 0) {
+                    ret = (int)it->GetKey();
+                }
+                break;
+            } else if (it->GetKey() == current_index) {
+                ret = current_index;
+                break;
+            }
+            it->Next();
+        }
+        delete it;
+        return ret;
+    }
+}
+
+int LogReader::OpenSeqFile(const std::string& path) {
+    FILE* fd = fopen(path.c_str(), "rb");
+    if (fd == NULL) {
+        LOG(WARNING, "fail to open file %s", path.c_str());
+        return -1;
+    }
+    // close old Sequentialfile 
+    if (sf_ != NULL) {
+        delete sf_;
+        sf_ = NULL;
+    }
+    LOG(INFO, "open log file %s", path.c_str());
+    sf_ = ::rtidb::log::NewSeqFile(path, fd);
+    return 0;
+}
+
 
 }  // namespace log
 }  // namespace leveldb

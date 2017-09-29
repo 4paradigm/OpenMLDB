@@ -224,7 +224,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ASSERT_TRUE(ok);
         LOG(INFO, "start follower");
     }
-    sleep(4);
+    sleep(20);
     leader.Stop();
     {
         Ticket ticket;

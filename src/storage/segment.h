@@ -26,11 +26,6 @@ class Ticket;
 using ::baidu::common::Mutex;
 using ::baidu::common::MutexLock;
 
-typedef boost::function< bool (const std::vector<std::pair<std::string, uint64_t> >& keys) > SnapshotTTLFunc;
-inline bool DefaultSnapshotTTLFunc(const std::vector<std::pair<std::string, uint64_t> >& keys) {
-    return true;
-}
-
 struct DataBlock {
     uint32_t size;
     char* data;
@@ -117,7 +112,6 @@ typedef ::rtidb::base::Skiplist<std::string, KeyEntry*, StringComparator> KeyEnt
 class Segment {
 
 public:
-    Segment(SnapshotTTLFunc ttl_fun);
     Segment();
     ~Segment();
 
@@ -171,7 +165,6 @@ private:
     // only Put need mutex
     Mutex mu_;
     boost::atomic<uint64_t> data_cnt_;
-    SnapshotTTLFunc ttl_fun_;
 };
 
 }// namespace storage

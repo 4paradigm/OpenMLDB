@@ -30,7 +30,7 @@ Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
-        uint32_t ttl,
+        uint64_t ttl,
         bool is_leader,
         const std::vector<std::string>& replicas,
         bool wal):name_(name), id_(id),
@@ -45,7 +45,7 @@ Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
-        uint32_t ttl,
+        uint64_t ttl,
         bool wal):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
@@ -54,10 +54,10 @@ Table::Table(const std::string& name,
     replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
-void Table::Init(SnapshotTTLFunc ttl_fun) {
+void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
     for (uint32_t i = 0; i < seg_cnt_; i++) {
-        segments_[i] = new Segment(ttl_fun);
+        segments_[i] = new Segment();
     }
     if (ttl_ > 0) {
         enable_gc_ = true;
@@ -128,6 +128,17 @@ uint64_t Table::SchedGc() {
     }
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     return count;
+}
+
+bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
+    if (!enable_gc_ || ttl_ == 0) {
+        return false;
+    }
+    uint64_t time = cur_time - ttl_offset_ - ttl_ * 60 * 1000; 
+    if (entry.ts() < time) {
+        return true;
+    }
+    return false;
 }
 
 Table::Iterator::Iterator(Segment::Iterator* it):it_(it){}

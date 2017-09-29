@@ -17,7 +17,9 @@
 #include "logging.h"
 
 #include "tablet/tablet_impl.h"
+#include "nameserver/name_server_impl.h"
 #include "client/tablet_client.h"
+#include "client/ns_client.h"
 #include "base/strings.h"
 #include "base/kv_iterator.h"
 #include "timer.h"
@@ -29,8 +31,11 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-DEFINE_string(endpoint, "127.0.0.1:9527", "Config the ip and port that rtidb serves for");
-DEFINE_string(role, "tablet | master | client", "Set the rtidb role for start");
+DECLARE_string(endpoint);
+DECLARE_string(scan_endpoint);
+DECLARE_int32(thread_pool_size);
+DECLARE_int32(scan_thread_pool_size);
+DEFINE_string(role, "tablet | nameserver | client | ns_client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
 
@@ -61,14 +66,59 @@ void SetupLog() {
     ::baidu::common::SetLogSize(FLAGS_log_file_size);
 }
 
-void StartTablet() {
+void StartNameServer() {
     SetupLog();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
+    ::rtidb::nameserver::NameServerImpl* name_server = new ::rtidb::nameserver::NameServerImpl();
+    name_server->Init();
+    sofa::pbrpc::Servlet webservice =
+                sofa::pbrpc::NewPermanentExtClosure(name_server, &rtidb::nameserver::NameServerImpl::WebService);
+    if (!rpc_server.RegisterService(name_server)) {
+        LOG(WARNING, "fail to register nameserver rpc service");
+        exit(1);
+    }
+    rpc_server.RegisterWebServlet("/nameserver", webservice);
+    if (!rpc_server.Start(FLAGS_endpoint)) {
+        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+        exit(1);
+    }
+    LOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+            RTIDB_VERSION_MAJOR,
+            RTIDB_VERSION_MINOR,
+            RTIDB_VERSION_BUG);
+    signal(SIGINT, SignalIntHandler);
+    signal(SIGTERM, SignalIntHandler);
+    while (!s_quit) {
+        sleep(1);
+    }
+}
+
+void StartTablet() {
+    SetupLog();
+    sofa::pbrpc::RpcServerOptions scan_options;
+    scan_options.work_thread_num = FLAGS_scan_thread_pool_size;
+    sofa::pbrpc::RpcServer scan_rpc_server(scan_options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    tablet->Init();
+    bool ok = tablet->Init();
+    if (!ok) {
+        LOG(WARNING, "fail to init tablet");
+        exit(1);
+    }
     sofa::pbrpc::Servlet webservice =
                 sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
+    if (!scan_rpc_server.RegisterService(tablet)) {
+        LOG(WARNING, "fail to register tablet rpc service");
+        exit(1);
+    }
+    scan_rpc_server.RegisterWebServlet("/tablet", webservice);
+    if (!scan_rpc_server.Start(FLAGS_scan_endpoint)) {
+        LOG(WARNING, "fail to listen port %s", FLAGS_scan_endpoint.c_str());
+        exit(1);
+    }
+    sofa::pbrpc::RpcServerOptions options;
+    sofa::pbrpc::RpcServer rpc_server(options);
+    scan_options.work_thread_num = FLAGS_thread_pool_size;
     if (!rpc_server.RegisterService(tablet)) {
         LOG(WARNING, "fail to register tablet rpc service");
         exit(1);
@@ -78,7 +128,8 @@ void StartTablet() {
         LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
         exit(1);
     }
-    LOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+    LOG(INFO, "start tablet on port %s and scan port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+            FLAGS_scan_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
@@ -87,6 +138,29 @@ void StartTablet() {
     while (!s_quit) {
         sleep(1);
     }
+}
+
+void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row;
+    row.push_back("endpoint");
+    row.push_back("state");
+    row.push_back("age");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    std::vector<::rtidb::client::TabletInfo> tablets;
+    bool ok = client->ShowTablet(tablets);
+    if (!ok) {
+        std::cout << "Fail to show tablets" << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < tablets.size(); i++) { 
+        std::vector<std::string> row;
+        row.push_back(tablets[i].endpoint);
+        row.push_back(tablets[i].state);
+        row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
 }
 
 // the input format like put 1 1 key time value
@@ -142,30 +216,33 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
 
 // the input format like create name tid pid ttl leader endpoints 
 void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 4) {
-        std::cout << "Bad create format" << std::endl;
+    if (parts.size() < 6) {
+        std::cout << "Bad create format, input like create <name> <tid> <pid> <ttl> <seg_cnt>" << std::endl;
         return;
     }
 
-    bool leader = true;
-    if (parts.size() > 5 && parts[5] == "false") {
-        leader = false;
-    }
-
-    std::vector<std::string> endpoints;
-    for (size_t i = 6; i < parts.size(); i++) {
-        endpoints.push_back(parts[i]);
-    }
-
     try {
-        uint32_t ttl = 0;
+
+        uint64_t ttl = 0;
         if (parts.size() > 4) {
-            ttl = boost::lexical_cast<uint32_t>(parts[4]);
+            ttl = boost::lexical_cast<uint64_t>(parts[4]);
+        }
+        uint32_t seg_cnt = 16;
+        if (parts.size() > 5) {
+            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
+        }
+        bool is_leader = true;
+        if (parts.size() > 6 && parts[6] == "false") {
+            is_leader = false;
+        }
+        std::vector<std::string> endpoints;
+        for (size_t i = 7; i < parts.size(); i++) {
+            endpoints.push_back(parts[i]);
         }
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl, leader, endpoints);
+                                      ttl, is_leader, endpoints, seg_cnt);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -208,6 +285,23 @@ void HandleClientAddReplica(const std::vector<std::string> parts, ::rtidb::clien
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad addreplica format" << std::endl;
+    }
+}
+
+void HandleClientDelReplica(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad delreplica format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->DelReplica(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        if (ok) {
+            std::cout << "DelReplica ok" << std::endl;
+        }else {
+            std::cout << "Fail to Del Replica" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad delreplica format" << std::endl;
     }
 }
 
@@ -266,6 +360,19 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     }
 }
 
+void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad MakeSnapshot format" << std::endl;
+        return;
+    }
+    bool ok = client->MakeSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+    if (ok) {
+        std::cout << "MakeSnapshot ok" << std::endl;
+    } else {
+        std::cout << "Fail to MakeSnapshot" << std::endl;
+    }
+}
+
 void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad PauseSnapshot format" << std::endl;
@@ -283,27 +390,50 @@ void HandleClientPauseSnapshot(const std::vector<std::string> parts, ::rtidb::cl
     }
 }
 
-void HandleClientLoadSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 3) {
-        std::cout << "Bad LoadSnapshot format" << std::endl;
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
         return;
     }
-    bool ok = client->LoadSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
-    if (ok) {
-        std::cout << "LoadSnapshot ok" << std::endl;
-    }else {
-        std::cout << "Fail to LoadSnapshot" << std::endl;
+    try {
+        bool ok = client->RecoverSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]));
+        if (ok) {
+            std::cout << "RecoverSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to RecoverSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad RecoverSnapshot format" << std::endl;
     }
 }
 
 void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "Bad LoadTable format" << std::endl;
+    if (parts.size() < 6) {
+        std::cout << "Bad LoadTable format eg loadtable <name> <tid> <pid> <ttl> <seg_cnt> " << std::endl;
         return;
     }
     try {
+        uint64_t ttl = 0;
+        if (parts.size() > 4) {
+            ttl = boost::lexical_cast<uint64_t>(parts[4]);
+        }
+        uint32_t seg_cnt = 16;
+        if (parts.size() > 5) {
+            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
+        }
+        bool is_leader = true;
+        if (parts.size() > 6 && parts[6] == "false") {
+            is_leader = false;
+        }
+        std::vector<std::string> endpoints;
+        for (size_t i = 7; i < parts.size(); i++) {
+            endpoints.push_back(parts[i]);
+        }
+
         bool ok = client->LoadTable(parts[1], boost::lexical_cast<uint32_t>(parts[2]),
-                                    boost::lexical_cast<uint32_t>(parts[3]), boost::lexical_cast<uint64_t>(parts[4]));
+                                    boost::lexical_cast<uint32_t>(parts[3]), 
+                                    ttl,
+                                    is_leader, endpoints, seg_cnt);
         if (ok) {
             std::cout << "LoadTable ok" << std::endl;
         }else {
@@ -516,37 +646,70 @@ void StartClient() {
         ::rtidb::base::SplitString(buffer, " ", &parts);
         if (parts[0] == "put") {
             HandleClientPut(parts, &client);
-        }else if (parts[0] == "create") {
+        } else if (parts[0] == "create") {
             HandleClientCreateTable(parts, &client);
-        }else if (parts[0] == "scan") {
+        } else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
-        }else if (parts[0] == "benput") {
+        } else if (parts[0] == "benput") {
             HandleClientBenPut(parts, &client);
-        }else if (parts[0] == "benscan") {
+        } else if (parts[0] == "benscan") {
             HandleClientBenScan(parts, &client);
-        }else if (parts[0] == "benchmark") {
+        } else if (parts[0] == "benchmark") {
             HandleClientBenchmark(&client);
-        }else if (parts[0] == "drop") {
+        } else if (parts[0] == "drop") {
             HandleClientDropTable(parts, &client);
-        }else if (parts[0] == "addreplica") {
+        } else if (parts[0] == "addreplica") {
             HandleClientAddReplica(parts, &client);
-        }else if (parts[0] == "pausesnapshot") {
+        } else if (parts[0] == "delreplica") {
+            HandleClientDelReplica(parts, &client);
+        } else if (parts[0] == "makesnapshot") {
+            HandleClientMakeSnapshot(parts, &client);
+		} else if (parts[0] == "pausesnapshot") {
             HandleClientPauseSnapshot(parts, &client);
-        }else if (parts[0] == "loadsnapshot") {
-            HandleClientLoadSnapshot(parts, &client);
-        }else if (parts[0] == "loadtable") {
+        } else if (parts[0] == "recoversnapshot") {
+            HandleClientRecoverSnapshot(parts, &client);
+        } else if (parts[0] == "loadtable") {
             HandleClientLoadTable(parts, &client);
-        }else if (parts[0] == "changerole") {
+        } else if (parts[0] == "changerole") {
             HandleClientChangeRole(parts, &client);
-        }else if (parts[0] == "gettablestatus") {
+        } else if (parts[0] == "gettablestatus") {
             HandleClientGetTableStatus(parts, &client);
-        }else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else {
             std::cout << "unsupported cmd" << std::endl;
         }
 
+        if (!FLAGS_interactive) {
+            return;
+        }
+    }
+
+}
+
+void StartNsClient() {
+    
+    ::rtidb::client::NsClient client(FLAGS_endpoint);
+    client.Init();
+    while (!s_quit) {
+        std::cout << ">";
+        std::string buffer;
+        if (!FLAGS_interactive) {
+            buffer = FLAGS_cmd;
+        }else {
+            std::getline(std::cin, buffer);
+            if (buffer.empty()) {
+                continue;
+            }
+        }
+        std::vector<std::string> parts;
+        ::rtidb::base::SplitString(buffer, " ", &parts);
+        if (parts[0] == "showtablet") {
+            HandleNSShowTablet(parts, &client);
+        }else {
+            std::cout << "unsupported cmd" << std::endl;
+        }
         if (!FLAGS_interactive) {
             return;
         }
@@ -561,6 +724,11 @@ int main(int argc, char* argv[]) {
         StartTablet();
     }else if (FLAGS_role == "client") {
         StartClient();
+    }else if (FLAGS_role == "nameserver") {
+        StartNameServer();
+    }else if (FLAGS_role == "ns_client") {
+        StartNsClient();
     }
+
     return 0;
 }

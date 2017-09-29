@@ -23,7 +23,7 @@ then
     echo "boost exist"
 else
     echo "start install boost...."
-    wget https://github.com/elasticlog/deps/files/621702/boost-header-only.tar.gz >/dev/null
+    wget http://pkg.4paradigm.com:81/rtidb/dev/boost-header-only.tar.gz >/dev/null
     tar zxf boost-header-only.tar.gz >/dev/null
     mv boost ${DEPS_PREFIX}/include
     touch boost_succ
@@ -35,7 +35,7 @@ then
    echo "gtest exist"
 else
    echo "install gtest ...."
-   wget -O gtest-1.7.0.zip http://github.com/google/googletest/archive/release-1.7.0.zip >/dev/null
+   wget http://pkg.4paradigm.com:81/rtidb/dev/gtest-1.7.0.zip >/dev/null
    unzip gtest-1.7.0.zip 
    GTEST_DIR=$DEPS_SOURCE/googletest-release-1.7.0
    cd googletest-release-1.7.0
@@ -55,8 +55,7 @@ else
     echo "start install protobuf ..."
     # protobuf
     # wget --no-check-certificate https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
-    git clone --depth=1 https://github.com/00k/protobuf >/dev/null
-    mv protobuf/protobuf-2.6.1.tar.gz .
+    wget http://pkg.4paradigm.com:81/rtidb/dev/protobuf-2.6.1.tar.gz >/dev/null
     tar zxf protobuf-2.6.1.tar.gz >/dev/null
     cd protobuf-2.6.1
     ./configure ${DEPS_CONFIG} >/dev/null
@@ -72,7 +71,7 @@ then
     echo "zlib exist"
 else
     echo "start install zlib..."
-    wget --no-check-certificate https://github.com/elasticlog/deps/files/877654/zlib-1.2.11.tar.gz
+    wget http://pkg.4paradigm.com:81/rtidb/dev/zlib-1.2.11.tar.gz
     tar zxf zlib-1.2.11.tar.gz 
     cd zlib-1.2.11
     sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
@@ -91,8 +90,7 @@ else
     echo "start install snappy ..."
     # snappy
     # wget --no-check-certificate https://snappy.googlecode.com/files/snappy-1.1.1.tar.gz
-    git clone --depth=1 https://github.com/00k/snappy
-    mv snappy/snappy-1.1.1.tar.gz .
+    wget http://pkg.4paradigm.com:81/rtidb/dev/snappy-1.1.1.tar.gz
     tar zxf snappy-1.1.1.tar.gz >/dev/null
     cd snappy-1.1.1
     ./configure ${DEPS_CONFIG} >/dev/null
@@ -108,9 +106,8 @@ then
     echo "sofa exist"
 else
     # sofa-pbrpc
-    #wget --no-check-certificate -O sofa-pbrpc-1.0.0.tar.gz https://github.com/BaiduPS/sofa-pbrpc/archive/v1.0.0.tar.gz
-    #tar zxf sofa-pbrpc-1.0.0.tar.gz
-    git clone https://github.com/baidu/sofa-pbrpc.git
+    wget http://pkg.4paradigm.com:81/rtidb/dev/sofa-pbrpc.tar.gz
+    tar zxf sofa-pbrpc.tar.gz
     cd sofa-pbrpc
     echo "BOOST_HEADER_DIR=${DEPS_PREFIX}/include" >> depends.mk
     echo "PROTOBUF_DIR=${DEPS_PREFIX}" >> depends.mk
@@ -148,7 +145,8 @@ then
    echo "common exist"
 else
   # common
-  git clone https://github.com/baidu/common.git
+  wget http://pkg.4paradigm.com:81/rtidb/dev/common.tar.gz
+  tar -zxvf common.tar.gz
   cd common
   sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/include/' Makefile
   make -j2 >/dev/null
@@ -162,7 +160,7 @@ if [ -f "gperf_tool" ]
 then
     echo "gperf_tool exist"
 else
-    wget --no-check-certificate -O gperftools-2.5.tar.gz https://github.com/gperftools/gperftools/releases/download/gperftools-2.5/gperftools-2.5.tar.gz 
+    wget http://pkg.4paradigm.com:81/rtidb/dev/gperftools-2.5.tar.gz 
     tar -zxvf gperftools-2.5.tar.gz 
     cd gperftools-2.5 
     if [ "$STAGE" = 'DEBUG' ]
@@ -183,7 +181,7 @@ if [ -f "rapjson_succ" ]
 then 
     echo "rapjson exist"
 else
-    wget --no-check-certificate -O rapidjson.1.1.0.tar.gz https://github.com/miloyip/rapidjson/archive/v1.1.0.tar.gz
+    wget http://pkg.4paradigm.com:81/rtidb/dev/rapidjson.1.1.0.tar.gz
     tar -zxvf rapidjson.1.1.0.tar.gz
     cp -rf rapidjson-1.1.0/include/rapidjson ${DEPS_PREFIX}/include
     touch rapjson_succ
@@ -193,7 +191,8 @@ if [ -f "leveldb_succ" ]
 then
     echo "leveldb exist"
 else
-    git clone https://github.com/google/leveldb.git
+    wget http://pkg.4paradigm.com:81/rtidb/dev/leveldb.tar.gz
+    tar -zxvf leveldb.tar.gz
     cd leveldb
     make -j8
     cp -rf include/* ${DEPS_PREFIX}/include
@@ -206,7 +205,7 @@ if [ -f "zk_succ" ]
 then
     echo "zk exist"
 else
-    wget --no-check-certificate -O zookeeper-3.4.10.tar.gz http://www-eu.apache.org/dist/zookeeper/zookeeper-3.4.10/zookeeper-3.4.10.tar.gz
+    wget http://pkg.4paradigm.com:81/rtidb/dev/zookeeper-3.4.10.tar.gz
     tar -zxvf zookeeper-3.4.10.tar.gz
     cd zookeeper-3.4.10/src/c/
     ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes

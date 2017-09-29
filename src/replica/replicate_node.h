@@ -16,95 +16,40 @@
 #include "log/sequential_file.h"
 #include "rpc/rpc_client.h"
 #include "proto/tablet.pb.h"
+#include <atomic>
 
 namespace rtidb {
 namespace replica {
 
-using ::rtidb::log::SequentialFile;
-using ::rtidb::log::Reader;
-
-const static uint32_t FOLLOWER_REPLICATE_MODE = 0;
-const static uint32_t SNAPSHOT_REPLICATE_MODE = 1;
-struct StringComparator {
-    int operator()(const std::string& a, const std::string& b) const {
-        return a.compare(b);
-    }
-};
-
-struct LogPart {
-    // the first log id in the log file
-    uint64_t slog_id_;
-    std::string log_name_;
-    LogPart(uint64_t slog_id, const std::string& log_name):slog_id_(slog_id),
-        log_name_(log_name) {}
-    LogPart() {}
-    ~LogPart() {}
-};
-
-typedef ::rtidb::base::Skiplist<std::string, LogPart*, StringComparator> LogParts;
-typedef boost::function< bool (const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts)> SnapshotFunc;
+using ::rtidb::log::LogReader;
+typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
 
 class ReplicateNode {
 public:
-    ReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, uint32_t tid, uint32_t pid);
-    virtual ~ReplicateNode();
-    ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record, std::string* buffer);
-    int RollRLogFile();
-    int OpenSeqFile(const std::string& path);
-    uint32_t GetMode() {
-        return replicate_node_mode_;
-    }
-    virtual int SyncData(uint64_t log_offset) = 0;
-    virtual int MatchLogOffsetFromNode() = 0;
-    void GoBackToLastBlock();
+    ReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path,
+            uint32_t tid, uint32_t pid, ::rtidb::RpcClient* rpc_client);
+    int MatchLogOffsetFromNode();        
+    int SyncData(uint64_t log_offset);
+    void SetLastSyncOffset(uint64_t offset);
     bool IsLogMatched();
     void SetLogMatch(bool log_match);
     std::string GetEndPoint();
     uint64_t GetLastSyncOffset();
-    void SetLastSyncOffset(uint64_t offset);
+    int GetLogIndex();
+
     ReplicateNode(const ReplicateNode&) = delete;
     ReplicateNode& operator= (const ReplicateNode&) = delete;
-protected:
-    std::string endpoint;
+
+private:
+    LogReader log_reader_;
+    std::vector<::rtidb::api::AppendEntriesRequest> cache_;
+    ::rtidb::RpcClient* rpc_client_;
+    std::string endpoint_;
+    std::atomic<bool> making_snapshot_;
     uint64_t last_sync_offset_;
-    std::string log_path_;
-    int log_part_index_;
-    SequentialFile* sf_;
-    Reader* reader_;
-    LogParts* logs_;
-    uint32_t replicate_node_mode_;
     bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
-};
-
-class FollowerReplicateNode: public ReplicateNode {
-public:
-    FollowerReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path,
-            uint32_t tid, uint32_t pid, ::rtidb::RpcClient* rpc_client);
-    int MatchLogOffsetFromNode();        
-    int SyncData(uint64_t log_offset);
-    FollowerReplicateNode(const FollowerReplicateNode&) = delete;
-    FollowerReplicateNode& operator= (const FollowerReplicateNode&) = delete;
-
-private:
-    std::vector<::rtidb::api::AppendEntriesRequest> cache_;
-    ::rtidb::RpcClient* rpc_client_;
-};
-
-class SnapshotReplicateNode: public ReplicateNode {
-public:
-    SnapshotReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path, 
-        uint32_t tid, uint32_t pid, SnapshotFunc snapshot_fun);
-    ~SnapshotReplicateNode(){}
-    int MatchLogOffsetFromNode();        
-    int SyncData(uint64_t log_offset);
-    SnapshotReplicateNode(const SnapshotReplicateNode&) = delete;
-    SnapshotReplicateNode& operator= (const SnapshotReplicateNode&) = delete;
-
-private:
-    SnapshotFunc snapshot_fun_;
-
 };
 
 }

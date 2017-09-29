@@ -14,6 +14,7 @@
 #include "storage/segment.h"
 #include "storage/ticket.h"
 #include "boost/atomic.hpp"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace storage {
@@ -27,8 +28,8 @@ enum TableStat {
     kUndefined = 0,
     kNormal,
     kLoading,
-    kPausing,
-    kPaused
+    kMakingSnapshot,
+    kSnapshotPaused
 };
 
 class Table {
@@ -41,7 +42,7 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t ttl,
+          uint64_t ttl,
           bool is_leader,
           const std::vector<std::string>& replicas,
           bool wal = true);
@@ -50,10 +51,10 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t ttl,
+          uint64_t ttl,
           bool wal = true);
 
-    void Init(SnapshotTTLFunc ttl_fun = boost::bind(&DefaultSnapshotTTLFunc, _1));
+    void Init();
 
     void SetGcSafeOffset(uint64_t offset);
 
@@ -95,6 +96,8 @@ public:
     uint32_t GetTTL() const {
         return ttl_;
     }
+
+    bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
 
     inline bool GetWal() {
         return wal_;
@@ -181,7 +184,7 @@ private:
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
     bool enable_gc_;
-    uint32_t const ttl_;
+    uint64_t const ttl_;
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> data_cnt_;
     bool is_leader_;
