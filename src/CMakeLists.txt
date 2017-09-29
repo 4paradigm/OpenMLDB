@@ -45,10 +45,10 @@ add_executable(count_down_latch_test base/count_down_latch_test.cc)
 target_link_libraries(count_down_latch_test common gtest pthread)
 
 add_executable(segment_test storage/segment_test.cc flags.cc)
-target_link_libraries(segment_test gtest gflags storage pthread common unwind tcmalloc)
+target_link_libraries(segment_test gtest gflags storage pthread common tcmalloc_minimal)
 
 add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc flags.cc)
-target_link_libraries(table_test gtest gflags pthread storage common unwind tcmalloc protobuf)
+target_link_libraries(table_test gtest gflags pthread storage common protobuf tcmalloc_minimal)
 
 add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc base/status.cc)
 target_link_libraries(snapshot_test gtest gflags storage log tablet base pthread sofa-pbrpc protobuf z snappy common)
@@ -60,16 +60,16 @@ add_executable(kv_iterator_test  base/kv_iterator_test.cc proto/tablet.pb.cc)
 target_link_libraries(kv_iterator_test gtest pthread common protobuf)
 
 add_executable(tablet_impl_test  tablet/tablet_impl_test.cc base/status.cc)
-target_link_libraries(tablet_impl_test  gtest pthread  tablet gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client  zookeeper_mt unwind tcmalloc)
+target_link_libraries(tablet_impl_test  gtest pthread  tablet gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client  zookeeper_mt tcmalloc_minimal)
 
 add_executable(tablet_impl_keep_alive_test tablet/tablet_impl_keep_alive_test.cc base/status.cc)
-target_link_libraries(tablet_impl_keep_alive_test   gtest pthread tablet gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
+target_link_libraries(tablet_impl_keep_alive_test   gtest pthread tablet gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt tcmalloc_minimal)
 
 add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
 target_link_libraries(tablet_impl_mem_test   gtest pthread tablet gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
 
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
-target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf unwind tcmalloc)
+target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf tcmalloc_minimal)
 
 add_executable(log_test  log/log_test.cc)
 target_link_libraries(log_test   gtest pthread storage tablet base log gflags storage common protobuf tcmalloc_minimal)
@@ -81,7 +81,7 @@ add_executable(binlog_test  replica/binlog_test.cc client/tablet_client.cc base/
 target_link_libraries(binlog_test gtest gflags pthread common sofa-pbrpc protobuf z snappy tablet zk_client zookeeper_mt storage replica log tcmalloc_minimal)
 
 add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc base/status.cc)
-target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
+target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt tcmalloc_minimal)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc)
 target_link_libraries(rtidb gflags pthread common client sofa-pbrpc protobuf z snappy tablet storage replica log nameserver zk_client zookeeper_mt tcmalloc_minimal)
