@@ -50,6 +50,7 @@ class TestCaseBase(unittest.TestCase):
         self.exe_shell("kill -9 {}".format(pid))
 
     def run_client(self, endpoint, cmd):
+        # print cmd
         rs = self.exe_shell('{} --endpoint={} --role=client --interactive=false --cmd="{}"'.format(
             self.rtidb_path, endpoint, cmd))
         return rs.replace(self.welcome, '').replace('>', '')
