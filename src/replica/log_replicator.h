@@ -50,7 +50,7 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  Table* table);
+                  std::shared_ptr<Table> table);
 
     ~LogReplicator();
 
@@ -83,10 +83,6 @@ public:
 
     void ReplicateToNode(const std::string& endpoint);
 
-    // Incr ref
-    void Ref();
-    // Descr ref
-    void UnRef();
     // Sync Write Buffer to Disk
     void SyncToDisk();
     void SetOffset(uint64_t offset);
@@ -141,7 +137,7 @@ private:
 
     Mutex wmu_;
 
-    Table* table_;
+    std::shared_ptr<Table> table_;
 };
 
 } // end of replica

@@ -42,13 +42,12 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             Table* table):path_(path), log_path_(),
+                             std::shared_ptr<Table> table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0), role_(role), 
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),coffee_cv_(&mu_),
     rpc_client_(NULL),
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
-    table_->Ref();
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, boost::memory_order_relaxed);;
 }
@@ -63,9 +62,6 @@ LogReplicator::~LogReplicator() {
     wh_ = NULL;
     nodes_.clear();
     delete rpc_client_;
-    if (table_) {
-        table_->UnRef();
-    }
 }
 
 void LogReplicator::SetRole(const ReplicatorRole& role) {
@@ -211,17 +207,6 @@ void LogReplicator::SetOffset(uint64_t offset) {
 
 uint64_t LogReplicator::GetOffset() {
     return log_offset_.load(boost::memory_order_relaxed);
-}
-
-void LogReplicator::Ref() {
-    refs_.fetch_add(1, boost::memory_order_relaxed);
-}
-
-void LogReplicator::UnRef() {
-    refs_.fetch_sub(1, boost::memory_order_acquire);
-    if (refs_.load(boost::memory_order_relaxed) <= 0) {
-        delete this;
-    }
 }
 
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {

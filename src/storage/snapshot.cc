@@ -60,7 +60,7 @@ bool Snapshot::Init() {
     return true;
 }
 
-bool Snapshot::Recover(Table* table, uint64_t& latest_offset) {
+bool Snapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
     int ret = GetSnapshotRecord(manifest);
@@ -75,7 +75,7 @@ bool Snapshot::Recover(Table* table, uint64_t& latest_offset) {
     return RecoverFromBinlog(table, manifest.offset(), latest_offset);
 }
 
-bool Snapshot::RecoverFromBinlog(Table* table, uint64_t offset,
+bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
                                  uint64_t& latest_offset) {
     LOG(INFO, "start recover table tid %u, pid %u from binlog with start offset %lu",
             table->GetId(), table->GetPid(), offset);
@@ -138,7 +138,7 @@ bool Snapshot::RecoverFromBinlog(Table* table, uint64_t offset,
     return true;
 }
 
-void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, Table* table) {
+void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table) {
     std::string full_path = snapshot_path_ + "/" + snapshot_name;
     std::atomic<uint64_t> g_succ_cnt(0);
     std::atomic<uint64_t> g_failed_cnt(0);
@@ -153,7 +153,7 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 }
 
 
-void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table, 
+void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table, 
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
     do {
@@ -213,7 +213,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, Table* table,
     }while(false);
 }
 
-int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
+int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
             uint64_t& count, uint64_t& expired_key_num) {
 	std::string full_path = snapshot_path_ + manifest.name();
 	FILE* fd = fopen(full_path.c_str(), "rb");
@@ -275,7 +275,7 @@ int Snapshot::TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, 
 	return 0;
 }
 
-int Snapshot::MakeSnapshot(Table* table, uint64_t& out_offset) {
+int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     if (making_snapshot_.load(boost::memory_order_acquire)) {
         LOG(INFO, "snapshot is doing now!");
         return 0;
