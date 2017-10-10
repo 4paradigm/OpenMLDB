@@ -34,8 +34,8 @@ using ::rtidb::zk::ZkClient;
 namespace rtidb {
 namespace tablet {
 
-typedef std::map<uint32_t, std::map<uint32_t, Table*> > Tables;
-typedef std::map<uint32_t, std::map<uint32_t, LogReplicator*> > Replicators;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
 class TabletImpl : public ::rtidb::api::TabletServer {
@@ -123,13 +123,13 @@ public:
     bool WebService(const sofa::pbrpc::HTTPRequest& request,
             sofa::pbrpc::HTTPResponse& response);
 private:
-    // Get table by table id and Inc reference , no need external synchronization
-    ::rtidb::storage::Table* GetTable(uint32_t tid, uint32_t pid);
-    // Get table by table id and Inc reference , and Need external synchronization  
-    ::rtidb::storage::Table* GetTableUnLock(uint32_t tid, uint32_t pid);
+    // Get table by table id , no need external synchronization
+    std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
+    // Get table by table id , and Need external synchronization  
+    std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
 
-    ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
-    ::rtidb::replica::LogReplicator* GetReplicatorUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
+    std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);

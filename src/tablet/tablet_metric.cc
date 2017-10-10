@@ -16,7 +16,7 @@
 namespace rtidb {
 namespace tablet {
 
-TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
+TabletMetric::TabletMetric(std::shared_ptr<::rtidb::storage::Table> stat):stat_(stat),
     bg_pool_(), throughput_(NULL){
    throughput_ = new boost::atomic<uint64_t>[4];
    // record put counter
@@ -36,7 +36,6 @@ TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
 
 
 TabletMetric::~TabletMetric() {
-    stat_->UnRef();
     delete[] throughput_;
     delete[] last_throughput_;
 }

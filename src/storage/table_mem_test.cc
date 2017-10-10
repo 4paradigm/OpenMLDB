@@ -28,7 +28,6 @@ TEST_F(TableMemTest, Memory) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     HeapLeakChecker checker("test_mem");
     Table* table = new Table("tx_log", 1, 1, 8, 1);
-    table->Ref();
     table->Init();
     for (uint32_t i = 0; i < 100; i++) {
         table->Put("test", now - i * 60 * 1000, "test", 4);
@@ -42,8 +41,7 @@ TEST_F(TableMemTest, Memory) {
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
-    table->Release();
-    table->UnRef();
+    delete table;
     ASSERT_EQ(true, checker.NoLeaks());
 #endif
 }

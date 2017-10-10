@@ -108,7 +108,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     Snapshot snapshot(4, 3, log_part);
     snapshot.Init();
     std::vector<std::string> fakes;
-    Table* table = new Table("test", 4, 3, 8, 0, true, fakes, true);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 3, 8, 0, true, fakes, true);
     table->Init();
     uint64_t offset_value;
     int ret = snapshot.MakeSnapshot(table, offset_value);
@@ -158,7 +158,6 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_EQ("value10", value5_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-    table->UnRef();
 
 }
 
@@ -187,7 +186,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     }
     wh->Sync();
     std::vector<std::string> fakes;
-    Table* table = new Table("test", 3, 3, 8, 0, true, fakes, true);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 3, 8, 0, true, fakes, true);
     table->Init();
     Snapshot snapshot(3, 3, log_part);
     snapshot.Init();
@@ -207,7 +206,6 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-    table->UnRef();
 
 }
 
@@ -273,7 +271,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     }
 
     std::vector<std::string> fakes;
-    Table* table = new Table("test", 2, 2, 8, 0, true, fakes, true);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 2, 2, 8, 0, true, fakes, true);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(2, 2, log_part);
@@ -297,15 +295,13 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     ASSERT_EQ("test1", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-    table->UnRef();
 }
 
 TEST_F(SnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(1, 2, log_part);
     snapshot.Init();
-    Table* table = new Table("tx_log", 1, 1, 8 , 2);
-    table->Ref();
+    std::shared_ptr<Table> table = std::make_shared<Table>("tx_log", 1, 1, 8 , 2);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -400,9 +396,6 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 
     ASSERT_EQ(49, manifest.offset());
     ASSERT_EQ(48, manifest.count());
-
-    table->UnRef();
-
 }
 
 TEST_F(SnapshotTest, RecordOffset) {

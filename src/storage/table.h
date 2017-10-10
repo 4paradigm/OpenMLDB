@@ -54,6 +54,8 @@ public:
           uint64_t ttl,
           bool wal = true);
 
+    ~Table();
+
     void Init();
 
     void SetGcSafeOffset(uint64_t offset);
@@ -83,10 +85,6 @@ public:
     };
 
     Table::Iterator* NewIterator(const std::string& pk, Ticket& ticket);
-
-    void Ref();
-
-    void UnRef();
 
     // release all memory allocated
     uint64_t Release();
@@ -170,10 +168,6 @@ public:
     inline void SetTableStat(uint32_t table_status) {
         table_status_.store(table_status, boost::memory_order_relaxed);
     }
-
-private:
-
-    ~Table(){}
 
 private:
     std::string const name_;

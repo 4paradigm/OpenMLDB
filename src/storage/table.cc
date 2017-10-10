@@ -54,6 +54,14 @@ Table::Table(const std::string& name,
     replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
+Table::~Table() {
+    Release();
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        delete segments_[i];
+    }
+    delete[] segments_;
+}
+
 void Table::Init() {
     segments_ = new Segment*[seg_cnt_];
     for (uint32_t i = 0; i < seg_cnt_; i++) {
@@ -75,22 +83,6 @@ void Table::Put(const std::string& pk, uint64_t time,
     Segment* segment = segments_[index];
     segment->Put(pk, time, data, size);
     data_cnt_.fetch_add(1, boost::memory_order_relaxed);
-}
-
-void Table::Ref() {
-    ref_.fetch_add(1, boost::memory_order_relaxed);
-}
-
-void Table::UnRef() {
-    ref_.fetch_sub(1, boost::memory_order_acquire);
-    if (ref_.load(boost::memory_order_relaxed) <= 0) {
-        Release();
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            delete segments_[i];
-        }
-        delete[] segments_;
-        delete this;
-    }
 }
 
 void Table::BatchGet(const std::vector<std::string>& keys,
