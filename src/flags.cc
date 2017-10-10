@@ -7,6 +7,7 @@
 
 #include <gflags/gflags.h>
 // cluster config
+DEFINE_string(scan_endpoint, "127.0.0.1:9526", "config the ip and port that rtidb serves scan for");
 DEFINE_string(endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves for");
 DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
@@ -16,9 +17,11 @@ DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep al
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
+DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");
 DEFINE_int32(statdb_ttl, 30 * 24 * 60 , "the ttl of statdb");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_bool(enable_statdb, false, "enable statdb");
+DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
@@ -34,9 +37,20 @@ DEFINE_int32(binlog_sync_to_disk_interval, 5000, "config the interval of sync bi
 DEFINE_int32(binlog_delete_interval, 10000, "config the interval of delete binlog");
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
 DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
+DEFINE_int32(binlog_name_length, 8, "binlog name length");
 
 // snapshot configuration
 DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage path");
-DEFINE_bool(enable_snapshot_ttl, false, "enable snapshot ttl");
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
+
+// thread pool config
+DEFINE_int32(scan_thread_pool_size, 8, "the size of thread pool for scan");
+DEFINE_int32(thread_pool_size, 8, "the size of thread pool for other api");
+// if set 23, the task will execute 23:00 every day
+DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
+DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
+
+// metric configuration
+
+DEFINE_uint32(metric_max_record_cnt, 2000, "limit the max record cnt to read");

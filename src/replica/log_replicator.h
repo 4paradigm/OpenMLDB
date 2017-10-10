@@ -13,7 +13,6 @@
 #include "base/skiplist.h"
 #include "boost/atomic.hpp"
 #include "boost/function.hpp"
-#include "leveldb/db.h"
 #include "mutex.h"
 #include "thread_pool.h"
 #include "log/log_writer.h"
@@ -31,53 +30,18 @@ using ::baidu::common::MutexLock;
 using ::baidu::common::Mutex;
 using ::baidu::common::CondVar;
 using ::baidu::common::ThreadPool;
-using ::rtidb::log::WritableFile;
 using ::rtidb::log::SequentialFile;
-using ::rtidb::log::Writer;
 using ::rtidb::log::Reader;
+using ::rtidb::log::WriteHandle;
 using ::rtidb::storage::Table;
 
 typedef boost::function< bool (const ::rtidb::api::LogEntry& entry)> ApplyLogFunc;
-typedef boost::function< bool (const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts)> SnapshotFunc;
 
 enum ReplicatorRole {
     kLeaderNode = 1,
     kFollowerNode
 };
 
-inline bool DefaultSnapshotFunc(const std::string& entry, const std::string& pk, uint64_t offset, uint64_t ts) {
-    return true;
-} 
-
-class LogReplicator;
-
-struct WriteHandle {
-    FILE* fd_;
-    WritableFile* wf_;
-    Writer* lw_;
-    WriteHandle(const std::string& fname, FILE* fd):fd_(fd),
-    wf_(NULL), lw_(NULL) {
-        wf_ = ::rtidb::log::NewWritableFile(fname, fd);
-        lw_ = new Writer(wf_);
-    }
-
-    ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {
-        return lw_->AddRecord(slice);
-    }
-
-    ::rtidb::base::Status Sync() {
-        return wf_->Sync(); 
-    }
-
-    ::rtidb::base::Status EndLog() {
-        return lw_->EndLog();
-    }
-
-    ~WriteHandle() {
-        delete lw_;
-        delete wf_;
-    }
-};
 
 class LogReplicator {
 
@@ -86,8 +50,7 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  Table* table,
-                  SnapshotFunc ssf = boost::bind(&DefaultSnapshotFunc, _1, _2, _3, _4));
+                  Table* table);
 
     ~LogReplicator();
 
@@ -120,8 +83,6 @@ public:
 
     void ReplicateToNode(const std::string& endpoint);
 
-    int PauseReplicate(std::shared_ptr<ReplicateNode> node);
-
     // Incr ref
     void Ref();
     // Descr ref
@@ -131,10 +92,16 @@ public:
     void SetOffset(uint64_t offset);
     uint64_t GetOffset();
 
+    LogParts* GetLogPart();
+
     inline uint64_t GetLogOffset() {
         return  log_offset_.load(boost::memory_order_relaxed);
     }
     void SetRole(const ReplicatorRole& role);
+
+    void SetSnapshotLogPartIndex(uint64_t offset);
+
+    bool ParseBinlogIndex(const std::string& path, uint32_t& index);
 
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
@@ -170,9 +137,9 @@ private:
     // reference cnt
     boost::atomic<uint64_t> refs_;
 
-    Mutex wmu_;
+    boost::atomic<int> snapshot_log_part_index_;
 
-    SnapshotFunc ssf_;
+    Mutex wmu_;
 
     Table* table_;
 };

@@ -36,7 +36,7 @@ namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, Table*> > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, LogReplicator*> > Replicators;
-typedef std::map<uint32_t, std::map<uint32_t, Snapshot*> > Snapshots;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
 class TabletImpl : public ::rtidb::api::TabletServer {
 
@@ -97,24 +97,24 @@ public:
             ::rtidb::api::GetTableStatusResponse* response,
             Closure* done);
 
+    void ChangeRole(RpcController* controller,
+            const ::rtidb::api::ChangeRoleRequest* request,
+            ::rtidb::api::ChangeRoleResponse* response,
+            Closure* done);
+
+    void MakeSnapshot(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+           
     void PauseSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
-            Closure* done); 
+            Closure* done);
 
     void RecoverSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
-            Closure* done); 
-
-    void LoadSnapshot(RpcController* controller,
-            const ::rtidb::api::GeneralRequest* request,
-            ::rtidb::api::GeneralResponse* response,
-            Closure* done); 
-    
-    void ChangeRole(RpcController* controller,
-            const ::rtidb::api::ChangeRoleRequest* request,
-            ::rtidb::api::ChangeRoleResponse* response,
             Closure* done);
     //
     //http api
@@ -130,8 +130,8 @@ private:
 
     ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
     ::rtidb::replica::LogReplicator* GetReplicatorUnLock(uint32_t tid, uint32_t pid);
-    ::rtidb::storage::Snapshot* GetSnapshot(uint32_t tid, uint32_t pid);
-    ::rtidb::storage::Snapshot* GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
+    std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
     void ShowTables(const sofa::pbrpc::HTTPRequest& request,
@@ -155,18 +155,17 @@ private:
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
-    bool MakeSnapshot(uint32_t tid, uint32_t pid,
-                      const std::string& entry,
-                      const std::string& pk,
-                      uint64_t offset,
-                      uint64_t ts);
-    bool SnapshotTTL(uint32_t tid, uint32_t pid, 
-            const std::vector<std::pair<std::string, uint64_t> >& keys);                  
-    int LoadSnapshot();
-    int LoadSnapshot(uint32_t tid, uint32_t pid);
+    void MakeSnapshotInternal(uint32_t tid, uint32_t pid);
+
+    void SchedMakeSnapshot();
+
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
                        const std::vector<std::string>& replicas);
+
     void CheckZkClient();
+
+    int32_t DeleteTableInternal(uint32_t tid, uint32_t pid);
+
 private:
     Tables tables_;
     Mutex mu_;
@@ -176,6 +175,7 @@ private:
     Snapshots snapshots_;
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
+    ThreadPool task_pool_;
 };
 
 

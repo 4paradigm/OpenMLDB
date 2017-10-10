@@ -10,6 +10,7 @@
 #include <gflags/gflags.h>
 #include <boost/lexical_cast.hpp>
 #include "gflags/gflags.h"
+#include "timer.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -22,9 +23,8 @@ namespace nameserver {
 
 using ::baidu::common::MutexLock;
 
-NameServerImpl::NameServerImpl():mu_(), tablet_client_(),
-    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1),
-    cv_(&mu_) {
+NameServerImpl::NameServerImpl():mu_(), tablets_(),
+    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1)  {
     zk_table_path_ = FLAGS_zk_root_path + "/table";
     zk_data_path_ = FLAGS_zk_root_path + "/table/data";
     zk_table_index_node_ = zk_data_path_ + "/table_index";
@@ -54,14 +54,73 @@ bool NameServerImpl::Recover() {
         LOG(WARNING, "get endpoints node failed!");
         return false;
     }
+
     MutexLock lock(&mu_);
-    for (auto iter = endpoints.begin(); iter != endpoints.end(); ++iter) {
-        LOG(DEBUG, "create endpoint[%s] client", iter->c_str());
-        tablet_client_.insert(std::make_pair(*iter, std::make_shared<::rtidb::client::TabletClient>(*iter)));
-    }
-    //TODO recover tablet status
+    UpdateTablets(endpoints);
+    zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
+    zk_client_->WatchNodes();
     return true;
 }
+
+void NameServerImpl::UpdateTabletsLocked(const std::vector<std::string>& endpoints) {
+    MutexLock lock(&mu_);
+    UpdateTablets(endpoints);
+}
+
+
+void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
+    mu_.AssertHeld();
+    // check exist and newly add tablets
+    std::set<std::string> alive;
+    std::vector<std::string>::const_iterator it = endpoints.begin();
+    for (; it != endpoints.end(); ++it) {
+        alive.insert(*it);
+        Tablets::iterator tit = tablets_.find(*it);
+        // register a new tablet
+        if (tit == tablets_.end()) {
+            std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
+            tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
+            tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it);
+            tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            tablets_.insert(std::make_pair(*it, tablet));
+        } else {
+            //TODO wangtaize notify if state changes
+            ::rtidb::api::TabletState old = tit->second->state_;
+            if (old != ::rtidb::api::TabletState::kTabletHealthy) {
+                tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            }
+            tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
+        }
+        LOG(INFO, "healthy tablet with endpoint %s", it->c_str());
+    }
+    // handle offline tablet
+    Tablets::iterator tit = tablets_.begin();
+    for (; tit !=  tablets_.end(); ++tit) {
+        if (alive.find(tit->first) == alive.end()) {
+            // tablet offline
+            LOG(INFO, "offline tablet with endpoint %s", tit->first.c_str());
+            tit->second->state_ = ::rtidb::api::TabletState::kTabletOffline;
+        }
+    }
+}
+
+void NameServerImpl::ShowTablet(RpcController* controller,
+            const ShowTabletRequest* request,
+            ShowTabletResponse* response,
+            Closure* done) {
+    MutexLock lock(&mu_);
+    Tablets::iterator it = tablets_.begin();
+    for (; it !=  tablets_.end(); ++it) {
+        TabletStatus* status = response->add_tablets();
+        status->set_endpoint(it->first);
+        status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
+        status->set_age(::baidu::common::timer::get_micros() / 1000 - it->second->ctime_);
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
+
 
 bool NameServerImpl::Init() {
     if (FLAGS_zk_cluster.empty()) {
@@ -91,7 +150,7 @@ void NameServerImpl::CheckZkClient() {
 
 bool NameServerImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
         sofa::pbrpc::HTTPResponse& response) {
-    return true;        
+    return true;
 }
 
 int NameServerImpl::GetTabletClient(std::vector<std::shared_ptr<::rtidb::client::TabletClient> >& client_vec) {
@@ -228,16 +287,26 @@ int NameServerImpl::CreateTable(const ::rtidb::nameserver::TableMeta& table_meta
         if (table_partition.is_leader() != is_leader) {
             continue;
         }
-        auto iter = tablet_client_.find(table_partition.endpoint());
-        if (iter == tablet_client_.end()) {
+        auto iter = tablets_.find(table_partition.endpoint());
+
+        // check tablet if exist
+        if (iter == tablets_.end()) {
             LOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
             continue;
         }
+
+        // check tablet healthy
+        if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            LOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
+            continue;
+        }
+
         std::vector<std::string> endpoint;
         if (is_leader && endpoint_vec.find(table_partition.pid()) != endpoint_vec.end()) {
             endpoint_vec[table_partition.pid()].swap(endpoint);
         }
-        if (!iter->second->CreateTable(
+
+        if (!iter->second->client_->CreateTable(
                 table_meta.name(), tid, table_partition.pid(), table_meta.ttl(), is_leader, endpoint)) {
             LOG(WARNING, "create table[%s] failed! tid[%u] pid[%u] endpoint[%s]", 
                         table_meta.name().c_str(), tid, table_partition.pid(), table_partition.endpoint().c_str());
@@ -246,7 +315,7 @@ int NameServerImpl::CreateTable(const ::rtidb::nameserver::TableMeta& table_meta
         }
         LOG(DEBUG, "create table[%s] tid[%u] pid[%u] endpoint[%s] success", 
                     table_meta.name().c_str(), tid, table_partition.pid(), table_partition.endpoint().c_str());
-        if (!is_leader) {            
+        if (!is_leader) {
             if (endpoint_vec.find(table_partition.pid()) == endpoint_vec.end()) {
                 endpoint_vec.insert(std::make_pair(table_partition.pid(), std::vector<std::string>()));
             }
@@ -262,8 +331,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
         Closure* done) {
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(-1);
-        response->set_msg("nameserver is offline");
-        LOG(WARNING, "cur nameserver is offline");
+        response->set_msg("nameserver is not leader");
+        LOG(WARNING, "cur nameserver is not leader");
         done->Run();
         return;
     }
@@ -276,7 +345,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
-
     uint32_t table_index = 0;
     std::string index_value;
     if (!zk_client_->GetNodeValue(zk_table_index_node_, index_value)) {

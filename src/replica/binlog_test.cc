@@ -39,8 +39,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
 using ::rtidb::tablet::TabletImpl;
 
-DECLARE_string(binlog_root_path);
-DECLARE_string(snapshot_root_path);
+DECLARE_string(db_root_path);
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_delete_interval);
 
@@ -57,7 +56,7 @@ public:
 
 TEST_F(BinlogTest, DeleteBinlog) {
     FLAGS_binlog_single_file_max_size = 1;
-    FLAGS_binlog_delete_interval = 1;
+    FLAGS_binlog_delete_interval = 1000;
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
@@ -91,13 +90,15 @@ TEST_F(BinlogTest, DeleteBinlog) {
         ret = client.Put(tid, pid, key, cur_time, std::string(10 * 1024, 'a'));
         count--;
     }
+    ret = client.MakeSnapshot(tid, pid);
+    ASSERT_TRUE(ret);
     sleep(2);
     std::vector<std::string> vec;
-    ::rtidb::base::GetFileName(FLAGS_binlog_root_path, vec);
+    std::string binlog_path = FLAGS_db_root_path + "/2_123/binlog";
+    ::rtidb::base::GetFileName(binlog_path, vec);
     ASSERT_EQ(1, vec.size());
-    char file_name[100];
-    snprintf(file_name, 100, "%s/%u_%u/%s", FLAGS_binlog_root_path.c_str(), tid, pid, "logs/0000000004.log");
-    ASSERT_STREQ(file_name, vec[0].c_str());
+    std::string file_name = binlog_path + "/00000004.log";
+    ASSERT_STREQ(file_name.c_str(), vec[0].c_str());
 
 }
 
@@ -113,8 +114,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_snapshot_root_path = "/tmp/" + ::GenRand();
-    FLAGS_binlog_root_path = "/tmp/" + ::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();
 }
 
