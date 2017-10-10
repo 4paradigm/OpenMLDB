@@ -1,5 +1,6 @@
 # common conf 
 --endpoint=0.0.0.0:9527
+--scan_endpoint=0.0.0.0:9526
 --role=tablet
 
 # log conf
@@ -12,21 +13,23 @@
 --binlog_apply_batch_size=32
 --binlog_coffee_time=1000
 --binlog_match_logoffset_interval=1000
---binlog_notify_on_put=false
---binlog_root_path=./binlogs
---binlog_single_file_max_size=4096
+--binlog_notify_on_put=true
+--binlog_single_file_max_size=2048
 --binlog_sync_batch_size=32
 --binlog_sync_to_disk_interval=5000
 --binlog_sync_wait_time=100
 
+--db_root_path=./db
+
 # snapshot conf
---snapshot_root_path=./snapshots
+--make_snapshot_time=23
+--make_snapshot_check_interval=600000
 
 # garbage collection conf
-# 10m
---gc_interval=10
+# 60m
+--gc_interval=60
 --gc_pool_size=2
-#10m
---gc_safe_offset=10
+# 1m
+--gc_safe_offset=1
 --enable_statdb=true
 

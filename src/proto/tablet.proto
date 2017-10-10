@@ -14,8 +14,13 @@ enum TableState {
     kTableUndefined = 0;
     kTableNormal = 1;
     kTableLoading = 2;
-    kTablePausing = 3;
-    kTablePaused = 4;
+    kMakingSnapshot = 3;
+    kSnapshotPaused  = 4;
+}
+
+enum TabletState {
+    kTabletOffline = 1;
+    kTabletHealthy = 10;
 }
 
 enum TableType {
@@ -30,6 +35,12 @@ enum TTLType {
     kRelativeTime = 2;
     // keep the latest record
     kLatestTime = 3;
+}
+
+message Manifest {
+    optional uint64 offset = 1;
+    optional string name = 2;
+    optional uint64 count = 3;
 }
 
 message PutRequest {
@@ -128,7 +139,7 @@ message BatchGetResponse {
     optional bytes pairs = 3;
 }
 
-message AddReplicaRequest {
+message ReplicaRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string endpoint = 3;
@@ -144,7 +155,7 @@ message CreateTableRequest {
 	optional string name = 2;
 	optional int32 pid = 3;
 	// time to live for every row
-	optional int32 ttl = 4;
+	optional uint64 ttl = 4;
 	optional int32 seg_cnt = 5;
 	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
     // the slave endpoints
@@ -165,7 +176,7 @@ message LoadTableRequest {
 	optional string name = 2;
 	optional int32 pid = 3;
 	// time to live for every row
-	optional int32 ttl = 4;
+	optional uint64 ttl = 4;
 	optional int32 seg_cnt = 5;
 	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
     // the slave endpoints
@@ -259,9 +270,11 @@ service TabletServer {
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
-    rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
+    rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
+    rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
+    rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
-    rpc LoadSnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 }

@@ -12,11 +12,15 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <sys/time.h>
+#include <time.h>
 
 namespace rtidb {
 namespace base {
 
 const static char LABELS[10] = {'0','1','2','3','4','5','6','7','8','9'};
+const static uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
+const static char TIME_LABEL[] = {'s', 'm', 'h', 'd'};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
@@ -135,10 +139,39 @@ static inline std::string HumanReadableString(int64_t num) {
     return NumToString(v) + prefix[shift];
 }
 
+static inline std::string HumanReadableTime(uint64_t age) {
+    uint64_t value = age;
+    for (uint32_t i = 0; i < 4; i++) {
+        uint64_t v = value / TIME_OFFSET[i];
+        if (v == 0) {
+            return NumToString(value) + TIME_LABEL[i];
+        }
+        value = v;
+    }
+    return NumToString(value) + TIME_LABEL[3];
+}
+
 static inline bool IsNumber(const std::string& str) {
     std::string::const_iterator it = str.begin();
     while (it != str.end() && std::isdigit(*it)) ++it;
     return !str.empty() && it == str.end();
+}
+
+static inline std::string GetNowTime() {
+    time_t rawtime = time(0);
+    tm* timeinfo = localtime(&rawtime);
+    char buf[20];
+    strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+    return std::string(buf);               
+}
+
+static inline int GetNowHour() {
+	struct timeval tv;
+    gettimeofday(&tv, NULL);
+    const time_t seconds = tv.tv_sec;
+    struct tm t;
+    localtime_r(&seconds, &t);
+ 	return t.tm_hour;
 }
 
 

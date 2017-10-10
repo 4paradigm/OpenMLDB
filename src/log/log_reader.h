@@ -13,7 +13,7 @@
 #define RTIDB_LOG_READER_H_
 
 #include <stdint.h>
-
+#include "base/skiplist.h"
 #include "log/log_format.h"
 #include "log/sequential_file.h"
 #include "base/slice.h"
@@ -76,12 +76,12 @@ private:
     bool const checksum_;
     char* const backing_store_;
     Slice buffer_;
-    bool eof_;   // Last Read() indicated EOF by returning < kBlockSize
 
     // Offset of the last record returned by ReadRecord.
     uint64_t last_record_offset_;
     // Offset of the first location past the end of buffer_.
     uint64_t end_of_buffer_offset_;
+    uint64_t last_end_of_buffer_offset_;
 
     // Offset at which to start looking for the first record to return
     uint64_t initial_offset_;
@@ -109,7 +109,7 @@ private:
     bool SkipToInitialBlock();
 
     // Return type, or one of the preceding special values
-    unsigned int ReadPhysicalRecord(Slice* result);
+    unsigned int ReadPhysicalRecord(Slice* result, uint64_t& offset);
 
     // Reports dropped bytes to the reporter.
     // buffer_ must be updated to remove the dropped bytes prior to invocation.
@@ -120,6 +120,30 @@ private:
     Reader(const Reader&);
     void operator=(const Reader&);
 };
+
+typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
+
+class LogReader {
+public:
+    LogReader(LogParts* logs, const std::string& log_path);
+    virtual ~LogReader();
+    ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record, std::string* buffer);
+    int RollRLogFile();
+    int OpenSeqFile(const std::string& path);
+    void GoBackToLastBlock();
+    int GetLogIndex();
+    void SetOffset(uint64_t start_offset);
+    LogReader(const LogReader&) = delete;
+    LogReader& operator= (const LogReader&) = delete;
+protected:
+    std::string log_path_;
+    int log_part_index_;
+    uint64_t start_offset_;
+    SequentialFile* sf_;
+    Reader* reader_;
+    LogParts* logs_;
+};
+
 
 }  // namespace log
 }  // namespace rtidb
