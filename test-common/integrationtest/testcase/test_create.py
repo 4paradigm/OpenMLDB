@@ -6,6 +6,10 @@ import xmlrunner
 class TestCreateTable(TestCaseBase):
 
     def test_create_table(self):
+        '''
+        创建带有主从关系的表成功
+        :return:
+        '''
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)

@@ -9,7 +9,7 @@ class TestGetTableStatus(TestCaseBase):
 
     def test_gettablestatus_all(self):
         '''
-
+        查看所有表状态
         :return:
         '''
         rs = self.create(self.leader, 't', self.tid, self.pid)
@@ -22,7 +22,7 @@ class TestGetTableStatus(TestCaseBase):
 
     def test_gettablestatus_tid_pid(self):
         '''
-
+        查看指定tid和pid的表状态
         :return:
         '''
         rs = self.create(self.leader, 't', self.tid, self.pid)
@@ -33,7 +33,7 @@ class TestGetTableStatus(TestCaseBase):
 
     def test_gettablestatus_making_snapshot(self):
         '''
-
+        makesnapshot的过程中查看标的状态会显示为kMakingSnapshot
         :return:
         '''
         rs = self.create(self.leader, 't', self.tid, self.pid)

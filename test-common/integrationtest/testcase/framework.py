@@ -117,6 +117,11 @@ class TestCaseBase(unittest.TestCase):
         time.sleep(1)
         return rs
 
+    def delreplica(self, endpoint, tid, pid, *slave_endpoints):
+        rs = self.run_client(endpoint, 'delreplica {} {} {}'.format(tid, pid, ' '.join(slave_endpoints)))
+        time.sleep(1)
+        return rs
+
     def scan(self, endpoint, tid, pid, key, ts_from, ts_end):
         return self.run_client(endpoint, 'scan {} {} {} {} {}'.format(
             tid, pid, key, ts_from, ts_end))

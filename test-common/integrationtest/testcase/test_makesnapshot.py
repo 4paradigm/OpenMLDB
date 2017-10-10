@@ -375,7 +375,7 @@ class TestMakeSnapshot(TestCaseBase):
 
     def test_makesnapshot_success_after_recoversnapshot(self):
         '''
-        pausesnapshot后，无法makesnapshot
+        recoversnapshot后，可以成功makesnapshot
         :return:
         '''
         rs1 = self.create(self.leader, 't', self.tid, self.pid)

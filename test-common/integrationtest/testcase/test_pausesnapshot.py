@@ -5,17 +5,17 @@ import xmlrunner
 
 class TestPauseSnapshot(TestCaseBase):
 
-    def test_pausesnapshot_slave_cannot_pause(self):
+    def test_pausesnapshot_slave_can_be_paused(self):
         '''
-        从节点不能暂停snapshot
+        从节点允许暂停snapshot
         :return:
         '''
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertTrue('Create table ok' in rs1)
-        rs2 = self.pausesnapshot(self.slave1, self.tid, self.pid)
-        self.assertTrue('Fail to PauseSnapshot' in rs2)
+        rs2 = self.pausesnapshot(self.leader, self.tid, self.pid)
+        self.assertTrue('PauseSnapshot ok' in rs2)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableFollower', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['0', 'kTableFollower', 'kSnapshotPaused', '144000'])
 
 
     def test_pausesnapshot_leader_can_put_can_be_synchronized(self):

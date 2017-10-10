@@ -144,8 +144,8 @@ class TestLoadTable(TestCaseBase):
 
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
         self.assertEqual(table_status, ['2', 'kTableFollower', 'kTableNormal', '144000'])
-        self.assertTrue('v1' in self.scan(self.leader, self.tid, self.pid, 'k1', self.now(), 1))
-        self.assertTrue('v2' in self.scan(self.leader, self.tid, self.pid, 'k2', self.now(), 1))
+        self.assertTrue('v1' in self.scan(self.slave1, self.tid, self.pid, 'k1', self.now(), 1))
+        self.assertTrue('v2' in self.scan(self.slave1, self.tid, self.pid, 'k2', self.now(), 1))
 
 
     def test_loadtable_ttl_removed_expired_key(self):
