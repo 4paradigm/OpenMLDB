@@ -3,6 +3,7 @@ import unittest
 from framework import TestCaseBase
 import threading
 import time
+import xmlrunner
 
 class TestPut(TestCaseBase):
 
@@ -94,4 +95,5 @@ if __name__ == "__main__":
     else:
         for test_name in sys.argv[1:]:
             suite.addTest(TestPut(test_name))
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    runner = xmlrunner.XMLTestRunner(output='test-common/integrationtest/test-reports')
+    runner.run(suite)

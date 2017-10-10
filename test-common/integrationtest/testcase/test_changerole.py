@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 from framework import TestCaseBase
+import xmlrunner
 
 class TestChangeRole(TestCaseBase):
 
@@ -105,4 +106,5 @@ if __name__ == "__main__":
     else:
         for test_name in sys.argv[1:]:
             suite.addTest(TestChangeRole(test_name))
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    runner = xmlrunner.XMLTestRunner(output='test-common/integrationtest/test-reports')
+    runner.run(suite)

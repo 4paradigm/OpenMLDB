@@ -4,6 +4,8 @@ import commands
 import random
 import os
 import time
+import sys
+sys.path.append("test-common/integrationtest")
 
 class TestCaseBase(unittest.TestCase):
 
@@ -30,7 +32,7 @@ class TestCaseBase(unittest.TestCase):
         except Exception, e:
             self.tid = 1
         self.pid = random.randint(10, 100)
-        print self.tid
+        # print self.tid
 
     def tearDown(self):
         self.drop(self.leader, self.tid, self.pid)

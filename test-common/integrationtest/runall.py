@@ -1,4 +1,5 @@
 import unittest
+import xmlrunner
 import commands
 import importlib
 
@@ -11,4 +12,5 @@ if __name__ == "__main__":
         test_suite.append(unittest.TestLoader().loadTestsFromTestCase(eval('mo.' + test_class)))
 
     suite = unittest.TestSuite(test_suite)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    runner = xmlrunner.XMLTestRunner(output='test-reports')
+    runner.run(suite)
