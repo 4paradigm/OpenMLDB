@@ -73,6 +73,10 @@ struct WriteHandle {
         return lw_->EndLog();
     }
 
+    uint64_t GetSize() {
+        return wf_->GetSize();
+    }
+
     ~WriteHandle() {
         delete lw_;
         delete wf_;
