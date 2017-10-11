@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
 from framework import TestCaseBase
-import time
 import threading
 import xmlrunner
 

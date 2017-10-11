@@ -10,7 +10,7 @@ sys.path.append("test-common/integrationtest")
 class TestCaseBase(unittest.TestCase):
 
     def exe_shell(self, cmd):
-        # print cmd
+        print cmd
         retcode, output = commands.getstatusoutput(cmd)
         return output
 
@@ -32,7 +32,7 @@ class TestCaseBase(unittest.TestCase):
         except Exception, e:
             self.tid = 1
         self.pid = random.randint(10, 100)
-        # print self.tid
+        print self.tid
 
     def tearDown(self):
         self.drop(self.leader, self.tid, self.pid)
