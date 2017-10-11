@@ -111,7 +111,6 @@ private:
     boost::atomic<uint32_t> binlog_index_;
     LogParts* logs_;
     WriteHandle* wh_;
-    uint32_t wsize_;
     ReplicatorRole role_;
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
