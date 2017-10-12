@@ -1,6 +1,6 @@
 #!/bin/bash
 set +x
-rtidbver=1.1.0
+rtidbver=$1
 testpath=$(cd "$(dirname "$0")"; pwd)
 testenvpath=${testpath}/env.conf
 projectpath=`echo ${testpath}|awk -F '/test-common' '{print $1}'`

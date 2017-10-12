@@ -10,7 +10,7 @@ sys.path.append("test-common/integrationtest")
 class TestCaseBase(unittest.TestCase):
 
     def exe_shell(self, cmd):
-        print cmd
+        # print cmd
         retcode, output = commands.getstatusoutput(cmd)
         return output
 
