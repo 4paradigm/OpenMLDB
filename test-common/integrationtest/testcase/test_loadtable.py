@@ -553,14 +553,8 @@ class TestLoadTable(TestCaseBase):
         '''
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
-        for i in range(0, 100):
-            self.put(self.leader,
-                     self.tid,
-                     self.pid,
-                     'testkey',
-                     self.now() - i,
-                     'testvalue'*10000)
-        self.makesnapshot(self.leader, self.tid, self.pid)
+
+        self.put_large_datas(50, 20)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)

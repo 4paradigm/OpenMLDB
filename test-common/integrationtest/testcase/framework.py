@@ -5,6 +5,8 @@ import random
 import os
 import time
 import sys
+import threading
+
 sys.path.append("test-common/integrationtest")
 
 class TestCaseBase(unittest.TestCase):
@@ -32,7 +34,7 @@ class TestCaseBase(unittest.TestCase):
         except Exception, e:
             self.tid = 1
         self.pid = random.randint(10, 100)
-        print self.tid
+        # print self.tid
 
     def tearDown(self):
         self.drop(self.leader, self.tid, self.pid)
@@ -143,3 +145,17 @@ class TestCaseBase(unittest.TestCase):
     def cp_db(self, from_node, to_node, tid, pid):
         self.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
             from_node=from_node, tid=tid, pid=pid, to_node=to_node))
+
+    def put_large_datas(self, data_count, thread_count):
+        count = data_count
+        def put():
+            for i in range(0, count):
+                self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, 'testvalue'*10000)
+        threads = []
+        for _ in range(0, thread_count):
+            threads.append(threading.Thread(
+                target=put, args=()))
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()

@@ -145,14 +145,19 @@ class TestMakeSnapshot(TestCaseBase):
         '''
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
-        for i in range(0, 100):
-            self.put(self.leader,
-                     self.tid,
-                     self.pid,
-                     'testkey',
-                     self.now() -i,
-                     'testvalue'*10000)
-        self.makesnapshot(self.leader, self.tid, self.pid)
+
+        self.put_large_datas(50, 20)
+        # def put(count):
+        #     for i in range(0, count):
+        #         self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, 'testvalue'*10000)
+        # threads = []
+        # for _ in range(0, 20):
+        #     threads.append(threading.Thread(
+        #         target=put, args=(50,)))
+        # for t in threads:
+        #     t.start()
+        # for t in threads:
+        #     t.join()
 
         rs_list = []
         def makesnapshot(endpoint):
@@ -172,10 +177,11 @@ class TestMakeSnapshot(TestCaseBase):
 
         self.assertEqual(rs_list.count('MakeSnapshot ok'), 1)
 
+        time.sleep(5)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '100')
+        self.assertEqual(mf['offset'], '1000')
         self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '100')
+        self.assertEqual(mf['count'], '1000')
 
 
     def test_makesnapshot_block_drop_table(self):
@@ -185,39 +191,14 @@ class TestMakeSnapshot(TestCaseBase):
         '''
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
-        for i in range(0, 100):
-            self.put(self.leader,
-                     self.tid,
-                     self.pid,
-                     'testkey',
-                     self.now() - i,
-                     'testvalue'*10000)
-        self.makesnapshot(self.leader, self.tid, self.pid)
 
-        rs_list = []
-        def makesnapshot(endpoint):
-            rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(self.tid, self.pid))
-            rs_list.append(rs)
+        self.put_large_datas(100, 50)
 
-        def droptable(endpoint):
-            rs = self.run_client(endpoint, 'drop {} {}'.format(self.tid, self.pid))
-            rs_list.append(rs)
+        rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
+        rs3 = self.drop(self.leader, self.tid, self.pid)
 
-        # MakeSnapshot过程中不允许droptable
-        threads = []
-        threads.append(threading.Thread(
-            target=makesnapshot, args=(self.leader,)))
-        threads.append(threading.Thread(
-            target=droptable, args=(self.leader,)))
-
-        for t in threads:
-            time.sleep(0.001)
-            t.start()
-        for t in threads:
-            t.join()
-
-        self.assertTrue('MakeSnapshot ok' in rs_list)
-        self.assertTrue('Fail to drop table' in rs_list)
+        self.assertTrue('MakeSnapshot ok' in rs2)
+        self.assertTrue('Fail to drop table' in rs3)
 
 
     def test_makesnapshot_when_loading_table(self):
@@ -227,14 +208,8 @@ class TestMakeSnapshot(TestCaseBase):
         '''
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
-        for i in range(0, 100):
-            self.put(self.leader,
-                     self.tid,
-                     self.pid,
-                     'testkey',
-                     self.now() - i,
-                     'testvalue'*10000)
-        self.makesnapshot(self.leader, self.tid, self.pid)
+
+        self.put_large_datas(50, 20)
 
         # 将table目录拷贝到新节点
         self.exe_shell('cp -r {leaderpath}/db/{tid}_{pid} {slave1path}/db/'.format(

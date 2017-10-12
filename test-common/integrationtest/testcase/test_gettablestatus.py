@@ -2,6 +2,7 @@
 import unittest
 from framework import TestCaseBase
 import threading
+import time
 import xmlrunner
 
 class TestGetTableStatus(TestCaseBase):
@@ -37,8 +38,8 @@ class TestGetTableStatus(TestCaseBase):
         '''
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
-        for i in range(0, 100):
-            self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, 'testvalue'*10000)
+
+        self.put_large_datas(100, 50)
 
         rs_list = []
         def gettablestatus(endpoint):
@@ -59,8 +60,9 @@ class TestGetTableStatus(TestCaseBase):
         for t in threads:
             t.join()
 
+        print rs_list
         self.assertTrue('MakeSnapshot ok' in rs_list)
-        self.assertTrue(['100', 'kTableLeader', 'kMakingSnapshot', '144000'] in rs_list)
+        self.assertTrue(['5000', 'kTableLeader', 'kMakingSnapshot', '144000'] in rs_list)
 
 
 if __name__ == "__main__":

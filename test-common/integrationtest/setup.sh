@@ -35,23 +35,26 @@ function setup() {
     cp -f ${rtidbpath} ${testpath}
 
     mkdir -p ${leaderpath}/conf
-    cat ${confpath} | grep -v "endpoint=" > ${leaderpath}/conf/rtidb.flags
+    cat ${confpath} | egrep -v "endpoint=|--gc_interval=" > ${leaderpath}/conf/rtidb.flags
     sed -i '1a --endpoint='${leader} ${leaderpath}/conf/rtidb.flags
     sed -i '1a --scan_endpoint='${leader_scan} ${leaderpath}/conf/rtidb.flags
+    sed -i '1a --gc_interval=1' ${leaderpath}/conf/rtidb.flags
     cp -f ${testpath}/boot.sh ${leaderpath}/conf
     cp -f ${testpath}/start.sh ${leaderpath}/conf
 
     mkdir -p ${slave1path}/conf
-    cat ${confpath} | grep -v "endpoint=" > ${slave1path}/conf/rtidb.flags
+    cat ${confpath} | egrep -v "endpoint=|--gc_interval=" > ${slave1path}/conf/rtidb.flags
     sed -i '1a --endpoint='${slave1} ${slave1path}/conf/rtidb.flags
     sed -i '1a --scan_endpoint='${slave1_scan} ${slave1path}/conf/rtidb.flags
+    sed -i '1a --gc_interval=1' ${slave1path}/conf/rtidb.flags
     cp -f ${testpath}/boot.sh ${slave1path}/conf
     cp -f ${testpath}/start.sh ${slave1path}/conf
 
     mkdir -p ${slave2path}/conf
-    cat ${confpath} | grep -v "endpoint=" > ${slave2path}/conf/rtidb.flags
+    cat ${confpath} | egrep -v "endpoint=|--gc_interval=" > ${slave2path}/conf/rtidb.flags
     sed -i '1a --endpoint='${slave2} ${slave2path}/conf/rtidb.flags
     sed -i '1a --scan_endpoint='${slave2_scan} ${slave2path}/conf/rtidb.flags
+    sed -i '1a --gc_interval=1' ${slave2path}/conf/rtidb.flags
     cp -f ${testpath}/boot.sh ${slave2path}/conf
     cp -f ${testpath}/start.sh ${slave2path}/conf
 }
