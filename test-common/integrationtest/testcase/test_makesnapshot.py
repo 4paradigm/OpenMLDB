@@ -192,7 +192,7 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(100, 50)
+        self.put_large_datas(200, 50)
 
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         rs3 = self.drop(self.leader, self.tid, self.pid)
@@ -272,7 +272,7 @@ class TestMakeSnapshot(TestCaseBase):
                      self.pid,
                      'testkey',
                      self.now() - (100000000000 * (i % 2) + 1),
-                     'testvalue'*100)
+                     'testvalue')
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
@@ -295,7 +295,7 @@ class TestMakeSnapshot(TestCaseBase):
                      self.pid,
                      'testkey',
                      self.now() - (100000000000 * (i % 2) + 1),
-                     'testvalue'*100)
+                     'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
 
@@ -319,7 +319,7 @@ class TestMakeSnapshot(TestCaseBase):
                      self.pid,
                      'testkey',
                      self.now(),
-                     'testvalue'*100)
+                     'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
         self.exe_shell('mv {nodepath}/db/{tid}_{pid}/snapshot/*.sdb \
