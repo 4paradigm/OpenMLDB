@@ -147,17 +147,6 @@ class TestMakeSnapshot(TestCaseBase):
         self.assertTrue('Create table ok' in rs1)
 
         self.put_large_datas(50, 20)
-        # def put(count):
-        #     for i in range(0, count):
-        #         self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, 'testvalue'*10000)
-        # threads = []
-        # for _ in range(0, 20):
-        #     threads.append(threading.Thread(
-        #         target=put, args=(50,)))
-        # for t in threads:
-        #     t.start()
-        # for t in threads:
-        #     t.join()
 
         rs_list = []
         def makesnapshot(endpoint):
@@ -192,9 +181,9 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(200, 50)
+        self.put_large_datas(100, 50)
 
-        rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
+        rs2 = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
         rs3 = self.drop(self.leader, self.tid, self.pid)
 
         self.assertTrue('MakeSnapshot ok' in rs2)

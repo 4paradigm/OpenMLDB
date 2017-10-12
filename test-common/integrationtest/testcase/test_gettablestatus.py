@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
 from framework import TestCaseBase
-import threading
-import time
 import xmlrunner
 
 class TestGetTableStatus(TestCaseBase):
@@ -39,29 +37,13 @@ class TestGetTableStatus(TestCaseBase):
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
 
-        self.put_large_datas(200, 50)
+        self.put_large_datas(100, 50)
 
-        rs_list = []
-        def gettablestatus(endpoint):
-            rs = self.get_table_status(endpoint, self.tid, self.pid)
-            rs_list.append(rs)
-        def makesnapshot(endpoint):
-            rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(self.tid, self.pid))
-            rs_list.append(rs)
+        rs2 = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
+        self.assertTrue('MakeSnapshot ok' in rs2)
 
-        threads = []
-        threads.append(threading.Thread(
-            target=makesnapshot, args=(self.leader,)))
-        threads.append(threading.Thread(
-            target=gettablestatus, args=(self.leader,)))
-
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        self.assertTrue('MakeSnapshot ok' in rs_list)
-        self.assertTrue(['10000', 'kTableLeader', 'kMakingSnapshot', '144000'] in rs_list)
+        table_status = self.get_table_status(self.leader)
+        self.assertEqual(table_status[(self.tid, self.pid)], ['5000', 'kTableLeader', 'kMakingSnapshot', '144000'])
 
 
 if __name__ == "__main__":
