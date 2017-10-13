@@ -54,7 +54,7 @@ struct Task {
 
 struct OPData {
     ::rtidb::api::OPInfo op_info_;
-    std::list<std::shared_ptr<Task> task_list;
+    std::list<std::shared_ptr<Task> > task_list;
 };
 
 class NameServerImpl : public NameServer {
@@ -91,7 +91,7 @@ public:
 
     int UpdateTaskStatus();
 
-    int DeleteTask(const std::vector<uint64_t>& done_task_vec);
+    int DeleteTask();
 
     void ProcessTask();
 
@@ -108,9 +108,6 @@ private:
     void OnLocked();
     // Lost the lock
     void OnLostLock();
-
-    // get all tablet client
-    int GetTabletClient(std::vector<std::shared_ptr<::rtidb::client::TabletClient> >& client_vec);
 
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);

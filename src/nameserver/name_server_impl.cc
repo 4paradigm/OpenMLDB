@@ -24,7 +24,7 @@ namespace nameserver {
 using ::baidu::common::MutexLock;
 
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
-    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1)  {
+    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), cv_(&mu_)  {
     zk_table_path_ = FLAGS_zk_root_path + "/table";
     zk_data_path_ = FLAGS_zk_root_path + "/table/data";
     zk_table_index_node_ = zk_data_path_ + "/table_index";
@@ -153,20 +153,14 @@ bool NameServerImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
     return true;
 }
 
-int NameServerImpl::GetTabletClient(std::vector<std::shared_ptr<::rtidb::client::TabletClient> >& client_vec) {
-    MutexLock lock(&mu_);
-    for (auto iter = tablet_client_.begin(); iter != tablet_client_.end(); ++iter) {
-        client_vec.push_back(iter->second);
-    }
-    return 0;
-}
-
 int NameServerImpl::UpdateTaskStatus() {
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient> > client_vec;
-    GetTabletClient(client_vec);
-    for (auto iter = client_vec.begin(); iter != client_vec.end(); ++iter) {
+    for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
+        if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            LOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+            continue;
+        }
         ::rtidb::api::TaskStatusResponse response;
-        if ((*iter)->GetTaskStatus(response)) {
+        if (iter->second->client_->GetTaskStatus(response)) {
             MutexLock lock(&mu_);
             for (int idx = 0; idx < response.task_size(); idx++) {
                 auto it = task_map_.find(response.task(idx).op_id());
@@ -197,7 +191,14 @@ int NameServerImpl::UpdateZKStatus(const std::vector<uint64_t>& run_task_vec) {
     }
     for (auto iter = run_task_vec.begin(); iter != run_task_vec.end(); ++iter) {
         std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(*iter);
+        auto pos = task_map_.find(*iter);
+        if (pos == task_map_.end()) {
+            LOG(WARNING, "cannot find op[%lu] in task_map", *iter);
+            continue;
+        }
+        pos->second.op_info_.set_task_type(pos->second.task_list.front()->task_type_);
         std::string value;
+        pos->second.op_info_.SerializeToString(&value);
         if (zk_client_->SetNodeValue(node, value)) {
             LOG(DEBUG, "set zk status value success. node[%s] value[%s]",
                         node.c_str(), value.c_str());
@@ -209,51 +210,57 @@ int NameServerImpl::UpdateZKStatus(const std::vector<uint64_t>& run_task_vec) {
     return 0;
 }
 
-int NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
+int NameServerImpl::DeleteTask() {
+    std::vector<uint64_t> done_task_vec;
+    for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
+        if (iter->second.task_list.empty()) {
+            done_task_vec.push_back(iter->first);
+        }
+    }
     if (done_task_vec.empty()) {
+        LOG(DEBUG, "has not done task. return");
         return 0;
     }
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient> > client_vec;
-    GetTabletClient(client_vec);
-    uint32_t suc_count = 0;
-    for (auto iter = client_vec.begin(); iter != client_vec.end(); ++iter) {
-        if ((*iter)->DeleteOPTask(done_task_vec)) {
-            LOG(DEBUG, "endpoint[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
-            suc_count++;
+    bool has_failed = false;
+    for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
+        if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            LOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
+            continue;
         }
+        if (!iter->second->client_->DeleteOPTask(done_task_vec)) {
+            LOG(WARNING, "tablet[%s] delete op failed", iter->first.c_str()); 
+            has_failed = true;
+            continue;
+        }
+        LOG(DEBUG, "tablet[%s] delete op success", iter->first.c_str()); 
     }
-    if (suc_count == client_vec.size()) {
-        {
-            MutexLock lock(&mu_);
-            for (auto iter = done_task_vec.begin(); iter != done_task_vec.end(); ++iter) {
-                auto it = task_map_.find(*iter);
-                if (it != task_map_.end()) {
-                    task_map_.erase(it);
-                    LOG(DEBUG, "delete op[%lu]", *iter); 
-                }
-            }
-        }
+    if (!has_failed) {
         for (auto iter = done_task_vec.begin(); iter != done_task_vec.end(); ++iter) {
             std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(*iter);
-            zk_client_->DeleteNode(node);
+            if (zk_client_->DeleteNode(node)) {
+                MutexLock lock(&mu_);
+                task_map_.erase(*iter);
+                LOG(DEBUG, "delete op[%lu]", *iter); 
+            } else {
+                LOG(WARNING, "zk delete op_node failed. opid[%lu]", *iter); 
+            }
         }
     }
     return 0;
 }
 
 void NameServerImpl::ProcessTask() {
-    while (1) {
+    while (running_.load(std::memory_order_relaxed)) {
         mu_.Lock();
         while (task_map_.empty()) {
             cv_.Wait();
         }
         mu_.Unlock();
-        if (running_.load(std::memory_order_acquire)) {
+        if (running_.load(std::memory_order_relaxed)) {
             break;
         }
         UpdateTaskStatus();
         
-        std::vector<uint64_t> done_task_vec;
         std::vector<uint64_t> run_task_vec;
         mu_.Lock();
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
@@ -263,11 +270,10 @@ void NameServerImpl::ProcessTask() {
             if (iter->second.task_list.front()->status_ == ::rtidb::api::kDone) {
                 iter->second.task_list.pop_front();
             } else if (iter->second.task_list.front()->status_ == ::rtidb::api::kFailed) {
-                // TODO. tackle failed case here;
+                // TODO.denglong tackle failed case here
             }
             if (iter->second.task_list.empty()) {
                 LOG(DEBUG, "operation has finished! op_id[%lu]", iter->first);
-                done_task_vec.push_back(iter->first);
                 continue;
             }
             task_thread_pool_.AddTask(iter->second.task_list.front()->fun);
@@ -275,7 +281,7 @@ void NameServerImpl::ProcessTask() {
 
         }
         mu_.Unlock();
-        DeleteTask(done_task_vec);
+        DeleteTask();
         UpdateZKStatus(run_task_vec);
     }
 }
@@ -402,6 +408,7 @@ void NameServerImpl::OnLocked() {
         //TODO fail to recover discard the lock
     }
     running_.store(true, std::memory_order_release);
+    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
 }
 
 void NameServerImpl::OnLostLock() {

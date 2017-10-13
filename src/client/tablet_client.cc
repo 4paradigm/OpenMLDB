@@ -225,7 +225,7 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
 }
 
 bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
-    ::rtidb::api::EmptyRequest request;
+    ::rtidb::api::TaskStatusRequest request;
     bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::GetTaskStatus,
             &request, &response, 12, 1);
     if (!ret || response.code() != 0) {

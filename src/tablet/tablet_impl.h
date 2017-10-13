@@ -116,6 +116,11 @@ public:
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
+
+    void GetTaskStatus(RpcController* controller,
+            const ::rtidb::api::TaskStatusRequest* request,
+            ::rtidb::api::TaskStatusResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom

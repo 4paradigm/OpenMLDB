@@ -1093,6 +1093,13 @@ void TabletImpl::DropTable(RpcController* controller,
     DeleteTableInternal(tid, pid);
 }
 
+void TabletImpl::GetTaskStatus(RpcController* controller,
+        const ::rtidb::api::TaskStatusRequest* request,
+        ::rtidb::api::TaskStatusResponse* response,
+        Closure* done) {
+
+}        
+
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
     Table* table = GetTable(tid, pid);
     if (table == NULL) {

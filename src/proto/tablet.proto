@@ -110,7 +110,7 @@ message GeneralRequest {
     required int32 pid = 2;
 }
 
-message EmptyRequest {
+message TaskStatusRequest {
 }
 
 message TaskStatusResponse {
@@ -308,6 +308,7 @@ service TabletServer {
 
     // table api for master
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+    rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
 
@@ -319,7 +320,7 @@ service TabletServer {
     rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
-    rpc GetTaskStatus(EmptyRequest) returns(TaskStatusResponse);
+
+    rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
-    rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 }
