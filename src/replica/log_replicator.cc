@@ -42,13 +42,12 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             Table* table):path_(path), log_path_(),
-    log_offset_(0), logs_(NULL), wh_(NULL), wsize_(0), role_(role), 
+                             std::shared_ptr<Table> table):path_(path), log_path_(),
+    log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
     endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),coffee_cv_(&mu_),
     rpc_client_(NULL),
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
-    table_->Ref();
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, boost::memory_order_relaxed);;
 }
@@ -63,9 +62,6 @@ LogReplicator::~LogReplicator() {
     wh_ = NULL;
     nodes_.clear();
     delete rpc_client_;
-    if (table_) {
-        table_->UnRef();
-    }
 }
 
 void LogReplicator::SetRole(const ReplicatorRole& role) {
@@ -213,17 +209,6 @@ uint64_t LogReplicator::GetOffset() {
     return log_offset_.load(boost::memory_order_relaxed);
 }
 
-void LogReplicator::Ref() {
-    refs_.fetch_add(1, boost::memory_order_relaxed);
-}
-
-void LogReplicator::UnRef() {
-    refs_.fetch_sub(1, boost::memory_order_acquire);
-    if (refs_.load(boost::memory_order_relaxed) <= 0) {
-        delete this;
-    }
-}
-
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
     log_reader.SetOffset(offset);
@@ -283,7 +268,7 @@ void LogReplicator::DeleteBinlog() {
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
     MutexLock lock(&wmu_);
-    if (wh_ == NULL || (wsize_ / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
+    if (wh_ == NULL || (wh_->GetSize() / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
             LOG(WARNING, "fail to roll write log for path %s", path_.c_str());
@@ -311,7 +296,6 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             LOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
-        wsize_ += buffer.size() + ::rtidb::log::kHeaderSize;
         table_->Put(request->entries(i).pk(), request->entries(i).ts(), 
                 request->entries(i).value().c_str(), request->entries(i).value().length());
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
@@ -370,7 +354,7 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
 
 bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
     MutexLock lock(&wmu_);
-    if (wh_ == NULL || wsize_ / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
+    if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
             return false;
@@ -386,7 +370,6 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         return false;
     }
     // add record header size
-    wsize_ += buffer.size() + ::rtidb::log::kHeaderSize;
     LOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
     return true;
 }
@@ -411,7 +394,6 @@ bool LogReplicator::RollWLogFile() {
     binlog_index_.fetch_add(1, boost::memory_order_relaxed);
     LOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
-    wsize_ = 0;
     return true;
 }
 

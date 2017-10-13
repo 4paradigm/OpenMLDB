@@ -117,6 +117,20 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {
     return 0;
 }
 
+TEST_F(LogWRTest, TestWriteSize) {
+    std::string log_dir = "/tmp/" + GenRand() + "/";
+    ::rtidb::base::MkdirRecur(log_dir);
+    std::string fname = "test.log";
+    std::string full_path = log_dir + "/" + fname;
+    FILE* fd_w = fopen(full_path.c_str(), "ab+");
+    ASSERT_TRUE(fd_w != NULL);
+    WritableFile* wf = NewWritableFile(fname, fd_w);
+    wf->Append(Slice("1234567"));
+    wf->Append(Slice("abcde"));
+    ASSERT_EQ(12, wf->GetSize());
+    delete wf;
+}
+
 TEST_F(LogWRTest, TestWriteAndRead) {
     std::string log_dir = "/tmp/" + GenRand() + "/";
     ::rtidb::base::MkdirRecur(log_dir);

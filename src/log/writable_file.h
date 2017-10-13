@@ -22,13 +22,17 @@ namespace log {
 
 class WritableFile {
 public:
-    WritableFile() { }
+    WritableFile() { wsize_ = 0; }
     virtual ~WritableFile() {}
 
     virtual base::Status Append(const base::Slice& data) = 0;
     virtual base::Status Close() = 0;
     virtual base::Status Flush() = 0;
     virtual base::Status Sync() = 0;
+    uint64_t GetSize() { return wsize_; }
+
+protected:    
+    uint64_t wsize_;
 
 private:
     // No copying allowed

@@ -47,6 +47,7 @@ public:
         if (r != data.size()) {
             return IOError(filename_, errno);
         }
+        wsize_ += r;
         return Status::OK();
     }
 
