@@ -447,10 +447,10 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
             }
         }
         int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
-        MutexLock lock(&mu_);
         if (ret == 1) {
             coffee_time = FLAGS_binlog_coffee_time;
         }
+        MutexLock lock(&mu_);
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
             cv_.TimeWait(FLAGS_binlog_sync_wait_time);
             if (!running_.load(boost::memory_order_relaxed)) {
