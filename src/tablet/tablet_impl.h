@@ -145,9 +145,9 @@ private:
 
     inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
 
-    inline bool CheckCreateRequest(const rtidb::api::CreateTableRequest* request);
+    inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
-    void CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
+    void CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
             ::rtidb::api::CreateTableResponse* response);
 
     void LoadTableInternal(const ::rtidb::api::LoadTableRequest* request,
@@ -165,6 +165,8 @@ private:
     void CheckZkClient();
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid);
+
+    int WriteTableMeta(::rtidb::api::TableMeta* table_meta);
 
 private:
     Tables tables_;
