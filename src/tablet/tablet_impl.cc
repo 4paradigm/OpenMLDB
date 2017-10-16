@@ -1011,8 +1011,36 @@ void TabletImpl::GetTaskStatus(RpcController* controller,
         const ::rtidb::api::TaskStatusRequest* request,
         ::rtidb::api::TaskStatusResponse* response,
         Closure* done) {
+    MutexLock lock(&mu_);
+    for (auto iter = task_list_.begin(); iter != task_list_.end(); ++iter) {
+        if (iter->status() != ::rtidb::api::kDoing) {
+            ::rtidb::api::TaskInfo* task = response->add_task();
+            task->CopyFrom(*iter);
+        }
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
 
-}        
+void TabletImpl::DeleteTask(RpcController* controller,
+		const ::rtidb::api::DeleteTaskRequest* request,
+		::rtidb::api::GeneralResponse* response,
+		Closure* done) {
+    MutexLock lock(&mu_);
+	for (int idx = 0; idx < request->op_id_size(); idx++) {
+		for (auto iter = task_list_.begin(); iter != task_list_.end(); ) {
+			if (iter->op_id() == request->op_id(idx)) {
+				iter = task_list_.erase(iter);
+				continue;
+			}
+			iter++;
+		}
+	}
+    response->set_code(0);
+    response->set_msg("ok");
+    done->Run();
+}
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
     std::shared_ptr<Table> table = GetTable(tid, pid);

@@ -18,6 +18,7 @@
 #include "thread_pool.h"
 #include "zk/zk_client.h"
 #include <map>
+#include <list>
 #include <sofa/pbrpc/pbrpc.h>
 
 using ::google::protobuf::RpcController;
@@ -121,6 +122,11 @@ public:
             const ::rtidb::api::TaskStatusRequest* request,
             ::rtidb::api::TaskStatusResponse* response,
             Closure* done);
+
+    void DeleteTask(RpcController* controller,
+            const ::rtidb::api::DeleteTaskRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom
@@ -181,6 +187,7 @@ private:
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
+    std::list<::rtidb::api::TaskInfo> task_list_;
 };
 
 
