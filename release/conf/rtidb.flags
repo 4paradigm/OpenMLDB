@@ -1,6 +1,6 @@
 # common conf 
---endpoint=0.0.0.0:19527
---scan_endpoint=0.0.0.0:19526
+--endpoint=0.0.0.0:9527
+--scan_endpoint=0.0.0.0:9526
 --role=tablet
 
 # log conf
