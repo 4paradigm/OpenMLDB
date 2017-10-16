@@ -37,6 +37,25 @@ inline static bool Mkdir(const std::string& path) {
     return false;
 }
 
+inline static bool IsExists(const std::string& path) {
+    struct stat buf;
+    int ret = ::lstat(path.c_str(), &buf);
+    if (ret < 0) {
+        return false;
+    }
+    return true;
+}
+
+inline static bool Rename(const std::string& source, const std::string& target) {
+    int ret = ::rename(source.c_str(), target.c_str()); 
+    if (ret != 0) {
+        LOG(WARNING, "fail to rename %s to %s with error %s", source.c_str(),
+                target.c_str(), strerror(errno));
+        return false;
+    }
+    return true;
+}
+
 inline static bool MkdirRecur(const std::string& dir_path) {
 
     size_t beg = 0;
