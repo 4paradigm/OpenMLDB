@@ -84,7 +84,7 @@ class TestChangeRole(TestCaseBase):
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.changerole(self.leader, self.tid, self.pid, 'leader')
         self.assertTrue('ChangeRole ok' in rs2)
-        rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs3 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
         self.assertTrue('LoadTable ok' in rs3)
         rs4 = self.addreplica(self.leader, self.tid, self.pid, self.slave1)
         self.assertTrue('AddReplica ok' in rs4)
