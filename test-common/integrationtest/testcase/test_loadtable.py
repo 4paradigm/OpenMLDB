@@ -81,7 +81,7 @@ class TestLoadTable(TestCaseBase):
             'testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
 
 
-    def test_loadtable_success_after_drop(self):
+    def test_loadtable_failed_after_drop(self):
         '''
         drop表后可以重新loadtable
         :return:
@@ -101,12 +101,7 @@ class TestLoadTable(TestCaseBase):
         rs3 = self.drop(self.leader, self.tid, self.pid)
         self.assertTrue('Drop table ok' in rs3)
         rs4 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
-        self.assertTrue('LoadTable ok' in rs4)
-        table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['3', 'kTableLeader', 'kTableNormal', '144000'])
-        self.assertTrue(
-            'testvalue' in self.scan(self.leader, self.tid, self.pid, 'testkey', self.now(), 1))
-
+        self.assertTrue('Fail' in rs4)
 
     def test_loadtable_andthen_sync_from_leader(self):
         '''

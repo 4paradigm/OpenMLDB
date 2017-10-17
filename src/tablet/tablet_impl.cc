@@ -755,7 +755,14 @@ void TabletImpl::LoadTable(RpcController* controller,
     if (request->seg_cnt() > 0) {
         seg_cnt = request->seg_cnt();
     }
-
+    std::string db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
+        "_" + boost::lexical_cast<std::string>(pid);
+    if (!::rtidb::base::IsExists(db_path)) {
+        response->set_code(-1);
+        response->set_msg("no db data for table");
+        done->Run();
+        return;
+    }
     {
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
