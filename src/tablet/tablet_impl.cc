@@ -576,6 +576,7 @@ bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api:
 
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
     std::shared_ptr<Table> table;
+    std::shared_ptr<Snapshot> snapshot;
     {
         MutexLock lock(&mu_);
         table = GetTableUnLock(tid, pid);
@@ -588,13 +589,13 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
                          table->GetTableStat(), tid, pid);
             return;
         }    
+        snapshot = GetSnapshotUnLock(tid, pid);
+        if (!snapshot) {
+            LOG(WARNING, "snapshot is not exisit. tid[%u] pid[%u]", tid, pid);
+            return;
+        }
         table->SetTableStat(::rtidb::storage::kMakingSnapshot);
     }    
-    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
-    if (!snapshot) {
-        LOG(WARNING, "snapshot is not exisit. tid[%u] pid[%u]", tid, pid);
-        return;
-    }
     uint64_t offset = 0;
     if (snapshot->MakeSnapshot(table, offset) == 0) {
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
