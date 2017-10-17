@@ -188,6 +188,9 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, srp.count());
     ASSERT_EQ(0, srp.code());
+    ret = client.DropTable(tid, pid);
+    ASSERT_TRUE(ret);
+    sleep(2);
 }
 
 }
