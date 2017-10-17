@@ -868,7 +868,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     	std::string table_binlog_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +"_" + boost::lexical_cast<std::string>(table_meta->pid());
 		if (WriteTableMeta(table_binlog_path, table_meta) < 0) {
         	LOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
-            response->set_code(-11);
+            response->set_code(-1);
             response->set_msg("write table_meta failed");
             done->Run();
             return;
