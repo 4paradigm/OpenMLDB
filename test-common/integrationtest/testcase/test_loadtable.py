@@ -319,6 +319,7 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
+        time.sleep(4)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
