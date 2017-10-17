@@ -103,11 +103,12 @@ class TestAddReplica(TestCaseBase):
 
 if __name__ == "__main__":
     import sys
+    import os
     suite = unittest.TestSuite()
     if len(sys.argv) == 1:
         suite = unittest.TestLoader().loadTestsFromTestCase(TestAddReplica)
     else:
         for test_name in sys.argv[1:]:
             suite.addTest(TestAddReplica(test_name))
-    runner = xmlrunner.XMLTestRunner(output='test-common/integrationtest/test-reports')
+    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
     runner.run(suite)
