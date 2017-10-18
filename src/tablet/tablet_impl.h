@@ -165,6 +165,8 @@ private:
 
     int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
 
+    int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
+
 private:
     Tables tables_;
     Mutex mu_;

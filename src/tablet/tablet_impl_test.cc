@@ -498,6 +498,9 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_ttl(0);
+        table_meta->set_seg_cnt(128);
+        table_meta->set_term(1024);
+        table_meta->add_replicas("127.0.0.1:9527");
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
@@ -523,12 +526,26 @@ TEST_F(TabletImplTest, Recover) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(1);
-        table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_seg_cnt(64);
+        table_meta->add_replicas("127.0.0.1:9530");
+        table_meta->add_replicas("127.0.0.1:9531");
         ::rtidb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
+
+		std::string file = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(id) +"_" + boost::lexical_cast<std::string>(1) + "/table_meta.txt";
+        int fd = open(file.c_str(), O_RDONLY);
+		ASSERT_GT(fd, 0);
+		google::protobuf::io::FileInputStream fileInput(fd);
+		fileInput.SetCloseOnDelete(true);
+		::rtidb::api::TableMeta table_meta_test;
+		google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
+		ASSERT_EQ(table_meta_test.seg_cnt(), 64);
+		ASSERT_EQ(table_meta_test.term(), 1024);
+		ASSERT_EQ(table_meta_test.replicas_size(), 2);
+		ASSERT_STREQ(table_meta_test.replicas(0).c_str(), "127.0.0.1:9530");
+
         ::rtidb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
@@ -556,6 +573,7 @@ TEST_F(TabletImplTest, Recover) {
         tablet.Put(NULL, &prequest, &presponse,
                 &closure);
         ASSERT_EQ(0, presponse.code());
+        sleep(2);
     }
 
     {

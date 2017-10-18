@@ -402,7 +402,6 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
 int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     std::string full_path = snapshot_path_ + MANIFEST;
     int fd = open(full_path.c_str(), O_RDONLY);
-    std::string manifest_info;
     if (fd < 0) {
         LOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
         return 1;

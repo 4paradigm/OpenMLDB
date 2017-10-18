@@ -53,23 +53,6 @@ message PutRequest {
     optional uint32 pid = 5;
 }
 
-message ReplicateLogRequest {
-	optional int32 tid = 1;
-	optional int32 pid = 2;
-	optional int32 size = 3;
-	optional int64 offset = 4;
-	optional bytes data = 5;
-	optional int32 seg_idx = 6;
-}
-
-message ReplicateLogResponse {
-	optional int32 tid = 1;
-	optional int32 pid = 2;
-	optional int32 code = 3;
-	optional int64 offset = 4;
-	optional string msg = 5;
-}
-
 message PutResponse {
 	optional int32 code = 1;
 	optional string msg = 2;
