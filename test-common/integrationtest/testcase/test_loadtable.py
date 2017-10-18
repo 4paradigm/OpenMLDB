@@ -572,16 +572,43 @@ class TestLoadTable(TestCaseBase):
             t.join()
 
         self.assertEqual(rs_list.count('LoadTable ok'), 1)
-
+   def test_loadtable_and_addreplica_ttl(self):
+        '''
+        主节点将从节点添加为副本，没有snapshot和binlog
+        从节点loadtable，可以正确load到未过期的数据
+        :return:
+        '''
+        rs1 = self.create(self.leader, 't', self.tid, self.pid)
+        self.assertTrue('Create table ok' in rs1)
+        for i in range(0, 6):
+            self.put(self.leader,
+                     self.tid,
+                     self.pid,
+                     'testkey',
+                     self.now() - (100000000000 * (i % 2) + 1),
+                     'testvalue{}'.format(i))
+        rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        self.assertTrue('Fail' in rs1)
+        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        self.assertTrue('Create table ok' in rs0)
+        rs2 = self.addreplica(self.leader, self.tid, self.pid, self.slave1)
+        self.assertTrue('AddReplica ok' in rs2)
+        time.sleep(1)
+        self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+        self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+        time.sleep(60)
+        self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+        self.assertFalse('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
 
    
 if __name__ == "__main__":
     import sys
+    import os
     suite = unittest.TestSuite()
     if len(sys.argv) == 1:
         suite = unittest.TestLoader().loadTestsFromTestCase(TestLoadTable)
     else:
         for test_name in sys.argv[1:]:
             suite.addTest(TestLoadTable(test_name))
-    runner = xmlrunner.XMLTestRunner(output='test-common/integrationtest/test-reports')
+    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
     runner.run(suite)
