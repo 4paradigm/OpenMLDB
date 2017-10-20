@@ -81,7 +81,7 @@ class TestLoadTable(TestCaseBase):
             'testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
 
 
-    def test_loadtable_success_after_drop(self):
+    def test_loadtable_failed_after_drop(self):
         '''
         drop表后可以重新loadtable
         :return:
@@ -101,12 +101,7 @@ class TestLoadTable(TestCaseBase):
         rs3 = self.drop(self.leader, self.tid, self.pid)
         self.assertTrue('Drop table ok' in rs3)
         rs4 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
-        self.assertTrue('LoadTable ok' in rs4)
-        table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['3', 'kTableLeader', 'kTableNormal', '144000'])
-        self.assertTrue(
-            'testvalue' in self.scan(self.leader, self.tid, self.pid, 'testkey', self.now(), 1))
-
+        self.assertTrue('Fail' in rs4)
 
     def test_loadtable_andthen_sync_from_leader(self):
         '''
@@ -324,6 +319,7 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
+        time.sleep(4)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
@@ -576,9 +572,7 @@ class TestLoadTable(TestCaseBase):
             t.join()
 
         self.assertEqual(rs_list.count('LoadTable ok'), 1)
-
-
-    def test_loadtable_and_addreplica_ttl(self):
+   def test_loadtable_and_addreplica_ttl(self):
         '''
         主节点将从节点添加为副本，没有snapshot和binlog
         从节点loadtable，可以正确load到未过期的数据
@@ -594,7 +588,9 @@ class TestLoadTable(TestCaseBase):
                      self.now() - (100000000000 * (i % 2) + 1),
                      'testvalue{}'.format(i))
         rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
-        self.assertTrue('LoadTable ok' in rs1)
+        self.assertTrue('Fail' in rs1)
+        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        self.assertTrue('Create table ok' in rs0)
         rs2 = self.addreplica(self.leader, self.tid, self.pid, self.slave1)
         self.assertTrue('AddReplica ok' in rs2)
         time.sleep(1)
@@ -604,7 +600,7 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
         self.assertFalse('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
 
-
+   
 if __name__ == "__main__":
     import sys
     import os

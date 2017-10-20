@@ -162,7 +162,7 @@ static inline std::string GetNowTime() {
     tm* timeinfo = localtime(&rawtime);
     char buf[20];
     strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
-    return std::string(buf);               
+    return std::string(buf);
 }
 
 static inline int GetNowHour() {
