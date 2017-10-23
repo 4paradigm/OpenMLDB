@@ -145,13 +145,10 @@ private:
 
     inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
 
-    inline bool CheckCreateRequest(const rtidb::api::CreateTableRequest* request);
+    inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
-    void CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
-            ::rtidb::api::CreateTableResponse* response);
-
-    void LoadTableInternal(const ::rtidb::api::LoadTableRequest* request,
-            ::rtidb::api::GeneralResponse* response);
+    int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
+            std::string& msg);
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
@@ -165,6 +162,10 @@ private:
     void CheckZkClient();
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid);
+
+    int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
+
+    int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 
 private:
     Tables tables_;

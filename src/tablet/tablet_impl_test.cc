@@ -13,6 +13,10 @@
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <sys/stat.h> 
+#include <fcntl.h>
 
 DECLARE_string(db_root_path);
 
@@ -49,13 +53,14 @@ TEST_F(TabletImplTest, TTL) {
     TabletImpl tablet;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_wal(true);
-    request.set_mode(::rtidb::api::TableMode::kTableLeader);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     // 1 minutes
-    request.set_ttl(1);
+    table_meta->set_ttl(1);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -97,25 +102,37 @@ TEST_F(TabletImplTest, CreateTable) {
     tablet.Init();
     {
         ::rtidb::api::CreateTableRequest request;
-        request.set_name("t0");
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_wal(true);
-        request.set_ttl(0);
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_wal(true);
+        table_meta->set_ttl(0);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
-        request.set_name("");
+		std::string file = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(id) +"_" + boost::lexical_cast<std::string>(1) + "/table_meta.txt";
+        int fd = open(file.c_str(), O_RDONLY);
+		ASSERT_GT(fd, 0);
+		google::protobuf::io::FileInputStream fileInput(fd);
+		fileInput.SetCloseOnDelete(true);
+		::rtidb::api::TableMeta table_meta_test;
+		google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
+		ASSERT_EQ(table_meta_test.tid(), id);
+		ASSERT_STREQ(table_meta_test.name().c_str(), "t0");
+		
+        table_meta->set_name("");
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(8, response.code());
     }
     {
         ::rtidb::api::CreateTableRequest request;
-        request.set_name("t0");
-        request.set_ttl(0);
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_ttl(0);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
         tablet.CreateTable(NULL, &request, &response,
@@ -130,11 +147,12 @@ TEST_F(TabletImplTest, Put) {
     uint32_t id = counter++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(0);
-    request.set_wal(true);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(0);
+    table_meta->set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -163,11 +181,12 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     uint32_t id = counter++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(0);
-    request.set_wal(true);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(0);
+    table_meta->set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -242,11 +261,12 @@ TEST_F(TabletImplTest, Scan_with_limit) {
 
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(0);
-    request.set_wal(true);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(0);
+    table_meta->set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -308,11 +328,12 @@ TEST_F(TabletImplTest, Scan) {
     uint32_t id = counter++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(0);
-    request.set_wal(true);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(0);
+    table_meta->set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -385,11 +406,12 @@ TEST_F(TabletImplTest, GC) {
     uint32_t id = counter ++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(1);
-    request.set_wal(true);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(1);
+    table_meta->set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -436,11 +458,12 @@ TEST_F(TabletImplTest, DropTable) {
     ASSERT_EQ(-1, drs.code());
 
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(1);
-    request.set_mode(::rtidb::api::TableMode::kTableLeader);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(1);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response,
             &closure);
@@ -470,11 +493,15 @@ TEST_F(TabletImplTest, Recover) {
         TabletImpl tablet;
         tablet.Init();
         ::rtidb::api::CreateTableRequest request;
-        request.set_name("t0");
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_ttl(0);
-        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_seg_cnt(128);
+        table_meta->set_term(1024);
+        table_meta->add_replicas("127.0.0.1:9527");
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -495,15 +522,30 @@ TEST_F(TabletImplTest, Recover) {
         TabletImpl tablet;
         tablet.Init();
         ::rtidb::api::LoadTableRequest request;
-        request.set_name("t0");
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_ttl(0);
-        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_seg_cnt(64);
+        table_meta->add_replicas("127.0.0.1:9530");
+        table_meta->add_replicas("127.0.0.1:9531");
         ::rtidb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
+
+		std::string file = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(id) +"_" + boost::lexical_cast<std::string>(1) + "/table_meta.txt";
+        int fd = open(file.c_str(), O_RDONLY);
+		ASSERT_GT(fd, 0);
+		google::protobuf::io::FileInputStream fileInput(fd);
+		fileInput.SetCloseOnDelete(true);
+		::rtidb::api::TableMeta table_meta_test;
+		google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
+		ASSERT_EQ(table_meta_test.seg_cnt(), 64);
+		ASSERT_EQ(table_meta_test.term(), 1024);
+		ASSERT_EQ(table_meta_test.replicas_size(), 2);
+		ASSERT_STREQ(table_meta_test.replicas(0).c_str(), "127.0.0.1:9530");
+
         ::rtidb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
@@ -531,17 +573,19 @@ TEST_F(TabletImplTest, Recover) {
         tablet.Put(NULL, &prequest, &presponse,
                 &closure);
         ASSERT_EQ(0, presponse.code());
+        sleep(2);
     }
 
     {
         TabletImpl tablet;
         tablet.Init();
         ::rtidb::api::LoadTableRequest request;
-        request.set_name("t0");
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_ttl(0);
-        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::GeneralResponse response;
         tablet.LoadTable(NULL, &request, &response,
                 &closure);
@@ -573,12 +617,13 @@ TEST_F(TabletImplTest, DropTableFollower) {
     ASSERT_EQ(-1, drs.code());
 
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(1);
-    request.set_mode(::rtidb::api::TableMode::kTableFollower);
-    request.add_replicas("127.0.0.1:9527");
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(1);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
+    table_meta->add_replicas("127.0.0.1:9527");
     ::rtidb::api::CreateTableResponse response;
     tablet.CreateTable(NULL, &request, &response,
             &closure);
@@ -595,12 +640,6 @@ TEST_F(TabletImplTest, DropTableFollower) {
     //ReadOnly
     ASSERT_EQ(20, presponse.code());
 
-    //fix slave drop fails bugs
-    ::rtidb::api::AppendEntriesRequest arequest;
-    request.set_tid(id);
-    request.set_pid(1);
-    ::rtidb::api::AppendEntriesResponse aresponse;
-    tablet.AppendEntries(NULL, &arequest, &aresponse, &closure);
     tablet.DropTable(NULL, &dr, &drs, &closure);
     ASSERT_EQ(0, drs.code());
     prequest.set_pk("test1");
@@ -622,11 +661,12 @@ TEST_F(TabletImplTest, Snapshot) {
     uint32_t id = counter++;
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
-    request.set_name("t0");
-    request.set_tid(id);
-    request.set_pid(1);
-    request.set_ttl(0);
-    request.set_wal(true);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(0);
+    table_meta->set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,

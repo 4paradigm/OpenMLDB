@@ -54,11 +54,12 @@ TEST_F(TabletImplMemTest, TestMem) {
     // create table
     {
         ::rtidb::api::CreateTableRequest request;
-        request.set_name("t0");
-        request.set_tid(1);
-        request.set_pid(1);
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(1);
+        table_meta->set_pid(1);
         // 1 minutes
-        request.set_ttl(0);
+        table_meta->set_ttl(0);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
         tablet->CreateTable(NULL, &request, &response,

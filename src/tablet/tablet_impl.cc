@@ -24,6 +24,8 @@
 #include "base/file_util.h"
 #include "logging.h"
 #include "timer.h"
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -246,11 +248,11 @@ inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request)
     return true;
 }
 
-inline bool TabletImpl::CheckCreateRequest(const rtidb::api::CreateTableRequest* request) {
-    if (request->name().size() <= 0) {
+inline bool TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta) {
+    if (table_meta->name().size() <= 0) {
         return false;
     }
-    if (request->tid() <= 0) {
+    if (table_meta->tid() <= 0) {
         return false;
     }
     return true;
@@ -742,20 +744,17 @@ void TabletImpl::LoadTable(RpcController* controller,
             const ::rtidb::api::LoadTableRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
-    if (request->name().size() <= 0 || request->tid() <= 0) {
+    ::rtidb::api::TableMeta table_meta;
+    table_meta.CopyFrom(request->table_meta());
+    if (!CheckTableMeta(&table_meta)) {
         response->set_code(8);
         response->set_msg("table name is empty");
         done->Run();
         return;
     }
-    uint32_t tid = request->tid();
-    uint32_t pid = request->pid();
-    uint64_t ttl = request->ttl();
-    std::string name = request->name();
-    uint32_t seg_cnt = 8;
-    if (request->seg_cnt() > 0) {
-        seg_cnt = request->seg_cnt();
-    }
+    uint32_t tid = table_meta.tid();
+    uint32_t pid = table_meta.pid();
+
     std::string db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
         "_" + boost::lexical_cast<std::string>(pid);
     if (!::rtidb::base::IsExists(db_path)) {
@@ -769,7 +768,24 @@ void TabletImpl::LoadTable(RpcController* controller,
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
         if (!table) {
-            LoadTableInternal(request, response);
+            std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) +
+                        "_" + boost::lexical_cast<std::string>(pid);
+            
+            UpdateTableMeta(table_db_path, &table_meta);
+            if (WriteTableMeta(table_db_path, &table_meta) < 0) {
+                LOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
+                response->set_code(-1);
+                response->set_msg("write table_meta failed");
+                done->Run();
+                return;
+            }
+            std::string msg;
+            if (CreateTableInternal(&table_meta, msg) < 0) {
+                response->set_code(-1);
+                response->set_msg(msg.c_str());
+                done->Run();
+                return;
+            }
         } else {
             response->set_code(1);
             response->set_msg("table with tid and pid exists");
@@ -778,6 +794,12 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
     }
     done->Run();
+    uint64_t ttl = table_meta.ttl();
+    std::string name = table_meta.name();
+    uint32_t seg_cnt = 8;
+    if (table_meta.seg_cnt() > 0) {
+        seg_cnt = table_meta.seg_cnt();
+    }
     LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
             pid, name.c_str(), seg_cnt, ttl);
     
@@ -792,7 +814,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         LOG(WARNING, "snapshot with tid %ld and pid %ld does not exist", tid, pid);
         return; 
     }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
         LOG(WARNING, "replicator with tid %ld and pid %ld does not exist", tid, pid);
         return;
@@ -846,76 +868,24 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
     return 0;
 }
 
-void TabletImpl::LoadTableInternal(const ::rtidb::api::LoadTableRequest* request,
-        ::rtidb::api::GeneralResponse* response) {
-    mu_.AssertHeld();
-    uint32_t seg_cnt = 8;
-    std::string name = request->name();
-    if (request->seg_cnt() > 0) {
-        seg_cnt = request->seg_cnt();
-    }
-    bool is_leader = false;
-    if (request->mode() == ::rtidb::api::TableMode::kTableLeader) {
-        is_leader = true;
-    }
-    std::vector<std::string> endpoints;
-    for (int32_t i = 0; i < request->replicas_size(); i++) {
-        endpoints.push_back(request->replicas(i));
-    }
-    std::shared_ptr<Table> table = std::make_shared<Table>(request->name(), request->tid(),
-                             request->pid(), seg_cnt, 
-                             request->ttl(), is_leader,
-                             endpoints, request->wal());
-    table->Init();
-    table->SetGcSafeOffset(FLAGS_gc_safe_offset);
-    // for tables_ 
-    table->SetTerm(request->term());
-    table->SetTableStat(::rtidb::storage::kLoading);
-    std::string table_binlog_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
-    std::shared_ptr<LogReplicator> replicator;
-    if (table->IsLeader() && table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_binlog_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
-    } else if (table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_binlog_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
-    }
-    if (!replicator || !replicator->Init()) {
-        LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("fail create replicator for table");
-        return;
-    }
-    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(request->tid(), request->pid(), replicator->GetLogPart());
-    bool ok = snapshot->Init();
-    if (!ok) {
-        LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("fail to init snapshot");
-        return;
-    }
-    tables_[request->tid()].insert(std::make_pair(request->pid(), table));
-    replicators_[request->tid()].insert(std::make_pair(request->pid(), replicator));
-    snapshots_[request->tid()].insert(std::make_pair(request->pid(), snapshot));
-    response->set_code(0);
-    response->set_msg("ok");
-}
-
 void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
-    if (!CheckCreateRequest(request)) {
+    const ::rtidb::api::TableMeta* table_meta = &request->table_meta();
+    if (!CheckTableMeta(table_meta)) {
         response->set_code(8);
         response->set_msg("table name is empty");
         done->Run();
         return;
     }
-    uint32_t tid = request->tid();
-    uint32_t pid = request->pid();
-    uint64_t ttl = request->ttl();
-    std::string name = request->name();
+    uint32_t tid = table_meta->tid();
+    uint32_t pid = table_meta->pid();
+    uint64_t ttl = table_meta->ttl();
+    std::string name = table_meta->name();
     uint32_t seg_cnt = 8;
-    if (request->seg_cnt() > 0) {
-        seg_cnt = request->seg_cnt();
+    if (table_meta->seg_cnt() > 0) {
+        seg_cnt = table_meta->seg_cnt();
     }
     // Note after create , request and response is unavaliable
     {
@@ -934,9 +904,38 @@ void TabletImpl::CreateTable(RpcController* controller,
             done->Run();
             return;
         }       
-        CreateTableInternal(request, response);
+    	std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) +
+                        "_" + boost::lexical_cast<std::string>(pid);
+		if (WriteTableMeta(table_db_path, table_meta) < 0) {
+        	LOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
+            response->set_code(-1);
+            response->set_msg("write table_meta failed");
+            done->Run();
+            return;
+		}
+        std::string msg;
+        if (CreateTableInternal(table_meta, msg) < 0) {
+            response->set_code(-1);
+            response->set_msg(msg.c_str());
+            done->Run();
+            return;
+        }
     }
+    response->set_code(0);
+    response->set_msg("ok");
     done->Run();
+    std::shared_ptr<Table> table = GetTable(tid, pid);        
+    if (!table) {
+        LOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
+        return; 
+    }
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+    if (!replicator) {
+        LOG(WARNING, "replicator with tid %ld and pid %ld does not exist", tid, pid);
+        return;
+    }
+    table->SetTableStat(::rtidb::storage::kNormal);
+    replicator->MatchLogOffset();
     LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
             pid, name.c_str(), seg_cnt, ttl);
     if (ttl > 0) {
@@ -945,66 +944,107 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
 }
 
-void TabletImpl::CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
-        ::rtidb::api::CreateTableResponse* response) {
+int TabletImpl::WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta) {
+	if (!::rtidb::base::MkdirRecur(path)) {
+        LOG(WARNING, "fail to create path %s", path.c_str());
+        return -1;
+    }
+	std::string full_path = path + "/table_meta.txt";
+	std::string table_meta_info;
+    google::protobuf::TextFormat::PrintToString(*table_meta, &table_meta_info);
+    FILE* fd_write = fopen(full_path.c_str(), "w");
+    if (fd_write == NULL) {
+        LOG(WARNING, "fail to open file %s. err[%d: %s]", full_path.c_str(), errno, strerror(errno));
+        return -1;
+    }
+	if (fputs(table_meta_info.c_str(), fd_write) == EOF) {
+        LOG(WARNING, "write error. path[%s], err[%d: %s]", full_path.c_str(), errno, strerror(errno));
+		fclose(fd_write);
+		return -1;
+    }
+	fclose(fd_write);
+	return 0;
+}
+
+int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta) {
+	std::string full_path = path + "/table_meta.txt";
+    int fd = open(full_path.c_str(), O_RDONLY);
+	::rtidb::api::TableMeta old_meta;
+    if (fd < 0) {
+        LOG(WARNING, "[%s] is not exisit", "table_meta.txt");
+        return 1;
+    } else {
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        if (!google::protobuf::TextFormat::Parse(&fileInput, &old_meta)) {
+            LOG(WARNING, "parse table_meta failed");
+            return -1;
+        }
+    }
+	// use replicas in LoadRequest
+	old_meta.clear_replicas();
+	old_meta.MergeFrom(*table_meta);
+	table_meta->CopyFrom(old_meta);
+	std::string new_name = full_path + "." + ::rtidb::base::GetNowTime();
+	rename(full_path.c_str(), new_name.c_str());
+    return 0;
+}
+
+int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
     mu_.AssertHeld();
     uint32_t seg_cnt = 8;
-    std::string name = request->name();
-    if (request->seg_cnt() > 0) {
-        seg_cnt = request->seg_cnt();
+    std::string name = table_meta->name();
+    if (table_meta->seg_cnt() > 0) {
+        seg_cnt = table_meta->seg_cnt();
     }
     bool is_leader = false;
-    if (request->mode() == ::rtidb::api::TableMode::kTableLeader) {
+    if (table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
         is_leader = true;
     }
     std::vector<std::string> endpoints;
-    for (int32_t i = 0; i < request->replicas_size(); i++) {
-        endpoints.push_back(request->replicas(i));
+    for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
+        endpoints.push_back(table_meta->replicas(i));
     }
-    std::shared_ptr<Table> table = std::make_shared<Table>(request->name(), request->tid(),
-                             request->pid(), seg_cnt, 
-                             request->ttl(), is_leader,
-                             endpoints, request->wal());
+    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), table_meta->tid(),
+                             table_meta->pid(), seg_cnt, 
+                             table_meta->ttl(), is_leader,
+                             endpoints, table_meta->wal());
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
     // for tables_ 
-    table->SetTerm(request->term());
-    table->SetTableStat(::rtidb::storage::kNormal);
-    std::string table_binlog_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(request->tid()) +"_" + boost::lexical_cast<std::string>(request->pid());
+    table->SetTerm(table_meta->term());
+    std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +
+                "_" + boost::lexical_cast<std::string>(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader() && table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_binlog_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
-    }else if(table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_binlog_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
+        replicator = std::make_shared<LogReplicator>(table_db_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
+    } else if(table->GetWal()) {
+        replicator = std::make_shared<LogReplicator>(table_db_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
     }
     if (!replicator) {
-        response->set_code(-1);
-        response->set_msg("fail create replicator for table");
-        return;
+        LOG(WARNING, "fail to create replicator for table tid %ld, pid %ld", table_meta->tid(), table_meta->pid());
+        msg.assign("fail create replicator for table");
+        return -1;
     }
     bool ok = replicator->Init();
     if (!ok) {
-        LOG(WARNING, "fail to create table tid %ld, pid %ld replicator", request->tid(), request->pid());
+        LOG(WARNING, "fail to init replicator for table tid %ld, pid %ld", table_meta->tid(), table_meta->pid());
         // clean memory
-        response->set_code(-1);
-        response->set_msg("fail init replicator for table");
-        return;
+        msg.assign("fail init replicator for table");
+        return -1;
     }
-    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(request->tid(), request->pid(), replicator->GetLogPart());
+    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(table_meta->tid(), table_meta->pid(), replicator->GetLogPart());
     ok = snapshot->Init();
     if (!ok) {
-        LOG(WARNING, "fail to init snapshot for tid %d, pid %d", request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("fail to init snapshot");
-        return;
+        LOG(WARNING, "fail to init snapshot for tid %d, pid %d", table_meta->tid(), table_meta->pid());
+        msg.assign("fail to init snapshot");
+        return -1;
 
     }
-    replicator->MatchLogOffset();
-    tables_[request->tid()].insert(std::make_pair(request->pid(), table));
-    snapshots_[request->tid()].insert(std::make_pair(request->pid(), snapshot));
-    replicators_[request->tid()].insert(std::make_pair(request->pid(), replicator));
-    response->set_code(0);
-    response->set_msg("ok");
+    tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
+    snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
+    replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
+    return 0;
 }
 
 void TabletImpl::DropTable(RpcController* controller,
