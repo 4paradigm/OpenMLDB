@@ -572,7 +572,7 @@ class TestLoadTable(TestCaseBase):
             t.join()
 
         self.assertEqual(rs_list.count('LoadTable ok'), 1)
-   def test_loadtable_and_addreplica_ttl(self):
+    def test_loadtable_and_addreplica_ttl(self):
         '''
         主节点将从节点添加为副本，没有snapshot和binlog
         从节点loadtable，可以正确load到未过期的数据
