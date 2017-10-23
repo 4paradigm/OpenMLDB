@@ -188,8 +188,11 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, srp.count());
     ASSERT_EQ(0, srp.code());
-    ret = client.DropTable(tid, pid);
-    ASSERT_TRUE(ret);
+    ::rtidb::api::DropTableRequest dr;
+    dr.set_tid(tid);
+    dr.set_pid(pid);
+    ::rtidb::api::DropTableResponse drs;
+    tablet->DropTable(NULL, &dr, &drs, &closure);
     sleep(2);
 }
 

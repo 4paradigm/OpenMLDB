@@ -84,8 +84,8 @@ class TestChangeRole(TestCaseBase):
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.changerole(self.leader, self.tid, self.pid, 'leader')
         self.assertTrue('ChangeRole ok' in rs2)
-        rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
-        self.assertTrue('LoadTable ok' in rs3)
+        rs3 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        self.assertTrue('Create table ok' in rs3)
         rs4 = self.addreplica(self.leader, self.tid, self.pid, self.slave1)
         self.assertTrue('AddReplica ok' in rs4)
         rs5 = self.put(self.leader,
@@ -100,11 +100,12 @@ class TestChangeRole(TestCaseBase):
 
 if __name__ == "__main__":
     import sys
+    import os
     suite = unittest.TestSuite()
     if len(sys.argv) == 1:
         suite = unittest.TestLoader().loadTestsFromTestCase(TestChangeRole)
     else:
         for test_name in sys.argv[1:]:
             suite.addTest(TestChangeRole(test_name))
-    runner = xmlrunner.XMLTestRunner(output='test-common/integrationtest/test-reports')
+    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
     runner.run(suite)

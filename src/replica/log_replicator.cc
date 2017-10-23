@@ -427,27 +427,30 @@ void LogReplicator::MatchLogOffset() {
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     uint32_t coffee_time = 0;
     while (running_.load(boost::memory_order_relaxed)) {
-        MutexLock lock(&mu_);
         std::shared_ptr<ReplicateNode> node;
-        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
-        for ( ; it != nodes_.end(); ++it) {
-            if ((*it)->GetEndPoint().compare(endpoint) == 0) {
-                node = *it;
-                break;
+        {
+            MutexLock lock(&mu_);
+            std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
+            for ( ; it != nodes_.end(); ++it) {
+                if ((*it)->GetEndPoint().compare(endpoint) == 0) {
+                    node = *it;
+                    break;
+                }
             }
-        }
-        if (it == nodes_.end()) {
-            LOG(INFO, "replicate node[%s] has deleted. task exit!", endpoint.c_str());
-            return;
-        }
-        if (coffee_time > 0) {
-            coffee_cv_.TimeWait(coffee_time);
-            coffee_time = 0;
+            if (it == nodes_.end()) {
+                LOG(INFO, "replicate node[%s] has deleted. task exit!", endpoint.c_str());
+                return;
+            }
+            if (coffee_time > 0) {
+                coffee_cv_.TimeWait(coffee_time);
+                coffee_time = 0;
+            }
         }
         int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
         if (ret == 1) {
             coffee_time = FLAGS_binlog_coffee_time;
         }
+        MutexLock lock(&mu_);
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
             cv_.TimeWait(FLAGS_binlog_sync_wait_time);
             if (!running_.load(boost::memory_order_relaxed)) {

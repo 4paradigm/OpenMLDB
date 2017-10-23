@@ -15,6 +15,7 @@ slave2="0.0.0.0:17772"
 leader_scan="0.0.0.0:27770"
 slave1_scan="0.0.0.0:27771"
 slave2_scan="0.0.0.0:27772"
+reportpath=${projectpath}/test-output/integrationtest/test-reports
 
 echo export rtidbver=${rtidbver} > ${testenvpath}
 echo export testpath=${testpath} >> ${testenvpath}
@@ -30,6 +31,7 @@ echo export slave2=${slave2} >> ${testenvpath}
 echo export leader_scan=${leader_scan} >> ${testenvpath}
 echo export slave1_scan=${slave1_scan} >> ${testenvpath}
 echo export slave2_scan=${slave2_scan} >> ${testenvpath}
+echo export reportpath=${reportpath} >> ${testenvpath}
 
 function setup() {
     cp -f ${rtidbpath} ${testpath}
@@ -67,18 +69,18 @@ function stop_client() {
     port=`echo $1|awk -F ':' '{print $2}'`
     echo $port
     lsof -i:${port}|grep LISTEN|awk '{print $2}'
-	lsof -i:`echo $1|awk -F ':' '{print $2}'`|grep LISTEN|awk '{print $2}'|xargs kill -9
+    lsof -i:`echo $1|awk -F ':' '{print $2}'`|grep LISTEN|awk '{print $2}'|xargs -i kill {}
 }
 
 function stop_all_clients() {
-	ps xf | grep rtidb_mon | grep -v grep | awk '{print $1}' |xargs kill -9
-	lsof -i:`echo ${leader}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs kill -9
-	lsof -i:`echo ${slave1}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs kill -9
-	lsof -i:`echo ${slave2}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs kill -9
-	lsof -i:`echo ${leader_scan}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs kill -9
-	lsof -i:`echo ${slave1_scan}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs kill -9
-	lsof -i:`echo ${slave2_scan}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs kill -9
-	rm -rf ${leaderpath}/db/* ${slave1path}/db/* ${slave2path}/db/*
+    ps xf | grep rtidb_mon | grep -v grep | awk '{print $1}' |xargs -i kill {}
+    lsof -i:`echo ${leader}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs -i kill {}
+    lsof -i:`echo ${slave1}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs -i kill {}
+    lsof -i:`echo ${slave2}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs -i kill {}
+    lsof -i:`echo ${leader_scan}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs -i kill {}
+    lsof -i:`echo ${slave1_scan}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs -i kill {}
+    lsof -i:`echo ${slave2_scan}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs -i kill {}
+    rm -rf ${leaderpath}/db/* ${slave1path}/db/* ${slave2path}/db/*
 }
 
 setup
@@ -90,4 +92,4 @@ start_client ${leaderpath}
 start_client ${slave1path}
 start_client ${slave2path}
 
-cd ${testpath}
+sleep 2

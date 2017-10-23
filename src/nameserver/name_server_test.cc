@@ -18,9 +18,8 @@
 #include "name_server_impl.h"
 #include "rpc/rpc_client.h"
 
-DECLARE_string(snapshot_root_path);
-DECLARE_string(binlog_root_path);
 DECLARE_string(endpoint);
+DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -155,8 +154,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-    FLAGS_binlog_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     return RUN_ALL_TESTS();
 }
 
