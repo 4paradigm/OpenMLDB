@@ -19,9 +19,7 @@
 #endif
 #include <gflags/gflags.h>
 
-DECLARE_string(snapshot_root_path);
-DECLARE_string(binlog_root_path);
-
+DECLARE_string(db_root_path);
 
 namespace rtidb {
 namespace tablet {
@@ -130,8 +128,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
-    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
-    FLAGS_binlog_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }
 

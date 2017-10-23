@@ -36,11 +36,8 @@ DEFINE_int32(binlog_sync_wait_time, 100, "config the sync log wait time");
 DEFINE_int32(binlog_sync_to_disk_interval, 5000, "config the interval of sync binlog to disk time");
 DEFINE_int32(binlog_delete_interval, 10000, "config the interval of delete binlog");
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
-DEFINE_string(binlog_root_path, "/tmp/binlog", "the root path  of binlog");
 DEFINE_int32(binlog_name_length, 8, "binlog name length");
 
-// snapshot configuration
-DEFINE_string(snapshot_root_path, "/tmp/snapshot", "config the snapshot storage path");
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
 
@@ -54,3 +51,4 @@ DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to c
 // metric configuration
 
 DEFINE_uint32(metric_max_record_cnt, 2000, "limit the max record cnt to read");
+DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");

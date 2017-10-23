@@ -38,13 +38,13 @@ DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
-DECLARE_string(binlog_root_path);
 DECLARE_bool(enable_statdb);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_uint32(metric_max_record_cnt);
+DECLARE_string(recycle_bin_root_path);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -86,6 +86,11 @@ bool TabletImpl::Init() {
         keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
     }else {
         LOG(INFO, "zk cluster disabled");
+    }
+    bool ok = ::rtidb::base::MkdirRecur(FLAGS_recycle_bin_root_path);
+    if (!ok) {
+        LOG(WARNING, "fail to create recycle bin path %s", FLAGS_recycle_bin_root_path.c_str());
+        return false;
     }
     if (FLAGS_enable_statdb) {
         // Create a dbstat table with tid = 0 and pid = 0
@@ -576,6 +581,7 @@ bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api:
 
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
     std::shared_ptr<Table> table;
+    std::shared_ptr<Snapshot> snapshot;
     {
         MutexLock lock(&mu_);
         table = GetTableUnLock(tid, pid);
@@ -588,13 +594,13 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
                          table->GetTableStat(), tid, pid);
             return;
         }    
+        snapshot = GetSnapshotUnLock(tid, pid);
+        if (!snapshot) {
+            LOG(WARNING, "snapshot is not exisit. tid[%u] pid[%u]", tid, pid);
+            return;
+        }
         table->SetTableStat(::rtidb::storage::kMakingSnapshot);
     }    
-    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
-    if (!snapshot) {
-        LOG(WARNING, "snapshot is not exisit. tid[%u] pid[%u]", tid, pid);
-        return;
-    }
     uint64_t offset = 0;
     if (snapshot->MakeSnapshot(table, offset) == 0) {
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
@@ -750,7 +756,15 @@ void TabletImpl::LoadTable(RpcController* controller,
     if (request->seg_cnt() > 0) {
         seg_cnt = request->seg_cnt();
     }
-
+    std::string db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
+        "_" + boost::lexical_cast<std::string>(pid);
+    if (!::rtidb::base::IsExists(db_path)) {
+        LOG(WARNING, "no db data for table tid %u, pid %u", tid, pid);
+        response->set_code(-1);
+        response->set_msg("no db data for table");
+        done->Run();
+        return;
+    }
     {
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
@@ -813,10 +827,22 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
         replicators_[tid].erase(pid);
         snapshots_[tid].erase(pid);
     }
+
     if (replicator) {
         replicator->Stop();
         LOG(INFO, "drop replicator for tid %d, pid %d", tid, pid);
     }
+
+    std::string source_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + "_" +
+        boost::lexical_cast<std::string>(pid);
+
+    if (!::rtidb::base::IsExists(source_path)) {
+        return 0;
+    }
+
+    std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
+        "_" + boost::lexical_cast<std::string>(pid) + "_" + ::rtidb::base::GetNowTime();
+    ::rtidb::base::Rename(source_path, recycle_path);
     return 0;
 }
 

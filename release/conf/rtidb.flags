@@ -20,6 +20,7 @@
 --binlog_sync_wait_time=100
 
 --db_root_path=./db
+--recycle_bin_root_path=./recycle
 
 # snapshot conf
 --make_snapshot_time=23
