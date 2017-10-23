@@ -193,6 +193,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     dr.set_pid(pid);
     ::rtidb::api::DropTableResponse drs;
     tablet->DropTable(NULL, &dr, &drs, &closure);
+    sleep(2);
 }
 
 }

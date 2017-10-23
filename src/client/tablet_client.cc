@@ -37,18 +37,19 @@ bool TabletClient::CreateTable(const std::string& name,
                                bool leader, const std::vector<std::string>& endpoints,
                                uint32_t seg_cnt) {
     ::rtidb::api::CreateTableRequest request;
-    request.set_name(name);
-    request.set_tid(tid);
-    request.set_pid(pid);
-    request.set_ttl(ttl);
-    request.set_seg_cnt(seg_cnt);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name(name);
+    table_meta->set_tid(tid);
+    table_meta->set_pid(pid);
+    table_meta->set_ttl(ttl);
+    table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
-        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     }else {
-        request.set_mode(::rtidb::api::TableMode::kTableFollower);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
     for (size_t i = 0; i < endpoints.size(); i++) {
-        request.add_replicas(endpoints[i]);
+        table_meta->add_replicas(endpoints[i]);
     }
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(tablet_,
@@ -142,18 +143,19 @@ bool TabletClient::LoadTable(const std::string& name,
                                bool leader, const std::vector<std::string>& endpoints,
                                uint32_t seg_cnt) {
     ::rtidb::api::LoadTableRequest request;
-    request.set_name(name);
-    request.set_tid(tid);
-    request.set_pid(pid);
-    request.set_ttl(ttl);
-    request.set_seg_cnt(seg_cnt);
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name(name);
+    table_meta->set_tid(tid);
+    table_meta->set_pid(pid);
+    table_meta->set_ttl(ttl);
+    table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
-        request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     }else {
-        request.set_mode(::rtidb::api::TableMode::kTableFollower);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
     for (size_t i = 0; i < endpoints.size(); i++) {
-        request.add_replicas(endpoints[i]);
+        table_meta->add_replicas(endpoints[i]);
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(tablet_,
