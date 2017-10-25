@@ -25,6 +25,7 @@ DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
+DEFINE_uint32(scan_reserve_size, 1024, "config the size of vec reserve");
 // binlog configuration
 DEFINE_int32(binlog_single_file_max_size, 1024*4, "the max size of single binlog file");
 DEFINE_int32(binlog_sync_batch_size, 32, "the batch size of sync binlog");
