@@ -37,12 +37,14 @@ enum TTLType {
     kLatestTime = 3;
 }
 enum OPType {
-    kMakeSnapshotOP = 1;
+    kCreateTableOP = 1;
+    kMakeSnapshotOP = 2;
 }
 
 enum TaskType {
-    kPauseSnapshot = 1;
-    kMakeSnapshot = 2;
+    kCreateTable = 1;
+    kPauseSnapshot = 2;
+    kMakeSnapshot = 3;
 }
 
 enum TaskStatus {
@@ -61,7 +63,7 @@ message TaskInfo {
 message OPInfo {
     required uint64 op_id = 1;
     required OPType op_type = 2;
-    required TaskType task_type = 3;
+    required uint32 task_index = 3;
     required string data = 4;
 }
 

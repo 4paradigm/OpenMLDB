@@ -650,7 +650,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         return;
     }    
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (request->task_info().task_type() != ::rtidb::api::kMakeSnapshot) {
+        if (request->task_info().task_type() != ::rtidb::api::TaskType::kMakeSnapshot) {
             response->set_code(-1);
             response->set_msg("task type is not match");
             LOG(WARNING, "task type is not match. type is[%s]", 
@@ -660,7 +660,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         }
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr(request->task_info().New());
         task_ptr->CopyFrom(request->task_info());
-        task_ptr->set_status(::rtidb::api::kDoing);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         AddTask(task_ptr);
         task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
     } else {
@@ -1096,7 +1096,7 @@ void TabletImpl::GetTaskStatus(RpcController* controller,
         Closure* done) {
     MutexLock lock(&mu_);
     for (auto iter = task_list_.begin(); iter != task_list_.end(); ++iter) {
-        if ((*iter)->status() != ::rtidb::api::kDoing) {
+        if ((*iter)->status() != ::rtidb::api::TaskStatus::kDoing) {
             ::rtidb::api::TaskInfo* task = response->add_task();
             task->CopyFrom(**iter);
         }

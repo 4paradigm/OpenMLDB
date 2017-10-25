@@ -18,6 +18,7 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
+DECLARE_int32(name_server_task_pool_size);
 
 namespace rtidb {
 namespace nameserver {
@@ -25,7 +26,8 @@ namespace nameserver {
 using ::baidu::common::MutexLock;
 
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
-    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), cv_(&mu_)  {
+    table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
+    task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(&mu_) {
     zk_table_path_ = FLAGS_zk_root_path + "/table";
     zk_data_path_ = FLAGS_zk_root_path + "/table/data";
     zk_table_index_node_ = zk_data_path_ + "/table_index";
@@ -203,9 +205,11 @@ int NameServerImpl::UpdateTaskStatus() {
                 // update task status
                 std::shared_ptr<Task> task = it->second->task_list.front();
                 if (task->task_type_ == response.task(idx).task_type()) {
-                    LOG(DEBUG, "update task status from[%d] to[%d]. op_id[%lu], task_type[%d]", 
-                                task->task_status_, response.task(idx).status(), 
-                                response.task(idx).op_id(), task->task_type_);
+                    LOG(DEBUG, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
+                                ::rtidb::api::TaskStatus_Name(task->task_status_).c_str(), 
+                                ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
+                                response.task(idx).op_id(), 
+                                ::rtidb::api::TaskType_Name(task->task_type_).c_str());
                     task->task_status_ = response.task(idx).status();
                 }
             }
@@ -217,7 +221,7 @@ int NameServerImpl::UpdateTaskStatus() {
     return 0;
 }
 
-int NameServerImpl::UpdateZKStatus(const std::vector<uint64_t>& run_task_vec) {
+int NameServerImpl::UpdateZKTaskStatus(const std::vector<uint64_t>& run_task_vec) {
     if (run_task_vec.empty()) {
         return 0;
     }
@@ -232,7 +236,8 @@ int NameServerImpl::UpdateZKStatus(const std::vector<uint64_t>& run_task_vec) {
             }
             op_data = pos->second;
         }
-        op_data->op_info_.set_task_type(op_data->task_list.front()->task_type_);
+        uint32_t cur_task_index = op_data->op_info_.task_index();
+        op_data->op_info_.set_task_index(cur_task_index + 1);
         std::string value;
         op_data->op_info_.SerializeToString(&value);
         std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(*iter);
@@ -241,8 +246,10 @@ int NameServerImpl::UpdateZKStatus(const std::vector<uint64_t>& run_task_vec) {
                         node.c_str(), value.c_str());
             continue;
         }
-        LOG(WARNING, "set zk status value failed! node[%s] value[%s]", 
-                      node.c_str(), value.c_str()); 
+        LOG(WARNING, "set zk status value failed! node[%s] op_id[%lu] op_type[%s] task_index[%u]", 
+                      node.c_str(), *iter, 
+                      ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                      op_data->op_info_.task_index()); 
     }
     return 0;
 }
@@ -323,7 +330,7 @@ void NameServerImpl::ProcessTask() {
 
             }
         }
-        UpdateZKStatus(run_task_vec);
+        UpdateZKTaskStatus(run_task_vec);
         DeleteTask();
     }
 }
@@ -386,7 +393,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
     op_data->op_info_.set_op_id(op_index_);
     op_data->op_info_.set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
-    op_data->op_info_.set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
+    op_data->op_info_.set_task_index(0);
     std::string value;
     request->SerializeToString(&value);
     op_data->op_info_.set_data(value);
@@ -410,49 +417,42 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     task->fun = boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid);
     op_data->task_list.push_back(task);
     task_map_.insert(std::make_pair(op_index_, op_data));
+    cv_.Signal();
 }
 
-int NameServerImpl::CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
-            bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec) {
-    for (int idx = 0; idx < table_meta.table_partition_size(); idx++) {
-        const ::rtidb::nameserver::TablePartition& table_partition = table_meta.table_partition(idx);
+int NameServerImpl::ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver::TableMeta> table_meta,
+            bool is_leader,
+            std::list<std::shared_ptr<Task>>& task_list, 
+            std::vector<std::string>& endpoint_vec) {
+    mu_.AssertHeld();        
+    for (int idx = 0; idx < table_meta->table_partition_size(); idx++) {
+        const ::rtidb::nameserver::TablePartition& table_partition = table_meta->table_partition(idx);
         if (table_partition.is_leader() != is_leader) {
             continue;
         }
         auto iter = tablets_.find(table_partition.endpoint());
-
         // check tablet if exist
         if (iter == tablets_.end()) {
             LOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
             continue;
         }
-
         // check tablet healthy
         if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
             LOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
             continue;
         }
-
-        std::vector<std::string> endpoint;
-        if (is_leader && endpoint_vec.find(table_partition.pid()) != endpoint_vec.end()) {
-            endpoint_vec[table_partition.pid()].swap(endpoint);
-        }
-
-        if (!iter->second->client_->CreateTable(
-                table_meta.name(), tid, table_partition.pid(), table_meta.ttl(), is_leader, endpoint)) {
-            LOG(WARNING, "create table[%s] failed! tid[%u] pid[%u] endpoint[%s]", 
-                        table_meta.name().c_str(), tid, table_partition.pid(), table_partition.endpoint().c_str());
-            // TODO: drop table when create failed
-            break;
-        }
-        LOG(DEBUG, "create table[%s] tid[%u] pid[%u] endpoint[%s] success", 
-                    table_meta.name().c_str(), tid, table_partition.pid(), table_partition.endpoint().c_str());
         if (!is_leader) {
-            if (endpoint_vec.find(table_partition.pid()) == endpoint_vec.end()) {
-                endpoint_vec.insert(std::make_pair(table_partition.pid(), std::vector<std::string>()));
-            }
-            endpoint_vec[table_partition.pid()].push_back(table_partition.endpoint());
+            endpoint_vec.push_back(table_partition.endpoint());
         }
+        std::shared_ptr<Task> task = std::make_shared<Task>(op_index_, ::rtidb::api::OPType::kCreateTableOP,
+                                    ::rtidb::api::TaskType::kCreateTable, ::rtidb::api::TaskStatus::kDoing, 
+                                    table_partition.endpoint());
+        task->fun = boost::bind(&TabletClient::CreateTable, iter->second->client_, table_meta->name(), 
+                                table_index_, table_partition.pid(),
+                                table_meta->ttl(), is_leader, endpoint_vec, table_meta->seg_cnt());
+        task_list.push_back(task);
+        LOG(DEBUG, "add create table task. tid[%u] pid[%u] endpoint[%s] success", 
+                    table_index_, table_partition.pid(), table_partition.endpoint().c_str());
     }
     return 0;
 }
@@ -478,39 +478,17 @@ void NameServerImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
-    uint32_t table_index = 0;
-    std::string index_value;
-    if (!zk_client_->GetNodeValue(zk_table_index_node_, index_value)) {
-        response->set_code(-1);
-        response->set_msg("get table index node failed");
-        LOG(WARNING, "get table index node failed!");
-        done->Run();
-        return;
-    }
-    try {
-        table_index = boost::lexical_cast<uint32_t>(index_value);
-    } catch (boost::bad_lexical_cast& e) {
-        response->set_code(-1);
-        response->set_msg("get table index node failed");
-        LOG(WARNING, "get table index node failed!");
-        done->Run();
-        return;
-    }
-    char buff[30];
-    snprintf(buff, 30, "%u", table_index + 1);
-    if (!zk_client_->SetNodeValue(zk_table_index_node_, std::string(buff))) {
+    if (!zk_client_->SetNodeValue(zk_table_index_node_, 
+                boost::lexical_cast<std::string>(table_index_ + 1))) {
         response->set_code(-1);
         response->set_msg("set table index node failed");
-        LOG(WARNING, "set table index node failed! table_index[%s]", buff);
+        LOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
         done->Run();
         return;
     }
-    std::map<uint32_t, std::vector<std::string> > endpoint_vec;
-    //CreateTable(table_meta, table_index, false, endpoint_vec);
-    // create master table
-    //CreateTable(table_meta, table_index, true, endpoint_vec);
+    table_index_++;
 
-    table_meta->set_tid(table_index);
+    table_meta->set_tid(table_index_);
     std::string table_value;
     table_meta->SerializeToString(&table_value);
     if (!zk_client_->CreateNode(zk_table_path_ + "/" + table_meta->name(), table_value)) {
@@ -521,10 +499,44 @@ void NameServerImpl::CreateTable(RpcController* controller,
         return;
     }
     LOG(DEBUG, "create table node[%s/%s] success! value[%s]", zk_table_path_.c_str(), table_meta->name().c_str(), table_value.c_str());
+
+    if (!zk_client_->SetNodeValue(zk_op_index_node_, boost::lexical_cast<std::string>(op_index_ + 1))) {
+        response->set_code(-1);
+        response->set_msg("set op index node failed");
+        LOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
+        done->Run();
+        return;
+    }
+    op_index_++;
+
+    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
+    op_data->op_info_.set_op_id(op_index_);
+    op_data->op_info_.set_op_type(::rtidb::api::OPType::kCreateTableOP);
+    op_data->op_info_.set_task_index(0);
+    std::string value;
+    request->SerializeToString(&value);
+    op_data->op_info_.set_data(value);
+
+    value.clear();
+    op_data->op_info_.SerializeToString(&value);
+    std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(op_index_);
+    if (!zk_client_->CreateNode(node, value)) {
+        response->set_code(-1);
+        response->set_msg("create op node failed");
+        LOG(WARNING, "create op node[%s] failed", node.c_str());
+        done->Run();
+        return;
+    }
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
     table_info_.insert(std::make_pair(table_meta->name(), table_meta));
+
+    std::vector<std::string> endpoint_vec;
+    ConstructCreateTableTask(table_meta, false, op_data->task_list, endpoint_vec);
+    ConstructCreateTableTask(table_meta, true, op_data->task_list, endpoint_vec);
+    task_map_.insert(std::make_pair(op_index_, op_data));
+    cv_.Signal();
 }
 
 void NameServerImpl::OnLocked() {

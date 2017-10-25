@@ -58,7 +58,7 @@ struct Task {
 
 struct OPData {
     ::rtidb::api::OPInfo op_info_;
-    std::list<std::shared_ptr<Task> > task_list;
+    std::list<std::shared_ptr<Task>> task_list;
 };
 
 class NameServerImpl : public NameServer {
@@ -93,8 +93,10 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    int CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
-                    bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
+    int ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver::TableMeta> table_meta,
+            bool is_leader,
+            std::list<std::shared_ptr<Task>>& task_list,
+            std::vector<std::string>& endpoint_vec);
 
     void CheckZkClient();
 
@@ -104,7 +106,7 @@ public:
 
     void ProcessTask();
 
-    int UpdateZKStatus(const std::vector<uint64_t>& run_task_vec);
+    int UpdateZKTaskStatus(const std::vector<uint64_t>& run_task_vec);
 
 private:
 
