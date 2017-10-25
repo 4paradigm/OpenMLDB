@@ -23,6 +23,11 @@ message CreateTableRequest {
     required TableMeta table_meta = 1;
 }
 
+message MakeSnapshotNSRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+}
+
 message GeneralResponse {
 	required int32 code = 1;
 	optional string msg = 2;
@@ -45,4 +50,5 @@ message ShowTabletResponse {
 service NameServer {
 	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
+    rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
 }

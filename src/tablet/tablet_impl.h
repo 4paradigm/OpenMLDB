@@ -163,7 +163,7 @@ private:
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
-    void MakeSnapshotInternal(uint32_t tid, uint32_t pid);
+    void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 
@@ -178,6 +178,8 @@ private:
 
     int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 
+    void AddTask(std::shared_ptr<::rtidb::api::TaskInfo> task);
+
 private:
     Tables tables_;
     Mutex mu_;
@@ -188,7 +190,7 @@ private:
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
-    std::list<::rtidb::api::TaskInfo> task_list_;
+    std::list<std::shared_ptr<::rtidb::api::TaskInfo>> task_list_;
 };
 
 

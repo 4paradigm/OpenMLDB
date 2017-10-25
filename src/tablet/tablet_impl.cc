@@ -353,7 +353,7 @@ void TabletImpl::Scan(RpcController* controller,
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
         LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
-        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
+        //::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
 
@@ -581,7 +581,7 @@ bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api:
     return true;
 }
 
-void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
+void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     {
@@ -613,6 +613,9 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid) {
     {
         MutexLock lock(&mu_);
         table->SetTableStat(::rtidb::storage::kNormal);
+        if (task) {
+            task->set_status(::rtidb::api::kDone);
+        }
     }
 }
 
@@ -646,10 +649,27 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         done->Run();
         return;
     }    
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (request->task_info().task_type() != ::rtidb::api::kMakeSnapshot) {
+            response->set_code(-1);
+            response->set_msg("task type is not match");
+            LOG(WARNING, "task type is not match. type is[%s]", 
+                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+            done->Run();
+            return;
+        }
+        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr(request->task_info().New());
+        task_ptr->CopyFrom(request->task_info());
+        task_ptr->set_status(::rtidb::api::kDoing);
+        AddTask(task_ptr);
+        task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
+    } else {
+        task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid,
+                            std::shared_ptr<::rtidb::api::TaskInfo>()));
+    }
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
-    task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid));
 }
 
 void TabletImpl::SchedMakeSnapshot() {
@@ -672,7 +692,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         LOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second);
+        MakeSnapshotInternal(iter->first, iter->second, std::shared_ptr<::rtidb::api::TaskInfo>());
     }
     // delay task one hour later avoid execute  more than one time
     task_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -768,11 +788,8 @@ void TabletImpl::LoadTable(RpcController* controller,
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
         if (!table) {
-            std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) +
-                        "_" + boost::lexical_cast<std::string>(pid);
-            
-            UpdateTableMeta(table_db_path, &table_meta);
-            if (WriteTableMeta(table_db_path, &table_meta) < 0) {
+            UpdateTableMeta(db_path, &table_meta);
+            if (WriteTableMeta(db_path, &table_meta) < 0) {
                 LOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
                 response->set_code(-1);
                 response->set_msg("write table_meta failed");
@@ -1079,9 +1096,9 @@ void TabletImpl::GetTaskStatus(RpcController* controller,
         Closure* done) {
     MutexLock lock(&mu_);
     for (auto iter = task_list_.begin(); iter != task_list_.end(); ++iter) {
-        if (iter->status() != ::rtidb::api::kDoing) {
+        if ((*iter)->status() != ::rtidb::api::kDoing) {
             ::rtidb::api::TaskInfo* task = response->add_task();
-            task->CopyFrom(*iter);
+            task->CopyFrom(**iter);
         }
     }
     response->set_code(0);
@@ -1096,7 +1113,7 @@ void TabletImpl::DeleteTask(RpcController* controller,
     MutexLock lock(&mu_);
 	for (int idx = 0; idx < request->op_id_size(); idx++) {
 		for (auto iter = task_list_.begin(); iter != task_list_.end(); ) {
-			if (iter->op_id() == request->op_id(idx)) {
+			if ((*iter)->op_id() == request->op_id(idx)) {
 				iter = task_list_.erase(iter);
 				continue;
 			}
@@ -1106,6 +1123,11 @@ void TabletImpl::DeleteTask(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
+}
+
+void TabletImpl::AddTask(std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    MutexLock lock(&mu_);
+    task_list_.push_back(task);
 }
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {

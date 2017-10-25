@@ -44,12 +44,16 @@ typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
 typedef boost::function<void ()> TaskFun;
 
 struct Task {
+    Task(uint64_t op_id, ::rtidb::api::OPType op_type, ::rtidb::api::TaskType task_type, 
+            ::rtidb::api::TaskStatus task_status, const std::string& endpoint) : 
+            op_id_(op_id), op_type_(op_type), task_type_(task_type), task_status_(task_status), endpoint_(endpoint){}
+    ~Task() {}
     uint64_t op_id_;
     ::rtidb::api::OPType op_type_;
     ::rtidb::api::TaskType task_type_;
-    TaskFun fun;
+    ::rtidb::api::TaskStatus task_status_;
     std::string endpoint_;
-    ::rtidb::api::TaskStatus status_;
+    TaskFun fun;
 };
 
 struct OPData {
@@ -84,6 +88,11 @@ public:
             ShowTabletResponse* response,
             Closure* done);
 
+    void MakeSnapshotNS(RpcController* controller,
+            const MakeSnapshotNSRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
                     bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
 
@@ -116,7 +125,7 @@ private:
 private:
     ::baidu::common::Mutex mu_;
     Tablets tablets_;
-    std::map<std::string, ::rtidb::nameserver::TableMeta> table_info_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableMeta>> table_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
@@ -124,9 +133,12 @@ private:
     std::string zk_table_path_;
     std::string zk_data_path_;
     std::string zk_table_index_node_;
+    uint32_t table_index_;
+    std::string zk_op_index_node_;
+    uint64_t op_index_;
     std::string zk_op_path_;
     std::atomic<bool> running_;
-    std::map<uint64_t, OPData> task_map_;
+    std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
     std::map<std::string, uint64_t> table_task_map_;
     CondVar cv_;
 };

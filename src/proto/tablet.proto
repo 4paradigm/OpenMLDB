@@ -37,14 +37,12 @@ enum TTLType {
     kLatestTime = 3;
 }
 enum OPType {
-    kAddReplicate = 1;
-    kChangeRole = 2;
+    kMakeSnapshotOP = 1;
 }
 
 enum TaskType {
     kPauseSnapshot = 1;
-    kGetSnapshotPath = 2;
-    kSyncSnapshotData = 3;
+    kMakeSnapshot = 2;
 }
 
 enum TaskStatus {
@@ -61,10 +59,10 @@ message TaskInfo {
 }
 
 message OPInfo {
-    required uint64 opid = 1;
+    required uint64 op_id = 1;
     required OPType op_type = 2;
     required TaskType task_type = 3;
-    required bytes data = 4;
+    required string data = 4;
 }
 
 message Manifest {
@@ -91,6 +89,7 @@ message PutResponse {
 message GeneralRequest {
 	required int32 tid = 1;
     required int32 pid = 2;
+    optional TaskInfo task_info = 3;
 }
 
 message TaskStatusRequest {
