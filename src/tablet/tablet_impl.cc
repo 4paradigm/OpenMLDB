@@ -770,11 +770,8 @@ void TabletImpl::LoadTable(RpcController* controller,
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
         if (!table) {
-            std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) +
-                        "_" + boost::lexical_cast<std::string>(pid);
-            
-            UpdateTableMeta(table_db_path, &table_meta);
-            if (WriteTableMeta(table_db_path, &table_meta) < 0) {
+            UpdateTableMeta(db_path, &table_meta);
+            if (WriteTableMeta(db_path, &table_meta) < 0) {
                 LOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
                 response->set_code(-1);
                 response->set_msg("write table_meta failed");
