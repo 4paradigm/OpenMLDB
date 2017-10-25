@@ -38,6 +38,7 @@ DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
+DECLARE_uint32(scan_reserve_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
 DECLARE_bool(enable_statdb);
@@ -298,6 +299,7 @@ void TabletImpl::Scan(RpcController* controller,
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
     bool remove_duplicated_record = false;
@@ -768,11 +770,8 @@ void TabletImpl::LoadTable(RpcController* controller,
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
         if (!table) {
-            std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) +
-                        "_" + boost::lexical_cast<std::string>(pid);
-            
-            UpdateTableMeta(table_db_path, &table_meta);
-            if (WriteTableMeta(table_db_path, &table_meta) < 0) {
+            UpdateTableMeta(db_path, &table_meta);
+            if (WriteTableMeta(db_path, &table_meta) < 0) {
                 LOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
                 response->set_code(-1);
                 response->set_msg("write table_meta failed");
