@@ -19,6 +19,8 @@ DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
+DECLARE_int32(name_server_task_failed_time);
+DECLARE_int32(name_server_task_exe_timeout);
 
 namespace rtidb {
 namespace nameserver {
@@ -187,11 +189,12 @@ int NameServerImpl::UpdateTaskStatus() {
             vec.push_back(iter->second->client_);
         }    
     }
-
+    std::set<uint64_t> op_id_set;
     for (auto iter = vec.begin(); iter != vec.end(); ++iter) {
         ::rtidb::api::TaskStatusResponse response;
         // get task status from tablet
         if ((*iter)->GetTaskStatus(response)) {
+            uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
             MutexLock lock(&mu_);
             for (int idx = 0; idx < response.task_size(); idx++) {
                 auto it = task_map_.find(response.task(idx).op_id());
@@ -202,6 +205,7 @@ int NameServerImpl::UpdateTaskStatus() {
                 if (it->second->task_list_.empty()) {
                     continue;
                 }
+                op_id_set.insert(response.task(idx).op_id());
                 // update task status
                 std::shared_ptr<Task> task = it->second->task_list_.front();
                 if (task->task_info_->task_type() == response.task(idx).task_type()) {
@@ -211,6 +215,21 @@ int NameServerImpl::UpdateTaskStatus() {
                                 response.task(idx).op_id(), 
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
                     task->task_info_->set_status(response.task(idx).status());
+                }
+                if (cur_time - task->run_time_ > (uint64_t)FLAGS_name_server_task_exe_timeout) {
+                    task->task_info_->set_status(::rtidb::api::kFailed);
+                }
+            }
+        }
+    }
+    {
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        MutexLock lock(&mu_);
+        for (auto& kv : task_map_) {
+            if (op_id_set.find(kv.first) == op_id_set.end() && !kv.second->task_list_.empty()) {
+                std::shared_ptr<Task> task = kv.second->task_list_.front();
+                if (cur_time - task->run_time_ > (uint64_t)FLAGS_name_server_task_failed_time) {
+                    task->task_info_->set_status(::rtidb::api::kFailed);
                 }
             }
         }
@@ -327,8 +346,8 @@ void NameServerImpl::ProcessTask() {
                     continue;
                 }
                 task_thread_pool_.AddTask(task->fun_);
+                task->run_time_ = ::baidu::common::timer::get_micros() / 1000;
                 run_task_vec.push_back(iter->first);
-
             }
         }
         UpdateZKTaskStatus(run_task_vec);
@@ -463,9 +482,9 @@ int NameServerImpl::ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver
         task->task_info_->set_op_type(::rtidb::api::OPType::kCreateTableOP);
         task->task_info_->set_task_type(::rtidb::api::TaskType::kCreateTable);
         task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
-        task->fun_ = boost::bind(&TabletClient::CreateTable, iter->second->client_, table_meta->name(), 
-                                table_index_, table_partition.pid(),
-                                table_meta->ttl(), is_leader, endpoint, table_meta->seg_cnt());
+        task->fun_ = boost::bind(&TabletClient::CreateTableNS, iter->second->client_, table_meta->name(), 
+                                table_index_, table_partition.pid(), table_meta->ttl(), 
+                                is_leader, endpoint, table_meta->seg_cnt(), task_info);
         task_list.push_back(task);
         LOG(DEBUG, "add create table task. tid[%u] pid[%u] endpoint[%s] success", 
                     table_index_, table_partition.pid(), table_partition.endpoint().c_str());

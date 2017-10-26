@@ -35,6 +35,10 @@ public:
                      uint32_t tid, uint32_t pid, uint64_t ttl,
                      bool leader, const std::vector<std::string>& endpoints,
                      uint32_t seg_cnt=16);
+	bool CreateTableNS(const std::string& name,
+        uint32_t tid, uint32_t pid, uint64_t ttl, bool leader,
+        const std::vector<std::string>& endpoints, uint32_t seg_cnt,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     bool Put(uint32_t tid,
              uint32_t pid,

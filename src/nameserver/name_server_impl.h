@@ -45,10 +45,11 @@ typedef boost::function<void ()> TaskFun;
 
 struct Task {
     Task(const std::string& endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) : 
-            endpoint_(endpoint), task_info_(task_info) {}
+            endpoint_(endpoint), task_info_(task_info) { run_time_ = 0; }
     ~Task() {}
     std::string endpoint_;
     std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
+    uint64_t run_time_; // the timestamp when task start execute
     TaskFun fun_;
 };
 
