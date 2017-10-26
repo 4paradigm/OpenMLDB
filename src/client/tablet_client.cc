@@ -106,11 +106,11 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid) {
     return false;
 }
 
-bool TabletClient::MakeSnapshotNS(uint32_t tid, uint32_t pid, const ::rtidb::api::TaskInfo& task_info) {
+bool TabletClient::MakeSnapshotNS(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.mutable_task_info()->CopyFrom(task_info);
+    request.mutable_task_info()->CopyFrom(*task_info);
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::MakeSnapshot,
             &request, &response, 12, 1);

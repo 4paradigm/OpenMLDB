@@ -44,21 +44,17 @@ typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
 typedef boost::function<void ()> TaskFun;
 
 struct Task {
-    Task(uint64_t op_id, ::rtidb::api::OPType op_type, ::rtidb::api::TaskType task_type, 
-            ::rtidb::api::TaskStatus task_status, const std::string& endpoint) : 
-            op_id_(op_id), op_type_(op_type), task_type_(task_type), task_status_(task_status), endpoint_(endpoint){}
+    Task(const std::string& endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) : 
+            endpoint_(endpoint), task_info_(task_info) {}
     ~Task() {}
-    uint64_t op_id_;
-    ::rtidb::api::OPType op_type_;
-    ::rtidb::api::TaskType task_type_;
-    ::rtidb::api::TaskStatus task_status_;
     std::string endpoint_;
-    TaskFun fun;
+    std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
+    TaskFun fun_;
 };
 
 struct OPData {
     ::rtidb::api::OPInfo op_info_;
-    std::list<std::shared_ptr<Task>> task_list;
+    std::list<std::shared_ptr<Task>> task_list_;
 };
 
 class NameServerImpl : public NameServer {

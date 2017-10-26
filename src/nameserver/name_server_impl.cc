@@ -199,18 +199,18 @@ int NameServerImpl::UpdateTaskStatus() {
                     LOG(WARNING, "cannot find op_id[%lu] in task_map", response.task(idx).op_id());
                     continue;
                 }
-                if (it->second->task_list.empty()) {
+                if (it->second->task_list_.empty()) {
                     continue;
                 }
                 // update task status
-                std::shared_ptr<Task> task = it->second->task_list.front();
-                if (task->task_type_ == response.task(idx).task_type()) {
+                std::shared_ptr<Task> task = it->second->task_list_.front();
+                if (task->task_info_->task_type() == response.task(idx).task_type()) {
                     LOG(DEBUG, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
-                                ::rtidb::api::TaskStatus_Name(task->task_status_).c_str(), 
+                                ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
                                 ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
                                 response.task(idx).op_id(), 
-                                ::rtidb::api::TaskType_Name(task->task_type_).c_str());
-                    task->task_status_ = response.task(idx).status();
+                                ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                    task->task_info_->set_status(response.task(idx).status());
                 }
             }
         }
@@ -260,7 +260,7 @@ int NameServerImpl::DeleteTask() {
     {
         MutexLock lock(&mu_);
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-            if (iter->second->task_list.empty()) {
+            if (iter->second->task_list_.empty()) {
                 done_task_vec.push_back(iter->first);
             }
         }
@@ -313,19 +313,20 @@ void NameServerImpl::ProcessTask() {
             }
             
             for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-                if (iter->second->task_list.empty()) {
+                if (iter->second->task_list_.empty()) {
                     continue;
                 }
-                if (iter->second->task_list.front()->task_status_ == ::rtidb::api::kDone) {
-                    iter->second->task_list.pop_front();
-                } else if (iter->second->task_list.front()->task_status_ == ::rtidb::api::kFailed) {
+                std::shared_ptr<Task> task = iter->second->task_list_.front();
+                if (task->task_info_->status() == ::rtidb::api::kDone) {
+                    iter->second->task_list_.pop_front();
+                } else if (task->task_info_->status() == ::rtidb::api::kFailed) {
                     // TODO.denglong tackle failed case here
                 }
-                if (iter->second->task_list.empty()) {
+                if (iter->second->task_list_.empty()) {
                     LOG(DEBUG, "operation has finished! op_id[%lu]", iter->first);
                     continue;
                 }
-                task_thread_pool_.AddTask(iter->second->task_list.front()->fun);
+                task_thread_pool_.AddTask(task->fun_);
                 run_task_vec.push_back(iter->first);
 
             }
@@ -412,15 +413,14 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     response->set_msg("ok");
     done->Run();
 
-    std::shared_ptr<Task> task = std::make_shared<Task>(op_index_, ::rtidb::api::OPType::kMakeSnapshotOP,
-                                ::rtidb::api::TaskType::kMakeSnapshot, ::rtidb::api::TaskStatus::kDoing, endpoint);
-    ::rtidb::api::TaskInfo task_info;                            
-    task_info.set_op_id(op_index_);
-    task_info.set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
-    task_info.set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
-    task_info.set_status(::rtidb::api::TaskStatus::kDoing);
-    task->fun = boost::bind(&TabletClient::MakeSnapshotNS, it->second->client_, tid, pid, task_info);
-    op_data->task_list.push_back(task);
+    std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::make_shared<::rtidb::api::TaskInfo>();
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, task_info);
+    task->task_info_->set_op_id(op_index_);
+    task->task_info_->set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
+    task->fun_ = boost::bind(&TabletClient::MakeSnapshotNS, it->second->client_, tid, pid, task->task_info_);
+    op_data->task_list_.push_back(task);
     task_map_.insert(std::make_pair(op_index_, op_data));
     cv_.Signal();
 }
@@ -457,10 +457,13 @@ int NameServerImpl::ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver
             }
             endpoint_map[table_partition.pid()].push_back(table_partition.endpoint());
         }
-        std::shared_ptr<Task> task = std::make_shared<Task>(op_index_, ::rtidb::api::OPType::kCreateTableOP,
-                                    ::rtidb::api::TaskType::kCreateTable, ::rtidb::api::TaskStatus::kDoing, 
-                                    table_partition.endpoint());
-        task->fun = boost::bind(&TabletClient::CreateTable, iter->second->client_, table_meta->name(), 
+        std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::make_shared<::rtidb::api::TaskInfo>();
+        std::shared_ptr<Task> task = std::make_shared<Task>(table_partition.endpoint(), task_info);
+        task->task_info_->set_op_id(op_index_);
+        task->task_info_->set_op_type(::rtidb::api::OPType::kCreateTableOP);
+        task->task_info_->set_task_type(::rtidb::api::TaskType::kCreateTable);
+        task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
+        task->fun_ = boost::bind(&TabletClient::CreateTable, iter->second->client_, table_meta->name(), 
                                 table_index_, table_partition.pid(),
                                 table_meta->ttl(), is_leader, endpoint, table_meta->seg_cnt());
         task_list.push_back(task);
@@ -546,8 +549,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
     table_info_.insert(std::make_pair(table_meta->name(), table_meta));
 
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
-    ConstructCreateTableTask(table_meta, false, op_data->task_list, endpoint_map);
-    ConstructCreateTableTask(table_meta, true, op_data->task_list, endpoint_map);
+    ConstructCreateTableTask(table_meta, false, op_data->task_list_, endpoint_map);
+    ConstructCreateTableTask(table_meta, true, op_data->task_list_, endpoint_map);
     task_map_.insert(std::make_pair(op_index_, op_data));
     cv_.Signal();
 }
