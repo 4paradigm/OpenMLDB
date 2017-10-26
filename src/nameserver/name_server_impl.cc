@@ -414,7 +414,12 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 
     std::shared_ptr<Task> task = std::make_shared<Task>(op_index_, ::rtidb::api::OPType::kMakeSnapshotOP,
                                 ::rtidb::api::TaskType::kMakeSnapshot, ::rtidb::api::TaskStatus::kDoing, endpoint);
-    task->fun = boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid);
+    ::rtidb::api::TaskInfo task_info;                            
+    task_info.set_op_id(op_index_);
+    task_info.set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
+    task_info.set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
+    task_info.set_status(::rtidb::api::TaskStatus::kDoing);
+    task->fun = boost::bind(&TabletClient::MakeSnapshotNS, it->second->client_, tid, pid, task_info);
     op_data->task_list.push_back(task);
     task_map_.insert(std::make_pair(op_index_, op_data));
     cv_.Signal();
@@ -423,7 +428,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 int NameServerImpl::ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver::TableMeta> table_meta,
             bool is_leader,
             std::list<std::shared_ptr<Task>>& task_list, 
-            std::vector<std::string>& endpoint_vec) {
+            std::map<uint32_t, std::vector<std::string>>& endpoint_map) {
     mu_.AssertHeld();        
     for (int idx = 0; idx < table_meta->table_partition_size(); idx++) {
         const ::rtidb::nameserver::TablePartition& table_partition = table_meta->table_partition(idx);
@@ -441,15 +446,23 @@ int NameServerImpl::ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver
             LOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
             continue;
         }
-        if (!is_leader) {
-            endpoint_vec.push_back(table_partition.endpoint());
+        std::vector<std::string> endpoint;
+        if (is_leader) {
+            if (endpoint_map.find(table_partition.pid()) != endpoint_map.end()) {
+                endpoint_map[table_partition.pid()].swap(endpoint);
+            }
+        } else {
+            if (endpoint_map.find(table_partition.pid()) == endpoint_map.end()) {
+                endpoint_map.insert(std::make_pair(table_partition.pid(), std::vector<std::string>()));
+            }
+            endpoint_map[table_partition.pid()].push_back(table_partition.endpoint());
         }
         std::shared_ptr<Task> task = std::make_shared<Task>(op_index_, ::rtidb::api::OPType::kCreateTableOP,
                                     ::rtidb::api::TaskType::kCreateTable, ::rtidb::api::TaskStatus::kDoing, 
                                     table_partition.endpoint());
         task->fun = boost::bind(&TabletClient::CreateTable, iter->second->client_, table_meta->name(), 
                                 table_index_, table_partition.pid(),
-                                table_meta->ttl(), is_leader, endpoint_vec, table_meta->seg_cnt());
+                                table_meta->ttl(), is_leader, endpoint, table_meta->seg_cnt());
         task_list.push_back(task);
         LOG(DEBUG, "add create table task. tid[%u] pid[%u] endpoint[%s] success", 
                     table_index_, table_partition.pid(), table_partition.endpoint().c_str());
@@ -532,9 +545,9 @@ void NameServerImpl::CreateTable(RpcController* controller,
     done->Run();
     table_info_.insert(std::make_pair(table_meta->name(), table_meta));
 
-    std::vector<std::string> endpoint_vec;
-    ConstructCreateTableTask(table_meta, false, op_data->task_list, endpoint_vec);
-    ConstructCreateTableTask(table_meta, true, op_data->task_list, endpoint_vec);
+    std::map<uint32_t, std::vector<std::string>> endpoint_map;
+    ConstructCreateTableTask(table_meta, false, op_data->task_list, endpoint_map);
+    ConstructCreateTableTask(table_meta, true, op_data->task_list, endpoint_map);
     task_map_.insert(std::make_pair(op_index_, op_data));
     cv_.Signal();
 }

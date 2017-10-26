@@ -353,7 +353,7 @@ void TabletImpl::Scan(RpcController* controller,
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
         LOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
-        //::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
+        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
 

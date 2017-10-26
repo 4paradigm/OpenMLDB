@@ -195,6 +195,7 @@ message TableMeta {
 
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
+    optional TaskInfo task_info = 2;
 }
 
 message CreateTableResponse {

@@ -96,7 +96,7 @@ public:
     int ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver::TableMeta> table_meta,
             bool is_leader,
             std::list<std::shared_ptr<Task>>& task_list,
-            std::vector<std::string>& endpoint_vec);
+            std::map<uint32_t, std::vector<std::string>>& endpoint_map);
 
     void CheckZkClient();
 

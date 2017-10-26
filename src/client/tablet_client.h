@@ -72,6 +72,7 @@ public:
     bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
 
     bool MakeSnapshot(uint32_t tid, uint32_t pid);
+    bool MakeSnapshotNS(uint32_t tid, uint32_t pid, const ::rtidb::api::TaskInfo& task_info);
 
     bool PauseSnapshot(uint32_t tid, uint32_t pid);
 
