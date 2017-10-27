@@ -123,7 +123,7 @@ public:
             ::rtidb::api::TaskStatusResponse* response,
             Closure* done);
 
-    void DeleteTask(RpcController* controller,
+    void DeleteOPTask(RpcController* controller,
             const ::rtidb::api::DeleteTaskRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);

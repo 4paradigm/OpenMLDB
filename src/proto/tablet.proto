@@ -48,9 +48,10 @@ enum TaskType {
 }
 
 enum TaskStatus {
-    kDoing = 1;
-    kDone = 2;
-    kFailed = 3;
+    kInited = 1;
+    kDoing = 2;
+    kDone = 3;
+    kFailed = 4;
 }
 
 message TaskInfo {
@@ -195,7 +196,6 @@ message TableMeta {
 
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
-    optional TaskInfo task_info = 2;
 }
 
 message CreateTableResponse {

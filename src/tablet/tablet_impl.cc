@@ -911,16 +911,6 @@ void TabletImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
-    if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (request->task_info().task_type() != ::rtidb::api::TaskType::kCreateTable) {
-            response->set_code(-1);
-            response->set_msg("task type is not match");
-            LOG(WARNING, "task type is not match. type is[%s]", 
-                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-            done->Run();
-            return;
-        }
-    }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     uint64_t ttl = table_meta->ttl();
@@ -962,12 +952,6 @@ void TabletImpl::CreateTable(RpcController* controller,
             done->Run();
             return;
         }
-    }
-    if (request->has_task_info() && request->task_info().IsInitialized()) {
-        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr(request->task_info().New());
-        task_ptr->CopyFrom(request->task_info());
-        task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-        AddTask(task_ptr);
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -1135,7 +1119,7 @@ void TabletImpl::GetTaskStatus(RpcController* controller,
     done->Run();
 }
 
-void TabletImpl::DeleteTask(RpcController* controller,
+void TabletImpl::DeleteOPTask(RpcController* controller,
 		const ::rtidb::api::DeleteTaskRequest* request,
 		::rtidb::api::GeneralResponse* response,
 		Closure* done) {

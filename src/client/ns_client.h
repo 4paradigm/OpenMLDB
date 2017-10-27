@@ -32,6 +32,9 @@ public:
     bool Init();
 
     bool ShowTablet(std::vector<TabletInfo>& tablets);
+
+    bool MakeSnapshot(const std::string& name, uint32_t pid);
+	
 private:
     std::string endpoint_;
     ::rtidb::RpcClient client_;

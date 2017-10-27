@@ -61,36 +61,6 @@ bool TabletClient::CreateTable(const std::string& name,
     return false;
 }
 
-bool TabletClient::CreateTableNS(const std::string& name,
-        uint32_t tid, uint32_t pid, uint64_t ttl, bool leader, 
-        const std::vector<std::string>& endpoints, uint32_t seg_cnt, 
-        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name(name);
-    table_meta->set_tid(tid);
-    table_meta->set_pid(pid);
-    table_meta->set_ttl(ttl);
-    table_meta->set_seg_cnt(seg_cnt);
-    if (leader) {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    }else {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
-    }
-    for (size_t i = 0; i < endpoints.size(); i++) {
-        table_meta->add_replicas(endpoints[i]);
-    }
-    request.mutable_task_info()->CopyFrom(*task_info);
-    ::rtidb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(tablet_,
-            &::rtidb::api::TabletServer_Stub::CreateTable,
-            &request, &response, 12, 1);
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    return false;
-}
-
 bool TabletClient::Put(uint32_t tid,
                        uint32_t pid,
                        const char* pk,

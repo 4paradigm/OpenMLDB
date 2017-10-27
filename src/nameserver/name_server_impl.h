@@ -90,9 +90,8 @@ public:
             GeneralResponse* response,
             Closure* done);
 
-    int ConstructCreateTableTask(std::shared_ptr<::rtidb::nameserver::TableMeta> table_meta,
+    int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader,
-            std::list<std::shared_ptr<Task>>& task_list,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
 
     void CheckZkClient();
@@ -103,7 +102,7 @@ public:
 
     void ProcessTask();
 
-    int UpdateZKTaskStatus(const std::vector<uint64_t>& run_task_vec);
+    int UpdateZKTaskStatus();
 
 private:
 
@@ -124,7 +123,7 @@ private:
 private:
     ::baidu::common::Mutex mu_;
     Tablets tablets_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableMeta>> table_info_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;

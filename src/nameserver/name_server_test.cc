@@ -17,6 +17,7 @@
 #include <boost/lexical_cast.hpp>
 #include "name_server_impl.h"
 #include "rpc/rpc_client.h"
+#include "base/file_util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -56,19 +57,14 @@ public:
 };
 
 
-TEST_F(NameServerImplTest, CreateTable) {
+TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_endpoint="127.0.0.1:9530";
     FLAGS_zk_cluster="127.0.0.1:12181";
     FLAGS_zk_root_path="/rtidb3";
-    ZkClient zk_client(FLAGS_zk_cluster, 1000, FLAGS_endpoint, FLAGS_zk_root_path);
-    bool ok = zk_client.Init();
-    ASSERT_TRUE(ok);
-    ok = zk_client.Mkdir(FLAGS_zk_root_path + "/nodes");
-    ASSERT_TRUE(ok);
 
-    FLAGS_endpoint = "127.0.0.1:9531";
+    FLAGS_endpoint = "127.0.0.1:9631";
     NameServerImpl* nameserver = new NameServerImpl();
-    ok = nameserver->Init();
+    bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
     endpoint_size++;
     sleep(4);
@@ -108,14 +104,13 @@ TEST_F(NameServerImplTest, CreateTable) {
         exit(1);
     }
     sleep(2);
-
     
     CreateTableRequest request;
     GeneralResponse response;
-
-    TableMeta *meta = request.mutable_table_meta();
-    meta->set_name("test" + GenRand());
-    TablePartition* partion = meta->add_table_partition();
+    TableInfo *table_info = request.mutable_table_info();
+    std::string name = "test" + GenRand();
+    table_info->set_name(name);
+    TablePartition* partion = table_info->add_table_partition();
     partion->set_endpoint("127.0.0.1:9530");
     partion->set_is_leader(true);
     partion->set_pid(0);
@@ -124,24 +119,38 @@ TEST_F(NameServerImplTest, CreateTable) {
             &request, &response, 12, 1);
     ASSERT_TRUE(ok);
 
-    FLAGS_endpoint = "127.0.0.1:9532";
-    NameServerImpl* nameserver2 = new NameServerImpl();
-    ok = nameserver2->Init();
-    ASSERT_TRUE(ok);
-    sleep(3);
-    
-    CreateTableRequest request1;
-    GeneralResponse response1;
 
-    TableMeta *meta1 = request1.mutable_table_meta();
-    meta1->set_name("test" + GenRand());
-    TablePartition* partion1 = meta1->add_table_partition();
-    partion1->set_endpoint("127.0.0.1:9530");
-    partion1->set_is_leader(true);
-    partion1->set_pid(0);
-    MockClosure closure;
-    nameserver2->CreateTable(NULL, &request1, &response1, &closure);
-    ASSERT_EQ(-1, response1.code());
+    MakeSnapshotNSRequest m_request;
+    m_request.set_name(name);
+    m_request.set_pid(0);
+    ok = name_server_client.SendRequest(stub,
+            &::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
+            &m_request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+
+    sleep(5);
+
+    ZkClient zk_client(FLAGS_zk_cluster, 1000, FLAGS_endpoint, FLAGS_zk_root_path);
+    ok = zk_client.Init();
+    ASSERT_TRUE(ok);
+    std::string op_index_node = FLAGS_zk_root_path + "/table/data/op_index";
+    std::string value;
+    ok = zk_client.GetNodeValue(op_index_node, value);
+    ASSERT_TRUE(ok);
+    std::string op_node = FLAGS_zk_root_path + "/table/data/op_task/" + value;
+    ok = zk_client.GetNodeValue(op_node, value);
+    ASSERT_FALSE(ok);
+
+    value.clear();
+    std::string table_index_node = FLAGS_zk_root_path + "/table/data/table_index";
+    ok = zk_client.GetNodeValue(table_index_node, value);
+    ASSERT_TRUE(ok);
+    std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+	std::vector<std::string> vec;
+    ok = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ok);
+    ASSERT_EQ(2, vec.size());
+
 
 }
 

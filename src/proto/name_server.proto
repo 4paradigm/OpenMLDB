@@ -11,7 +11,7 @@ message TablePartition {
     required uint32 pid = 3;
 }
 
-message TableMeta {
+message TableInfo {
 	required string name = 1;
 	optional uint32 ttl = 2 [default = 0];
 	optional uint32 seg_cnt = 3 [default = 8];
@@ -20,7 +20,7 @@ message TableMeta {
 }
 
 message CreateTableRequest {
-    required TableMeta table_meta = 1;
+    required TableInfo table_info = 1;
 }
 
 message MakeSnapshotNSRequest {
