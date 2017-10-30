@@ -14,12 +14,10 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "proto/name_server.pb.h"
-#include "proto/name_server.pb.h"
 #include <boost/lexical_cast.hpp>
 #include "name_server_impl.h"
 #include "rpc/rpc_client.h"
 #include "base/file_util.h"
-#include <google/protobuf/text_format.h>
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -158,8 +156,6 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_TRUE(ok);
     ::rtidb::nameserver::TableInfo table_info1;
     table_info1.ParseFromString(value);
-    value.clear();
-    google::protobuf::TextFormat::PrintToString(table_info1, &value);
     ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
     ASSERT_EQ(table_info->table_partition_size(), table_info1.table_partition_size());
 
