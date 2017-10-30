@@ -128,13 +128,12 @@ private:
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
     ::baidu::common::ThreadPool task_thread_pool_;
-    std::string zk_table_path_;
-    std::string zk_data_path_;
     std::string zk_table_index_node_;
+    std::string zk_table_data_path_;
     uint32_t table_index_;
     std::string zk_op_index_node_;
+    std::string zk_op_data_path_;
     uint64_t op_index_;
-    std::string zk_op_path_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
     std::map<std::string, uint64_t> table_task_map_;

@@ -31,11 +31,12 @@ using ::baidu::common::MutexLock;
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
     table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
     task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(&mu_) {
-    zk_table_path_ = FLAGS_zk_root_path + "/table";
-    zk_data_path_ = FLAGS_zk_root_path + "/table/data";
-    zk_table_index_node_ = zk_data_path_ + "/table_index";
-    zk_op_index_node_ = zk_data_path_ + "/op_index";
-    zk_op_path_ = zk_data_path_ + "/op_task";
+    std::string zk_table_path = FLAGS_zk_root_path + "/table";
+    zk_table_index_node_ = zk_table_path + "/table_index";
+    zk_table_data_path_ = zk_table_path + "/table_data";
+    std::string zk_op_path = FLAGS_zk_root_path + "/op";
+    zk_op_index_node_ = zk_op_path + "/op_index";
+    zk_op_data_path_ = zk_op_path + "/op_data";
     running_.store(false, std::memory_order_release);
 }
 
@@ -274,7 +275,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
         op_data->op_info_.set_task_index(cur_task_index + 1);
         std::string value;
         op_data->op_info_.SerializeToString(&value);
-        std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(op_id);
+        std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(op_id);
         if (zk_client_->SetNodeValue(node, value)) {
             LOG(DEBUG, "set zk status value success. node[%s] value[%s]",
                         node.c_str(), value.c_str());
@@ -323,7 +324,7 @@ int NameServerImpl::DeleteTask() {
     }
     if (!has_failed) {
         for (auto iter = done_task_vec.begin(); iter != done_task_vec.end(); ++iter) {
-            std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(*iter);
+            std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(*iter);
             if (zk_client_->DeleteNode(node)) {
                 MutexLock lock(&mu_);
                 task_map_.erase(*iter);
@@ -434,7 +435,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 
     value.clear();
     op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_path_ + "/" + boost::lexical_cast<std::string>(op_index_);
+    std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(op_index_);
     if (!zk_client_->CreateNode(node, value)) {
         response->set_code(-1);
         response->set_msg("create op node failed");
@@ -547,15 +548,15 @@ void NameServerImpl::CreateTable(RpcController* controller,
 
     std::string table_value;
     table_info->SerializeToString(&table_value);
-    if (!zk_client_->CreateNode(zk_table_path_ + "/" + table_info->name(), table_value)) {
-        LOG(WARNING, "create table node[%s/%s] failed! value[%s]", zk_table_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+    if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+        LOG(WARNING, "create table node[%s/%s] failed! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
         response->set_code(-1);
         response->set_msg("create table node failed");
         done->Run();
         return;
     }
 
-    LOG(DEBUG, "create table node[%s/%s] success! value[%s]", zk_table_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+    LOG(DEBUG, "create table node[%s/%s] success! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
     table_info_.insert(std::make_pair(table_info->name(), table_info));
     response->set_code(0);
     response->set_msg("ok");

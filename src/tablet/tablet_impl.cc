@@ -1127,6 +1127,9 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
 	for (int idx = 0; idx < request->op_id_size(); idx++) {
 		for (auto iter = task_list_.begin(); iter != task_list_.end(); ) {
 			if ((*iter)->op_id() == request->op_id(idx)) {
+                LOG(INFO, "delete task. op_id[%lu] op_type[%s] task_type[%s] endpoint[%s]", 
+                          (*iter)->op_id(), ::rtidb::api::OPType_Name((*iter)->op_type()).c_str(),
+                          ::rtidb::api::TaskType_Name((*iter)->task_type()).c_str(), FLAGS_endpoint.c_str());
 				iter = task_list_.erase(iter);
 				continue;
 			}

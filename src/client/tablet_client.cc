@@ -253,6 +253,9 @@ bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     ::rtidb::api::DeleteTaskRequest request;
     ::rtidb::api::GeneralResponse response;
+    for (auto op_id : op_id_vec) {
+        request.add_op_id(op_id);
+    }
     bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::DeleteOPTask,
             &request, &response, 12, 1);
     if (!ret || response.code() != 0) {

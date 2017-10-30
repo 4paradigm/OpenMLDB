@@ -43,6 +43,8 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets) {
 
 bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid) {
     ::rtidb::nameserver::MakeSnapshotNSRequest request;
+    request.set_name(name);
+    request.set_pid(pid);
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(ns_, &::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
             &request, &response, 12, 1);

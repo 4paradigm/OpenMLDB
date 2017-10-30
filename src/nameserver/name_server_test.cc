@@ -14,10 +14,12 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "proto/name_server.pb.h"
+#include "proto/name_server.pb.h"
 #include <boost/lexical_cast.hpp>
 #include "name_server_impl.h"
 #include "rpc/rpc_client.h"
 #include "base/file_util.h"
+#include <google/protobuf/text_format.h>
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -133,16 +135,16 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ZkClient zk_client(FLAGS_zk_cluster, 1000, FLAGS_endpoint, FLAGS_zk_root_path);
     ok = zk_client.Init();
     ASSERT_TRUE(ok);
-    std::string op_index_node = FLAGS_zk_root_path + "/table/data/op_index";
+    std::string op_index_node = FLAGS_zk_root_path + "/op/op_index";
     std::string value;
     ok = zk_client.GetNodeValue(op_index_node, value);
     ASSERT_TRUE(ok);
-    std::string op_node = FLAGS_zk_root_path + "/table/data/op_task/" + value;
+    std::string op_node = FLAGS_zk_root_path + "/op/op_data/" + value;
     ok = zk_client.GetNodeValue(op_node, value);
     ASSERT_FALSE(ok);
 
     value.clear();
-    std::string table_index_node = FLAGS_zk_root_path + "/table/data/table_index";
+    std::string table_index_node = FLAGS_zk_root_path + "/table/table_index";
     ok = zk_client.GetNodeValue(table_index_node, value);
     ASSERT_TRUE(ok);
     std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
@@ -151,6 +153,15 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_EQ(0, ok);
     ASSERT_EQ(2, vec.size());
 
+    std::string table_data_node = FLAGS_zk_root_path + "/table/table_data/" + name; 
+    ok = zk_client.GetNodeValue(table_data_node, value);
+    ASSERT_TRUE(ok);
+    ::rtidb::nameserver::TableInfo table_info1;
+    table_info1.ParseFromString(value);
+    value.clear();
+    google::protobuf::TextFormat::PrintToString(table_info1, &value);
+    ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
+    ASSERT_EQ(table_info->table_partition_size(), table_info1.table_partition_size());
 
 }
 
