@@ -45,11 +45,11 @@ typedef boost::function<void ()> TaskFun;
 
 struct Task {
     Task(const std::string& endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) : 
-            endpoint_(endpoint), task_info_(task_info) { run_time_ = 0; }
+            endpoint_(endpoint), task_info_(task_info) { start_time_ = 0; }
     ~Task() {}
     std::string endpoint_;
     std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
-    uint64_t run_time_; // the timestamp when task start execute
+    uint64_t start_time_; // the timestamp when task start execute
     TaskFun fun_;
 };
 
@@ -111,6 +111,14 @@ private:
     // 2.recover table status from all tablets
     bool Recover();
 
+    bool RecoverTableInfo();
+
+    bool RecoverOPTask();
+
+    bool RecoverMakeSnapshot(std::shared_ptr<OPData> op_data);
+
+    void SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list);
+
     // Get the lock
     void OnLocked();
     // Lost the lock
@@ -136,7 +144,7 @@ private:
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
-    std::map<std::string, uint64_t> table_task_map_;
+    std::map<::rtidb::api::OPType, uint64_t> op_timeout_map_;
     CondVar cv_;
 };
 

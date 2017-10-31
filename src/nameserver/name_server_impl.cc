@@ -19,9 +19,8 @@ DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
-DECLARE_int32(name_server_task_failed_time);
-DECLARE_int32(name_server_task_exe_timeout);
 DECLARE_int32(name_server_task_wait_time);
+DECLARE_int32(make_snapshot_task_timeout);
 
 namespace rtidb {
 namespace nameserver {
@@ -74,6 +73,16 @@ bool NameServerImpl::Recover() {
         LOG(INFO, "recover op_index[%u]", op_index_);
     }
 
+    if (!RecoverTableInfo()) {
+        LOG(WARNING, "recover table info failed!");
+        return false;
+    }
+
+    if (!RecoverOPTask()) {
+        LOG(WARNING, "recover task failed!");
+        return false;
+    }
+
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
         LOG(WARNING, "get endpoints node failed!");
@@ -85,6 +94,138 @@ bool NameServerImpl::Recover() {
     zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
     zk_client_->WatchNodes();
     return true;
+}
+
+bool NameServerImpl::RecoverTableInfo() {
+    table_info_.clear();
+    std::vector<std::string> table_vec;
+    if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
+        LOG(WARNING, "get table name failed!");
+        return false;
+    }
+    LOG(INFO, "need to recover table num[%d]", table_vec.size());
+    for (const auto& table_name : table_vec) {
+        std::string table_name_node = zk_table_data_path_ + "/" + table_name;
+        std::string value;
+        if (!zk_client_->GetNodeValue(table_name_node, value)) {
+            LOG(WARNING, "get table info failed! table node[%s]", table_name_node.c_str());
+            return false;
+        }
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = 
+                    std::make_shared<::rtidb::nameserver::TableInfo>();
+        if (!table_info->ParseFromString(value)) {
+            LOG(WARNING, "parse table info failed! value[%s]", value.c_str());
+            return false;
+        }
+        table_info_.insert(std::make_pair(table_name, table_info));
+    }
+    return true;
+}
+
+bool NameServerImpl::RecoverOPTask() {
+    task_map_.clear();
+    std::vector<std::string> op_vec;
+    if (!zk_client_->GetChildren(zk_op_data_path_, op_vec)) {
+        LOG(WARNING, "get op failed!");
+        return false;
+    }
+    LOG(INFO, "need to recover op num[%d]", op_vec.size());
+    for (const auto& op_id : op_vec) {
+        std::string op_node = zk_op_data_path_ + "/" + op_id;
+        std::string value;
+        if (!zk_client_->GetNodeValue(op_node, value)) {
+            LOG(WARNING, "get table info failed! table node[%s]", op_node.c_str());
+            return false;
+        }
+        std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
+        if (!op_data->op_info_.ParseFromString(value)) {
+            LOG(WARNING, "parse op info failed! value[%s]", value.c_str());
+            return false;
+        }
+
+        switch (op_data->op_info_.op_type()) {
+            case ::rtidb::api::OPType::kMakeSnapshotOP:
+                if (!RecoverMakeSnapshot(op_data)) {
+                    LOG(WARNING, "recover op[%s] success", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    return false;
+                }
+                break;
+            // add other op recover code here    
+            default:
+                LOG(WARNING, "unsupport recover op[%s]!", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                return false;
+        }
+
+        uint64_t cur_op_id = boost::lexical_cast<uint64_t>(op_id);;
+        task_map_.insert(std::make_pair(cur_op_id, op_data));
+    }
+
+    return true;
+}
+
+bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
+    if (!op_data->op_info_.IsInitialized()) {
+        LOG(WARNING, "op_info is not init!");
+        return false;
+    }
+    if (op_data->op_info_.op_type() != ::rtidb::api::OPType::kMakeSnapshotOP) {
+        LOG(WARNING, "op_type[%s] is not match", 
+                    ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+        return false;
+    }
+    MakeSnapshotNSRequest request;
+    if (!request.ParseFromString(op_data->op_info_.data())) {
+        LOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
+        return false;
+    }
+    auto iter = table_info_.find(request.name());
+    if (iter == table_info_.end()) {
+        LOG(WARNING, "get table info failed! name[%s]", request.name().c_str());
+        return false;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    uint32_t tid = table_info->tid();
+    uint32_t pid = request.pid();
+    std::string endpoint;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        if (table_info->table_partition(idx).pid() == pid) {
+            endpoint = table_info->table_partition(idx).endpoint();
+            break;
+        }
+    }
+    if (endpoint.empty()) {
+        LOG(WARNING, "partition[%u] not exisit", pid);
+        return false;
+    }
+    auto it = tablets_.find(endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        LOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
+        return false;
+    }
+    std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::make_shared<::rtidb::api::TaskInfo>();
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, task_info);
+    task->task_info_->set_op_id(op_data->op_info_.op_id());
+    task->task_info_->set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->fun_ = boost::bind(&TabletClient::MakeSnapshotNS, it->second->client_, tid, pid, task->task_info_);
+    op_data->task_list_.push_back(task);
+
+    SkipDoneTask(op_data->op_info_.task_index(), op_data->task_list_);
+    return true;
+}
+
+void NameServerImpl::SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list) {
+    for (uint32_t idx = 0; idx < task_index; idx++) {
+        std::shared_ptr<Task> task = task_list.front();
+        LOG(INFO, "task has done, remove from task_list. op_id[%lu] op_type[%s] task_type[%s]",
+                        task->task_info_->op_id(),
+                        ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
+                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+        task_list.pop_front();
+    }
 }
 
 void NameServerImpl::UpdateTabletsLocked(const std::vector<std::string>& endpoints) {
@@ -158,6 +299,7 @@ bool NameServerImpl::Init() {
         LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
         return false;
     }
+    op_timeout_map_.insert(std::make_pair(::rtidb::api::OPType::kMakeSnapshotOP, FLAGS_make_snapshot_task_timeout));
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
     dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_, 
             boost::bind(&NameServerImpl::OnLocked, this), boost::bind(&NameServerImpl::OnLostLock, this),
@@ -199,7 +341,6 @@ int NameServerImpl::UpdateTaskStatus() {
         ::rtidb::api::TaskStatusResponse response;
         // get task status from tablet
         if ((*iter)->GetTaskStatus(response)) {
-            uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
             MutexLock lock(&mu_);
             for (int idx = 0; idx < response.task_size(); idx++) {
                 auto it = task_map_.find(response.task(idx).op_id());
@@ -222,19 +363,25 @@ int NameServerImpl::UpdateTaskStatus() {
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
                     task->task_info_->set_status(response.task(idx).status());
                 }
-                if (cur_time - task->run_time_ > (uint64_t)FLAGS_name_server_task_exe_timeout) {
-                    task->task_info_->set_status(::rtidb::api::kFailed);
-                }
             }
         }
     }
     {
+        // set the timeouot task kFailed status
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
         MutexLock lock(&mu_);
         for (auto& kv : task_map_) {
             if (op_id_set.find(kv.first) == op_id_set.end() && !kv.second->task_list_.empty()) {
                 std::shared_ptr<Task> task = kv.second->task_list_.front();
-                if (cur_time - task->run_time_ > (uint64_t)FLAGS_name_server_task_failed_time) {
+                auto iter = op_timeout_map_.find(task->task_info_->op_type());
+                if (iter == op_timeout_map_.end() || iter->second == 0) {
+                    continue;
+                }
+                if (cur_time - task->start_time_ > iter->second) {
+                    LOG(INFO, "task is timeout. op_id[%lu], op_type[%s] task_type[%s]", 
+                                task->task_info_->op_id(),
+                                ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
+                                ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
                     task->task_info_->set_status(::rtidb::api::kFailed);
                 }
             }
@@ -326,11 +473,9 @@ int NameServerImpl::DeleteTask() {
         for (auto iter = done_task_vec.begin(); iter != done_task_vec.end(); ++iter) {
             std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(*iter);
             if (zk_client_->DeleteNode(node)) {
-                MutexLock lock(&mu_);
-                task_map_.erase(*iter);
-                LOG(DEBUG, "delete op node[%s] success.", node.c_str()); 
+                LOG(DEBUG, "delete zk op node[%s] success.", node.c_str()); 
             } else {
-                LOG(WARNING, "zk delete op_node failed. opid[%lu] node[%s]", *iter, node.c_str()); 
+                LOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", *iter, node.c_str()); 
             }
         }
     }
@@ -360,7 +505,7 @@ void NameServerImpl::ProcessTask() {
                                 ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str()); 
                     task_thread_pool_.AddTask(task->fun_);
-                    task->run_time_ = ::baidu::common::timer::get_micros() / 1000;
+                    task->start_time_ = ::baidu::common::timer::get_micros() / 1000;
                     task->task_info_->set_status(::rtidb::api::kDoing);;
                 }
             }

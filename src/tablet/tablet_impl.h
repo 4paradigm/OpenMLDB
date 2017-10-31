@@ -180,6 +180,9 @@ private:
 
     void AddTask(std::shared_ptr<::rtidb::api::TaskInfo> task);
 
+    std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
+            uint64_t op_id, ::rtidb::api::TaskType task_type);
+
 private:
     Tables tables_;
     Mutex mu_;

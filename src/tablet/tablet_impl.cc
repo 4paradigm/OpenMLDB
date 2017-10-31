@@ -665,13 +665,22 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
                      table->GetTableStat(), tid, pid);
         done->Run();
         return;
-    }    
+    }
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
         if (request->task_info().task_type() != ::rtidb::api::TaskType::kMakeSnapshot) {
             response->set_code(-1);
             response->set_msg("task type is not match");
             LOG(WARNING, "task type is not match. type is[%s]", 
+                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+            done->Run();
+            return;
+        } else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+            response->set_code(-1);
+            response->set_msg("task is running");
+            LOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+                            request->task_info().op_id(),
+                            ::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
                             ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
             done->Run();
             return;
@@ -1144,6 +1153,17 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
 void TabletImpl::AddTask(std::shared_ptr<::rtidb::api::TaskInfo> task) {
     MutexLock lock(&mu_);
     task_list_.push_back(task);
+}
+
+std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
+        uint64_t op_id, ::rtidb::api::TaskType task_type) {
+    MutexLock lock(&mu_);
+    for (auto& task : task_list_) {
+        if (task->op_id() == op_id && task->task_type() == task_type) {
+            return task;
+        }
+    }
+    return std::shared_ptr<::rtidb::api::TaskInfo>();
 }
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {

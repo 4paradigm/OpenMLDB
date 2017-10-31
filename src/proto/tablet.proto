@@ -37,14 +37,11 @@ enum TTLType {
     kLatestTime = 3;
 }
 enum OPType {
-    kCreateTableOP = 1;
-    kMakeSnapshotOP = 2;
+    kMakeSnapshotOP = 1;
 }
 
 enum TaskType {
-    kCreateTable = 1;
-    kPauseSnapshot = 2;
-    kMakeSnapshot = 3;
+    kMakeSnapshot = 1;
 }
 
 enum TaskStatus {
