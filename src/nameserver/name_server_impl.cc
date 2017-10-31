@@ -118,6 +118,7 @@ bool NameServerImpl::RecoverTableInfo() {
             return false;
         }
         table_info_.insert(std::make_pair(table_name, table_info));
+        LOG(INFO, "recover table[%s] success", table_name.c_str());
     }
     return true;
 }
@@ -146,7 +147,7 @@ bool NameServerImpl::RecoverOPTask() {
         switch (op_data->op_info_.op_type()) {
             case ::rtidb::api::OPType::kMakeSnapshotOP:
                 if (!RecoverMakeSnapshot(op_data)) {
-                    LOG(WARNING, "recover op[%s] success", 
+                    LOG(WARNING, "recover op[%s] failed", 
                         ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
                     return false;
                 }
@@ -160,6 +161,8 @@ bool NameServerImpl::RecoverOPTask() {
 
         uint64_t cur_op_id = boost::lexical_cast<uint64_t>(op_id);;
         task_map_.insert(std::make_pair(cur_op_id, op_data));
+        LOG(INFO, "recover op[%s] success. op_id[%lu]", 
+                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), cur_op_id);
     }
 
     return true;
@@ -196,7 +199,7 @@ bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
         }
     }
     if (endpoint.empty()) {
-        LOG(WARNING, "partition[%u] not exisit", pid);
+        LOG(WARNING, "partition[%u] not exisit. table name is [%s]", pid, request.name().c_str());
         return false;
     }
     auto it = tablets_.find(endpoint);
@@ -204,8 +207,7 @@ bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
         LOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return false;
     }
-    std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::make_shared<::rtidb::api::TaskInfo>();
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, task_info);
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_data->op_info_.op_id());
     task->task_info_->set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
@@ -336,7 +338,6 @@ int NameServerImpl::UpdateTaskStatus() {
             vec.push_back(iter->second->client_);
         }    
     }
-    std::set<uint64_t> op_id_set;
     for (auto iter = vec.begin(); iter != vec.end(); ++iter) {
         ::rtidb::api::TaskStatusResponse response;
         // get task status from tablet
@@ -351,7 +352,6 @@ int NameServerImpl::UpdateTaskStatus() {
                 if (it->second->task_list_.empty()) {
                     continue;
                 }
-                op_id_set.insert(response.task(idx).op_id());
                 // update task status
                 std::shared_ptr<Task> task = it->second->task_list_.front();
                 if (task->task_info_->task_type() == response.task(idx).task_type() && 
@@ -371,7 +371,7 @@ int NameServerImpl::UpdateTaskStatus() {
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
         MutexLock lock(&mu_);
         for (auto& kv : task_map_) {
-            if (op_id_set.find(kv.first) == op_id_set.end() && !kv.second->task_list_.empty()) {
+            if (!kv.second->task_list_.empty()) {
                 std::shared_ptr<Task> task = kv.second->task_list_.front();
                 auto iter = op_timeout_map_.find(task->task_info_->op_type());
                 if (iter == op_timeout_map_.end() || iter->second == 0) {
@@ -483,12 +483,12 @@ int NameServerImpl::DeleteTask() {
 }
 
 void NameServerImpl::ProcessTask() {
-    while (running_.load(std::memory_order_relaxed)) {
+    while (running_.load(std::memory_order_acquire)) {
         {
             MutexLock lock(&mu_);
             while (task_map_.empty()) {
                 cv_.TimeWait(FLAGS_name_server_task_wait_time);
-                if (!running_.load(std::memory_order_relaxed)) {
+                if (!running_.load(std::memory_order_acquire)) {
                     return;
                 }
             }
@@ -593,7 +593,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     done->Run();
 
     std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::make_shared<::rtidb::api::TaskInfo>();
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, task_info);
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index_);
     task->task_info_->set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
