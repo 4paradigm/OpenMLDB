@@ -54,6 +54,16 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid) {
     return false;
 }
 
+bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response) {
+    ::rtidb::nameserver::ShowOPStatusRequest request;
+    bool ok = client_.SendRequest(ns_, &::rtidb::nameserver::NameServer_Stub::ShowOPStatus,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 }
 }
 

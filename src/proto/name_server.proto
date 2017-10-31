@@ -47,8 +47,26 @@ message ShowTabletResponse {
     optional string msg = 3;
 }
 
+message OPStatus {
+    required uint64 op_id = 1;
+    required string op_type = 2;
+    required string status = 3;
+    required string start_time = 4;
+    required string end_time = 5;
+    required string task_type = 6;
+}
+
+message ShowOPStatusRequest{}
+
+message ShowOPStatusResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated OPStatus op_status = 3;
+}
+
 service NameServer {
 	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
     rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
+    rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
 }

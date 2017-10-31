@@ -11,6 +11,7 @@
 #include <boost/lexical_cast.hpp>
 #include "gflags/gflags.h"
 #include "timer.h"
+#include "base/strings.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -470,12 +471,17 @@ int NameServerImpl::DeleteTask() {
         LOG(DEBUG, "tablet[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
     }
     if (!has_failed) {
-        for (auto iter = done_task_vec.begin(); iter != done_task_vec.end(); ++iter) {
-            std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(*iter);
+        for (auto op_id : done_task_vec) {
+            std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
             if (zk_client_->DeleteNode(node)) {
                 LOG(DEBUG, "delete zk op node[%s] success.", node.c_str()); 
+                MutexLock lock(&mu_);
+                auto pos = task_map_.find(op_id);
+                if (pos != task_map_.end()) {
+                    pos->second->end_time_ = ::rtidb::base::GetNowTime();
+                }
             } else {
-                LOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", *iter, node.c_str()); 
+                LOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
             }
         }
     }
@@ -571,6 +577,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     op_index_++;
 
     std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
+    op_data->start_time_ = ::rtidb::base::GetNowTime();
     op_data->op_info_.set_op_id(op_index_);
     op_data->op_info_.set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
     op_data->op_info_.set_task_index(0);
@@ -648,6 +655,42 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                     table_index_, table_partition.pid(), table_partition.endpoint().c_str());
     }
     return 0;
+}
+
+void NameServerImpl::ShowOPStatus(RpcController* controller,
+		const ShowOPStatusRequest* request,
+		ShowOPStatusResponse* response,
+		Closure* done) {
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        LOG(WARNING, "cur nameserver is not leader");
+        done->Run();
+        return;
+    }
+    MutexLock lock(&mu_);
+	for (const auto& kv : task_map_) {
+		OPStatus* op_status = response->add_op_status();
+		op_status->set_op_id(kv.first);
+		op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+		if (kv.second->task_list_.empty()) {
+			op_status->set_status("Done");
+			op_status->set_task_type("-");
+		} else { 
+			std::shared_ptr<Task> task = kv.second->task_list_.front();
+			op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
+			if (task->task_info_->status() == ::rtidb::api::kFailed) {
+				op_status->set_status("Failed");
+			} else {
+				op_status->set_status("Doing");
+			}
+		}
+		op_status->set_start_time(kv.second->start_time_);
+		op_status->set_end_time(kv.second->end_time_);
+	}
+	response->set_code(0);
+	response->set_msg("ok");
+	done->Run();
 }
 
 void NameServerImpl::CreateTable(RpcController* controller, 

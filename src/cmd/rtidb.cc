@@ -163,6 +163,35 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
     tp.Print(true);
 }
 
+void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row;
+    row.push_back("op_id");
+    row.push_back("op_typee");
+    row.push_back("status");
+    row.push_back("start_time");
+    row.push_back("end_time");
+    row.push_back("cur_task");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    ::rtidb::nameserver::ShowOPStatusResponse response;
+    bool ok = client->ShowOPStatus(response);
+    if (!ok) {
+        std::cout << "Fail to show tablets" << std::endl;
+        return;
+    }
+    for (int idx = 0; idx < response.op_status_size(); idx++) { 
+        std::vector<std::string> row;
+        row.push_back(std::to_string(response.op_status(idx).op_id()));
+        row.push_back(response.op_status(idx).op_type());
+        row.push_back(response.op_status(idx).status());
+        row.push_back(response.op_status(idx).start_time());
+        row.push_back(response.op_status(idx).end_time());
+        row.push_back(response.op_status(idx).task_type());
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 // the input format like put 1 1 key time value
 void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {
@@ -707,7 +736,9 @@ void StartNsClient() {
         ::rtidb::base::SplitString(buffer, " ", &parts);
         if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
-        }else {
+        } else  if (parts[0] == "showopstatus") {
+            HandleNSShowOPStatus(parts, &client);
+        } else {
             std::cout << "unsupported cmd" << std::endl;
         }
         if (!FLAGS_interactive) {

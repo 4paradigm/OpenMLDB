@@ -54,8 +54,11 @@ struct Task {
 };
 
 struct OPData {
+    OPData() : start_time_("-"), end_time_("-") {}
     ::rtidb::api::OPInfo op_info_;
     std::list<std::shared_ptr<Task>> task_list_;
+    std::string start_time_;
+    std::string end_time_;
 };
 
 class NameServerImpl : public NameServer {
@@ -88,6 +91,11 @@ public:
     void MakeSnapshotNS(RpcController* controller,
             const MakeSnapshotNSRequest* request,
             GeneralResponse* response,
+            Closure* done);
+
+    void ShowOPStatus(RpcController* controller,
+            const ShowOPStatusRequest* request,
+            ShowOPStatusResponse* response,
             Closure* done);
 
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,

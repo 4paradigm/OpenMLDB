@@ -34,6 +34,8 @@ public:
     bool ShowTablet(std::vector<TabletInfo>& tablets);
 
     bool MakeSnapshot(const std::string& name, uint32_t pid);
+
+    bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response);
 	
 private:
     std::string endpoint_;
