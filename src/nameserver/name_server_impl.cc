@@ -100,6 +100,10 @@ bool NameServerImpl::RecoverTableInfo() {
     table_info_.clear();
     std::vector<std::string> table_vec;
     if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
+        if (zk_client_->IsExistNode(zk_table_data_path_) > 0) {
+            LOG(WARNING, "table data node is not exist");
+            return true;
+        }
         LOG(WARNING, "get table name failed!");
         return false;
     }
@@ -127,6 +131,10 @@ bool NameServerImpl::RecoverOPTask() {
     task_map_.clear();
     std::vector<std::string> op_vec;
     if (!zk_client_->GetChildren(zk_op_data_path_, op_vec)) {
+        if (zk_client_->IsExistNode(zk_op_data_path_) > 0) {
+            LOG(WARNING, "op data node is not exist");
+            return true;
+        }
         LOG(WARNING, "get op failed!");
         return false;
     }
@@ -423,7 +431,8 @@ int NameServerImpl::DeleteTask() {
     {
         MutexLock lock(&mu_);
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-            if (iter->second->task_list_.empty()) {
+            if (iter->second->task_list_.empty() && 
+                    iter->second->task_status_ == ::rtidb::api::kDoing) {
                 done_task_vec.push_back(iter->first);
             }
         }
@@ -456,6 +465,7 @@ int NameServerImpl::DeleteTask() {
                 auto pos = task_map_.find(op_id);
                 if (pos != task_map_.end()) {
                     pos->second->end_time_ = ::rtidb::base::GetNowTime();
+                    pos->second->task_status_ = ::rtidb::api::kDone;
                 }
             } else {
                 LOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
@@ -561,6 +571,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     std::string value;
     request->SerializeToString(&value);
     op_data->op_info_.set_data(value);
+    op_data->task_status_ = ::rtidb::api::kDoing;
 
     value.clear();
     op_data->op_info_.SerializeToString(&value);

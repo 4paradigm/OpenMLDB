@@ -56,6 +56,7 @@ struct Task {
 struct OPData {
     OPData() : start_time_("-"), end_time_("-") {}
     ::rtidb::api::OPInfo op_info_;
+    ::rtidb::api::TaskStatus task_status_;
     std::list<std::shared_ptr<Task>> task_list_;
     std::string start_time_;
     std::string end_time_;

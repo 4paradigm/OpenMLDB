@@ -253,6 +253,21 @@ bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
     return false;
 }
 
+int ZkClient::IsExistNode(const std::string& node) {
+    if (node.empty()) {
+        return -1;
+    }
+    MutexLock lock(&mu_);
+    Stat stat;
+    int ret = zoo_exists(zk_, node.c_str(), 0, &stat);
+    if (ret == ZOK) {
+        return 0;
+    } else if (ret == ZNONODE) {
+        return 1;
+    }
+    return -1;
+}
+
 bool ZkClient::WatchNodes() {
     MutexLock lock(&mu_);
     if (zk_ == NULL || !connected_) {
