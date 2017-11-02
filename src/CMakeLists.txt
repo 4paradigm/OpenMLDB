@@ -44,6 +44,9 @@ target_link_libraries(skiplist_test gtest pthread)
 add_executable(flat_array_test base/flat_array_test.cc)
 target_link_libraries(flat_array_test gtest pthread)
 
+add_executable(schema_codec_test base/schema_codec_test.cc)
+target_link_libraries(schema_codec_test gtest pthread)
+
 add_executable(count_down_latch_test base/count_down_latch_test.cc)
 target_link_libraries(count_down_latch_test common gtest pthread)
 

@@ -1,5 +1,5 @@
 //
-// flat_array_iterator.h
+// flat_array.h
 // Copyright (C) 2017 4paradigm.com
 // Author vagrant
 // Date 2017-09-23
@@ -13,29 +13,17 @@
 #include <cstring>
 #include <stdint.h>
 #include <vector>
+#include "base/schema_codec.h"
 
 namespace rtidb {
 namespace base {
-
-enum ColType {
-    kString = 0,
-    kFloat = 1,
-    kInt32 = 2,
-    kInt64 = 3,
-    kDouble = 4,
-    kNull = 5
-};
-
-struct Column {
-    ColType type;
-    std::string buffer;
-};
 
 
 class FlatArrayCodec {
 
 public:
-    FlatArrayCodec(std::string* buffer, uint8_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
+    FlatArrayCodec(std::string* buffer, 
+                   uint8_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
     cur_cnt_(0), datas_(col_cnt_){
     }
 
@@ -262,7 +250,6 @@ private:
     const char* buffer_;
     uint8_t col_cnt_;
     uint32_t bsize_;
-
     // some run time field
     ColType type_;
     // data size of field
