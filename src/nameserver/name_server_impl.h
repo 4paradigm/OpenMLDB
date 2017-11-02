@@ -152,7 +152,6 @@ private:
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
-    std::map<::rtidb::api::OPType, uint64_t> op_timeout_map_;
     CondVar cv_;
 };
 

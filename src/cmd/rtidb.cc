@@ -163,6 +163,23 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
     tp.Print(true);
 }
 
+void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        uint32_t tid = boost::lexical_cast<uint32_t>(parts[2]);
+        bool ok = client->MakeSnapshot(parts[1], tid);
+        if (!ok) {
+            std::cout << "Fail to show tablets" << std::endl;
+            return;
+        }
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+    } 
+}
+
 void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("op_id");
@@ -738,6 +755,8 @@ void StartNsClient() {
             HandleNSShowTablet(parts, &client);
         } else  if (parts[0] == "showopstatus") {
             HandleNSShowOPStatus(parts, &client);
+        } else  if (parts[0] == "makesnapshot") {
+            HandleNSMakeSnapshot(parts, &client);
         } else {
             std::cout << "unsupported cmd" << std::endl;
         }

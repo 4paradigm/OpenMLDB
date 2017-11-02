@@ -16,7 +16,6 @@ DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep al
 DEFINE_int32(get_task_status_interval, 5000, "config the interval of get task status");
 DEFINE_int32(name_server_task_pool_size, 3, "config the size of name server task pool");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the timeout of task wait");
-DEFINE_int32(make_snapshot_task_timeout, 1000*60*60*24, "config the timeout of makesnapshot task");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");

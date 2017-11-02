@@ -21,7 +21,6 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
-DECLARE_int32(make_snapshot_task_timeout);
 
 namespace rtidb {
 namespace nameserver {
@@ -302,7 +301,6 @@ bool NameServerImpl::Init() {
         LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
         return false;
     }
-    op_timeout_map_.insert(std::make_pair(::rtidb::api::OPType::kMakeSnapshotOP, FLAGS_make_snapshot_task_timeout));
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
     dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_, 
             boost::bind(&NameServerImpl::OnLocked, this), boost::bind(&NameServerImpl::OnLostLock, this),
@@ -363,27 +361,6 @@ int NameServerImpl::UpdateTaskStatus() {
                                 response.task(idx).op_id(), 
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
                     task->task_info_->set_status(response.task(idx).status());
-                }
-            }
-        }
-    }
-    {
-        // set the timeouot task kFailed status
-        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-        MutexLock lock(&mu_);
-        for (auto& kv : task_map_) {
-            if (!kv.second->task_list_.empty()) {
-                std::shared_ptr<Task> task = kv.second->task_list_.front();
-                auto iter = op_timeout_map_.find(task->task_info_->op_type());
-                if (iter == op_timeout_map_.end() || iter->second == 0) {
-                    continue;
-                }
-                if (cur_time - task->start_time_ > iter->second) {
-                    LOG(INFO, "task is timeout. op_id[%lu], op_type[%s] task_type[%s]", 
-                                task->task_info_->op_id(),
-                                ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
-                                ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                    task->task_info_->set_status(::rtidb::api::kFailed);
                 }
             }
         }
