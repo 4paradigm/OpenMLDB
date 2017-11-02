@@ -11,7 +11,7 @@ message TablePartition {
     required uint32 pid = 3;
 }
 
-message TableMeta {
+message TableInfo {
 	required string name = 1;
 	optional uint32 ttl = 2 [default = 0];
 	optional uint32 seg_cnt = 3 [default = 8];
@@ -20,7 +20,12 @@ message TableMeta {
 }
 
 message CreateTableRequest {
-    required TableMeta table_meta = 1;
+    required TableInfo table_info = 1;
+}
+
+message MakeSnapshotNSRequest {
+	required string name = 1;
+    required uint32 pid = 2;
 }
 
 message GeneralResponse {
@@ -42,7 +47,26 @@ message ShowTabletResponse {
     optional string msg = 3;
 }
 
+message OPStatus {
+    required uint64 op_id = 1;
+    required string op_type = 2;
+    required string status = 3;
+    required string start_time = 4;
+    required string end_time = 5;
+    required string task_type = 6;
+}
+
+message ShowOPStatusRequest{}
+
+message ShowOPStatusResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated OPStatus op_status = 3;
+}
+
 service NameServer {
 	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
+    rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
+    rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
 }

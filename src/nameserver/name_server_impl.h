@@ -10,10 +10,12 @@
 #include "client/tablet_client.h"
 #include "mutex.h"
 #include "proto/name_server.pb.h"
+#include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
 #include "zk/zk_client.h"
 #include <atomic>
 #include <map>
+#include <list>
 #include <sofa/pbrpc/pbrpc.h>
 
 namespace rtidb {
@@ -38,6 +40,26 @@ struct TabletInfo {
 
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
+
+typedef boost::function<void ()> TaskFun;
+
+struct Task {
+    Task(const std::string& endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) : 
+            endpoint_(endpoint), task_info_(task_info) { start_time_ = 0; }
+    ~Task() {}
+    std::string endpoint_;
+    std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
+    uint64_t start_time_; // the timestamp when task start execute
+    TaskFun fun_;
+};
+
+struct OPData {
+    OPData() : start_time_("-"), end_time_("-") {}
+    ::rtidb::api::OPInfo op_info_;
+    std::list<std::shared_ptr<Task>> task_list_;
+    std::string start_time_;
+    std::string end_time_;
+};
 
 class NameServerImpl : public NameServer {
 
@@ -66,10 +88,29 @@ public:
             ShowTabletResponse* response,
             Closure* done);
 
-    int CreateTable(const ::rtidb::nameserver::TableMeta& table_meta, uint32_t tid,
-                    bool is_leader, std::map<uint32_t, std::vector<std::string> >& endpoint_vec);
+    void MakeSnapshotNS(RpcController* controller,
+            const MakeSnapshotNSRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void ShowOPStatus(RpcController* controller,
+            const ShowOPStatusRequest* request,
+            ShowOPStatusResponse* response,
+            Closure* done);
+
+    int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+            bool is_leader,
+            std::map<uint32_t, std::vector<std::string>>& endpoint_map);
 
     void CheckZkClient();
+
+    int UpdateTaskStatus();
+
+    int DeleteTask();
+
+    void ProcessTask();
+
+    int UpdateZKTaskStatus();
 
 private:
 
@@ -77,6 +118,14 @@ private:
     // 1.recover table meta from zookeeper
     // 2.recover table status from all tablets
     bool Recover();
+
+    bool RecoverTableInfo();
+
+    bool RecoverOPTask();
+
+    bool RecoverMakeSnapshot(std::shared_ptr<OPData> op_data);
+
+    void SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list);
 
     // Get the lock
     void OnLocked();
@@ -90,14 +139,20 @@ private:
 private:
     ::baidu::common::Mutex mu_;
     Tablets tablets_;
-    std::map<std::string, ::rtidb::nameserver::TableMeta> table_info_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
     ::baidu::common::ThreadPool thread_pool_;
-    std::string zk_table_path_;
-    std::string zk_data_path_;
+    ::baidu::common::ThreadPool task_thread_pool_;
     std::string zk_table_index_node_;
+    std::string zk_table_data_path_;
+    uint32_t table_index_;
+    std::string zk_op_index_node_;
+    std::string zk_op_data_path_;
+    uint64_t op_index_;
     std::atomic<bool> running_;
+    std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
+    CondVar cv_;
 };
 
 }

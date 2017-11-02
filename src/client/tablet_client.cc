@@ -22,6 +22,10 @@ TabletClient::~TabletClient() {
     delete tablet_;
 }
 
+std::string TabletClient::GetEndpoint() {
+    return endpoint_;
+}
+
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
         uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
     std::vector<std::string> endpoints;
@@ -93,6 +97,20 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::MakeSnapshot,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool TabletClient::MakeSnapshotNS(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+    ::rtidb::api::GeneralRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.mutable_task_info()->CopyFrom(*task_info);
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::MakeSnapshot,
             &request, &response, 12, 1);
@@ -220,6 +238,30 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
     }
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
     return kv_it;
+}
+
+bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
+    ::rtidb::api::TaskStatusRequest request;
+    bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::GetTaskStatus,
+            &request, &response, 12, 1);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
+    ::rtidb::api::DeleteTaskRequest request;
+    ::rtidb::api::GeneralResponse response;
+    for (auto op_id : op_id_vec) {
+        request.add_op_id(op_id);
+    }
+    bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::DeleteOPTask,
+            &request, &response, 12, 1);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    return true;
 }
 
 int TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {

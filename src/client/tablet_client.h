@@ -23,6 +23,8 @@ public:
 
     ~TabletClient();
 
+    std::string GetEndpoint();
+
     bool CreateTable(const std::string& name, 
                      uint32_t id, 
                      uint32_t pid,
@@ -70,6 +72,7 @@ public:
     bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
 
     bool MakeSnapshot(uint32_t tid, uint32_t pid);
+    bool MakeSnapshotNS(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     bool PauseSnapshot(uint32_t tid, uint32_t pid);
 
@@ -84,6 +87,10 @@ public:
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
                     const std::vector<std::string>& endpoints);
+
+    bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
+
+    bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     int GetTableStatus(uint32_t tid, uint32_t pid,

@@ -18,6 +18,7 @@
 #include "thread_pool.h"
 #include "zk/zk_client.h"
 #include <map>
+#include <list>
 #include <sofa/pbrpc/pbrpc.h>
 
 using ::google::protobuf::RpcController;
@@ -116,6 +117,16 @@ public:
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
+
+    void GetTaskStatus(RpcController* controller,
+            const ::rtidb::api::TaskStatusRequest* request,
+            ::rtidb::api::TaskStatusResponse* response,
+            Closure* done);
+
+    void DeleteOPTask(RpcController* controller,
+            const ::rtidb::api::DeleteTaskRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom
@@ -152,7 +163,7 @@ private:
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
-    void MakeSnapshotInternal(uint32_t tid, uint32_t pid);
+    void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 
@@ -167,6 +178,11 @@ private:
 
     int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 
+    void AddTask(std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
+            uint64_t op_id, ::rtidb::api::TaskType task_type);
+
 private:
     Tables tables_;
     Mutex mu_;
@@ -177,6 +193,7 @@ private:
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
+    std::list<std::shared_ptr<::rtidb::api::TaskInfo>> task_list_;
 };
 
 
