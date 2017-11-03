@@ -691,11 +691,12 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         }
         task_ptr.reset(request->task_info().New());
         task_ptr->CopyFrom(request->task_info());
-        task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-        AddTask(task_ptr);
         if (has_error) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        } else {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }
+        AddTask(task_ptr);
     }
     if (has_error) {
         return;
