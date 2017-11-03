@@ -549,43 +549,6 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
     }
 }
 
-void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 6) {
-        std::cout << "Bad scan format" << std::endl;
-        return;
-    }
-    try {
-        ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
-                boost::lexical_cast<uint32_t>(parts[2]),
-                parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
-                boost::lexical_cast<uint64_t>(parts[5]),
-                false);
-        if (it == NULL) {
-            std::cout << "Fail to scan table" << std::endl;
-        }else {
-            bool print = true;
-            if (parts.size() >= 7) {
-                if (parts[6] == "false") {
-                    print = false;
-                }
-            }
-            std::cout << "#\tTime\tData" << std::endl;
-            uint32_t index = 1;
-            while (it->Valid()) {
-                if (print) {
-                    std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
-                } 
-                index ++;
-                it->Next();
-            }
-            delete it;
-        }
-
-    } catch (std::exception const& e) {
-        std::cout<< "Invalid args, tid pid should be uint32_t, st and et should be uint64_t" << std::endl;
-    }
-
-
 void HandleClientBenchmarkPut(uint32_t tid, uint32_t pid,
                               uint32_t val_size, uint32_t run_times,
                               uint32_t ns,
