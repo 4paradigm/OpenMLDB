@@ -773,6 +773,9 @@ void StartNsClient() {
             HandleNSShowOPStatus(parts, &client);
         } else  if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
+            std::cout << "bye" << std::endl;
+            return;
         } else {
             std::cout << "unsupported cmd" << std::endl;
         }
