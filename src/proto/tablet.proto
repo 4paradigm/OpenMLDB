@@ -189,6 +189,7 @@ message TableMeta {
     optional bool wal = 9 [default = true];
     // term for change role
     optional uint64 term = 10;
+    optional bytes schema = 11;
 }
 
 message CreateTableRequest {

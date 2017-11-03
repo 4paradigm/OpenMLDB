@@ -928,7 +928,6 @@ void TabletImpl::CreateTable(RpcController* controller,
     if (table_meta->seg_cnt() > 0) {
         seg_cnt = table_meta->seg_cnt();
     }
-    // Note after create , request and response is unavaliable
     {
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
@@ -1052,8 +1051,8 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
                              endpoints, table_meta->wal());
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
-    // for tables_ 
     table->SetTerm(table_meta->term());
+    table->SetSchema(table_meta->schema());
     std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +
                 "_" + boost::lexical_cast<std::string>(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;

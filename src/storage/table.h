@@ -169,6 +169,14 @@ public:
         table_status_.store(table_status, boost::memory_order_relaxed);
     }
 
+    inline void SetSchema(const std::string& schema) {
+        schema_ = schema;
+    }
+
+    inline const std::string& GetSchema() {
+        return schema_;
+    }
+
 private:
     std::string const name_;
     uint32_t const id_;
@@ -186,6 +194,7 @@ private:
     bool wal_;
     uint64_t term_;
     boost::atomic<uint32_t> table_status_;
+    std::string schema_;
 };
 
 }
