@@ -45,21 +45,20 @@ typedef boost::function<void ()> TaskFun;
 
 struct Task {
     Task(const std::string& endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) : 
-            endpoint_(endpoint), task_info_(task_info) { start_time_ = 0; }
+            endpoint_(endpoint), task_info_(task_info) {}
     ~Task() {}
     std::string endpoint_;
     std::shared_ptr<::rtidb::api::TaskInfo> task_info_;
-    uint64_t start_time_; // the timestamp when task start execute
     TaskFun fun_;
 };
 
 struct OPData {
-    OPData() : start_time_("-"), end_time_("-") {}
+    OPData() : start_time_(0), end_time_(0) {}
     ::rtidb::api::OPInfo op_info_;
     ::rtidb::api::TaskStatus task_status_;
     std::list<std::shared_ptr<Task>> task_list_;
-    std::string start_time_;
-    std::string end_time_;
+    uint64_t start_time_;
+    uint64_t end_time_;
 };
 
 class NameServerImpl : public NameServer {

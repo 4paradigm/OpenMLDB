@@ -464,7 +464,7 @@ int NameServerImpl::DeleteTask() {
                 MutexLock lock(&mu_);
                 auto pos = task_map_.find(op_id);
                 if (pos != task_map_.end()) {
-                    pos->second->end_time_ = ::rtidb::base::GetNowTime();
+                    pos->second->end_time_ = time(0);
                     pos->second->task_status_ = ::rtidb::api::kDone;
                 }
             } else {
@@ -498,7 +498,6 @@ void NameServerImpl::ProcessTask() {
                                 ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str()); 
                     task_thread_pool_.AddTask(task->fun_);
-                    task->start_time_ = ::baidu::common::timer::get_micros() / 1000;
                     task->task_info_->set_status(::rtidb::api::kDoing);;
                 }
             }
@@ -564,7 +563,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     op_index_++;
 
     std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::rtidb::base::GetNowTime();
+    op_data->start_time_ = time(0);
     op_data->op_info_.set_op_id(op_index_);
     op_data->op_info_.set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
     op_data->op_info_.set_task_index(0);

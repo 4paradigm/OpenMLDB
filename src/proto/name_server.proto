@@ -51,8 +51,8 @@ message OPStatus {
     required uint64 op_id = 1;
     required string op_type = 2;
     required string status = 3;
-    required string start_time = 4;
-    required string end_time = 5;
+    required uint64 start_time = 4;
+    required uint64 end_time = 5;
     required string task_type = 6;
 }
 
