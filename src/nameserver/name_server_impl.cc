@@ -48,6 +48,14 @@ NameServerImpl::~NameServerImpl() {
 
 // become name server leader
 bool NameServerImpl::Recover() {
+    std::vector<std::string> endpoints;
+    if (!zk_client_->GetNodes(endpoints)) {
+        LOG(WARNING, "get endpoints node failed!");
+        return false;
+    }
+    MutexLock lock(&mu_);
+    UpdateTablets(endpoints);
+
     std::string value;
     if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
         if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
@@ -83,14 +91,6 @@ bool NameServerImpl::Recover() {
         return false;
     }
 
-    std::vector<std::string> endpoints;
-    if (!zk_client_->GetNodes(endpoints)) {
-        LOG(WARNING, "get endpoints node failed!");
-        return false;
-    }
-
-    MutexLock lock(&mu_);
-    UpdateTablets(endpoints);
     zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
     zk_client_->WatchNodes();
     return true;
