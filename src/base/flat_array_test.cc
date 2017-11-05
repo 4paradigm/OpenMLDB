@@ -45,6 +45,12 @@ TEST_F(FlatArrayTest, Encode) {
     ASSERT_EQ("helloworld", value2);
     it.Next();
     ASSERT_FALSE(it.Valid());
+    std::string buffer2;
+    FlatArrayCodec codec2(&buffer2, 2);
+    codec2.Append("wtz");
+    codec2.Append(1.0f);
+    codec2.Build();
+    std::cout << ::rtidb::base::DebugString(buffer2) << std::endl;
 }
 
 }

@@ -347,7 +347,7 @@ void TabletImpl::Scan(RpcController* controller,
     }else {
         pairs->resize(total_size);
     }
-
+    response->set_schema(table->GetSchema());
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;

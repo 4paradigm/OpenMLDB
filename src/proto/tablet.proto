@@ -148,6 +148,7 @@ message ScanResponse {
 	optional int32 code = 3;
 	optional uint32 count = 4;
 	optional RpcMetric metric = 6;
+    optional bytes schema = 7;
 }
 
 message BatchGetRequest {

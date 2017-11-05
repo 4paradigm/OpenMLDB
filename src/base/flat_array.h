@@ -56,6 +56,24 @@ public:
         return true;
     }
 
+    bool Append(uint32_t data) {
+        if (cur_cnt_ >= col_cnt_) {
+            return false;
+        }
+        Encode(kUInt32, static_cast<const void*>(&data), 4);
+        cur_cnt_ ++;
+        return true;
+    }
+
+    bool Append(uint64_t data) {
+        if (cur_cnt_ >= col_cnt_) {
+            return false;
+        }
+        Encode(kUInt64, static_cast<const void*>(&data), 8);
+        cur_cnt_ ++;
+        return true;
+    }
+
     bool Append(double data) {
         if (cur_cnt_ >= col_cnt_) {
             return false;
@@ -168,6 +186,19 @@ public:
         return true;
     }
 
+    bool GetUInt32(uint32_t* value) {
+        if (type_ != kUInt32) {
+            return false;
+        }
+        if (offset_ + 4 > bsize_) {
+            return false;
+        }
+        memcpy(static_cast<void*>(value), buffer_, 4);
+        buffer_ += 4;
+        offset_ += 4;
+        return true;
+    }
+
     bool GetInt32(int32_t* value) {
         if (type_ != kInt32) {
             return false;
@@ -181,6 +212,19 @@ public:
         return true;
     }
     
+    bool GetUInt64(uint64_t* value) {
+        if (type_ != kUInt64) {
+            return false;
+        }
+        if (offset_ + 4 > bsize_) {
+            return false;
+        }
+        memcpy(static_cast<void*>(value), buffer_, 8);
+        buffer_ += 8;
+        offset_ += 8;
+        return true;
+    }
+
     bool GetInt64(int64_t* value) {
         if (type_ != kInt64) {
             return false;
