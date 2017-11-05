@@ -715,16 +715,16 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         if (it == NULL) {
             std::cout << "Fail to scan table" << std::endl;
         }else {
-            //std::vector<std::pair<::rtidb::base::ColType, std::string> > raw;
-            //::rtidb::base::SchemaCodec codec;
-            //codec.Decode(schema, raw);
+            std::vector<std::pair<::rtidb::base::ColType, std::string> > raw;
+            ::rtidb::base::SchemaCodec codec;
+            codec.Decode(schema, raw);
             ::baidu::common::TPrinter tp(4);
-            /*std::vector<std::string> row;
+            std::vector<std::string> row;
             row.push_back("ts");
             for (uint32_t i = 0; i < raw.size(); i++) {
                 row.push_back(raw[i].second);
             }
-            tp.AddRow(row);*/
+            tp.AddRow(row);
             uint32_t index = 1;
             while (it->Valid()) {
                 rtidb::base::FlatArrayIterator fit(it->GetValue().data(), it->GetValue().size());
@@ -768,7 +768,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
                 it->Next();
             }
             delete it;
-            tp.Print(false);
+            tp.Print(true);
         }
 
     } catch (std::exception const& e) {
