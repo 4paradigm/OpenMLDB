@@ -26,7 +26,6 @@ TEST_F(SchemaCodecTest, Encode) {
     SchemaCodec codec;
     std::string buffer;
     codec.Encode(columns, buffer);
-
     std::vector<std::pair<ColType, std::string> > decoded_columns;
     codec.Decode(buffer, decoded_columns);
     ASSERT_EQ(2, decoded_columns.size());

@@ -70,9 +70,7 @@ public:
             uint8_t name_size = 0;
             memcpy(static_cast<void*>(&name_size), buffer, 1);
             buffer += 1;
-            std::string name;
-            name.resize(name_size);
-            memcpy(static_cast<void*>(&(name[0])), buffer, name_size);
+            std::string name(buffer, name_size);
             buffer += name_size;
             read_size += (1 + 1 + name_size);
             columns.push_back(std::pair<ColType, std::string>(static_cast<ColType>(type), name));
