@@ -60,7 +60,7 @@ public:
 TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_endpoint="127.0.0.1:9530";
     FLAGS_zk_cluster="127.0.0.1:12181";
-    FLAGS_zk_root_path="/rtidb3";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9631";
     NameServerImpl* nameserver = new NameServerImpl();
@@ -147,8 +147,8 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_TRUE(ok);
     std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
 	std::vector<std::string> vec;
-    ok = ::rtidb::base::GetFileName(snapshot_path, vec);
-    ASSERT_EQ(0, ok);
+    int ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
     ASSERT_EQ(2, vec.size());
 
     std::string table_data_node = FLAGS_zk_root_path + "/table/table_data/" + name; 
