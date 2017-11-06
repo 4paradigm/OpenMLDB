@@ -13,6 +13,7 @@
 #include <vector>
 #include "rpc/rpc_client.h"
 #include "proto/name_server.pb.h"
+#include "proto/client.pb.h"
 
 namespace rtidb {
 namespace client {
@@ -36,6 +37,8 @@ public:
     bool MakeSnapshot(const std::string& name, uint32_t pid);
 
     bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response);
+
+    bool CreateTable(const ::rtidb::client::TableInfo& table_info);
 	
 private:
     std::string endpoint_;

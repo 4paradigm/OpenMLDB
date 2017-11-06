@@ -25,7 +25,10 @@
 #include "timer.h"
 #include "version.h"
 #include "proto/tablet.pb.h"
+#include "proto/client.pb.h"
 #include "tprinter.h"
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -178,6 +181,26 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
     } catch(std::exception const& e) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     } 
+}
+
+void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+	::rtidb::client::TableInfo table_info;
+	int fd = open(parts[1].c_str(), O_RDONLY);
+    if (fd < 0) {
+        std::cout << "can not open file " << parts[1] << std::endl;
+        return;
+    }
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    google::protobuf::TextFormat::Parse(&fileInput, &table_info);
+	if (!client->CreateTable(table_info)) {
+		std::cout << "Fail to create table" << std::endl;
+		return;
+	}
 }
 
 void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -755,6 +778,8 @@ void StartNsClient() {
             HandleNSShowTablet(parts, &client);
         } else  if (parts[0] == "showopstatus") {
             HandleNSShowOPStatus(parts, &client);
+        } else  if (parts[0] == "create") {
+            HandleNSCreateTable(parts, &client);
         } else  if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
         } else {
