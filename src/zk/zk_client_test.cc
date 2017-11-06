@@ -30,6 +30,10 @@ public:
     ~ZkClientTest() {}
 };
 
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);
+}
+
 void WatchCallback(const std::vector<std::string>& endpoints) {
     LOG(INFO, "call back with endpoints size %d", endpoints.size());
     ASSERT_EQ(endpoint_size, endpoints.size());
@@ -74,12 +78,18 @@ TEST_F(ZkClientTest, CreateNode) {
     ZkClient client("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb1");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
-    // test create tmp node
-    //
     
     std::string assigned_path;
     ok = client.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
     ASSERT_TRUE(ok);
+
+    std::string node = "/rtidb1/test/node" + GenRand();
+    int ret = client.IsExistNode(node);
+    ASSERT_EQ(ret, 1);
+    ok = client.CreateNode(node, "value");
+    ASSERT_TRUE(ok);
+    ret = client.IsExistNode(node);
+    ASSERT_EQ(ret, 0);
     
     ZkClient client2("127.0.0.1:12181", 1000, "127.0.0.1:9527", "/rtidb1");
     ok = client2.Init();
