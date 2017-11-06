@@ -198,7 +198,10 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     }
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
-    google::protobuf::TextFormat::Parse(&fileInput, &table_info);
+    if (!google::protobuf::TextFormat::Parse(&fileInput, &table_info)) {
+        std::cout << "table meta file format error" << std::endl;
+        return;
+    }
 
     ::rtidb::nameserver::TableInfo ns_table_info;
     ns_table_info.set_name(table_info.name());
