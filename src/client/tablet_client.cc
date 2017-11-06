@@ -232,14 +232,6 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
     return false;
 }
 
-::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,
-                         uint32_t pid,
-                         const std::string& pk,
-                         uint64_t stime,
-                         uint64_t etime,
-                         bool showm) {
-    return Scan(tid, pid, pk.c_str(), stime, etime, showm);
-}
 
 ::rtidb::base::KvIterator* TabletClient::BatchGet(uint32_t tid, uint32_t pid,
         const std::vector<std::string>& keys) {
@@ -317,8 +309,7 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
-             uint64_t etime,
-             std::string& schema) {
+             uint64_t etime) {
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
@@ -327,7 +318,6 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
     request.set_pid(pid);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
-    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Scan,
             &request, response, 12, 1);
     response->mutable_metric()->set_rptime(::baidu::common::timer::get_micros());
@@ -335,8 +325,23 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
         return NULL;
     }
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
-    schema.assign(response->schema());
     return kv_it;
+}
+
+bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
+        std::string& schema) {
+    ::rtidb::api::GetTableSchemaRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::GetTableSchemaResponse response;
+    bool ok = client_.SendRequest(tablet_, 
+            &::rtidb::api::TabletServer_Stub::GetTableSchema,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        schema.assign(response.schema());
+        return true;
+    }
+    return false;
 }
 
 ::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,
