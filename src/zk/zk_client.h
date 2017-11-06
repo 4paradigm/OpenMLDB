@@ -96,6 +96,8 @@ public:
 
     bool WatchNodes();
 
+    int IsExistNode(const std::string& node);
+
     inline bool IsConnected() {
         MutexLock lock(&mu_);
         return connected_;

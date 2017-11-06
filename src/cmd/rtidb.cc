@@ -188,6 +188,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     row.push_back("op_typee");
     row.push_back("status");
     row.push_back("start_time");
+    row.push_back("execute_time");
     row.push_back("end_time");
     row.push_back("cur_task");
     ::baidu::common::TPrinter tp(row.size());
@@ -203,8 +204,23 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         row.push_back(std::to_string(response.op_status(idx).op_id()));
         row.push_back(response.op_status(idx).op_type());
         row.push_back(response.op_status(idx).status());
-        row.push_back(response.op_status(idx).start_time());
-        row.push_back(response.op_status(idx).end_time());
+        time_t rawtime = (time_t)response.op_status(idx).start_time();
+        tm* timeinfo = localtime(&rawtime);
+        char buf[20];
+        strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+        row.push_back(buf);
+        if (response.op_status(idx).end_time() != 0) {
+            row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()));
+            rawtime = (time_t)response.op_status(idx).end_time();
+            timeinfo = localtime(&rawtime);
+            buf[0] = '\0';
+            strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+            row.push_back(buf);
+        } else {
+            uint64_t cur_time = time(0);
+            row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()));
+            row.push_back("-");
+        }
         row.push_back(response.op_status(idx).task_type());
         tp.AddRow(row);
     }
@@ -1029,6 +1045,9 @@ void StartNsClient() {
             HandleNSShowOPStatus(parts, &client);
         } else  if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
+            std::cout << "bye" << std::endl;
+            return;
         } else {
             std::cout << "unsupported cmd" << std::endl;
         }
