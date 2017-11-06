@@ -643,7 +643,8 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
     uint32_t tid = request->tid();        
     uint32_t pid = request->pid();        
     bool has_error = true;
-    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+    MutexLock lock(&mu_);
+    std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
     do {
         if (!snapshot) {
             response->set_code(-1);
@@ -652,7 +653,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             done->Run();
             break;
         }
-        std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+        std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
         if (!table) {
             LOG(WARNING, "fail to find table with tid %ld, pid %ld", tid, pid);
             response->set_code(-1);
@@ -696,7 +697,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         } else {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }
-        AddTask(task_ptr);
+        AddOPTask(task_ptr);
     }
     if (has_error) {
         return;
@@ -1161,8 +1162,8 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
     done->Run();
 }
 
-void TabletImpl::AddTask(std::shared_ptr<::rtidb::api::TaskInfo> task) {
-    MutexLock lock(&mu_);
+void TabletImpl::AddOPTask(std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    mu_.AssertHeld();
     task_list_.push_back(task);
 }
 
