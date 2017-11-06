@@ -55,12 +55,14 @@ public:
     NameServerImplTest() {}
     ~NameServerImplTest() {}
 };
-
+inline std::string GenRand() {
+    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+}
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_endpoint="127.0.0.1:9530";
     FLAGS_zk_cluster="127.0.0.1:12181";
-    FLAGS_zk_root_path="/rtidb3";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9631";
     NameServerImpl* nameserver = new NameServerImpl();
