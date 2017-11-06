@@ -147,8 +147,8 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_TRUE(ok);
     std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
 	std::vector<std::string> vec;
-    ok = ::rtidb::base::GetFileName(snapshot_path, vec);
-    ASSERT_EQ(0, ok);
+    int cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, cnt);
     ASSERT_EQ(2, vec.size());
 
     std::string table_data_node = FLAGS_zk_root_path + "/table/table_data/" + name; 
