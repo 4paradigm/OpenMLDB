@@ -12,6 +12,7 @@
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "timer.h"
+#include "base/schema_codec.h"
 #include <gflags/gflags.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -46,6 +47,77 @@ public:
     ~TabletImplTest() {}
 };
 
+TEST_F(TabletImplTest, CreateTableWithSchema) {
+    
+    TabletImpl tablet;
+    tablet.Init();
+    {
+        uint32_t id = counter++;
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_wal(true);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        
+
+        //get schema
+        ::rtidb::api::GetTableSchemaRequest request0;
+        request0.set_tid(id);
+        request0.set_pid(1);
+        ::rtidb::api::GetTableSchemaResponse response0;
+        tablet.GetTableSchema(NULL, &request0, &response0, &closure);
+        ASSERT_EQ("", response0.schema());
+        
+    }
+    {
+        std::vector<std::pair<::rtidb::base::ColType, std::string> > columns;
+        columns.push_back(std::pair<::rtidb::base::ColType, std::string>(::rtidb::base::ColType::kString, "card"));
+        columns.push_back(std::pair<::rtidb::base::ColType, std::string>(::rtidb::base::ColType::kDouble, "amt"));
+        columns.push_back(std::pair<::rtidb::base::ColType, std::string>(::rtidb::base::ColType::kInt32, "apprv_cde"));
+        ::rtidb::base::SchemaCodec codec;
+        std::string buffer;
+        codec.Encode(columns, buffer);
+        uint32_t id = counter++;
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_wal(true);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_schema(buffer);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+
+        ::rtidb::api::GetTableSchemaRequest request0;
+        request0.set_tid(id);
+        request0.set_pid(1);
+        ::rtidb::api::GetTableSchemaResponse response0;
+        tablet.GetTableSchema(NULL, &request0, &response0, &closure);
+        ASSERT_TRUE(response0.schema().size() != 0);
+
+        std::vector<std::pair<::rtidb::base::ColType, std::string> > ncolumns;
+        codec.Decode(response0.schema(), ncolumns);
+        ASSERT_EQ(3, ncolumns.size());
+        ASSERT_EQ(::rtidb::base::ColType::kString, ncolumns[0].first);
+        ASSERT_EQ("card", ncolumns[0].second);
+        ASSERT_EQ(::rtidb::base::ColType::kDouble, ncolumns[1].first);
+        ASSERT_EQ("amt", ncolumns[1].second);
+        ASSERT_EQ(::rtidb::base::ColType::kInt32, ncolumns[2].first);
+        ASSERT_EQ("apprv_cde", ncolumns[2].second);
+    }
+    
+}
 
 TEST_F(TabletImplTest, TTL) {
     uint32_t id = counter++;
