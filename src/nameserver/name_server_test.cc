@@ -55,9 +55,7 @@ public:
     NameServerImplTest() {}
     ~NameServerImplTest() {}
 };
-inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
-}
+
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_endpoint="127.0.0.1:9530";
