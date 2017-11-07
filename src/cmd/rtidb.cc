@@ -220,6 +220,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of("-"));
             if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
+                printf("pid_group[%s] format error.", pid_group.c_str());
                 return;
             }
             start_index = boost::lexical_cast<uint32_t>(vec[0]);
