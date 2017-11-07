@@ -299,6 +299,7 @@ void TabletImpl::Scan(RpcController* controller,
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    // reduce the times of memcpy in vector
     tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
@@ -340,14 +341,12 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-
     std::string* pairs = response->mutable_pairs();
     if (tmp.size() <= 0) {
         pairs->resize(0);
     }else {
         pairs->resize(total_size);
     }
-
     LOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
@@ -540,11 +539,29 @@ void TabletImpl::AppendEntries(RpcController* controller,
     }
 }
 
+void TabletImpl::GetTableSchema(RpcController* controller,
+            const ::rtidb::api::GetTableSchemaRequest* request,
+            ::rtidb::api::GetTableSchemaResponse* response,
+            Closure* done) {
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        response->set_code(-1);
+        response->set_msg("table not found");
+        LOG(WARNING, "fail to find table with tid %d, pid %d", request->tid(),
+                request->pid());
+        done->Run();
+        return;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    response->set_schema(table->GetSchema());
+    done->Run();
+}
+
 void TabletImpl::GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,
             Closure* done) {
-
     MutexLock lock(&mu_);
     Tables::iterator it = tables_.begin();
     for (; it != tables_.end(); ++it) {
@@ -940,7 +957,6 @@ void TabletImpl::CreateTable(RpcController* controller,
     if (table_meta->seg_cnt() > 0) {
         seg_cnt = table_meta->seg_cnt();
     }
-    // Note after create , request and response is unavaliable
     {
         MutexLock lock(&mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
@@ -1064,8 +1080,8 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
                              endpoints, table_meta->wal());
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset);
-    // for tables_ 
     table->SetTerm(table_meta->term());
+    table->SetSchema(table_meta->schema());
     std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +
                 "_" + boost::lexical_cast<std::string>(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;

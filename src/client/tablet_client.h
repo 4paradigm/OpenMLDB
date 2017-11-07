@@ -36,6 +36,9 @@ public:
                      bool leader, const std::vector<std::string>& endpoints,
                      uint32_t seg_cnt=16);
 
+    bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
+                     uint64_t ttl, uint32_t seg_cnt, const std::string& schema);
+
     bool Put(uint32_t tid,
              uint32_t pid,
              const std::string& pk, 
@@ -46,7 +49,8 @@ public:
              uint32_t pid,
              const char* pk,
              uint64_t time,
-             const char* value);
+             const char* value,
+             uint32_t size);
 
     ::rtidb::base::KvIterator* BatchGet(uint32_t tid, uint32_t pid,
                                         const std::vector<std::string>& keys);
@@ -55,8 +59,7 @@ public:
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
-             uint64_t etime,
-             bool showm = false);
+             uint64_t etime);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
@@ -64,6 +67,8 @@ public:
              uint64_t stime,
              uint64_t etime,
              bool showm = false);
+    bool GetTableSchema(uint32_t tid, uint32_t pid, 
+                        std::string& schema);
 
     bool DropTable(uint32_t id, uint32_t pid);
 

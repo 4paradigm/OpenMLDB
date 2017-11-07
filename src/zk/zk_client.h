@@ -12,6 +12,7 @@
 #include "boost/function.hpp"
 #include "mutex.h"
 #include <map>
+#include <vector>
 
 extern "C" {
 #include "zookeeper/zookeeper.h"

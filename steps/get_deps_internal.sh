@@ -130,7 +130,7 @@ then
     echo "gflags-2.1.1.tar.gz exist"
 else
     # gflags
-    wget --no-check-certificate -O gflags-2.2.0.tar.gz https://github.com/elasticlog/deps/files/789206/gflags-2.2.0.tar.gz
+    wget http://pkg.4paradigm.com:81/rtidb/dev/gflags-2.2.0.tar.gz 
     tar zxf gflags-2.2.0.tar.gz
     cd gflags-2.2.0
     cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC >/dev/null
