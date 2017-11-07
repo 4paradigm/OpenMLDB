@@ -47,7 +47,7 @@ public:
         buffer.resize(byte_size);
         char* cbuffer = reinterpret_cast<char*>(&(buffer[0]));
         for (uint32_t i = 0; i < columns.size(); i++) {
-            const ColType& type = columns[i].first;
+            uint8_t type = (uint8_t) columns[i].first;
             const std::string& name = columns[i].second;
             memcpy(cbuffer, static_cast<const void*>(&type), 1);
             cbuffer += 1;
@@ -64,15 +64,22 @@ public:
         const char* buffer = schema.c_str();
         uint32_t read_size = 0;
         while (read_size < schema.size()) {
+            if (schema.size() - read_size < 2) {
+                return;
+            }
             uint8_t type = 0;
             memcpy(static_cast<void*>(&type), buffer, 1);
             buffer += 1;
             uint8_t name_size = 0;
             memcpy(static_cast<void*>(&name_size), buffer, 1);
             buffer += 1;
+            uint32_t total_size = 2 + name_size;
+            if (schema.size() - read_size < total_size) {
+                return;
+            }
             std::string name(buffer, name_size);
             buffer += name_size;
-            read_size += (1 + 1 + name_size);
+            read_size += total_size;
             columns.push_back(std::pair<ColType, std::string>(static_cast<ColType>(type), name));
         }
     }
