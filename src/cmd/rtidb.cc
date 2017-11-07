@@ -238,15 +238,14 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                 }
                 leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
             } else {
-                auto pos = follower_map.find(pid);
-                if (pos == follower_map.end()) {
+                if (follower_map.find(pid) == follower_map.end()) {
                     follower_map.insert(std::make_pair(pid, std::set<std::string>()));
                 }
-                if (pos->second.find(table_info.table_partition(idx).endpoint()) != pos->second.end()) {
+                if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
                     printf("pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
                     return;
                 }
-                pos->second.insert(table_info.table_partition(idx).endpoint());
+                follower_map[pid].insert(table_info.table_partition(idx).endpoint());
             }
         }
     }
