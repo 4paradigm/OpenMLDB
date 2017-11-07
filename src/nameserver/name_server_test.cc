@@ -36,7 +36,6 @@ namespace nameserver {
 uint32_t counter = 10;
 static int32_t endpoint_size = 1;
 
-
 inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
 }
@@ -55,7 +54,6 @@ public:
     NameServerImplTest() {}
     ~NameServerImplTest() {}
 };
-
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_endpoint="127.0.0.1:9530";

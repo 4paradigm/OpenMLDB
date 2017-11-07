@@ -1185,7 +1185,7 @@ void TabletImpl::AddOPTask(std::shared_ptr<::rtidb::api::TaskInfo> task) {
 
 std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type) {
-    MutexLock lock(&mu_);
+    mu_.AssertHeld();
     for (auto& task : task_list_) {
         if (task->op_id() == op_id && task->task_type() == task_type) {
             return task;
