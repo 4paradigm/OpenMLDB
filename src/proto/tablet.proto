@@ -148,6 +148,7 @@ message ScanResponse {
 	optional int32 code = 3;
 	optional uint32 count = 4;
 	optional RpcMetric metric = 6;
+    optional bytes schema = 7;
 }
 
 message BatchGetRequest {
@@ -189,6 +190,7 @@ message TableMeta {
     optional bool wal = 9 [default = true];
     // term for change role
     optional uint64 term = 10;
+    optional bytes schema = 11;
 }
 
 message CreateTableRequest {
@@ -212,6 +214,17 @@ message DropTableRequest {
 message DropTableResponse {
 	optional int32 code = 1;
 	optional string msg = 2;
+}
+
+message GetTableSchemaRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+}
+
+message GetTableSchemaResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional bytes schema = 3;
 }
 
 // raft protocol
@@ -301,6 +314,7 @@ service TabletServer {
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
+    rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);

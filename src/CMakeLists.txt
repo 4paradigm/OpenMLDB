@@ -41,6 +41,12 @@ target_link_libraries(replica_test gtest gflags replica log tablet storage base 
 add_executable(skiplist_test base/skiplist_test.cc)
 target_link_libraries(skiplist_test gtest pthread)
 
+add_executable(flat_array_test base/flat_array_test.cc)
+target_link_libraries(flat_array_test gtest pthread)
+
+add_executable(schema_codec_test base/schema_codec_test.cc)
+target_link_libraries(schema_codec_test gtest pthread)
+
 add_executable(count_down_latch_test base/count_down_latch_test.cc)
 target_link_libraries(count_down_latch_test common gtest pthread)
 
@@ -60,7 +66,7 @@ add_executable(kv_iterator_test  base/kv_iterator_test.cc proto/tablet.pb.cc)
 target_link_libraries(kv_iterator_test gtest pthread common protobuf)
 
 add_executable(tablet_impl_test  tablet/tablet_impl_test.cc base/status.cc)
-target_link_libraries(tablet_impl_test  gtest pthread  tablet gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client  zookeeper_mt tcmalloc_minimal)
+target_link_libraries(tablet_impl_test  gtest pthread  tablet gflags storage replica log common sofa-pbrpc  rt protobuf z snappy zk_client  zookeeper_mt tcmalloc_minimal)
 
 add_executable(tablet_impl_keep_alive_test tablet/tablet_impl_keep_alive_test.cc base/status.cc)
 target_link_libraries(tablet_impl_keep_alive_test   gtest pthread tablet gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt tcmalloc_minimal)
@@ -81,8 +87,8 @@ add_executable(binlog_test  replica/binlog_test.cc client/tablet_client.cc base/
 target_link_libraries(binlog_test gtest gflags pthread common sofa-pbrpc protobuf z snappy tablet zk_client zookeeper_mt storage replica log tcmalloc_minimal)
 
 add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc base/status.cc)
-target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt tcmalloc_minimal)
+target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags storage replica log common sofa-pbrpc  protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc)
-target_link_libraries(rtidb gflags pthread common client sofa-pbrpc protobuf z snappy tablet storage replica log nameserver rt zk_client zookeeper_mt tcmalloc_minimal)
 
+target_link_libraries(rtidb gflags pthread common client sofa-pbrpc protobuf z snappy tablet storage replica log nameserver  rt zk_client zookeeper_mt tcmalloc_minimal)

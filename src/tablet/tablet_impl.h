@@ -128,6 +128,11 @@ public:
             ::rtidb::api::TaskStatusResponse* response,
             Closure* done);
 
+    void GetTableSchema(RpcController* controller,
+            const ::rtidb::api::GetTableSchemaRequest* request,
+            ::rtidb::api::GetTableSchemaResponse* response,
+            Closure* done);
+
     void DeleteOPTask(RpcController* controller,
             const ::rtidb::api::DeleteTaskRequest* request,
             ::rtidb::api::GeneralResponse* response,
