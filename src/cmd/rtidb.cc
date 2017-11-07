@@ -14,6 +14,7 @@
 #include <gflags/gflags.h>
 #include <sofa/pbrpc/pbrpc.h>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 #include "logging.h"
 
 #include "tablet/tablet_impl.h"
@@ -25,7 +26,11 @@
 #include "timer.h"
 #include "version.h"
 #include "proto/tablet.pb.h"
+#include "proto/client.pb.h"
+#include "proto/name_server.pb.h"
 #include "tprinter.h"
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -178,6 +183,92 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
     } catch(std::exception const& e) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     } 
+}
+
+void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+	::rtidb::client::TableInfo table_info;
+	int fd = open(parts[1].c_str(), O_RDONLY);
+    if (fd < 0) {
+        std::cout << "can not open file " << parts[1] << std::endl;
+        return;
+    }
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    if (!google::protobuf::TextFormat::Parse(&fileInput, &table_info)) {
+        std::cout << "table meta file format error" << std::endl;
+        return;
+    }
+
+    ::rtidb::nameserver::TableInfo ns_table_info;
+    ns_table_info.set_name(table_info.name());
+    ns_table_info.set_ttl(table_info.ttl());
+    ns_table_info.set_seg_cnt(table_info.seg_cnt());
+    std::map<uint32_t, std::string> leader_map;
+    std::map<uint32_t, std::set<std::string>> follower_map;
+    for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
+        std::string pid_group = table_info.table_partition(idx).pid_group();
+        uint32_t start_index = 0;
+        uint32_t end_index = 0;
+        if (::rtidb::base::IsNumber(pid_group)) {
+            start_index = boost::lexical_cast<uint32_t>(pid_group);
+            end_index = start_index;
+        } else {
+            std::vector<std::string> vec;
+            boost::split(vec, pid_group, boost::is_any_of("-"));
+            if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
+                printf("pid_group[%s] format error.", pid_group.c_str());
+                return;
+            }
+            start_index = boost::lexical_cast<uint32_t>(vec[0]);
+            end_index = boost::lexical_cast<uint32_t>(vec[1]);
+
+        }
+        for (uint32_t pid = start_index; pid <= end_index; pid++) {
+            ::rtidb::nameserver::TablePartition* table_partition = ns_table_info.add_table_partition();
+            table_partition->set_endpoint(table_info.table_partition(idx).endpoint());
+            table_partition->set_pid(pid);
+            table_partition->set_is_leader(table_info.table_partition(idx).is_leader());
+            if (table_info.table_partition(idx).is_leader()) {
+                if (leader_map.find(pid) != leader_map.end()) {
+                    printf("pid %u has two leader\n", pid);
+                    return;
+                }
+                leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
+            } else {
+                if (follower_map.find(pid) == follower_map.end()) {
+                    follower_map.insert(std::make_pair(pid, std::set<std::string>()));
+                }
+                if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
+                    printf("pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
+                    return;
+                }
+                follower_map[pid].insert(table_info.table_partition(idx).endpoint());
+            }
+        }
+    }
+
+    // check follower's leader 
+    for (const auto& kv : follower_map) {
+        auto iter = leader_map.find(kv.first);
+        if (iter == leader_map.end()) {
+            printf("pid %u has not leader\n", kv.first);
+            return;
+        }
+        if (kv.second.find(iter->second) != kv.second.end()) {
+            printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
+            return;
+        }
+    }
+
+	if (!client->CreateTable(ns_table_info)) {
+		std::cout << "Fail to create table" << std::endl;
+		return;
+	}
+    std::cout << "Create table ok" << std::endl;
 }
 
 void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -771,6 +862,8 @@ void StartNsClient() {
             HandleNSShowTablet(parts, &client);
         } else  if (parts[0] == "showopstatus") {
             HandleNSShowOPStatus(parts, &client);
+        } else  if (parts[0] == "create") {
+            HandleNSCreateTable(parts, &client);
         } else  if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {

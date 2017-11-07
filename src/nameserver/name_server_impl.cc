@@ -90,9 +90,6 @@ bool NameServerImpl::Recover() {
         LOG(WARNING, "recover task failed!");
         return false;
     }
-
-    zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
-    zk_client_->WatchNodes();
     return true;
 }
 
@@ -309,6 +306,30 @@ bool NameServerImpl::Init() {
         LOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
         return false;
     }
+    std::string value;
+    if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
+        if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
+            LOG(WARNING, "create table index node failed!");
+            return false;
+        }
+        table_index_ = 1;
+        LOG(INFO, "init table_index[%u]", table_index_);
+    }
+    if (!zk_client_->GetNodeValue(zk_op_index_node_, value)) {
+        if (!zk_client_->CreateNode(zk_op_index_node_, "1")) {
+            LOG(WARNING, "create op index node failed!");
+            return false;
+        }
+        op_index_ = 1;
+        LOG(INFO, "init op_index[%u]", op_index_);
+    }
+    std::vector<std::string> endpoints;
+    if (!zk_client_->GetNodes(endpoints)) {
+        zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
+    }
+    zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
+    zk_client_->WatchNodes();
+
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
     dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_, 
             boost::bind(&NameServerImpl::OnLocked, this), boost::bind(&NameServerImpl::OnLostLock, this),

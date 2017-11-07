@@ -36,6 +36,8 @@ public:
     bool MakeSnapshot(const std::string& name, uint32_t pid);
 
     bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response);
+
+    bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info);
 	
 private:
     std::string endpoint_;

@@ -1,0 +1,14 @@
+package rtidb.client;
+
+message TablePartition {
+    required string endpoint = 1;
+    required string pid_group = 2;
+    required bool is_leader = 3;
+}
+
+message TableInfo {
+    required string name = 1;
+    required uint64 ttl = 2;
+    required uint32 seg_cnt = 3;
+    repeated TablePartition table_partition = 4;
+}

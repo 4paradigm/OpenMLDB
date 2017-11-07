@@ -6,6 +6,8 @@
 //
 
 #include "client/ns_client.h"
+#include <boost/lexical_cast.hpp>
+#include "base/strings.h"
 
 namespace rtidb {
 namespace client {
@@ -57,6 +59,19 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid) {
 bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response) {
     ::rtidb::nameserver::ShowOPStatusRequest request;
     bool ok = client_.SendRequest(ns_, &::rtidb::nameserver::NameServer_Stub::ShowOPStatus,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info) {
+    ::rtidb::nameserver::CreateTableRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
+    table_info_r->CopyFrom(table_info);
+    bool ok = client_.SendRequest(ns_, &::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         return true;
