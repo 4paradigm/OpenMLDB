@@ -135,7 +135,7 @@ void TabletImpl::Get(RpcController* controller,
     if (!table) {
         LOG(WARNING, "fail to find table with tid %ld, pid %ld", request->tid(),
                 request->pid());
-        response->set_code(10);
+        response->set_code(-1);
         response->set_msg("table not found");
         done->Run();
         return;
