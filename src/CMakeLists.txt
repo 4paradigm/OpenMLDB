@@ -84,5 +84,5 @@ add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_clie
 target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags storage replica log common sofa-pbrpc  protobuf z snappy zk_client zookeeper_mt tcmalloc_minimal)
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc)
-target_link_libraries(rtidb gflags pthread common client sofa-pbrpc protobuf z snappy tablet storage replica log nameserver zk_client zookeeper_mt tcmalloc_minimal)
+target_link_libraries(rtidb gflags pthread common client sofa-pbrpc protobuf z snappy tablet storage replica log nameserver rt zk_client zookeeper_mt tcmalloc_minimal)
 

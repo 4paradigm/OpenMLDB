@@ -53,6 +53,11 @@ public:
              ::rtidb::api::PutResponse* response,
              Closure* done);
 
+    void Get(RpcController* controller,
+             const ::rtidb::api::GetRequest* request,
+             ::rtidb::api::GetResponse* response,
+             Closure* done);
+
     void Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,

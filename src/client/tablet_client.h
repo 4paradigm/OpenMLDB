@@ -48,6 +48,12 @@ public:
              uint64_t time,
              const char* value);
 
+    bool Get(uint32_t tid, 
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t time,
+             std::string& value);
+
     ::rtidb::base::KvIterator* BatchGet(uint32_t tid, uint32_t pid,
                                         const std::vector<std::string>& keys);
 
