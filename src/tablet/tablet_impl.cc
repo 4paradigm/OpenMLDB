@@ -576,8 +576,8 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
             status->set_ttl(table->GetTTL());
-            status->set_ttl_offset(table->GetTTLOffset());
-            status->set_enable_expire(table->GetExpireStatus());
+            status->set_time_offset(table->GetTimeOffset());
+            status->set_is_expire(table->GetExpireStatus());
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
@@ -610,8 +610,8 @@ void TabletImpl::SetExpire(RpcController* controller,
 	done->Run();
 }
 
-void TabletImpl::SetTTLOffset(RpcController* controller,
-            const ::rtidb::api::SetTTLOffsetRequest* request,
+void TabletImpl::SetTTLClock(RpcController* controller,
+            const ::rtidb::api::SetTTLClockRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
@@ -622,8 +622,11 @@ void TabletImpl::SetTTLOffset(RpcController* controller,
         done->Run();
         return;
     }
-	table->SetTTLOffset(request->ttl_offset());
-    LOG(INFO, "set table ttl_offset[%ld]. tid[%u] pid[%u]", request->ttl_offset(), request->tid(), request->pid());
+    int64_t cur_time = time(NULL);
+    int64_t offset = request->timestamp() - cur_time;
+	table->SetTimeOffset(offset);
+    LOG(INFO, "set table virtual timestamp[%lu] cur timestamp[%lu]. tid[%u] pid[%u]", 
+                request->timestamp(), cur_time, request->tid(), request->pid());
 	response->set_code(0);
 	response->set_msg("ok");
 	done->Run();
@@ -1118,7 +1121,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
                              table_meta->ttl(), is_leader,
                              endpoints, table_meta->wal());
     table->Init();
-    table->SetTTLOffset(FLAGS_gc_safe_offset);
+    table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetTerm(table_meta->term());
     table->SetSchema(table_meta->schema());
     std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +

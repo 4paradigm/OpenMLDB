@@ -480,15 +480,24 @@ void HandleClientSetExpire(const std::vector<std::string> parts, ::rtidb::client
 
 }
 
-void HandleClientSetTTLOffset(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 3) {
+void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
         return;
     }
+	struct tm tm;
+    time_t timestamp;
+    if (parts[3].length() == 14 && ::rtidb::base::IsNumber(parts[3]) &&
+            strptime(parts[3].c_str(), "%Y%m%d%H%M%S", &tm) != NULL) {
+        timestamp = mktime(&tm);
+    } else {
+		printf("time format error (e.g 20171108204001)");
+		return;
+	}
     try {
-        bool ok = client->SetTTLOffset(boost::lexical_cast<uint32_t>(parts[1]), 
+        bool ok = client->SetTTLClock(boost::lexical_cast<uint32_t>(parts[1]), 
                                     boost::lexical_cast<uint32_t>(parts[2]), 
-                                    boost::lexical_cast<int64_t>(parts[3]));
+                                    timestamp);
         if (ok) {
             std::cout << "setttloffset ok" << std::endl;
         } else {
@@ -507,13 +516,13 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     row.push_back(std::to_string(table_status.offset()));
     row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
     row.push_back(::rtidb::api::TableState_Name(table_status.state()));
-    if (table_status.enable_expire()) {
+    if (table_status.is_expire()) {
         row.push_back("true");
     } else {
         row.push_back("false");
     }
     row.push_back(std::to_string(table_status.ttl()) + "min");
-    row.push_back(std::to_string(table_status.ttl_offset()) + "min");
+    row.push_back(std::to_string(table_status.time_offset()) + "min");
     tp.AddRow(row);
 }
 
@@ -1144,8 +1153,8 @@ void StartClient() {
             HandleClientGetTableStatus(parts, &client);
         } else if (parts[0] == "setexpire") {
             HandleClientSetExpire(parts, &client);
-        } else if (parts[0] == "setttloffset") {
-            HandleClientSetTTLOffset(parts, &client);
+        } else if (parts[0] == "setttlclock") {
+            HandleClientSetTTLClock(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

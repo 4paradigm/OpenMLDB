@@ -58,10 +58,7 @@ public:
 
     void Init();
 
-    void SetTTLOffset(int64_t offset);
-    int64_t GetTTLOffset() {
-        return ttl_offset_.load(boost::memory_order_relaxed) / (60 * 1000);
-    }
+    void SetGcSafeOffset(uint64_t offset);
 
     // Put a record
     void Put(const std::string& pk,
@@ -94,7 +91,7 @@ public:
 
     uint64_t SchedGc();
 
-    uint32_t GetTTL() const {
+    uint64_t GetTTL() const {
         return ttl_ / (60 * 1000);
     }
 
@@ -186,6 +183,12 @@ public:
     inline bool GetExpireStatus() {
         return enable_gc_.load(boost::memory_order_relaxed);
     }
+    inline void SetTimeOffset(int64_t offset) {
+        time_offset_.store(offset, boost::memory_order_relaxed);
+    }
+    inline int64_t GetTimeOffset() {
+       return  time_offset_.load(boost::memory_order_relaxed);
+    }
 
 private:
     std::string const name_;
@@ -197,7 +200,8 @@ private:
     boost::atomic<uint32_t> ref_;
     boost::atomic<bool> enable_gc_;
     uint64_t const ttl_;
-    boost::atomic<int64_t> ttl_offset_;
+    uint64_t ttl_offset_;
+    boost::atomic<uint64_t> time_offset_;
     boost::atomic<uint64_t> data_cnt_;
     bool is_leader_;
     std::vector<std::string> replicas_;

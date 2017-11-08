@@ -138,8 +138,8 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
-    void SetTTLOffset(RpcController* controller,
-            const ::rtidb::api::SetTTLOffsetRequest* request,
+    void SetTTLClock(RpcController* controller,
+            const ::rtidb::api::SetTTLClockRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
     //
