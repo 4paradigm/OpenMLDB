@@ -58,7 +58,10 @@ public:
 
     void Init();
 
-    void SetGcSafeOffset(uint64_t offset);
+    void SetTTLOffset(int64_t offset);
+    int64_t GetTTLOffset() {
+        return ttl_offset_.load(boost::memory_order_relaxed) / (60 * 1000);
+    }
 
     // Put a record
     void Put(const std::string& pk,
@@ -92,7 +95,7 @@ public:
     uint64_t SchedGc();
 
     uint32_t GetTTL() const {
-        return ttl_;
+        return ttl_ / (60 * 1000);
     }
 
     bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
@@ -177,6 +180,13 @@ public:
         return schema_;
     }
 
+    inline void SetExpire(bool is_expire) {
+        enable_gc_.store(is_expire, boost::memory_order_relaxed);
+    }
+    inline bool GetExpireStatus() {
+        return enable_gc_.load(boost::memory_order_relaxed);
+    }
+
 private:
     std::string const name_;
     uint32_t const id_;
@@ -185,9 +195,9 @@ private:
     // Segments is readonly
     Segment** segments_;
     boost::atomic<uint32_t> ref_;
-    bool enable_gc_;
+    boost::atomic<bool> enable_gc_;
     uint64_t const ttl_;
-    uint64_t ttl_offset_;
+    boost::atomic<int64_t> ttl_offset_;
     boost::atomic<uint64_t> data_cnt_;
     bool is_leader_;
     std::vector<std::string> replicas_;

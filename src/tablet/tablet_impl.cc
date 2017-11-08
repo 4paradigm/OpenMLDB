@@ -576,6 +576,8 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
             status->set_ttl(table->GetTTL());
+            status->set_ttl_offset(table->GetTTLOffset());
+            status->set_enable_expire(table->GetExpireStatus());
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
@@ -589,6 +591,43 @@ void TabletImpl::GetTableStatus(RpcController* controller,
     done->Run();
 }
 
+void TabletImpl::SetExpire(RpcController* controller,
+            const ::rtidb::api::SetExpireRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        LOG(WARNING, "table not exist. tid %ld, pid %ld", request->tid(), request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist");
+        done->Run();
+        return;
+    }
+	table->SetExpire(request->is_expire());
+    LOG(INFO, "set table expire[%d]. tid[%u] pid[%u]", request->is_expire(), request->tid(), request->pid());
+	response->set_code(0);
+	response->set_msg("ok");
+	done->Run();
+}
+
+void TabletImpl::SetTTLOffset(RpcController* controller,
+            const ::rtidb::api::SetTTLOffsetRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        LOG(WARNING, "table not exist. tid %ld, pid %ld", request->tid(), request->pid());
+        response->set_code(-1);
+        response->set_msg("table not exist");
+        done->Run();
+        return;
+    }
+	table->SetTTLOffset(request->ttl_offset());
+    LOG(INFO, "set table ttl_offset[%ld]. tid[%u] pid[%u]", request->ttl_offset(), request->tid(), request->pid());
+	response->set_code(0);
+	response->set_msg("ok");
+	done->Run();
+}
 
 bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
@@ -1079,7 +1118,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
                              table_meta->ttl(), is_leader,
                              endpoints, table_meta->wal());
     table->Init();
-    table->SetGcSafeOffset(FLAGS_gc_safe_offset);
+    table->SetTTLOffset(FLAGS_gc_safe_offset);
     table->SetTerm(table_meta->term());
     table->SetSchema(table_meta->schema());
     std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +

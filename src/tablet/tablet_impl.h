@@ -132,6 +132,16 @@ public:
             const ::rtidb::api::DeleteTaskRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
+
+    void SetExpire(RpcController* controller,
+            const ::rtidb::api::SetExpireRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void SetTTLOffset(RpcController* controller,
+            const ::rtidb::api::SetTTLOffsetRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
     //
     //http api
     // get all table informatiom

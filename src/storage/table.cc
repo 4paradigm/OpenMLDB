@@ -36,7 +36,7 @@ Table::Table(const std::string& name,
         bool wal):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
-    ref_(0), enable_gc_(false), ttl_(ttl),
+    ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), is_leader_(is_leader),
     replicas_(replicas), wal_(wal), term_(0), table_status_(kUndefined)
 {}
@@ -49,7 +49,7 @@ Table::Table(const std::string& name,
         bool wal):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
-    ref_(0), enable_gc_(false), ttl_(ttl),
+    ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), is_leader_(false),
     replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
 {}
@@ -71,7 +71,7 @@ void Table::Init() {
         enable_gc_ = true;
     }
     LOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
-            id_, pid_, seg_cnt_, ttl_);
+            id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
 }
 
 void Table::Put(const std::string& pk, uint64_t time,
@@ -103,31 +103,31 @@ uint64_t Table::Release() {
     return total_bytes;
 }
 
-void Table::SetGcSafeOffset(uint64_t offset) {
-    ttl_offset_ = offset;
+void Table::SetTTLOffset(int64_t offset) {
+    ttl_offset_.store(offset * 60 * 1000, boost::memory_order_relaxed);
 }
 
 uint64_t Table::SchedGc() {
-    if (!enable_gc_) {
+    if (!enable_gc_.load(boost::memory_order_relaxed)) {
         return 0;
     }
     LOG(INFO, "table %s start to make a gc", name_.c_str()); 
-    uint64_t time = ::baidu::common::timer::get_micros() / 1000 - ttl_offset_ - ttl_ * 60 * 1000; 
+    uint64_t time = ::baidu::common::timer::get_micros() / 1000 - ttl_offset_.load(boost::memory_order_relaxed) - ttl_; 
     uint64_t count = 0;
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         Segment* segment = segments_[i];
-        count += segment->Gc4TTL(time);
+        count += segment->Gc4TTL((uint64_t)time);
     }
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     return count;
 }
 
 bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
-    if (!enable_gc_ || ttl_ == 0) {
+    if (!enable_gc_.load(boost::memory_order_relaxed) || ttl_ == 0) {
         return false;
     }
-    uint64_t time = cur_time - ttl_offset_ - ttl_ * 60 * 1000; 
-    if (entry.ts() < time) {
+    uint64_t time = cur_time - ttl_offset_.load(boost::memory_order_relaxed) - ttl_;
+    if (entry.ts() < (uint64_t)time) {
         return true;
     }
     return false;

@@ -182,6 +182,7 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
             std::cout << "Fail to show tablets" << std::endl;
             return;
         }
+        std::cout << "MakeSnapshot ok" << std::endl;
     } catch(std::exception const& e) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     } 
@@ -276,7 +277,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("op_id");
-    row.push_back("op_typee");
+    row.push_back("op_type");
     row.push_back("status");
     row.push_back("start_time");
     row.push_back("execute_time");
@@ -301,7 +302,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
         row.push_back(buf);
         if (response.op_status(idx).end_time() != 0) {
-            row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()));
+            row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
             rawtime = (time_t)response.op_status(idx).end_time();
             timeinfo = localtime(&rawtime);
             buf[0] = '\0';
@@ -309,7 +310,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             row.push_back(buf);
         } else {
             uint64_t cur_time = time(0);
-            row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()));
+            row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).task_type());
@@ -460,19 +461,59 @@ void HandleClientDelReplica(const std::vector<std::string> parts, ::rtidb::clien
     }
 }
 
+void HandleClientSetExpire(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->SetExpire(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]),
+                            parts[3] == "true" ? true : false);
+        if (ok) {
+            std::cout << "setexpire ok" << std::endl;
+        } else {
+            std::cout << "Fail to setexpire" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad format" << std::endl;
+    }
+
+}
+
+void HandleClientSetTTLOffset(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->SetTTLOffset(boost::lexical_cast<uint32_t>(parts[1]), 
+                                    boost::lexical_cast<uint32_t>(parts[2]), 
+                                    boost::lexical_cast<int64_t>(parts[3]));
+        if (ok) {
+            std::cout << "setttloffset ok" << std::endl;
+        } else {
+            std::cout << "Fail to setttloffset" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad format" << std::endl;
+    }
+
+}
+
 void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common::TPrinter& tp) {
     std::vector<std::string> row;
-    char buf[30];
-    snprintf(buf, 30, "%u", table_status.tid());
-    row.push_back(buf);
-    snprintf(buf, 30, "%u", table_status.pid());
-    row.push_back(buf);
-    snprintf(buf, 30, "%lu", table_status.offset());
-    row.push_back(buf);
+    row.push_back(std::to_string(table_status.tid()));
+    row.push_back(std::to_string(table_status.pid()));
+    row.push_back(std::to_string(table_status.offset()));
     row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
     row.push_back(::rtidb::api::TableState_Name(table_status.state()));
-    snprintf(buf, 30, "%u", table_status.ttl());
-    row.push_back(buf);
+    if (table_status.enable_expire()) {
+        row.push_back("true");
+    } else {
+        row.push_back("false");
+    }
+    row.push_back(std::to_string(table_status.ttl()) + "min");
+    row.push_back(std::to_string(table_status.ttl_offset()) + "min");
     tp.AddRow(row);
 }
 
@@ -483,7 +524,9 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     row.push_back("offset");
     row.push_back("mode");
     row.push_back("state");
+    row.push_back("is_expire");
     row.push_back("ttl");
+    row.push_back("ttl_offset");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     if (parts.size() == 3) {
@@ -1099,6 +1142,10 @@ void StartClient() {
             HandleClientChangeRole(parts, &client);
         } else if (parts[0] == "gettablestatus") {
             HandleClientGetTableStatus(parts, &client);
+        } else if (parts[0] == "setexpire") {
+            HandleClientSetExpire(parts, &client);
+        } else if (parts[0] == "setttloffset") {
+            HandleClientSetTTLOffset(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
