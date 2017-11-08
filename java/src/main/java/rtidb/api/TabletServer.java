@@ -2,18 +2,6 @@ package rtidb.api;
 
 import java.util.concurrent.Future;
 
-import com._4paradigm.rtidb.Tablet;
-import com._4paradigm.rtidb.Tablet.CreateTableRequest;
-import com._4paradigm.rtidb.Tablet.CreateTableResponse;
-import com._4paradigm.rtidb.Tablet.DropTableRequest;
-import com._4paradigm.rtidb.Tablet.DropTableResponse;
-import com._4paradigm.rtidb.Tablet.GetRequest;
-import com._4paradigm.rtidb.Tablet.GetResponse;
-import com._4paradigm.rtidb.Tablet.PutRequest;
-import com._4paradigm.rtidb.Tablet.PutResponse;
-import com._4paradigm.rtidb.Tablet.ScanRequest;
-import com._4paradigm.rtidb.Tablet.ScanResponse;
-
 import io.brpc.client.RpcCallback;
 
 public interface TabletServer {

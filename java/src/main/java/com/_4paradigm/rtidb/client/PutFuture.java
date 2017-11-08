@@ -5,8 +5,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com._4paradigm.rtidb.Tablet;
-import com._4paradigm.rtidb.Tablet.PutResponse;
+import rtidb.api.Tablet;
+import rtidb.api.Tablet.PutResponse;
 
 public class PutFuture implements Future<Boolean>{
 

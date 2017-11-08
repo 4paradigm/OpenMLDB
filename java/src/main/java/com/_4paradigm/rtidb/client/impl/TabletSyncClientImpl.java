@@ -1,22 +1,16 @@
 package com._4paradigm.rtidb.client.impl;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com._4paradigm.rtidb.Tablet;
-import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.PutFuture;
-import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TabletSyncClient;
 import com.google.protobuf.ByteString;
 
+import rtidb.api.Tablet;
 import rtidb.api.TabletServer;
 
 public class TabletSyncClientImpl implements TabletSyncClient {

@@ -5,9 +5,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com._4paradigm.rtidb.Tablet;
-import com._4paradigm.rtidb.Tablet.GetResponse;
 import com.google.protobuf.ByteString;
+
+import rtidb.api.Tablet;
+import rtidb.api.Tablet.GetResponse;
 
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;

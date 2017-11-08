@@ -6,10 +6,6 @@ import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com._4paradigm.rtidb.Tablet;
-import com._4paradigm.rtidb.Tablet.GetResponse;
-import com._4paradigm.rtidb.Tablet.PutResponse;
-import com._4paradigm.rtidb.Tablet.ScanResponse;
 import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
@@ -17,6 +13,10 @@ import com._4paradigm.rtidb.client.TabletAsyncClient;
 import com.google.protobuf.ByteString;
 
 import io.brpc.client.RpcCallback;
+import rtidb.api.Tablet;
+import rtidb.api.Tablet.GetResponse;
+import rtidb.api.Tablet.PutResponse;
+import rtidb.api.Tablet.ScanResponse;
 import rtidb.api.TabletServer;
 
 public class TabletAsyncClientImpl implements TabletAsyncClient {
