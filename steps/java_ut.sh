@@ -15,13 +15,11 @@ cp -rf src/proto/tablet.proto java/src/main/proto/rtidb/api
 
 clear_debug
 
-./build/bin/rtidb --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9501 --role=tablet &
+./build/bin/rtidb --db_root_path=/tmp/$RANDOM --scan_endpoint=0.0.0.0:9502 --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9501 --role=tablet &
 
 sleep 2
 
 cd $ROOT_DIR/java
-mvn install
-
+mvn surefire-report:report
 clear_debug
-
 

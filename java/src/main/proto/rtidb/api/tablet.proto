@@ -1,8 +1,8 @@
+syntax="proto2";
 package rtidb.api;
 
 option cc_generic_services = true;
-option java_generic_services = true;
-option java_package = "com._4paradigm.rtidb";
+option java_package = "rtidb.api";
 option java_outer_classname = "Tablet";
 
 enum TableMode {
@@ -14,8 +14,13 @@ enum TableState {
     kTableUndefined = 0;
     kTableNormal = 1;
     kTableLoading = 2;
-    kTablePausing = 3;
-    kTablePaused = 4;
+    kMakingSnapshot = 3;
+    kSnapshotPaused  = 4;
+}
+
+enum TabletState {
+    kTabletOffline = 1;
+    kTabletHealthy = 10;
 }
 
 enum TableType {
@@ -31,6 +36,40 @@ enum TTLType {
     // keep the latest record
     kLatestTime = 3;
 }
+enum OPType {
+    kMakeSnapshotOP = 1;
+}
+
+enum TaskType {
+    kMakeSnapshot = 1;
+}
+
+enum TaskStatus {
+    kInited = 1;
+    kDoing = 2;
+    kDone = 3;
+    kFailed = 4;
+}
+
+message TaskInfo {
+    required uint64 op_id = 1;
+    required OPType op_type = 2;
+    required TaskType task_type = 3;
+    required TaskStatus status = 4;
+}
+
+message OPInfo {
+    required uint64 op_id = 1;
+    required OPType op_type = 2;
+    required uint32 task_index = 3;
+    required string data = 4;
+}
+
+message Manifest {
+    optional uint64 offset = 1;
+    optional string name = 2;
+    optional uint64 count = 3;
+}
 
 message PutRequest {
 	// the prefix key
@@ -42,23 +81,6 @@ message PutRequest {
     optional uint32 pid = 5;
 }
 
-message ReplicateLogRequest {
-	optional int32 tid = 1;
-	optional int32 pid = 2;
-	optional int32 size = 3;
-	optional int64 offset = 4;
-	optional bytes data = 5;
-	optional int32 seg_idx = 6;
-}
-
-message ReplicateLogResponse {
-	optional int32 tid = 1;
-	optional int32 pid = 2;
-	optional int32 code = 3;
-	optional int64 offset = 4;
-	optional string msg = 5;
-}
-
 message PutResponse {
 	optional int32 code = 1;
 	optional string msg = 2;
@@ -67,6 +89,20 @@ message PutResponse {
 message GeneralRequest {
 	required int32 tid = 1;
     required int32 pid = 2;
+    optional TaskInfo task_info = 3;
+}
+
+message TaskStatusRequest {
+}
+
+message TaskStatusResponse {
+	optional int32 code = 1;
+	optional string msg = 2;
+    repeated TaskInfo task = 3;
+}
+
+message DeleteTaskRequest {
+	repeated uint64 op_id = 1;
 }
 
 message GeneralResponse {
@@ -85,6 +121,7 @@ message ScanRequest {
 	optional RpcMetric metric = 5;
 	optional uint32 tid = 6;
 	optional uint32 pid = 7;
+    optional bool enable_remove_duplicated_record = 8 [default=false];
 }
 
 
@@ -111,6 +148,7 @@ message ScanResponse {
 	optional int32 code = 3;
 	optional uint32 count = 4;
 	optional RpcMetric metric = 6;
+    optional bytes schema = 7;
 }
 
 message BatchGetRequest {
@@ -127,7 +165,7 @@ message BatchGetResponse {
     optional bytes pairs = 3;
 }
 
-message AddReplicaRequest {
+message ReplicaRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string endpoint = 3;
@@ -138,12 +176,12 @@ message AddReplicaResponse {
     optional string msg = 2;
 }
 
-message CreateTableRequest {
+message TableMeta {
 	optional int32 tid = 1;
 	optional string name = 2;
 	optional int32 pid = 3;
 	// time to live for every row
-	optional int32 ttl = 4;
+	optional uint64 ttl = 4;
 	optional int32 seg_cnt = 5;
 	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
     // the slave endpoints
@@ -152,6 +190,11 @@ message CreateTableRequest {
     optional bool wal = 9 [default = true];
     // term for change role
     optional uint64 term = 10;
+    optional bytes schema = 11;
+}
+
+message CreateTableRequest {
+    optional TableMeta table_meta = 1;
 }
 
 message CreateTableResponse {
@@ -160,19 +203,7 @@ message CreateTableResponse {
 }
 
 message LoadTableRequest {
-	optional int32 tid = 1;
-	optional string name = 2;
-	optional int32 pid = 3;
-	// time to live for every row
-	optional int32 ttl = 4;
-	optional int32 seg_cnt = 5;
-	optional TTLType ttl_type = 6 [default = kAbsoluteTime];
-    // the slave endpoints
-	repeated string replicas = 7;
-	optional TableMode mode = 8;
-    optional bool wal = 9 [default = true];
-    // term for change role
-    optional uint64 term = 10;
+    optional TableMeta table_meta = 1;
 }
 
 message DropTableRequest {
@@ -183,6 +214,17 @@ message DropTableRequest {
 message DropTableResponse {
 	optional int32 code = 1;
 	optional string msg = 2;
+}
+
+message GetTableSchemaRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+}
+
+message GetTableSchemaResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional bytes schema = 3;
 }
 
 // raft protocol
@@ -212,6 +254,8 @@ message AppendEntriesResponse {
 }
 
 message ChangeRoleRequest {
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
     optional uint64 term = 1;
     optional TableMode mode = 2;
     repeated string replicas = 3;
@@ -233,6 +277,7 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
+    optional uint32 ttl = 6;
 }
 
 message GetTableStatusResponse {
@@ -241,22 +286,45 @@ message GetTableStatusResponse {
     optional string msg = 3;
 }
 
+message GetRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string key = 3;
+    optional uint64 ts = 4 [default = 0];
+}
+
+message GetResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional string key = 3;
+    optional uint64 ts = 4;
+    optional bytes value = 5;
+}
+
 service TabletServer {
 
     // write and read api for client
 	rpc Put(PutRequest) returns (PutResponse);
+    rpc Get(GetRequest) returns (GetResponse);
 	rpc Scan(ScanRequest) returns (ScanResponse);
     rpc BatchGet(BatchGetRequest) returns (BatchGetResponse);
 
     // table api for master
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+    rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
+    rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
-    rpc AddReplica(AddReplicaRequest) returns(AddReplicaResponse);
+    rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
+    rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
-    rpc PauseShnapshot(GeneralRequest) returns(GeneralResponse);
-    rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
+    rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
+
+    rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
+    rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
 }

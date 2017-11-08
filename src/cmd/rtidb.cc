@@ -318,6 +318,32 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     tp.Print(true);
 }
 
+void HandleClientGet(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "Bad get format, eg get tid pid key time" << std::endl;
+        return;
+    }
+    try {
+        std::string value;
+        bool ok = client->Get(boost::lexical_cast<uint32_t>(parts[1]),
+                              boost::lexical_cast<uint32_t>(parts[2]),
+                              parts[3],
+                              boost::lexical_cast<uint64_t>(parts[4]),
+                              value);
+        if (ok) {
+            std::cout << "value :" << value << std::endl;
+        }else {
+            std::cout << "Get failed" << std::endl; 
+        }
+
+    
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
+    }
+
+}
+
+
 // the input format like put 1 1 key time value
 void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {
@@ -1067,6 +1093,8 @@ void StartClient() {
             HandleClientSPut(parts, &client);
         } else if (parts[0] == "create") {
             HandleClientCreateTable(parts, &client);
+        } else if (parts[0] == "get") {
+            HandleClientGet(parts, &client);
         } else if (parts[0] == "screate") {
             HandleClientSCreateTable(parts, &client);
         } else if (parts[0] == "scan") {

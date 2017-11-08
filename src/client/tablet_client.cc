@@ -448,6 +448,26 @@ void TabletClient::ShowTp() {
     percentile_.clear();
 }
 
+bool TabletClient::Get(uint32_t tid, 
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t time,
+             std::string& value) {
+    ::rtidb::api::GetRequest request;
+    ::rtidb::api::GetResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    request.set_ts(time);
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Get,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    value.assign(response.value());
+    return true;
+}
+
 }
 }
 

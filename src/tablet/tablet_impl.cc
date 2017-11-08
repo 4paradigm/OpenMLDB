@@ -120,6 +120,59 @@ bool TabletImpl::Init() {
     return true;
 }
 
+void TabletImpl::Get(RpcController* controller,
+             const ::rtidb::api::GetRequest* request,
+             ::rtidb::api::GetResponse* response,
+             Closure* done) {
+    if (request->tid() < 1) {
+        LOG(WARNING, "invalid table tid %ld", request->tid());
+        response->set_code(11);
+        response->set_msg("invalid table id");
+        done->Run();
+        return;
+    }
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        LOG(WARNING, "fail to find table with tid %ld, pid %ld", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not found");
+        done->Run();
+        return;
+    }
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+        LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
+                      request->tid(), request->pid());
+        response->set_code(20);
+        response->set_msg("table is unavailable now");
+        done->Run();
+        return;
+    }
+    ::rtidb::storage::Ticket ticket;
+    Table::Iterator* it = table->NewIterator(request->key(), ticket);
+    if (request->ts() > 0) {
+        it->Seek(request->ts());
+    }else {
+        it->SeekToFirst();
+    }
+    if (it->Valid()) {
+        response->set_code(0);
+        response->set_msg("ok");
+        response->set_key(request->key());
+        response->set_ts(it->GetKey());
+        response->set_value(it->GetValue()->data, it->GetValue()->size);
+        LOG(DEBUG, "Get key %s ts %lu value %s", request->key().c_str(),
+                request->ts(), it->GetValue()->data);
+    }else {
+        response->set_code(1);
+        response->set_msg("Not Found");
+        LOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
+                request->ts());
+
+    }
+    done->Run();
+}
+
 void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
