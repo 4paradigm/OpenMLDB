@@ -17,23 +17,7 @@
             <scope>test</scope>
         </dependency>
   
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>2.6.1</version>
-        </dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-all</artifactId>
-			<version>4.0.4.Final</version>
-		</dependency>
 		
-		<!-- https://mvnrepository.com/artifact/javassist/javassist -->
-<dependency>
-    <groupId>javassist</groupId>
-    <artifactId>javassist</artifactId>
-    <version>3.12.1.GA</version>
-</dependency>
 		
 
 
@@ -57,9 +41,12 @@
             <version>1.1.2</version>
         </dependency>
         
+        <dependency>
+        	<groupId>io.brpc</groupId>
+    		<artifactId>brpc-java</artifactId>
+    		<version>1.0.0</version>
+        </dependency>
         
-       
-		       
     </dependencies>
     <build>
 		<plugins>
