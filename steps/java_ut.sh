@@ -20,7 +20,6 @@ clear_debug
 sleep 2
 
 cd $ROOT_DIR/java
-mvn install
-
+mvn surefire-report:report
 clear_debug
 

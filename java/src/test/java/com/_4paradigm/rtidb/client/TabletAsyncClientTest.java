@@ -19,7 +19,7 @@ public class TabletAsyncClientTest {
     private static TabletAsyncClient client = null;
     private static TabletSyncClient syncClient = null;
     static {
-    	rpcClient = TabletClientBuilder.buildRpcClient("192.168.33.10", 9527, 1000, 3);
+    	rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 1000, 3);
     	client = TabletClientBuilder.buildAsyncClient(rpcClient);
     	syncClient = TabletClientBuilder.buildSyncClient(rpcClient);
     }
