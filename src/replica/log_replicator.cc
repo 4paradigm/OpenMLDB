@@ -322,7 +322,8 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
         nodes_.push_back(std::shared_ptr<ReplicateNode>(
                     new ReplicateNode(endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(), rpc_client_)));
         endpoints_.push_back(endpoint);
-        LOG(INFO, "add ReplicateNode with endpoint %s ok", endpoint.c_str());
+        LOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]",
+                    endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
     tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
     return true;
@@ -347,7 +348,8 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
         }
         nodes_.erase(it);
         endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
-        LOG(DEBUG, "delete replica endpoint[%s]", endpoint.c_str());
+        LOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", 
+                    endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
     return true;
 }
