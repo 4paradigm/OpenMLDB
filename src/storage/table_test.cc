@@ -86,6 +86,26 @@ TEST_F(TableTest, SchedGc) {
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    table->Put("test", 9527, "test", 4);
+    table->Put("test", now, "tes2", 4);
+    uint64_t count = table->SchedGc();
+    ASSERT_EQ(1, count);
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("test", ticket);
+    it->Seek(now);
+    ASSERT_TRUE(it->Valid());
+    std::string value_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("tes2", value_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+    delete table;
+}
+
+TEST_F(TableTest, OffSet) {
+    Table* table = new Table("tx_log", 1, 1, 8 , 1);
+    table->Init();
+
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->SetTimeOffset(-60 * 4);
     table->Put("test", now - 10 * 60 * 1000, "test", 4);
     table->Put("test", now - 3 * 60 * 1000, "test", 4);
