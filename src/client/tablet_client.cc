@@ -437,6 +437,36 @@ bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& end
     return true;
 }
 
+bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
+    ::rtidb::api::SetExpireRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_is_expire(is_expire);
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::SetExpire,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+
+}
+
+bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
+    ::rtidb::api::SetTTLClockRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_timestamp(timestamp);
+    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::SetTTLClock,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+
+}
+
 void TabletClient::ShowTp() {
     std::sort(percentile_.begin(), percentile_.end());
     uint32_t size = percentile_.size();

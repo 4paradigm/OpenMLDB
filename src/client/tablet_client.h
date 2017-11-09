@@ -106,7 +106,10 @@ public:
     int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     int GetTableStatus(uint32_t tid, uint32_t pid,
                     ::rtidb::api::TableStatus& table_status);
-
+    
+    bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
+    bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
+    
     void ShowTp();
 
 private:

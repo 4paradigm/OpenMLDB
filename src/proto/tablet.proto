@@ -221,6 +221,18 @@ message GetTableSchemaRequest {
     optional int32 pid = 2;
 }
 
+message SetTTLClockRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional uint64 timestamp = 3;
+}
+
+message SetExpireRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional bool is_expire = 3;
+}
+
 message GetTableSchemaResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -277,7 +289,9 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
-    optional uint32 ttl = 6;
+    optional uint64 ttl = 6;
+    optional bool is_expire = 7;
+    optional int64 time_offset = 8;
 }
 
 message GetTableStatusResponse {
@@ -324,6 +338,9 @@ service TabletServer {
     rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
+
+    rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
+    rpc SetTTLClock(SetTTLClockRequest) returns(GeneralResponse);
 
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);

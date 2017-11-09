@@ -14,8 +14,8 @@ class TestGetTableStatus(TestCaseBase):
         self.assertTrue('ok' in rs)
         table_status = self.get_table_status(self.leader)
         self.assertTrue(len(table_status) > 1)
-        self.assertEqual(table_status[(0, 0)], ['0', 'kTableFollower', 'kTableUndefined', '43200'])
-        self.assertEqual(table_status[(self.tid, self.pid)], ['0', 'kTableLeader', 'kTableNormal', '144000'])
+        self.assertEqual(table_status[(0, 0)], ['0', 'kTableFollower', 'kTableUndefined', 'true', '43200min', '0s'])
+        self.assertEqual(table_status[(self.tid, self.pid)], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_gettablestatus_tid_pid(self):
@@ -26,7 +26,7 @@ class TestGetTableStatus(TestCaseBase):
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableLeader', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_gettablestatus_making_snapshot(self):
@@ -43,7 +43,7 @@ class TestGetTableStatus(TestCaseBase):
         self.assertTrue('MakeSnapshot ok' in rs2)
 
         table_status = self.get_table_status(self.leader)
-        self.assertEqual(table_status[(self.tid, self.pid)], ['5000', 'kTableLeader', 'kMakingSnapshot', '144000'])
+        self.assertEqual(table_status[(self.tid, self.pid)], ['5000', 'kTableLeader', 'kMakingSnapshot', 'true', '144000min', '0s'])
 
 
 if __name__ == "__main__":
