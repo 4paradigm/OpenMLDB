@@ -622,7 +622,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
         done->Run();
         return;
     }
-    int64_t cur_time = time(NULL);
+    int64_t cur_time = ::baidu::common::timer::get_micros() / 1000;;
     int64_t offset = request->timestamp() - cur_time;
 	table->SetTimeOffset(offset);
     LOG(INFO, "set table virtual timestamp[%lu] cur timestamp[%lu]. tid[%u] pid[%u]", 

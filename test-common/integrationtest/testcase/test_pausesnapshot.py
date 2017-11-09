@@ -15,7 +15,7 @@ class TestPauseSnapshot(TestCaseBase):
         rs2 = self.pausesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs2)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableFollower', 'kSnapshotPaused', '144000'])
+        self.assertEqual(table_status, ['0', 'kTableFollower', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
     def test_pausesnapshot_leader_can_put_can_be_synchronized(self):
@@ -38,7 +38,7 @@ class TestPauseSnapshot(TestCaseBase):
         self.assertTrue('Put ok', rs4)
         self.assertTrue('v' in self.scan(self.slave1, self.tid, self.pid, 'k', self.now(), 1))
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['1', 'kTableLeader', 'kSnapshotPaused', '144000'])
+        self.assertEqual(table_status, ['1', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
 if __name__ == "__main__":

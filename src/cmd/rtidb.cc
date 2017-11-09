@@ -522,7 +522,7 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
         row.push_back("false");
     }
     row.push_back(std::to_string(table_status.ttl()) + "min");
-    row.push_back(std::to_string(table_status.time_offset()) + "min");
+    row.push_back(std::to_string(table_status.time_offset()) + "s");
     tp.AddRow(row);
 }
 
@@ -533,7 +533,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     row.push_back("offset");
     row.push_back("mode");
     row.push_back("state");
-    row.push_back("is_expire");
+    row.push_back("enable_expire");
     row.push_back("ttl");
     row.push_back("ttl_offset");
     ::baidu::common::TPrinter tp(row.size());

@@ -15,7 +15,7 @@ class TestChangeRole(TestCaseBase):
         rs2 = self.changerole(self.slave1, self.tid, self.pid, 'leader')
         self.assertTrue('ChangeRole ok' in rs2)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableLeader', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_changerole_to_leader_can_put(self):
@@ -72,7 +72,7 @@ class TestChangeRole(TestCaseBase):
         rs3 = self.pausesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs3)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableLeader', 'kSnapshotPaused', '144000'])
+        self.assertEqual(table_status, ['0', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
     def test_changerole_to_leader_can_addreplica(self):

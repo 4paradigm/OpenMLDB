@@ -32,7 +32,7 @@ class TestLoadTable(TestCaseBase):
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertTrue('LoadTable ok' in rs3)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
         rs4 = self.put(self.slave1,
                  self.tid,
                  self.pid,
@@ -69,7 +69,7 @@ class TestLoadTable(TestCaseBase):
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['6', 'kTableFollower', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['6', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         rs4 = self.put(self.slave1,
                        self.tid,
                        self.pid,
@@ -126,7 +126,7 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('LoadTable ok' in rs3)
 
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['1', 'kTableFollower', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
 
         rs4 = self.put(self.leader,
                        self.tid,
@@ -138,7 +138,7 @@ class TestLoadTable(TestCaseBase):
         time.sleep(1)
 
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['2', 'kTableFollower', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['2', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         self.assertTrue('v1' in self.scan(self.slave1, self.tid, self.pid, 'k1', self.now(), 1))
         self.assertTrue('v2' in self.scan(self.slave1, self.tid, self.pid, 'k2', self.now(), 1))
 
@@ -173,7 +173,7 @@ class TestLoadTable(TestCaseBase):
         self.assertFalse('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey1', self.now(), 1))
 
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_loadtable_ttl_zero(self):
@@ -255,7 +255,7 @@ class TestLoadTable(TestCaseBase):
         rs4 = self.pausesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs4)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['1', 'kTableFollower', 'kSnapshotPaused', '144000'])
+        self.assertEqual(table_status, ['1', 'kTableFollower', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
     def test_loadtable_by_snapshot_and_binlog(self):
@@ -402,7 +402,7 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue(mf['name'])
         self.assertEqual(mf['count'], '6')
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_loadtable_after_recoversnapshot(self):
@@ -451,7 +451,7 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue(mf['name'])
         self.assertEqual(mf['count'], '2')
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['2', 'kTableLeader', 'kTableNormal', '144000'])
+        self.assertEqual(table_status, ['2', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_loadtable_manitest_deleted(self):

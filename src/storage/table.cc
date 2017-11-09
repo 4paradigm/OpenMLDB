@@ -37,7 +37,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), is_leader_(is_leader),
+    ttl_offset_(60 * 1000), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 
@@ -50,7 +50,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), is_leader_(false),
+    ttl_offset_(60 * 1000), is_leader_(false), time_offset_(0),
     replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
 {}
 

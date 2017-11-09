@@ -184,10 +184,10 @@ public:
         return enable_gc_.load(boost::memory_order_relaxed);
     }
     inline void SetTimeOffset(int64_t offset) {
-        time_offset_.store(offset, boost::memory_order_relaxed);
+        time_offset_.store(offset * 1000, boost::memory_order_relaxed); // convert to millisecond
     }
     inline int64_t GetTimeOffset() {
-       return  time_offset_.load(boost::memory_order_relaxed);
+       return  time_offset_.load(boost::memory_order_relaxed) / 1000;
     }
 
 private:
@@ -201,9 +201,9 @@ private:
     boost::atomic<bool> enable_gc_;
     uint64_t const ttl_;
     uint64_t ttl_offset_;
-    boost::atomic<uint64_t> time_offset_;
     boost::atomic<uint64_t> data_cnt_;
     bool is_leader_;
+    boost::atomic<uint64_t> time_offset_;
     std::vector<std::string> replicas_;
     bool wal_;
     uint64_t term_;
