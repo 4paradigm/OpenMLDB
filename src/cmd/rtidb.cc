@@ -525,9 +525,9 @@ void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::clie
                                     boost::lexical_cast<uint32_t>(parts[2]), 
                                     timestamp);
         if (ok) {
-            std::cout << "setttloffset ok" << std::endl;
+            std::cout << "setttlclock ok" << std::endl;
         } else {
-            std::cout << "Fail to setttloffset" << std::endl;
+            std::cout << "Fail to setttlclock" << std::endl;
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad format" << std::endl;
