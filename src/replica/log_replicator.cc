@@ -309,6 +309,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
     {
         MutexLock lock(&mu_);
         if (role_ != kLeaderNode) {
+            LOG(WARNING, "cur table is not leader, cannot add replicate");
             return false;
         }
         std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
@@ -333,7 +334,7 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
     {
         MutexLock lock(&mu_);
         if (role_ != kLeaderNode) {
-            LOG(DEBUG, "replica endpoint[%s] is not leaderNode", endpoint.c_str());
+            LOG(WARNING, "cur table is not leader, cannot delete replicate");
             return false;
         }
         std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
@@ -343,7 +344,7 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
             }
         }
         if (it == nodes_.end()) {
-            LOG(DEBUG, "replica endpoint[%s] does not exist", endpoint.c_str());
+            LOG(WARNING, "replica endpoint[%s] does not exist", endpoint.c_str());
             return false;
         }
         nodes_.erase(it);
