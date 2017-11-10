@@ -72,6 +72,7 @@ TEST_F(NodeTest, SetNext) {
 TEST_F(NodeTest, AddToFirst) {
     Comparator cmp;
     Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    ASSERT_EQ(16, sizeof(sl));
     uint32_t key3 = 2;
     uint32_t value3 = 5;
     sl.Insert(key3, value3);
