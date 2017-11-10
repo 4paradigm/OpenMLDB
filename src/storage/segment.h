@@ -27,14 +27,14 @@ using ::baidu::common::Mutex;
 using ::baidu::common::MutexLock;
 
 struct DataBlock {
+    // dimension count down
+    uint8_t dim_cnt_down;
     uint32_t size;
     char* data;
-
-    DataBlock(const char* input, uint32_t len):size(len),data(NULL) {
+    DataBlock(const char* input, uint32_t len):dim_cnt_down(1),size(len),data(NULL) {
         data = new char[len];
         memcpy(data, input, len);
     }
-
     uint32_t Release() {
         delete[] data;
         data = NULL;
@@ -120,6 +120,9 @@ public:
              uint64_t time,
              const char* data,
              uint32_t size);
+
+    void Put(const std::string& key, uint64_t time,
+             DataBlock*)
 
     // Get time data
     bool Get(const std::string& key,
