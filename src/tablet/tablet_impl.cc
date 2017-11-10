@@ -1403,7 +1403,7 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         uint64_t total = 0;
         uint64_t* stat = NULL;
         uint32_t size = 0;
-        table->GetDataCnt(&stat, &size);
+        table->GetDataCnt(0, &stat, &size);
         if (stat != NULL) {
             writer.Key("data_cnt_stat");
             writer.StartObject();

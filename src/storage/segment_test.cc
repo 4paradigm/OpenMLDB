@@ -37,12 +37,8 @@ TEST_F(SegmentTest, TestRelease) {
     Segment* seg2 = new Segment();
     const char* test = "test";
     seg2->Put(test, 9527, test, 4);
-    uint64_t size = seg2->Release();
-    // 4 bytes pk size
-    // 4 bytes value size
-    // 8 bytes time size
-    // 4 bytes value size size
-    ASSERT_EQ(4 + 4 + 8 + 4, size);
+    uint64_t cnt = seg2->Release();
+    ASSERT_EQ(1, cnt);
     delete seg2;
 }
 
@@ -62,43 +58,6 @@ TEST_F(SegmentTest, PutAndGet) {
 }
 
 TEST_F(SegmentTest, MultiGet) {
-   Segment segment; 
-   {
-       const char* test = "test1";
-       std::string pk = "pk1";
-       segment.Put(pk, 1, test, 5);
-   }
-   {
-       const char* test = "test2";
-       std::string pk = "pk1";
-       segment.Put(pk, 2, test, 5);
-   }
-
-   {
-       const char* test = "test2";
-       std::string pk = "pk2";
-       segment.Put(pk, 2, test, 5);
-   }
-
-   std::vector<std::string> keys;
-   keys.push_back("pk1");
-   keys.push_back("pk2");
-   std::map<uint32_t, DataBlock*> datas;
-   Ticket ticket;
-   segment.BatchGet(keys, datas, ticket);
-   ASSERT_EQ(2, datas.size());
-
-   {
-       DataBlock* value1 = datas[0];
-       std::string value1_str(value1->data, value1->size);
-       ASSERT_EQ("test2", value1_str);
-   }
-
-   {
-       DataBlock* value1 = datas[1];
-       std::string value1_str(value1->data, value1->size);
-       ASSERT_EQ("test2", value1_str);
-   }
 }
 
 TEST_F(SegmentTest, Iterator) {
@@ -151,8 +110,6 @@ TEST_F(SegmentTest, TestStat) {
     ASSERT_EQ(1, count);
     ASSERT_EQ(0, segment.GetDataCnt());
 }
-
-
 
 }
 }

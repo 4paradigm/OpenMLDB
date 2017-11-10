@@ -71,6 +71,11 @@ message Manifest {
     optional uint64 count = 3;
 }
 
+message Dimension {
+    optional uint32 index = 1;
+    optional string pk = 2;
+}
+
 message PutRequest {
 	// the prefix key
 	optional string pk = 1;
@@ -79,7 +84,9 @@ message PutRequest {
 	optional bytes value = 3;
 	optional uint32 tid = 4;
     optional uint32 pid = 5;
+    repeated Dimension dimensions = 6;
 }
+
 
 message PutResponse {
 	optional int32 code = 1;
@@ -244,9 +251,11 @@ message LogEntry {
     // term for leader
     optional uint64 term = 1;
     optional uint64 log_index = 2;
+    // abandoned
     optional string pk = 3;
     optional bytes value = 4;
     optional uint64 ts = 5;
+    repeated Dimension dimensions = 6;
 }
 
 message AppendEntriesRequest {

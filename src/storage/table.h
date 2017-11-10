@@ -42,17 +42,17 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
+          uint32_t idx_cnt,
           uint64_t ttl,
           bool is_leader,
-          const std::vector<std::string>& replicas,
-          bool wal = true);
+          const std::vector<std::string>& replicas);
 
     Table(const std::string& name,
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint64_t ttl,
-          bool wal = true);
+          uint32_t idx_cnt,
+          uint64_t ttl);
 
     ~Table();
 
@@ -61,15 +61,20 @@ public:
     void SetGcSafeOffset(uint64_t offset);
 
     // Put a record
-    void Put(const std::string& pk,
+    bool Put(const std::string& pk,
              uint64_t time,
              const char* data,
              uint32_t size);
 
-    void BatchGet(const std::vector<std::string>& keys,
-                  std::map<uint32_t, DataBlock*>& pairs,
-                  Ticket& ticket);
+    bool Put(const std::string& pk,
+            uint64_t time, 
+            DataBlock* row,
+            uint32_t idx);
 
+    bool Put(uint64_t time, 
+             DataBlock* row, 
+             const std::vector<std::pair<uint32_t, std::string> >& indexes);
+    
     class Iterator {
     public:
         Iterator(Segment::Iterator* it);
@@ -84,8 +89,10 @@ public:
         Segment::Iterator* it_;
     };
 
+    // use the first demission
     Table::Iterator* NewIterator(const std::string& pk, Ticket& ticket);
 
+    Table::Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
     // release all memory allocated
     uint64_t Release();
 
@@ -97,33 +104,26 @@ public:
 
     bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
 
-    inline bool GetWal() {
-        return wal_;
-    }
-
-    inline void SetTerm(uint64_t term) {
-        term_ = term;
-    }
-
-    inline uint64_t GetTerm() {
-        return term_;
-    }
-
     inline uint64_t GetDataCnt() const {
         uint64_t data_cnt = 0;
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            data_cnt += segments_[i]->GetDataCnt();
+        for (uint32_t i = 0; i < idx_cnt_; i++) {
+            for (uint32_t j = 0; j < seg_cnt_; i++) {
+                data_cnt += segments_[i][j]->GetDataCnt();
+            }
         }
         return data_cnt;
     }
 
-    inline void GetDataCnt(uint64_t** stat, uint32_t* size) const {
+    inline void GetDataCnt(uint32_t idx, uint64_t** stat, uint32_t* size) const {
         if (stat == NULL) {
+            return;
+        }
+        if (idx >= idx_cnt_) {
             return;
         }
         uint64_t* data_array = new uint64_t[seg_cnt_];
         for (uint32_t i = 0; i < seg_cnt_; i++) {
-            data_array[i] = segments_[i]->GetDataCnt();
+            data_array[i] = segments_[idx][i]->GetDataCnt();
         }
         *stat = data_array;
         *size = seg_cnt_;
@@ -139,6 +139,10 @@ public:
 
     inline uint32_t GetSegCnt() const {
         return seg_cnt_;
+    }
+
+    inline uint32_t GetIdxCnt() const {
+        return idx_cnt_;
     }
 
     inline uint32_t GetPid() const {
@@ -195,8 +199,9 @@ private:
     uint32_t const id_;
     uint32_t const pid_;
     uint32_t const seg_cnt_;
+    uint32_t const idx_cnt_;
     // Segments is readonly
-    Segment** segments_;
+    Segment*** segments_;
     boost::atomic<uint32_t> ref_;
     boost::atomic<bool> enable_gc_;
     uint64_t const ttl_;
@@ -205,10 +210,9 @@ private:
     bool is_leader_;
     boost::atomic<uint64_t> time_offset_;
     std::vector<std::string> replicas_;
-    bool wal_;
-    uint64_t term_;
     boost::atomic<uint32_t> table_status_;
     std::string schema_;
+    bool segment_released_;
 };
 
 }

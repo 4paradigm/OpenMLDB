@@ -29,26 +29,30 @@ Segment::~Segment() {
 }
 
 uint64_t Segment::Release() {
-    uint64_t total_bytes = 0;
+    uint64_t cnt = 0;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
         if (it->GetValue() != NULL) {
-            total_bytes += it->GetValue()->Release();
-            total_bytes += it->GetKey().size();
+            cnt += it->GetValue()->Release();
         }
         delete it->GetValue();
         it->Next();
     }
     entries_->Clear();
     delete it;
-    return total_bytes;
+    return cnt;
 }
 
 void Segment::Put(const std::string& key,
         uint64_t time,
         const char* data,
         uint32_t size) {
+    DataBlock* db = new DataBlock(1, data, size);
+    Put(key, time, db);
+}
+
+void Segment::Put(const std::string& key, uint64_t time, DataBlock* row) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         MutexLock lock(&mu_);
@@ -62,8 +66,7 @@ void Segment::Put(const std::string& key,
     }
     data_cnt_.fetch_add(1, boost::memory_order_relaxed);
     MutexLock lock(&entry->mu);
-    DataBlock* db = new DataBlock(data, size);
-    entry->entries.Insert(time, db);
+    entry->entries.Insert(time, row);
 }
 
 bool Segment::Get(const std::string& key,
@@ -89,11 +92,6 @@ uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, 
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
         node = node->GetNextNoBarrier(0);
         LOG(DEBUG, "delete key %lld", tmp->GetKey());
-        // clear the value that node hold
-        // and clear node it's self
-        if (tmp->GetValue() != NULL) {
-            tmp->GetValue()->Release();
-        }
         delete tmp->GetValue();
         delete tmp;
     }
@@ -168,28 +166,6 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     delete it;
     return count;
-}
-
-void Segment::BatchGet(const std::vector<std::string>& keys,
-                       std::map<uint32_t, DataBlock*>& datas,
-                       Ticket& ticket) {
-    KeyEntries::Iterator* it = entries_->NewIterator();
-    for (uint32_t i = 0; i < keys.size(); i++) {
-        const std::string& key = keys[i];
-        it->Seek(key);
-        if (!it->Valid()) {
-            continue;
-        }
-        KeyEntry* entry = it->GetValue();
-        ticket.Push(entry);
-        TimeEntries::Iterator* tit = entry->entries.NewIterator();
-        tit->SeekToFirst();
-        if (tit->Valid()) {
-            datas.insert(std::make_pair(i, tit->GetValue()));
-        }
-        delete tit;
-    }
-    delete it;
 }
 
 // Iterator

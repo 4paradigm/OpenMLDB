@@ -31,19 +31,16 @@ struct DataBlock {
     uint8_t dim_cnt_down;
     uint32_t size;
     char* data;
-    DataBlock(const char* input, uint32_t len):dim_cnt_down(1),size(len),data(NULL) {
+
+    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len):dim_cnt_down(dim_cnt),size(len),data(NULL) {
         data = new char[len];
         memcpy(data, input, len);
     }
-    uint32_t Release() {
+
+    ~DataBlock() {
         delete[] data;
         data = NULL;
-        uint32_t ret = size;
-        size = 0;
-        return ret;
     }
-
-    ~DataBlock() {}
 };
 
 // the desc time comparator
@@ -66,21 +63,19 @@ public:
     KeyEntry():entries(12, 4, tcmp),mu(), refs_(0){}
     ~KeyEntry() {}
 
+    // just return the count of datablock
     uint64_t Release() {
-        uint64_t release_bytes = 0;
+        uint64_t cnt = 0;
         TimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
         while(it->Valid()) {
-            if (it->GetValue() != NULL) {
-                // 4 bytes data size, 8 bytes key size 
-                release_bytes += (4 + 8 + it->GetValue()->Release());
-            }
+            cnt += 1;
             delete it->GetValue();
             it->Next();
         }
         entries.Clear();
         delete it;
-        return release_bytes;
+        return cnt;
     }
 
     void Ref() {
@@ -90,7 +85,6 @@ public:
     void UnRef() {
         refs_.fetch_sub(1, boost::memory_order_relaxed);
     }
-
 
 public:
     std::string key;
@@ -123,30 +117,24 @@ public:
 
     void Put(const std::string& key, 
              uint64_t time,
-             DataBlock*)
+             DataBlock* row);
 
     // Get time data
     bool Get(const std::string& key,
              uint64_t time,
              DataBlock** block);
 
-    void BatchGet(const std::vector<std::string>& keys,
-                  std::map<uint32_t, DataBlock*>& datas,
-                  Ticket& ticket);
-
     // Segment Iterator
     class Iterator {
     public:
         Iterator(TimeEntries::Iterator* it);
         ~Iterator();
-
         void Seek(const uint64_t& time);
         bool Valid() const;
         void Next();
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
         void SeekToFirst();
-
     private:
         TimeEntries::Iterator* it_;
     };

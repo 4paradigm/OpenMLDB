@@ -30,42 +30,48 @@ Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
+        uint32_t idx_cnt,
         uint64_t ttl,
         bool is_leader,
-        const std::vector<std::string>& replicas,
-        bool wal):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),
+        const std::vector<std::string>& replicas):name_(name), id_(id),
+    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(idx_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), is_leader_(is_leader), time_offset_(0),
-    replicas_(replicas), wal_(wal), term_(0), table_status_(kUndefined)
+    replicas_(replicas), table_status_(kUndefined),segment_released_(false)
 {}
 
 Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
-        uint64_t ttl,
-        bool wal):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),
+        uint32_t idx_cnt,
+        uint64_t ttl):name_(name), id_(id),
+    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(idx_cnt),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), is_leader_(false), time_offset_(0),
-    replicas_(), wal_(wal), term_(0), table_status_(kUndefined)
+    replicas_(), table_status_(kUndefined), segment_released_(false)
 {}
 
 Table::~Table() {
     Release();
-    for (uint32_t i = 0; i < seg_cnt_; i++) {
-        delete segments_[i];
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            delete segments_[i][j];
+        }
+        delete[] segments_[i];
     }
     delete[] segments_;
 }
 
 void Table::Init() {
-    segments_ = new Segment*[seg_cnt_];
-    for (uint32_t i = 0; i < seg_cnt_; i++) {
-        segments_[i] = new Segment();
+    segments_ = new Segment**[idx_cnt_];
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        segments_[i] = new Segment*[seg_cnt_];
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            segments_[i][j] = new Segment();
+        }
     }
     if (ttl_ > 0) {
         enable_gc_ = true;
@@ -74,33 +80,64 @@ void Table::Init() {
             id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
 }
 
-void Table::Put(const std::string& pk, uint64_t time,
-        const char* data, uint32_t size) {
+bool Table::Put(const std::string& pk, 
+                uint64_t time,
+                const char* data, 
+                uint32_t size) {
     uint32_t index = 0;
     if (seg_cnt_ > 1) {
         index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
-    Segment* segment = segments_[index];
+    Segment* segment = segments_[0][index];
     segment->Put(pk, time, data, size);
     data_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    return true;
 }
 
-void Table::BatchGet(const std::vector<std::string>& keys,
-                     std::map<uint32_t, DataBlock*>& pairs,
-                     Ticket& ticket) {
-    // batch get just support one segment
-    Segment* segment = segments_[0];
-    segment->BatchGet(keys, pairs, ticket);
+bool Table::Put(const std::string& pk,
+                uint64_t time, 
+                DataBlock* row,
+                uint32_t idx) {
+    if (idx >= idx_cnt_) {
+        return false;
+    }
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.size(), SEED) % seg_cnt_;
+    }
+    Segment* segment = segments_[idx][seg_idx];
+    segment->Put(pk, time, row);
+    LOG(DEBUG, "add row to index %u with value %s for tid %u pid %u ok", idx,
+               pk.c_str(), id_, pid_);
+    return false;
+}
+
+bool Table::Put(uint64_t time, 
+                DataBlock* row,
+                const std::vector<std::pair<uint32_t, std::string> >& indexes) {
+    std::vector<std::pair<uint32_t, std::string> >::const_iterator it = indexes.begin();
+    for (; it != indexes.end(); ++it) {
+        if (!Put(it->second, time, row, it->first)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 uint64_t Table::Release() {
-    uint64_t total_bytes = 0;
-    for (uint32_t i = 0; i < seg_cnt_; i++) {
-        if (segments_[i] != NULL) {
-            total_bytes += segments_[i]->Release();
+    if (segment_released_) {
+        return 0;
+    }
+    uint64_t total_cnt = 0;
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            if (segments_[i] != NULL) {
+                total_cnt += segments_[i][j]->Release();
+            } 
         }
     }
-    return total_bytes;
+    segment_released_ = true;
+    return total_cnt;
 }
 
 void Table::SetGcSafeOffset(uint64_t offset) {
@@ -115,9 +152,11 @@ uint64_t Table::SchedGc() {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
     uint64_t count = 0;
-    for (uint32_t i = 0; i < seg_cnt_; i++) {
-        Segment* segment = segments_[i];
-        count += segment->Gc4TTL(time);
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            Segment* segment = segments_[i][j];
+            count += segment->Gc4TTL(time);
+        }
     }
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     return count;
@@ -174,11 +213,19 @@ uint64_t Table::Iterator::GetKey() const {
 }
 
 Table::Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
-    uint32_t index = 0;
-    if (seg_cnt_ > 1) {
-        index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    return NewIterator(0, pk, ticket); 
+}
+
+Table::Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
+    if (index >= idx_cnt_) {
+        LOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
+        return NULL;
     }
-    Segment* segment = segments_[index];
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    Segment* segment = segments_[index][seg_idx];
     return new Table::Iterator(segment->NewIterator(pk, ticket));
 }
 

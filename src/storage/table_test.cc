@@ -21,25 +21,43 @@ public:
 };
 
 TEST_F(TableTest, Put) {
-    Table* table = new Table("tx_log", 1, 1, 8, 10);
+    Table* table = new Table("tx_log", 1, 1, 8, 1, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
+    ASSERT_EQ(1, table->GetDataCnt());
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("test", ticket);
+    it->SeekToFirst();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(9537, it->GetKey());
+    DataBlock* value1 = it->GetValue();
+    std::string value_str(value1->data, value1->size);
+    ASSERT_EQ("test", value_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+    delete it;
     delete table;
 }
 
+TEST_F(TableTest, MultiDimissionPut) {
+    Table* table = new Table("tx_log", 1, 1, 8, 3, 10);
+    table->Init();
+    ASSERT_EQ(3, table->GetIdxCnt());
+}
+
 TEST_F(TableTest, Release) {
-    Table* table = new Table("tx_log", 1, 1, 8, 10);
+    Table* table = new Table("tx_log", 1, 1, 8, 1, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->Put("test2", 9537, "test", 4);
-    uint64_t size = table->Release();
-    ASSERT_EQ(4 + 8 + 4 + 4 + 5 + 8 + 4 + 4, size);
+    uint64_t cnt = table->Release();
+    ASSERT_EQ(cnt, 2);
     delete table;
 }
 
 TEST_F(TableTest, IsExpired) {
     // table ttl is 1
-    Table* table = new Table("tx_log", 1, 1, 8, 1);
+    Table* table = new Table("tx_log", 1, 1, 8, 1, 1);
     table->Init();
     uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
     ::rtidb::api::LogEntry entry;
@@ -55,7 +73,7 @@ TEST_F(TableTest, IsExpired) {
 }   
 
 TEST_F(TableTest, Iterator) {
-    Table* table = new Table("tx_log", 1, 1, 8, 10);
+    Table* table = new Table("tx_log", 1, 1, 8, 1, 10);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -82,7 +100,7 @@ TEST_F(TableTest, Iterator) {
 }
 
 TEST_F(TableTest, SchedGc) {
-    Table* table = new Table("tx_log", 1, 1, 8 , 1);
+    Table* table = new Table("tx_log", 1, 1, 8 , 1, 1);
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -102,7 +120,7 @@ TEST_F(TableTest, SchedGc) {
 }
 
 TEST_F(TableTest, OffSet) {
-    Table* table = new Table("tx_log", 1, 1, 8 , 1);
+    Table* table = new Table("tx_log", 1, 1, 8 , 1, 1);
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -142,7 +160,7 @@ TEST_F(TableTest, OffSet) {
 }
 
 TEST_F(TableTest, TableDataCnt) {
-    Table* table = new Table("tx_log", 1, 1, 8 , 1);
+    Table* table = new Table("tx_log", 1, 1, 8 , 1, 1);
     table->Init();
     ASSERT_EQ(table->GetDataCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -156,7 +174,7 @@ TEST_F(TableTest, TableDataCnt) {
 }
 
 TEST_F(TableTest, TableUnref) {
-    Table* table = new Table("tx_log", 1, 1 ,8 , 1);
+    Table* table = new Table("tx_log", 1, 1 ,8 , 1, 1);
     table->Init();
     table->Put("test", 9527, "test", 4);
     delete table;
