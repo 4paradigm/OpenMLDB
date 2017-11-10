@@ -84,6 +84,7 @@ class TestPut(TestCaseBase):
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         rs4 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
         self.assertTrue('LoadTable ok' in rs4)
+        time.sleep(1)
         self.assertTrue('testvalue19' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
 
 

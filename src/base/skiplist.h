@@ -31,38 +31,38 @@ class Node {
 
 public:
     // Set data reference and Node height
-    Node(const K& key, V& value, uint32_t height):key_(key), 
-    value_(value),
-    height_(height){
+    Node(const K& key, V& value, uint8_t height):height_(height),
+    key_(key), 
+    value_(value) {
         nexts_ = new boost::atomic< Node<K,V>* >[height];
     }
 
-    Node(uint32_t height):key_(), value_(),height_(height) {
+    Node(uint8_t height):height_(height), key_(), value_() {
         nexts_ = new boost::atomic< Node<K,V>* >[height];
     }
    
     // Set the next node with memory barrier
-    void SetNext(uint32_t level, Node<K,V>* node) {
+    void SetNext(uint8_t level, Node<K,V>* node) {
         assert(level < height_ && level >= 0);
         nexts_[level].store(node, boost::memory_order_release);
     }
 
     // Set the next node without memory barrier
-    void SetNextNoBarrier(uint32_t level, Node<K,V>* node) {
+    void SetNextNoBarrier(uint8_t level, Node<K,V>* node) {
         assert(level < height_ && level >= 0);
         nexts_[level].store(node, boost::memory_order_relaxed);
     }
 
-    uint32_t Height() {
+    uint8_t Height() {
         return height_;
     }
 
-    Node<K,V>* GetNext(uint32_t level) {
+    Node<K,V>* GetNext(uint8_t level) {
         assert(level < height_ && level >= 0);
         return nexts_[level].load(boost::memory_order_acquire);
     }
 
-    Node<K,V>* GetNextNoBarrier(uint32_t level) {
+    Node<K,V>* GetNextNoBarrier(uint8_t level) {
         assert(level < height_ && level >= 0);
         return nexts_[level].load(boost::memory_order_relaxed);
     }
@@ -80,10 +80,10 @@ public:
     }
 
 private:
+    uint8_t const height_;
     K  const key_;
     V  value_;
     boost::atomic< Node<K,V>* >* nexts_;
-    uint32_t const height_;
 };
 
 
@@ -91,13 +91,14 @@ template<class K, class V, class Comparator>
 class Skiplist {
 
 public:
-    Skiplist(uint32_t max_height, uint32_t branch, const Comparator& compare):MaxHeight(max_height),
+    Skiplist(uint8_t max_height, uint8_t branch, const Comparator& compare):MaxHeight(max_height),
     Branch(branch),
-    head_(NULL),
+    max_height_(0),
     compare_(compare),
-    rand_(0xdeadbeef){
+    rand_(0xdeadbeef),
+    head_(NULL) {
         head_ = new Node<K,V>(MaxHeight);
-        for (uint32_t i = 0; i < head_->Height(); i++) {
+        for (uint8_t i = 0; i < head_->Height(); i++) {
             head_->SetNext(i, NULL);
         }
         max_height_.store(1, boost::memory_order_relaxed);
@@ -108,17 +109,17 @@ public:
 
     // Insert need external synchronized
     void Insert(const K& key, V& value) {
-        uint32_t height = RandomHeight();
+        uint8_t height = RandomHeight();
         Node<K,V>* pre[MaxHeight];
         FindLessOrEqual(key, pre);
         if (height > GetMaxHeight()) {
-            for (uint32_t i = GetMaxHeight(); i < height; i++ ) {
+            for (uint8_t i = GetMaxHeight(); i < height; i++ ) {
                 pre[i] = head_;
             }
             max_height_.store(height, boost::memory_order_relaxed);
         }
         Node<K,V>* node = NewNode(key, value, height);
-        for (uint32_t i = 0; i < height; i ++) {
+        for (uint8_t i = 0; i < height; i ++) {
             node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
             pre[i]->SetNext(i, node);
         }
@@ -135,7 +136,7 @@ public:
     // Remove need external synchronized
     Node<K,V>* Remove(const K& key) {
         Node<K, V>* pre[MaxHeight];
-        for (uint32_t i = 0; i < MaxHeight; i++) {
+        for (uint8_t i = 0; i < MaxHeight; i++) {
             pre[i] = head_;
         }
         Node<K, V>* target = FindLessOrEqual(key, pre);
@@ -146,7 +147,7 @@ public:
         if (result == NULL || compare_(result->GetKey(), key) != 0) {
             return NULL;
         }
-        for (uint32_t i = 0; i < result->Height(); i++) {
+        for (uint8_t i = 0; i < result->Height(); i++) {
             pre[i]->SetNextNoBarrier(i, result->GetNextNoBarrier(i));
             result->SetNextNoBarrier(i, NULL);
         }
@@ -156,7 +157,7 @@ public:
     // Split list two parts, the return part is just a linkedlist
     Node<K,V>* Split(const K& key) {
         Node<K, V>* pre[MaxHeight];
-        for (uint32_t i = 0; i < MaxHeight; i++) {
+        for (uint8_t i = 0; i < MaxHeight; i++) {
             pre[i] = NULL;
         }
         Node<K, V>* target = FindLessOrEqual(key, pre);
@@ -164,7 +165,7 @@ public:
             return NULL;
         }
         Node<K, V>* result = target->GetNextNoBarrier(0);
-        for (uint32_t i = 0; i < MaxHeight; i++) {
+        for (uint8_t i = 0; i < MaxHeight; i++) {
             if (pre[i] == NULL) {
                 continue;
             }
@@ -211,7 +212,7 @@ public:
         uint64_t cnt = 0;
         Node<K,V>* node = head_->GetNext(0);
         // Unlink all next node
-        for (uint32_t i = 0; i < head_->Height(); i++) {
+        for (uint8_t i = 0; i < head_->Height(); i++) {
             head_->SetNextNoBarrier(i, NULL);
         }
 
@@ -220,7 +221,7 @@ public:
             Node<K,V>* tmp = node;
             node = node->GetNext(0);
             // Unlink all next node
-            for (uint32_t i = 0; i < tmp->Height(); i++) {
+            for (uint8_t i = 0; i < tmp->Height(); i++) {
                 tmp->SetNextNoBarrier(i, NULL);
             }
             delete tmp;
@@ -236,16 +237,16 @@ public:
                 return false;
             }
         }
-        uint32_t height = RandomHeight();
+        uint8_t height = RandomHeight();
         Node<K,V>* pre[MaxHeight];
-        for (uint32_t i = 0; i < height; i++ ) {
+        for (uint8_t i = 0; i < height; i++ ) {
             pre[i] = head_;
         }
         if (height > GetMaxHeight()) { 
             max_height_.store(height, boost::memory_order_relaxed);
         }
         Node<K,V>* node = NewNode(key, value, height);
-        for (uint32_t i = 0; i < height; i ++) {
+        for (uint8_t i = 0; i < height; i ++) {
             node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
             pre[i]->SetNext(i, node);
         }
@@ -300,13 +301,13 @@ public:
 
 private:
 
-    Node<K,V>* NewNode(const K& key, V& value, uint32_t height) {
+    Node<K,V>* NewNode(const K& key, V& value, uint8_t height) {
         Node<K,V>* node = new Node<K,V>(key, value, height); 
         return node;
     }
 
-    uint32_t RandomHeight() {
-        uint32_t height = 1;
+    uint8_t RandomHeight() {
+        uint8_t height = 1;
         while (height < MaxHeight && (rand_.Next() % Branch) == 0) {
             height ++;
         }
@@ -316,7 +317,7 @@ private:
     Node<K, V>* FindLessOrEqual(const K& key, Node<K, V>** nodes) {
         assert(nodes != NULL);
         Node<K, V>* node = head_;
-        uint32_t level = GetMaxHeight() - 1;
+        uint8_t level = GetMaxHeight() - 1;
         while (true) {
             Node<K, V>* next = node->GetNext(level);
             if (IsAfterNode(key, next)) {
@@ -333,7 +334,7 @@ private:
 
     Node<K, V>* FindEqual(const K& key) {
         Node<K, V>* node = head_; 
-        uint32_t level = GetMaxHeight() - 1;
+        uint8_t level = GetMaxHeight() - 1;
         while (true) {
             Node<K, V>* next = node->GetNext(level);
             if (next == NULL || compare_(next->GetKey(), key) > 0) {
@@ -349,7 +350,7 @@ private:
 
     Node<K, V>* FindLessThan(const K& key) {
         Node<K, V>* node = head_;
-        uint32_t level = GetMaxHeight() - 1;
+        uint8_t level = GetMaxHeight() - 1;
         while (true) {
             assert(node == head_ || compare_(node->GetKey(), key) < 0);
             Node<K, V>* next = node->GetNext(level);
@@ -368,18 +369,18 @@ private:
         return (node != NULL) && (compare_(key, node->GetKey()) > 0);
     }
 
-    uint32_t GetMaxHeight() const {
+    uint8_t GetMaxHeight() const {
         return max_height_.load(boost::memory_order_relaxed);
     }
     
 
 private:
-    uint32_t const MaxHeight;
-    uint32_t const Branch;
-    Node<K, V>* head_;
+    uint8_t const MaxHeight;
+    uint8_t const Branch;
+    boost::atomic<uint8_t> max_height_; 
     Comparator const compare_;
-    boost::atomic<uint32_t> max_height_; 
     Random rand_;
+    Node<K, V>* head_;
     friend Iterator;
 };
 
