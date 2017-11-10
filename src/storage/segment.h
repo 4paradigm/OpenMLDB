@@ -121,7 +121,8 @@ public:
              const char* data,
              uint32_t size);
 
-    void Put(const std::string& key, uint64_t time,
+    void Put(const std::string& key, 
+             uint64_t time,
              DataBlock*)
 
     // Get time data
