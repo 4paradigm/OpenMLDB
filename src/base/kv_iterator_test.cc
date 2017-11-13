@@ -32,7 +32,7 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
     std::string* pairs = response->mutable_pairs();
     pairs->resize(17);
     char* data = reinterpret_cast<char*>(& ((*pairs)[0])) ;
-    DataBlock* db1 = new DataBlock("hello", 5);
+    DataBlock* db1 = new DataBlock(1, "hello", 5);
     Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
@@ -48,8 +48,8 @@ TEST_F(KvIteratorTest, Iterator) {
     std::string* pairs = response->mutable_pairs();
     pairs->resize(34);
     char* data = reinterpret_cast<char*>(& ((*pairs)[0])) ;
-    DataBlock* db1 = new DataBlock("hello", 5);
-    DataBlock* db2 = new DataBlock("hell1", 5);
+    DataBlock* db1 = new DataBlock(1, "hello", 5);
+    DataBlock* db2 = new DataBlock(1, "hell1", 5);
     Encode(9527, db1, data, 0);
     Encode(9528, db2, data, 17);
     KvIterator kv_it(response);
