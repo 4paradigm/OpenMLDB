@@ -9,6 +9,7 @@
 #include "storage/ticket.h"
 #include "gtest/gtest.h"
 #include "timer.h"
+#include "logging.h"
 
 namespace rtidb {
 namespace storage {
@@ -21,7 +22,9 @@ public:
 };
 
 TEST_F(TableTest, Put) {
-    Table* table = new Table("tx_log", 1, 1, 8, 1, 10);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, table->GetDataCnt());
@@ -40,13 +43,27 @@ TEST_F(TableTest, Put) {
 }
 
 TEST_F(TableTest, MultiDimissionPut) {
-    Table* table = new Table("tx_log", 1, 1, 8, 3, 10);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    mapping.insert(std::make_pair("idx1", 1));
+    mapping.insert(std::make_pair("idx2", 2));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
+    DataBlock* db = new DataBlock(3, "helloworld", 10);
+    std::string d1 = "d1";
+    ASSERT_FALSE(table->Put(d1, 9527, db, 3));
+    ASSERT_TRUE(table->Put(d1, 9527, db, 0));
+    std::string d2 = "d2";
+    ASSERT_TRUE(table->Put(d2, 9527, db, 1));
+    std::string d3 = "d3";
+    ASSERT_TRUE(table->Put(d3, 9527, db, 2));
 }
 
 TEST_F(TableTest, Release) {
-    Table* table = new Table("tx_log", 1, 1, 8, 1, 10);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->Put("test2", 9537, "test", 4);
@@ -56,8 +73,10 @@ TEST_F(TableTest, Release) {
 }
 
 TEST_F(TableTest, IsExpired) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
     // table ttl is 1
-    Table* table = new Table("tx_log", 1, 1, 8, 1, 1);
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 1);
     table->Init();
     uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
     ::rtidb::api::LogEntry entry;
@@ -73,7 +92,9 @@ TEST_F(TableTest, IsExpired) {
 }   
 
 TEST_F(TableTest, Iterator) {
-    Table* table = new Table("tx_log", 1, 1, 8, 1, 10);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
@@ -99,8 +120,31 @@ TEST_F(TableTest, Iterator) {
     delete table;
 }
 
+TEST_F(TableTest, SchedGcForMultiDimissionTable) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    mapping.insert(std::make_pair("idx1", 1));
+    mapping.insert(std::make_pair("idx2", 2));
+    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
+    table->Init();
+    ASSERT_EQ(3, table->GetIdxCnt());
+    DataBlock* db = new DataBlock(3, "helloworld", 10);
+    std::string d1 = "d1";
+    ASSERT_FALSE(table->Put(d1, 9527, db, 3));
+    ASSERT_TRUE(table->Put(d1, 9527, db, 0));
+    std::string d2 = "d2";
+    ASSERT_TRUE(table->Put(d2, 9527, db, 1));
+    std::string d3 = "d3";
+    ASSERT_TRUE(table->Put(d3, 9527, db, 2));
+    uint64_t count = table->SchedGc();
+    ASSERT_EQ(3, count);
+
+}
+
 TEST_F(TableTest, SchedGc) {
-    Table* table = new Table("tx_log", 1, 1, 8 , 1, 1);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -120,9 +164,10 @@ TEST_F(TableTest, SchedGc) {
 }
 
 TEST_F(TableTest, OffSet) {
-    Table* table = new Table("tx_log", 1, 1, 8 , 1, 1);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
-
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->SetTimeOffset(-60 * 4);
     table->Put("test", now - 10 * 60 * 1000, "test", 4);
@@ -160,7 +205,9 @@ TEST_F(TableTest, OffSet) {
 }
 
 TEST_F(TableTest, TableDataCnt) {
-    Table* table = new Table("tx_log", 1, 1, 8 , 1, 1);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
     ASSERT_EQ(table->GetDataCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -174,7 +221,9 @@ TEST_F(TableTest, TableDataCnt) {
 }
 
 TEST_F(TableTest, TableUnref) {
-    Table* table = new Table("tx_log", 1, 1 ,8 , 1, 1);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1 ,8 , mapping, 1);
     table->Init();
     table->Put("test", 9527, "test", 4);
     delete table;
@@ -185,6 +234,7 @@ TEST_F(TableTest, TableUnref) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     return RUN_ALL_TESTS();
 }
 

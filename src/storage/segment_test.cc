@@ -23,24 +23,16 @@ public:
 
 TEST_F(SegmentTest, DataBlock) {
     const char* test = "test";
-    DataBlock* db = new DataBlock(test, 4);
+    DataBlock* db = new DataBlock(1, test, 4);
     ASSERT_EQ(4, db->size);
     ASSERT_EQ('t', db->data[0]);
     ASSERT_EQ('e', db->data[1]);
     ASSERT_EQ('s', db->data[2]);
     ASSERT_EQ('t', db->data[3]);
-    ASSERT_EQ(4, db->Release());
-    ASSERT_EQ(NULL, db->data);
+    delete db;
 }
 
-TEST_F(SegmentTest, TestRelease) {
-    Segment* seg2 = new Segment();
-    const char* test = "test";
-    seg2->Put(test, 9527, test, 4);
-    uint64_t cnt = seg2->Release();
-    ASSERT_EQ(1, cnt);
-    delete seg2;
-}
+
 
 TEST_F(SegmentTest, PutAndGet) {
    Segment segment; 
@@ -82,6 +74,25 @@ TEST_F(SegmentTest, Iterator) {
        std::string pk = "pk" + i;
        segment.Put(pk, i, data, 400);
    }
+}
+
+TEST_F(SegmentTest, TestGc4Head) {
+    Segment segment;
+    segment.Put("PK", 9768, "test1", 5);
+    segment.Put("PK", 9769, "test2", 5);
+    uint64_t count = segment.Gc4Head();
+    ASSERT_EQ(1, count);
+
+    Ticket ticket;
+    Segment::Iterator* it = segment.NewIterator("PK", ticket);
+    it->Seek(9769);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(9769, it->GetKey());
+    DataBlock* value = it->GetValue();
+    std::string result(value->data, value->size);
+    ASSERT_EQ("test2", result);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
 }
 
 TEST_F(SegmentTest, TestGc4TTL) {

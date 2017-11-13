@@ -71,11 +71,6 @@ message Manifest {
     optional uint64 count = 3;
 }
 
-message Dimension {
-    optional uint32 index = 1;
-    optional string pk = 2;
-}
-
 message PutRequest {
 	// the prefix key
 	optional string pk = 1;
@@ -84,9 +79,8 @@ message PutRequest {
 	optional bytes value = 3;
 	optional uint32 tid = 4;
     optional uint32 pid = 5;
-    repeated Dimension dimensions = 6;
+    repeated string dimensions = 6;
 }
-
 
 message PutResponse {
 	optional int32 code = 1;
@@ -158,20 +152,6 @@ message ScanResponse {
     optional bytes schema = 7;
 }
 
-message BatchGetRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    // keys list
-    repeated string keys = 3;
-}
-
-message BatchGetResponse {
-    optional int32 code = 1;
-    optional string msg = 2;
-    // pairs the index to key index
-    optional bytes pairs = 3;
-}
-
 message ReplicaRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
@@ -198,6 +178,7 @@ message TableMeta {
     // term for change role
     optional uint64 term = 10;
     optional bytes schema = 11;
+    repeated string dimensions = 12;
 }
 
 message CreateTableRequest {
@@ -255,7 +236,7 @@ message LogEntry {
     optional string pk = 3;
     optional bytes value = 4;
     optional uint64 ts = 5;
-    repeated Dimension dimensions = 6;
+    repeated string dimensions = 6;
 }
 
 message AppendEntriesRequest {
@@ -330,7 +311,6 @@ service TabletServer {
 	rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
 	rpc Scan(ScanRequest) returns (ScanResponse);
-    rpc BatchGet(BatchGetRequest) returns (BatchGetResponse);
 
     // table api for master
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

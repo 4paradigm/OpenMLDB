@@ -30,28 +30,30 @@ Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
-        uint32_t idx_cnt,
+        const std::map<std::string, uint32_t>& mapping,
         uint64_t ttl,
         bool is_leader,
         const std::vector<std::string>& replicas):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(idx_cnt),
+    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), is_leader_(is_leader), time_offset_(0),
-    replicas_(replicas), table_status_(kUndefined),segment_released_(false)
+    replicas_(replicas), table_status_(kUndefined), schema_(),
+    mapping_(mapping), segment_released_(false)
 {}
 
 Table::Table(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
-        uint32_t idx_cnt,
+        const std::map<std::string, uint32_t>& mapping,
         uint64_t ttl):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(idx_cnt),
+    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), is_leader_(false), time_offset_(0),
-    replicas_(), table_status_(kUndefined), segment_released_(false)
+    replicas_(), table_status_(kUndefined), schema_(),
+    mapping_(mapping), segment_released_(false)
 {}
 
 Table::~Table() {
@@ -71,13 +73,14 @@ void Table::Init() {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             segments_[i][j] = new Segment();
+            LOG(DEBUG, "init %lu, %lu segment", i, j);
         }
     }
     if (ttl_ > 0) {
         enable_gc_ = true;
     }
-    LOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
-            id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+    LOG(INFO, "init table name %s, id %d, pid %d, idx_cnt %u seg_cnt %u , ttl %d", name_.c_str(),
+            id_, pid_, idx_cnt_, seg_cnt_, ttl_ / (60 * 1000));
 }
 
 bool Table::Put(const std::string& pk, 
@@ -109,7 +112,7 @@ bool Table::Put(const std::string& pk,
     segment->Put(pk, time, row);
     LOG(DEBUG, "add row to index %u with value %s for tid %u pid %u ok", idx,
                pk.c_str(), id_, pid_);
-    return false;
+    return true;
 }
 
 bool Table::Put(uint64_t time, 

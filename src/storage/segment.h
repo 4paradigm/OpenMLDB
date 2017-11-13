@@ -142,7 +142,7 @@ public:
     uint64_t Release();
     // gc with specify time, delete the data before time 
     uint64_t Gc4TTL(const uint64_t& time);
-    uint64_t Gc4WithHead();
+    uint64_t Gc4Head();
     Segment::Iterator* NewIterator(const std::string& key, Ticket& ticket);
 
     uint64_t GetDataCnt() {

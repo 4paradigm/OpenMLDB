@@ -63,11 +63,6 @@ public:
               ::rtidb::api::ScanResponse* response,
               Closure* done);
 
-    void BatchGet(RpcController* controller,
-              const ::rtidb::api::BatchGetRequest* request,
-              ::rtidb::api::BatchGetResponse* response,
-              Closure* done);
-
     void CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,

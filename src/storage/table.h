@@ -42,7 +42,7 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t idx_cnt,
+          const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl,
           bool is_leader,
           const std::vector<std::string>& replicas);
@@ -51,7 +51,7 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint32_t idx_cnt,
+          const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl);
 
     ~Table();
@@ -107,7 +107,7 @@ public:
     inline uint64_t GetDataCnt() const {
         uint64_t data_cnt = 0;
         for (uint32_t i = 0; i < idx_cnt_; i++) {
-            for (uint32_t j = 0; j < seg_cnt_; i++) {
+            for (uint32_t j = 0; j < seg_cnt_; j++) {
                 data_cnt += segments_[i][j]->GetDataCnt();
             }
         }
@@ -184,14 +184,21 @@ public:
     inline void SetExpire(bool is_expire) {
         enable_gc_.store(is_expire, boost::memory_order_relaxed);
     }
+
     inline bool GetExpireStatus() {
         return enable_gc_.load(boost::memory_order_relaxed);
     }
+
     inline void SetTimeOffset(int64_t offset) {
         time_offset_.store(offset * 1000, boost::memory_order_relaxed); // convert to millisecond
     }
+
     inline int64_t GetTimeOffset() {
        return  time_offset_.load(boost::memory_order_relaxed) / 1000;
+    }
+
+    inline std::map<std::string, uint32_t>& GetMapping() {
+        return mapping_;
     }
 
 private:
@@ -212,6 +219,7 @@ private:
     std::vector<std::string> replicas_;
     boost::atomic<uint32_t> table_status_;
     std::string schema_;
+    std::map<std::string, uint32_t> mapping_;
     bool segment_released_;
 };
 

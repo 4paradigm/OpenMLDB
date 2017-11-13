@@ -92,13 +92,18 @@ uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, 
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
         node = node->GetNextNoBarrier(0);
         LOG(DEBUG, "delete key %lld", tmp->GetKey());
-        delete tmp->GetValue();
+        if (tmp->GetValue()->dim_cnt_down > 1) {
+            tmp->GetValue()->dim_cnt_down --;
+        }else {
+            LOG(DEBUG, "delele data block for key %lld", tmp->GetKey());
+            delete tmp->GetValue();
+        }
         delete tmp;
     }
     return count;
 }
 
-uint64_t Segment::Gc4WithHead() {
+uint64_t Segment::Gc4Head() {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t count = 0;
     KeyEntries::Iterator* it = entries_->NewIterator();
@@ -131,7 +136,7 @@ uint64_t Segment::Gc4WithHead() {
         }
         it->Next();
     }
-    LOG(INFO, "[GcWithHead] segment gc consumed %lld, count %lld",
+    LOG(INFO, "[Gc4Head] segment gc consumed %lld, count %lld",
             (::baidu::common::timer::get_micros() - consumed)/1000, count);
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     delete it;

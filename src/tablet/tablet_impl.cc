@@ -97,7 +97,9 @@ bool TabletImpl::Init() {
     }
     if (FLAGS_enable_statdb) {
         // Create a dbstat table with tid = 0 and pid = 0
-        std::shared_ptr<Table> dbstat = std::make_shared<Table>("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
+        std::map<std::string, uint32_t> mapping;
+        mapping.insert(std::make_pair("idx0", 0));
+        std::shared_ptr<Table> dbstat = std::make_shared<Table>("dbstat", 0, 0, 8, mapping, FLAGS_statdb_ttl);
         dbstat->Init();
         tables_[0].insert(std::make_pair(0, dbstat));
         if (FLAGS_statdb_ttl > 0) {
@@ -240,59 +242,6 @@ void TabletImpl::Put(RpcController* controller,
             replicator->Notify(); 
         }
     }
-}
-
-void TabletImpl::BatchGet(RpcController* controller, 
-        const ::rtidb::api::BatchGetRequest* request,
-        ::rtidb::api::BatchGetResponse* response,
-        Closure* done) {
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        LOG(WARNING, "fail to find table with tid %ld, pid %ld", request->tid(), request->pid());
-        response->set_code(10);
-        response->set_msg("table not found");
-        done->Run();
-        return;
-    }
-    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        LOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
-                      request->tid(), request->pid());
-        response->set_code(20);
-        response->set_msg("table is unavailable now");
-        done->Run();
-        return;
-    }
-    std::vector<std::string> keys;
-    for (int32_t i = 0; i < request->keys_size(); i++) {
-        keys.push_back(request->keys(i));
-    }
-    std::map<uint32_t, DataBlock*> datas;
-    ::rtidb::storage::Ticket ticket;
-    table->BatchGet(keys, datas, ticket);
-    uint32_t total_block_size = 0;
-    std::map<uint32_t, DataBlock*>::iterator it = datas.begin();
-    for (; it != datas.end(); ++it) {
-        total_block_size += it->second->size;
-    }
-    uint32_t total_size = datas.size() * (8+4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (datas.size() <= 0) {
-        pairs->resize(0);
-    }else {
-        pairs->resize(total_size);
-    }
-    LOG(DEBUG, "batch get count %d", datas.size());
-    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
-    uint32_t offset = 0;
-    it = datas.begin();
-    for (; it != datas.end(); ++it) {
-        LOG(DEBUG, "decode key %lld value %s", it->first, it->second->data);
-        ::rtidb::base::Encode((uint64_t)it->first, it->second, rbuffer, offset);
-        offset += (4 + 8 + it->second->size);
-    }
-    response->set_code(0);
-    response->set_msg("ok");
-    done->Run();
 }
 
 inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
@@ -966,7 +915,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         seg_cnt = table_meta.seg_cnt();
     }
     LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
-            pid, name.c_str(), seg_cnt, ttl);
+               pid, name.c_str(), seg_cnt, ttl);
     
     // load snapshot data
     std::shared_ptr<Table> table = GetTable(tid, pid);        
@@ -1169,21 +1118,41 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
-    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), table_meta->tid(),
-                             table_meta->pid(), seg_cnt, 
-                             table_meta->ttl(), is_leader,
-                             endpoints, table_meta->wal());
+    // config dimensions
+    std::map<std::string, uint32_t> mapping;
+    for (int32_t i = 0; i < table_meta->dimensions_size(); i++) {
+        mapping.insert(std::make_pair(table_meta->dimensions(i), 
+                       (uint32_t)i));
+        LOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta->dimensions(i).c_str(),
+                i, table_meta->name().c_str(), table_meta->tid(), table_meta->pid());
+    }
+    // add default dimension
+    if (mapping.size() <= 0) {
+        mapping.insert(std::make_pair("idx0", 0));
+        LOG(INFO, "no index specify with default");
+    }
+    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
+                                                           table_meta->tid(),
+                                                           table_meta->pid(), seg_cnt, 
+                                                           mapping,
+                                                           table_meta->ttl(), is_leader,
+                                                           endpoints);
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
-    table->SetTerm(table_meta->term());
     table->SetSchema(table_meta->schema());
     std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +
                 "_" + boost::lexical_cast<std::string>(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;
-    if (table->IsLeader() && table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_db_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
-    } else if(table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_db_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
+    if (table->IsLeader()) {
+        replicator = std::make_shared<LogReplicator>(table_db_path, 
+                                                     table->GetReplicas(), 
+                                                     ReplicatorRole::kLeaderNode, 
+                                                     table);
+    }else {
+        replicator = std::make_shared<LogReplicator>(table_db_path, 
+                                                     std::vector<std::string>(), 
+                                                     ReplicatorRole::kFollowerNode,
+                                                     table);
     }
     if (!replicator) {
         LOG(WARNING, "fail to create replicator for table tid %ld, pid %ld", table_meta->tid(), table_meta->pid());
@@ -1203,7 +1172,6 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         LOG(WARNING, "fail to init snapshot for tid %d, pid %d", table_meta->tid(), table_meta->pid());
         msg.assign("fail to init snapshot");
         return -1;
-
     }
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
@@ -1366,7 +1334,6 @@ bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
 
 void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         sofa::pbrpc::HTTPResponse& response) {
-
     std::vector<std::shared_ptr<Table> > tmp_tables;
     {
         MutexLock lock(&mu_);
