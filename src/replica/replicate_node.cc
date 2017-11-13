@@ -125,7 +125,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                     break;
                 }
                 LOG(DEBUG, "entry val %s log index %lld", entry->value().c_str(), entry->log_index());
-                if (entry->log_index() <= last_sync_offset_) {
+                if (entry->log_index() <= sync_log_offset) {
                     LOG(DEBUG, "skip duplicate log offset %lld", entry->log_index());
                     request.mutable_entries()->RemoveLast();
                     continue;
