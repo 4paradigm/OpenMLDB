@@ -23,8 +23,6 @@ namespace rtidb {
 namespace storage {
 
 const static uint32_t SEED = 9527;
-const std::string SNAPSHOT_PREFIX="/snapshot/";
-const std::string DATA_PREFIX="/data/";
 
 Table::Table(const std::string& name,
         uint32_t id,
