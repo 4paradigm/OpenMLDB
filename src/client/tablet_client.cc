@@ -233,28 +233,6 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
 }
 
 
-::rtidb::base::KvIterator* TabletClient::BatchGet(uint32_t tid, uint32_t pid,
-        const std::vector<std::string>& keys) {
-
-    uint64_t consumed = ::baidu::common::timer::get_micros();
-    ::rtidb::api::BatchGetRequest request;
-    request.set_pid(pid);
-    request.set_tid(tid);
-    for (size_t i = 0; i < keys.size(); i++) {
-        request.add_keys(keys[i]);
-    }
-    ::rtidb::api::BatchGetResponse* response = new ::rtidb::api::BatchGetResponse();
-    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::BatchGet,
-            &request, response, 12, 1);
-    consumed = ::baidu::common::timer::get_micros() - consumed;
-    percentile_.push_back(consumed);
-    if (!ok || response->code() != 0) {
-        return NULL;
-    }
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
-    return kv_it;
-}
-
 bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
     ::rtidb::api::TaskStatusRequest request;
     bool ret = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::GetTaskStatus,
