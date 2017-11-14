@@ -174,7 +174,7 @@ private:
     inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
-            std::string& msg);
+                            std::string& msg);
 
     bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
 
@@ -197,6 +197,9 @@ private:
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);
+
+    int32_t CheckDimessionPut(const ::rtidb::api::PutRequest* request,
+                              std::shared_ptr<Table>& table);
 
 private:
     Tables tables_;

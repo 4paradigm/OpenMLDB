@@ -807,7 +807,6 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         return;
     }
     try {
-
         uint64_t ttl = 0;
         if (parts.size() > 4) {
             ttl = boost::lexical_cast<uint64_t>(parts[4]);
@@ -817,36 +816,45 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         if (parts.size() > 5) {
             seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
         }
-        std::vector<std::pair<rtidb::base::ColType, std::string>> columns;
+        std::vector<::rtidb::base::ColumnDesc> columns;
         for (uint32_t i = 6; i < parts.size(); i++) {
             std::vector<std::string> kv;
             ::rtidb::base::SplitString(parts[i], ":", &kv);
-            if (kv.size() != 2) {
+            if (kv.size() < 2) {
                 continue;
             }
-            if (kv[1] == "int32") {
-                columns.push_back(std::make_pair(::rtidb::base::ColType::kInt32, kv[0]));
-            }else if (kv[1] == "int64") {
-                columns.push_back(std::make_pair(::rtidb::base::ColType::kInt64, kv[0]));
-            }else if (kv[1] == "uint32") {
-                columns.push_back(std::make_pair(::rtidb::base::ColType::kUInt32, kv[0]));
-            }else if (kv[1] == "uint64") {
-                columns.push_back(std::make_pair(::rtidb::base::ColType::kUInt64, kv[0]));
-            }else if (kv[1] == "float") {
-                columns.push_back(std::make_pair(::rtidb::base::ColType::kFloat, kv[0]));
-            }else if (kv[1] == "double") {
-                columns.push_back(std::make_pair(::rtidb::base::ColType::kDouble, kv[0]));
-            }else if (kv[1] == "string") {
-                columns.push_back(std::make_pair(::rtidb::base::ColType::kString, kv[0]));
+            bool add_ts_idx = false;
+            if (kv.size() > 2 && kv[2] == "index") {
+                add_ts_idx = true;
             }
+            ::rtidb::base::ColType type;
+            if (kv[1] == "int32") {
+                type = ::rtidb::base::ColType::kInt32;
+            }else if (kv[1] == "int64") {
+                type = ::rtidb::base::ColType::kInt64;
+            }else if (kv[1] == "uint32") {
+                type = ::rtidb::base::ColType::kUInt32;
+            }else if (kv[1] == "uint64") {
+                type = ::rtidb::base::ColType::kUInt64;
+            }else if (kv[1] == "float") {
+                type = ::rtidb::base::ColType::kFloat;
+            }else if (kv[1] == "double") {
+                type = ::rtidb::base::ColType::kDouble;
+            }else if (kv[1] == "string") {
+                type = ::rtidb::base::ColType::kString;
+            }else {
+                continue;
+            }
+            ::rtidb::base::ColumnDesc desc;
+            desc.add_ts_idx = add_ts_idx;
+            desc.type = type;
+            desc.name = kv[0];
+            columns.push_back(desc);
         }
-        std::string schema;
-        ::rtidb::base::SchemaCodec codec;
-        codec.Encode(columns, schema);
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl,seg_cnt, schema);
+                                      ttl, seg_cnt, columns);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -870,22 +878,22 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
         std::cout << "No schema for table" << std::endl;
         return;
     }
-    std::vector<std::pair<::rtidb::base::ColType, std::string> > raw;
+    std::vector<::rtidb::base::ColumnDesc> raw;
     ::rtidb::base::SchemaCodec codec;
     codec.Decode(schema, raw);
-
-    ::baidu::common::TPrinter tp(3);
+    ::baidu::common::TPrinter tp(4);
     std::vector<std::string> header;
-    header.push_back("index");
+    header.push_back("#");
     header.push_back("name");
     header.push_back("type");
+    header.push_back("index");
 
     tp.AddRow(header);
     for (uint32_t i = 0; i < raw.size(); i++) {
         std::vector<std::string> row;
         row.push_back(boost::lexical_cast<std::string>(i));
-        row.push_back(raw[i].second);
-        switch (raw[i].first) {
+        row.push_back(raw[i].name);
+        switch (raw[i].type) {
             case ::rtidb::base::ColType::kInt32:
                 row.push_back("int32");
                 break;
@@ -910,13 +918,32 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
             default:
                 break;
         }
+        if (raw[i].add_ts_idx) {
+            row.push_back("yes");
+        }else {
+            row.push_back("no");
+        }
         tp.AddRow(row);
     }
     tp.Print(true);
 }
 
+uint32_t GetDimensionIndex(const std::vector<::rtidb::base::ColumnDesc>& columns,
+                           const std::string& dname) {
+    uint32_t dindex = 0;
+    for (uint32_t i = 0; i < columns.size(); i++) {
+        if (columns[i].name == dname) {
+            return dindex;
+        }
+        if (columns[i].add_ts_idx) {
+            dindex ++;
+        }
+    }
+    return 0;
+}
+
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 6) {
+    if (parts.size() < 7) {
         std::cout << "Bad scan format" << std::endl;
         return;
     }
@@ -924,8 +951,9 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
                 boost::lexical_cast<uint32_t>(parts[2]),
                 parts[3], 
-                boost::lexical_cast<uint64_t>(parts[4]), 
-                boost::lexical_cast<uint64_t>(parts[5]));
+                boost::lexical_cast<uint64_t>(parts[5]), 
+                boost::lexical_cast<uint64_t>(parts[6]),
+                boost::lexical_cast<uint32_t>(parts[4]));
         if (it == NULL) {
             std::cout << "Fail to scan table" << std::endl;
         }else {
@@ -936,7 +964,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
                 std::cout << "No schema for table ,please use command scan" << std::endl;
                 return;
             }
-            std::vector<std::pair<::rtidb::base::ColType, std::string> > raw;
+            std::vector<::rtidb::base::ColumnDesc> raw;
             ::rtidb::base::SchemaCodec codec;
             codec.Decode(schema, raw);
             ::baidu::common::TPrinter tp(raw.size() + 2);
@@ -944,7 +972,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             row.push_back("pk");
             row.push_back("ts");
             for (uint32_t i = 0; i < raw.size(); i++) {
-                row.push_back(raw[i].second);
+                row.push_back(raw[i].name);
             }
             tp.AddRow(row);
             uint32_t index = 1;
@@ -1002,7 +1030,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
 
 void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {
-        std::cout << "Bad put format, eg put tid pid key time value" << std::endl;
+        std::cout << "Bad put format, eg put tid pid time value" << std::endl;
         return;
     }
     try {
@@ -1020,40 +1048,49 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
             std::cout << "No schema for table, please use put command" << std::endl;
             return;
         }
-
-        std::vector<std::pair<::rtidb::base::ColType, std::string> > raw;
+        std::vector<::rtidb::base::ColumnDesc> raw;
         ::rtidb::base::SchemaCodec scodec;
         scodec.Decode(schema, raw);
         std::string buffer;
-        uint32_t cnt = parts.size() - 5;
+        uint32_t cnt = parts.size() - 4;
+        if (cnt != raw.size()) {
+            std::cout << "Input value mismatch schema" << std::endl;
+            return;
+        }
         ::rtidb::base::FlatArrayCodec codec(&buffer, (uint8_t) cnt);
-        for (uint32_t i = 5; i < parts.size(); i++) {
-            if (i-5 >= raw.size()) {
+        std::vector<std::pair<std::string, uint32_t> > dimensions;
+        uint32_t idx_cnt = 0;
+        for (uint32_t i = 4; i < parts.size(); i++) {
+            if (i-4 >= raw.size()) {
                 std::cout << "Input mismatch schema" << std::endl;
                 return;
             }
-            if (raw[i - 5].first == ::rtidb::base::ColType::kInt32) {
+            if (raw[i - 4].add_ts_idx) {
+                dimensions.push_back(std::make_pair(parts[i], idx_cnt));
+                idx_cnt ++;
+            }
+            if (raw[i - 4].type == ::rtidb::base::ColType::kInt32) {
                 codec.Append(boost::lexical_cast<int32_t>(parts[i]));
-            }else if (raw[i - 5].first == ::rtidb::base::ColType::kInt64) {
+            }else if (raw[i - 4].type == ::rtidb::base::ColType::kInt64) {
                 codec.Append(boost::lexical_cast<int64_t>(parts[i]));
-            }else if (raw[i - 5].first == ::rtidb::base::ColType::kUInt32) {
+            }else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt32) {
                 codec.Append(boost::lexical_cast<uint32_t>(parts[i]));
-            }else if (raw[i - 5].first == ::rtidb::base::ColType::kUInt64) {
+            }else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt64) {
                 codec.Append(boost::lexical_cast<uint64_t>(parts[i]));
-            }else if (raw[i - 5].first == ::rtidb::base::ColType::kFloat) {
+            }else if (raw[i - 4].type == ::rtidb::base::ColType::kFloat) {
                 codec.Append(boost::lexical_cast<float>(parts[i]));
-            }else if (raw[i - 5].first == ::rtidb::base::ColType::kDouble) {
+            }else if (raw[i - 4].type == ::rtidb::base::ColType::kDouble) {
                 codec.Append(boost::lexical_cast<double>(parts[i]));
-            }else if (raw[i - 5].first == ::rtidb::base::ColType::kString) {
+            }else if (raw[i - 4].type == ::rtidb::base::ColType::kString) {
                 codec.Append(parts[i]);
             }
         }
         codec.Build();
         ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]),
-                            boost::lexical_cast<uint32_t>(parts[2]),
-                            parts[3],
-                            boost::lexical_cast<uint64_t>(parts[4]),
-                            buffer);
+                         boost::lexical_cast<uint32_t>(parts[2]),
+                         boost::lexical_cast<uint64_t>(parts[3]),
+                         buffer,
+                         dimensions);
         if (ok) {
             std::cout << "Put ok" << std::endl;
         }else {

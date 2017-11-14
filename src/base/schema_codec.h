@@ -15,7 +15,8 @@
 
 namespace rtidb {
 namespace base {
-
+// 1M
+const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
 enum ColType {
     kString = 0,
     kFloat = 1,
@@ -33,62 +34,81 @@ struct Column {
 };
 
 struct ColumnDesc {
-    uint32_t idx;
     ColType type;
     std::string name;
+    bool add_ts_idx;
 };
 
 class SchemaCodec {
 
 public:
-    void Encode(const std::vector<std::pair<ColType, std::string> >& columns, 
+    bool Encode(const std::vector<ColumnDesc>& columns, 
                 std::string& buffer) {
+        //TODO limit the total size
         uint32_t byte_size = GetSize(columns);     
+        if (byte_size >  MAX_ROW_BYTE_SIZE) {
+            return false;
+        }
         buffer.resize(byte_size);
         char* cbuffer = reinterpret_cast<char*>(&(buffer[0]));
         for (uint32_t i = 0; i < columns.size(); i++) {
-            uint8_t type = (uint8_t) columns[i].first;
-            const std::string& name = columns[i].second;
+            uint8_t type = (uint8_t) columns[i].type;
             memcpy(cbuffer, static_cast<const void*>(&type), 1);
             cbuffer += 1;
+            uint8_t add_ts_idx = 0;
+            if (columns[i].add_ts_idx) {
+                add_ts_idx = 1;
+            }
+            memcpy(cbuffer, static_cast<const void*>(&add_ts_idx), 1);
+            cbuffer += 1;
             //TODO limit the name length
+            const std::string& name = columns[i].name;
             uint8_t name_size = (uint8_t)name.size();
             memcpy(cbuffer, static_cast<const void*>(&name_size), 1);
             cbuffer += 1;
             memcpy(cbuffer, static_cast<const void*>(name.c_str()), name_size);
             cbuffer += name_size;
         }
+        return true;
     }
 
-    void Decode(const std::string& schema, std::vector<std::pair<ColType, std::string>>& columns) {
+    void Decode(const std::string& schema, std::vector<ColumnDesc>& columns) {
         const char* buffer = schema.c_str();
         uint32_t read_size = 0;
         while (read_size < schema.size()) {
-            if (schema.size() - read_size < 2) {
+            if (schema.size() - read_size < 3) {
                 return;
             }
             uint8_t type = 0;
             memcpy(static_cast<void*>(&type), buffer, 1);
             buffer += 1;
+            uint8_t add_ts_idx = 0;
+            memcpy(static_cast<void*>(&add_ts_idx), buffer, 1);
+            buffer += 1;
             uint8_t name_size = 0;
             memcpy(static_cast<void*>(&name_size), buffer, 1);
             buffer += 1;
-            uint32_t total_size = 2 + name_size;
+            uint32_t total_size = 3 + name_size;
             if (schema.size() - read_size < total_size) {
                 return;
             }
             std::string name(buffer, name_size);
             buffer += name_size;
             read_size += total_size;
-            columns.push_back(std::pair<ColType, std::string>(static_cast<ColType>(type), name));
+            ColumnDesc desc;
+            desc.name = name;
+            desc.type = static_cast<ColType>(type);
+            desc.add_ts_idx = add_ts_idx;
+            columns.push_back(desc);
         }
     }
 
 private:
-    uint32_t GetSize(const std::vector<std::pair<ColType, std::string> >& columns) {
+    // calc the total size of schema
+    uint32_t GetSize(const std::vector<ColumnDesc>& columns) {
         uint32_t byte_size = 0;
         for (uint32_t i = 0; i < columns.size(); i++) {
-            byte_size += (1 + 1 + columns[i].second.size());
+            byte_size += (1 + 1 + 1 + columns[i].name.size());
         }
         return byte_size;
     }

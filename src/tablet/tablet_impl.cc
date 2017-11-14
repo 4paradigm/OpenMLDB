@@ -22,6 +22,7 @@
 #include "base/codec.h"
 #include "base/strings.h"
 #include "base/file_util.h"
+#include "storage/segment.h"
 #include "logging.h"
 #include "timer.h"
 #include <google/protobuf/text_format.h>
@@ -212,10 +213,29 @@ void TabletImpl::Put(RpcController* controller,
         return;
     }
     uint64_t size = request->value().size();
-    table->Put(request->pk(), request->time(), request->value().c_str(),
-            request->value().length());
+    if (request->dimensions_size() > 0) {
+        int32_t ret_code = CheckDimessionPut(request, table);
+        if (ret_code != 0) {
+            response->set_code(ret_code);
+            response->set_msg("invalid dimension parameter");
+            done->Run();
+            return;
+        }
+        //TODO make sure the dimensions valid
+        DataBlock* block = new DataBlock(request->dimensions_size(), 
+                                         request->value().c_str(), 
+                                         request->value().length());
+        for (int32_t i = 0; i < request->dimensions_size(); i++) {
+            table->Put(request->dimensions(i).key(), 
+                       request->time(),
+                       block, request->dimensions(i).idx());
+        }
+    }else {
+        table->Put(request->pk(), request->time(), request->value().c_str(),
+                   request->value().length());
+        LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
+    }
     response->set_code(0);
-    LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     bool leader = table->IsLeader();
     std::shared_ptr<LogReplicator> replicator;
     if (leader) {
@@ -227,9 +247,12 @@ void TabletImpl::Put(RpcController* controller,
                 break;
             }
             ::rtidb::api::LogEntry entry;
-            entry.set_ts(request->time());
             entry.set_pk(request->pk());
+            entry.set_ts(request->time());
             entry.set_value(request->value());
+            if (request->dimensions_size() > 0) {
+                entry.mutable_dimensions()->CopyFrom(request->dimensions());
+            }
             replicator->AppendEntry(entry);
         } while(false);
     }
@@ -297,7 +320,21 @@ void TabletImpl::Scan(RpcController* controller,
     // Use seek to process scan request
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = table->NewIterator(request->pk(), ticket);
+    Table::Iterator* it = NULL;
+    if (request->has_dindex()) {
+        if (request->dindex() >= table->GetIdxCnt()) {
+            LOG(WARNING, "invalid dindex %u, table idx cnt %u", request->dindex(),
+                    table->GetIdxCnt());
+            response->set_code(30);
+            response->set_msg("invalid dindex");
+            done->Run();
+            return;
+        }
+        it = table->NewIterator(request->dindex(),
+                                request->pk(), ticket);
+    }else {
+        it = table->NewIterator(request->pk(), ticket);
+    }
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
@@ -1461,6 +1498,22 @@ void TabletImpl::CheckZkClient() {
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
 
+}
+
+int32_t TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
+                                      std::shared_ptr<Table>& table) {
+    for (int32_t i = 0; i < request->dimensions_size(); i++) {
+        if (table->GetIdxCnt() <= request->dimensions(i).idx()) {
+            LOG(WARNING, "invalid put request dimensions, request idx %u is greater than table idx cnt %u", 
+                    request->dimensions(i).idx(), table->GetIdxCnt());
+            return -1;
+        }
+        if (request->dimensions(i).key().length() <= 0) {
+            LOG(WARNING, "invalid put request dimension key is empty with idx %u", request->dimensions(i).idx());
+            return 1;
+        }
+    }
+    return 0;
 }
 
 }

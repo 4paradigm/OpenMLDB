@@ -71,15 +71,21 @@ message Manifest {
     optional uint64 count = 3;
 }
 
+message Dimension {
+    optional string key = 1;
+    optional uint32 idx = 2;
+}
+
 message PutRequest {
 	// the prefix key
+    // abandoned
 	optional string pk = 1;
 	// the subfix key
 	optional int64 time = 2;
 	optional bytes value = 3;
 	optional uint32 tid = 4;
     optional uint32 pid = 5;
-    repeated string dimensions = 6;
+    repeated Dimension dimensions = 6;
 }
 
 message PutResponse {
@@ -123,8 +129,8 @@ message ScanRequest {
 	optional uint32 tid = 6;
 	optional uint32 pid = 7;
     optional bool enable_remove_duplicated_record = 8 [default=false];
+    optional uint32 dindex = 9;
 }
-
 
 message RpcMetric {
 	// the time start send rpc request
@@ -236,7 +242,7 @@ message LogEntry {
     optional string pk = 3;
     optional bytes value = 4;
     optional uint64 ts = 5;
-    repeated string dimensions = 6;
+    repeated Dimension dimensions = 6;
 }
 
 message AppendEntriesRequest {

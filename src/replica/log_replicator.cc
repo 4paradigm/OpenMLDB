@@ -297,7 +297,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             return false;
         }
         table_->Put(request->entries(i).pk(), request->entries(i).ts(), 
-                request->entries(i).value().c_str(), request->entries(i).value().length());
+                    request->entries(i).value().c_str(), request->entries(i).value().length());
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
         response->set_log_offset(GetOffset());
     }
