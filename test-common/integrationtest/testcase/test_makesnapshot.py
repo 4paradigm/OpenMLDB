@@ -456,6 +456,7 @@ class TestMakeSnapshot(TestCaseBase):
 
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
+        time.sleep(1)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
         offset = int(mf['offset'])
 
