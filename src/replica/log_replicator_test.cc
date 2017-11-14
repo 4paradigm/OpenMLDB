@@ -137,7 +137,9 @@ bool StartRpcServe(MockTabletImpl* tablet,
 TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, 0, false, g_endpoints);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx", 0));
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -148,7 +150,9 @@ TEST_F(LogReplicatorTest, Init) {
 TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, 0, false, g_endpoints);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx", 0));
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -167,7 +171,9 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server0(options);
     sofa::pbrpc::RpcServer rpc_server1(options);
-    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, 0, false, g_endpoints);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx", 0));
+    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
@@ -208,7 +214,9 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     leader.Notify();
     leader.AddReplicateNode("127.0.0.1:18528");
     sleep(2);
-    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, 0, false, g_endpoints);
+
+
+    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
