@@ -27,9 +27,8 @@ class NsClient {
 
 public:
     NsClient(const std::string& endpoint);
-    ~NsClient();
 
-    bool Init();
+    int Init();
 
     bool ShowTablet(std::vector<TabletInfo>& tablets);
 
@@ -41,8 +40,7 @@ public:
 	
 private:
     std::string endpoint_;
-    ::rtidb::RpcClient client_;
-    ::rtidb::nameserver::NameServer_Stub* ns_;
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
 };
 
 }

@@ -19,7 +19,7 @@
 #include "zk/zk_client.h"
 #include <map>
 #include <list>
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -151,8 +151,8 @@ public:
     //http api
     // get all table informatiom
     // 
-    bool WebService(const sofa::pbrpc::HTTPRequest& request,
-            sofa::pbrpc::HTTPResponse& response);
+    //bool WebService(const sofa::pbrpc::HTTPRequest& request,
+    //        sofa::pbrpc::HTTPResponse& response);
 private:
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
@@ -165,14 +165,14 @@ private:
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
-    void ShowTables(const sofa::pbrpc::HTTPRequest& request,
+    /*void ShowTables(const sofa::pbrpc::HTTPRequest& request,
             sofa::pbrpc::HTTPResponse& response); 
 
     void ShowMetric(const sofa::pbrpc::HTTPRequest& request,
             sofa::pbrpc::HTTPResponse& response);
 
     void ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
-        sofa::pbrpc::HTTPResponse& response);
+        sofa::pbrpc::HTTPResponse& response);*/
 
     inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
 

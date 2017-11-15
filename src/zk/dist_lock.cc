@@ -48,7 +48,7 @@ void DistLock::InternalLock() {
             if (!ok) {
                 continue;
             }
-            LOG(INFO, "create node ok with assigned path %s", assigned_path_.c_str());
+            PDLOG(INFO, "create node ok with assigned path %s", assigned_path_.c_str());
             std::vector<std::string> children;
             ok = zk_client_->GetChildren(root_path_, children);
             if (!ok) {
@@ -70,11 +70,11 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
     if (children.size() > 0) {
         current_lock_node_ = root_path_ + "/" + children[0];
     }
-    LOG(INFO, "first child %s", current_lock_node_.c_str());
+    PDLOG(INFO, "first child %s", current_lock_node_.c_str());
     if (current_lock_node_.compare(assigned_path_) == 0) {
         // first get lock
         if (lock_state_.load(boost::memory_order_relaxed) == kTryLock) {
-            LOG(INFO, "get lock with assigned_path %s", assigned_path_.c_str());
+            PDLOG(INFO, "get lock with assigned_path %s", assigned_path_.c_str());
             on_locked_cl_();
             lock_state_.store(kLocked, boost::memory_order_relaxed);
             current_lock_value_ = lock_value_;
@@ -82,16 +82,16 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
     }else {
         bool ok = zk_client_->GetNodeValue(current_lock_node_, current_lock_value_);
         if (!ok) {
-            LOG(WARNING, "fail to get lock value");
+            PDLOG(WARNING, "fail to get lock value");
         }
         // lost lock
         if (lock_state_.load(boost::memory_order_relaxed) == kLocked) {
                        on_lost_lock_cl_();
             lock_state_.store(kLostLock, boost::memory_order_relaxed);
         }
-        LOG(INFO, "wait a channce to get a lock");
+        PDLOG(INFO, "wait a channce to get a lock");
     }
-    LOG(INFO, "my path %s , first child %s , lock value %s", 
+    PDLOG(INFO, "my path %s , first child %s , lock value %s", 
                assigned_path_.c_str(), current_lock_node_.c_str(), current_lock_value_.c_str());
 }
 

@@ -12,7 +12,7 @@
 #include <iostream>
 
 #include <gflags/gflags.h>
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include "logging.h"
@@ -75,76 +75,68 @@ void SetupLog() {
 
 void StartNameServer() {
     SetupLog();
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::nameserver::NameServerImpl* name_server = new ::rtidb::nameserver::NameServerImpl();
     name_server->Init();
-    sofa::pbrpc::Servlet webservice =
-                sofa::pbrpc::NewPermanentExtClosure(name_server, &rtidb::nameserver::NameServerImpl::WebService);
-    if (!rpc_server.RegisterService(name_server)) {
-        LOG(WARNING, "fail to register nameserver rpc service");
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+	if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    rpc_server.RegisterWebServlet("/nameserver", webservice);
-    if (!rpc_server.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    LOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+    PDLOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
-    while (!s_quit) {
-        sleep(1);
-    }
+	server.RunUntilAskedToQuit();
 }
 
 void StartTablet() {
     SetupLog();
-    sofa::pbrpc::RpcServerOptions scan_options;
-    scan_options.work_thread_num = FLAGS_scan_thread_pool_size;
-    sofa::pbrpc::RpcServer scan_rpc_server(scan_options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     if (!ok) {
-        LOG(WARNING, "fail to init tablet");
+        PDLOG(WARNING, "fail to init tablet");
         exit(1);
     }
-    sofa::pbrpc::Servlet webservice =
-                sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!scan_rpc_server.RegisterService(tablet)) {
-        LOG(WARNING, "fail to register tablet rpc service");
+    brpc::ServerOptions scan_options;
+    scan_options.num_threads = FLAGS_scan_thread_pool_size;
+	brpc::Server scan_server;
+	if (scan_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    scan_rpc_server.RegisterWebServlet("/tablet", webservice);
-    if (!scan_rpc_server.Start(FLAGS_scan_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_scan_endpoint.c_str());
+	if (scan_server.Start(FLAGS_scan_endpoint.c_str(), &scan_options) != 0) {
+        PDLOG(WARNING, "Fail to start scan server");
         exit(1);
     }
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
-    scan_options.work_thread_num = FLAGS_thread_pool_size;
-    if (!rpc_server.RegisterService(tablet)) {
-        LOG(WARNING, "fail to register tablet rpc service");
+
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+	if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
-    if (!rpc_server.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    LOG(INFO, "start tablet on port %s and scan port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+    PDLOG(INFO, "start tablet on port %s and scan port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
             FLAGS_scan_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
-    while (!s_quit) {
-        sleep(1);
-    }
+	scan_server.RunUntilAskedToQuit();
+	server.RunUntilAskedToQuit();
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -1126,6 +1118,7 @@ void StartClient() {
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
         << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
+    client.Init();
     while (!s_quit) {
         std::cout << ">";
         std::string buffer;

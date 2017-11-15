@@ -19,7 +19,6 @@
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
-#include "rpc/rpc_client.h"
 #include "replica/replicate_node.h"
 #include "storage/table.h"
 
@@ -118,8 +117,6 @@ private:
     Mutex mu_;
     CondVar cv_;
     CondVar coffee_cv_;
-
-    ::rtidb::RpcClient* rpc_client_;
 
     ApplyLogFunc func_;
 

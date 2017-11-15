@@ -70,7 +70,7 @@ void Table::Init() {
     if (ttl_ > 0) {
         enable_gc_ = true;
     }
-    LOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
+    PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
             id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
 }
 
@@ -111,7 +111,7 @@ uint64_t Table::SchedGc() {
     if (!enable_gc_.load(boost::memory_order_relaxed)) {
         return 0;
     }
-    LOG(INFO, "table %s start to make a gc", name_.c_str()); 
+    PDLOG(INFO, "table %s start to make a gc", name_.c_str()); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
     uint64_t count = 0;

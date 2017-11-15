@@ -202,6 +202,21 @@ else
     touch leveldb_succ
 fi
 
+if [ -f "brpc" ]
+then
+    echo "brpc exist"
+else
+    wget -O brpc_master.zip https://github.com/brpc/brpc/archive/master.zip > /dev/null
+    unzip brpc_master.zip 
+    BRPC_DIR=$DEPS_SOURCE/brpc_master
+    cd brpc_master
+    sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+    #make -j2 
+    #cd $DEPS_SOURCE 
+    #touch brpc_master
+    echo "brpc done"
+fi
+
 if [ -f "zk_succ" ]
 then
     echo "zk exist"

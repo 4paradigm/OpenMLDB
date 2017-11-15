@@ -17,6 +17,7 @@
 #include <boost/lexical_cast.hpp>
 #include "name_server_impl.h"
 #include "rpc/rpc_client.h"
+#include <brpc/server.h>
 #include "base/file_util.h"
 
 DECLARE_string(endpoint);
@@ -25,6 +26,8 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
+DECLARE_int32(stack_size_normal);
+DECLARE_int32(tc_stack_normal);
 
 using ::rtidb::zk::ZkClient;
 
@@ -56,7 +59,9 @@ public:
 };
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
-    FLAGS_endpoint="127.0.0.1:9530";
+    FLAGS_stack_size_normal=10485760;
+    FLAGS_tc_stack_normal=1;
+
     FLAGS_zk_cluster="127.0.0.1:12181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
@@ -66,41 +71,36 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_TRUE(ok);
     endpoint_size++;
     sleep(4);
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
-    sofa::pbrpc::Servlet webservice =
-            sofa::pbrpc::NewPermanentExtClosure(nameserver, &rtidb::nameserver::NameServerImpl::WebService);
-    if (!rpc_server.RegisterService(nameserver)) {
-       LOG(WARNING, "fail to register nameserver rpc service");
-       exit(1);
-    }
-    rpc_server.RegisterWebServlet("/nameserver", webservice);
-    if (!rpc_server.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+    brpc::ServerOptions options;
+	brpc::Server server;
+	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    ::rtidb::RpcClient name_server_client;
-    ::rtidb::nameserver::NameServer_Stub *stub = NULL;
-    name_server_client.GetStub(FLAGS_endpoint, &stub);
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint);
+    name_server_client.Init();
 
     FLAGS_endpoint="127.0.0.1:9530";
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     ok = tablet->Init();
     ASSERT_TRUE(ok);
     sleep(2);
-    sofa::pbrpc::RpcServerOptions options1;
-    sofa::pbrpc::RpcServer rpc_server1(options1);
-    sofa::pbrpc::Servlet webservice1 =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server1.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register nameserver rpc service");
-       exit(1);
-    }
-    rpc_server1.RegisterWebServlet("/tablet", webservice1);
-    if (!rpc_server1.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+
+    brpc::ServerOptions options1;
+	brpc::Server server1;
+	if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
+    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+
     sleep(2);
     
     CreateTableRequest request;
@@ -112,17 +112,15 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     partion->set_endpoint("127.0.0.1:9530");
     partion->set_is_leader(true);
     partion->set_pid(0);
-    ok = name_server_client.SendRequest(stub,
-            &::rtidb::nameserver::NameServer_Stub::CreateTable,
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, 12, 1);
     ASSERT_TRUE(ok);
-
+    exit(1);
 
     MakeSnapshotNSRequest m_request;
     m_request.set_name(name);
     m_request.set_pid(0);
-    ok = name_server_client.SendRequest(stub,
-            &::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
             &m_request, &response, 12, 1);
     ASSERT_TRUE(ok);
 

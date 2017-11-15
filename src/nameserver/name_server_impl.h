@@ -16,7 +16,7 @@
 #include <atomic>
 #include <map>
 #include <list>
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 
 namespace rtidb {
 namespace nameserver {
@@ -74,9 +74,6 @@ public:
     NameServerImpl(const NameServerImpl&) = delete;
 
     NameServerImpl& operator= (const NameServerImpl&) = delete; 
-
-    bool WebService(const sofa::pbrpc::HTTPRequest& request,
-                sofa::pbrpc::HTTPResponse& response);
 
     void CreateTable(RpcController* controller,
         const CreateTableRequest* request,
