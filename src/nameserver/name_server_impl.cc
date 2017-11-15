@@ -629,8 +629,6 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         if (table_partition.is_leader() != is_leader) {
             continue;
         }
-        PDLOG(WARNING, "endpoint[%s] role[%d] is_leader[%d]", table_partition.endpoint().c_str(), table_partition.is_leader(), is_leader);
-
         auto iter = tablets_.find(table_partition.endpoint());
         // check tablet if exist
         if (iter == tablets_.end()) {

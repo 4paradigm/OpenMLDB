@@ -26,8 +26,6 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
-DECLARE_int32(stack_size_normal);
-DECLARE_int32(tc_stack_normal);
 
 using ::rtidb::zk::ZkClient;
 
@@ -59,9 +57,6 @@ public:
 };
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
-    FLAGS_stack_size_normal=10485760;
-    FLAGS_tc_stack_normal=1;
-
     FLAGS_zk_cluster="127.0.0.1:12181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
