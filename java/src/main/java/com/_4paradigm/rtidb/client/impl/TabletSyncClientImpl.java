@@ -102,10 +102,10 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		if (schema != null && schema.size() > 0) {
 			ByteBuffer buffer = SchemaCodec.encode(schema);
 			builder.setSchema(ByteString.copyFrom(buffer.array()));
-		}
-		for (ColumnDesc desc : schema) {
-			if (desc.isAddTsIndex()) {
-				builder.addDimensions(desc.getName());
+			for (ColumnDesc desc : schema) {
+				if (desc.isAddTsIndex()) {
+					builder.addDimensions(desc.getName());
+				}
 			}
 		}
 		builder.setName(name).setTid(tid).setPid(pid).setTtl(ttl).setSegCnt(segCnt);
