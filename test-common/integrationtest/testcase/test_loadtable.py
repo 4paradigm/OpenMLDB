@@ -161,6 +161,7 @@ class TestLoadTable(TestCaseBase):
                      'testvalue{}'.format(i))
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
+        time.sleep(1)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -354,6 +355,7 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
+        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '4')
         self.assertTrue(mf['name'])
@@ -420,6 +422,7 @@ class TestLoadTable(TestCaseBase):
                  'testvalue1')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
+        time.sleep(1)
 
         rs3 = self.pausesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs3)
