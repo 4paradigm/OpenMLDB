@@ -967,9 +967,8 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             std::vector<::rtidb::base::ColumnDesc> raw;
             ::rtidb::base::SchemaCodec codec;
             codec.Decode(schema, raw);
-            ::baidu::common::TPrinter tp(raw.size() + 2);
+            ::baidu::common::TPrinter tp(raw.size() + 1);
             std::vector<std::string> row;
-            row.push_back("pk");
             row.push_back("ts");
             for (uint32_t i = 0; i < raw.size(); i++) {
                 row.push_back(raw[i].name);
@@ -979,7 +978,6 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             while (it->Valid()) {
                 rtidb::base::FlatArrayIterator fit(it->GetValue().data(), it->GetValue().size());
                 std::vector<std::string> vrow;
-                vrow.push_back(parts[3]);
                 vrow.push_back(boost::lexical_cast<std::string>(it->GetKey()));
                 while (fit.Valid()) {
                     std::string col;
@@ -1014,7 +1012,6 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
                     vrow.push_back(col);
                 }
                 tp.AddRow(vrow);
-                std::cout << std::endl;
                 index ++;
                 it->Next();
             }

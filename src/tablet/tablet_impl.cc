@@ -351,7 +351,7 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t last_time = 0;
     while (it->Valid()) {
         scount ++;
-        LOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
+        LOG(DEBUG, "scan key %lld value %s", it->GetKey(), ::rtidb::base::DebugCharArray(it->GetValue()->data, it->GetValue()->size).c_str());
         if (it->GetKey() <= end_time) {
             break;
         }
@@ -951,8 +951,8 @@ void TabletImpl::LoadTable(RpcController* controller,
     if (table_meta.seg_cnt() > 0) {
         seg_cnt = table_meta.seg_cnt();
     }
-    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
-               pid, name.c_str(), seg_cnt, ttl);
+    LOG(INFO, "create table with id %d pid %d name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
+               pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
     
     // load snapshot data
     std::shared_ptr<Table> table = GetTable(tid, pid);        
@@ -1166,7 +1166,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     // add default dimension
     if (mapping.size() <= 0) {
         mapping.insert(std::make_pair("idx0", 0));
-        LOG(INFO, "no index specify with default");
+        LOG(INFO, "no index specified with default");
     }
     std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
                                                            table_meta->tid(),

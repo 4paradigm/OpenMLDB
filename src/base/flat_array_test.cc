@@ -53,6 +53,20 @@ TEST_F(FlatArrayTest, Encode) {
     std::cout << ::rtidb::base::DebugString(buffer2) << std::endl;
 }
 
+TEST_F(FlatArrayTest, Encode1) {
+    std::string buffer;
+    FlatArrayCodec codec(&buffer, 2);
+    bool ok = codec.Append("test");
+    ASSERT_TRUE(ok);
+    double v = 1.0;
+    ok = codec.Append(v);
+    ASSERT_TRUE(ok);
+    codec.Build();
+    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+}
+
+
+
 }
 }
 

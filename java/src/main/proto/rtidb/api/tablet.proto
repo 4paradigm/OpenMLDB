@@ -71,14 +71,21 @@ message Manifest {
     optional uint64 count = 3;
 }
 
+message Dimension {
+    optional string key = 1;
+    optional uint32 idx = 2;
+}
+
 message PutRequest {
 	// the prefix key
+    // abandoned
 	optional string pk = 1;
 	// the subfix key
 	optional int64 time = 2;
 	optional bytes value = 3;
 	optional uint32 tid = 4;
     optional uint32 pid = 5;
+    repeated Dimension dimensions = 6;
 }
 
 message PutResponse {
@@ -122,8 +129,8 @@ message ScanRequest {
 	optional uint32 tid = 6;
 	optional uint32 pid = 7;
     optional bool enable_remove_duplicated_record = 8 [default=false];
+    optional uint32 dindex = 9;
 }
-
 
 message RpcMetric {
 	// the time start send rpc request
@@ -149,20 +156,6 @@ message ScanResponse {
 	optional uint32 count = 4;
 	optional RpcMetric metric = 6;
     optional bytes schema = 7;
-}
-
-message BatchGetRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    // keys list
-    repeated string keys = 3;
-}
-
-message BatchGetResponse {
-    optional int32 code = 1;
-    optional string msg = 2;
-    // pairs the index to key index
-    optional bytes pairs = 3;
 }
 
 message ReplicaRequest {
@@ -191,6 +184,7 @@ message TableMeta {
     // term for change role
     optional uint64 term = 10;
     optional bytes schema = 11;
+    repeated string dimensions = 12;
 }
 
 message CreateTableRequest {
@@ -221,6 +215,18 @@ message GetTableSchemaRequest {
     optional int32 pid = 2;
 }
 
+message SetTTLClockRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional uint64 timestamp = 3;
+}
+
+message SetExpireRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional bool is_expire = 3;
+}
+
 message GetTableSchemaResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -232,9 +238,11 @@ message LogEntry {
     // term for leader
     optional uint64 term = 1;
     optional uint64 log_index = 2;
+    // abandoned
     optional string pk = 3;
     optional bytes value = 4;
     optional uint64 ts = 5;
+    repeated Dimension dimensions = 6;
 }
 
 message AppendEntriesRequest {
@@ -277,7 +285,9 @@ message TableStatus {
     optional uint64 offset = 3;
     optional TableMode mode = 4;
     optional TableState state = 5;
-    optional uint32 ttl = 6;
+    optional uint64 ttl = 6;
+    optional bool is_expire = 7;
+    optional int64 time_offset = 8;
 }
 
 message GetTableStatusResponse {
@@ -307,7 +317,6 @@ service TabletServer {
 	rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
 	rpc Scan(ScanRequest) returns (ScanResponse);
-    rpc BatchGet(BatchGetRequest) returns (BatchGetResponse);
 
     // table api for master
 	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
@@ -324,6 +333,9 @@ service TabletServer {
     rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
+
+    rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
+    rpc SetTTLClock(SetTTLClockRequest) returns(GeneralResponse);
 
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
