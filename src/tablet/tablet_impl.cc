@@ -1007,7 +1007,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
         return -1;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    // do blockother requests
+    // do block other requests
     {
         std::lock_guard<std::mutex> lock(mu_);
         tables_[tid].erase(pid);

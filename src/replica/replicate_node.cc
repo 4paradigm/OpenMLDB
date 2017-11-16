@@ -27,9 +27,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
 }
 
 int ReplicateNode::Init() {
-    int ret = rpc_client_.Init();
-    printf("INIT%d\n", ret);
-    return ret;
+    return rpc_client_.Init();
 }
 
 
