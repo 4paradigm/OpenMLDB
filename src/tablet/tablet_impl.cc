@@ -71,7 +71,7 @@ TabletImpl::~TabletImpl() {
 }
 
 bool TabletImpl::Init() {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     if (!FLAGS_zk_cluster.empty()) {
         zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
                 FLAGS_endpoint, FLAGS_zk_root_path);
@@ -455,7 +455,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
     std::shared_ptr<Table> table;
     std::shared_ptr<LogReplicator> replicator;
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         table = GetTableUnLock(tid, pid);
         if (!table) {
             PDLOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
@@ -615,7 +615,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,
             Closure* done) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);        
     Tables::iterator it = tables_.begin();
     for (; it != tables_.end(); ++it) {
         auto pit = it->second.begin();
@@ -699,7 +699,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         table = GetTableUnLock(tid, pid);
         bool has_error = true;
         do {
@@ -736,7 +736,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
         }    
     }
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         table->SetTableStat(::rtidb::storage::kNormal);
         if (task) {
             if (ret == 0) {
@@ -755,7 +755,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
     uint32_t tid = request->tid();        
     uint32_t pid = request->pid();        
     bool has_error = true;
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
     do {
         if (!snapshot) {
@@ -828,7 +828,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     std::vector<std::pair<uint32_t, uint32_t> > table_set;
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = tables_.begin(); iter != tables_.end(); ++iter) {
             for (auto inner = iter->second.begin(); inner != iter->second.end(); ++ inner) {
                 if (iter->first == 0 && inner->first == 0) {
@@ -859,7 +859,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         return;
     }
 	{
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
 		if (table->GetTableStat() != ::rtidb::storage::kNormal) {
 			PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
 					table->GetTableStat(), request->tid(), request->pid());
@@ -890,7 +890,7 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
         return;
     }
 	{
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
 		if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
 			PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
 					table->GetTableStat(), request->tid(), request->pid());
@@ -933,7 +933,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         return;
     }
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
         if (!table) {
             UpdateTableMeta(db_path, &table_meta);
@@ -1007,9 +1007,9 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
         return -1;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    // do block other requests
+    // do blockother requests
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         tables_[tid].erase(pid);
         replicators_[tid].erase(pid);
         snapshots_[tid].erase(pid);
@@ -1054,7 +1054,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         seg_cnt = table_meta->seg_cnt();
     }
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
         std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
         if (table || snapshot) {
@@ -1156,7 +1156,6 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
 }
 
 int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
-    mu_.AssertHeld();
     uint32_t seg_cnt = 8;
     std::string name = table_meta->name();
     if (table_meta->seg_cnt() > 0) {
@@ -1242,7 +1241,7 @@ void TabletImpl::GetTaskStatus(RpcController* controller,
         const ::rtidb::api::TaskStatusRequest* request,
         ::rtidb::api::TaskStatusResponse* response,
         Closure* done) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     for (auto iter = task_list_.begin(); iter != task_list_.end(); ++iter) {
         ::rtidb::api::TaskInfo* task = response->add_task();
         task->CopyFrom(**iter);
@@ -1256,7 +1255,7 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
 		const ::rtidb::api::DeleteTaskRequest* request,
 		::rtidb::api::GeneralResponse* response,
 		Closure* done) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
 	for (int idx = 0; idx < request->op_id_size(); idx++) {
 		for (auto iter = task_list_.begin(); iter != task_list_.end(); ) {
 			if ((*iter)->op_id() == request->op_id(idx)) {
@@ -1275,13 +1274,11 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
 }
 
 void TabletImpl::AddOPTask(std::shared_ptr<::rtidb::api::TaskInfo> task) {
-    mu_.AssertHeld();
     task_list_.push_back(task);
 }
 
 std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type) {
-    mu_.AssertHeld();
     for (auto& task : task_list_) {
         if (task->op_id() == op_id && task->task_type() == task_type) {
             return task;
@@ -1300,12 +1297,11 @@ void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
 }
 
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     return GetSnapshotUnLock(tid, pid);
 }
 
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshotUnLock(uint32_t tid, uint32_t pid) {
-    mu_.AssertHeld();
     Snapshots::iterator it = snapshots_.find(tid);
     if (it != snapshots_.end()) {
         auto tit = it->second.find(pid);
@@ -1317,7 +1313,6 @@ std::shared_ptr<Snapshot> TabletImpl::GetSnapshotUnLock(uint32_t tid, uint32_t p
 }
 
 std::shared_ptr<LogReplicator> TabletImpl::GetReplicatorUnLock(uint32_t tid, uint32_t pid) {
-    mu_.AssertHeld();
     Replicators::iterator it = replicators_.find(tid);
     if (it != replicators_.end()) {
         auto tit = it->second.find(pid);
@@ -1329,17 +1324,16 @@ std::shared_ptr<LogReplicator> TabletImpl::GetReplicatorUnLock(uint32_t tid, uin
 }
 
 std::shared_ptr<LogReplicator> TabletImpl::GetReplicator(uint32_t tid, uint32_t pid) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     return GetReplicatorUnLock(tid, pid);
 }
 
 std::shared_ptr<Table> TabletImpl::GetTable(uint32_t tid, uint32_t pid) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     return GetTableUnLock(tid, pid);
 }
 
 std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
-    mu_.AssertHeld();
     Tables::iterator it = tables_.find(tid);
     if (it != tables_.end()) {
         auto tit = it->second.find(pid);
@@ -1370,7 +1364,7 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
 
     std::vector<std::shared_ptr<Table> > tmp_tables;
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         Tables::iterator it = tables_.begin();
         for (; it != tables_.end(); ++it) {
             auto tit = it->second.begin();

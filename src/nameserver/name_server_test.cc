@@ -110,7 +110,6 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, 12, 1);
     ASSERT_TRUE(ok);
-    exit(1);
 
     MakeSnapshotNSRequest m_request;
     m_request.set_name(name);

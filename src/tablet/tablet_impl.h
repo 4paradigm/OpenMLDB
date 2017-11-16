@@ -9,7 +9,6 @@
 #ifndef RTIDB_TABLET_IMPL_H
 #define RTIDB_TABLET_IMPL_H
 
-#include "mutex.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "storage/snapshot.h"
@@ -20,11 +19,10 @@
 #include <map>
 #include <list>
 #include <brpc/server.h>
+#include <mutex>
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
-using ::baidu::common::Mutex;
-using ::baidu::common::MutexLock;
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
 using ::rtidb::storage::Snapshot;
@@ -205,7 +203,7 @@ private:
 
 private:
     Tables tables_;
-    Mutex mu_;
+    std::mutex mu_;
     ThreadPool gc_pool_;
     TabletMetric* metric_;
     Replicators replicators_;

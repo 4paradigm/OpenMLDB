@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <algorithm> 
+#include <chrono>
 
 DECLARE_int32(binlog_single_file_max_size);
 DECLARE_int32(binlog_apply_batch_size);
@@ -44,7 +45,7 @@ LogReplicator::LogReplicator(const std::string& path,
                              const ReplicatorRole& role,
                              std::shared_ptr<Table> table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
-    endpoints_(endpoints), nodes_(), mu_(), cv_(&mu_),coffee_cv_(&mu_),
+    endpoints_(endpoints), nodes_(), mu_(), cv_(),coffee_cv_(),
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
     binlog_index_ = 0;
@@ -67,7 +68,7 @@ void LogReplicator::SetRole(const ReplicatorRole& role) {
 }
 
 void LogReplicator::SyncToDisk() {
-    MutexLock lock(&wmu_);
+    std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ != NULL) {
         uint64_t consumed = ::baidu::common::timer::get_micros();
         ::rtidb::base::Status status = wh_->Sync();
@@ -229,7 +230,7 @@ void LogReplicator::DeleteBinlog() {
     }
     int min_log_index = snapshot_log_part_index_.load(boost::memory_order_relaxed);
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
             if ((*iter)->GetLogIndex() < min_log_index) {
                 min_log_index = (*iter)->GetLogIndex();
@@ -247,7 +248,7 @@ void LogReplicator::DeleteBinlog() {
                 min_log_index, binlog_index_.load(boost::memory_order_relaxed));
     ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
     {
-        MutexLock lock(&wmu_);
+        std::lock_guard<std::mutex> lock(wmu_);
         node = logs_->Split(min_log_index);
     }
 
@@ -269,7 +270,7 @@ void LogReplicator::DeleteBinlog() {
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
-    MutexLock lock(&wmu_);
+    std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || (wh_->GetSize() / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
@@ -309,7 +310,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
 
 bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         if (role_ != kLeaderNode) {
             PDLOG(WARNING, "cur table is not leader, cannot add replicate");
             return false;
@@ -339,7 +340,7 @@ bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
 
 bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         if (role_ != kLeaderNode) {
             PDLOG(WARNING, "cur table is not leader, cannot delete replicate");
             return false;
@@ -363,7 +364,7 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
 }
 
 bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
-    MutexLock lock(&wmu_);
+    std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
@@ -385,7 +386,6 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
 }
 
 bool LogReplicator::RollWLogFile() {
-    wmu_.AssertHeld();
     if (wh_ != NULL) {
         wh_->EndLog();
         delete wh_;
@@ -408,13 +408,13 @@ bool LogReplicator::RollWLogFile() {
 }
 
 void LogReplicator::Notify() {
-    MutexLock lock(&mu_);
-    cv_.Broadcast();
+    std::lock_guard<std::mutex> lock(mu_);
+    cv_.notify_all();
 }
 
 
 void LogReplicator::MatchLogOffset() {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     bool all_matched = true;
     std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
     for (; it != nodes_.end(); ++it) {
@@ -439,7 +439,7 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     while (running_.load(boost::memory_order_relaxed)) {
         std::shared_ptr<ReplicateNode> node;
         {
-            MutexLock lock(&mu_);
+            std::unique_lock<std::mutex> lock(mu_);
             std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
             for ( ; it != nodes_.end(); ++it) {
                 if ((*it)->GetEndPoint().compare(endpoint) == 0) {
@@ -452,7 +452,7 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
                 return;
             }
             if (coffee_time > 0) {
-                coffee_cv_.TimeWait(coffee_time);
+                coffee_cv_.wait_for(lock, std::chrono::milliseconds(coffee_time));
                 coffee_time = 0;
             }
         }
@@ -460,9 +460,9 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
         if (ret == 1) {
             coffee_time = FLAGS_binlog_coffee_time;
         }
-        MutexLock lock(&mu_);
+        std::unique_lock<std::mutex> lock(mu_);
         while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
-            cv_.TimeWait(FLAGS_binlog_sync_wait_time);
+            cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_binlog_sync_wait_time));
             if (!running_.load(boost::memory_order_relaxed)) {
                 PDLOG(INFO, "replicate log exist for path %s", path_.c_str());
                 return;

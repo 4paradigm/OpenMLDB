@@ -12,6 +12,7 @@
 #include "gflags/gflags.h"
 #include "timer.h"
 #include "base/strings.h"
+#include <chrono>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -25,11 +26,9 @@ DECLARE_int32(name_server_task_wait_time);
 namespace rtidb {
 namespace nameserver {
 
-using ::baidu::common::MutexLock;
-
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
     table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
-    task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(&mu_) {
+    task_thread_pool_(FLAGS_name_server_task_pool_size), cv_() {
     std::string zk_table_path = FLAGS_zk_root_path + "/table";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
@@ -53,7 +52,7 @@ bool NameServerImpl::Recover() {
         PDLOG(WARNING, "get endpoints node failed!");
         return false;
     }
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     UpdateTablets(endpoints);
 
     std::string value;
@@ -236,13 +235,12 @@ void NameServerImpl::SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr
 }
 
 void NameServerImpl::UpdateTabletsLocked(const std::vector<std::string>& endpoints) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     UpdateTablets(endpoints);
 }
 
 
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
-    mu_.AssertHeld();
     // check exist and newly add tablets
     std::set<std::string> alive;
     std::vector<std::string>::const_iterator it = endpoints.begin();
@@ -286,7 +284,7 @@ void NameServerImpl::ShowTablet(RpcController* controller,
             const ShowTabletRequest* request,
             ShowTabletResponse* response,
             Closure* done) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     Tablets::iterator it = tablets_.begin();
     for (; it !=  tablets_.end(); ++it) {
         TabletStatus* status = response->add_tablets();
@@ -357,7 +355,7 @@ int NameServerImpl::UpdateTaskStatus() {
     }
     std::vector<std::shared_ptr<TabletClient>> vec;
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
             if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
@@ -370,7 +368,7 @@ int NameServerImpl::UpdateTaskStatus() {
         ::rtidb::api::TaskStatusResponse response;
         // get task status from tablet
         if ((*iter)->GetTaskStatus(response)) {
-            MutexLock lock(&mu_);
+            std::lock_guard<std::mutex> lock(mu_);
             for (int idx = 0; idx < response.task_size(); idx++) {
                 auto it = task_map_.find(response.task(idx).op_id());
                 if (it == task_map_.end()) {
@@ -403,7 +401,7 @@ int NameServerImpl::UpdateTaskStatus() {
 int NameServerImpl::UpdateZKTaskStatus() {
     std::vector<uint64_t> done_vec;
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : task_map_) {
             if (kv.second->task_list_.empty()) {
                 continue;
@@ -417,7 +415,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
     for (auto op_id : done_vec) {
         std::shared_ptr<OPData> op_data;
         {
-            MutexLock lock(&mu_);
+            std::lock_guard<std::mutex> lock(mu_);
             auto pos = task_map_.find(op_id);
             if (pos == task_map_.end()) {
                 PDLOG(WARNING, "cannot find op[%lu] in task_map", op_id);
@@ -450,7 +448,7 @@ int NameServerImpl::DeleteTask() {
     std::vector<uint64_t> done_task_vec;
     std::vector<std::shared_ptr<TabletClient>> client_vec;
     {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
             if (iter->second->task_list_.empty() && 
                     iter->second->task_status_ == ::rtidb::api::kDoing) {
@@ -482,7 +480,7 @@ int NameServerImpl::DeleteTask() {
             std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
             if (zk_client_->DeleteNode(node)) {
                 PDLOG(DEBUG, "delete zk op node[%s] success.", node.c_str()); 
-                MutexLock lock(&mu_);
+                std::lock_guard<std::mutex> lock(mu_);
                 auto pos = task_map_.find(op_id);
                 if (pos != task_map_.end()) {
                     pos->second->end_time_ = time(0);
@@ -499,9 +497,9 @@ int NameServerImpl::DeleteTask() {
 void NameServerImpl::ProcessTask() {
     while (running_.load(std::memory_order_acquire)) {
         {
-            MutexLock lock(&mu_);
+            std::unique_lock<std::mutex> lock(mu_);
             while (task_map_.empty()) {
-                cv_.TimeWait(FLAGS_name_server_task_wait_time);
+                cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
                 if (!running_.load(std::memory_order_acquire)) {
                     return;
                 }
@@ -539,7 +537,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         done->Run();
         return;
     }
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
         response->set_code(-1);
@@ -617,13 +615,12 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     op_data->task_list_.push_back(task);
     task_map_.insert(std::make_pair(op_index_, op_data));
     PDLOG(DEBUG, "add makesnapshot op ok. op_id[%lu]", op_index_);
-    cv_.Signal();
+    cv_.notify_one();
 }
 
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map) {
-    mu_.AssertHeld();        
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         const ::rtidb::nameserver::TablePartition& table_partition = table_info->table_partition(idx);
         if (table_partition.is_leader() != is_leader) {
@@ -676,7 +673,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         done->Run();
         return;
     }
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
 	for (const auto& kv : task_map_) {
 		OPStatus* op_status = response->add_op_status();
 		op_status->set_op_id(kv.first);
@@ -712,7 +709,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
     if (table_info_.find(table_info->name()) != table_info_.end()) {

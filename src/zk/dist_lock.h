@@ -9,15 +9,12 @@
 #define RTIDB_DIST_LOCK_H
 
 #include "boost/function.hpp"
-#include "mutex.h"
+#include <mutex>
 #include <vector>
 #include "zk/zk_client.h"
 #include "thread_pool.h"
 #include "boost/atomic.hpp"
 
-using ::baidu::common::MutexLock;
-using ::baidu::common::Mutex;
-using ::baidu::common::CondVar;
 using ::baidu::common::ThreadPool;
 using ::rtidb::zk::ZkClient;
 
@@ -62,8 +59,7 @@ private:
     NotifyCallback on_lost_lock_cl_;
 
     // status
-    Mutex mu_;
-    CondVar cv_;
+    std::mutex mu_;
     ZkClient* zk_client_;
     // sequence path from zookeeper
     std::string assigned_path_;

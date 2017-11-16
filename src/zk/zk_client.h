@@ -10,17 +10,14 @@
 #define RTIDB_ZK_CLIENT_H
 
 #include "boost/function.hpp"
-#include "mutex.h"
+#include <mutex>
+#include <condition_variable>
 #include <map>
 #include <vector>
 
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }
-
-using ::baidu::common::MutexLock;
-using ::baidu::common::Mutex;
-using ::baidu::common::CondVar;
 
 namespace rtidb {
 namespace zk {
@@ -99,7 +96,7 @@ public:
     int IsExistNode(const std::string& node);
 
     inline bool IsConnected() {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         return connected_;
     }
 
@@ -122,8 +119,8 @@ private:
     std::vector<NodesChangedCallback> nodes_watch_callbacks_;
 
     //
-    Mutex mu_;
-    CondVar cv_;
+    std::mutex mu_;
+    std::condition_variable cv_;
     zhandle_t* zk_;
     bool nodes_watching_;
 

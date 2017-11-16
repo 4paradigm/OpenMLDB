@@ -151,6 +151,7 @@ else
   git clone https://github.com/baidu/common.git
   cd common
   sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/include/' Makefile
+  sed -i 's/LOG(/PDLOG(/g' include/logging.h
   make -j2 >/dev/null
   cp -rf include/* ${DEPS_PREFIX}/include
   cp -rf libcommon.a ${DEPS_PREFIX}/lib
@@ -195,6 +196,7 @@ then
 else
     git clone https://github.com/google/leveldb.git
     cd leveldb
+    sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     make -j8
     cp -rf include/* ${DEPS_PREFIX}/include
     cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
@@ -202,18 +204,20 @@ else
     touch leveldb_succ
 fi
 
-if [ -f "brpc" ]
+if [ -f "brpc_succ" ]
 then
     echo "brpc exist"
 else
-    wget -O brpc_master.zip https://github.com/brpc/brpc/archive/master.zip > /dev/null
-    unzip brpc_master.zip 
-    BRPC_DIR=$DEPS_SOURCE/brpc_master
-    cd brpc_master
+    wget -O brpc-master.zip https://github.com/brpc/brpc/archive/master.zip > /dev/null
+    unzip brpc-master.zip 
+    BRPC_DIR=$DEPS_SOURCE/brpc-master
+    cd brpc-master
     sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
-    #make -j2 
-    #cd $DEPS_SOURCE 
-    #touch brpc_master
+	make -j5
+    cp -rf output/include/* ${DEPS_PREFIX}/include
+    cp output/lib/libbrpc.a ${DEPS_PREFIX}/lib
+    cd -
+    touch brpc_succ
     echo "brpc done"
 fi
 

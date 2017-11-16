@@ -23,7 +23,7 @@ DistLock::DistLock(const std::string& root_path, ZkClient* zk_client,
         NotifyCallback on_lost_lock_cl,
         const std::string& lock_value):root_path_(root_path),
     on_locked_cl_(on_locked_cl), on_lost_lock_cl_(on_lost_lock_cl),
-    mu_(), cv_(&mu_), zk_client_(zk_client), assigned_path_(), lock_state_(kLostLock), pool_(1),
+    mu_(), zk_client_(zk_client), assigned_path_(), lock_state_(kLostLock), pool_(1),
     running_(true), lock_value_(lock_value), current_lock_node_(){}
 
 DistLock::~DistLock() {}
@@ -41,7 +41,7 @@ void DistLock::Stop() {
 void DistLock::InternalLock() {
     while (running_.load(boost::memory_order_relaxed)) {
         sleep(1);
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         if (lock_state_.load(boost::memory_order_relaxed) == kLostLock) {
             zk_client_->CancelWatchChildren(root_path_);
             bool ok = zk_client_->CreateNode(root_path_ + "/lock_request", lock_value_, ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path_);
@@ -65,7 +65,6 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
     if (!running_.load(boost::memory_order_relaxed)) {
         return ;
     }
-    mu_.AssertHeld();
     current_lock_node_ = "";
     if (children.size() > 0) {
         current_lock_node_ = root_path_ + "/" + children[0];
@@ -96,7 +95,7 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
 }
 
 void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
-    MutexLock lock(&mu_);
+    std::lock_guard<std::mutex> lock(mu_);
     HandleChildrenChangedLocked(children);
 }
 
