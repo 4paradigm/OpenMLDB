@@ -460,6 +460,7 @@ class TestMakeSnapshot(TestCaseBase):
         self.start_client(self.leaderpath)
         rs2 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertTrue('LoadTable ok' in rs2)
+        time.sleep(1)
 
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)

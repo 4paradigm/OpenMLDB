@@ -145,12 +145,22 @@ public:
             const ::rtidb::api::SetTTLClockRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
-    //
-    //http api
-    // get all table informatiom
-    // 
-    //bool WebService(const sofa::pbrpc::HTTPRequest& request,
-    //        sofa::pbrpc::HTTPResponse& response);
+
+    void ShowTables(RpcController* controller,
+            const ::rtidb::api::HttpRequest* request,
+            ::rtidb::api::HttpResponse* response,
+            Closure* done);
+
+    void ShowMetric(RpcController* controller,
+            const ::rtidb::api::HttpRequest* request,
+            ::rtidb::api::HttpResponse* response,
+            Closure* done);
+
+    void ShowMemPool(RpcController* controller,
+            const ::rtidb::api::HttpRequest* request,
+            ::rtidb::api::HttpResponse* response,
+            Closure* done);
+
 private:
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
@@ -162,15 +172,6 @@ private:
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
-
-    /*void ShowTables(const sofa::pbrpc::HTTPRequest& request,
-            sofa::pbrpc::HTTPResponse& response); 
-
-    void ShowMetric(const sofa::pbrpc::HTTPRequest& request,
-            sofa::pbrpc::HTTPResponse& response);
-
-    void ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
-        sofa::pbrpc::HTTPResponse& response);*/
 
     inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
 

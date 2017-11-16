@@ -1344,24 +1344,11 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
     return std::shared_ptr<Table>();
 }
 
-
-// http action
-/*bool TabletImpl::WebService(const sofa::pbrpc::HTTPRequest& request,
-        sofa::pbrpc::HTTPResponse& response) {
-    const std::string& path = request.path; 
-    if (path == "/tablet/show") {
-       ShowTables(request, response); 
-    }else if (path == "/tablet/metric") {
-       ShowMetric(request, response);
-    }else if (path == "/tablet/memory") {
-       ShowMemPool(request, response);
-    }
-    return true;
-}
-
-void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
-        sofa::pbrpc::HTTPResponse& response) {
-
+void TabletImpl::ShowTables(RpcController* controller,
+            const ::rtidb::api::HttpRequest* request,
+            ::rtidb::api::HttpResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
     std::vector<std::shared_ptr<Table> > tmp_tables;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -1418,11 +1405,16 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
     }
     writer.EndArray();
     writer.EndObject();
-    response.content->Append(sb.GetString());
+	brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+	cntl->response_attachment().append(sb.GetString());
 }
 
-void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
-                            sofa::pbrpc::HTTPResponse& response) {
+void TabletImpl::ShowMetric(RpcController* controller,
+            const ::rtidb::api::HttpRequest* request,
+            ::rtidb::api::HttpResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+	brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     const std::string key = "key";
     ::rapidjson::StringBuffer sb;
     ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
@@ -1430,25 +1422,24 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     writer.Key("datapoints");
     writer.StartArray();
 
-    std::map<const std::string, std::string>::const_iterator qit = request.query_params->find(key);
-    if (qit == request.query_params->end()) {
+    const std::string* pk = cntl->http_request().uri().GetQuery(key);
+    if (pk == NULL) {
         writer.EndArray();
         writer.EndObject();
-        response.content->Append(sb.GetString());
+        cntl->response_attachment().append(sb.GetString());
         return;
     }
 
-    const std::string& pk = qit->second;;
     std::shared_ptr<Table> stat = GetTable(0, 0);
     if (!stat) {
         writer.EndArray();
         writer.EndObject();
-        response.content->Append(sb.GetString());
+        cntl->response_attachment().append(sb.GetString());
         return;
     }
 
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = stat->NewIterator(pk, ticket);
+    Table::Iterator* it = stat->NewIterator(*pk, ticket);
     it->SeekToFirst();
     uint32_t read_cnt = 0;
     while (it->Valid() && read_cnt < FLAGS_metric_max_record_cnt) {
@@ -1463,22 +1454,26 @@ void TabletImpl::ShowMetric(const sofa::pbrpc::HTTPRequest& request,
     }
     writer.EndArray();
     writer.EndObject();
-    response.content->Append(sb.GetString());
+	cntl->response_attachment().append(sb.GetString());
 }
 
-void TabletImpl::ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
-    sofa::pbrpc::HTTPResponse& response) {
+void TabletImpl::ShowMemPool(RpcController* controller,
+            const ::rtidb::api::HttpRequest* request,
+            ::rtidb::api::HttpResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
 #ifdef TCMALLOC_ENABLE
+	brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     MallocExtension* tcmalloc = MallocExtension::instance();
     std::string stat;
     stat.resize(1024);
     char* buffer = reinterpret_cast<char*>(& (stat[0]));
     tcmalloc->GetStats(buffer, 1024);
-    response.content->Append("<html><head><title>Mem Stat</title></head><body><pre>");
-    response.content->Append(stat);
-    response.content->Append("</pre></body></html>");
+    cntl->response_attachment().append("<html><head><title>Mem Stat</title></head><body><pre>");
+    cntl->response_attachment().append(stat);
+    cntl->response_attachment().append("</pre></body></html>");
 #endif
-}*/
+}
 
 void TabletImpl::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
