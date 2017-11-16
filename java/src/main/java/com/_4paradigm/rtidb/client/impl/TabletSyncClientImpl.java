@@ -113,7 +113,9 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setTableMeta(meta).build();
 		Tablet.CreateTableResponse response = tabletServer.createTable(request);
 		if (response != null && response.getCode() == 0) {
-			tableSchema.putIfAbsent(tid, schema);
+			if (schema != null) {
+				tableSchema.putIfAbsent(tid, schema);
+			}
 			return true;
 		}
 		return false;
