@@ -2,6 +2,7 @@
 import unittest
 from framework import TestCaseBase
 import xmlrunner
+import time
 
 class TestAddReplica(TestCaseBase):
 
@@ -36,6 +37,7 @@ class TestAddReplica(TestCaseBase):
                  'k2',
                  self.now() - 1,
                  'v2')
+        time.sleep(1)
         self.assertTrue('v1' in self.scan(self.slave1, self.tid, self.pid, 'k1', self.now(), 1))
         self.assertTrue('v2' in self.scan(self.slave1, self.tid, self.pid, 'k2', self.now(), 1))
         self.assertTrue('v1' in self.scan(self.slave2, self.tid, self.pid, 'k1', self.now(), 1))
@@ -95,6 +97,7 @@ class TestAddReplica(TestCaseBase):
                  'k2',
                  self.now() - 1,
                  'v2')
+        time.sleep(1)         
         self.assertTrue('v1' in self.scan(self.slave1, self.tid, self.pid, 'k1', self.now(), 1))
         self.assertFalse('v2' in self.scan(self.slave1, self.tid, self.pid, 'k2', self.now(), 1))
         self.assertTrue('v1' in self.scan(self.slave2, self.tid, self.pid, 'k1', self.now(), 1))

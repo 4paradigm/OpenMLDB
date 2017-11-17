@@ -533,6 +533,7 @@ class TestLoadTable(TestCaseBase):
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
+        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])

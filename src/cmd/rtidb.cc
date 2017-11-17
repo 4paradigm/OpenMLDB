@@ -105,25 +105,16 @@ void StartTablet() {
         PDLOG(WARNING, "fail to init tablet");
         exit(1);
     }
-    brpc::ServerOptions scan_options;
-    scan_options.num_threads = FLAGS_scan_thread_pool_size;
-	brpc::Server scan_server;
-	if (scan_server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-	if (scan_server.Start(FLAGS_scan_endpoint.c_str(), &scan_options) != 0) {
-        PDLOG(WARNING, "Fail to start scan server");
-        exit(1);
-    }
 
     brpc::ServerOptions options;
-    options.num_threads = FLAGS_thread_pool_size;
+    options.num_threads = FLAGS_thread_pool_size * 2;
     brpc::Server server;
 	if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
+    server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_thread_pool_size;
+    server.MaxConcurrencyOf(tablet, "Put") = FLAGS_thread_pool_size;
 	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
@@ -135,7 +126,6 @@ void StartTablet() {
             RTIDB_VERSION_BUG);
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
-	scan_server.RunUntilAskedToQuit();
 	server.RunUntilAskedToQuit();
 }
 
@@ -171,7 +161,7 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[2]);
         bool ok = client->MakeSnapshot(parts[1], tid);
         if (!ok) {
-            std::cout << "Fail to show tablets" << std::endl;
+            std::cout << "Fail to makesnapshot" << std::endl;
             return;
         }
         std::cout << "MakeSnapshot ok" << std::endl;
