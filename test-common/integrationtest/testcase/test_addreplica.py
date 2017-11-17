@@ -89,6 +89,7 @@ class TestAddReplica(TestCaseBase):
                  'k1',
                  self.now() - 1,
                  'v1')
+        time.sleep(1)         
         rs2 = self.delreplica(self.leader, self.tid, self.pid, self.slave1)
         self.assertTrue('DelReplica ok' in rs2)
         self.put(self.leader,

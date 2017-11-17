@@ -24,7 +24,6 @@ class TestMakeSnapshot(TestCaseBase):
             self.assertTrue('Put ok' in rs2)
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
-        time.sleep(1)
 
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
         self.assertEqual(mf['offset'], '6')
@@ -48,7 +47,6 @@ class TestMakeSnapshot(TestCaseBase):
                      'testvalue')
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
-        time.sleep(1)
 
         # 剔除原snapshot中的过期数据
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
@@ -73,12 +71,10 @@ class TestMakeSnapshot(TestCaseBase):
                      'testvalue')
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
-        time.sleep(1)
 
         # 剔除原snapshot中的过期数据
         rs4 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
-        time.sleep(1)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
         self.assertEqual(mf['offset'], '6')
         self.assertTrue(mf['name'])
@@ -116,7 +112,6 @@ class TestMakeSnapshot(TestCaseBase):
         # 第二次做snapshot剔除原snapshot中的过期数据，不剔除binlog中的过期数据
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
-        time.sleep(1)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
         self.assertEqual(mf['offset'], '10')
         self.assertTrue(mf['name'])
@@ -151,7 +146,7 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(50, 20)
+        self.put_large_datas(200, 5)
 
         rs_list = []
         def makesnapshot(endpoint):
@@ -404,7 +399,6 @@ class TestMakeSnapshot(TestCaseBase):
 
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
-        time.sleep(1)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
         self.assertEqual(mf['offset'], str(offset + 1))
 

@@ -524,7 +524,6 @@ class TestLoadTable(TestCaseBase):
                  'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点，并删掉sdb和binlog
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -533,7 +532,6 @@ class TestLoadTable(TestCaseBase):
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
@@ -576,7 +574,7 @@ class TestLoadTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(50, 20)
+        self.put_large_datas(500, 8)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
