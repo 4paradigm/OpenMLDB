@@ -133,8 +133,10 @@ class TestCaseBase(unittest.TestCase):
             tname, tid, pid, ttl, segment, isleader, ' '.join(slave_endpoints)))
 
     def loadtable(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='false', *slave_endpoints):
-        return self.run_client(endpoint, 'loadtable {} {} {} {} {} {} {}'.format(
+        rs = self.run_client(endpoint, 'loadtable {} {} {} {} {} {} {}'.format(
             tname, tid, pid, ttl, segment, isleader, ' '.join(slave_endpoints)))
+        time.sleep(1)
+        return rs
 
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))

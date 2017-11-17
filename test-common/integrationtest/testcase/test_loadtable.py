@@ -24,7 +24,6 @@ class TestLoadTable(TestCaseBase):
                      'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -32,7 +31,6 @@ class TestLoadTable(TestCaseBase):
         # 新主节点loadtable后可以put数据
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
         self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
         rs4 = self.put(self.slave1,
@@ -63,7 +61,6 @@ class TestLoadTable(TestCaseBase):
                      'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -71,7 +68,6 @@ class TestLoadTable(TestCaseBase):
         # 新从节点loadtable后不可以put数据
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
         self.assertEqual(table_status, ['6', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         rs4 = self.put(self.slave1,
@@ -101,7 +97,6 @@ class TestLoadTable(TestCaseBase):
                      'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         rs3 = self.drop(self.leader, self.tid, self.pid)
         self.assertTrue('Drop table ok' in rs3)
@@ -166,14 +161,13 @@ class TestLoadTable(TestCaseBase):
                      'testvalue{}'.format(i))
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
+        time.sleep(3)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
 
         # 未过期key可以scan出来，过期key scan不出来
         self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
@@ -199,7 +193,6 @@ class TestLoadTable(TestCaseBase):
                      'testvalue{}'.format(i))
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -226,7 +219,6 @@ class TestLoadTable(TestCaseBase):
                  'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 新节点创建table
         rs3 = self.create(self.slave1, 't', self.tid, self.pid)
@@ -254,14 +246,12 @@ class TestLoadTable(TestCaseBase):
                  'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
 
         rs4 = self.pausesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs4)
@@ -285,7 +275,6 @@ class TestLoadTable(TestCaseBase):
                      'testvalue' + str(i))
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         for i in range(3, 6):
             self.put(self.leader,
@@ -299,7 +288,6 @@ class TestLoadTable(TestCaseBase):
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
 
         for i in range(0, 6):
             self.assertTrue(
@@ -321,7 +309,6 @@ class TestLoadTable(TestCaseBase):
                  'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
         # 将table目录拷贝到新节点，删掉snapshot目录，保留binlog目录
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         self.exe_shell('rm -rf {}/db/{}_{}/snapshot/*'.format(self.slave1path, self.tid, self.pid))
@@ -332,7 +319,6 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
-        time.sleep(4)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
@@ -367,7 +353,6 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
-        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '4')
         self.assertTrue(mf['name'])
@@ -390,7 +375,6 @@ class TestLoadTable(TestCaseBase):
                      'testvalue1')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         for i in range(0, 3):
             self.put(self.leader,
@@ -406,14 +390,12 @@ class TestLoadTable(TestCaseBase):
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
 
         self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey1', self.now(), 1))
         self.assertTrue('testvalue2' in self.scan(self.slave1, self.tid, self.pid, 'testkey2', self.now(), 1))
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
-        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '6')
         self.assertTrue(mf['name'])
@@ -437,7 +419,6 @@ class TestLoadTable(TestCaseBase):
                  'testvalue1')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         rs3 = self.pausesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs3)
@@ -452,7 +433,6 @@ class TestLoadTable(TestCaseBase):
                  'testvalue2')
         rs6 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs6)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -465,7 +445,6 @@ class TestLoadTable(TestCaseBase):
 
         rs8 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs8)
-        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '2')
         self.assertTrue(mf['name'])
@@ -489,7 +468,6 @@ class TestLoadTable(TestCaseBase):
                  'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点，并删掉manifest和binlog
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -498,11 +476,9 @@ class TestLoadTable(TestCaseBase):
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
-        time.sleep(1)
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs4)
-        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '0')
         self.assertTrue(mf['name'])
@@ -553,7 +529,6 @@ class TestLoadTable(TestCaseBase):
                  'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        time.sleep(1)
 
         # 将table目录拷贝到新节点，删除binlog，重命名sdb
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
