@@ -14,4 +14,7 @@ public interface TabletAsyncClient {
     
     ScanFuture scan(int tid, int pid, String key,
     				long st, long et);
+    
+    ScanFuture scan(int tid, int pid, String key,
+    		        int colIdx, long st, long et);
 }

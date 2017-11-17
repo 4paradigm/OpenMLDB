@@ -3,7 +3,6 @@ package com._4paradigm.rtidb.client.impl;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
@@ -15,6 +14,7 @@ import com._4paradigm.rtidb.client.TabletSyncClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
+import com._4paradigm.rtidb.client.schema.Table;
 import com.google.protobuf.ByteString;
 
 import rtidb.api.Tablet;
@@ -23,8 +23,6 @@ import rtidb.api.TabletServer;
 public class TabletSyncClientImpl implements TabletSyncClient {
 	private final static Logger logger = LoggerFactory.getLogger(TabletSyncClientImpl.class);
 	private TabletServer tabletServer;
-	private ConcurrentHashMap<Integer, List<ColumnDesc>> tableSchema = new ConcurrentHashMap<Integer, List<ColumnDesc>>();
-
 	public TabletSyncClientImpl(TabletServer tabletServer) {
 		this.tabletServer = tabletServer;
 	}
@@ -63,18 +61,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
 	@Override
 	public KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException {
-		Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
-		builder.setPk(key);
-		builder.setTid(tid);
-		builder.setEt(et);
-		builder.setSt(st);
-		builder.setPid(pid);
-		Tablet.ScanRequest request = builder.build();
-		Tablet.ScanResponse response = tabletServer.scan(request);
-		if (response != null && response.getCode() == 0) {
-			return new KvIterator(response.getPairs());
-		}
-		return null;
+		return scan(tid, pid, key, 0, st, et);
 	}
 
 	@Override
@@ -96,7 +83,8 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 	}
 
 	@Override
-	public boolean createTable(String name, int tid, int pid, long ttl, int segCnt, List<ColumnDesc> schema) {
+	public boolean createTable(String name, int tid, int pid, long ttl, 
+			                   int segCnt, List<ColumnDesc> schema) {
 
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
 		if (schema != null && schema.size() > 0) {
@@ -114,7 +102,8 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		Tablet.CreateTableResponse response = tabletServer.createTable(request);
 		if (response != null && response.getCode() == 0) {
 			if (schema != null) {
-				tableSchema.putIfAbsent(tid, schema);
+				Table table = new Table(schema);
+				GTableSchema.tableSchema.put(tid, table);
 			}
 			return true;
 		}
@@ -124,12 +113,12 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
 	@Override
 	public boolean put(int tid, int pid, long ts, Object[] row) throws TimeoutException, TabletException {
-		List<ColumnDesc> schema = tableSchema.get(tid);
+		Table table = getTable(tid, pid);
 		Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
-		ByteBuffer buffer = RowCodec.encode(row, schema);
+		ByteBuffer buffer = RowCodec.encode(row, table.getSchema());
 		int index = 0;
-		for (int i = 0; i < schema.size(); i++) {
-			if (schema.get(i).isAddTsIndex()) {
+		for (int i = 0; i < table.getSchema().size(); i++) {
+			if (table.getSchema().get(i).isAddTsIndex()) {
 				if (row[i] == null) {
 					throw new TabletException("index " + index + "column is empty");
 				}
@@ -153,5 +142,41 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 			return true;
 		}
 		return false;
+	}
+
+	@Override
+	public Table getTable(int tid, int pid) {
+		Table table = GTableSchema.tableSchema.get(tid);
+		if (table != null) {
+			return table;
+		}
+		Tablet.GetTableSchemaRequest request = Tablet.GetTableSchemaRequest.newBuilder().setTid(tid).setPid(pid).build();
+		Tablet.GetTableSchemaResponse response = tabletServer.getTableSchema(request);
+		if (response.getCode() == 0) {
+			List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
+			table = new Table(schema);
+			GTableSchema.tableSchema.put(tid, table);
+			return table;
+		}
+		return null;
+	}
+	
+	
+	@Override
+	public KvIterator scan(int tid, int pid, String key, int colIdx, long st, long et) throws TimeoutException {
+		Table table = getTable(tid, pid);
+		Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
+		builder.setPk(key);
+		builder.setTid(tid);
+		builder.setEt(et);
+		builder.setSt(st);
+		builder.setPid(pid);
+		builder.setDindex(colIdx);
+		Tablet.ScanRequest request = builder.build();
+		Tablet.ScanResponse response = tabletServer.scan(request);
+		if (response != null && response.getCode() == 0) {
+			return new KvIterator(response.getPairs(), table.getSchema());
+		}
+		return null;
 	}
 }

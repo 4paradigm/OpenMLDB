@@ -51,7 +51,7 @@ public enum ColumnType {
 		case 6:
 			return kUInt32;
 		default :
-			return kUInt64;
+			return null;
 		}
 	}
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.Table;
 import com.google.protobuf.ByteString;
 
 public interface TabletSyncClient {
@@ -23,6 +24,10 @@ public interface TabletSyncClient {
     KvIterator scan(int tid, int pid, String key,
 				    long st, long et) throws TimeoutException;
     
+    KvIterator scan(int tid, int pid, String key,
+		    		int colIdx,
+		    		long st, long et) throws TimeoutException;
+
     boolean createTable(String name, 
     			        int tid, 
     			        int pid, 
@@ -36,5 +41,7 @@ public interface TabletSyncClient {
 	        int segCnt,
 	        List<ColumnDesc> schema);
     boolean dropTable(int tid, int pid);
+    
+    Table getTable(int tid, int pid);
     
 }

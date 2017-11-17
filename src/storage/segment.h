@@ -70,7 +70,13 @@ public:
         it->SeekToFirst();
         while(it->Valid()) {
             cnt += 1;
-            delete it->GetValue();
+            DataBlock* block = it->GetValue();
+            // Avoid double free
+            if (block->dim_cnt_down > 1) {
+                block->dim_cnt_down--;
+            }else {
+                delete block;
+            }
             it->Next();
         }
         entries.Clear();

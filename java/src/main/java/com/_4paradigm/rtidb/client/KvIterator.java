@@ -2,7 +2,10 @@ package com._4paradigm.rtidb.client;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.List;
 
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.RowCodec;
 import com.google.protobuf.ByteString;
 
 public class KvIterator {
@@ -15,13 +18,22 @@ public class KvIterator {
     private int length;
     private long time;
     private int totalSize;
-
+    private List<ColumnDesc> schema;
     public KvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
         this.totalSize = this.bs.size();
         next();
+    }
+    
+    public KvIterator(ByteString bs, List<ColumnDesc> schema) {
+        this.bs = bs;
+        this.bb = this.bs.asReadOnlyByteBuffer();
+        this.offset = 0;
+        this.totalSize = this.bs.size();
+        next();
+        this.schema = schema;
     }
 
     public boolean valid() {
@@ -38,6 +50,13 @@ public class KvIterator {
     // no copy
     public ByteBuffer getValue() {
         return slice;
+    }
+    
+    public Object[] getDecodedValue() throws TabletException {
+    	if (schema == null) {
+    		throw new TabletException("get decoded value is not supported");
+    	}
+    	return RowCodec.decode(slice, schema);
     }
 
     public void next() {
