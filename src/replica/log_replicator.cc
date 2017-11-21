@@ -293,7 +293,6 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
                           request->entries(i).log_index(), last_log_offset);
             continue;
         }
-        LOG(DEBUG, "log entry index %lu", request->entries(i).log_index());
         std::string buffer;
         request->entries(i).SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer.c_str(), buffer.size());
