@@ -110,9 +110,8 @@ bool TabletClient::Put(uint32_t tid,
     }
     ::rtidb::api::PutResponse response;
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Put,
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
             &request, &response, 12, 1);
-    consumed = ::baidu::common::timer::get_micros() - consumed;
     percentile_.push_back(consumed);
     if (ok && response.code() == 0) {
         return true;
@@ -332,7 +331,7 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
     request.set_pid(pid);
     request.set_dindex(dindex);
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
-    bool ok = client_.SendRequest(tablet_, &::rtidb::api::TabletServer_Stub::Scan,
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
             &request, response, 12, 1);
     response->mutable_metric()->set_rptime(::baidu::common::timer::get_micros());
     if (!ok || response->code() != 0) {

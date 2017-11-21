@@ -327,7 +327,7 @@ void TabletImpl::Scan(RpcController* controller,
     Table::Iterator* it = NULL;
     if (request->has_dindex()) {
         if (request->dindex() >= table->GetIdxCnt()) {
-            LOG(WARNING, "invalid dindex %u, table idx cnt %u", request->dindex(),
+            PDLOG(WARNING, "invalid dindex %u, table idx cnt %u", request->dindex(),
                     table->GetIdxCnt());
             response->set_code(30);
             response->set_msg("invalid dindex");
@@ -1164,13 +1164,13 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     for (int32_t i = 0; i < table_meta->dimensions_size(); i++) {
         mapping.insert(std::make_pair(table_meta->dimensions(i), 
                        (uint32_t)i));
-        LOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta->dimensions(i).c_str(),
+        PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta->dimensions(i).c_str(),
                 i, table_meta->name().c_str(), table_meta->tid(), table_meta->pid());
     }
     // add default dimension
     if (mapping.size() <= 0) {
         mapping.insert(std::make_pair("idx0", 0));
-        LOG(INFO, "no index specified with default");
+        PDLOG(INFO, "no index specified with default");
     }
     std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
                                                            table_meta->tid(),

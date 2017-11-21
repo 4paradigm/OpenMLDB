@@ -1106,7 +1106,7 @@ void StartClient() {
         << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
     client.Init();
-    while (!s_quit) {
+    while (true) {
         std::cout << ">";
         std::string buffer;
         if (!FLAGS_interactive) {
@@ -1181,7 +1181,7 @@ void StartNsClient() {
     
     ::rtidb::client::NsClient client(FLAGS_endpoint);
     client.Init();
-    while (!s_quit) {
+    while (true) {
         std::cout << ">";
         std::string buffer;
         if (!FLAGS_interactive) {
@@ -1227,6 +1227,5 @@ int main(int argc, char* argv[]) {
     }else if (FLAGS_role == "ns_client") {
         StartNsClient();
     }
-
     return 0;
 }

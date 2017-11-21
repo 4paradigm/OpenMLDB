@@ -65,7 +65,7 @@ void Segment::Put(const std::string& key, uint64_t time, DataBlock* row) {
         }
     }
     idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
-    MutexLock lock(&entry->mu);
+    std::lock_guard<std::mutex> lock(entry->mu);
     entry->entries.Insert(time, row);
 }
 
@@ -169,31 +169,8 @@ void Segment::Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_re
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
     delete it;
-    return count;
 }
 
-void Segment::BatchGet(const std::vector<std::string>& keys,
-                       std::map<uint32_t, DataBlock*>& datas,
-                       Ticket& ticket) {
-    KeyEntries::Iterator* it = entries_->NewIterator();
-    for (uint32_t i = 0; i < keys.size(); i++) {
-        const std::string& key = keys[i];
-        it->Seek(key);
-        if (!it->Valid()) {
-            continue;
-        }
-        KeyEntry* entry = it->GetValue();
-        ticket.Push(entry);
-        TimeEntries::Iterator* tit = entry->entries.NewIterator();
-        tit->SeekToFirst();
-        if (tit->Valid()) {
-            datas.insert(std::make_pair(i, tit->GetValue()));
-        }
-        delete tit;
-    }
->>>>>>> origin/develop
-    delete it;
-}
 
 // Iterator
 Segment::Iterator* Segment::NewIterator(const std::string& key, Ticket& ticket) {
