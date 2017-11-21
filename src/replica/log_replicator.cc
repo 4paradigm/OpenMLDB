@@ -268,6 +268,13 @@ void LogReplicator::DeleteBinlog() {
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
     MutexLock lock(&wmu_);
+    uint64_t last_log_offset = GetOffset();
+    if (request->pre_log_index() == 0 && request->entries_size() == 0) {
+        LOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]", 
+                    last_log_offset, table_->GetId(), table_->GetPid());
+        response->set_log_offset(last_log_offset);
+        return true;
+    }
     if (wh_ == NULL || (wh_->GetSize() / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
@@ -275,19 +282,17 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             return false;
         }
     }
-    uint64_t last_log_offset = GetOffset();
-    if (request->pre_log_index() !=  last_log_offset) {
+    if (request->pre_log_index() > last_log_offset) {
         LOG(WARNING, "log mismatch for path %s, pre_log_index %lld, come log index %lld", path_.c_str(),
                 last_log_offset, request->pre_log_index());
-        response->set_log_offset(last_log_offset);
-        if (request->pre_log_index() == 0) {
-            LOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]", 
-                        last_log_offset, table_->GetId(), table_->GetPid());
-            return true;
-        }
         return false;
     }
     for (int32_t i = 0; i < request->entries_size(); i++) {
+        if (request->entries(i).log_index() <= last_log_offset) {
+            LOG(WARNING, "entry log_index %lu cur log_offset %lu", 
+                          request->entries(i).log_index(), last_log_offset);
+            continue;
+        }
         std::string buffer;
         request->entries(i).SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer.c_str(), buffer.size());
