@@ -39,9 +39,9 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(endpoint);
-DECLARE_string(scan_endpoint);
 DECLARE_int32(thread_pool_size);
-DECLARE_int32(scan_thread_pool_size);
+DECLARE_int32(put_concurrency_limit);
+DECLARE_int32(scan_concurrency_limit);
 DEFINE_string(role, "tablet | nameserver | client | ns_client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -107,20 +107,19 @@ void StartTablet() {
     }
 
     brpc::ServerOptions options;
-    options.num_threads = FLAGS_thread_pool_size * 2;
+    options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
 	if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_thread_pool_size;
-    server.MaxConcurrencyOf(tablet, "Put") = FLAGS_thread_pool_size;
+    server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
+    server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
 	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start tablet on port %s and scan port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
-            FLAGS_scan_endpoint.c_str(),
+    PDLOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
