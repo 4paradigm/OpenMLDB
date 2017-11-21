@@ -112,13 +112,16 @@ void StartTablet() {
         LOG(WARNING, "fail to init tablet");
         exit(1);
     }
-    sofa::pbrpc::Servlet webservice =
+    sofa::pbrpc::Servlet webservice1 =
                 sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
+    sofa::pbrpc::Servlet webservice2 =
+                sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
+
     if (!scan_rpc_server.RegisterService(tablet)) {
         LOG(WARNING, "fail to register tablet rpc service");
         exit(1);
     }
-    scan_rpc_server.RegisterWebServlet("/tablet", webservice);
+    scan_rpc_server.RegisterWebServlet("/tablet", webservice1);
     if (!scan_rpc_server.Start(FLAGS_scan_endpoint)) {
         LOG(WARNING, "fail to listen port %s", FLAGS_scan_endpoint.c_str());
         exit(1);
@@ -130,7 +133,7 @@ void StartTablet() {
         LOG(WARNING, "fail to register tablet rpc service");
         exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
+    rpc_server.RegisterWebServlet("/tablet", webservice2);
     if (!rpc_server.Start(FLAGS_endpoint)) {
         LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
         exit(1);

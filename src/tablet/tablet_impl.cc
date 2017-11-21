@@ -65,6 +65,9 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size){}
 
 TabletImpl::~TabletImpl() {
+    task_pool_.Stop(true);
+    keep_alive_pool_.Stop(true);
+
     if (FLAGS_enable_statdb) {
         tables_.erase(0);
         delete metric_;
@@ -235,6 +238,7 @@ void TabletImpl::Put(RpcController* controller,
                    request->value().length());
         LOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     }
+    table->RecordCntIncr();
     response->set_code(0);
     bool leader = table->IsLeader();
     std::shared_ptr<LogReplicator> replicator;
@@ -1407,7 +1411,7 @@ void TabletImpl::ShowTables(const sofa::pbrpc::HTTPRequest& request,
         uint64_t total = 0;
         uint64_t* stat = NULL;
         uint32_t size = 0;
-        table->GetDataCnt(0, &stat, &size);
+        table->GetRecordIdxCnt(0, &stat, &size);
         if (stat != NULL) {
             writer.Key("data_cnt_stat");
             writer.StartObject();

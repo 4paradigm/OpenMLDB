@@ -147,22 +147,23 @@ public:
 
     uint64_t Release();
     // gc with specify time, delete the data before time 
-    uint64_t Gc4TTL(const uint64_t& time);
-    uint64_t Gc4Head();
+    void Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt);
+    void Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt);
     Segment::Iterator* NewIterator(const std::string& key, Ticket& ticket);
 
-    uint64_t GetDataCnt() {
-        return data_cnt_.load(boost::memory_order_relaxed);
+    uint64_t GetIdxCnt() {
+        return idx_cnt_.load(boost::memory_order_relaxed);
     }
 
 private:
-    uint64_t FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node);
+    void FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+                  uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt);
     void SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node);
 private:
     KeyEntries* entries_;
     // only Put need mutex
     Mutex mu_;
-    boost::atomic<uint64_t> data_cnt_;
+    boost::atomic<uint64_t> idx_cnt_;
 };
 
 }// namespace storage

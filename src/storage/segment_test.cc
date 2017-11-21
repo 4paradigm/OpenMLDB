@@ -78,10 +78,13 @@ TEST_F(SegmentTest, Iterator) {
 
 TEST_F(SegmentTest, TestGc4Head) {
     Segment segment;
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
-    uint64_t count = segment.Gc4Head();
-    ASSERT_EQ(1, count);
+    segment.Gc4Head(gc_idx_cnt, gc_record_cnt);
+    ASSERT_EQ(1, gc_idx_cnt);
+    ASSERT_EQ(1, gc_record_cnt);
 
     Ticket ticket;
     Segment::Iterator* it = segment.NewIterator("PK", ticket);
@@ -99,27 +102,34 @@ TEST_F(SegmentTest, TestGc4TTL) {
     Segment segment;
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
-    uint64_t count = segment.Gc4TTL(9765);
-    ASSERT_EQ(0, count);
-    count = segment.Gc4TTL(9768);
-    ASSERT_EQ(1, count);
-    count = segment.Gc4TTL(9770);
-    ASSERT_EQ(1, count);
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
+    segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt);
+    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, gc_record_cnt);
+    segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt);
+    ASSERT_EQ(1, gc_idx_cnt);
+    ASSERT_EQ(1, gc_record_cnt);
+    segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt);
+    ASSERT_EQ(2, gc_idx_cnt);
+    ASSERT_EQ(2, gc_record_cnt);
 }
 
 TEST_F(SegmentTest, TestStat) {
     Segment segment;
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
-    ASSERT_EQ(2, segment.GetDataCnt());
-    uint64_t count = segment.Gc4TTL(9765);
-    ASSERT_EQ(0, count);
-    count = segment.Gc4TTL(9768);
-    ASSERT_EQ(1, segment.GetDataCnt());
-    ASSERT_EQ(1, count);
-    count = segment.Gc4TTL(9770);
-    ASSERT_EQ(1, count);
-    ASSERT_EQ(0, segment.GetDataCnt());
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
+    ASSERT_EQ(2, segment.GetIdxCnt());
+    segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt);
+    ASSERT_EQ(0, gc_idx_cnt);
+    segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt);
+    ASSERT_EQ(1, segment.GetIdxCnt());
+    ASSERT_EQ(1, gc_idx_cnt);
+    segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt);
+    ASSERT_EQ(2, gc_idx_cnt);
+    ASSERT_EQ(0, segment.GetIdxCnt());
 }
 
 }

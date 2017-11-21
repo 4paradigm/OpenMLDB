@@ -104,17 +104,11 @@ public:
 
     bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
 
-    inline uint64_t GetDataCnt() const {
-        uint64_t data_cnt = 0;
-        for (uint32_t i = 0; i < idx_cnt_; i++) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                data_cnt += segments_[i][j]->GetDataCnt();
-            }
-        }
-        return data_cnt;
+    inline uint64_t GetRecordCnt() const {
+        return record_cnt_.load(boost::memory_order_relaxed);
     }
 
-    inline void GetDataCnt(uint32_t idx, uint64_t** stat, uint32_t* size) const {
+    inline void GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) const {
         if (stat == NULL) {
             return;
         }
@@ -123,7 +117,7 @@ public:
         }
         uint64_t* data_array = new uint64_t[seg_cnt_];
         for (uint32_t i = 0; i < seg_cnt_; i++) {
-            data_array[i] = segments_[idx][i]->GetDataCnt();
+            data_array[i] = segments_[idx][i]->GetIdxCnt();
         }
         *stat = data_array;
         *size = seg_cnt_;
@@ -201,6 +195,14 @@ public:
         return mapping_;
     }
 
+    inline void RecordCntIncr() {
+        record_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    }
+
+    inline void RecordCntIncr(uint32_t cnt) {
+        record_cnt_.fetch_add(cnt, boost::memory_order_relaxed);
+    }
+
 private:
     std::string const name_;
     uint32_t const id_;
@@ -213,7 +215,7 @@ private:
     boost::atomic<bool> enable_gc_;
     uint64_t const ttl_;
     uint64_t ttl_offset_;
-    boost::atomic<uint64_t> data_cnt_;
+    boost::atomic<uint64_t> record_cnt_;
     bool is_leader_;
     boost::atomic<uint64_t> time_offset_;
     std::vector<std::string> replicas_;

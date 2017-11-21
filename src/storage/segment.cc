@@ -20,7 +20,7 @@ namespace storage {
 const static StringComparator scmp;
 const static uint32_t data_block_size = sizeof(DataBlock);
 
-Segment::Segment():entries_(NULL),mu_(), data_cnt_(0){
+Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0){
     entries_ = new KeyEntries(12, 4, scmp);
 }
 
@@ -64,7 +64,7 @@ void Segment::Put(const std::string& key, uint64_t time, DataBlock* row) {
             entries_->Insert(key, entry);
         }
     }
-    data_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
     MutexLock lock(&entry->mu);
     entry->entries.Insert(time, row);
 }
@@ -85,10 +85,10 @@ bool Segment::Get(const std::string& key,
     return true;
 }
 
-uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node) {
-    uint64_t count = 0;
+void Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
     while (node != NULL) {
-        count ++;
+        gc_idx_cnt++;
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
         node = node->GetNextNoBarrier(0);
         LOG(DEBUG, "delete key %lld", tmp->GetKey());
@@ -97,15 +97,15 @@ uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, 
         }else {
             LOG(DEBUG, "delele data block for key %lld", tmp->GetKey());
             delete tmp->GetValue();
+            gc_record_cnt++;
         }
         delete tmp;
     }
-    return count;
 }
 
-uint64_t Segment::Gc4Head() {
+void Segment::Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t count = 0;
+    uint64_t old = gc_idx_cnt;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
@@ -132,15 +132,14 @@ uint64_t Segment::Gc4Head() {
                 MutexLock lock(&entry->mu);
                 SplitList(entry, ts, &node);
             }
-            count += FreeList(it->GetKey(), node);
+            FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
         }
         it->Next();
     }
-    LOG(INFO, "[Gc4Head] segment gc consumed %lld, count %lld",
-            (::baidu::common::timer::get_micros() - consumed)/1000, count);
-    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
+    LOG(DEBUG, "[Gc4Head] segment gc consumed %lld, count %lld",
+            (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
+    idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
     delete it;
-    return count;
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
@@ -151,9 +150,9 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64
 }
 
 // fast gc with no global pause
-uint64_t Segment::Gc4TTL(const uint64_t& time) {
+void Segment::Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t count = 0;
+    uint64_t old = gc_idx_cnt; 
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
@@ -163,14 +162,13 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
             MutexLock lock(&entry->mu);
             SplitList(entry, time, &node);
         }
-        count += FreeList(it->GetKey(), node);
+        FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
         it->Next();
     }
-    LOG(INFO, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
-            (::baidu::common::timer::get_micros() - consumed)/1000, count);
-    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
+    LOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
+            (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
+    idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
     delete it;
-    return count;
 }
 
 // Iterator

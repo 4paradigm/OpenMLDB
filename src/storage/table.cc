@@ -35,7 +35,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), is_leader_(is_leader), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false)
 {}
@@ -49,7 +49,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), is_leader_(false), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
     replicas_(), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false)
 {}
@@ -71,7 +71,7 @@ void Table::Init() {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             segments_[i][j] = new Segment();
-            LOG(DEBUG, "init %lu, %lu segment", i, j);
+            LOG(DEBUG, "init %u, %u segment", i, j);
         }
     }
     if (ttl_ > 0) {
@@ -91,7 +91,6 @@ bool Table::Put(const std::string& pk,
     }
     Segment* segment = segments_[0][index];
     segment->Put(pk, time, data, size);
-    data_cnt_.fetch_add(1, boost::memory_order_relaxed);
     return true;
 }
 
@@ -149,18 +148,24 @@ uint64_t Table::SchedGc() {
     if (!enable_gc_.load(boost::memory_order_relaxed)) {
         return 0;
     }
-    LOG(INFO, "table %s start to make a gc", name_.c_str()); 
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+    LOG(INFO, "start making gc for table %s, tid %u, pid %u", name_.c_str(),
+            id_, pid_); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
-    uint64_t count = 0;
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             Segment* segment = segments_[i][j];
-            count += segment->Gc4TTL(time);
+            segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt);
         }
     }
-    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
-    return count;
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+    record_cnt_.fetch_sub(gc_record_cnt, boost::memory_order_relaxed);
+    LOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
+            gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
+    return gc_record_cnt;
 }
 
 bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {

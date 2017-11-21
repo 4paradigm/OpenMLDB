@@ -27,7 +27,8 @@ TEST_F(TableTest, Put) {
     Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
-    ASSERT_EQ(1, table->GetDataCnt());
+    table->RecordCntIncr();
+    ASSERT_EQ(1, table->GetRecordCnt());
     Ticket ticket;
     Table::Iterator* it = table->NewIterator("test", ticket);
     it->SeekToFirst();
@@ -136,8 +137,9 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     ASSERT_TRUE(table->Put(d2, 9527, db, 1));
     std::string d3 = "d3";
     ASSERT_TRUE(table->Put(d3, 9527, db, 2));
+    table->RecordCntIncr(1);
     uint64_t count = table->SchedGc();
-    ASSERT_EQ(3, count);
+    ASSERT_EQ(1, count);
 
 }
 
@@ -174,6 +176,7 @@ TEST_F(TableTest, OffSet) {
     table->Put("test", now - 3 * 60 * 1000, "test", 4);
     table->Put("test", now, "tes2", 4);
     table->Put("test", now + 3 * 60 * 1000, "tes2", 4);
+    table->RecordCntIncr(4);
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
 
@@ -196,11 +199,11 @@ TEST_F(TableTest, OffSet) {
         delete it;
     }
     
-    ASSERT_EQ(table->GetDataCnt(), 2);
+    ASSERT_EQ(table->GetRecordCnt(), 2);
     table->SetTimeOffset(120);
     count = table->SchedGc();
     ASSERT_EQ(1, count);
-    ASSERT_EQ(table->GetDataCnt(), 1);
+    ASSERT_EQ(table->GetRecordCnt(), 1);
     delete table;
 }
 
@@ -209,14 +212,15 @@ TEST_F(TableTest, TableDataCnt) {
     mapping.insert(std::make_pair("idx0", 0));
     Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
-    ASSERT_EQ(table->GetDataCnt(), 0);
+    ASSERT_EQ(table->GetRecordCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->Put("test", 9527, "test", 4);
     table->Put("test", now, "tes2", 4);
-    ASSERT_EQ(table->GetDataCnt(), 2);
+    table->RecordCntIncr(2);
+    ASSERT_EQ(table->GetRecordCnt(), 2);
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
-    ASSERT_EQ(table->GetDataCnt(), 1);
+    ASSERT_EQ(table->GetRecordCnt(), 1);
     delete table;
 }
 
