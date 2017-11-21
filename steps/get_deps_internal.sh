@@ -189,6 +189,8 @@ else
     ./config --prefix=${DEPS_PREFIX} --openssldir=${DEPS_PREFIX}
     make -j5
     make install
+    rm -rf ${DEPS_PREFIX}/lib/libssl.so*
+    rm -rf ${DEPS_PREFIX}/lib/libcrypto.so*
     cd -
     touch openssl_succ
     echo "openssl done"
@@ -203,9 +205,10 @@ else
     BRPC_DIR=$DEPS_SOURCE/brpc-master
     cd brpc-master
     sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
-    make -j5
+    make -j5 libbrpc.a
+    make output/include
     cp -rf output/include/* ${DEPS_PREFIX}/include
-    cp output/lib/libbrpc.a ${DEPS_PREFIX}/lib
+    cp libbrpc.a ${DEPS_PREFIX}/lib
     cd -
     touch brpc_succ
     echo "brpc done"
