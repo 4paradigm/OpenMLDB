@@ -101,30 +101,6 @@ else
     echo "install snappy done"
 fi
 
-if [ -f "sofa_succ" ]
-then
-    echo "sofa exist"
-else
-    # sofa-pbrpc
-    wget http://pkg.4paradigm.com:81/rtidb/dev/sofa-pbrpc.tar.gz
-    tar zxf sofa-pbrpc.tar.gz
-    cd sofa-pbrpc
-    echo "BOOST_HEADER_DIR=${DEPS_PREFIX}/include" >> depends.mk
-    echo "PROTOBUF_DIR=${DEPS_PREFIX}" >> depends.mk
-    echo "SNAPPY_DIR=${DEPS_PREFIX}" >> depends.mk
-    echo "PREFIX=${DEPS_PREFIX}" >> depends.mk
-    cd -
-    cd sofa-pbrpc/src
-    sh compile_proto.sh ${DEPS_PREFIX}/include
-    cd -
-    cd sofa-pbrpc
-    make -j2 >/dev/null
-    make install
-    cd -
-    touch sofa_succ
-fi
-
-
 if [ -f "gflags_succ" ]
 then
     echo "gflags-2.1.1.tar.gz exist"
@@ -203,6 +179,23 @@ else
     touch leveldb_succ
 fi
 
+if [ -f "openssl_succ" ]
+then
+    echo "openssl exist"
+else
+    wget -O OpenSSL_1_1_0.zip http://pkg.4paradigm.com:81/rtidb/dev/OpenSSL_1_1_0.zip > /dev/null
+    unzip OpenSSL_1_1_0.zip
+    cd openssl-OpenSSL_1_1_0
+    ./config --prefix=${DEPS_PREFIX} --openssldir=${DEPS_PREFIX}
+    make -j5
+    make install
+    rm -rf ${DEPS_PREFIX}/lib/libssl.so*
+    rm -rf ${DEPS_PREFIX}/lib/libcrypto.so*
+    cd -
+    touch openssl_succ
+    echo "openssl done"
+fi
+
 if [ -f "brpc_succ" ]
 then
     echo "brpc exist"
@@ -212,9 +205,10 @@ else
     BRPC_DIR=$DEPS_SOURCE/brpc-master
     cd brpc-master
     sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
-    make -j5
+    make -j5 libbrpc.a
+    make output/include
     cp -rf output/include/* ${DEPS_PREFIX}/include
-    cp output/lib/libbrpc.a ${DEPS_PREFIX}/lib
+    cp libbrpc.a ${DEPS_PREFIX}/lib
     cd -
     touch brpc_succ
     echo "brpc done"
