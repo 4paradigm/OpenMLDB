@@ -1046,7 +1046,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    PDLOG(INFO, "create table tid[%u] pid[%u]", tid, pid);
+    PDLOG(INFO, "start creating table tid[%u] pid[%u]", tid, pid);
     uint64_t ttl = table_meta->ttl();
     std::string name = table_meta->name();
     uint32_t seg_cnt = 8;
