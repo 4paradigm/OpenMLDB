@@ -49,11 +49,11 @@ bool Snapshot::Init() {
     snapshot_path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_) + "/snapshot/";
     log_path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_) + "/binlog/";
     if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
-        LOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
+        PDLOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
         return false;
     }
     if (!::rtidb::base::MkdirRecur(log_path_)) {
-        LOG(WARNING, "fail to create db meta path %s", log_path_.c_str());
+        PDLOG(WARNING, "fail to create db meta path %s", log_path_.c_str());
         return false;
     }
     making_snapshot_.store(false, boost::memory_order_release);
@@ -77,7 +77,7 @@ bool Snapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
 
 bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
                                  uint64_t& latest_offset) {
-    LOG(INFO, "start recover table tid %u, pid %u from binlog with start offset %lu",
+    PDLOG(INFO, "start recover table tid %u, pid %u from binlog with start offset %lu",
             table->GetId(), table->GetPid(), offset);
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset);
@@ -93,7 +93,7 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
             consumed = ::baidu::common::timer::now_time() - consumed;
-            LOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
+            PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                        tid_, pid_, succ_cnt, failed_cnt, consumed);
             break;
         }
@@ -108,26 +108,26 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         }
         bool ok = entry.ParseFromString(record.ToString());
         if (!ok) {
-            LOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
                         ::rtidb::base::DebugString(record.ToString()).c_str());
             failed_cnt++;
             continue;
         }
 
         if (cur_offset >= entry.log_index()) {
-            LOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
+            PDLOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
             continue;
         }
 
         if (cur_offset + 1 != entry.log_index()) {
-            LOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
+            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
                     cur_offset, entry.log_index(), tid_, pid_);
         }
         table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
         cur_offset = entry.log_index();
         succ_cnt++;
         if (succ_cnt % 100000 == 0) {
-            LOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
+            PDLOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
                     succ_cnt, failed_cnt, tid_, pid_);
         }
         if (succ_cnt % FLAGS_gc_on_table_recover_count == 0) {
@@ -143,11 +143,11 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
     std::atomic<uint64_t> g_succ_cnt(0);
     std::atomic<uint64_t> g_failed_cnt(0);
     RecoverSingleSnapshot(full_path, table, &g_succ_cnt, &g_failed_cnt);
-    LOG(INFO, "[Recover] progress done stat: success count %lu, failed count %lu", 
+    PDLOG(INFO, "[Recover] progress done stat: success count %lu, failed count %lu", 
                     g_succ_cnt.load(std::memory_order_relaxed),
                     g_failed_cnt.load(std::memory_order_relaxed));
     if (g_succ_cnt.load(std::memory_order_relaxed) != expect_cnt) {
-        LOG(WARNING, "snapshot %s , expect cnt %lu but succ_cnt %lu", snapshot_name.c_str(),
+        PDLOG(WARNING, "snapshot %s , expect cnt %lu but succ_cnt %lu", snapshot_name.c_str(),
                 expect_cnt, g_succ_cnt.load(std::memory_order_relaxed));
     }
 }
@@ -158,12 +158,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                                      std::atomic<uint64_t>* g_failed_cnt) {
     do {
         if (table == NULL) {
-            LOG(WARNING, "table input is NULL");
+            PDLOG(WARNING, "table input is NULL");
             break;
         }
         FILE* fd = fopen(path.c_str(), "rb");
         if (fd == NULL) {
-            LOG(WARNING, "fail to open path %s for error %s", path.c_str(), strerror(errno));
+            PDLOG(WARNING, "fail to open path %s for error %s", path.c_str(), strerror(errno));
             break;
         }
         ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
@@ -179,25 +179,25 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time() - consumed;
-                LOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
+                PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                         path.c_str(), tid_, pid_, succ_cnt, failed_cnt, consumed);
                 break;
             }
             if (!status.ok()) {
-                LOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
+                PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
                 failed_cnt++;
                 continue;
             }
             bool ok = entry.ParseFromString(record.ToString());
             if (!ok) {
-                LOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+                PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
                         ::rtidb::base::DebugString(record.ToString()).c_str());
                 failed_cnt++;
                 continue;
             }
             succ_cnt++;
             if (succ_cnt % 100000 == 0) { 
-                LOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
+                PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
                         succ_cnt, failed_cnt);
             }
             table->Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
@@ -218,7 +218,7 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 	std::string full_path = snapshot_path_ + manifest.name();
 	FILE* fd = fopen(full_path.c_str(), "rb");
 	if (fd == NULL) {
-		LOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
+		PDLOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
 		return -1;
 	}
 	::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(manifest.name(), fd);
@@ -235,12 +235,12 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 			break;
 		}
 		if (!status.ok()) {
-			LOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
+			PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
 			has_error = true;        
 			break;
 		}
 		if (!entry.ParseFromString(record.ToString())) {
-			LOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+			PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
 					::rtidb::base::DebugString(record.ToString()).c_str());
 			has_error = true;        
 			break;
@@ -252,32 +252,32 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 		}
 		status = wh->Write(record);
 		if (!status.ok()) {
-			LOG(WARNING, "fail to write snapshot. status[%s]", 
+			PDLOG(WARNING, "fail to write snapshot. status[%s]", 
 			              status.ToString().c_str());
 			has_error = true;        
 			break;
 		}
         if ((count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
-			LOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count()); 
+			PDLOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count()); 
         }
 		count++;
 	}
 	delete seq_file;
     if (expired_key_num + count != manifest.count()) {
-	    LOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
+	    PDLOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
                     manifest.count(), count, expired_key_num);
         has_error = true;
     }
 	if (has_error) {
 		return -1;
 	}	
-	LOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num); 
+	PDLOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num); 
 	return 0;
 }
 
 int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     if (making_snapshot_.load(boost::memory_order_acquire)) {
-        LOG(INFO, "snapshot is doing now!");
+        PDLOG(INFO, "snapshot is doing now!");
         return 0;
     }
     making_snapshot_.store(true, boost::memory_order_release);
@@ -288,7 +288,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
     FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
     if (fd == NULL) {
-        LOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
+        PDLOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
         making_snapshot_.store(false, boost::memory_order_release);
         return -1;
     }
@@ -322,7 +322,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
         if (status.ok()) {
             ::rtidb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
-                LOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]", 
+                PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]", 
                         ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
                 has_error = true;        
                 break;
@@ -331,7 +331,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                 continue;
             }
             if (cur_offset + 1 != entry.log_index()) {
-                LOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
+                PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
                 has_error = true;
                 break;
             }
@@ -342,22 +342,22 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             }
             ::rtidb::base::Status status = wh->Write(record);
             if (!status.ok()) {
-                LOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
+                PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
                 tmp_file_path.c_str(), status.ToString().c_str());
                 has_error = true;        
                 break;
             }
             write_count++;
             if ((write_count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
-                LOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
+                PDLOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
             }
         } else if (status.IsEof()) {
             continue;
         } else if (status.IsWaitRecord()) {
-            LOG(DEBUG, "has read all record!");
+            PDLOG(DEBUG, "has read all record!");
             break;
         } else {
-            LOG(WARNING, "fail to get record. status is %s", status.ToString().c_str());
+            PDLOG(WARNING, "fail to get record. status is %s", status.ToString().c_str());
             has_error = true;        
             break;
         }
@@ -376,21 +376,21 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             if (RecordOffset(snapshot_name, write_count, cur_offset) == 0) {
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
-                    LOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str()); 
+                    PDLOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str()); 
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
                 uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
-                LOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second. write key %lu expired key %lu", 
+                PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second. write key %lu expired key %lu", 
                           snapshot_name.c_str(), offset_, cur_offset, consumed, write_count, expired_key_num);
                 offset_ = cur_offset;
                 out_offset = cur_offset;
             } else {
-                LOG(WARNING, "RecordOffset failed. delete snapshot file[%s]", full_path.c_str());
+                PDLOG(WARNING, "RecordOffset failed. delete snapshot file[%s]", full_path.c_str());
                 unlink(full_path.c_str());
                 ret = -1;
             }
         } else {
-            LOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
+            PDLOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
             unlink(tmp_file_path.c_str());
             ret = -1;
         }
@@ -403,13 +403,13 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     std::string full_path = snapshot_path_ + MANIFEST;
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
-        LOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
+        PDLOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
         return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);
         fileInput.SetCloseOnDelete(true);
         if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-            LOG(WARNING, "parse manifest failed");
+            PDLOG(WARNING, "parse manifest failed");
             return -1;
         }
     }
@@ -417,7 +417,7 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
 }
 
 int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset) {
-    LOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
+    PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
                 offset, snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
     std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
@@ -430,21 +430,21 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
     google::protobuf::TextFormat::PrintToString(manifest, &manifest_info);
     FILE* fd_write = fopen(tmp_file.c_str(), "w");
     if (fd_write == NULL) {
-        LOG(WARNING, "fail to open file %s", tmp_file.c_str());
+        PDLOG(WARNING, "fail to open file %s", tmp_file.c_str());
         return -1;
     }
     bool io_error = false;
     if (fputs(manifest_info.c_str(), fd_write) == EOF) {
-        LOG(WARNING, "write error. path[%s]", tmp_file.c_str());
+        PDLOG(WARNING, "write error. path[%s]", tmp_file.c_str());
         io_error = true;
     }
     if (!io_error && ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
-        LOG(WARNING, "flush error. path[%s]", tmp_file.c_str());
+        PDLOG(WARNING, "flush error. path[%s]", tmp_file.c_str());
         io_error = true;
     }
     fclose(fd_write);
     if (!io_error && rename(tmp_file.c_str(), full_path.c_str()) == 0) {
-        LOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
+        PDLOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
         return 0;
     }
     unlink(tmp_file.c_str());

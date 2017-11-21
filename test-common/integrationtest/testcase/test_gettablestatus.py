@@ -37,7 +37,7 @@ class TestGetTableStatus(TestCaseBase):
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
 
-        self.put_large_datas(100, 50)
+        self.put_large_datas(1000, 5)
 
         rs2 = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
         self.assertTrue('MakeSnapshot ok' in rs2)

@@ -51,7 +51,7 @@ void Segment::Put(const std::string& key,
         uint32_t size) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         entry = entries_->Get(key);
         // Need a double check
         if (entry == NULL || key.compare(entry->key) != 0) {
@@ -61,7 +61,7 @@ void Segment::Put(const std::string& key,
         }
     }
     data_cnt_.fetch_add(1, boost::memory_order_relaxed);
-    MutexLock lock(&entry->mu);
+    std::lock_guard<std::mutex> lock(entry->mu);
     DataBlock* db = new DataBlock(data, size);
     entry->entries.Insert(time, db);
 }
@@ -88,7 +88,7 @@ uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, 
         count ++;
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
         node = node->GetNextNoBarrier(0);
-        LOG(DEBUG, "delete key %lld", tmp->GetKey());
+        PDLOG(DEBUG, "delete key %lld", tmp->GetKey());
         // clear the value that node hold
         // and clear node it's self
         if (tmp->GetValue() != NULL) {
@@ -126,14 +126,14 @@ uint64_t Segment::Gc4WithHead() {
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         if (cnt == 1) {
             {
-                MutexLock lock(&entry->mu);
+                std::lock_guard<std::mutex> lock(entry->mu);
                 SplitList(entry, ts, &node);
             }
             count += FreeList(it->GetKey(), node);
         }
         it->Next();
     }
-    LOG(INFO, "[GcWithHead] segment gc consumed %lld, count %lld",
+    PDLOG(INFO, "[GcWithHead] segment gc consumed %lld, count %lld",
             (::baidu::common::timer::get_micros() - consumed)/1000, count);
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     delete it;
@@ -157,13 +157,13 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
         KeyEntry* entry = it->GetValue();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
-            MutexLock lock(&entry->mu);
+            std::lock_guard<std::mutex> lock(entry->mu);
             SplitList(entry, time, &node);
         }
         count += FreeList(it->GetKey(), node);
         it->Next();
     }
-    LOG(INFO, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
+    PDLOG(INFO, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed)/1000, count);
     data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
     delete it;

@@ -27,7 +27,8 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultCompar
 class ReplicateNode {
 public:
     ReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path,
-            uint32_t tid, uint32_t pid, ::rtidb::RpcClient* rpc_client);
+            uint32_t tid, uint32_t pid);
+    int Init();
     int MatchLogOffsetFromNode();        
     int SyncData(uint64_t log_offset);
     void SetLastSyncOffset(uint64_t offset);
@@ -43,13 +44,13 @@ public:
 private:
     LogReader log_reader_;
     std::vector<::rtidb::api::AppendEntriesRequest> cache_;
-    ::rtidb::RpcClient* rpc_client_;
     std::string endpoint_;
     std::atomic<bool> making_snapshot_;
     uint64_t last_sync_offset_;
     bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
+    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> rpc_client_;
 };
 
 }

@@ -13,22 +13,19 @@
 #include "base/skiplist.h"
 #include "boost/atomic.hpp"
 #include "boost/function.hpp"
-#include "mutex.h"
+#include <mutex>
+#include <condition_variable>
 #include "thread_pool.h"
 #include "log/log_writer.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
-#include "rpc/rpc_client.h"
 #include "replica/replicate_node.h"
 #include "storage/table.h"
 
 namespace rtidb {
 namespace replica {
 
-using ::baidu::common::MutexLock;
-using ::baidu::common::Mutex;
-using ::baidu::common::CondVar;
 using ::baidu::common::ThreadPool;
 using ::rtidb::log::SequentialFile;
 using ::rtidb::log::Reader;
@@ -115,11 +112,9 @@ private:
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
     // sync mutex
-    Mutex mu_;
-    CondVar cv_;
-    CondVar coffee_cv_;
-
-    ::rtidb::RpcClient* rpc_client_;
+    std::mutex mu_;
+    std::condition_variable cv_;
+    std::condition_variable coffee_cv_;
 
     ApplyLogFunc func_;
 
@@ -134,7 +129,7 @@ private:
 
     boost::atomic<int> snapshot_log_part_index_;
 
-    Mutex wmu_;
+    std::mutex wmu_;
 
     std::shared_ptr<Table> table_;
 };

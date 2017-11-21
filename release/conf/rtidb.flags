@@ -1,7 +1,11 @@
 # common conf 
 --endpoint=0.0.0.0:9527
---scan_endpoint=0.0.0.0:9526
 --role=tablet
+
+# concurrency conf
+--thread_pool_size=8
+--scan_concurrency_limit=8
+--put_concurrency_limit=8
 
 # log conf
 --log_dir=./logs
