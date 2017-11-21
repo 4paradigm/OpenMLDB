@@ -12,7 +12,7 @@
 #include <iostream>
 
 #include <gflags/gflags.h>
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include "logging.h"
@@ -39,9 +39,9 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(endpoint);
-DECLARE_string(scan_endpoint);
 DECLARE_int32(thread_pool_size);
-DECLARE_int32(scan_thread_pool_size);
+DECLARE_int32(put_concurrency_limit);
+DECLARE_int32(scan_concurrency_limit);
 DEFINE_string(role, "tablet | nameserver | client | ns_client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -50,11 +50,6 @@ DEFINE_string(log_dir, "", "Config the log dir");
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
-
-static volatile bool s_quit = false;
-static void SignalIntHandler(int /*sig*/){
-    s_quit = true;
-}
 
 void SetupLog() {
     // Config log 
@@ -75,79 +70,52 @@ void SetupLog() {
 
 void StartNameServer() {
     SetupLog();
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::nameserver::NameServerImpl* name_server = new ::rtidb::nameserver::NameServerImpl();
     name_server->Init();
-    sofa::pbrpc::Servlet webservice =
-                sofa::pbrpc::NewPermanentExtClosure(name_server, &rtidb::nameserver::NameServerImpl::WebService);
-    if (!rpc_server.RegisterService(name_server)) {
-        LOG(WARNING, "fail to register nameserver rpc service");
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+	if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    rpc_server.RegisterWebServlet("/nameserver", webservice);
-    if (!rpc_server.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
+	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    LOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
+    PDLOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
-    signal(SIGINT, SignalIntHandler);
-    signal(SIGTERM, SignalIntHandler);
-    while (!s_quit) {
-        sleep(1);
-    }
+	server.RunUntilAskedToQuit();
 }
 
 void StartTablet() {
     SetupLog();
-    sofa::pbrpc::RpcServerOptions scan_options;
-    scan_options.work_thread_num = FLAGS_scan_thread_pool_size;
-    sofa::pbrpc::RpcServer scan_rpc_server(scan_options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
     if (!ok) {
-        LOG(WARNING, "fail to init tablet");
+        PDLOG(WARNING, "fail to init tablet");
         exit(1);
     }
-    sofa::pbrpc::Servlet webservice1 =
-                sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    sofa::pbrpc::Servlet webservice2 =
-                sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-
-    if (!scan_rpc_server.RegisterService(tablet)) {
-        LOG(WARNING, "fail to register tablet rpc service");
+    brpc::ServerOptions options;
+    options.num_threads = FLAGS_thread_pool_size;
+    brpc::Server server;
+	if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    scan_rpc_server.RegisterWebServlet("/tablet", webservice1);
-    if (!scan_rpc_server.Start(FLAGS_scan_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_scan_endpoint.c_str());
+    server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
+    server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
+	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
-    scan_options.work_thread_num = FLAGS_thread_pool_size;
-    if (!rpc_server.RegisterService(tablet)) {
-        LOG(WARNING, "fail to register tablet rpc service");
-        exit(1);
-    }
-    rpc_server.RegisterWebServlet("/tablet", webservice2);
-    if (!rpc_server.Start(FLAGS_endpoint)) {
-        LOG(WARNING, "fail to listen port %s", FLAGS_endpoint.c_str());
-        exit(1);
-    }
-    LOG(INFO, "start tablet on port %s and scan port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
-            FLAGS_scan_endpoint.c_str(),
+    PDLOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
-    signal(SIGINT, SignalIntHandler);
-    signal(SIGTERM, SignalIntHandler);
-    while (!s_quit) {
-        sleep(1);
-    }
+	server.RunUntilAskedToQuit();
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -182,7 +150,7 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[2]);
         bool ok = client->MakeSnapshot(parts[1], tid);
         if (!ok) {
-            std::cout << "Fail to show tablets" << std::endl;
+            std::cout << "Fail to makesnapshot" << std::endl;
             return;
         }
         std::cout << "MakeSnapshot ok" << std::endl;
@@ -1137,6 +1105,7 @@ void StartClient() {
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
         << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
+    client.Init();
     while (!s_quit) {
         std::cout << ">";
         std::string buffer;

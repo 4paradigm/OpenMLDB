@@ -32,7 +32,7 @@ inline static bool Mkdir(const std::string& path) {
     if (ret == 0 || errno == EEXIST) {
         return true; 
     }
-    LOG(WARNING, "mkdir %s failed err[%d: %s]", 
+    PDLOG(WARNING, "mkdir %s failed err[%d: %s]", 
             path.c_str(), errno, strerror(errno));
     return false;
 }
@@ -49,7 +49,7 @@ inline static bool IsExists(const std::string& path) {
 inline static bool Rename(const std::string& source, const std::string& target) {
     int ret = ::rename(source.c_str(), target.c_str()); 
     if (ret != 0) {
-        LOG(WARNING, "fail to rename %s to %s with error %s", source.c_str(),
+        PDLOG(WARNING, "fail to rename %s to %s with error %s", source.c_str(),
                 target.c_str(), strerror(errno));
         return false;
     }
@@ -95,12 +95,12 @@ inline static int GetSubDir(const std::string& path, std::vector<std::string>& s
 
 inline static int GetFileName(const std::string& path, std::vector<std::string>& file_vec) {
     if (path.empty()) {
-        LOG(WARNING, "input path is empty");
+        PDLOG(WARNING, "input path is empty");
         return -1;
     }
     DIR *dir = opendir(path.c_str());
     if (dir == NULL) {
-        LOG(WARNING, "fail to open path %s for %s", path.c_str(),
+        PDLOG(WARNING, "fail to open path %s for %s", path.c_str(),
                 strerror(errno));
         return -1;
     }
@@ -113,7 +113,7 @@ inline static int GetFileName(const std::string& path, std::vector<std::string>&
         std::string file_path = path + "/" + ptr->d_name;
         int ret = lstat(file_path.c_str(), &stat_buf);
         if (ret == -1) {
-            LOG(WARNING, "stat path %s failed err[%d: %s]",
+            PDLOG(WARNING, "stat path %s failed err[%d: %s]",
                     file_path.c_str(),
                     errno,
                     strerror(errno));

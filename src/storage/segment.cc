@@ -55,7 +55,7 @@ void Segment::Put(const std::string& key,
 void Segment::Put(const std::string& key, uint64_t time, DataBlock* row) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         entry = entries_->Get(key);
         // Need a double check
         if (entry == NULL || key.compare(entry->key) != 0) {
@@ -91,11 +91,11 @@ void Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, Data
         gc_idx_cnt++;
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
         node = node->GetNextNoBarrier(0);
-        LOG(DEBUG, "delete key %lld", tmp->GetKey());
+        PDLOG(DEBUG, "delete key %lld", tmp->GetKey());
         if (tmp->GetValue()->dim_cnt_down > 1) {
             tmp->GetValue()->dim_cnt_down --;
         }else {
-            LOG(DEBUG, "delele data block for key %lld", tmp->GetKey());
+            PDLOG(DEBUG, "delele data block for key %lld", tmp->GetKey());
             delete tmp->GetValue();
             gc_record_cnt++;
         }
@@ -129,14 +129,14 @@ void Segment::Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         if (cnt == 1) {
             {
-                MutexLock lock(&entry->mu);
+                std::lock_guard<std::mutex> lock(entry->mu);
                 SplitList(entry, ts, &node);
             }
             FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
         }
         it->Next();
     }
-    LOG(DEBUG, "[Gc4Head] segment gc consumed %lld, count %lld",
+    PDLOG(DEBUG, "[Gc4Head] segment gc consumed %lld, count %lld",
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
     delete it;
@@ -159,15 +159,39 @@ void Segment::Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_re
         KeyEntry* entry = it->GetValue();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
-            MutexLock lock(&entry->mu);
+            std::lock_guard<std::mutex> lock(entry->mu);
             SplitList(entry, time, &node);
         }
         FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
         it->Next();
     }
-    LOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
+    PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
+    delete it;
+    return count;
+}
+
+void Segment::BatchGet(const std::vector<std::string>& keys,
+                       std::map<uint32_t, DataBlock*>& datas,
+                       Ticket& ticket) {
+    KeyEntries::Iterator* it = entries_->NewIterator();
+    for (uint32_t i = 0; i < keys.size(); i++) {
+        const std::string& key = keys[i];
+        it->Seek(key);
+        if (!it->Valid()) {
+            continue;
+        }
+        KeyEntry* entry = it->GetValue();
+        ticket.Push(entry);
+        TimeEntries::Iterator* tit = entry->entries.NewIterator();
+        tit->SeekToFirst();
+        if (tit->Valid()) {
+            datas.insert(std::make_pair(i, tit->GetValue()));
+        }
+        delete tit;
+    }
+>>>>>>> origin/develop
     delete it;
 }
 

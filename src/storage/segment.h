@@ -12,7 +12,7 @@
 #include <map>
 #include <vector>
 #include "base/skiplist.h"
-#include "mutex.h"
+#include <mutex>
 #include "boost/atomic.hpp"
 #include "storage/ticket.h"
 #include "boost/function.hpp"
@@ -23,8 +23,6 @@ namespace storage {
 
 class Segment;
 class Ticket;
-using ::baidu::common::Mutex;
-using ::baidu::common::MutexLock;
 
 struct DataBlock {
     // dimension count down
@@ -95,7 +93,7 @@ public:
 public:
     std::string key;
     TimeEntries entries;
-    Mutex mu;
+    std::mutex mu;
     // Reader refs
     boost::atomic<uint64_t> refs_;
     friend Segment;
@@ -162,7 +160,7 @@ private:
 private:
     KeyEntries* entries_;
     // only Put need mutex
-    Mutex mu_;
+    std::mutex mu_;
     boost::atomic<uint64_t> idx_cnt_;
 };
 

@@ -2,6 +2,7 @@
 import unittest
 from framework import TestCaseBase
 import xmlrunner
+import time
 
 class TestPauseSnapshot(TestCaseBase):
 
@@ -36,6 +37,7 @@ class TestPauseSnapshot(TestCaseBase):
                        self.now() - 1,
                        'v')
         self.assertTrue('Put ok', rs4)
+        time.sleep(1)
         self.assertTrue('v' in self.scan(self.slave1, self.tid, self.pid, 'k', self.now(), 1))
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         self.assertEqual(table_status, ['1', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])

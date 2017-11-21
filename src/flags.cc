@@ -7,7 +7,6 @@
 
 #include <gflags/gflags.h>
 // cluster config
-DEFINE_string(scan_endpoint, "127.0.0.1:9526", "config the ip and port that rtidb serves scan for");
 DEFINE_string(endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves for");
 DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
@@ -46,7 +45,8 @@ DEFINE_int32(binlog_name_length, 8, "binlog name length");
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
 
 // thread pool config
-DEFINE_int32(scan_thread_pool_size, 8, "the size of thread pool for scan");
+DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
+DEFINE_int32(put_concurrency_limit, 8, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 8, "the size of thread pool for other api");
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");

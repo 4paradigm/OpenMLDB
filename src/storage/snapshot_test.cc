@@ -24,6 +24,7 @@
 #include <time.h>
 #include "base/strings.h"
 #include "base/file_util.h"
+#include "timer.h"
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
@@ -72,7 +73,7 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
     std::string full_path = log_path + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
-        LOG(WARNING, "fail to create file %s", full_path.c_str());
+        PDLOG(WARNING, "fail to create file %s", full_path.c_str());
         return false;
     }
     logs->Insert(binlog_index, offset);

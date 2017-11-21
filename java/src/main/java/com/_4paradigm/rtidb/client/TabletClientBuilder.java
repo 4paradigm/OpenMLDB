@@ -16,7 +16,7 @@ public class TabletClientBuilder {
 		RpcClientOptions options = new RpcClientOptions();
 		options.setIoThreadNum(ioThreadNum);
 		options.setMaxTryTimes(1);
-		options.setProtocolType(Options.ProtocolType.PROTOCOL_SOFA_PBRPC_VALUE);
+		options.setProtocolType(Options.ProtocolType.PROTOCOL_BAIDU_STD_VALUE);
 		options.setReadTimeoutMillis(timeout);
 		EndPoint endpoint = new EndPoint(ip, port);
 		RpcClient client = new RpcClient(endpoint, options);

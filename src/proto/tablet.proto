@@ -311,6 +311,9 @@ message GetResponse {
     optional bytes value = 5;
 }
 
+message HttpRequest { }
+message HttpResponse { }
+
 service TabletServer {
 
     // write and read api for client
@@ -339,4 +342,9 @@ service TabletServer {
 
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
+
+    // http interface
+    rpc ShowTables(HttpRequest) returns (HttpResponse);
+    rpc ShowMetric(HttpRequest) returns (HttpResponse);
+    rpc ShowMemPool(HttpRequest) returns (HttpResponse);
 }

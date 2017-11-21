@@ -71,14 +71,14 @@ void Table::Init() {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             segments_[i][j] = new Segment();
-            LOG(DEBUG, "init %u, %u segment", i, j);
+            PDLOG(DEBUG, "init %u, %u segment", i, j);
         }
     }
     if (ttl_ > 0) {
         enable_gc_ = true;
     }
-    LOG(INFO, "init table name %s, id %d, pid %d, idx_cnt %u seg_cnt %u , ttl %d", name_.c_str(),
-            id_, pid_, idx_cnt_, seg_cnt_, ttl_ / (60 * 1000));
+    PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
+            id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
 }
 
 bool Table::Put(const std::string& pk, 
@@ -107,7 +107,7 @@ bool Table::Put(const std::string& pk,
     }
     Segment* segment = segments_[idx][seg_idx];
     segment->Put(pk, time, row);
-    LOG(DEBUG, "add row to index %u with value %s for tid %u pid %u ok", idx,
+    PDLOG(DEBUG, "add row to index %u with value %s for tid %u pid %u ok", idx,
                pk.c_str(), id_, pid_);
     return true;
 }
@@ -149,7 +149,7 @@ uint64_t Table::SchedGc() {
         return 0;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    LOG(INFO, "start making gc for table %s, tid %u, pid %u", name_.c_str(),
+    PDLOG(INFO, "start making gc for table %s, tid %u, pid %u", name_.c_str(),
             id_, pid_); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
@@ -163,7 +163,7 @@ uint64_t Table::SchedGc() {
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
     record_cnt_.fetch_sub(gc_record_cnt, boost::memory_order_relaxed);
-    LOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
+    PDLOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
             gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
     return gc_record_cnt;
 }
@@ -224,7 +224,7 @@ Table::Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
 
 Table::Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
-        LOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
+        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
     }
     uint32_t seg_idx = 0;

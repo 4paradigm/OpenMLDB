@@ -19,7 +19,7 @@
 #include "proto/tablet.pb.h"
 #include "logging.h"
 #include "thread_pool.h"
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 #include "storage/table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
@@ -67,20 +67,17 @@ public:
 };
 
 TEST_F(SnapshotReplicaTest, AddReplicate) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     tablet->Init();
-    sofa::pbrpc::Servlet webservice =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register tablet rpc service");
+    brpc::Server server;
+    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
+    brpc::ServerOptions options;
     std::string leader_point = "127.0.0.1:18529";
-    if (!rpc_server.Start(leader_point)) {
-        LOG(WARNING, "fail to listen port %s", leader_point.c_str());
+    if (server.Start(leader_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
     }
 
@@ -88,6 +85,7 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     uint32_t pid = 123;
 
     ::rtidb::client::TabletClient client(leader_point);
+    client.Init();
     std::vector<std::string> endpoints;
     bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
     ASSERT_TRUE(ret);
@@ -108,27 +106,26 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
 }
 
 TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     tablet->Init();
-    sofa::pbrpc::Servlet webservice =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register tablet rpc service");
+    brpc::Server server;
+    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
+    brpc::ServerOptions options;
     std::string leader_point = "127.0.0.1:18529";
-    if (!rpc_server.Start(leader_point)) {
-        LOG(WARNING, "fail to listen port %s", leader_point.c_str());
+    if (server.Start(leader_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
     }
+    //server.RunUntilAskedToQuit();
 
     uint32_t tid = 1;
     uint32_t pid = 123;
 
     ::rtidb::client::TabletClient client(leader_point);
+    client.Init();
     std::vector<std::string> endpoints;
     bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
     ASSERT_TRUE(ret);
@@ -146,23 +143,21 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";
-    sofa::pbrpc::RpcServerOptions options1;
-    sofa::pbrpc::RpcServer rpc_server1(options1);
     ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
     tablet1->Init();
-    sofa::pbrpc::Servlet webservice1 =
-            sofa::pbrpc::NewPermanentExtClosure(tablet1, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server1.RegisterService(tablet1)) {
-       LOG(WARNING, "fail to register tablet rpc service");
+    brpc::Server server1;
+    if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);
     }
-    rpc_server1.RegisterWebServlet("/tablet", webservice1);
     std::string follower_point = "127.0.0.1:18530";
-    if (!rpc_server1.Start(follower_point)) {
-        LOG(WARNING, "fail to listen port %s", follower_point.c_str());
+    if (server1.Start(follower_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", follower_point.c_str());
         exit(1);
     }
+    //server.RunUntilAskedToQuit();
     ::rtidb::client::TabletClient client1(follower_point);
+    client1.Init();
     ret = client1.CreateTable("table1", tid, pid, 14400, false, endpoints, 8);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);

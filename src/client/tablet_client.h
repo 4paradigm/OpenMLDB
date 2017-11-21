@@ -24,6 +24,8 @@ public:
 
     ~TabletClient();
 
+    int Init();
+
     std::string GetEndpoint();
 
     bool CreateTable(const std::string& name, 
@@ -127,8 +129,7 @@ public:
 
 private:
     std::string endpoint_;
-    ::rtidb::RpcClient client_;
-    ::rtidb::api::TabletServer_Stub* tablet_;
+    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;
     std::vector<uint64_t> percentile_;
 };
 

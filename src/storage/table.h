@@ -217,7 +217,7 @@ private:
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> record_cnt_;
     bool is_leader_;
-    boost::atomic<uint64_t> time_offset_;
+    boost::atomic<int64_t> time_offset_;
     std::vector<std::string> replicas_;
     boost::atomic<uint32_t> table_status_;
     std::string schema_;

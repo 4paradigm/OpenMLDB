@@ -66,7 +66,7 @@ public:
             return Status::IOError("fail to ftell file", strerror(errno));
         }
         *pos = (uint64_t)ret;
-        LOG(DEBUG, "tell file with pos %lld", ret);
+        PDLOG(DEBUG, "tell file with pos %lld", ret);
         return Status::OK();
     }
 

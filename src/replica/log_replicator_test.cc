@@ -19,7 +19,7 @@
 #include "proto/tablet.pb.h"
 #include "logging.h"
 #include "thread_pool.h"
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 #include "storage/table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
@@ -85,10 +85,10 @@ public:
             Closure* done) {
         bool ok = replicator_.AppendEntries(request, response);
         if (ok) {
-            LOG(INFO, "receive log entry from leader ok");
+            PDLOG(INFO, "receive log entry from leader ok");
             response->set_code(0);
         }else {
-            LOG(INFO, "receive log entry from leader error");
+            PDLOG(INFO, "receive log entry from leader error");
             response->set_code(1);
         }
         done->Run();
@@ -116,22 +116,6 @@ public:
 
 inline std::string GenRand() {
     return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
-}
-
-bool StartRpcServe(MockTabletImpl* tablet,
-        const std::string& endpoint) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
-    if (!rpc_server.RegisterService(tablet)) {
-        return false;
-    }
-    bool ok =rpc_server.Start(endpoint);
-    if (ok) {
-        LOG(INFO, "register service ok");
-    }else {
-        LOG(WARNING, "fail to start service");
-    }
-    return ok;
 }
 
 TEST_F(LogReplicatorTest, Init) {
@@ -168,12 +152,10 @@ TEST_F(LogReplicatorTest, BenchMark) {
 
 
 TEST_F(LogReplicatorTest, LeaderAndFollower) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server0(options);
-    sofa::pbrpc::RpcServer rpc_server1(options);
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
+	brpc::ServerOptions options;
+	brpc::Server server0;
+	brpc::Server server1;
+    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, 0, false, g_endpoints);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
@@ -182,12 +164,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
                 folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-        if (!rpc_server1.RegisterService(follower)) {
+		if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-        }
-        ok =rpc_server1.Start(follower_addr);
-        ASSERT_TRUE(ok);
-        LOG(INFO, "start follower");
+    	}
+		if (server0.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
     }
 
     std::vector<std::string> endpoints;
@@ -225,12 +208,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
                 folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-        if (!rpc_server0.RegisterService(follower)) {
+		if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-        }
-        ok =rpc_server0.Start(follower_addr);
-        ASSERT_TRUE(ok);
-        LOG(INFO, "start follower");
+    	}
+		if (server1.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
     }
     sleep(20);
     leader.Stop();

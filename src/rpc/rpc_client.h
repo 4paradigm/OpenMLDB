@@ -17,7 +17,7 @@
 #ifndef RTIDB_RPC_CLIENT_H
 #define RTIDB_RPC_CLIENT_H
 
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/channel.h>
 #include <assert.h>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
@@ -31,97 +31,55 @@ using ::baidu::common::WARNING;
 
 namespace rtidb {
  
+template <class T>
 class RpcClient {
 public:
-  RpcClient() {
-    sofa::pbrpc::RpcClientOptions options;
-    options.max_pending_buffer_size = 128;
-    _rpc_client = new sofa::pbrpc::RpcClient(options);
-  }
-  ~RpcClient() {
-    _rpc_client->Shutdown();
-    delete _rpc_client;
-  }
-
-  template <class T>
-  bool GetStub(const std::string server, T** stub) {
-    ::baidu::common::MutexLock lock(&_host_map_lock);
-    sofa::pbrpc::RpcChannel* channel = NULL;
-    HostMap::iterator it = _host_map.find(server);
-    if (it != _host_map.end()) {
-      channel = it->second;
-    } else {
-      sofa::pbrpc::RpcChannelOptions channel_options;
-      channel = new sofa::pbrpc::RpcChannel(_rpc_client, server, channel_options);
-       _host_map[server] = channel;
+    RpcClient(const std::string& endpoint) : endpoint_(endpoint), log_id_(0), stub_(NULL), channel_() {
     }
-    *stub = new T(channel);
-    return true;
-  }
+    ~RpcClient() {
+        delete stub_;
+    }
 
-  template <class Stub, class Request, class Response, class Callback>
-  bool SendRequest(Stub* stub, void(Stub::*func)(
-                    google::protobuf::RpcController*,
-                    const Request*, Response*, Callback*),
-                    const Request* request, Response* response,
-                    int32_t rpc_timeout, int retry_times) {
-    sofa::pbrpc::RpcController controller;
-    controller.SetTimeout(rpc_timeout * 1000L);
-    for (int32_t retry = 0; retry < retry_times; ++retry) {
-      (stub->*func)(&controller, request, response, NULL);
-      if (controller.Failed()) {
-        if (retry < retry_times - 1) {
-          LOG(DEBUG, "Send failed, retry ...\n");
-          usleep(1000000);
-        } else {
-          LOG(WARNING, "SendRequest fail: %s\n", controller.ErrorText().c_str());
+    int Init() {
+        brpc::ChannelOptions options;
+        if (channel_.Init(endpoint_.c_str(), "", &options) != 0) {
+            return -1;
         }
-      } else {
-        return true;
-      }
-      controller.Reset();
+        stub_ = new T(&channel_);
+        return 0;
     }
-    return false;
-  }
-  
-  template <class Stub, class Request, class Response, class Callback>
-  void AsyncRequest(Stub* stub, void(Stub::*func)(
+
+    template <class Request, class Response, class Callback>
+    bool SendRequest(void(T::*func)(
                     google::protobuf::RpcController*,
                     const Request*, Response*, Callback*),
                     const Request* request, Response* response,
-                    boost::function<void (const Request*, Response*, bool, int)> callback,
-                    int32_t rpc_timeout, int /*retry_times*/) {
-    sofa::pbrpc::RpcController* controller = new sofa::pbrpc::RpcController();
-    controller->SetTimeout(rpc_timeout * 1000L);
-    google::protobuf::Closure* done = 
-      sofa::pbrpc::NewClosure(&RpcClient::template RpcCallback<Request, Response, Callback>,
-                                          controller, request, response, callback);
-    (stub->*func)(controller, request, response, done);
-  }
-    
-  template <class Request, class Response, class Callback>
-  static void RpcCallback(sofa::pbrpc::RpcController* rpc_controller,
-                            const Request* request,
-                            Response* response,
-                            boost::function<void (const Request*, Response*, bool, int)> callback) {
-    bool failed = rpc_controller->Failed();
-    int error = rpc_controller->ErrorCode();
-    if (failed || error) {
-      assert(failed && error);
-      if (error != sofa::pbrpc::RPC_ERROR_SEND_BUFFER_FULL) {
-        LOG(WARNING, "RpcCallback: %s\n", rpc_controller->ErrorText().c_str());
-      } else {
-        ///TODO: Retry
-      }
+                    uint64_t rpc_timeout, int retry_times) {
+        if (stub_ == NULL) {
+            PDLOG(WARNING, "stub is null. client must be init before send request");
+            return false;
+        }
+        brpc::Controller cntl;
+        cntl.set_log_id(log_id_++);
+        if (rpc_timeout > 0) {
+            cntl.set_timeout_ms(rpc_timeout * 1000);
+        }
+        if (retry_times > 0) {
+            cntl.set_max_retry(retry_times);
+        }
+        (stub_->*func)(&cntl, request, response, NULL);
+        if (!cntl.Failed()) {
+            return true;
+        }
+        PDLOG(WARNING, "request error. %s", cntl.ErrorText().c_str());
+        return false;
     }
-    delete rpc_controller;
-    callback(request, response, failed, error);
-  }
+  
 private:
-  sofa::pbrpc::RpcClient* _rpc_client;
-  typedef std::map<std::string, sofa::pbrpc::RpcChannel*> HostMap;
-  HostMap _host_map;
-  ::baidu::common::Mutex _host_map_lock;
+    std::string endpoint_;
+    uint64_t log_id_;
+    T* stub_;
+    brpc::Channel channel_;
 };
 
 } // namespace rtidb 

@@ -35,7 +35,7 @@ inline std::string GenRand() {
 }
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
-    LOG(INFO, "call back with endpoints size %d", endpoints.size());
+    PDLOG(INFO, "call back with endpoints size %d", endpoints.size());
     ASSERT_EQ(endpoint_size, endpoints.size());
     call_invoked = true;
 }

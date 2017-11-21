@@ -23,6 +23,7 @@ class TestPut(TestCaseBase):
                        self.now(),
                        'testvalue0')
         self.assertTrue('Put ok' in rs2)
+        time.sleep(1)
         self.assertTrue(
             'testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
 

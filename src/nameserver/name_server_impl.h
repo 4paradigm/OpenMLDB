@@ -8,7 +8,6 @@
 #define RTIDB_NAME_SERVER_H
 
 #include "client/tablet_client.h"
-#include "mutex.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "zk/dist_lock.h"
@@ -16,7 +15,9 @@
 #include <atomic>
 #include <map>
 #include <list>
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
+#include <mutex>
+#include <condition_variable>
 
 namespace rtidb {
 namespace nameserver {
@@ -74,9 +75,6 @@ public:
     NameServerImpl(const NameServerImpl&) = delete;
 
     NameServerImpl& operator= (const NameServerImpl&) = delete; 
-
-    bool WebService(const sofa::pbrpc::HTTPRequest& request,
-                sofa::pbrpc::HTTPResponse& response);
 
     void CreateTable(RpcController* controller,
         const CreateTableRequest* request,
@@ -137,7 +135,7 @@ private:
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
 private:
-    ::baidu::common::Mutex mu_;
+    std::mutex mu_;
     Tablets tablets_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     ZkClient* zk_client_;
@@ -152,7 +150,7 @@ private:
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
-    CondVar cv_;
+    std::condition_variable cv_;
 };
 
 }

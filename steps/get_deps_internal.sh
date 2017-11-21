@@ -149,6 +149,7 @@ else
   tar -zxvf common.tar.gz
   cd common
   sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/include/' Makefile
+  sed -i 's/LOG(/PDLOG(/g' include/logging.h
   make -j2 >/dev/null
   cp -rf include/* ${DEPS_PREFIX}/include
   cp -rf libcommon.a ${DEPS_PREFIX}/lib
@@ -194,11 +195,29 @@ else
     wget http://pkg.4paradigm.com:81/rtidb/dev/leveldb.tar.gz
     tar -zxvf leveldb.tar.gz
     cd leveldb
+    sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     make -j8
     cp -rf include/* ${DEPS_PREFIX}/include
     cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
     cd -
     touch leveldb_succ
+fi
+
+if [ -f "brpc_succ" ]
+then
+    echo "brpc exist"
+else
+    wget -O brpc-master.zip http://pkg.4paradigm.com:81/rtidb/dev/brpc-master.zip > /dev/null
+    unzip brpc-master.zip 
+    BRPC_DIR=$DEPS_SOURCE/brpc-master
+    cd brpc-master
+    sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+    make -j5
+    cp -rf output/include/* ${DEPS_PREFIX}/include
+    cp output/lib/libbrpc.a ${DEPS_PREFIX}/lib
+    cd -
+    touch brpc_succ
+    echo "brpc done"
 fi
 
 if [ -f "zk_succ" ]
