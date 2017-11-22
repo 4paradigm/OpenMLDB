@@ -154,7 +154,7 @@ else
     wget http://pkg.4paradigm.com:81/rtidb/dev/gperftools-2.5.tar.gz 
     tar -zxvf gperftools-2.5.tar.gz 
     cd gperftools-2.5 
-    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --enable-minimal --enable-shared=no --enable-static --prefix=${DEPS_PREFIX} 
+    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX} 
     make -j2 >/dev/null
     make install
     cd -
