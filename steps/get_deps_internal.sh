@@ -133,6 +133,20 @@ else
   touch common_succ
 fi
 
+if [ -f "unwind_succ"] 
+then
+    echo "unwind_exist"
+else
+    wget http://pkg.4paradigm.com:81/rtidb/dev/libunwind-1.1.tar.gz  
+    tar -zxvf libunwind-1.1.tar.gz
+    cd libunwind-1.1
+    autoreconf -i
+    ./configure --prefix=${DEPS_PREFIX}
+    make -j4 && make install 
+    cd -
+    touch unwind_succ
+fi
+
 if [ -f "gperf_tool" ]
 then
     echo "gperf_tool exist"
@@ -140,14 +154,7 @@ else
     wget http://pkg.4paradigm.com:81/rtidb/dev/gperftools-2.5.tar.gz 
     tar -zxvf gperftools-2.5.tar.gz 
     cd gperftools-2.5 
-    if [ "$STAGE" = 'DEBUG' ]
-    then
-        echo "debug stage"
-        ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --prefix=${DEPS_PREFIX} 
-    else
-        echo "prod stage"
-        ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
-    fi
+    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --enable-minimal --enable-shared=no --enable-static --prefix=${DEPS_PREFIX} 
     make -j2 >/dev/null
     make install
     cd -
