@@ -235,6 +235,32 @@ Table::Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticke
     return new Table::Iterator(segment->NewIterator(pk, ticket));
 }
 
+uint64_t Table::GetRecordIdxCnt() {
+    uint64_t record_idx_cnt = 0;
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            record_idx_cnt += segments_[i][j]->GetIdxCnt(); 
+        }
+    }
+    return record_idx_cnt;
+}
+
+bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
+    if (stat == NULL) {
+        return false;
+    }
+    if (idx >= idx_cnt_) {
+        return false;
+    }
+    uint64_t* data_array = new uint64_t[seg_cnt_];
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        data_array[i] = segments_[idx][i]->GetIdxCnt();
+    }
+    *stat = data_array;
+    *size = seg_cnt_;
+    return true;
+}
+
 }
 }
 

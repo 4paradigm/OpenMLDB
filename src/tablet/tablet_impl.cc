@@ -625,6 +625,24 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
+            status->set_record_cnt(table->GetRecordCnt());
+            uint64_t record_idx_cnt = 0;
+            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
+            for (;iit != table->GetMapping().end(); ++iit) {
+                ::rtidb::api::TsIdxStatus* ts_idx_status = status->add_ts_idx_status();
+                ts_idx_status->set_idx_name(iit->first);
+                uint64_t* stats = NULL;
+                uint32_t size = 0;
+                bool ok = table->GetRecordIdxCnt(iit->second, &stats, &size);
+                if (ok) {
+                    for (uint32_t i = 0; i < size; i++) {
+                        ts_idx_status->add_seg_cnts(stats[i]); 
+                        record_idx_cnt += stats[i];
+                    }
+                }
+                delete stats;
+            }
+            status->set_idx_cnt(record_idx_cnt);
             std::shared_ptr<LogReplicator> replicator = GetReplicatorUnLock(table->GetId(), table->GetPid());
             if (replicator) {
                 status->set_offset(replicator->GetOffset());
@@ -1363,72 +1381,6 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
         }
     }
     return std::shared_ptr<Table>();
-}
-
-
-void TabletImpl::ShowTables(RpcController* controller,
-            const ::rtidb::api::HttpRequest* request,
-            ::rtidb::api::HttpResponse* response,
-            Closure* done) {
-	brpc::ClosureGuard done_guard(done);
-    std::vector<std::shared_ptr<Table> > tmp_tables;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        Tables::iterator it = tables_.begin();
-        for (; it != tables_.end(); ++it) {
-            auto tit = it->second.begin();
-            for (; tit != it->second.end(); ++tit) {
-                tmp_tables.push_back(tit->second);
-            }
-        }
-    }
-
-    ::rapidjson::StringBuffer sb;
-    ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
-    writer.StartObject();
-    writer.Key("tables");
-    writer.StartArray();
-    for (size_t i = 0; i < tmp_tables.size(); i++) {
-        std::shared_ptr<Table> table = tmp_tables[i];
-        writer.StartObject();
-        writer.Key("name");
-        writer.String(table->GetName().c_str());
-        writer.Key("tid");
-        writer.Uint(table->GetId());
-        writer.Key("pid");
-        writer.Uint(table->GetPid());
-        std::shared_ptr<LogReplicator> replicator = GetReplicator(table->GetId(), table->GetPid());
-        if (replicator) {
-            writer.Key("log_offset");
-            writer.Uint(replicator->GetLogOffset());
-        }
-        writer.Key("seg_cnt");
-        writer.Uint(table->GetSegCnt());
-        uint64_t total = 0;
-        uint64_t* stat = NULL;
-        uint32_t size = 0;
-        table->GetRecordIdxCnt(0, &stat, &size);
-        if (stat != NULL) {
-            writer.Key("data_cnt_stat");
-            writer.StartObject();
-            writer.Key("stat");
-            writer.StartArray();
-            for (size_t k = 0; k < size; k++) {
-                writer.Uint(stat[k]);
-                total += stat[k];
-            }
-            writer.EndArray();
-            writer.Key("total");
-            writer.Uint(total);
-            writer.EndObject();
-            delete stat;
-        }
-        writer.EndObject();
-    }
-    writer.EndArray();
-    writer.EndObject();
-	brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-	cntl->response_attachment().append(sb.GetString());
 }
 
 void TabletImpl::ShowMetric(RpcController* controller,

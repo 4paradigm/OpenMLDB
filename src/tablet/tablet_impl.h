@@ -141,11 +141,6 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
-    void ShowTables(RpcController* controller,
-            const ::rtidb::api::HttpRequest* request,
-            ::rtidb::api::HttpResponse* response,
-            Closure* done);
-
     void ShowMetric(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,

@@ -104,23 +104,11 @@ public:
 
     bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
 
+    uint64_t GetRecordIdxCnt();
+    bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
+
     inline uint64_t GetRecordCnt() const {
         return record_cnt_.load(boost::memory_order_relaxed);
-    }
-
-    inline void GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) const {
-        if (stat == NULL) {
-            return;
-        }
-        if (idx >= idx_cnt_) {
-            return;
-        }
-        uint64_t* data_array = new uint64_t[seg_cnt_];
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            data_array[i] = segments_[idx][i]->GetIdxCnt();
-        }
-        *stat = data_array;
-        *size = seg_cnt_;
     }
 
     inline std::string GetName() const {

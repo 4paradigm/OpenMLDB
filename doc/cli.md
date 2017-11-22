@@ -41,19 +41,19 @@ Create table ok
 Put ok
 >sput 1 0 2 card0 merchant1 110.1
 Put ok
->sscan 1 0 card0 0 3 0
+>sscan 1 0 card0 card 3 0
 
 
   pk     ts  card   merchant   amt
 ---------------------------------------------------
   card0  2   card0  merchant1  110.09999999999999
   card0  1   card0  merchant0  1.1000000000000001
->sscan 1 0 merchant0 1 2 0
+>sscan 1 0 merchant0 merchant 2 0
 
   pk         ts  card   merchant   amt
 -------------------------------------------------------
   merchant0  1   card0  merchant0  1.1000000000000001
->sscan 1 0 merchant1 1 2 0
+>sscan 1 0 merchant1 merchant 2 0
 
   pk         ts  card   merchant   amt
 -------------------------------------------------------

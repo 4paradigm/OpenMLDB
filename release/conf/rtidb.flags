@@ -3,9 +3,10 @@
 --role=tablet
 
 # concurrency conf
---thread_pool_size=8
+--thread_pool_size=16
 --scan_concurrency_limit=8
 --put_concurrency_limit=8
+--get_concurrency_limit=8
 
 # log conf
 --log_dir=./logs

@@ -47,7 +47,8 @@ DEFINE_string(db_root_path,"/tmp/", "the root path of db");
 // thread pool config
 DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
 DEFINE_int32(put_concurrency_limit, 8, "the limit of put concurrency");
-DEFINE_int32(thread_pool_size, 8, "the size of thread pool for other api");
+DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
+DEFINE_int32(get_concurrency_limit, 8, "the limit of get concurrency");
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
