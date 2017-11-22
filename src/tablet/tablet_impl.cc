@@ -622,6 +622,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_ttl(table->GetTTL());
             status->set_time_offset(table->GetTimeOffset());
             status->set_is_expire(table->GetExpireStatus());
+            status->set_name(table->GetName());
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
