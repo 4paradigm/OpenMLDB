@@ -170,8 +170,6 @@ private:
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
                             std::string& msg);
 
-    bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
-
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();

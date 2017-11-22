@@ -695,27 +695,6 @@ void TabletImpl::SetTTLClock(RpcController* controller,
 	done->Run();
 }
 
-bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log) {
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        PDLOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
-        return false; 
-    }
-    if (log.dimensions_size() > 0) {
-         DataBlock* block = new DataBlock(log.dimensions_size(), 
-                                          log.value().c_str(), 
-                                          log.value().length());
-         for (int32_t i = 0; i < log.dimensions_size(); i++) {
-            table->Put(log.dimensions(i).key(), log.ts(), block, log.dimensions(i).idx());
-         }
-    }else {
-        // the legend way
-        table->Put(log.pk(), log.ts(), log.value().c_str(), log.value().size());
-    }
-    table->RecordCntIncr();
-    return true;
-}
-
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;

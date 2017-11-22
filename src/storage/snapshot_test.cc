@@ -163,6 +163,80 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_FALSE(it->Valid());
 
 }
+TEST_F(SnapshotTest, Recover_only_binlog_multi) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/4_4/snapshot/";
+    std::string binlog_dir = FLAGS_db_root_path + "/4_4/binlog/";
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    int count = 0;
+    for (; count < 10; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        entry.set_ts(count);
+        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card0"); 
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant0"); 
+        d2->set_idx(1);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    std::vector<std::string> fakes;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("card", 0));
+    mapping.insert(std::make_pair("merchant", 1));
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 4, 8, mapping, 0, true, fakes);
+    table->Init();
+    Snapshot snapshot(4, 4, log_part);
+    snapshot.Init();
+    ASSERT_TRUE(snapshot.Recover(table, offset));
+    ASSERT_EQ(10, offset);
+
+    {
+        Ticket ticket;
+        Table::Iterator* it = table->NewIterator(0, "card0", ticket);
+        it->Seek(1);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(1, it->GetKey());
+        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("value1", value2_str);
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(0, it->GetKey());
+        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("value0", value3_str);
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+
+    {
+        Ticket ticket;
+        Table::Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        it->Seek(1);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(1, it->GetKey());
+        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("value1", value2_str);
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(0, it->GetKey());
+        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("value0", value3_str);
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+}
+
 
 TEST_F(SnapshotTest, Recover_only_binlog) {
     std::string snapshot_dir = FLAGS_db_root_path + "/3_3/snapshot/";
@@ -213,6 +287,135 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_FALSE(it->Valid());
 
 }
+
+TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/3_2/snapshot";
+
+    ::rtidb::base::MkdirRecur(snapshot_dir);
+    {
+        std::string snapshot1 = "20170609.sdb";
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::Writer writer(wf);
+        {
+            ::rtidb::api::LogEntry entry;
+            entry.set_ts(9527);
+            entry.set_value("test1");
+            entry.set_log_index(1);
+            ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+
+        }
+        {
+            ::rtidb::api::LogEntry entry;
+            entry.set_ts(9528);
+            entry.set_value("test2");
+            entry.set_log_index(2);
+            ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+            d1->set_key("card0");
+            d1->set_idx(0);
+            ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+            d2->set_key("merchant0");
+            d2->set_idx(1);
+            std::string val;
+            bool ok = entry.SerializeToString(&val);
+            ASSERT_TRUE(ok);
+            Slice sval(val.c_str(), val.size());
+            Status status = writer.AddRecord(sval);
+            ASSERT_TRUE(status.ok());
+        }
+    }
+
+    {
+        std::string snapshot1 = "20170610.sdb.tmp";
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::Writer writer(wf);
+        ::rtidb::api::LogEntry entry;
+        entry.set_pk("test1");
+        entry.set_ts(9527);
+        entry.set_value("test1");
+        std::string val;
+        bool ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval(val.c_str(), val.size());
+        Status status = writer.AddRecord(sval);
+        ASSERT_TRUE(status.ok());
+        entry.set_pk("test1");
+        entry.set_ts(9528);
+        entry.set_value("test2");
+        ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval2(val.c_str(), val.size());
+        status = writer.AddRecord(sval2);
+        ASSERT_TRUE(status.ok());
+    }
+
+    std::vector<std::string> fakes;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("card", 0));
+    mapping.insert(std::make_pair("merchant", 1));
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 2, 8, mapping, 0, true, fakes);
+    table->Init();
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    Snapshot snapshot(3, 2, log_part);
+    ASSERT_TRUE(snapshot.Init());
+    int ret = snapshot.RecordOffset("20170609.sdb", 3, 2);
+    ASSERT_EQ(0, ret);
+    uint64_t offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, offset));
+    ASSERT_EQ(2, offset);
+    {
+        Ticket ticket;
+        Table::Iterator* it = table->NewIterator(0, "card0", ticket);
+        it->Seek(9528);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9528, it->GetKey());
+        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("test2", value2_str);
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9527, it->GetKey());
+        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("test1", value3_str);
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+    {
+        Ticket ticket;
+        Table::Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        it->Seek(9528);
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9528, it->GetKey());
+        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("test2", value2_str);
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        ASSERT_EQ(9527, it->GetKey());
+        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        ASSERT_EQ("test1", value3_str);
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+    ASSERT_EQ(2, table->GetRecordCnt());
+    ASSERT_EQ(4, table->GetRecordIdxCnt());
+
+}
+
 
 TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";

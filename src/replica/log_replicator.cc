@@ -9,6 +9,7 @@
 
 #include "base/file_util.h"
 #include "base/strings.h"
+#include "storage/segment.h"
 #include "log/log_format.h"
 #include "logging.h"
 #include <boost/ref.hpp>
@@ -268,6 +269,32 @@ void LogReplicator::DeleteBinlog() {
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
+void LogReplicator::ApplyEntryToTable(const ::rtidb::api::LogEntry& entry) {
+    if (entry.dimensions_size() > 0) {
+         ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(entry.dimensions_size(), 
+                                          entry.value().c_str(), 
+                                          entry.value().length());
+         for (int32_t i = 0; i < entry.dimensions_size(); i++) {
+            table_->Put(entry.dimensions(i).key(),
+                       entry.ts(), block,
+                       entry.dimensions(i).idx());
+            PDLOG(DEBUG, "apply log entry %lu to dimension %u #key %s, #ts %lu, #value %s", 
+                    entry.log_index(), entry.dimensions(i).idx(), 
+                    entry.dimensions(i).key().c_str(),
+                    entry.ts(), entry.value().c_str());
+         }
+    }else {
+        // the legend way
+        table_->Put(entry.pk(), entry.ts(),
+                   entry.value().c_str(),
+                   entry.value().size());
+        PDLOG(DEBUG, "apply log entry %lu #key %s, #ts %lu, #value %s", 
+                    entry.log_index(), entry.pk().c_str(),  
+                    entry.ts(), entry.value().c_str());
+    }
+    table_->RecordCntIncr();
+}
+
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
     std::lock_guard<std::mutex> lock(wmu_);
@@ -304,8 +331,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
-        table_->Put(request->entries(i).pk(), request->entries(i).ts(), 
-                    request->entries(i).value().c_str(), request->entries(i).value().length());
+        ApplyEntryToTable(request->entries(i));
         log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
         response->set_log_offset(GetOffset());
     }

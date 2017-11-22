@@ -150,6 +150,145 @@ TEST_F(LogReplicatorTest, BenchMark) {
     replicator.Stop();
 }
 
+TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
+	brpc::ServerOptions options;
+	brpc::Server server0;
+	brpc::Server server1;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("card", 0));
+    mapping.insert(std::make_pair("merchant", 1));
+    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
+    t7->Init();
+    {
+        std::string follower_addr = "127.0.0.1:17527";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
+                folder, g_endpoints, t7);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+		if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+    	}
+		if (server0.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
+    }
+
+    std::vector<std::string> endpoints;
+    endpoints.push_back("127.0.0.1:17527");
+    std::string folder = "/tmp/" + GenRand() + "/";
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    bool ok = leader.Init();
+    ASSERT_TRUE(ok);
+    // put the first row
+    {
+        ::rtidb::api::LogEntry entry;
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card0");
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant0");
+        d2->set_idx(1);
+        entry.set_ts(9527);
+        entry.set_value("value 1");
+        ok = leader.AppendEntry(entry);
+        ASSERT_TRUE(ok);
+    } 
+    // the second row
+    {
+        ::rtidb::api::LogEntry entry;
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card1");
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant0");
+        d2->set_idx(1);
+        entry.set_ts(9526);
+        entry.set_value("value 2");
+        ok = leader.AppendEntry(entry);
+        ASSERT_TRUE(ok);
+    } 
+    // the third row
+    {
+        ::rtidb::api::LogEntry entry;
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card0");
+        d1->set_idx(0);
+        entry.set_ts(9525);
+        entry.set_value("value 3");
+        ok = leader.AppendEntry(entry);
+        ASSERT_TRUE(ok);
+    } 
+    leader.Notify();
+    leader.AddReplicateNode("127.0.0.1:17528");
+    sleep(2);
+
+    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
+    t8->Init();
+    {
+        std::string follower_addr = "127.0.0.1:17528";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
+                folder, g_endpoints, t8);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+		if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+    	}
+		if (server1.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
+    }
+    sleep(20);
+    leader.Stop();
+    {
+        Ticket ticket;
+        // check 18527
+        Table::Iterator* it = t8->NewIterator(0, "card0", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        DataBlock* value = it->GetValue();
+        std::string value_str(value->data, value->size);
+        ASSERT_EQ("value 1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value->data, value->size);
+        ASSERT_EQ("value 3", value_str1);
+        ASSERT_EQ(9525, it->GetKey());
+
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+    {
+        Ticket ticket;
+        // check 18527
+        Table::Iterator* it = t8->NewIterator(1, "merchant0", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        DataBlock* value = it->GetValue();
+        std::string value_str(value->data, value->size);
+        ASSERT_EQ("value 1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value->data, value->size);
+        ASSERT_EQ("value 2", value_str1);
+        ASSERT_EQ(9526, it->GetKey());
+
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+
+}
+
+
 
 TEST_F(LogReplicatorTest, LeaderAndFollower) {
 	brpc::ServerOptions options;
