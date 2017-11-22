@@ -61,7 +61,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
 	@Override
 	public KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException {
-		return scan(tid, pid, key, 0, st, et);
+		return scan(tid, pid, key, null, st, et);
 	}
 
 	@Override
@@ -163,7 +163,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 	
 	
 	@Override
-	public KvIterator scan(int tid, int pid, String key, int colIdx, long st, long et) throws TimeoutException {
+	public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et) throws TimeoutException {
 		Table table = getTable(tid, pid);
 		Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
 		builder.setPk(key);
@@ -171,7 +171,9 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		builder.setEt(et);
 		builder.setSt(st);
 		builder.setPid(pid);
-		builder.setDindex(colIdx);
+		if (idxName != null && !idxName.isEmpty()) {
+			builder.setIdxName(idxName);
+		}
 		Tablet.ScanRequest request = builder.build();
 		Tablet.ScanResponse response = tabletServer.scan(request);
 		if (response != null && response.getCode() == 0) {

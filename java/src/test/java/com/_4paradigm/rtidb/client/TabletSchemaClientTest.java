@@ -128,7 +128,7 @@ public class TabletSchemaClientTest {
         Assert.assertTrue(client.put(tid, 0, 10, new Object[] {"9527", "1222", 1.0}));
         Assert.assertTrue(client.put(tid, 0, 11, new Object[] {"9527", "1221", 2.0}));
         Assert.assertTrue(client.put(tid, 0, 12, new Object[] {"9524", "1222", 3.0}));
-        KvIterator it = client.scan(tid, 0, "9527", 0, 12l, 9);
+        KvIterator it = client.scan(tid, 0, "9527", "card", 12l, 9);
         Assert.assertTrue(it != null);
         
         Assert.assertTrue(it.valid());
@@ -148,7 +148,7 @@ public class TabletSchemaClientTest {
         it.next();
         Assert.assertFalse(it.valid());
         
-        it = client.scan(tid, 0, "1222", 1, 12l, 9);
+        it = client.scan(tid, 0, "1222", "merchant", 12l, 9);
         Assert.assertTrue(it != null);
         
         Assert.assertTrue(it.valid());

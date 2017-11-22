@@ -93,11 +93,11 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 
 	@Override
 	public ScanFuture scan(int tid, int pid, String key, long st, long et) {
-		return scan(tid, pid, key, 0, st, et);
+		return scan(tid, pid, key, null, st, et);
 	}
 
 	@Override
-	public ScanFuture scan(int tid, int pid, String key, int colIdx, long st, long et) {
+	public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) {
 		Table table = getTable(tid, pid);
 		Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
@@ -105,7 +105,9 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
         builder.setEt(et);
         builder.setSt(st);
         builder.setPid(pid);
-        builder.setDindex(colIdx);
+        if (idxName != null && !idxName.isEmpty()) {
+        	builder.setIdxName(idxName);
+        }
         Tablet.ScanRequest request = builder.build();
         Future<Tablet.ScanResponse> f =  tablet.scan(request, scanFakeCallback);
 		return ScanFuture.wrappe(f, table);

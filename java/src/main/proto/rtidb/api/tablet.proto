@@ -129,7 +129,7 @@ message ScanRequest {
 	optional uint32 tid = 6;
 	optional uint32 pid = 7;
     optional bool enable_remove_duplicated_record = 8 [default=false];
-    optional uint32 dindex = 9;
+    optional string idx_name = 9;
 }
 
 message RpcMetric {

@@ -25,7 +25,7 @@ public interface TabletSyncClient {
 				    long st, long et) throws TimeoutException;
     
     KvIterator scan(int tid, int pid, String key,
-		    		int colIdx,
+		    		String idxName,
 		    		long st, long et) throws TimeoutException;
 
     boolean createTable(String name, 
