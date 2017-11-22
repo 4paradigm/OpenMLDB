@@ -628,7 +628,6 @@ TEST_F(TabletImplTest, GC) {
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, srp.count());
-
 }
 
 TEST_F(TabletImplTest, DropTable) {

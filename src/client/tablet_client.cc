@@ -322,14 +322,14 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
                                  const std::string& pk,
                                  uint64_t stime,
                                  uint64_t etime,
-                                 uint32_t dindex) {
+                                 const std::string& idx_name) {
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_dindex(dindex);
+    request.set_idx_name(idx_name);
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
             &request, response, 12, 1);

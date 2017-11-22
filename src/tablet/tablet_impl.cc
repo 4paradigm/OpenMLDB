@@ -325,16 +325,17 @@ void TabletImpl::Scan(RpcController* controller,
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
     Table::Iterator* it = NULL;
-    if (request->has_dindex()) {
-        if (request->dindex() >= table->GetIdxCnt()) {
-            PDLOG(WARNING, "invalid dindex %u, table idx cnt %u", request->dindex(),
-                    table->GetIdxCnt());
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
             response->set_code(30);
-            response->set_msg("invalid dindex");
+            response->set_msg("idx name not found");
             done->Run();
             return;
         }
-        it = table->NewIterator(request->dindex(),
+        it = table->NewIterator(iit->second,
                                 request->pk(), ticket);
     }else {
         it = table->NewIterator(request->pk(), ticket);
@@ -681,7 +682,18 @@ bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api:
         PDLOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
         return false; 
     }
-    table->Put(log.pk(), log.ts(), log.value().c_str(), log.value().size());
+    if (log.dimensions_size() > 0) {
+         DataBlock* block = new DataBlock(log.dimensions_size(), 
+                                          log.value().c_str(), 
+                                          log.value().length());
+         for (int32_t i = 0; i < log.dimensions_size(); i++) {
+            table->Put(log.dimensions(i).key(), log.ts(), block, log.dimensions(i).idx());
+         }
+    }else {
+        // the legend way
+        table->Put(log.pk(), log.ts(), log.value().c_str(), log.value().size());
+    }
+    table->RecordCntIncr();
     return true;
 }
 
@@ -1493,7 +1505,6 @@ void TabletImpl::CheckZkClient() {
         }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
-
 }
 
 int32_t TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,

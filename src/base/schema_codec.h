@@ -17,6 +17,8 @@ namespace rtidb {
 namespace base {
 // 1M
 const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
+const uint32_t HEADER_BYTE_SIZE = 3;
+
 enum ColType {
     kString = 0,
     kFloat = 1,
@@ -76,7 +78,7 @@ public:
         const char* buffer = schema.c_str();
         uint32_t read_size = 0;
         while (read_size < schema.size()) {
-            if (schema.size() - read_size < 3) {
+            if (schema.size() - read_size < HEADER_BYTE_SIZE) {
                 return;
             }
             uint8_t type = 0;
@@ -88,7 +90,7 @@ public:
             uint8_t name_size = 0;
             memcpy(static_cast<void*>(&name_size), buffer, 1);
             buffer += 1;
-            uint32_t total_size = 3 + name_size;
+            uint32_t total_size = HEADER_BYTE_SIZE + name_size;
             if (schema.size() - read_size < total_size) {
                 return;
             }
@@ -108,7 +110,7 @@ private:
     uint32_t GetSize(const std::vector<ColumnDesc>& columns) {
         uint32_t byte_size = 0;
         for (uint32_t i = 0; i < columns.size(); i++) {
-            byte_size += (1 + 1 + 1 + columns[i].name.size());
+            byte_size += (HEADER_BYTE_SIZE + columns[i].name.size());
         }
         return byte_size;
     }

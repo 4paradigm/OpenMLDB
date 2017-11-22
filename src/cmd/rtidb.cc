@@ -924,7 +924,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
                 parts[3], 
                 boost::lexical_cast<uint64_t>(parts[5]), 
                 boost::lexical_cast<uint64_t>(parts[6]),
-                boost::lexical_cast<uint32_t>(parts[4]));
+                parts[4]);
         if (it == NULL) {
             std::cout << "Fail to scan table" << std::endl;
         }else {

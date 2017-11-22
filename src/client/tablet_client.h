@@ -79,7 +79,7 @@ public:
                                  const std::string& pk,
                                  uint64_t stime,
                                  uint64_t etime,
-                                 uint32_t dindex);
+                                 const std::string& idx_name);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
