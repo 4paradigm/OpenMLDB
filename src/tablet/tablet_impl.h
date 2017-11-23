@@ -139,12 +139,7 @@ public:
             const ::rtidb::api::SetTTLClockRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
-
-    void ShowMetric(RpcController* controller,
-            const ::rtidb::api::HttpRequest* request,
-            ::rtidb::api::HttpResponse* response,
-            Closure* done);
-
+    
     void ShowMemPool(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,
