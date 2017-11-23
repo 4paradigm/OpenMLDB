@@ -125,21 +125,13 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         }
 
         if (entry.dimensions_size() > 0) {
-             DataBlock* block = new DataBlock(entry.dimensions_size(), 
-                                              entry.value().c_str(), 
-                                              entry.value().length());
-             for (int32_t i = 0; i < entry.dimensions_size(); i++) {
-                table->Put(entry.dimensions(i).key(), 
-                           entry.ts(), block, 
-                           entry.dimensions(i).idx());
-             }
+            table->Put(entry.ts(), entry.value(), entry.dimensions());
         }else {
             // the legend way
             table->Put(entry.pk(), entry.ts(), 
                        entry.value().c_str(), 
                        entry.value().size());
         }
-        table->RecordCntIncr();
         cur_offset = entry.log_index();
         succ_cnt++;
         if (succ_cnt % 100000 == 0) {
@@ -217,21 +209,14 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                         succ_cnt, failed_cnt);
             }
             if (entry.dimensions_size() > 0) {
-                 DataBlock* block = new DataBlock(entry.dimensions_size(), 
-                                                  entry.value().c_str(), 
-                                                  entry.value().length());
-                 for (int32_t i = 0; i < entry.dimensions_size(); i++) {
-                    table->Put(entry.dimensions(i).key(), 
-                               entry.ts(), block, 
-                               entry.dimensions(i).idx());
-                 }
+                table->Put(entry.ts(), entry.value(), entry.dimensions());
+                
             }else {
                 // the legend way
                 table->Put(entry.pk(), entry.ts(), 
                            entry.value().c_str(), 
                            entry.value().size());
             }
-            table->RecordCntIncr();
         }
         // will close the fd atomic
         delete seq_file;

@@ -352,6 +352,5 @@ service TabletServer {
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
 
-    rpc ShowMetric(HttpRequest) returns (HttpResponse);
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
 }

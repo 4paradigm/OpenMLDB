@@ -91,8 +91,35 @@ bool Table::Put(const std::string& pk,
     }
     Segment* segment = segments_[0][index];
     segment->Put(pk, time, data, size);
+    record_cnt_.fetch_add(1, boost::memory_order_relaxed);
     return true;
 }
+
+// Put a multi dimension record
+bool Table::Put(uint64_t time, 
+                const std::string& value,
+                const Dimensions& dimensions) {
+    DataBlock* block = new DataBlock(dimensions.size(), 
+                                     value.c_str(), 
+                                     value.length());
+    Dimensions::const_iterator it = dimensions.begin();
+    for (;it != dimensions.end(); ++it) {
+        bool ok = Put(it->key(), time, block, it->idx());
+        // decr the data block dimension count
+        if (!ok) {
+            block->dim_cnt_down --;
+            PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u",
+                    it->key().c_str(), it->idx(), id_, pid_);
+        }
+    }
+    if (block->dim_cnt_down<= 0) {
+        delete block;
+        return false;
+    }
+    record_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    return true;
+}
+
 
 bool Table::Put(const std::string& pk,
                 uint64_t time, 
@@ -109,18 +136,6 @@ bool Table::Put(const std::string& pk,
     segment->Put(pk, time, row);
     PDLOG(DEBUG, "add row to index %u with value %s for tid %u pid %u ok", idx,
                pk.c_str(), id_, pid_);
-    return true;
-}
-
-bool Table::Put(uint64_t time, 
-                DataBlock* row,
-                const std::vector<std::pair<uint32_t, std::string> >& indexes) {
-    std::vector<std::pair<uint32_t, std::string> >::const_iterator it = indexes.begin();
-    for (; it != indexes.end(); ++it) {
-        if (!Put(it->second, time, row, it->first)) {
-            return false;
-        }
-    }
     return true;
 }
 

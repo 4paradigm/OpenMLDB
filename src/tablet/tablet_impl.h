@@ -13,7 +13,6 @@
 #include "replica/log_replicator.h"
 #include "storage/snapshot.h"
 #include "storage/table.h"
-#include "tablet/tablet_metric.h"
 #include "thread_pool.h"
 #include "zk/zk_client.h"
 #include <map>
@@ -197,7 +196,6 @@ private:
     Tables tables_;
     std::mutex mu_;
     ThreadPool gc_pool_;
-    TabletMetric* metric_;
     Replicators replicators_;
     Snapshots snapshots_;
     ZkClient* zk_client_;

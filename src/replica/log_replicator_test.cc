@@ -243,6 +243,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     }
     sleep(20);
     leader.Stop();
+    ASSERT_EQ(3, t8->GetRecordCnt());
+    ASSERT_EQ(5, t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527
@@ -358,6 +360,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     }
     sleep(20);
     leader.Stop();
+    ASSERT_EQ(4, t8->GetRecordCnt());
+    ASSERT_EQ(4, t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527

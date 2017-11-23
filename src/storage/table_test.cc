@@ -27,7 +27,6 @@ TEST_F(TableTest, Put) {
     Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
-    table->RecordCntIncr();
     ASSERT_EQ(1, table->GetRecordCnt());
     Ticket ticket;
     Table::Iterator* it = table->NewIterator("test", ticket);
@@ -43,7 +42,35 @@ TEST_F(TableTest, Put) {
     delete table;
 }
 
-TEST_F(TableTest, MultiDimissionPut) {
+TEST_F(TableTest, MultiDimissionPut0) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    mapping.insert(std::make_pair("idx1", 1));
+    mapping.insert(std::make_pair("idx2", 2));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    table->Init();
+    ASSERT_EQ(3, table->GetIdxCnt());
+    ASSERT_EQ(0, table->GetRecordIdxCnt());
+    ASSERT_EQ(0, table->GetRecordCnt());
+    Dimensions  dimensions;
+    ::rtidb::api::Dimension* d0 = dimensions.Add();
+    d0->set_key("d0");
+    d0->set_idx(0);
+
+    ::rtidb::api::Dimension* d1 = dimensions.Add();
+    d1->set_key("d1");
+    d1->set_idx(1);
+
+    ::rtidb::api::Dimension* d2 = dimensions.Add();
+    d2->set_key("d2");
+    d2->set_idx(2);
+    bool ok = table->Put(1, "test", dimensions);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(3, table->GetRecordIdxCnt());
+    ASSERT_EQ(1, table->GetRecordCnt());
+}
+
+TEST_F(TableTest, MultiDimissionPut1) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));

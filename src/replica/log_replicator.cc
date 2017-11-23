@@ -271,18 +271,7 @@ void LogReplicator::DeleteBinlog() {
 
 void LogReplicator::ApplyEntryToTable(const ::rtidb::api::LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
-         ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(entry.dimensions_size(), 
-                                          entry.value().c_str(), 
-                                          entry.value().length());
-         for (int32_t i = 0; i < entry.dimensions_size(); i++) {
-            table_->Put(entry.dimensions(i).key(),
-                       entry.ts(), block,
-                       entry.dimensions(i).idx());
-            PDLOG(DEBUG, "apply log entry %lu to dimension %u #key %s, #ts %lu, #value %s", 
-                    entry.log_index(), entry.dimensions(i).idx(), 
-                    entry.dimensions(i).key().c_str(),
-                    entry.ts(), entry.value().c_str());
-         }
+        table_->Put(entry.ts(), entry.value(), entry.dimensions());
     }else {
         // the legend way
         table_->Put(entry.pk(), entry.ts(),
@@ -292,7 +281,6 @@ void LogReplicator::ApplyEntryToTable(const ::rtidb::api::LogEntry& entry) {
                     entry.log_index(), entry.pk().c_str(),  
                     entry.ts(), entry.value().c_str());
     }
-    table_->RecordCntIncr();
 }
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,

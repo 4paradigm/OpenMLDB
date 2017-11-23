@@ -32,6 +32,8 @@ enum TableStat {
     kSnapshotPaused
 };
 
+typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
+
 class Table {
 
 public:
@@ -66,15 +68,14 @@ public:
              const char* data,
              uint32_t size);
 
-    bool Put(const std::string& pk,
-            uint64_t time, 
-            DataBlock* row,
-            uint32_t idx);
-
+    // Put a multi dimension record
     bool Put(uint64_t time, 
-             DataBlock* row, 
-             const std::vector<std::pair<uint32_t, std::string> >& indexes);
-    
+             const std::string& value,
+             const Dimensions& dimensions);
+
+    // Note the method should incr record_cnt_ manually
+    bool Put(const std::string& pk, uint64_t time, DataBlock* row, uint32_t idx);
+
     class Iterator {
     public:
         Iterator(Segment::Iterator* it);
@@ -190,6 +191,7 @@ public:
     inline void RecordCntIncr(uint32_t cnt) {
         record_cnt_.fetch_add(cnt, boost::memory_order_relaxed);
     }
+
 
 private:
     std::string const name_;
