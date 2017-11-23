@@ -134,8 +134,8 @@ bool Table::Put(const std::string& pk,
     }
     Segment* segment = segments_[idx][seg_idx];
     segment->Put(pk, time, row);
-    PDLOG(DEBUG, "add row to index %u with value %s for tid %u pid %u ok", idx,
-               pk.c_str(), id_, pid_);
+    PDLOG(DEBUG, "add row to index %u with pk %s value size %u for tid %u pid %u ok", idx,
+               pk.c_str(), row->size, id_, pid_);
     return true;
 }
 

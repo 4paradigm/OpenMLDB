@@ -201,7 +201,8 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        table->Put(request->time(), request->value().c_str(), request->dimensions());
+        table->Put(request->time(), request->value(),
+                   request->dimensions());
     }else {
         table->Put(request->pk(), request->time(), request->value().c_str(),
                    request->value().length());
@@ -362,7 +363,7 @@ void TabletImpl::Scan(RpcController* controller,
     std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
-        PDLOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
+        PDLOG(DEBUG, "decode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
