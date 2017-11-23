@@ -165,9 +165,11 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     std::string d3 = "d3";
     ASSERT_TRUE(table->Put(d3, 9527, db, 2));
     table->RecordCntIncr(1);
+    ASSERT_EQ(3, table->GetRecordIdxCnt());
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
-
+    ASSERT_EQ(0, table->GetRecordCnt());
+    ASSERT_EQ(0, table->GetRecordIdxCnt());
 }
 
 TEST_F(TableTest, SchedGc) {
@@ -203,7 +205,6 @@ TEST_F(TableTest, OffSet) {
     table->Put("test", now - 3 * 60 * 1000, "test", 4);
     table->Put("test", now, "tes2", 4);
     table->Put("test", now + 3 * 60 * 1000, "tes2", 4);
-    table->RecordCntIncr(4);
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
 
@@ -227,10 +228,12 @@ TEST_F(TableTest, OffSet) {
     }
     
     ASSERT_EQ(table->GetRecordCnt(), 2);
+    ASSERT_EQ(table->GetRecordIdxCnt(), 2);
     table->SetTimeOffset(120);
     count = table->SchedGc();
     ASSERT_EQ(1, count);
     ASSERT_EQ(table->GetRecordCnt(), 1);
+    ASSERT_EQ(table->GetRecordIdxCnt(), 1);
     delete table;
 }
 
@@ -243,11 +246,12 @@ TEST_F(TableTest, TableDataCnt) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->Put("test", 9527, "test", 4);
     table->Put("test", now, "tes2", 4);
-    table->RecordCntIncr(2);
     ASSERT_EQ(table->GetRecordCnt(), 2);
+    ASSERT_EQ(table->GetRecordIdxCnt(), 2);
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
     ASSERT_EQ(table->GetRecordCnt(), 1);
+    ASSERT_EQ(table->GetRecordIdxCnt(), 1);
     delete table;
 }
 
