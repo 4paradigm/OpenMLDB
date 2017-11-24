@@ -20,19 +20,30 @@ public:
 };
 
 TEST_F(SchemaCodecTest, Encode) {
-    std::vector<std::pair<ColType, std::string> > columns;
-    columns.push_back(std::pair<ColType, std::string>(::rtidb::base::ColType::kString, "uname"));
-    columns.push_back(std::pair<ColType, std::string>(::rtidb::base::ColType::kInt32, "age"));
+
+    std::vector<ColumnDesc> columns;
+    ColumnDesc desc1;
+    desc1.name = "uname";
+    desc1.type = ::rtidb::base::ColType::kString;
+    desc1.add_ts_idx = true;
+    columns.push_back(desc1);
+    
+    ColumnDesc desc2;
+    desc2.name = "age";
+    desc2.type = ::rtidb::base::ColType::kInt32;
+    desc2.add_ts_idx = false;
+    columns.push_back(desc2);
+
     SchemaCodec codec;
     std::string buffer;
     codec.Encode(columns, buffer);
-    std::vector<std::pair<ColType, std::string> > decoded_columns;
+    std::vector<ColumnDesc > decoded_columns;
     codec.Decode(buffer, decoded_columns);
     ASSERT_EQ(2, decoded_columns.size());
-    ASSERT_EQ(::rtidb::base::ColType::kString, decoded_columns[0].first);
-    ASSERT_EQ("uname", decoded_columns[0].second);
-    ASSERT_EQ(::rtidb::base::ColType::kInt32, decoded_columns[1].first);
-    ASSERT_EQ("age", decoded_columns[1].second);
+    ASSERT_EQ(::rtidb::base::ColType::kString, decoded_columns[0].type);
+    ASSERT_EQ("uname", decoded_columns[0].name);
+    ASSERT_EQ(::rtidb::base::ColType::kInt32, decoded_columns[1].type);
+    ASSERT_EQ("age", decoded_columns[1].name);
 }
 
 }

@@ -12,6 +12,7 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "base/kv_iterator.h"
+#include "base/schema_codec.h"
 
 namespace rtidb {
 namespace client {
@@ -39,7 +40,8 @@ public:
                      uint32_t seg_cnt=16);
 
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
-                     uint64_t ttl, uint32_t seg_cnt, const std::string& schema);
+                     uint64_t ttl, uint32_t seg_cnt, 
+                     const std::vector<::rtidb::base::ColumnDesc>& columns);
 
     bool Put(uint32_t tid,
              uint32_t pid,
@@ -54,20 +56,30 @@ public:
              const char* value,
              uint32_t size);
 
+    bool Put(uint32_t tid,
+             uint32_t pid,
+             uint64_t time,
+             const std::string& value,
+             const std::vector<std::pair<std::string, uint32_t> >& dimensions);
+
     bool Get(uint32_t tid, 
              uint32_t pid,
              const std::string& pk,
              uint64_t time,
              std::string& value);
 
-    ::rtidb::base::KvIterator* BatchGet(uint32_t tid, uint32_t pid,
-                                        const std::vector<std::string>& keys);
-
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
              uint64_t etime);
+    
+    ::rtidb::base::KvIterator* Scan(uint32_t tid,
+                                 uint32_t pid,
+                                 const std::string& pk,
+                                 uint64_t stime,
+                                 uint64_t etime,
+                                 const std::string& idx_name);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
@@ -75,6 +87,7 @@ public:
              uint64_t stime,
              uint64_t etime,
              bool showm = false);
+
     bool GetTableSchema(uint32_t tid, uint32_t pid, 
                         std::string& schema);
 

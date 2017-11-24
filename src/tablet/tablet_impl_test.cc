@@ -176,10 +176,25 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         
     }
     {
-        std::vector<std::pair<::rtidb::base::ColType, std::string> > columns;
-        columns.push_back(std::pair<::rtidb::base::ColType, std::string>(::rtidb::base::ColType::kString, "card"));
-        columns.push_back(std::pair<::rtidb::base::ColType, std::string>(::rtidb::base::ColType::kDouble, "amt"));
-        columns.push_back(std::pair<::rtidb::base::ColType, std::string>(::rtidb::base::ColType::kInt32, "apprv_cde"));
+        std::vector<::rtidb::base::ColumnDesc> columns;
+        ::rtidb::base::ColumnDesc desc1;
+        desc1.type = ::rtidb::base::ColType::kString;
+        desc1.name = "card";
+        desc1.add_ts_idx = true;
+        columns.push_back(desc1);
+
+        ::rtidb::base::ColumnDesc desc2;
+        desc2.type = ::rtidb::base::ColType::kDouble;
+        desc2.name = "amt";
+        desc2.add_ts_idx = false;
+        columns.push_back(desc2);
+
+        ::rtidb::base::ColumnDesc desc3;
+        desc3.type = ::rtidb::base::ColType::kInt32;
+        desc3.name = "apprv_cde";
+        desc3.add_ts_idx = false;
+        columns.push_back(desc3);
+
         ::rtidb::base::SchemaCodec codec;
         std::string buffer;
         codec.Encode(columns, buffer);
@@ -205,15 +220,15 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         tablet.GetTableSchema(NULL, &request0, &response0, &closure);
         ASSERT_TRUE(response0.schema().size() != 0);
 
-        std::vector<std::pair<::rtidb::base::ColType, std::string> > ncolumns;
+        std::vector<::rtidb::base::ColumnDesc> ncolumns;
         codec.Decode(response0.schema(), ncolumns);
         ASSERT_EQ(3, ncolumns.size());
-        ASSERT_EQ(::rtidb::base::ColType::kString, ncolumns[0].first);
-        ASSERT_EQ("card", ncolumns[0].second);
-        ASSERT_EQ(::rtidb::base::ColType::kDouble, ncolumns[1].first);
-        ASSERT_EQ("amt", ncolumns[1].second);
-        ASSERT_EQ(::rtidb::base::ColType::kInt32, ncolumns[2].first);
-        ASSERT_EQ("apprv_cde", ncolumns[2].second);
+        ASSERT_EQ(::rtidb::base::ColType::kString, ncolumns[0].type);
+        ASSERT_EQ("card", ncolumns[0].name);
+        ASSERT_EQ(::rtidb::base::ColType::kDouble, ncolumns[1].type);
+        ASSERT_EQ("amt", ncolumns[1].name);
+        ASSERT_EQ(::rtidb::base::ColType::kInt32, ncolumns[2].type);
+        ASSERT_EQ("apprv_cde", ncolumns[2].name);
     }
     
 }
@@ -613,7 +628,6 @@ TEST_F(TabletImplTest, GC) {
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, srp.count());
-
 }
 
 TEST_F(TabletImplTest, DropTable) {

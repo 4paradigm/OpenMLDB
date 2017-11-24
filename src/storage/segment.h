@@ -25,23 +25,20 @@ class Segment;
 class Ticket;
 
 struct DataBlock {
+    // dimension count down
+    uint8_t dim_cnt_down;
     uint32_t size;
     char* data;
 
-    DataBlock(const char* input, uint32_t len):size(len),data(NULL) {
+    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len):dim_cnt_down(dim_cnt),size(len),data(NULL) {
         data = new char[len];
         memcpy(data, input, len);
     }
 
-    uint32_t Release() {
+    ~DataBlock() {
         delete[] data;
         data = NULL;
-        uint32_t ret = size;
-        size = 0;
-        return ret;
     }
-
-    ~DataBlock() {}
 };
 
 // the desc time comparator
@@ -64,21 +61,25 @@ public:
     KeyEntry():entries(12, 4, tcmp),mu(), refs_(0){}
     ~KeyEntry() {}
 
+    // just return the count of datablock
     uint64_t Release() {
-        uint64_t release_bytes = 0;
+        uint64_t cnt = 0;
         TimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
         while(it->Valid()) {
-            if (it->GetValue() != NULL) {
-                // 4 bytes data size, 8 bytes key size 
-                release_bytes += (4 + 8 + it->GetValue()->Release());
+            cnt += 1;
+            DataBlock* block = it->GetValue();
+            // Avoid double free
+            if (block->dim_cnt_down > 1) {
+                block->dim_cnt_down--;
+            }else {
+                delete block;
             }
-            delete it->GetValue();
             it->Next();
         }
         entries.Clear();
         delete it;
-        return release_bytes;
+        return cnt;
     }
 
     void Ref() {
@@ -88,7 +89,6 @@ public:
     void UnRef() {
         refs_.fetch_sub(1, boost::memory_order_relaxed);
     }
-
 
 public:
     std::string key;
@@ -119,50 +119,49 @@ public:
              const char* data,
              uint32_t size);
 
+    void Put(const std::string& key, 
+             uint64_t time,
+             DataBlock* row);
+
     // Get time data
     bool Get(const std::string& key,
              uint64_t time,
              DataBlock** block);
-
-    void BatchGet(const std::vector<std::string>& keys,
-                  std::map<uint32_t, DataBlock*>& datas,
-                  Ticket& ticket);
 
     // Segment Iterator
     class Iterator {
     public:
         Iterator(TimeEntries::Iterator* it);
         ~Iterator();
-
         void Seek(const uint64_t& time);
         bool Valid() const;
         void Next();
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
         void SeekToFirst();
-
     private:
         TimeEntries::Iterator* it_;
     };
 
     uint64_t Release();
     // gc with specify time, delete the data before time 
-    uint64_t Gc4TTL(const uint64_t& time);
-    uint64_t Gc4WithHead();
+    void Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt);
+    void Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt);
     Segment::Iterator* NewIterator(const std::string& key, Ticket& ticket);
 
-    uint64_t GetDataCnt() {
-        return data_cnt_.load(boost::memory_order_relaxed);
+    uint64_t GetIdxCnt() {
+        return idx_cnt_.load(boost::memory_order_relaxed);
     }
 
 private:
-    uint64_t FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node);
+    void FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+                  uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt);
     void SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node);
 private:
     KeyEntries* entries_;
     // only Put need mutex
     std::mutex mu_;
-    boost::atomic<uint64_t> data_cnt_;
+    boost::atomic<uint64_t> idx_cnt_;
 };
 
 }// namespace storage

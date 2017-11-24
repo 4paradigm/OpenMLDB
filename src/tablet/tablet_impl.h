@@ -13,7 +13,6 @@
 #include "replica/log_replicator.h"
 #include "storage/snapshot.h"
 #include "storage/table.h"
-#include "tablet/tablet_metric.h"
 #include "thread_pool.h"
 #include "zk/zk_client.h"
 #include <map>
@@ -59,11 +58,6 @@ public:
     void Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
-              Closure* done);
-
-    void BatchGet(RpcController* controller,
-              const ::rtidb::api::BatchGetRequest* request,
-              ::rtidb::api::BatchGetResponse* response,
               Closure* done);
 
     void CreateTable(RpcController* controller,
@@ -145,17 +139,7 @@ public:
             const ::rtidb::api::SetTTLClockRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
-
-    void ShowTables(RpcController* controller,
-            const ::rtidb::api::HttpRequest* request,
-            ::rtidb::api::HttpResponse* response,
-            Closure* done);
-
-    void ShowMetric(RpcController* controller,
-            const ::rtidb::api::HttpRequest* request,
-            ::rtidb::api::HttpResponse* response,
-            Closure* done);
-
+    
     void ShowMemPool(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,
@@ -178,9 +162,7 @@ private:
     inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
-            std::string& msg);
-
-    bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
+                            std::string& msg);
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
@@ -202,11 +184,13 @@ private:
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);
 
+    int32_t CheckDimessionPut(const ::rtidb::api::PutRequest* request,
+                              std::shared_ptr<Table>& table);
+
 private:
     Tables tables_;
     std::mutex mu_;
     ThreadPool gc_pool_;
-    TabletMetric* metric_;
     Replicators replicators_;
     Snapshots snapshots_;
     ZkClient* zk_client_;

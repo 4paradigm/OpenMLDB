@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.impl;
 
 import java.nio.charset.Charset;
+import java.util.List;
 import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
@@ -10,6 +11,9 @@ import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TabletAsyncClient;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.SchemaCodec;
+import com._4paradigm.rtidb.client.schema.Table;
 import com.google.protobuf.ByteString;
 
 import io.brpc.client.RpcCallback;
@@ -89,17 +93,40 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 
 	@Override
 	public ScanFuture scan(int tid, int pid, String key, long st, long et) {
+		return scan(tid, pid, key, null, st, et);
+	}
+
+	@Override
+	public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) {
+		Table table = getTable(tid, pid);
 		Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
         builder.setEt(et);
         builder.setSt(st);
         builder.setPid(pid);
+        if (idxName != null && !idxName.isEmpty()) {
+        	builder.setIdxName(idxName);
+        }
         Tablet.ScanRequest request = builder.build();
         Future<Tablet.ScanResponse> f =  tablet.scan(request, scanFakeCallback);
-		return ScanFuture.wrappe(f);
+		return ScanFuture.wrappe(f, table);
 	}
-
 	
-    
+	
+	public Table getTable(int tid, int pid) {
+		Table table = GTableSchema.tableSchema.get(tid);
+		if (table != null) {
+			return table;
+		}
+		Tablet.GetTableSchemaRequest request = Tablet.GetTableSchemaRequest.newBuilder().setTid(tid).setPid(pid).build();
+		Tablet.GetTableSchemaResponse response = tablet.getTableSchema(request);
+		if (response.getCode() == 0) {
+			List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
+			table = new Table(schema);
+			GTableSchema.tableSchema.put(tid, table);
+			return table;
+		}
+		return null;
+	}
 }

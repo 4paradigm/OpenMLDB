@@ -5,19 +5,22 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.schema.Table;
+
 import rtidb.api.Tablet;
 import rtidb.api.Tablet.ScanResponse;
 
 public class ScanFuture implements Future<KvIterator>{
 
 	private Future<Tablet.ScanResponse> f;
-	
-	public ScanFuture(Future<Tablet.ScanResponse> f) {
+	private Table t;
+	public ScanFuture(Future<Tablet.ScanResponse> f, Table t) {
 		this.f = f;
+		this.t = t;
 	}
 	
-	public static ScanFuture wrappe(Future<Tablet.ScanResponse> f) {
-		return new ScanFuture(f);
+	public static ScanFuture wrappe(Future<Tablet.ScanResponse> f, Table t) {
+		return new ScanFuture(f, t);
 	}
 	
 	@Override
@@ -41,6 +44,9 @@ public class ScanFuture implements Future<KvIterator>{
 		ScanResponse response = f.get();
 		if (response != null ) {
 			if (response.getCode() == 0) {
+				if (t != null) {
+					return new KvIterator(response.getPairs(), t.getSchema());
+				}
 				return new KvIterator(response.getPairs());
 			}
 			return null;

@@ -106,6 +106,7 @@ public:
     }
 
     void Build() {
+        //TODO limit the total size of single row
         buffer_->resize(GetSize());
         char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0]));
         memcpy(cbuffer, static_cast<const void*>(&col_cnt_), 1);

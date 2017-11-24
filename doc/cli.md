@@ -28,27 +28,36 @@
 ## tablet schema相关操作
 
 ```
->screate t1 1 0 0 8 card:string amt:double merchant:string apprv_cde:int32
+Welcome to rtidb with version 1.1.0
+>screate tx 1 0 0 8 card:string:index merchant:string:index amt:double
 Create table ok
 >showschema 1 0
-  index  name       type
-----------------------------
-  0      card       string
-  1      amt        double
-  2      merchant   string
-  3      apprv_cde  int32
->sput 1 0 9527 1 9527 1.2 711 0
+  #  name      type    index
+------------------------------
+  0  card      string  yes
+  1  merchant  string  yes
+  2  amt       double  no
+>sput 1 0 1 card0 merchant0 1.1
 Put ok
->sput 1 0 9527 2 9527 3.2 711 1
+>sput 1 0 2 card0 merchant1 110.1
 Put ok
->sscan 1 0 9527 3 0
+>sscan 1 0 card0 card 3 0
 
 
-  pk    ts  card  amt                 merchant  apprv_cde
------------------------------------------------------------
-  9527  2   9527  3.2000000000000002  711       1
-  9527  1   9527  1.2                 711       0
->
+  pk     ts  card   merchant   amt
+---------------------------------------------------
+  card0  2   card0  merchant1  110.09999999999999
+  card0  1   card0  merchant0  1.1000000000000001
+>sscan 1 0 merchant0 merchant 2 0
+
+  pk         ts  card   merchant   amt
+-------------------------------------------------------
+  merchant0  1   card0  merchant0  1.1000000000000001
+>sscan 1 0 merchant1 merchant 2 0
+
+  pk         ts  card   merchant   amt
+-------------------------------------------------------
+  merchant1  2   card0  merchant1  110.09999999999999
 ```
 
 ### cluster开启时从ns_client创建表
