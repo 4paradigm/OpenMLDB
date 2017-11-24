@@ -19,6 +19,7 @@
 #include <map>
 #include <list>
 #include <brpc/server.h>
+#include <brpc/stream.h>
 #include <mutex>
 
 using ::google::protobuf::RpcController;
@@ -36,6 +37,25 @@ namespace tablet {
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
+
+class StreamReceiver : public brpc::StreamInputHandler {
+public:
+	StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid, std::mutex* mu);
+	virtual ~StreamReceiver();
+    int Init();
+    virtual int on_received_messages(brpc::StreamId id,
+                    butil::IOBuf *const messages[],
+                    size_t size) override;
+    virtual void on_idle_timeout(brpc::StreamId id) override;
+    virtual void on_closed(brpc::StreamId id) override;
+private:
+	std::string file_name_;
+    uint32_t tid_;
+    uint32_t pid_;
+	FILE* file_;
+    std::mutex* mu_;
+	static std::set<uint64_t> stream_receiver_set_;
+};
 
 class TabletImpl : public ::rtidb::api::TabletServer {
 
@@ -121,6 +141,16 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void SendSnapshot(RpcController* controller,
+            const ::rtidb::api::SendSnapshotRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void CreateStream(RpcController* controller,
+            const ::rtidb::api::CreateStreamRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void GetTaskStatus(RpcController* controller,
             const ::rtidb::api::TaskStatusRequest* request,
             ::rtidb::api::TaskStatusResponse* response,
@@ -184,6 +214,11 @@ private:
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
+    void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
+                        std::shared_ptr<::rtidb::api::TaskInfo> task);
+
+    int SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid, const std::string& file_name);
+
     void SchedMakeSnapshot();
 
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
@@ -213,6 +248,7 @@ private:
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
     std::list<std::shared_ptr<::rtidb::api::TaskInfo>> task_list_;
+    std::set<std::string> sync_snapshot_set_;
 };
 
 

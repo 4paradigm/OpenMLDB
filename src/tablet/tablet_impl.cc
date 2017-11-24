@@ -49,6 +49,9 @@ DECLARE_int32(make_snapshot_check_interval);
 DECLARE_uint32(metric_max_record_cnt);
 DECLARE_string(recycle_bin_root_path);
 
+DECLARE_int32(request_max_retry);
+DECLARE_int32(request_timeout_ms);
+
 // cluster config
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -58,6 +61,73 @@ DECLARE_int32(zk_keep_alive_check_interval);
 
 namespace rtidb {
 namespace tablet {
+
+StreamReceiver::StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid, std::mutex* mu):
+        file_name_(file_name), tid_(tid), pid_(pid), file_(NULL), mu_(mu) {}
+
+StreamReceiver::~StreamReceiver() {
+    fclose(file_);
+}
+
+std::set<uint64_t> StreamReceiver::stream_receiver_set_ = std::set<uint64_t>();
+
+int StreamReceiver::Init() {
+    uint64_t combine_key = tid_ << 32 | pid_;
+    if (stream_receiver_set_.find(combine_key) != stream_receiver_set_.end()) {
+        PDLOG(WARNING, "stream is exisit! tid[%u] pid[%u]", tid_, pid_);
+        return -1;
+    }
+    std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_)
+				+ "/snapshot/";
+    if (!::rtidb::base::MkdirRecur(tmp_file_path)) {
+        PDLOG(WARNING, "mkdir failed! path[%s]", tmp_file_path.c_str());
+        return -1;
+    }
+    std::string full_path = tmp_file_path + file_name_ + ".tmp";
+	FILE* file = fopen(full_path.c_str(), "wb");
+    if (file == NULL) {
+        PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+        return -1;
+    }
+    file_ = file;
+    return 0;
+}
+
+int StreamReceiver::on_received_messages(brpc::StreamId id,
+		butil::IOBuf *const messages[], size_t size) {
+    if (file_ == NULL) {
+        PDLOG(WARNING, "file is NULL");
+    }
+    for (size_t i = 0; i < size; i++) {
+        if (messages[i]->empty()) {
+            continue;
+        }
+        std::string data = messages[i]->to_string();
+        PDLOG(WARNING, "write data[%s]", data.c_str());
+        size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
+        if (r < data.size()) {
+            PDLOG(WARNING, "write error. tid[%u] pid[%u]", tid_, pid_);
+        }
+    }
+	return 0;
+}
+
+void StreamReceiver::on_idle_timeout(brpc::StreamId id) {
+
+}
+
+void StreamReceiver::on_closed(brpc::StreamId id) {
+    
+    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_)
+				+ "/snapshot/" + file_name_;
+    std::string tmp_file_path = full_path + ".tmp";
+    rename(tmp_file_path.c_str(), full_path.c_str());
+    uint64_t combine_key = tid_ << 32 | pid_;
+    PDLOG(INFO, "file %s recived. tid %u pid %u", file_name_.c_str(), tid_, pid_);
+    std::lock_guard<std::mutex> lock(*mu_);
+    stream_receiver_set_.erase(combine_key);
+    delete this;
+}
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     metric_(NULL), replicators_(), snapshots_(), zk_client_(NULL),
@@ -844,6 +914,226 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     // delay task one hour later avoid execute  more than one time
     task_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
+}
+
+void TabletImpl::CreateStream(RpcController* controller,
+            const ::rtidb::api::CreateStreamRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+    uint32_t tid = request->tid(); 
+    uint32_t pid = request->pid(); 
+    StreamReceiver* stream_receiver = new StreamReceiver(request->file_name(), tid, pid, &mu_);
+	if (stream_receiver->Init() < 0) {
+        response->set_code(-1);
+        response->set_msg("stream_receiver init failed");
+        return;
+    }
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+    brpc::StreamOptions stream_options;
+    stream_options.handler = stream_receiver;
+    brpc::StreamId sd;
+    if (brpc::StreamAccept(&sd, *cntl, &stream_options) != 0) {
+        cntl->SetFailed("Fail to accept stream");
+        return;
+    }
+    response->set_msg("ok");
+    response->set_code(0);
+}
+
+void TabletImpl::SendSnapshot(RpcController* controller,
+            const ::rtidb::api::SendSnapshotRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+	uint32_t tid = request->tid();
+	uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
+    bool has_error = true;
+	do {
+		if (!table) {
+			PDLOG(WARNING, "table not exist. tid %ld, pid %ld", tid, pid);
+			response->set_code(-1);
+			response->set_msg("table not exist");
+			break;
+		}
+		if (!table->IsLeader()) {
+			PDLOG(WARNING, "table with tid %ld, pid %ld is follower", tid, pid);
+			response->set_code(-1);
+			response->set_msg("table is follower");
+			break;
+		}
+		if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
+			PDLOG(WARNING, "table with tid %ld, pid %ld is not kSnapshotPaused", tid, pid);
+			response->set_code(-1);
+			response->set_msg("table is unavailable now");
+			break;
+		}
+		has_error = false;
+	} while(0);
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (request->task_info().task_type() != ::rtidb::api::TaskType::kSendSnapshot) {
+            response->set_code(-1);
+            response->set_msg("task type is not match");
+            PDLOG(WARNING, "task type is not match. type is[%s]", 
+                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+            has_error = true;
+        } else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+            response->set_code(-1);
+            response->set_msg("task is running");
+            PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+                            request->task_info().op_id(),
+                            ::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
+                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+            has_error = true;
+        }
+        task_ptr.reset(request->task_info().New());
+        task_ptr->CopyFrom(request->task_info());
+        if (has_error) {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        } else {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+        }
+        AddOPTask(task_ptr);
+    }
+    if (has_error) {
+        return;
+    }
+    task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
+                request->endpoint(), tid, pid, task_ptr));
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
+            std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    std::string sync_snapshot_key = endpoint + "_" + 
+                    std::to_string(tid) + "_" + std::to_string(pid);
+    bool has_error = true;
+    do {
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (sync_snapshot_set_.find(sync_snapshot_key) != sync_snapshot_set_.end()) {
+                PDLOG(WARNING, "table not exist. tid %ld, pid %ld", tid, pid);
+                break;
+            }
+            sync_snapshot_set_.insert(sync_snapshot_key);
+        }
+		// send manifest file
+		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
+			PDLOG(WARNING, "send MANIFEST failed");
+			break;
+		}
+    	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
+									std::to_string(pid) + "/snapshot/MANIFEST";
+		int fd = open(manifest_file.c_str(), O_RDONLY);
+		if (fd < 0) {
+			PDLOG(WARNING, "[%s] is not exisit", manifest_file.c_str());
+			break;
+		}
+		google::protobuf::io::FileInputStream fileInput(fd);
+		fileInput.SetCloseOnDelete(true);
+		::rtidb::api::Manifest manifest;
+		if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+			PDLOG(WARNING, "parse manifest failed");
+			break;
+		}
+		// send snapshot file
+		if (SendFile(endpoint, tid, pid, manifest.name()) < 0) {
+			PDLOG(WARNING, "send snapshot failed");
+			break;
+		}
+        has_error = false;
+		PDLOG(INFO, "send snapshot success. endpoint %s tid %u pid %u", endpoint.c_str(), tid, pid);
+    } while(0);
+	std::lock_guard<std::mutex> lock(mu_);
+	if (task) {
+		if (has_error) {
+			task->set_status(::rtidb::api::kFailed);
+       	} else {
+			task->set_status(::rtidb::api::kDone);
+		}
+	}
+	sync_snapshot_set_.erase(sync_snapshot_key);
+}            
+
+int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid,
+			const std::string& file_name) {
+	brpc::Channel channel;
+	brpc::ChannelOptions options;
+	options.protocol = brpc::PROTOCOL_BAIDU_STD;
+	options.timeout_ms = FLAGS_request_timeout_ms;
+	options.max_retry = FLAGS_request_max_retry;
+	if (channel.Init(endpoint.c_str(), NULL) != 0) {
+		PDLOG(WARNING, "init channel failed. %s ", endpoint.c_str());
+		return -1;
+	}
+	::rtidb::api::TabletServer_Stub stub(&channel);
+	brpc::Controller cntl;
+	brpc::StreamId stream;
+	if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
+		PDLOG(WARNING, "create stream failed. endpoint %s", endpoint.c_str());
+		return -1;
+	}
+
+    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid)
+				+ "/snapshot/" + file_name;
+    PDLOG(WARNING, "full path %s", full_path.c_str());
+	FILE* file = fopen(full_path.c_str(), "rb");
+	if (file == NULL) {
+        PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+        return -1;
+    }
+
+	::rtidb::api::CreateStreamRequest request;
+	::rtidb::api::GeneralResponse response;
+	request.set_tid(tid);
+	request.set_pid(pid);
+	request.set_file_name(file_name);
+	stub.CreateStream(&cntl, &request, &response, NULL);
+	if (cntl.Failed()) {
+		PDLOG(WARNING, "connect stream failed. %s ", cntl.ErrorText());
+        fclose(file);
+		return -1;
+	}
+	char buffer[::rtidb::log::kBlockSize];
+	butil::IOBuf data;
+	int ret = 0;
+	while (true) {
+		size_t len = fread_unlocked(buffer, 1, ::rtidb::log::kBlockSize, file);
+        if (len < ::rtidb::log::kBlockSize) {
+            if (feof(file)) {
+				if (len > 0) {
+					data.clear();
+					data.append(buffer, len);
+					if (brpc::StreamWrite(stream, data) != 0) {
+        				PDLOG(WARNING, "stream write failed. file %s", file_name.c_str());
+						ret = -1;
+					}
+				}
+				break;
+            }
+        	PDLOG(WARNING, "read file %s error. error message: %s", file_name.c_str(), strerror(errno));
+			ret = -1;
+			break;
+        }
+		data.clear();
+		data.append(buffer, len);
+		if (brpc::StreamWrite(stream, data) != 0) {
+        	PDLOG(WARNING, "stream write failed. file %s", file_name.c_str());
+			ret = -1;
+			break;
+		}
+	}
+	fclose(file);
+	brpc::StreamClose(stream);
+	if (ret == 0) {
+    	PDLOG(INFO, "send file %s success", file_name.c_str());
+	}
+	return ret;
 }
 
 void TabletImpl::PauseSnapshot(RpcController* controller,

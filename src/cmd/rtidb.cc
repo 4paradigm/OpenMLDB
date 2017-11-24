@@ -290,7 +290,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
             row.push_back(buf);
         } else {
-            uint64_t cur_time = time(0);
+            uint64_t cur_time = ::baidu::common::timer::now_time();
             row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
             row.push_back("-");
         }
@@ -618,6 +618,23 @@ void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad RecoverSnapshot format" << std::endl;
+    }
+}
+
+void HandleClientSendSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad SendSnapshot format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        if (ok) {
+            std::cout << "SendSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to SendSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad SendSnapshot format" << std::endl;
     }
 }
 
@@ -1155,6 +1172,8 @@ void StartClient() {
             HandleClientPauseSnapshot(parts, &client);
         } else if (parts[0] == "recoversnapshot") {
             HandleClientRecoverSnapshot(parts, &client);
+        } else if (parts[0] == "sendsnapshot") {
+            HandleClientSendSnapshot(parts, &client);
         } else if (parts[0] == "loadtable") {
             HandleClientLoadTable(parts, &client);
         } else if (parts[0] == "changerole") {

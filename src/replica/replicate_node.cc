@@ -11,6 +11,8 @@
 #include <gflags/gflags.h>
 
 DECLARE_int32(binlog_sync_batch_size);
+DECLARE_int32(request_max_retry);
+DECLARE_int32(request_timeout_ms);
 
 namespace rtidb {
 namespace replica {
@@ -63,7 +65,7 @@ int ReplicateNode::MatchLogOffsetFromNode() {
     request.set_pre_log_index(0);
     ::rtidb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
-                        &request, &response, 12, 1);
+                        &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ret && response.code() == 0) {
         last_sync_offset_ = response.log_offset();
         log_matched_ = true;

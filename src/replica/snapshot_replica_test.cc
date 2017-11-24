@@ -66,7 +66,7 @@ public:
     ~SnapshotReplicaTest() {}
 };
 
-TEST_F(SnapshotReplicaTest, AddReplicate) {
+/*TEST_F(SnapshotReplicaTest, AddReplicate) {
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     tablet->Init();
     brpc::Server server;
@@ -189,7 +189,69 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ::rtidb::api::DropTableResponse drs;
     tablet->DropTable(NULL, &dr, &drs, &closure);
     sleep(2);
-}
+}*/
+
+TEST_F(SnapshotReplicaTest, SendSnapshot) {
+    FLAGS_db_root_path = "/tmp/" + ::GenRand();
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    tablet->Init();
+    brpc::Server server;
+    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
+       exit(1);
+    }
+    brpc::ServerOptions options;
+    std::string leader_point = "127.0.0.1:18529";
+    if (server.Start(leader_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
+        exit(1);
+    }
+
+    uint32_t tid = 2;
+    uint32_t pid = 123;
+    ::rtidb::client::TabletClient client(leader_point);
+    client.Init();
+    std::vector<std::string> endpoints;
+    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+    ASSERT_TRUE(ret);
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    ret = client.Put(tid, pid, "testkey", cur_time, "value1");
+    ASSERT_TRUE(ret);
+
+    uint32_t count = 0;
+    while (count < 10) {
+        count++;
+        char key[100];
+        snprintf(key, 100, "test%u", count);
+        client.Put(tid, pid, key, cur_time, key);
+    }
+
+    ret = client.MakeSnapshot(tid, pid);
+    ASSERT_TRUE(ret);
+    sleep(2);
+    ret = client.PauseSnapshot(tid, pid);
+    ASSERT_TRUE(ret);
+    sleep(2);
+
+    FLAGS_db_root_path = "/tmp/" + ::GenRand();
+    FLAGS_endpoint = "127.0.0.1:18530";
+    ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
+    tablet1->Init();
+    brpc::Server server1;
+    if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
+       exit(1);
+    }
+    std::string follower_point = "127.0.0.1:18530";
+    if (server1.Start(follower_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", follower_point.c_str());
+        exit(1);
+    }
+
+    ret = client.SendSnapshot(tid, pid, follower_point, std::shared_ptr<::rtidb::api::TaskInfo>());
+    ASSERT_TRUE(ret);
+    sleep(10);
+}    
 
 }
 }

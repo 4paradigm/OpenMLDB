@@ -28,6 +28,12 @@ message MakeSnapshotNSRequest {
     required uint32 pid = 2;
 }
 
+message AddReplicaNSRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
 message GeneralResponse {
 	required int32 code = 1;
 	optional string msg = 2;
@@ -68,5 +74,6 @@ service NameServer {
 	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
     rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
+    rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
 }
