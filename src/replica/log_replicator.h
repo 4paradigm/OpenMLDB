@@ -99,6 +99,8 @@ public:
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
+    void ApplyEntryToTable(const ::rtidb::api::LogEntry& entry);
+
 private:
     // the replicator root data path
     std::string path_;

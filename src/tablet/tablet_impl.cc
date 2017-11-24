@@ -22,6 +22,7 @@
 #include "base/codec.h"
 #include "base/strings.h"
 #include "base/file_util.h"
+#include "storage/segment.h"
 #include "logging.h"
 #include "timer.h"
 #include <google/protobuf/text_format.h>
@@ -41,12 +42,10 @@ DECLARE_uint32(scan_max_bytes_size);
 DECLARE_uint32(scan_reserve_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
-DECLARE_bool(enable_statdb);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
-DECLARE_uint32(metric_max_record_cnt);
 DECLARE_string(recycle_bin_root_path);
 
 DECLARE_int32(request_max_retry);
@@ -130,14 +129,12 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
 }
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
-    metric_(NULL), replicators_(), snapshots_(), zk_client_(NULL),
+    replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size){}
 
 TabletImpl::~TabletImpl() {
-    if (FLAGS_enable_statdb) {
-        tables_.erase(0);
-        delete metric_;
-    }
+    task_pool_.Stop(true);
+    keep_alive_pool_.Stop(true);
 }
 
 bool TabletImpl::Init() {
@@ -164,19 +161,6 @@ bool TabletImpl::Init() {
     if (!ok) {
         PDLOG(WARNING, "fail to create recycle bin path %s", FLAGS_recycle_bin_root_path.c_str());
         return false;
-    }
-    if (FLAGS_enable_statdb) {
-        // Create a dbstat table with tid = 0 and pid = 0
-        std::shared_ptr<Table> dbstat = std::make_shared<Table>("dbstat", 0, 0, 8, FLAGS_statdb_ttl);
-        dbstat->Init();
-        tables_[0].insert(std::make_pair(0, dbstat));
-        if (FLAGS_statdb_ttl > 0) {
-            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000,
-                    boost::bind(&TabletImpl::GcTable, this, 0, 0));
-        }
-        // For tablet metric
-        metric_ = new TabletMetric(dbstat);
-        metric_->Init();
     }
     if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
         PDLOG(WARNING, "make_snapshot_time[%d] is illegal.", FLAGS_make_snapshot_time);
@@ -279,11 +263,22 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
-    uint64_t size = request->value().size();
-    table->Put(request->pk(), request->time(), request->value().c_str(),
-            request->value().length());
+    if (request->dimensions_size() > 0) {
+        int32_t ret_code = CheckDimessionPut(request, table);
+        if (ret_code != 0) {
+            response->set_code(ret_code);
+            response->set_msg("invalid dimension parameter");
+            done->Run();
+            return;
+        }
+        table->Put(request->time(), request->value(),
+                   request->dimensions());
+    }else {
+        table->Put(request->pk(), request->time(), request->value().c_str(),
+                   request->value().length());
+        PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
+    }
     response->set_code(0);
-    PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     bool leader = table->IsLeader();
     std::shared_ptr<LogReplicator> replicator;
     if (leader) {
@@ -295,74 +290,21 @@ void TabletImpl::Put(RpcController* controller,
                 break;
             }
             ::rtidb::api::LogEntry entry;
-            entry.set_ts(request->time());
             entry.set_pk(request->pk());
+            entry.set_ts(request->time());
             entry.set_value(request->value());
+            if (request->dimensions_size() > 0) {
+                entry.mutable_dimensions()->CopyFrom(request->dimensions());
+            }
             replicator->AppendEntry(entry);
         } while(false);
     }
     done->Run();
-    if (FLAGS_enable_statdb) {
-        metric_->IncrThroughput(1, size, 0, 0);
-    }
     if (replicator) {
         if (FLAGS_binlog_notify_on_put) {
             replicator->Notify(); 
         }
     }
-}
-
-void TabletImpl::BatchGet(RpcController* controller, 
-        const ::rtidb::api::BatchGetRequest* request,
-        ::rtidb::api::BatchGetResponse* response,
-        Closure* done) {
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        PDLOG(WARNING, "fail to find table with tid %ld, pid %ld", request->tid(), request->pid());
-        response->set_code(10);
-        response->set_msg("table not found");
-        done->Run();
-        return;
-    }
-    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        PDLOG(WARNING, "table with tid %ld, pid %ld is unavailable now", 
-                      request->tid(), request->pid());
-        response->set_code(20);
-        response->set_msg("table is unavailable now");
-        done->Run();
-        return;
-    }
-    std::vector<std::string> keys;
-    for (int32_t i = 0; i < request->keys_size(); i++) {
-        keys.push_back(request->keys(i));
-    }
-    std::map<uint32_t, DataBlock*> datas;
-    ::rtidb::storage::Ticket ticket;
-    table->BatchGet(keys, datas, ticket);
-    uint32_t total_block_size = 0;
-    std::map<uint32_t, DataBlock*>::iterator it = datas.begin();
-    for (; it != datas.end(); ++it) {
-        total_block_size += it->second->size;
-    }
-    uint32_t total_size = datas.size() * (8+4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (datas.size() <= 0) {
-        pairs->resize(0);
-    }else {
-        pairs->resize(total_size);
-    }
-    PDLOG(DEBUG, "batch get count %d", datas.size());
-    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
-    uint32_t offset = 0;
-    it = datas.begin();
-    for (; it != datas.end(); ++it) {
-        PDLOG(DEBUG, "decode key %lld value %s", it->first, it->second->data);
-        ::rtidb::base::Encode((uint64_t)it->first, it->second, rbuffer, offset);
-        offset += (4 + 8 + it->second->size);
-    }
-    response->set_code(0);
-    response->set_msg("ok");
-    done->Run();
 }
 
 inline bool TabletImpl::CheckScanRequest(const rtidb::api::ScanRequest* request) {
@@ -418,7 +360,22 @@ void TabletImpl::Scan(RpcController* controller,
     // Use seek to process scan request
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = table->NewIterator(request->pk(), ticket);
+    Table::Iterator* it = NULL;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(30);
+            response->set_msg("idx name not found");
+            done->Run();
+            return;
+        }
+        it = table->NewIterator(iit->second,
+                                request->pk(), ticket);
+    }else {
+        it = table->NewIterator(request->pk(), ticket);
+    }
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
@@ -476,7 +433,7 @@ void TabletImpl::Scan(RpcController* controller,
     std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
-        PDLOG(DEBUG, "decode key %lld value %s", pair.first, pair.second->data);
+        PDLOG(DEBUG, "decode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
@@ -485,9 +442,6 @@ void TabletImpl::Scan(RpcController* controller,
     response->set_count(tmp.size());
     metric->set_sptime(::baidu::common::timer::get_micros()); 
     done->Run();
-    if (FLAGS_enable_statdb) {
-        metric_->IncrThroughput(0, 0, 1, total_size);
-    }
 }
 
 void TabletImpl::ChangeRole(RpcController* controller, 
@@ -701,9 +655,28 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_ttl(table->GetTTL());
             status->set_time_offset(table->GetTimeOffset());
             status->set_is_expire(table->GetExpireStatus());
+            status->set_name(table->GetName());
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
+            status->set_record_cnt(table->GetRecordCnt());
+            uint64_t record_idx_cnt = 0;
+            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
+            for (;iit != table->GetMapping().end(); ++iit) {
+                ::rtidb::api::TsIdxStatus* ts_idx_status = status->add_ts_idx_status();
+                ts_idx_status->set_idx_name(iit->first);
+                uint64_t* stats = NULL;
+                uint32_t size = 0;
+                bool ok = table->GetRecordIdxCnt(iit->second, &stats, &size);
+                if (ok) {
+                    for (uint32_t i = 0; i < size; i++) {
+                        ts_idx_status->add_seg_cnts(stats[i]); 
+                        record_idx_cnt += stats[i];
+                    }
+                }
+                delete stats;
+            }
+            status->set_idx_cnt(record_idx_cnt);
             std::shared_ptr<LogReplicator> replicator = GetReplicatorUnLock(table->GetId(), table->GetPid());
             if (replicator) {
                 status->set_offset(replicator->GetOffset());
@@ -753,16 +726,6 @@ void TabletImpl::SetTTLClock(RpcController* controller,
 	response->set_code(0);
 	response->set_msg("ok");
 	done->Run();
-}
-
-bool TabletImpl::ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log) {
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        PDLOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
-        return false; 
-    }
-    table->Put(log.pk(), log.ts(), log.value().c_str(), log.value().size());
-    return true;
 }
 
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
@@ -1255,9 +1218,9 @@ void TabletImpl::LoadTable(RpcController* controller,
     if (table_meta.seg_cnt() > 0) {
         seg_cnt = table_meta.seg_cnt();
     }
-    PDLOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
-            pid, name.c_str(), seg_cnt, ttl);
-    
+    PDLOG(INFO, "create table with id %d pid %d name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
+               pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
+   
     // load snapshot data
     std::shared_ptr<Table> table = GetTable(tid, pid);        
     if (!table) {
@@ -1459,21 +1422,41 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
-    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), table_meta->tid(),
-                             table_meta->pid(), seg_cnt, 
-                             table_meta->ttl(), is_leader,
-                             endpoints, table_meta->wal());
+    // config dimensions
+    std::map<std::string, uint32_t> mapping;
+    for (int32_t i = 0; i < table_meta->dimensions_size(); i++) {
+        mapping.insert(std::make_pair(table_meta->dimensions(i), 
+                       (uint32_t)i));
+        PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta->dimensions(i).c_str(),
+                i, table_meta->name().c_str(), table_meta->tid(), table_meta->pid());
+    }
+    // add default dimension
+    if (mapping.size() <= 0) {
+        mapping.insert(std::make_pair("idx0", 0));
+        PDLOG(INFO, "no index specified with default");
+    }
+    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
+                                                           table_meta->tid(),
+                                                           table_meta->pid(), seg_cnt, 
+                                                           mapping,
+                                                           table_meta->ttl(), is_leader,
+                                                           endpoints);
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
-    table->SetTerm(table_meta->term());
     table->SetSchema(table_meta->schema());
     std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +
                 "_" + boost::lexical_cast<std::string>(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;
-    if (table->IsLeader() && table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_db_path, table->GetReplicas(), ReplicatorRole::kLeaderNode, table);
-    } else if(table->GetWal()) {
-        replicator = std::make_shared<LogReplicator>(table_db_path, std::vector<std::string>(), ReplicatorRole::kFollowerNode, table);
+    if (table->IsLeader()) {
+        replicator = std::make_shared<LogReplicator>(table_db_path, 
+                                                     table->GetReplicas(), 
+                                                     ReplicatorRole::kLeaderNode, 
+                                                     table);
+    }else {
+        replicator = std::make_shared<LogReplicator>(table_db_path, 
+                                                     std::vector<std::string>(), 
+                                                     ReplicatorRole::kFollowerNode,
+                                                     table);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %ld, pid %ld", table_meta->tid(), table_meta->pid());
@@ -1493,7 +1476,6 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         PDLOG(WARNING, "fail to init snapshot for tid %d, pid %d", table_meta->tid(), table_meta->pid());
         msg.assign("fail to init snapshot");
         return -1;
-
     }
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
@@ -1634,119 +1616,6 @@ std::shared_ptr<Table> TabletImpl::GetTableUnLock(uint32_t tid, uint32_t pid) {
     return std::shared_ptr<Table>();
 }
 
-void TabletImpl::ShowTables(RpcController* controller,
-            const ::rtidb::api::HttpRequest* request,
-            ::rtidb::api::HttpResponse* response,
-            Closure* done) {
-	brpc::ClosureGuard done_guard(done);
-    std::vector<std::shared_ptr<Table> > tmp_tables;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        Tables::iterator it = tables_.begin();
-        for (; it != tables_.end(); ++it) {
-            auto tit = it->second.begin();
-            for (; tit != it->second.end(); ++tit) {
-                tmp_tables.push_back(tit->second);
-            }
-        }
-    }
-
-    ::rapidjson::StringBuffer sb;
-    ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
-    writer.StartObject();
-    writer.Key("tables");
-    writer.StartArray();
-    for (size_t i = 0; i < tmp_tables.size(); i++) {
-        std::shared_ptr<Table> table = tmp_tables[i];
-        writer.StartObject();
-        writer.Key("name");
-        writer.String(table->GetName().c_str());
-        writer.Key("tid");
-        writer.Uint(table->GetId());
-        writer.Key("pid");
-        writer.Uint(table->GetPid());
-        std::shared_ptr<LogReplicator> replicator = GetReplicator(table->GetId(), table->GetPid());
-        if (replicator) {
-            writer.Key("log_offset");
-            writer.Uint(replicator->GetLogOffset());
-        }
-        writer.Key("seg_cnt");
-        writer.Uint(table->GetSegCnt());
-        uint64_t total = 0;
-        uint64_t* stat = NULL;
-        uint32_t size = 0;
-        table->GetDataCnt(&stat, &size);
-        if (stat != NULL) {
-            writer.Key("data_cnt_stat");
-            writer.StartObject();
-            writer.Key("stat");
-            writer.StartArray();
-            for (size_t k = 0; k < size; k++) {
-                writer.Uint(stat[k]);
-                total += stat[k];
-            }
-            writer.EndArray();
-            writer.Key("total");
-            writer.Uint(total);
-            writer.EndObject();
-            delete stat;
-        }
-        writer.EndObject();
-    }
-    writer.EndArray();
-    writer.EndObject();
-	brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-	cntl->response_attachment().append(sb.GetString());
-}
-
-void TabletImpl::ShowMetric(RpcController* controller,
-            const ::rtidb::api::HttpRequest* request,
-            ::rtidb::api::HttpResponse* response,
-            Closure* done) {
-	brpc::ClosureGuard done_guard(done);
-	brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
-    const std::string key = "key";
-    ::rapidjson::StringBuffer sb;
-    ::rapidjson::Writer<::rapidjson::StringBuffer> writer(sb);
-    writer.StartObject();
-    writer.Key("datapoints");
-    writer.StartArray();
-
-    const std::string* pk = cntl->http_request().uri().GetQuery(key);
-    if (pk == NULL) {
-        writer.EndArray();
-        writer.EndObject();
-        cntl->response_attachment().append(sb.GetString());
-        return;
-    }
-
-    std::shared_ptr<Table> stat = GetTable(0, 0);
-    if (!stat) {
-        writer.EndArray();
-        writer.EndObject();
-        cntl->response_attachment().append(sb.GetString());
-        return;
-    }
-
-    ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = stat->NewIterator(*pk, ticket);
-    it->SeekToFirst();
-    uint32_t read_cnt = 0;
-    while (it->Valid() && read_cnt < FLAGS_metric_max_record_cnt) {
-        writer.StartArray();
-        uint32_t val = 0;
-        memcpy(static_cast<void*>(&val), it->GetValue()->data, 4);
-        writer.Uint(val);
-        writer.Uint(it->GetKey());
-        writer.EndArray();
-        it->Next();
-        read_cnt++;
-    }
-    writer.EndArray();
-    writer.EndObject();
-	cntl->response_attachment().append(sb.GetString());
-}
-
 void TabletImpl::ShowMemPool(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,
@@ -1773,7 +1642,22 @@ void TabletImpl::CheckZkClient() {
         }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+}
 
+int32_t TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
+                                      std::shared_ptr<Table>& table) {
+    for (int32_t i = 0; i < request->dimensions_size(); i++) {
+        if (table->GetIdxCnt() <= request->dimensions(i).idx()) {
+            PDLOG(WARNING, "invalid put request dimensions, request idx %u is greater than table idx cnt %u", 
+                    request->dimensions(i).idx(), table->GetIdxCnt());
+            return -1;
+        }
+        if (request->dimensions(i).key().length() <= 0) {
+            PDLOG(WARNING, "invalid put request dimension key is empty with idx %u", request->dimensions(i).idx());
+            return 1;
+        }
+    }
+    return 0;
 }
 
 }

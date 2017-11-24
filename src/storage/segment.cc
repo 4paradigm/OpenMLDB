@@ -20,7 +20,7 @@ namespace storage {
 const static StringComparator scmp;
 const static uint32_t data_block_size = sizeof(DataBlock);
 
-Segment::Segment():entries_(NULL),mu_(), data_cnt_(0){
+Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0){
     entries_ = new KeyEntries(12, 4, scmp);
 }
 
@@ -29,26 +29,30 @@ Segment::~Segment() {
 }
 
 uint64_t Segment::Release() {
-    uint64_t total_bytes = 0;
+    uint64_t cnt = 0;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
         if (it->GetValue() != NULL) {
-            total_bytes += it->GetValue()->Release();
-            total_bytes += it->GetKey().size();
+            cnt += it->GetValue()->Release();
         }
         delete it->GetValue();
         it->Next();
     }
     entries_->Clear();
     delete it;
-    return total_bytes;
+    return cnt;
 }
 
 void Segment::Put(const std::string& key,
         uint64_t time,
         const char* data,
         uint32_t size) {
+    DataBlock* db = new DataBlock(1, data, size);
+    Put(key, time, db);
+}
+
+void Segment::Put(const std::string& key, uint64_t time, DataBlock* row) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         std::lock_guard<std::mutex> lock(mu_);
@@ -60,10 +64,9 @@ void Segment::Put(const std::string& key,
             entries_->Insert(key, entry);
         }
     }
-    data_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(entry->mu);
-    DataBlock* db = new DataBlock(data, size);
-    entry->entries.Insert(time, db);
+    entry->entries.Insert(time, row);
 }
 
 bool Segment::Get(const std::string& key,
@@ -82,27 +85,27 @@ bool Segment::Get(const std::string& key,
     return true;
 }
 
-uint64_t Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node) {
-    uint64_t count = 0;
+void Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
     while (node != NULL) {
-        count ++;
+        gc_idx_cnt++;
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
         node = node->GetNextNoBarrier(0);
         PDLOG(DEBUG, "delete key %lld", tmp->GetKey());
-        // clear the value that node hold
-        // and clear node it's self
-        if (tmp->GetValue() != NULL) {
-            tmp->GetValue()->Release();
+        if (tmp->GetValue()->dim_cnt_down > 1) {
+            tmp->GetValue()->dim_cnt_down --;
+        }else {
+            PDLOG(DEBUG, "delele data block for key %lld", tmp->GetKey());
+            delete tmp->GetValue();
+            gc_record_cnt++;
         }
-        delete tmp->GetValue();
         delete tmp;
     }
-    return count;
 }
 
-uint64_t Segment::Gc4WithHead() {
+void Segment::Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t count = 0;
+    uint64_t old = gc_idx_cnt;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
@@ -129,15 +132,14 @@ uint64_t Segment::Gc4WithHead() {
                 std::lock_guard<std::mutex> lock(entry->mu);
                 SplitList(entry, ts, &node);
             }
-            count += FreeList(it->GetKey(), node);
+            FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
         }
         it->Next();
     }
-    PDLOG(INFO, "[GcWithHead] segment gc consumed %lld, count %lld",
-            (::baidu::common::timer::get_micros() - consumed)/1000, count);
-    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
+    PDLOG(DEBUG, "[Gc4Head] segment gc consumed %lld, count %lld",
+            (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
+    idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
     delete it;
-    return count;
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
@@ -148,9 +150,9 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64
 }
 
 // fast gc with no global pause
-uint64_t Segment::Gc4TTL(const uint64_t& time) {
+void Segment::Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t count = 0;
+    uint64_t old = gc_idx_cnt; 
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
@@ -160,37 +162,15 @@ uint64_t Segment::Gc4TTL(const uint64_t& time) {
             std::lock_guard<std::mutex> lock(entry->mu);
             SplitList(entry, time, &node);
         }
-        count += FreeList(it->GetKey(), node);
+        FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
         it->Next();
     }
-    PDLOG(INFO, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
-            (::baidu::common::timer::get_micros() - consumed)/1000, count);
-    data_cnt_.fetch_sub(count, boost::memory_order_relaxed);
+    PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
+            (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
+    idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
     delete it;
-    return count;
 }
 
-void Segment::BatchGet(const std::vector<std::string>& keys,
-                       std::map<uint32_t, DataBlock*>& datas,
-                       Ticket& ticket) {
-    KeyEntries::Iterator* it = entries_->NewIterator();
-    for (uint32_t i = 0; i < keys.size(); i++) {
-        const std::string& key = keys[i];
-        it->Seek(key);
-        if (!it->Valid()) {
-            continue;
-        }
-        KeyEntry* entry = it->GetValue();
-        ticket.Push(entry);
-        TimeEntries::Iterator* tit = entry->entries.NewIterator();
-        tit->SeekToFirst();
-        if (tit->Valid()) {
-            datas.insert(std::make_pair(i, tit->GetValue()));
-        }
-        delete tit;
-    }
-    delete it;
-}
 
 // Iterator
 Segment::Iterator* Segment::NewIterator(const std::string& key, Ticket& ticket) {
