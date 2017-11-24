@@ -798,7 +798,6 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         return;
     }
     op_index_++;
-
     std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
     op_data->start_time_ = ::baidu::common::timer::now_time();
     op_data->op_info_.set_op_id(op_index_);
@@ -808,7 +807,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     request->SerializeToString(&value);
     op_data->op_info_.set_data(value);
     op_data->task_status_ = ::rtidb::api::kDoing;
-    
+
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
     if (!task) {
@@ -867,11 +866,10 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         return;
     }
     task_map_.insert(std::make_pair(op_index_, op_data));
-    PDLOG(DEBUG, "add addreplica op ok. op_id[%lu]", op_index_);
+    PDLOG(INFO, "add addreplica op ok. op_id[%lu]", op_index_);
     cv_.notify_one();
     response->set_code(0);
     response->set_msg("ok");
-
 }
 
 void NameServerImpl::OnLocked() {
