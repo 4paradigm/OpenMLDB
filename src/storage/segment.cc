@@ -6,6 +6,8 @@
 //
 
 #include "storage/segment.h"
+
+#include "storage/record.h"
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
@@ -17,10 +19,9 @@ using ::baidu::common::DEBUG;
 namespace rtidb {
 namespace storage {
 
-const static StringComparator scmp;
-const static uint32_t data_block_size = sizeof(DataBlock);
+const static SliceComparator scmp;
 
-Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0){
+Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0){
     entries_ = new KeyEntries(12, 4, scmp);
 }
 
@@ -44,7 +45,7 @@ uint64_t Segment::Release() {
     return cnt;
 }
 
-void Segment::Put(const std::string& key,
+void Segment::Put(const Slice& key,
         uint64_t time,
         const char* data,
         uint32_t size) {
@@ -52,24 +53,27 @@ void Segment::Put(const std::string& key,
     Put(key, time, db);
 }
 
-void Segment::Put(const std::string& key, uint64_t time, DataBlock* row) {
+void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     KeyEntry* entry = entries_->Get(key);
+    uint32_t byte_size = 0; 
+    std::lock_guard<std::mutex> lock(mu_);
     if (entry == NULL || key.compare(entry->key)!=0) {
-        std::lock_guard<std::mutex> lock(mu_);
         entry = entries_->Get(key);
         // Need a double check
         if (entry == NULL || key.compare(entry->key) != 0) {
             entry = new KeyEntry();
             entry->key = key;
-            entries_->Insert(key, entry);
+            uint8_t height = entries_->Insert(key, entry);
+            byte_size += GetRecordPkIdxSize(height);
         }
     }
     idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
-    std::lock_guard<std::mutex> lock(entry->mu);
-    entry->entries.Insert(time, row);
+    uint8_t height = entry->entries.Insert(time, row);
+    byte_size = GetRecordTsIdxSize(height);
+    idx_byte_size_.fetch_add(byte_size, boost::memory_order_relaxed);
 }
 
-bool Segment::Get(const std::string& key,
+bool Segment::Get(const Slice& key,
                   const uint64_t time,
                   DataBlock** block) {
     if (block == NULL) {
@@ -85,17 +89,21 @@ bool Segment::Get(const std::string& key,
     return true;
 }
 
-void Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, DataBlock*>* node,
-                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
+void Segment::FreeList(const Slice& pk, 
+                       ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+                       uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
+                       uint64_t& gc_record_byte_size) {
     while (node != NULL) {
         gc_idx_cnt++;
         ::rtidb::base::Node<uint64_t, DataBlock*>* tmp = node;
+        idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         node = node->GetNextNoBarrier(0);
         PDLOG(DEBUG, "delete key %lld", tmp->GetKey());
         if (tmp->GetValue()->dim_cnt_down > 1) {
             tmp->GetValue()->dim_cnt_down --;
         }else {
             PDLOG(DEBUG, "delele data block for key %lld", tmp->GetKey());
+            gc_record_byte_size += GetRecordSize(tmp->GetValue()->size);
             delete tmp->GetValue();
             gc_record_cnt++;
         }
@@ -103,7 +111,7 @@ void Segment::FreeList(const std::string& pk, ::rtidb::base::Node<uint64_t, Data
     }
 }
 
-void Segment::Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
+void Segment::Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt;
     KeyEntries::Iterator* it = entries_->NewIterator();
@@ -129,10 +137,10 @@ void Segment::Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         if (cnt == 1) {
             {
-                std::lock_guard<std::mutex> lock(entry->mu);
+                std::lock_guard<std::mutex> lock(mu_);
                 SplitList(entry, ts, &node);
             }
-            FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
+            FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }
         it->Next();
     }
@@ -150,7 +158,7 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64
 }
 
 // fast gc with no global pause
-void Segment::Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt) {
+void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt; 
     KeyEntries::Iterator* it = entries_->NewIterator();
@@ -159,10 +167,10 @@ void Segment::Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_re
         KeyEntry* entry = it->GetValue();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
-            std::lock_guard<std::mutex> lock(entry->mu);
+            std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
         }
-        FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt);
+        FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
@@ -173,7 +181,7 @@ void Segment::Gc4TTL(const uint64_t& time, uint64_t& gc_idx_cnt, uint64_t& gc_re
 
 
 // Iterator
-Segment::Iterator* Segment::NewIterator(const std::string& key, Ticket& ticket) {
+Segment::Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         return NULL;

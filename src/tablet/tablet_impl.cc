@@ -590,6 +590,8 @@ void TabletImpl::GetTableStatus(RpcController* controller,
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
             status->set_record_cnt(table->GetRecordCnt());
+            status->set_record_byte_size(table->GetRecordByteSize());
+            status->set_record_idx_byte_size(table->GetRecordIdxByteSize());
             uint64_t record_idx_cnt = 0;
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
             for (;iit != table->GetMapping().end(); ++iit) {
