@@ -22,11 +22,11 @@ static inline uint32_t GetRecordSize(uint32_t value_size) {
 }
 
 // the input height which is the height of skiplist node 
-static inline uint32_t GetRecordPkIdxSize(uint8_t height) {
+static inline uint32_t GetRecordPkIdxSize(uint8_t height, uint32_t key_size) {
     // slice key 16
     // height 8
     // value pointer 8
-    return height * 8 + 8 + 8 + 16 + KEY_ENTRY_BYTE_SIZE + SKIPLIST_HEADER_BYTE_SIZE;
+    return height * 8 + 8 + 8 + 16 + KEY_ENTRY_BYTE_SIZE + SKIPLIST_HEADER_BYTE_SIZE+ key_size;
 }
 
 static inline uint32_t GetRecordTsIdxSize(uint8_t height) {

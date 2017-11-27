@@ -70,7 +70,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
             // use no free slice
             Slice no_free_key(pk, key.size());
             uint8_t height = entries_->Insert(no_free_key, entry);
-            byte_size += GetRecordPkIdxSize(height);
+            byte_size += GetRecordPkIdxSize(height, key.size());
             pk_cnt_.fetch_add(1, boost::memory_order_relaxed);
         }
     }
