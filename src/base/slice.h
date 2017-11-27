@@ -15,7 +15,7 @@ public:
   Slice() : need_free_(false), size_(0), data_("") { }
 
   // Create a slice that refers to d[0,n-1].
-  Slice(const char* d, size_t n) : need_free_(false), size_(0), data_(d) { }
+  Slice(const char* d, size_t n) : need_free_(false), size_(n), data_(d) { }
 
   // Create a slice that refers to the contents of "s"
   Slice(const std::string& s) : need_free_(false), size_(s.size()), data_(s.data()) { }

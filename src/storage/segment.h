@@ -165,7 +165,6 @@ public:
     }
 
 private:
-    void Dump();
     void FreeList(const Slice& pk, 
                   ::rtidb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, 
