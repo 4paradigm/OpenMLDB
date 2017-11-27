@@ -52,15 +52,43 @@ TEST_F(SegmentTest, PutAndGet) {
    ASSERT_EQ(e, t);
 }
 
-TEST_F(SegmentTest, MultiGet) {
+TEST_F(SegmentTest, PutAndScan) {
+   Segment segment; 
+   Slice pk("test1");
+   std::string value = "test0";
+   segment.Put(pk, 9527, value.c_str(), value.size());
+   segment.Put(pk, 9528, value.c_str(), value.size());
+   segment.Put(pk, 9528, value.c_str(), value.size());
+   segment.Put(pk, 9529, value.c_str(), value.size());
+   ASSERT_EQ(1, segment.GetPkCnt());
+   Ticket ticket;
+   Segment::Iterator* it = segment.NewIterator("test1", ticket);
+   ASSERT_EQ(4, it->GetSize());
+   it->Seek(9530);
+   ASSERT_TRUE(it->Valid());
+   ASSERT_EQ(9529, it->GetKey());
+   DataBlock* val = it->GetValue();
+   std::string result(val->data, val->size);
+   ASSERT_EQ("test0", result);
+   it->Next();
+   val = it->GetValue();
+   std::string result2(val->data, val->size);
+   ASSERT_EQ("test0", result2);
+   it->Next();
+   ASSERT_TRUE(it->Valid());
 }
 
 TEST_F(SegmentTest, Iterator) {
    Segment segment; 
-   segment.Put("pk", 9768, "test1", 5);
-   segment.Put("pk", 9769, "test2", 5);
+   Slice pk("test1");
+   segment.Put(pk, 9768, "test1", 5);
+   segment.Put(pk, 9768, "test1", 5);
+   segment.Put(pk, 9768, "test1", 5);
+   segment.Put(pk, 9769, "test2", 5);
+   ASSERT_EQ(1, segment.GetPkCnt());
    Ticket ticket;
-   Segment::Iterator* it = segment.NewIterator("pk", ticket);
+   Segment::Iterator* it = segment.NewIterator("test1", ticket);
+   ASSERT_EQ(4, it->GetSize());
    it->Seek(9769);
    ASSERT_EQ(9769, it->GetKey());
    DataBlock* value = it->GetValue();
@@ -71,12 +99,7 @@ TEST_F(SegmentTest, Iterator) {
    std::string result2(value->data, value->size);
    ASSERT_EQ("test1", result2);
    it->Next();
-   ASSERT_FALSE(it->Valid());
-   char data[400];
-   for (uint32_t i = 0; i < 50000; i++) {
-       std::string pk = "pk" + i;
-       segment.Put(pk, i, data, 400);
-   }
+   ASSERT_TRUE(it->Valid());
 }
 
 TEST_F(SegmentTest, TestGc4Head) {
@@ -132,6 +155,7 @@ TEST_F(SegmentTest, TestStat) {
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     ASSERT_EQ(2, segment.GetIdxCnt());
+    ASSERT_EQ(1, segment.GetPkCnt());
     segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(0, gc_idx_cnt);
     segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);

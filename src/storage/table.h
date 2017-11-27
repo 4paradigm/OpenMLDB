@@ -88,6 +88,7 @@ public:
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
         void SeekToFirst();
+        uint32_t GetSize();
     private:
         Segment::Iterator* it_;
     };

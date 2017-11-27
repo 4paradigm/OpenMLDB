@@ -62,7 +62,7 @@ typedef ::rtidb::base::Skiplist<uint64_t, DataBlock* , TimeComparator> TimeEntri
 
 class KeyEntry {
 public:
-    KeyEntry():entries(12, 4, tcmp), refs_(0){}
+    KeyEntry(const char* data, uint32_t size):key(data, size, true), entries(12, 4, tcmp), refs_(0){}
     ~KeyEntry() {}
 
     // just return the count of datablock
@@ -141,6 +141,7 @@ public:
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
         void SeekToFirst();
+        uint32_t GetSize();
     private:
         TimeEntries::Iterator* it_;
     };
@@ -151,15 +152,20 @@ public:
     void Gc4Head(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     Segment::Iterator* NewIterator(const Slice& key, Ticket& ticket);
 
-    uint64_t GetIdxCnt() {
+    inline uint64_t GetIdxCnt() {
         return idx_cnt_.load(boost::memory_order_relaxed);
     }
 
-    uint64_t GetIdxByteSize() {
+    inline uint64_t GetIdxByteSize() {
         return idx_byte_size_.load(boost::memory_order_relaxed);
     }
 
+    inline uint64_t GetPkCnt() {
+        return pk_cnt_.load(boost::memory_order_relaxed);
+    }
+
 private:
+    void Dump();
     void FreeList(const Slice& pk, 
                   ::rtidb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, 
@@ -173,6 +179,7 @@ private:
     std::mutex mu_;
     boost::atomic<uint64_t> idx_cnt_;
     boost::atomic<uint64_t> idx_byte_size_;
+    boost::atomic<uint64_t> pk_cnt_;
 };
 
 }// namespace storage

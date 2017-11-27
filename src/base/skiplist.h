@@ -290,6 +290,9 @@ public:
             Next();
         }
 
+        uint32_t GetSize() {
+            return list_->GetSize();    
+        }
     private:
         Node<K, V>* node_;
         Skiplist<K, V, Comparator>* const list_;

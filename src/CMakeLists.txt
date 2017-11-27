@@ -29,6 +29,10 @@ target_link_libraries(rtidb_py pthread common brpc rt ssl crypto dl leveldb prot
 add_executable(strings_test base/strings_test.cc)
 target_link_libraries(strings_test gtest pthread)
 
+add_executable(slice_test base/slice_test.cc)
+target_link_libraries(slice_test gtest pthread)
+
+
 add_executable(zk_test zk/zk_client_test.cc)
 target_link_libraries(zk_test gtest zk_client zookeeper_mt pthread common)
 

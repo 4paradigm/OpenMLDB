@@ -148,6 +148,37 @@ TEST_F(TableTest, Iterator) {
     delete table;
 }
 
+TEST_F(TableTest, Iterator_GetSize) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    table->Init();
+
+    table->Put("pk", 9527, "test", 4);
+    table->Put("pk", 9527, "test", 4);
+    table->Put("pk", 9528, "test0", 5);
+    Ticket ticket;
+    Table::Iterator* it = table->NewIterator("pk", ticket);
+    ASSERT_EQ(3, it->GetSize());
+    it->Seek(9528);
+    ASSERT_TRUE(it->Valid());
+    DataBlock* value1 = it->GetValue();
+    std::string value_str(value1->data, value1->size);
+    ASSERT_EQ("test0", value_str);
+    ASSERT_EQ(5, value1->size);
+    it->Next();
+    DataBlock* value2 = it->GetValue();
+    std::string value2_str(value2->data, value2->size);
+    ASSERT_EQ("test", value2_str);
+    ASSERT_EQ(4, value2->size);
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    delete it;
+    delete table;
+}
+
+
+
 TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));

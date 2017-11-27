@@ -97,6 +97,7 @@ bool Table::Put(const std::string& pk,
     segment->Put(spk, time, data, size);
     record_cnt_.fetch_add(1, boost::memory_order_relaxed);
     record_byte_size_.fetch_add(GetRecordSize(size));
+    PDLOG(DEBUG, "record key %s, value %s tid %u pid %u", pk.c_str(), data, id_, pid_);
     return true;
 }
 
@@ -240,6 +241,13 @@ DataBlock* Table::Iterator::GetValue() const {
 
 uint64_t Table::Iterator::GetKey() const {
     return it_->GetKey();
+}
+
+uint32_t Table::Iterator::GetSize() {
+    if (it_ == NULL) {
+        return 0;
+    }
+    return it_->GetSize();
 }
 
 Table::Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {

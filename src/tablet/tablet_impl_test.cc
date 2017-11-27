@@ -372,7 +372,6 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    table_meta->set_wal(true);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -382,7 +381,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9527);
-        prequest.set_value("test0");
+        prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
@@ -395,7 +394,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
-        prequest.set_value("test0");
+        prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
@@ -407,7 +406,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
-        prequest.set_value("test0");
+        prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
@@ -420,7 +419,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9529);
-        prequest.set_value("test0");
+        prequest.set_value("testx");
         prequest.set_tid(id);
         prequest.set_pid(1);
         ::rtidb::api::PutResponse presponse;
@@ -433,7 +432,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     sr.set_pid(1);
     sr.set_pk("test1");
     sr.set_st(9530);
-    sr.set_et(9526);
+    sr.set_et(0);
     sr.set_enable_remove_duplicated_record(true);
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
@@ -903,7 +902,7 @@ TEST_F(TabletImplTest, Snapshot) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();

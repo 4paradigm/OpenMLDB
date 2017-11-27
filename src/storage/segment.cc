@@ -8,6 +8,7 @@
 #include "storage/segment.h"
 
 #include "storage/record.h"
+#include "base/strings.h"
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
@@ -21,7 +22,7 @@ namespace storage {
 
 const static SliceComparator scmp;
 
-Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0){
+Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0){
     entries_ = new KeyEntries(12, 4, scmp);
 }
 
@@ -56,17 +57,24 @@ void Segment::Put(const Slice& key,
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     KeyEntry* entry = entries_->Get(key);
     uint32_t byte_size = 0; 
-    std::lock_guard<std::mutex> lock(mu_);
-    if (entry == NULL || key.compare(entry->key)!=0) {
+    if (entry == NULL || scmp(key, entry->key) != 0) {
+        std::lock_guard<std::mutex> lock(mu_);
         entry = entries_->Get(key);
         // Need a double check
-        if (entry == NULL || key.compare(entry->key) != 0) {
-            entry = new KeyEntry();
-            entry->key = key;
-            uint8_t height = entries_->Insert(key, entry);
+        if (entry == NULL || scmp(key, entry->key) != 0) {
+            PDLOG(DEBUG, "new pk entry %s", key.data());
+            // key entry will auto free the pk
+            char* pk = new char[key.size()];
+            memcpy(pk, key.data(), key.size());
+            entry = new KeyEntry(pk, (uint32_t)key.size());
+            // use no free slice
+            Slice no_free_key(pk, key.size());
+            uint8_t height = entries_->Insert(no_free_key, entry);
             byte_size += GetRecordPkIdxSize(height);
+            pk_cnt_.fetch_add(1, boost::memory_order_relaxed);
         }
     }
+    std::lock_guard<std::mutex> lock(mu_);
     idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
     byte_size = GetRecordTsIdxSize(height);
@@ -219,6 +227,13 @@ uint64_t Segment::Iterator::GetKey() const {
 
 void Segment::Iterator::SeekToFirst() {
     it_->SeekToFirst();
+}
+
+uint32_t Segment::Iterator::GetSize() {
+    if (it_ == NULL) {
+        return 0; 
+    }
+    return it_->GetSize();
 }
 
 }
