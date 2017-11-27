@@ -231,26 +231,38 @@ TEST_F(SnapshotReplicaTest, SendSnapshot) {
     sleep(2);
     ret = client.PauseSnapshot(tid, pid);
     ASSERT_TRUE(ret);
-    sleep(2);
+    
+    pid_t process_id = fork();
+    if (process_id < 0) {
+        ASSERT_TRUE(false);
+    } else if(process_id == 0) {
+        FLAGS_db_root_path = "/tmp/" + ::GenRand();
+        FLAGS_endpoint = "127.0.0.1:18530";
+        ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
+        tablet1->Init();
+        brpc::Server server1;
+        if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
+           PDLOG(WARNING, "fail to register tablet rpc service");
+           exit(1);
+        }
+        brpc::ServerOptions options1;
+        if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+            PDLOG(WARNING, "fail to start server %s", FLAGS_endpoint.c_str());
+            exit(1);
+        }
+        sleep(10);
 
-    FLAGS_db_root_path = "/tmp/" + ::GenRand();
-    FLAGS_endpoint = "127.0.0.1:18530";
-    ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
-    tablet1->Init();
-    brpc::Server server1;
-    if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
-       PDLOG(WARNING, "fail to register tablet rpc service");
-       exit(1);
+    } else {
+        sleep(3);
+        std::string follower_point = "127.0.0.1:18530";
+        //ret = client.SendSnapshot(tid, pid, follower_point, std::shared_ptr<::rtidb::api::TaskInfo>());
+        ::rtidb::client::TabletClient client2(follower_point);
+        client2.Init();
+        ::rtidb::api::GetTableStatusResponse response1;
+        ret = client2.GetTableStatus(response1);
+        ASSERT_TRUE(ret);
+        sleep(10);
     }
-    std::string follower_point = "127.0.0.1:18530";
-    if (server1.Start(follower_point.c_str(), &options) != 0) {
-        PDLOG(WARNING, "fail to start server %s", follower_point.c_str());
-        exit(1);
-    }
-
-    ret = client.SendSnapshot(tid, pid, follower_point, std::shared_ptr<::rtidb::api::TaskInfo>());
-    ASSERT_TRUE(ret);
-    sleep(10);
 }    
 
 }
