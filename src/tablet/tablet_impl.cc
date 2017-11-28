@@ -72,16 +72,16 @@ StreamReceiver::~StreamReceiver() {
     if (file_) {
         fclose(file_);
     }    
-    uint64_t combine_key = (uint64_t)tid_ << 32 | pid_;
+    std::string combine_key = std::to_string(tid_) + "_" + std::to_string(pid_) + "_" + file_name_;
     stream_receiver_set_.erase(combine_key);
 }
 
-::rtidb::base::set<uint64_t> StreamReceiver::stream_receiver_set_;
+::rtidb::base::set<std::string> StreamReceiver::stream_receiver_set_;
 
 int StreamReceiver::Init() {
-    uint64_t combine_key = (uint64_t)tid_ << 32 | pid_;
+    std::string combine_key = std::to_string(tid_) + "_" + std::to_string(pid_) + "_" + file_name_;
     if (stream_receiver_set_.contain(combine_key)) {
-        PDLOG(WARNING, "stream is exisit! tid[%u] pid[%u]", tid_, pid_);
+        PDLOG(WARNING, "stream is exisit! tid[%u] pid[%u] file[%s]", tid_, pid_, file_name_.c_str());
         return -1;
     }
     stream_receiver_set_.insert(combine_key);
@@ -129,7 +129,7 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
 				+ "/snapshot/" + file_name_;
     std::string tmp_file_path = full_path + ".tmp";
     rename(tmp_file_path.c_str(), full_path.c_str());
-    PDLOG(INFO, "file %s recived. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
+    PDLOG(INFO, "file %s received. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
     brpc::StreamClose(id);
     delete this;
 }
@@ -926,8 +926,8 @@ void TabletImpl::CreateStream(RpcController* controller,
         delete stream_receiver;
         response->set_code(-1);
         response->set_msg("stream_receiver init failed");
-        PDLOG(WARNING, "init stream_receiver failed. remote side %s", 
-                        butil::endpoint2str(cntl->remote_side()).c_str());
+        PDLOG(WARNING, "init stream_receiver failed. remote side %s file %s", 
+                        butil::endpoint2str(cntl->remote_side()).c_str(), request->file_name().c_str());
         return;
     }
     brpc::StreamOptions stream_options;
@@ -936,10 +936,14 @@ void TabletImpl::CreateStream(RpcController* controller,
     if (brpc::StreamAccept(&sd, *cntl, &stream_options) != 0) {
         delete stream_receiver;
         cntl->SetFailed("Fail to accept stream");
-        PDLOG(WARNING, "accept stream from %s failed", butil::endpoint2str(cntl->remote_side()).c_str());
+        PDLOG(WARNING, "accept stream from %s failed. file %s", 
+                        butil::endpoint2str(cntl->remote_side()).c_str(), 
+                        request->file_name().c_str());
         return;
     }
-    PDLOG(INFO, "create stream succeed. remote side %s", butil::endpoint2str(cntl->remote_side()).c_str());
+    PDLOG(INFO, "create stream succeed. remote side %s file %s tid %u pid %u", 
+                 butil::endpoint2str(cntl->remote_side()).c_str(),
+                 request->file_name().c_str(), tid, pid);
     response->set_msg("ok");
     response->set_code(0);
 }
@@ -954,7 +958,16 @@ void TabletImpl::SendSnapshot(RpcController* controller,
 	uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
     bool has_error = true;
+    std::string sync_snapshot_key = request->endpoint() + "_" + 
+                    std::to_string(tid) + "_" + std::to_string(pid);
 	do {
+        if (sync_snapshot_set_.find(sync_snapshot_key) != sync_snapshot_set_.end()) {
+            PDLOG(WARNING, "snapshot is sending. tid %u pid %u endpoint %s", 
+                            tid, pid, request->endpoint().c_str());
+			response->set_code(-1);
+			response->set_msg("snapshot is sending");
+            break;
+        }
 		if (!table) {
 			PDLOG(WARNING, "table not exist. tid %ld, pid %ld", tid, pid);
 			response->set_code(-1);
@@ -1006,6 +1019,7 @@ void TabletImpl::SendSnapshot(RpcController* controller,
     if (has_error) {
         return;
     }
+    sync_snapshot_set_.insert(sync_snapshot_key);
     task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
                 request->endpoint(), tid, pid, task_ptr));
     response->set_code(0);
@@ -1014,18 +1028,8 @@ void TabletImpl::SendSnapshot(RpcController* controller,
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
             std::shared_ptr<::rtidb::api::TaskInfo> task) {
-    std::string sync_snapshot_key = endpoint + "_" + 
-                    std::to_string(tid) + "_" + std::to_string(pid);
     bool has_error = true;
     do {
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (sync_snapshot_set_.find(sync_snapshot_key) != sync_snapshot_set_.end()) {
-                PDLOG(WARNING, "snapshot is sending. tid %ld, pid %ld", tid, pid);
-                break;
-            }
-            sync_snapshot_set_.insert(sync_snapshot_key);
-        }
 		// send manifest file
 		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
 			PDLOG(WARNING, "send MANIFEST failed");
@@ -1061,6 +1065,8 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 			task->set_status(::rtidb::api::kDone);
 		}
 	}
+    std::string sync_snapshot_key = endpoint + "_" + 
+                    std::to_string(tid) + "_" + std::to_string(pid);
 	sync_snapshot_set_.erase(sync_snapshot_key);
 }            
 
@@ -1104,7 +1110,6 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 		return -1;
 	}
 	char buffer[FLAGS_stream_block_size];
-	butil::IOBuf data;
     // compute the used time(microseconds) that send a block by limit bandwidth. 
     // limit_time = (FLAGS_stream_block_size / FLAGS_stream_bandwidth_limit) * 1000 * 1000 
     uint64_t limit_time = 0;
@@ -1117,12 +1122,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         if (len < ::rtidb::log::kBlockSize) {
             if (feof(file)) {
 				if (len > 0) {
-					data.clear();
-					data.append(buffer, len);
-					if (brpc::StreamWrite(stream, data) != 0) {
-        				PDLOG(WARNING, "stream write failed. file %s", file_name.c_str());
-						ret = -1;
-					}
+                    ret = StreamWrite(stream, buffer, len, limit_time);
 				}
 				break;
             }
@@ -1130,36 +1130,10 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 			ret = -1;
 			break;
         }
-		data.clear();
-		data.append(buffer, len);
-        uint64_t cur_time = ::baidu::common::timer::get_micros();
-        while (true) {
-            int ret_code = brpc::StreamWrite(stream, data);
-            if (ret_code == 0) {
-                PDLOG(DEBUG, "send data. size %u file %s", len, file_name.c_str());
-                break;
-            } else if (ret_code == EAGAIN) {
-                const timespec duetime = butil::milliseconds_from_now(FLAGS_stream_wait_time_ms);
-                if (brpc::StreamWait(stream, &duetime) == EINVAL) {
-                    PDLOG(WARNING, "stream closed! tid %u pid %u", tid, pid);
-                    ret = -1;
-                    break;
-                }
-                PDLOG(DEBUG, "ret_code is EAGAIN, tid %u pid %u. wait %d milliseconds", 
-                                tid, pid, FLAGS_stream_wait_time_ms);
-            } else { 
-                PDLOG(WARNING, "stream write failed. file %s", file_name.c_str());
-                ret = -1;
-                break;
-            }
-        }
-        if (ret == -1) {
+        if (StreamWrite(stream, buffer, len, limit_time) < 0) {
+            PDLOG(WARNING, "stream write failed. tid %u pid %u file %s", tid, pid, file_name.c_str());
+            ret = -1;
             break;
-        }
-        uint64_t time_used = ::baidu::common::timer::get_micros() - cur_time;
-        if (limit_time > time_used) {
-            PDLOG(DEBUG, "sleep %lu us, limit_time %lu time_used %lu", limit_time - time_used, limit_time, time_used);
-            std::this_thread::sleep_for(std::chrono::microseconds(limit_time - time_used));
         }
 	}
 	fclose(file);
@@ -1168,6 +1142,38 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
     	PDLOG(INFO, "send file %s success", file_name.c_str());
 	}
 	return ret;
+}
+
+int TabletImpl::StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time) {
+    if (buffer == NULL) {
+        return -1;
+    }
+    uint64_t cur_time = ::baidu::common::timer::get_micros();
+	butil::IOBuf data;
+    data.clear();
+    data.append(buffer, len);
+    while (true) {
+        int ret_code = brpc::StreamWrite(stream, data);
+        if (ret_code == 0) {
+            break;
+        } else if (ret_code == EAGAIN) {
+            const timespec duetime = butil::milliseconds_from_now(FLAGS_stream_wait_time_ms);
+            if (brpc::StreamWait(stream, &duetime) == EINVAL) {
+                PDLOG(WARNING, "stream closed!");
+                return -1;
+            }
+            PDLOG(DEBUG, "ret_code is EAGAIN. wait %d milliseconds", FLAGS_stream_wait_time_ms);
+        } else { 
+            PDLOG(WARNING, "stream write failed");
+            return -1;
+        }
+    }
+    uint64_t time_used = ::baidu::common::timer::get_micros() - cur_time;
+    if (limit_time > time_used) {
+        PDLOG(DEBUG, "sleep %lu us, limit_time %lu time_used %lu", limit_time - time_used, limit_time, time_used);
+        std::this_thread::sleep_for(std::chrono::microseconds(limit_time - time_used));
+    }
+    return 0;
 }
 
 void TabletImpl::PauseSnapshot(RpcController* controller,
@@ -1414,14 +1420,14 @@ void TabletImpl::LoadTable(RpcController* controller,
             table->SchedGc();
             if (ttl > 0) {
                 gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
-                PDLOG(INFO, "table %s with tid %ld pid %ld enable ttl %ld", name.c_str(), tid, pid, ttl);
             }
+            PDLOG(INFO, "load table success. name %s tid %ld pid %ld ttl %ld", name.c_str(), tid, pid, ttl);
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
                 return;
             }        
-        }else {
+        } else {
            DeleteTableInternal(tid, pid);
         }
     } while(0);

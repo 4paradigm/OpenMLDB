@@ -54,7 +54,7 @@ private:
     uint32_t pid_;
     uint64_t size_;
 	FILE* file_;
-	static ::rtidb::base::set<uint64_t> stream_receiver_set_;
+	static ::rtidb::base::set<std::string> stream_receiver_set_;
 };
 
 class TabletImpl : public ::rtidb::api::TabletServer {
@@ -201,6 +201,8 @@ private:
                         std::shared_ptr<::rtidb::api::TaskInfo> task);
 
     int SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid, const std::string& file_name);
+
+    int StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time);
 
     void SchedMakeSnapshot();
 

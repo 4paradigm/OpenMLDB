@@ -128,6 +128,8 @@ private:
 
     bool RecoverMakeSnapshot(std::shared_ptr<OPData> op_data);
 
+    bool RecoverAddReplica(std::shared_ptr<OPData> op_data);
+
     void SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list);
 
     // Get the lock
