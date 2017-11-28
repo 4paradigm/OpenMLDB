@@ -73,6 +73,20 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info) {
     return false;
 }
 
+bool NsClient::AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint) {
+    ::rtidb::nameserver::AddReplicaNSRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_name(name);
+    request.set_pid(pid);
+    request.set_endpoint(endpoint);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaNS,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 }
 }
 

@@ -69,7 +69,11 @@ StreamReceiver::StreamReceiver(const std::string& file_name, uint32_t tid, uint3
         file_name_(file_name), tid_(tid), pid_(pid), size_(0), file_(NULL) {}
 
 StreamReceiver::~StreamReceiver() {
-    fclose(file_);
+    if (file_) {
+        fclose(file_);
+    }    
+    uint64_t combine_key = (uint64_t)tid_ << 32 | pid_;
+    stream_receiver_set_.erase(combine_key);
 }
 
 ::rtidb::base::set<uint64_t> StreamReceiver::stream_receiver_set_;
@@ -80,6 +84,7 @@ int StreamReceiver::Init() {
         PDLOG(WARNING, "stream is exisit! tid[%u] pid[%u]", tid_, pid_);
         return -1;
     }
+    stream_receiver_set_.insert(combine_key);
     std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_)
 				+ "/snapshot/";
     if (!::rtidb::base::MkdirRecur(tmp_file_path)) {
@@ -92,7 +97,6 @@ int StreamReceiver::Init() {
         PDLOG(WARNING, "fail to open file %s", full_path.c_str());
         return -1;
     }
-    stream_receiver_set_.insert(combine_key);
     file_ = file;
     return 0;
 }
@@ -125,10 +129,8 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
 				+ "/snapshot/" + file_name_;
     std::string tmp_file_path = full_path + ".tmp";
     rename(tmp_file_path.c_str(), full_path.c_str());
-    uint64_t combine_key = (uint64_t)tid_ << 32 | pid_;
     PDLOG(INFO, "file %s recived. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
     brpc::StreamClose(id);
-    stream_receiver_set_.erase(combine_key);
     delete this;
 }
 

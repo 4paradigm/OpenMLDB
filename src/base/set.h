@@ -1,10 +1,9 @@
 //
-// file_util.h
+// set.h
 // Copyright (C) 2017 4paradigm.com
 // Author vagrant
 // Date 2017-11-28
 //
-
 
 #ifndef RTIDB_SET_H
 #define RTIDB_SET_H

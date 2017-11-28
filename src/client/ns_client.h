@@ -37,6 +37,8 @@ public:
     bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response);
 
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info);
+
+    bool AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint);
 	
 private:
     std::string endpoint_;

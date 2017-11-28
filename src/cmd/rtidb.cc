@@ -149,13 +149,31 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
         return;
     }
     try {
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[2]);
-        bool ok = client->MakeSnapshot(parts[1], tid);
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        bool ok = client->MakeSnapshot(parts[1], pid);
         if (!ok) {
             std::cout << "Fail to makesnapshot" << std::endl;
             return;
         }
         std::cout << "MakeSnapshot ok" << std::endl;
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+    } 
+}
+
+void HandleNSAddReplica(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        bool ok = client->AddReplica(parts[1], pid, parts[3]);
+        if (!ok) {
+            std::cout << "Fail to addreplica" << std::endl;
+            return;
+        }
+        std::cout << "AddReplica ok" << std::endl;
     } catch(std::exception const& e) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     } 
@@ -1223,6 +1241,8 @@ void StartNsClient() {
             HandleNSCreateTable(parts, &client);
         } else  if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
+        } else  if (parts[0] == "addreplica") {
+            HandleNSAddReplica(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
