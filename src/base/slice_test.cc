@@ -23,8 +23,17 @@ TEST_F(SliceTest, Compare) {
     Slice b("test1");
     ASSERT_EQ(0, a.compare(b));
     ASSERT_TRUE(a==b);
-
     ASSERT_EQ(sizeof(a), 16);
+}
+
+
+TEST_F(SliceTest, Assign) {
+    {
+        char* data = new char[2];
+        Slice a(data, 2, true);
+        Slice b = a;
+    }
+    ASSERT_TRUE(true);
 }
 
 }

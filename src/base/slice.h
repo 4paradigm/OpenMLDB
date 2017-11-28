@@ -50,6 +50,8 @@ public:
     return data_[n];
   }
 
+  Slice(const Slice& s):need_free_(false), size_(s.size()), data_(s.data()){}
+
   // Change this slice to refer to an empty array
   void clear() { data_ = ""; size_ = 0; }
 

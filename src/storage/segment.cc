@@ -63,13 +63,10 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
         // Need a double check
         if (entry == NULL || scmp(key, entry->key) != 0) {
             PDLOG(DEBUG, "new pk entry %s", key.data());
-            // key entry will auto free the pk
             char* pk = new char[key.size()];
             memcpy(pk, key.data(), key.size());
             entry = new KeyEntry(pk, (uint32_t)key.size());
-            // use no free slice
-            Slice no_free_key(pk, key.size());
-            uint8_t height = entries_->Insert(no_free_key, entry);
+            uint8_t height = entries_->Insert(entry->key, entry);
             byte_size += GetRecordPkIdxSize(height, key.size());
             pk_cnt_.fetch_add(1, boost::memory_order_relaxed);
         }
@@ -77,7 +74,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     std::lock_guard<std::mutex> lock(mu_);
     idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
-    byte_size = GetRecordTsIdxSize(height);
+    byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, boost::memory_order_relaxed);
 }
 
