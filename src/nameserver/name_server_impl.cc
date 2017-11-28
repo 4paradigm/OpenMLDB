@@ -223,7 +223,6 @@ bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
 
     SkipDoneTask(op_data->op_info_.task_index(), op_data->task_list_);
-    cv_.notify_one();
     return true;
 }
 
@@ -968,7 +967,6 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
 
     SkipDoneTask(op_data->op_info_.task_index(), op_data->task_list_);
-    cv_.notify_one();
     return true;
 }
 
