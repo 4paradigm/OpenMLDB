@@ -14,6 +14,7 @@
 #include "storage/snapshot.h"
 #include "storage/table.h"
 #include "thread_pool.h"
+#include "base/set.h"
 #include "zk/zk_client.h"
 #include <map>
 #include <list>
@@ -39,7 +40,7 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snap
 
 class StreamReceiver : public brpc::StreamInputHandler {
 public:
-	StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid, std::mutex* mu);
+	StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid);
 	virtual ~StreamReceiver();
     int Init();
     virtual int on_received_messages(brpc::StreamId id,
@@ -51,9 +52,9 @@ private:
 	std::string file_name_;
     uint32_t tid_;
     uint32_t pid_;
+    uint64_t size_;
 	FILE* file_;
-    std::mutex* mu_;
-	static std::set<uint64_t> stream_receiver_set_;
+	static ::rtidb::base::set<uint64_t> stream_receiver_set_;
 };
 
 class TabletImpl : public ::rtidb::api::TabletServer {

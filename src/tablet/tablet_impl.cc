@@ -65,18 +65,18 @@ DECLARE_int32(zk_keep_alive_check_interval);
 namespace rtidb {
 namespace tablet {
 
-StreamReceiver::StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid, std::mutex* mu):
-        file_name_(file_name), tid_(tid), pid_(pid), file_(NULL), mu_(mu) {}
+StreamReceiver::StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid):
+        file_name_(file_name), tid_(tid), pid_(pid), size_(0), file_(NULL) {}
 
 StreamReceiver::~StreamReceiver() {
     fclose(file_);
 }
 
-std::set<uint64_t> StreamReceiver::stream_receiver_set_ = std::set<uint64_t>();
+::rtidb::base::set<uint64_t> StreamReceiver::stream_receiver_set_;
 
 int StreamReceiver::Init() {
     uint64_t combine_key = (uint64_t)tid_ << 32 | pid_;
-    if (stream_receiver_set_.find(combine_key) != stream_receiver_set_.end()) {
+    if (stream_receiver_set_.contain(combine_key)) {
         PDLOG(WARNING, "stream is exisit! tid[%u] pid[%u]", tid_, pid_);
         return -1;
     }
@@ -92,6 +92,7 @@ int StreamReceiver::Init() {
         PDLOG(WARNING, "fail to open file %s", full_path.c_str());
         return -1;
     }
+    stream_receiver_set_.insert(combine_key);
     file_ = file;
     return 0;
 }
@@ -110,12 +111,13 @@ int StreamReceiver::on_received_messages(brpc::StreamId id,
         if (r < data.size()) {
             PDLOG(WARNING, "write error. tid[%u] pid[%u]", tid_, pid_);
         }
+        size_ += r;
     }
 	return 0;
 }
 
 void StreamReceiver::on_idle_timeout(brpc::StreamId id) {
-    PDLOG(WARNING, "on_idle_timeout");
+    PDLOG(WARNING, "on_idle_timeout. tid %u pid %u", tid_, pid_);
 }
 
 void StreamReceiver::on_closed(brpc::StreamId id) {
@@ -124,9 +126,8 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
     std::string tmp_file_path = full_path + ".tmp";
     rename(tmp_file_path.c_str(), full_path.c_str());
     uint64_t combine_key = (uint64_t)tid_ << 32 | pid_;
-    PDLOG(INFO, "file %s recived. tid %u pid %u", file_name_.c_str(), tid_, pid_);
+    PDLOG(INFO, "file %s recived. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
     brpc::StreamClose(id);
-    std::lock_guard<std::mutex> lock(*mu_);
     stream_receiver_set_.erase(combine_key);
     delete this;
 }
@@ -918,7 +919,7 @@ void TabletImpl::CreateStream(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     uint32_t tid = request->tid(); 
     uint32_t pid = request->pid(); 
-    StreamReceiver* stream_receiver = new StreamReceiver(request->file_name(), tid, pid, &mu_);
+    StreamReceiver* stream_receiver = new StreamReceiver(request->file_name(), tid, pid);
 	if (stream_receiver->Init() < 0) {
         delete stream_receiver;
         response->set_code(-1);
@@ -1082,7 +1083,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 
     std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid)
 				+ "/snapshot/" + file_name;
-    PDLOG(WARNING, "full path %s", full_path.c_str());
+    PDLOG(INFO, "send file %s to %s", full_path.c_str(), endpoint.c_str());
 	FILE* file = fopen(full_path.c_str(), "rb");
 	if (file == NULL) {
         PDLOG(WARNING, "fail to open file %s", full_path.c_str());
@@ -1104,7 +1105,10 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 	butil::IOBuf data;
     // compute the used time(microseconds) that send a block by limit bandwidth. 
     // limit_time = (FLAGS_stream_block_size / FLAGS_stream_bandwidth_limit) * 1000 * 1000 
-    uint64_t limit_time = ((uint64_t)FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
+    uint64_t limit_time = 0;
+    if (FLAGS_stream_bandwidth_limit > 0) {
+        limit_time = ((uint64_t)FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
+    }    
 	int ret = 0;
 	while (true) {
 		size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);

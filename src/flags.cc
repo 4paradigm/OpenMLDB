@@ -52,7 +52,7 @@ DEFINE_int32(request_timeout_ms, 500, "request timeout");
 
 DEFINE_int32(stream_wait_time_ms, 5, "the wait time when send too fast");
 DEFINE_int32(stream_block_size, 4 * 1024 * 1024, "config the write/read block size in streaming");
-DEFINE_int32(stream_bandwidth_limit, 1 * 1204 * 1024, "the limit bandwidth. Byte/S");
+DEFINE_int32(stream_bandwidth_limit, 1 * 1204 * 1024, "the limit bandwidth. Byte/Second");
 
 
 // if set 23, the task will execute 23:00 every day

@@ -192,51 +192,13 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 }*/
 
 TEST_F(SnapshotReplicaTest, SendSnapshot) {
-    FLAGS_db_root_path = "/tmp/" + ::GenRand();
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    tablet->Init();
-    brpc::Server server;
-    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
-       PDLOG(WARNING, "fail to register tablet rpc service");
-       exit(1);
-    }
-    brpc::ServerOptions options;
-    std::string leader_point = "127.0.0.1:18529";
-    if (server.Start(leader_point.c_str(), &options) != 0) {
-        PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
-        exit(1);
-    }
-
-    uint32_t tid = 2;
-    uint32_t pid = 123;
-    ::rtidb::client::TabletClient client(leader_point);
-    client.Init();
-    std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
-    ASSERT_TRUE(ret);
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    ret = client.Put(tid, pid, "testkey", cur_time, "value1");
-    ASSERT_TRUE(ret);
-
-    uint32_t count = 0;
-    while (count < 10) {
-        count++;
-        char key[100];
-        snprintf(key, 100, "test%u", count);
-        client.Put(tid, pid, key, cur_time, key);
-    }
-
-    ret = client.MakeSnapshot(tid, pid);
-    ASSERT_TRUE(ret);
-    sleep(2);
-    ret = client.PauseSnapshot(tid, pid);
-    ASSERT_TRUE(ret);
     
     pid_t process_id = fork();
     if (process_id < 0) {
         ASSERT_TRUE(false);
     } else if(process_id == 0) {
         FLAGS_db_root_path = "/tmp/" + ::GenRand();
+        printf("db_root_path[%s]\n", FLAGS_db_root_path.c_str());
         FLAGS_endpoint = "127.0.0.1:18530";
         ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
         tablet1->Init();
@@ -253,13 +215,52 @@ TEST_F(SnapshotReplicaTest, SendSnapshot) {
         sleep(10);
 
     } else {
+        FLAGS_db_root_path = "/tmp/" + ::GenRand();
+        ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+        tablet->Init();
+        brpc::Server server;
+        if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+           PDLOG(WARNING, "fail to register tablet rpc service");
+           exit(1);
+        }
+        brpc::ServerOptions options;
+        std::string leader_point = "127.0.0.1:18529";
+        if (server.Start(leader_point.c_str(), &options) != 0) {
+            PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
+            exit(1);
+        }
+
+        uint32_t tid = 2;
+        uint32_t pid = 123;
+        ::rtidb::client::TabletClient client(leader_point);
+        client.Init();
+        std::vector<std::string> endpoints;
+        bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+        ASSERT_TRUE(ret);
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        ret = client.Put(tid, pid, "testkey", cur_time, "value1");
+        ASSERT_TRUE(ret);
+
+        uint32_t count = 0;
+        while (count < 10) {
+            count++;
+            char key[100];
+            snprintf(key, 100, "test%u", count);
+            client.Put(tid, pid, key, cur_time, key);
+        }
+
+        ret = client.MakeSnapshot(tid, pid);
+        ASSERT_TRUE(ret);
+        sleep(2);
+        ret = client.PauseSnapshot(tid, pid);
+        ASSERT_TRUE(ret);
         sleep(3);
         std::string follower_point = "127.0.0.1:18530";
-        //ret = client.SendSnapshot(tid, pid, follower_point, std::shared_ptr<::rtidb::api::TaskInfo>());
-        ::rtidb::client::TabletClient client2(follower_point);
+        ret = client.SendSnapshot(tid, pid, follower_point, std::shared_ptr<::rtidb::api::TaskInfo>());
+        /*::rtidb::client::TabletClient client2(follower_point);
         client2.Init();
         ::rtidb::api::GetTableStatusResponse response1;
-        ret = client2.GetTableStatus(response1);
+        ret = client2.GetTableStatus(response1);*/
         ASSERT_TRUE(ret);
         sleep(10);
     }
