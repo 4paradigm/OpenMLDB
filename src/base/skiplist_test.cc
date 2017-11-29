@@ -4,6 +4,8 @@
 
 #include "base/skiplist.h"
 #include "gtest/gtest.h"
+#include "base/slice.h"
+#include <boost/atomic.hpp>
 
 namespace rtidb {
 namespace base {
@@ -22,6 +24,15 @@ public:
     ~SkiplistTest() {}
 
 };
+
+
+struct SliceComparator {
+    int operator()(const Slice& a, const Slice& b) const {
+        return a.compare(b);
+    }
+};
+
+
 
 
 struct Comparator {
@@ -46,6 +57,10 @@ struct DescComparator {
     }
 };
 
+struct KE {
+    Slice k;
+    uint32_t v;
+};
 
 
 struct StrComparator {
@@ -67,6 +82,26 @@ TEST_F(NodeTest, SetNext) {
     Node<uint32_t, uint32_t>* node_ptr = node.GetNext(1);
     ASSERT_EQ(3, node_ptr->GetValue());
     ASSERT_EQ(3, node_ptr->GetKey());
+}
+
+TEST_F(NodeTest, NodeByteSize) {
+    boost::atomic<Node<Slice, std::string*>* > node0[12];
+    ASSERT_EQ(96, sizeof(node0));
+}
+
+
+
+TEST_F(NodeTest, SliceTest)  {
+    SliceComparator cmp;
+    Skiplist<Slice, KE*, SliceComparator> sl(12, 4, cmp);
+    Slice key("test1");
+    KE* v = new KE();
+    v->k = key;
+    v->v = 1;
+    sl.Insert(key, v);
+    Slice pk("test1");
+    KE* n = sl.Get(pk);
+    ASSERT_TRUE(pk.compare(n->k) == 0);
 }
 
 TEST_F(NodeTest, AddToFirst) {
@@ -269,7 +304,7 @@ TEST_F(SkiplistTest, Remove) {
     std::string k2 = "b";
     std::string v3="c";
     sl.Insert(k2, v3);
-    std::string k3 = "c";
+    std::string k3="c";
     Node<std::string, std::string>* none_exist_node = sl.Remove(k3);
     ASSERT_FALSE(none_exist_node != NULL);
     Node<std::string, std::string>* node = sl.Remove(k2);
@@ -320,6 +355,7 @@ TEST_F(SkiplistTest, Duplicate) {
     }
 
     Skiplist<uint32_t, uint32_t, DescComparator>::Iterator* it = sl.NewIterator();
+    ASSERT_EQ(3, it->GetSize());
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(2, it->GetKey());

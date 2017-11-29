@@ -8,6 +8,8 @@
 #include "storage/table.h"
 
 #include "base/hash.h"
+#include "base/slice.h"
+#include "storage/record.h"
 #include "logging.h"
 #include "timer.h"
 #include <boost/lexical_cast.hpp>
@@ -19,10 +21,11 @@ using ::baidu::common::DEBUG;
 
 DECLARE_string(db_root_path);
 
+
 namespace rtidb {
 namespace storage {
 
-const static uint32_t SEED = 9527;
+const static uint32_t SEED = (uint32_t)::baidu::common::timer::now_time();
 
 Table::Table(const std::string& name,
         uint32_t id,
@@ -37,7 +40,7 @@ Table::Table(const std::string& name,
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false)
+    mapping_(mapping), segment_released_(false), record_byte_size_(0)
 {}
 
 Table::Table(const std::string& name,
@@ -90,8 +93,11 @@ bool Table::Put(const std::string& pk,
         index = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
     Segment* segment = segments_[0][index];
-    segment->Put(pk, time, data, size);
+    Slice spk(pk);
+    segment->Put(spk, time, data, size);
     record_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    record_byte_size_.fetch_add(GetRecordSize(size));
+    PDLOG(DEBUG, "record key %s, value %s tid %u pid %u", pk.c_str(), data, id_, pid_);
     return true;
 }
 
@@ -104,7 +110,8 @@ bool Table::Put(uint64_t time,
                                      value.length());
     Dimensions::const_iterator it = dimensions.begin();
     for (;it != dimensions.end(); ++it) {
-        bool ok = Put(it->key(), time, block, it->idx());
+        Slice spk(it->key());
+        bool ok = Put(spk, time, block, it->idx());
         // decr the data block dimension count
         if (!ok) {
             block->dim_cnt_down --;
@@ -117,11 +124,12 @@ bool Table::Put(uint64_t time,
         return false;
     }
     record_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    record_byte_size_.fetch_add(GetRecordSize(value.length()));
     return true;
 }
 
 
-bool Table::Put(const std::string& pk,
+bool Table::Put(const Slice& pk,
                 uint64_t time, 
                 DataBlock* row,
                 uint32_t idx) {
@@ -130,12 +138,12 @@ bool Table::Put(const std::string& pk,
     }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.size(), SEED) % seg_cnt_;
+        seg_idx = ::rtidb::base::hash(pk.data(), pk.size(), SEED) % seg_cnt_;
     }
     Segment* segment = segments_[idx][seg_idx];
     segment->Put(pk, time, row);
     PDLOG(DEBUG, "add row to index %u with pk %s value size %u for tid %u pid %u ok", idx,
-               pk.c_str(), row->size, id_, pid_);
+               pk.data(), row->size, id_, pid_);
     return true;
 }
 
@@ -170,14 +178,16 @@ uint64_t Table::SchedGc() {
     uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
+    uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             Segment* segment = segments_[i][j];
-            segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt);
+            segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
     record_cnt_.fetch_sub(gc_record_cnt, boost::memory_order_relaxed);
+    record_byte_size_.fetch_sub(gc_record_byte_size, boost::memory_order_relaxed);
     PDLOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
             gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
     return gc_record_cnt;
@@ -233,6 +243,13 @@ uint64_t Table::Iterator::GetKey() const {
     return it_->GetKey();
 }
 
+uint32_t Table::Iterator::GetSize() {
+    if (it_ == NULL) {
+        return 0;
+    }
+    return it_->GetSize();
+}
+
 Table::Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
     return NewIterator(0, pk, ticket); 
 }
@@ -246,8 +263,19 @@ Table::Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticke
     if (seg_cnt_ > 1) {
         seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
     }
+    Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
-    return new Table::Iterator(segment->NewIterator(pk, ticket));
+    return new Table::Iterator(segment->NewIterator(spk, ticket));
+}
+
+uint64_t Table::GetRecordIdxByteSize() {
+    uint64_t record_idx_byte_size = 0;
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            record_idx_byte_size += segments_[i][j]->GetIdxByteSize(); 
+        }
+    }
+    return record_idx_byte_size;
 }
 
 uint64_t Table::GetRecordIdxCnt() {

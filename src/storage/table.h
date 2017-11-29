@@ -16,6 +16,8 @@
 #include "boost/atomic.hpp"
 #include "proto/tablet.pb.h"
 
+using ::rtidb::base::Slice;
+
 namespace rtidb {
 namespace storage {
 
@@ -74,7 +76,7 @@ public:
              const Dimensions& dimensions);
 
     // Note the method should incr record_cnt_ manually
-    bool Put(const std::string& pk, uint64_t time, DataBlock* row, uint32_t idx);
+    bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
     class Iterator {
     public:
@@ -86,6 +88,7 @@ public:
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
         void SeekToFirst();
+        uint32_t GetSize();
     private:
         Segment::Iterator* it_;
     };
@@ -107,6 +110,11 @@ public:
 
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
+    uint64_t GetRecordIdxByteSize();
+
+    inline uint64_t GetRecordByteSize() const {
+        return record_byte_size_.load(boost::memory_order_relaxed);    
+    }
 
     inline uint64_t GetRecordCnt() const {
         return record_cnt_.load(boost::memory_order_relaxed);
@@ -213,6 +221,7 @@ private:
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
     bool segment_released_;
+    boost::atomic<uint64_t> record_byte_size_;
 };
 
 }

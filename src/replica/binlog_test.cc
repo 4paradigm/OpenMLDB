@@ -111,7 +111,7 @@ inline std::string GenRand() {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();

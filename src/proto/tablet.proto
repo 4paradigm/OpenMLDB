@@ -297,6 +297,8 @@ message TableStatus {
     optional uint64 idx_cnt = 10;
     repeated TsIdxStatus ts_idx_status = 11;
     optional string name = 12;
+    optional uint64 record_byte_size = 13;
+    optional uint64 record_idx_byte_size = 14;
 }
 
 message GetTableStatusResponse {

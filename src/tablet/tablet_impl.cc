@@ -201,11 +201,14 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        table->Put(request->time(), request->value(),
+        table->Put(request->time(), 
+                   request->value(),
                    request->dimensions());
     }else {
-        table->Put(request->pk(), request->time(), request->value().c_str(),
-                   request->value().length());
+        table->Put(request->pk(), 
+                   request->time(), 
+                   request->value().c_str(),
+                   request->value().size());
         PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     }
     response->set_code(0);
@@ -306,6 +309,12 @@ void TabletImpl::Scan(RpcController* controller,
     }else {
         it = table->NewIterator(request->pk(), ticket);
     }
+    if (it == NULL) {
+        response->set_code(30);
+        response->set_msg("idx name not found");
+        done->Run();
+        return;
+    }
     it->Seek(request->st());
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
@@ -317,7 +326,7 @@ void TabletImpl::Scan(RpcController* controller,
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
-    PDLOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
+    PDLOG(DEBUG, "scan pk %s st %lld et %lld , pk record cnt %u", request->pk().c_str(), request->st(), end_time, it->GetSize());
     uint32_t scount = 0;
     uint64_t last_time = 0;
     while (it->Valid()) {
@@ -338,6 +347,7 @@ void TabletImpl::Scan(RpcController* controller,
         total_block_size += it->GetValue()->size;
         it->Next();
         if (request->limit() > 0 && request->limit() <= scount) {
+            PDLOG(DEBUG, "reache the limit %u ", request->limit());
             break;
         }
     }
@@ -590,6 +600,8 @@ void TabletImpl::GetTableStatus(RpcController* controller,
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
             status->set_record_cnt(table->GetRecordCnt());
+            status->set_record_byte_size(table->GetRecordByteSize());
+            status->set_record_idx_byte_size(table->GetRecordIdxByteSize());
             uint64_t record_idx_cnt = 0;
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
             for (;iit != table->GetMapping().end(); ++iit) {

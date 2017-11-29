@@ -108,7 +108,7 @@ public:
     }
 
     // Insert need external synchronized
-    void Insert(const K& key, V& value) {
+    uint8_t Insert(const K& key, V& value) {
         uint8_t height = RandomHeight();
         Node<K,V>* pre[MaxHeight];
         FindLessOrEqual(key, pre);
@@ -123,6 +123,7 @@ public:
             node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
             pre[i]->SetNext(i, node);
         }
+        return height;
     }
 
     bool IsEmpty() {
@@ -289,6 +290,9 @@ public:
             Next();
         }
 
+        uint32_t GetSize() {
+            return list_->GetSize();    
+        }
     private:
         Node<K, V>* node_;
         Skiplist<K, V, Comparator>* const list_;
