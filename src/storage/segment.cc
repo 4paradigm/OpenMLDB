@@ -56,9 +56,9 @@ void Segment::Put(const Slice& key,
 
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     KeyEntry* entry = entries_->Get(key);
+    std::lock_guard<std::mutex> lock(mu_);
     uint32_t byte_size = 0; 
     if (entry == NULL || scmp(key, entry->key) != 0) {
-        std::lock_guard<std::mutex> lock(mu_);
         entry = entries_->Get(key);
         // Need a double check
         if (entry == NULL || scmp(key, entry->key) != 0) {
@@ -71,7 +71,6 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
             pk_cnt_.fetch_add(1, boost::memory_order_relaxed);
         }
     }
-    std::lock_guard<std::mutex> lock(mu_);
     idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
     byte_size += GetRecordTsIdxSize(height);
