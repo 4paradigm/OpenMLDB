@@ -91,6 +91,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void AddReplicaNS(RpcController* controller,
+            const AddReplicaNSRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     void ShowOPStatus(RpcController* controller,
             const ShowOPStatusRequest* request,
             ShowOPStatusResponse* response,
@@ -123,6 +128,8 @@ private:
 
     bool RecoverMakeSnapshot(std::shared_ptr<OPData> op_data);
 
+    bool RecoverAddReplica(std::shared_ptr<OPData> op_data);
+
     void SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list);
 
     // Get the lock
@@ -132,7 +139,29 @@ private:
 
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
+
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
+
+    std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
+
+    std::shared_ptr<Task> CreatePauseSnapshotTask(const std::string& endpoint, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
+
+    std::shared_ptr<Task> CreateRecoverSnapshotTask(const std::string& endpoint, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
+
+	std::shared_ptr<Task> CreateSendSnapshotTask(const std::string& endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
+                    const std::string& des_endpoint);
+
+    std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name,
+                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt);
+
+    std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
+					const std::string& des_endpoint);
 
 private:
     std::mutex mu_;

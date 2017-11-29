@@ -152,10 +152,14 @@ bool TabletClient::Put(uint32_t tid,
     return Put(tid, pid, pk.c_str(), time, value.c_str(), value.size());
 }
 
-bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid) {
+bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::MakeSnapshot,
             &request, &response, 12, 1);
@@ -165,24 +169,14 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid) {
     return false;
 }
 
-bool TabletClient::MakeSnapshotNS(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid, 
+        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.mutable_task_info()->CopyFrom(*task_info);
-    ::rtidb::api::GeneralResponse response;
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::MakeSnapshot,
-            &request, &response, 12, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
     }
-    return false;
-}
-
-bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid) {
-    ::rtidb::api::GeneralRequest request;
-    request.set_tid(tid);
-    request.set_pid(pid);
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::PauseSnapshot,
             &request, &response, 12, 1);
@@ -192,10 +186,14 @@ bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid) {
     return false;
 }
 
-bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid) {
+bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::RecoverSnapshot,
             &request, &response, 12, 1);
@@ -204,6 +202,24 @@ bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid) {
     }
     return false;
 }
+
+bool TabletClient::SendSnapshot(uint32_t tid, uint32_t pid, const std::string& endpoint,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+    ::rtidb::api::SendSnapshotRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_endpoint(endpoint);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SendSnapshot,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}        
 
 bool TabletClient::LoadTable(const std::string& name, uint32_t id,
         uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
@@ -214,7 +230,7 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t id,
 bool TabletClient::LoadTable(const std::string& name,
                                uint32_t tid, uint32_t pid, uint64_t ttl,
                                bool leader, const std::vector<std::string>& endpoints,
-                               uint32_t seg_cnt) {
+                               uint32_t seg_cnt, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     ::rtidb::api::LoadTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
@@ -229,6 +245,9 @@ bool TabletClient::LoadTable(const std::string& name,
     }
     for (size_t i = 0; i < endpoints.size(); i++) {
         table_meta->add_replicas(endpoints[i]);
+    }
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::LoadTable,
@@ -445,12 +464,16 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid) {
     return true;
 }
 
-bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint) {
+bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
+            std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     ::rtidb::api::ReplicaRequest request;
     ::rtidb::api::AddReplicaResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::AddReplica,
             &request, &response, 12, 1);
     if (!ok || response.code()  != 0) {

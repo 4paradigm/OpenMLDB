@@ -149,13 +149,31 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
         return;
     }
     try {
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[2]);
-        bool ok = client->MakeSnapshot(parts[1], tid);
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        bool ok = client->MakeSnapshot(parts[1], pid);
         if (!ok) {
             std::cout << "Fail to makesnapshot" << std::endl;
             return;
         }
         std::cout << "MakeSnapshot ok" << std::endl;
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+    } 
+}
+
+void HandleNSAddReplica(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        bool ok = client->AddReplica(parts[1], pid, parts[3]);
+        if (!ok) {
+            std::cout << "Fail to addreplica" << std::endl;
+            return;
+        }
+        std::cout << "AddReplica ok" << std::endl;
     } catch(std::exception const& e) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     } 
@@ -282,7 +300,7 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
             row.push_back(buf);
         } else {
-            uint64_t cur_time = time(0);
+            uint64_t cur_time = ::baidu::common::timer::now_time();
             row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
             row.push_back("-");
         }
@@ -610,6 +628,23 @@ void HandleClientRecoverSnapshot(const std::vector<std::string> parts, ::rtidb::
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad RecoverSnapshot format" << std::endl;
+    }
+}
+
+void HandleClientSendSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad SendSnapshot format" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->SendSnapshot(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), parts[3]);
+        if (ok) {
+            std::cout << "SendSnapshot ok" << std::endl;
+        }else {
+            std::cout << "Fail to SendSnapshot" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad SendSnapshot format" << std::endl;
     }
 }
 
@@ -1155,6 +1190,8 @@ void StartClient() {
             HandleClientPauseSnapshot(parts, &client);
         } else if (parts[0] == "recoversnapshot") {
             HandleClientRecoverSnapshot(parts, &client);
+        } else if (parts[0] == "sendsnapshot") {
+            HandleClientSendSnapshot(parts, &client);
         } else if (parts[0] == "loadtable") {
             HandleClientLoadTable(parts, &client);
         } else if (parts[0] == "changerole") {
@@ -1204,6 +1241,8 @@ void StartNsClient() {
             HandleNSCreateTable(parts, &client);
         } else  if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
+        } else  if (parts[0] == "addreplica") {
+            HandleNSAddReplica(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

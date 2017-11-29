@@ -27,6 +27,7 @@
 #include "timer.h"
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <thread>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -48,6 +49,12 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_string(recycle_bin_root_path);
 
+DECLARE_int32(request_max_retry);
+DECLARE_int32(request_timeout_ms);
+DECLARE_int32(stream_wait_time_ms);
+DECLARE_int32(stream_block_size);
+DECLARE_int32(stream_bandwidth_limit);
+
 // cluster config
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -57,6 +64,75 @@ DECLARE_int32(zk_keep_alive_check_interval);
 
 namespace rtidb {
 namespace tablet {
+
+StreamReceiver::StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid):
+        file_name_(file_name), tid_(tid), pid_(pid), size_(0), file_(NULL) {}
+
+StreamReceiver::~StreamReceiver() {
+    if (file_) {
+        fclose(file_);
+    }    
+    std::string combine_key = std::to_string(tid_) + "_" + std::to_string(pid_) + "_" + file_name_;
+    stream_receiver_set_.erase(combine_key);
+}
+
+::rtidb::base::set<std::string> StreamReceiver::stream_receiver_set_;
+
+int StreamReceiver::Init() {
+    std::string combine_key = std::to_string(tid_) + "_" + std::to_string(pid_) + "_" + file_name_;
+    if (stream_receiver_set_.contain(combine_key)) {
+        PDLOG(WARNING, "stream is exisit! tid[%u] pid[%u] file[%s]", tid_, pid_, file_name_.c_str());
+        return -1;
+    }
+    stream_receiver_set_.insert(combine_key);
+    std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_)
+				+ "/snapshot/";
+    if (!::rtidb::base::MkdirRecur(tmp_file_path)) {
+        PDLOG(WARNING, "mkdir failed! path[%s]", tmp_file_path.c_str());
+        return -1;
+    }
+    std::string full_path = tmp_file_path + file_name_ + ".tmp";
+	FILE* file = fopen(full_path.c_str(), "wb");
+    if (file == NULL) {
+        PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+        return -1;
+    }
+    file_ = file;
+    return 0;
+}
+
+int StreamReceiver::on_received_messages(brpc::StreamId id,
+		butil::IOBuf *const messages[], size_t size) {
+    if (file_ == NULL) {
+        PDLOG(WARNING, "file is NULL");
+    }
+    for (size_t i = 0; i < size; i++) {
+        if (messages[i]->empty()) {
+            continue;
+        }
+        std::string data = messages[i]->to_string();
+        size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
+        if (r < data.size()) {
+            PDLOG(WARNING, "write error. tid[%u] pid[%u]", tid_, pid_);
+        }
+        size_ += r;
+    }
+	return 0;
+}
+
+void StreamReceiver::on_idle_timeout(brpc::StreamId id) {
+    PDLOG(WARNING, "on_idle_timeout. tid %u pid %u", tid_, pid_);
+}
+
+void StreamReceiver::on_closed(brpc::StreamId id) {
+    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_)
+				+ "/snapshot/" + file_name_;
+    std::string tmp_file_path = full_path + ".tmp";
+    rename(tmp_file_path.c_str(), full_path.c_str());
+    PDLOG(INFO, "file %s received. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
+    brpc::StreamClose(id);
+    delete this;
+}
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
@@ -452,35 +528,67 @@ void TabletImpl::AddReplica(RpcController* controller,
             const ::rtidb::api::ReplicaRequest* request,
             ::rtidb::api::AddReplicaResponse* response,
             Closure* done) {
+    brpc::ClosureGuard done_guard(done);        
+	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+	if (request->has_task_info() && request->task_info().IsInitialized()) {
+		std::lock_guard<std::mutex> lock(mu_);
+		if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+			response->set_code(-1);
+			response->set_msg("task is running");
+			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+							request->task_info().op_id(),
+							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+			return;
+		}
+		task_ptr.reset(request->task_info().New());
+		task_ptr->CopyFrom(request->task_info());
+		task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+		AddOPTask(task_ptr);
+		if (request->task_info().task_type() != ::rtidb::api::TaskType::kAddReplica) {
+			response->set_code(-1);
+			response->set_msg("task type is not match");
+			PDLOG(WARNING, "task type is not match. type is[%s]", 
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+			return;
+		}
+	}
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table || !table->IsLeader()) {
-        PDLOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
-                request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist or table is leader");
-        done->Run();
-        return;
+    do {
+        if (!table || !table->IsLeader()) {
+            PDLOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
+                    request->pid());
+            response->set_code(-1);
+            response->set_msg("table not exist or table is leader");
+            break;
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
+        if (!replicator) {
+            response->set_code(-2);
+            response->set_msg("no replicator for table");
+            PDLOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
+            break;
+        }
+        bool ok = replicator->AddReplicateNode(request->endpoint());
+        if (ok) {
+            if (task_ptr) {
+	            std::lock_guard<std::mutex> lock(mu_);
+                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+            }
+            response->set_code(0);
+            response->set_msg("ok");
+            return;
+        } else {
+            response->set_code(-3);
+            PDLOG(WARNING, "fail to add endpoint for table %d pid %d", request->tid(), request->pid());
+            response->set_msg("fail to add endpoint");
+        }
+    } while(0);
+    if (task_ptr) {
+	    std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
-    if (!replicator) {
-        response->set_code(-2);
-        response->set_msg("no replicator for table");
-        PDLOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
-        done->Run();
-        return;
-    }
-    bool ok = replicator->AddReplicateNode(request->endpoint());
-    if (ok) {
-        response->set_code(0);
-        response->set_msg("ok");
-        done->Run();
-    }else {
-        response->set_code(-3);
-        PDLOG(WARNING, "fail to add endpoint for table %d pid %d", request->tid(), request->pid());
-        response->set_msg("fail to add endpoint");
-        done->Run();
-    }  
-    table->SetTableStat(::rtidb::storage::kNormal);
 }
 
 void TabletImpl::DelReplica(RpcController* controller, 
@@ -727,6 +835,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
+	brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();        
     uint32_t pid = request->pid();        
     bool has_error = true;
@@ -737,7 +846,6 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             response->set_code(-1);
             response->set_msg("snapshot is not exisit!");
             PDLOG(WARNING, "snapshot is not exisit! tid[%u] pid[%u]", tid, pid);
-            done->Run();
             break;
         }
         std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
@@ -745,7 +853,6 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             PDLOG(WARNING, "fail to find table with tid %ld, pid %ld", tid, pid);
             response->set_code(-1);
             response->set_msg("table not found");
-            done->Run();
             break;
         }
         if (table->GetTableStat() != ::rtidb::storage::kNormal) {
@@ -753,7 +860,6 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             response->set_msg("table status is not normal");
             PDLOG(WARNING, "table state is %d, cannot make snapshot. %ld, pid %ld", 
                          table->GetTableStat(), tid, pid);
-            done->Run();
             break;
         }
         has_error = false;
@@ -765,7 +871,6 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             response->set_msg("task type is not match");
             PDLOG(WARNING, "task type is not match. type is[%s]", 
                             ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-            done->Run();
             has_error = true;
         } else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
             response->set_code(-1);
@@ -774,8 +879,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
                             request->task_info().op_id(),
                             ::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
                             ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-            has_error = true;
-            done->Run();
+            return;
         }
         task_ptr.reset(request->task_info().New());
         task_ptr->CopyFrom(request->task_info());
@@ -787,12 +891,11 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         AddOPTask(task_ptr);
     }
     if (has_error) {
-        return;
-    }
+		return;
+	}
     task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
     response->set_code(0);
     response->set_msg("ok");
-    done->Run();
 }
 
 void TabletImpl::SchedMakeSnapshot() {
@@ -821,159 +924,529 @@ void TabletImpl::SchedMakeSnapshot() {
     task_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 }
 
+void TabletImpl::CreateStream(RpcController* controller,
+            const ::rtidb::api::CreateStreamRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    brpc::Controller *cntl = static_cast<brpc::Controller*>(controller);
+    std::lock_guard<std::mutex> lock(mu_);
+    uint32_t tid = request->tid(); 
+    uint32_t pid = request->pid(); 
+    StreamReceiver* stream_receiver = new StreamReceiver(request->file_name(), tid, pid);
+	if (stream_receiver->Init() < 0) {
+        delete stream_receiver;
+        response->set_code(-1);
+        response->set_msg("stream_receiver init failed");
+        PDLOG(WARNING, "init stream_receiver failed. remote side %s file %s", 
+                        butil::endpoint2str(cntl->remote_side()).c_str(), request->file_name().c_str());
+        return;
+    }
+    brpc::StreamOptions stream_options;
+    stream_options.handler = stream_receiver;
+    brpc::StreamId sd;
+    if (brpc::StreamAccept(&sd, *cntl, &stream_options) != 0) {
+        delete stream_receiver;
+        cntl->SetFailed("Fail to accept stream");
+        PDLOG(WARNING, "accept stream from %s failed. file %s", 
+                        butil::endpoint2str(cntl->remote_side()).c_str(), 
+                        request->file_name().c_str());
+        return;
+    }
+    PDLOG(INFO, "create stream succeed. remote side %s file %s tid %u pid %u", 
+                 butil::endpoint2str(cntl->remote_side()).c_str(),
+                 request->file_name().c_str(), tid, pid);
+    response->set_msg("ok");
+    response->set_code(0);
+}
+
+void TabletImpl::SendSnapshot(RpcController* controller,
+            const ::rtidb::api::SendSnapshotRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+	uint32_t tid = request->tid();
+	uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
+    bool has_error = true;
+    std::string sync_snapshot_key = request->endpoint() + "_" + 
+                    std::to_string(tid) + "_" + std::to_string(pid);
+	do {
+        if (sync_snapshot_set_.find(sync_snapshot_key) != sync_snapshot_set_.end()) {
+            PDLOG(WARNING, "snapshot is sending. tid %u pid %u endpoint %s", 
+                            tid, pid, request->endpoint().c_str());
+			response->set_code(-1);
+			response->set_msg("snapshot is sending");
+            break;
+        }
+		if (!table) {
+			PDLOG(WARNING, "table not exist. tid %ld, pid %ld", tid, pid);
+			response->set_code(-1);
+			response->set_msg("table not exist");
+			break;
+		}
+		if (!table->IsLeader()) {
+			PDLOG(WARNING, "table with tid %ld, pid %ld is follower", tid, pid);
+			response->set_code(-1);
+			response->set_msg("table is follower");
+			break;
+		}
+		if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
+			PDLOG(WARNING, "table with tid %ld, pid %ld is not kSnapshotPaused", tid, pid);
+			response->set_code(-1);
+			response->set_msg("table is unavailable now");
+			break;
+		}
+		has_error = false;
+	} while(0);
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+        if (request->task_info().task_type() != ::rtidb::api::TaskType::kSendSnapshot) {
+            response->set_code(-1);
+            response->set_msg("task type is not match");
+            PDLOG(WARNING, "task type is not match. type is[%s]", 
+                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+            has_error = true;
+        } else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+            // task is already exisit, do not add task.
+            response->set_code(-1);
+            response->set_msg("task is running");
+            PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+                            request->task_info().op_id(),
+                            ::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
+                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+            return;
+        }
+        task_ptr.reset(request->task_info().New());
+        task_ptr->CopyFrom(request->task_info());
+        AddOPTask(task_ptr);
+        if (has_error) {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+			return;
+        } else {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+        }
+    }
+    if (has_error) {
+        return;
+    }
+    sync_snapshot_set_.insert(sync_snapshot_key);
+    task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
+                request->endpoint(), tid, pid, task_ptr));
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
+            std::shared_ptr<::rtidb::api::TaskInfo> task) {
+    bool has_error = true;
+    do {
+		// send manifest file
+		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
+			PDLOG(WARNING, "send MANIFEST failed");
+			break;
+		}
+    	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
+									std::to_string(pid) + "/snapshot/MANIFEST";
+		int fd = open(manifest_file.c_str(), O_RDONLY);
+		if (fd < 0) {
+			PDLOG(WARNING, "[%s] is not exisit", manifest_file.c_str());
+			break;
+		}
+		google::protobuf::io::FileInputStream fileInput(fd);
+		fileInput.SetCloseOnDelete(true);
+		::rtidb::api::Manifest manifest;
+		if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+			PDLOG(WARNING, "parse manifest failed");
+			break;
+		}
+		// send snapshot file
+		if (SendFile(endpoint, tid, pid, manifest.name()) < 0) {
+			PDLOG(WARNING, "send snapshot failed");
+			break;
+		}
+        has_error = false;
+		PDLOG(INFO, "send snapshot success. endpoint %s tid %u pid %u", endpoint.c_str(), tid, pid);
+    } while(0);
+	std::lock_guard<std::mutex> lock(mu_);
+	if (task) {
+		if (has_error) {
+			task->set_status(::rtidb::api::kFailed);
+       	} else {
+			task->set_status(::rtidb::api::kDone);
+		}
+	}
+    std::string sync_snapshot_key = endpoint + "_" + 
+                    std::to_string(tid) + "_" + std::to_string(pid);
+	sync_snapshot_set_.erase(sync_snapshot_key);
+}            
+
+int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid,
+			const std::string& file_name) {
+	brpc::Channel channel;
+	brpc::ChannelOptions options;
+	options.protocol = brpc::PROTOCOL_BAIDU_STD;
+	options.timeout_ms = FLAGS_request_timeout_ms;
+	options.max_retry = FLAGS_request_max_retry;
+	if (channel.Init(endpoint.c_str(), NULL) != 0) {
+		PDLOG(WARNING, "init channel failed. %s ", endpoint.c_str());
+		return -1;
+	}
+	::rtidb::api::TabletServer_Stub stub(&channel);
+	brpc::Controller cntl;
+	brpc::StreamId stream;
+	if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
+		PDLOG(WARNING, "create stream failed. endpoint %s", endpoint.c_str());
+		return -1;
+	}
+
+    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid)
+				+ "/snapshot/" + file_name;
+    PDLOG(INFO, "send file %s to %s", full_path.c_str(), endpoint.c_str());
+	FILE* file = fopen(full_path.c_str(), "rb");
+	if (file == NULL) {
+        PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+        return -1;
+    }
+
+	::rtidb::api::CreateStreamRequest request;
+	::rtidb::api::GeneralResponse response;
+	request.set_tid(tid);
+	request.set_pid(pid);
+	request.set_file_name(file_name);
+	stub.CreateStream(&cntl, &request, &response, NULL);
+	if (cntl.Failed()) {
+		PDLOG(WARNING, "connect stream failed. %s ", cntl.ErrorText().c_str());
+        fclose(file);
+		return -1;
+	}
+	char buffer[FLAGS_stream_block_size];
+    // compute the used time(microseconds) that send a block by limit bandwidth. 
+    // limit_time = (FLAGS_stream_block_size / FLAGS_stream_bandwidth_limit) * 1000 * 1000 
+    uint64_t limit_time = 0;
+    if (FLAGS_stream_bandwidth_limit > 0) {
+        limit_time = ((uint64_t)FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
+    }    
+	int ret = 0;
+	while (true) {
+		size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
+        if (len < ::rtidb::log::kBlockSize) {
+            if (feof(file)) {
+				if (len > 0) {
+                    ret = StreamWrite(stream, buffer, len, limit_time);
+				}
+				break;
+            }
+        	PDLOG(WARNING, "read file %s error. error message: %s", file_name.c_str(), strerror(errno));
+			ret = -1;
+			break;
+        }
+        if (StreamWrite(stream, buffer, len, limit_time) < 0) {
+            PDLOG(WARNING, "stream write failed. tid %u pid %u file %s", tid, pid, file_name.c_str());
+            ret = -1;
+            break;
+        }
+	}
+	fclose(file);
+	brpc::StreamClose(stream);
+	if (ret == 0) {
+    	PDLOG(INFO, "send file %s success", file_name.c_str());
+	}
+	return ret;
+}
+
+int TabletImpl::StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time) {
+    if (buffer == NULL) {
+        return -1;
+    }
+    uint64_t cur_time = ::baidu::common::timer::get_micros();
+	butil::IOBuf data;
+    data.clear();
+    data.append(buffer, len);
+    while (true) {
+        int ret_code = brpc::StreamWrite(stream, data);
+        if (ret_code == 0) {
+            break;
+        } else if (ret_code == EAGAIN) {
+            const timespec duetime = butil::milliseconds_from_now(FLAGS_stream_wait_time_ms);
+            if (brpc::StreamWait(stream, &duetime) == EINVAL) {
+                PDLOG(WARNING, "stream closed!");
+                return -1;
+            }
+            PDLOG(DEBUG, "ret_code is EAGAIN. wait %d milliseconds", FLAGS_stream_wait_time_ms);
+        } else { 
+            PDLOG(WARNING, "stream write failed");
+            return -1;
+        }
+    }
+    uint64_t time_used = ::baidu::common::timer::get_micros() - cur_time;
+    if (limit_time > time_used) {
+        PDLOG(DEBUG, "sleep %lu us, limit_time %lu time_used %lu", limit_time - time_used, limit_time, time_used);
+        std::this_thread::sleep_for(std::chrono::microseconds(limit_time - time_used));
+    }
+    return 0;
+}
+
 void TabletImpl::PauseSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        PDLOG(WARNING, "table not exist. tid %ld, pid %ld", request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist");
-        done->Run();
-        return;
-    }
-	{
-        std::lock_guard<std::mutex> lock(mu_);
+    brpc::ClosureGuard done_guard(done);        
+    std::lock_guard<std::mutex> lock(mu_);
+    std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
+    bool has_error = false;
+    do {
+        if (!table) {
+            PDLOG(WARNING, "table not exist. tid %ld, pid %ld", request->tid(), request->pid());
+            response->set_code(-1);
+            response->set_msg("table not exist");
+			has_error = true;
+            break;
+        }
 		if (table->GetTableStat() != ::rtidb::storage::kNormal) {
 			PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
 					table->GetTableStat(), request->tid(), request->pid());
-			response->set_code(-2);
+			response->set_code(-1);
 			response->set_msg("table status is not kNormal");
-			done->Run();
+			has_error = true;
+			break;
+		}
+    } while(0);
+	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+	if (request->has_task_info() && request->task_info().IsInitialized()) {
+		if (request->task_info().task_type() != ::rtidb::api::TaskType::kPauseSnapshot) {
+			response->set_code(-1);
+			response->set_msg("task type is not match");
+			PDLOG(WARNING, "task type is not match. type is[%s]", 
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+			has_error = true;
+		} else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+			response->set_code(-1);
+			response->set_msg("task is running");
+			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+							request->task_info().op_id(),
+							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
 			return;
 		}
-		table->SetTableStat(::rtidb::storage::kSnapshotPaused);
-		PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-				   table->GetTableStat(), request->tid(), request->pid());
+		task_ptr.reset(request->task_info().New());
+		task_ptr->CopyFrom(request->task_info());
+		AddOPTask(task_ptr);
+		if (has_error) {
+			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+			return;
+		} else {
+			task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+		}
+	}
+	if (has_error) {
+		return;
+	}
+	table->SetTableStat(::rtidb::storage::kSnapshotPaused);
+	PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+			   table->GetTableStat(), request->tid(), request->pid());
+	if (task_ptr) {
+		task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
 	}
     response->set_code(0);
     response->set_msg("ok");
-    done->Run();
 }
 
 void TabletImpl::RecoverSnapshot(RpcController* controller,
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        PDLOG(WARNING, "table not exist tid %ld, pid %ld", request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist");
-        done->Run();
-        return;
-    }
-	{
-        std::lock_guard<std::mutex> lock(mu_);
-		if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
-			PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
-					table->GetTableStat(), request->tid(), request->pid());
+    brpc::ClosureGuard done_guard(done);        
+	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+	if (request->has_task_info() && request->task_info().IsInitialized()) {
+		std::lock_guard<std::mutex> lock(mu_);
+		if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
 			response->set_code(-1);
-			response->set_msg("table status is not kSnapshotPaused");
-			done->Run();
+			response->set_msg("task is running");
+			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+							request->task_info().op_id(),
+							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
 			return;
 		}
-		table->SetTableStat(::rtidb::storage::kNormal);
-		PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-				   table->GetTableStat(), request->tid(), request->pid());
+		task_ptr.reset(request->task_info().New());
+		task_ptr->CopyFrom(request->task_info());
+		task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+		AddOPTask(task_ptr);
+		if (request->task_info().task_type() != ::rtidb::api::TaskType::kRecoverSnapshot) {
+			response->set_code(-1);
+			response->set_msg("task type is not match");
+			PDLOG(WARNING, "task type is not match. type is[%s]", 
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+			return;
+		}
 	}
-    response->set_code(0);
-    response->set_msg("ok");
-    done->Run();
+    do {
+        std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+        if (!table) {
+            PDLOG(WARNING, "table not exist tid %ld, pid %ld", request->tid(), request->pid());
+            response->set_code(-1);
+            response->set_msg("table not exist");
+            break;
+        }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
+                PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
+                        table->GetTableStat(), request->tid(), request->pid());
+                response->set_code(-1);
+                response->set_msg("table status is not kSnapshotPaused");
+                break;
+            }
+            table->SetTableStat(::rtidb::storage::kNormal);
+            if (task_ptr) {       
+			    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+            }
+        }
+        PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+                   table->GetTableStat(), request->tid(), request->pid());
+        response->set_code(0);
+        response->set_msg("ok");
+        return;
+    } while(0);
+    if (task_ptr) {       
+        std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+    }
 }
 
 void TabletImpl::LoadTable(RpcController* controller,
             const ::rtidb::api::LoadTableRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
-    ::rtidb::api::TableMeta table_meta;
-    table_meta.CopyFrom(request->table_meta());
-    if (!CheckTableMeta(&table_meta)) {
-        response->set_code(8);
-        response->set_msg("table name is empty");
-        done->Run();
-        return;
-    }
-    uint32_t tid = table_meta.tid();
-    uint32_t pid = table_meta.pid();
-
-    std::string db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
-        "_" + boost::lexical_cast<std::string>(pid);
-    if (!::rtidb::base::IsExists(db_path)) {
-        PDLOG(WARNING, "no db data for table tid %u, pid %u", tid, pid);
-        response->set_code(-1);
-        response->set_msg("no db data for table");
-        done->Run();
-        return;
-    }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
-        if (!table) {
-            UpdateTableMeta(db_path, &table_meta);
-            if (WriteTableMeta(db_path, &table_meta) < 0) {
-                PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
-                response->set_code(-1);
-                response->set_msg("write table_meta failed");
-                done->Run();
-                return;
-            }
-            std::string msg;
-            if (CreateTableInternal(&table_meta, msg) < 0) {
-                response->set_code(-1);
-                response->set_msg(msg.c_str());
-                done->Run();
-                return;
-            }
-        } else {
-            response->set_code(1);
-            response->set_msg("table with tid and pid exists");
+	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+	if (request->has_task_info() && request->task_info().IsInitialized()) {
+		std::lock_guard<std::mutex> lock(mu_);
+		if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+			response->set_code(-1);
+			response->set_msg("task is running");
+			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+							request->task_info().op_id(),
+							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
             done->Run();
-            return;
+			return;
+		}
+		task_ptr.reset(request->task_info().New());
+		task_ptr->CopyFrom(request->task_info());
+		task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+		AddOPTask(task_ptr);
+		if (request->task_info().task_type() != ::rtidb::api::TaskType::kLoadTable) {
+			response->set_code(-1);
+			response->set_msg("task type is not match");
+			PDLOG(WARNING, "task type is not match. type is[%s]", 
+							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+            done->Run();
+			return;
+		}
+	}
+    do {
+        ::rtidb::api::TableMeta table_meta;
+        table_meta.CopyFrom(request->table_meta());
+        if (!CheckTableMeta(&table_meta)) {
+            response->set_code(8);
+            response->set_msg("table name is empty");
+            done->Run();
+            break;
         }
-    }
-    done->Run();
-    uint64_t ttl = table_meta.ttl();
-    std::string name = table_meta.name();
-    uint32_t seg_cnt = 8;
-    if (table_meta.seg_cnt() > 0) {
-        seg_cnt = table_meta.seg_cnt();
-    }
-    PDLOG(INFO, "create table with id %d pid %d name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
-               pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
-   
-    // load snapshot data
-    std::shared_ptr<Table> table = GetTable(tid, pid);        
-    if (!table) {
-        PDLOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
-        return; 
-    }
-    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
-    if (!snapshot) {
-        PDLOG(WARNING, "snapshot with tid %ld and pid %ld does not exist", tid, pid);
-        return; 
-    }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    if (!replicator) {
-        PDLOG(WARNING, "replicator with tid %ld and pid %ld does not exist", tid, pid);
-        return;
-    }
-    uint64_t latest_offset = 0;
-    bool ok = snapshot->Recover(table, latest_offset);
-    if (ok) {
-        table->SetTableStat(::rtidb::storage::kNormal);
-        replicator->SetOffset(latest_offset);
-        replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
-        replicator->MatchLogOffset();
-        table->SchedGc();
-        if (ttl > 0) {
-            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
-            PDLOG(INFO, "table %s with tid %ld pid %ld enable ttl %ld", name.c_str(), tid, pid, ttl);
+        uint32_t tid = table_meta.tid();
+        uint32_t pid = table_meta.pid();
+
+        std::string db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
+            "_" + boost::lexical_cast<std::string>(pid);
+        if (!::rtidb::base::IsExists(db_path)) {
+            PDLOG(WARNING, "no db data for table tid %u, pid %u", tid, pid);
+            response->set_code(-1);
+            response->set_msg("no db data for table");
+            done->Run();
+            break;
         }
-    }else {
-       DeleteTableInternal(tid, pid);
-    }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
+            if (!table) {
+                UpdateTableMeta(db_path, &table_meta);
+                if (WriteTableMeta(db_path, &table_meta) < 0) {
+                    PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
+                    response->set_code(-1);
+                    response->set_msg("write table_meta failed");
+                    done->Run();
+                    break;
+                }
+                std::string msg;
+                if (CreateTableInternal(&table_meta, msg) < 0) {
+                    response->set_code(-1);
+                    response->set_msg(msg.c_str());
+                    done->Run();
+                    break;
+                }
+            } else {
+                response->set_code(1);
+                response->set_msg("table with tid and pid exists");
+                done->Run();
+                break;
+            }
+        }
+        done->Run();
+        uint64_t ttl = table_meta.ttl();
+        std::string name = table_meta.name();
+        uint32_t seg_cnt = 8;
+        if (table_meta.seg_cnt() > 0) {
+            seg_cnt = table_meta.seg_cnt();
+        }
+        PDLOG(INFO, "create table with id %d pid %d name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
+                   pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
+       
+        // load snapshot data
+        std::shared_ptr<Table> table = GetTable(tid, pid);        
+        if (!table) {
+            PDLOG(WARNING, "table with tid %ld and pid %ld does not exist", tid, pid);
+            break; 
+        }
+        std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot with tid %ld and pid %ld does not exist", tid, pid);
+            break; 
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        if (!replicator) {
+            PDLOG(WARNING, "replicator with tid %ld and pid %ld does not exist", tid, pid);
+            break;
+        }
+        uint64_t latest_offset = 0;
+        table->SetTableStat(::rtidb::storage::kLoading);
+        bool ok = snapshot->Recover(table, latest_offset);
+        if (ok) {
+            table->SetTableStat(::rtidb::storage::kNormal);
+            replicator->SetOffset(latest_offset);
+            replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
+            replicator->MatchLogOffset();
+            table->SchedGc();
+            if (ttl > 0) {
+                gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+            }
+            PDLOG(INFO, "load table success. name %s tid %ld pid %ld ttl %ld", name.c_str(), tid, pid, ttl);
+            if (task_ptr) {
+                std::lock_guard<std::mutex> lock(mu_);
+                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+                return;
+            }        
+        } else {
+           DeleteTableInternal(tid, pid);
+        }
+    } while(0);
+    if (task_ptr) {
+		std::lock_guard<std::mutex> lock(mu_);
+	    task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+    }        
 }
 
 int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
