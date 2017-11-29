@@ -99,3 +99,11 @@ table_partition {
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令
 >create ./table_meta.txt
 ```
+
+### cluster开启时从ns_client新增分片副本
+
+```
+cmd addreplica 表名 分片id 新副本所在节点的ip:port
+>addreplica table_name pid endpoint
+```
+
