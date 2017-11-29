@@ -103,7 +103,14 @@ table_partition {
 ### cluster开启时从ns_client新增分片副本
 
 ```
+1 makesnapshot 如果主节点下面已经有snapshot文件可以跳过这步
+cmd makesnapshot table_name pid
+> makesnapshot test1 1
+
+2 新增分片
 cmd addreplica 表名 分片id 新副本所在节点的ip:port
+新增副本时主节点下面必须有snapshot, 如果没有的话先运行makesnapshot
 >addreplica table_name pid endpoint
+
 ```
 
