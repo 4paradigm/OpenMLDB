@@ -40,7 +40,7 @@ Table::Table(const std::string& name,
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), record_byte_size_(0)
+    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime);
 {}
 
 Table::Table(const std::string& name,
@@ -54,7 +54,7 @@ Table::Table(const std::string& name,
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
     replicas_(), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false)
+    mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
 {}
 
 Table::~Table() {
@@ -182,7 +182,16 @@ uint64_t Table::SchedGc() {
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             Segment* segment = segments_[i][j];
-            segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            switch (ttl_type_) {
+            case ::rtidb::api::TTLType::kAbsoluteTime:
+                segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                break;
+            case ::rtidb::api::TTLType::kLatestTime:
+                segment->Gc4Head(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                break;
+            default:
+                PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
+            }
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;

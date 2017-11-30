@@ -200,6 +200,13 @@ public:
         record_cnt_.fetch_add(cnt, boost::memory_order_relaxed);
     }
 
+    inline void SetTTLType(const ::rtidb::api::TTLType& type) {
+        type_ = type;
+    }
+
+    inline ::rtidb::api::TTLType GetTTLType() {
+        return type_;
+    }
 
 private:
     std::string const name_;
@@ -222,6 +229,7 @@ private:
     std::map<std::string, uint32_t> mapping_;
     bool segment_released_;
     boost::atomic<uint64_t> record_byte_size_;
+    ::rtidb::api::TTLType ttl_type_;
 };
 
 }
