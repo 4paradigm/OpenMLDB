@@ -57,7 +57,7 @@ public:
                      uint32_t tid, uint32_t pid,
                      uint64_t ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
-                     const ::rtidb::api::TTLType& type)
+                     const ::rtidb::api::TTLType& type);
 
     bool Put(uint32_t tid,
              uint32_t pid,

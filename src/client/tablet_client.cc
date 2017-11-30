@@ -59,17 +59,17 @@ bool TabletClient::CreateTable(const std::string& name,
     return false;
 }
 
-}
-
-bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
+bool TabletClient::CreateTable(const std::string& name, uint32_t tid, 
+                               uint32_t pid,
                                uint64_t ttl, uint32_t seg_cnt, 
                                const std::vector<::rtidb::base::ColumnDesc>& columns) {
-    return CreateTable(name, tid, pid, ttl, uint32_t, columns, ::rtidb::api::TTLType::kAbsoluteTime);
+    return CreateTable(name, tid, pid, ttl, 
+                       seg_cnt, columns, 
+                       ::rtidb::api::TTLType::kAbsoluteTime);
 }
 
-
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
+                               uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
     std::vector<std::string> endpoints;
     return CreateTable(name, id, pid, ttl, true, endpoints, seg_cnt);
 }
@@ -160,7 +160,6 @@ bool TabletClient::Put(uint32_t tid,
         return true;
     }
     return false;
-
 }
 
 bool TabletClient::Put(uint32_t tid,

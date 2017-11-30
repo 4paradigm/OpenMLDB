@@ -40,7 +40,7 @@ Table::Table(const std::string& name,
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime);
+    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
 {}
 
 Table::Table(const std::string& name,
@@ -172,8 +172,8 @@ uint64_t Table::SchedGc() {
         return 0;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    PDLOG(INFO, "start making gc for table %s, tid %u, pid %u", name_.c_str(),
-            id_, pid_); 
+    PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
+            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
     uint64_t gc_idx_cnt = 0;
@@ -181,17 +181,20 @@ uint64_t Table::SchedGc() {
     uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
+            uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
             switch (ttl_type_) {
             case ::rtidb::api::TTLType::kAbsoluteTime:
                 segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 break;
             case ::rtidb::api::TTLType::kLatestTime:
-                segment->Gc4Head(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                segment->Gc4Head(ttl_ / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 break;
             default:
                 PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
             }
+            seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
+            PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time, name_.c_str(), id_, pid_);
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
@@ -297,6 +300,16 @@ uint64_t Table::GetRecordIdxCnt() {
     return record_idx_cnt;
 }
 
+uint64_t Table::GetRecordPkCnt() {
+    uint64_t record_pk_cnt = 0;
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            record_pk_cnt += segments_[i][j]->GetPkCnt(); 
+        }
+    }
+    return record_pk_cnt;
+}
+
 bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (stat == NULL) {
         return false;
@@ -312,6 +325,8 @@ bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     *size = seg_cnt_;
     return true;
 }
+
+
 
 }
 }

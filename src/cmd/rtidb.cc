@@ -395,8 +395,6 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 
     try {
-        std::vector<std::string> kv;
-        ::rtidb::base::SplitString(parts[i], ":", &kv);
         uint64_t ttl = 0;
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
