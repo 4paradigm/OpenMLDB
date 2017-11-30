@@ -5,7 +5,6 @@
 #include "base/skiplist.h"
 #include "gtest/gtest.h"
 #include "base/slice.h"
-#include <boost/atomic.hpp>
 
 namespace rtidb {
 namespace base {
@@ -85,7 +84,7 @@ TEST_F(NodeTest, SetNext) {
 }
 
 TEST_F(NodeTest, NodeByteSize) {
-    boost::atomic<Node<Slice, std::string*>* > node0[12];
+    std::atomic<Node<Slice, std::string*>* > node0[12];
     ASSERT_EQ(96, sizeof(node0));
 }
 

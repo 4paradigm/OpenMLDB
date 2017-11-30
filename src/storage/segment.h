@@ -14,10 +14,8 @@
 #include "base/skiplist.h"
 #include "base/slice.h"
 #include <mutex>
-#include "boost/atomic.hpp"
+#include <atomic>
 #include "storage/ticket.h"
-#include "boost/function.hpp"
-#include "boost/bind.hpp"
 
 namespace rtidb {
 namespace storage {
@@ -87,17 +85,17 @@ public:
     }
 
     void Ref() {
-        refs_.fetch_add(1, boost::memory_order_relaxed);
+        refs_.fetch_add(1, std::memory_order_relaxed);
     }
 
     void UnRef() {
-        refs_.fetch_sub(1, boost::memory_order_relaxed);
+        refs_.fetch_sub(1, std::memory_order_relaxed);
     }
 
 public:
     rtidb::base::Slice key;
     TimeEntries entries;
-    boost::atomic<uint64_t> refs_;
+    std::atomic<uint64_t> refs_;
     friend Segment;
 };
 
@@ -153,15 +151,15 @@ public:
     Segment::Iterator* NewIterator(const Slice& key, Ticket& ticket);
 
     inline uint64_t GetIdxCnt() {
-        return idx_cnt_.load(boost::memory_order_relaxed);
+        return idx_cnt_.load(std::memory_order_relaxed);
     }
 
     inline uint64_t GetIdxByteSize() {
-        return idx_byte_size_.load(boost::memory_order_relaxed);
+        return idx_byte_size_.load(std::memory_order_relaxed);
     }
 
     inline uint64_t GetPkCnt() {
-        return pk_cnt_.load(boost::memory_order_relaxed);
+        return pk_cnt_.load(std::memory_order_relaxed);
     }
 
 private:
@@ -176,9 +174,9 @@ private:
     KeyEntries* entries_;
     // only Put need mutex
     std::mutex mu_;
-    boost::atomic<uint64_t> idx_cnt_;
-    boost::atomic<uint64_t> idx_byte_size_;
-    boost::atomic<uint64_t> pk_cnt_;
+    std::atomic<uint64_t> idx_cnt_;
+    std::atomic<uint64_t> idx_byte_size_;
+    std::atomic<uint64_t> pk_cnt_;
 };
 
 }// namespace storage

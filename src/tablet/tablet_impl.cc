@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <gflags/gflags.h>
-#include <boost/bind.hpp>
-#include <boost/lexical_cast.hpp>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #ifdef TCMALLOC_ENABLE 
@@ -1360,8 +1358,8 @@ void TabletImpl::LoadTable(RpcController* controller,
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
 
-        std::string db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
-            "_" + boost::lexical_cast<std::string>(pid);
+        std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + 
+                        "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
             PDLOG(WARNING, "no db data for table tid %u, pid %u", tid, pid);
             response->set_code(-1);
@@ -1468,15 +1466,14 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
         PDLOG(INFO, "drop replicator for tid %d, pid %d", tid, pid);
     }
 
-    std::string source_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) + "_" +
-        boost::lexical_cast<std::string>(pid);
+    std::string source_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
 
     if (!::rtidb::base::IsExists(source_path)) {
         return 0;
     }
 
-    std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + boost::lexical_cast<std::string>(tid) + 
-        "_" + boost::lexical_cast<std::string>(pid) + "_" + ::rtidb::base::GetNowTime();
+    std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + std::to_string(tid) + 
+           "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
     ::rtidb::base::Rename(source_path, recycle_path);
     return 0;
 }
@@ -1517,8 +1514,8 @@ void TabletImpl::CreateTable(RpcController* controller,
             done->Run();
             return;
         }       
-    	std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid) +
-                        "_" + boost::lexical_cast<std::string>(pid);
+    	std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(tid) +
+                        "_" + std::to_string(pid);
 		if (WriteTableMeta(table_db_path, table_meta) < 0) {
         	PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
             response->set_code(-1);
@@ -1639,8 +1636,8 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());
-    std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +
-                "_" + boost::lexical_cast<std::string>(table_meta->pid());
+    std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(table_meta->tid()) +
+                "_" + std::to_string(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(table_db_path, 

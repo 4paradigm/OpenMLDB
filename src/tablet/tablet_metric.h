@@ -11,7 +11,7 @@
 
 #include "storage/table.h"
 
-#include <boost/atomic.hpp>
+#include <atomic>
 #include "thread_pool.h"
 
 using ::baidu::common::ThreadPool;
@@ -44,7 +44,7 @@ private:
     // the second put bandwidth
     // the third scan qps
     // the fourth scan bandwidth
-    boost::atomic<uint64_t>* throughput_;
+    std::atomic<uint64_t>* throughput_;
     uint64_t* last_throughput_;
 };
 

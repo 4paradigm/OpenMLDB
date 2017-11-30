@@ -8,7 +8,6 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
-#include <boost/lexical_cast.hpp>
 #include "gtest/gtest.h"
 #include "gflags/gflags.h"
 #include "config.h"
@@ -25,7 +24,7 @@ namespace rtidb {
 namespace tablet {
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 
@@ -128,7 +127,7 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }

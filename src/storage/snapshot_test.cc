@@ -14,7 +14,6 @@
 #include "proto/tablet.pb.h"
 #include "log/log_writer.h"
 #include "gflags/gflags.h"
-#include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <sched.h>
 #include <sys/stat.h>
@@ -47,7 +46,7 @@ public:
 };
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
@@ -99,7 +98,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         std::string key = "key";
         entry.set_pk(key);
         entry.set_ts(count);
-        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        entry.set_value("value" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -124,7 +123,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         std::string key = "key2";
         entry.set_pk(key);
         entry.set_ts(count);
-        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        entry.set_value("value" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -177,7 +176,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
         entry.set_ts(count);
-        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        entry.set_value("value" + std::to_string(count));
         ::rtidb::api::Dimension* d1 = entry.add_dimensions();
         d1->set_key("card0"); 
         d1->set_idx(0);
@@ -254,7 +253,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
         std::string key = "key";
         entry.set_pk(key);
         entry.set_ts(count);
-        entry.set_value("value" + boost::lexical_cast<std::string>(count));
+        entry.set_value("value" + std::to_string(count));
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -526,7 +525,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     for (; count < 10; count++) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
-        std::string key = "key" + boost::lexical_cast<std::string>(count);
+        std::string key = "key" + std::to_string(count);
         entry.set_pk(key);
         entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");
@@ -540,7 +539,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     for (; count < 30; count++) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
-        std::string key = "key" + boost::lexical_cast<std::string>(count);
+        std::string key = "key" + std::to_string(count);
         entry.set_pk(key);
         if (count == 20) {
             // set one timeout key
@@ -580,7 +579,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     for (; count < 50; count++) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
-        std::string key = "key" + boost::lexical_cast<std::string>(count);
+        std::string key = "key" + std::to_string(count);
         entry.set_pk(key);
         entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");

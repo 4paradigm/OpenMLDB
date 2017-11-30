@@ -8,7 +8,6 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
-#include <boost/lexical_cast.hpp>
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "timer.h"
@@ -27,7 +26,7 @@ namespace tablet {
 uint32_t counter = 10;
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 
@@ -299,7 +298,7 @@ TEST_F(TabletImplTest, CreateTable) {
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
-		std::string file = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(id) +"_" + boost::lexical_cast<std::string>(1) + "/table_meta.txt";
+		std::string file = FLAGS_db_root_path + "/" + std::to_string(id) +"_" + std::to_string(1) + "/table_meta.txt";
         int fd = open(file.c_str(), O_RDONLY);
 		ASSERT_GT(fd, 0);
 		google::protobuf::io::FileInputStream fileInput(fd);
@@ -718,7 +717,7 @@ TEST_F(TabletImplTest, Recover) {
                 &closure);
         ASSERT_EQ(0, response.code());
 
-		std::string file = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(id) +"_" + boost::lexical_cast<std::string>(1) + "/table_meta.txt";
+		std::string file = FLAGS_db_root_path + "/" + std::to_string(id) +"_" + std::to_string(1) + "/table_meta.txt";
         int fd = open(file.c_str(), O_RDONLY);
 		ASSERT_GT(fd, 0);
 		google::protobuf::io::FileInputStream fileInput(fd);
@@ -902,7 +901,7 @@ TEST_F(TabletImplTest, Snapshot) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();

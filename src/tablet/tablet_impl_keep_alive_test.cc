@@ -8,7 +8,6 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
-#include <boost/lexical_cast.hpp>
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "timer.h"
@@ -37,7 +36,7 @@ static int32_t endpoint_size = 1;
 
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
