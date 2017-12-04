@@ -1149,7 +1149,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
             break;
         }
 	}
-    // sleep a moment to make sure all data in buffer has sent
+    // sleep a moment to make sure the receiver has received all data
     std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_stream_close_wait_time_ms));
 	fclose(file);
 	brpc::StreamClose(stream);
