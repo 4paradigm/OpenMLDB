@@ -261,6 +261,7 @@ message AppendEntriesRequest {
     optional uint32 tid = 6;
     optional uint32 pid = 7;
     optional uint64 term = 8;
+    optional uint64 leader_id = 9;
 }
 
 message AppendEntriesResponse {

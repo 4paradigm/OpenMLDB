@@ -288,10 +288,16 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
     std::lock_guard<std::mutex> lock(wmu_);
     uint64_t last_log_offset = GetOffset();
     if (request->pre_log_index() == 0 && request->entries_size() == 0) {
-        PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]", 
-                    last_log_offset, table_->GetId(), table_->GetPid());
+        PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u] leader_id[%lu]", 
+                    last_log_offset, table_->GetId(), table_->GetPid(), request->leader_id());
         response->set_log_offset(last_log_offset);
+        leader_id_ = request->leader_id();
         return true;
+    }
+    if (request->leader_id() < leader_id_) {
+        PDLOG(WARNING, "request leader_id %lu less than cur leader_id %lu", 
+                        request->leader_id(), leader_id_);
+        return false;
     }
     if (wh_ == NULL || (wh_->GetSize() / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();

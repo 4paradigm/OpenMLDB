@@ -690,19 +690,24 @@ void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::clien
         std::cout << "Bad changerole format" << std::endl;
         return;
     }
+    bool is_leader = false;
     if (parts[3].compare("leader") == 0) {
-        try {
-            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
-            if (ok) {
-                std::cout << "ChangeRole ok" << std::endl;
-            } else {
-                std::cout << "Fail to Change leader" << std::endl;
-            }
-        } catch (boost::bad_lexical_cast& e) {
-            std::cout << "Bad changerole format" << std::endl;
-        }
+        is_leader = true;
+    } else if (parts[3].compare("follower") == 0) {
+        is_leader = false;
     } else {
-        std::cout << "not support to change follower" << std::endl;
+        std::cout << "role must be leader or follower" << std::endl;
+        return;
+    }
+    try {
+        bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), is_leader);
+        if (ok) {
+            std::cout << "ChangeRole ok" << std::endl;
+        } else {
+            std::cout << "Fail to Change to " << parts[3] << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad changerole format" << std::endl;
     }
 }
 

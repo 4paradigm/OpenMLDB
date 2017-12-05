@@ -113,6 +113,9 @@ private:
     ReplicatorRole role_;
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
+
+    std::string leader_endpoint_;
+    uint64_t leader_id_;
     // sync mutex
     std::mutex mu_;
     std::condition_variable cv_;
