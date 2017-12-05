@@ -25,6 +25,37 @@
 
 ```
 
+### 创建时序表命令
+
+创建命名格式
+
+create table_name tid pid ttl segment_cnt
+* create 为创建命令
+* table_name 为要创建表名称
+* tid 指定table 的id
+* pid 指定table 的分片id
+* ttl 指定过期时间， 单位为分钟
+* segment_cnt 为表的segement 个数，建议为8~1024
+例子
+```
+> create t1 1 0 144000 8
+```
+
+### 创建多版本kv表
+
+创建命名格式
+create table_name tid pid latest:count segment_cnt
+* create 为创建命令
+* table_name 为要创建表名称
+* tid 指定table 的id
+* pid 指定table 的分片id
+* latest:count 指定保留几条记录，例如latest:1 代表保留最新的一条记录
+* segment_cnt 为表的segement 个数，建议为8~1024
+例子
+```
+create t1 1 0 latest:2 8
+```
+
 ## tablet schema相关操作
 
 ```

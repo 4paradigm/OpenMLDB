@@ -36,12 +36,28 @@ public:
 
     bool CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid, uint64_t ttl,
-                     bool leader, const std::vector<std::string>& endpoints,
+                     bool leader, 
+                     const std::vector<std::string>& endpoints,
                      uint32_t seg_cnt=16);
 
-    bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
+    bool CreateTable(const std::string& name,
+                     uint32_t tid, uint32_t pid, uint64_t ttl,
+                     bool leader, 
+                     const std::vector<std::string>& endpoints,
+                     const ::rtidb::api::TTLType& type,
+                     uint32_t seg_cnt=16);
+
+
+    bool CreateTable(const std::string& name, 
+                     uint32_t tid, uint32_t pid,
                      uint64_t ttl, uint32_t seg_cnt, 
                      const std::vector<::rtidb::base::ColumnDesc>& columns);
+
+    bool CreateTable(const std::string& name, 
+                     uint32_t tid, uint32_t pid,
+                     uint64_t ttl, uint32_t seg_cnt,
+                     const std::vector<::rtidb::base::ColumnDesc>& columns,
+                     const ::rtidb::api::TTLType& type);
 
     bool Put(uint32_t tid,
              uint32_t pid,

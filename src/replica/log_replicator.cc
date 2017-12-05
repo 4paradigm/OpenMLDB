@@ -75,7 +75,9 @@ void LogReplicator::SyncToDisk() {
             PDLOG(WARNING, "fail to sync data for path %s", path_.c_str());
         }
         consumed = ::baidu::common::timer::get_micros() - consumed;
-        PDLOG(INFO, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
+        if (consumed > 20000) {
+            PDLOG(INFO, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
+        }
     }
     tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
 }
