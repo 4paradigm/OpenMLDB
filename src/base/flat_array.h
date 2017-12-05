@@ -18,7 +18,6 @@
 namespace rtidb {
 namespace base {
 
-
 class FlatArrayCodec {
 
 public:
@@ -147,6 +146,7 @@ private:
             memcpy(buffer, data, size);
         }
     }
+
 private:
     std::string* buffer_;
     uint8_t col_cnt_;

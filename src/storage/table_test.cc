@@ -202,6 +202,26 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     ASSERT_EQ(0, table->GetRecordCnt());
     ASSERT_EQ(0, table->GetRecordIdxCnt());
 }
+TEST_F(TableTest, SchedGcHead) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
+    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    table->Init();
+    table->Put("test", 2, "test1", 5);
+    uint64_t bytes = table->GetRecordByteSize();
+    uint64_t record_idx_bytes = table->GetRecordIdxByteSize();
+    table->Put("test", 1, "test2", 5);
+    ASSERT_EQ(2, table->GetRecordCnt());
+    ASSERT_EQ(2, table->GetRecordIdxCnt());
+    ASSERT_EQ(1, table->GetRecordPkCnt());
+    uint64_t count = table->SchedGc();
+    ASSERT_EQ(1, count);
+    ASSERT_EQ(1, table->GetRecordCnt());
+    ASSERT_EQ(1, table->GetRecordIdxCnt());
+    ASSERT_EQ(bytes, table->GetRecordByteSize());
+    ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
+}
 
 TEST_F(TableTest, SchedGc) {
     std::map<std::string, uint32_t> mapping;
@@ -210,10 +230,21 @@ TEST_F(TableTest, SchedGc) {
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    table->Put("test", 9527, "test", 4);
     table->Put("test", now, "tes2", 4);
+    uint64_t bytes = table->GetRecordByteSize();
+    uint64_t record_idx_bytes = table->GetRecordIdxByteSize();
+    table->Put("test", 9527, "test", 4);
+    ASSERT_EQ(2, table->GetRecordCnt());
+    ASSERT_EQ(2, table->GetRecordIdxCnt());
+    ASSERT_EQ(1, table->GetRecordPkCnt());
+
     uint64_t count = table->SchedGc();
     ASSERT_EQ(1, count);
+    ASSERT_EQ(1, table->GetRecordCnt());
+    ASSERT_EQ(1, table->GetRecordIdxCnt());
+    ASSERT_EQ(bytes, table->GetRecordByteSize());
+    ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
+
     Ticket ticket;
     Table::Iterator* it = table->NewIterator("test", ticket);
     it->Seek(now);

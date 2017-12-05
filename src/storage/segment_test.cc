@@ -110,7 +110,7 @@ TEST_F(SegmentTest, TestGc4Head) {
     Slice pk("PK");
     segment.Put(pk, 9768, "test1", 5);
     segment.Put(pk, 9769, "test2", 5);
-    segment.Gc4Head(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    segment.Gc4Head(1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(1, gc_idx_cnt);
     ASSERT_EQ(1, gc_record_cnt);
     ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);

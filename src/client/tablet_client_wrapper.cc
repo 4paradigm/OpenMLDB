@@ -17,6 +17,7 @@ extern "C" {
 TabletClient* NewClient(const char* endpoint) {
     std::string ep(endpoint);
     TabletClient* client = new TabletClient(ep);
+    client->Init();
     return client;
 }
 
@@ -53,7 +54,6 @@ bool DropTable(TabletClient* client, uint32_t tid, uint32_t pid) {
 }
 
 bool IteratorValid(KvIterator* it) {
-
     return it->Valid();
 }
 
@@ -79,7 +79,6 @@ void IteratorFree(KvIterator* it) {
 
 void FreeString(const char* str) {
     delete str;
-
 }
 
 }

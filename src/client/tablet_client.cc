@@ -27,21 +27,21 @@ std::string TabletClient::GetEndpoint() {
     return endpoint_;
 }
 
-bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
-                               uint64_t ttl, uint32_t seg_cnt, 
-                               const std::vector<::rtidb::base::ColumnDesc>& columns) {
+bool TabletClient::CreateTable(const std::string& name, 
+                     uint32_t tid, uint32_t pid,
+                     uint64_t ttl, uint32_t seg_cnt,
+                     const std::vector<::rtidb::base::ColumnDesc>& columns,
+                     const ::rtidb::api::TTLType& type) {
     std::string schema;
     ::rtidb::base::SchemaCodec codec;
     codec.Encode(columns, schema);
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
-
     for (uint32_t i = 0; i < columns.size(); i++) {
         if (columns[i].add_ts_idx) {
             table_meta->add_dimensions(columns[i].name);
         }
     }
-
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
@@ -49,6 +49,7 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t p
     table_meta->set_seg_cnt(seg_cnt);
     table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     table_meta->set_schema(schema);
+    table_meta->set_ttl_type(type);
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, 12, 1);
@@ -58,17 +59,27 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t p
     return false;
 }
 
+bool TabletClient::CreateTable(const std::string& name, uint32_t tid, 
+                               uint32_t pid,
+                               uint64_t ttl, uint32_t seg_cnt, 
+                               const std::vector<::rtidb::base::ColumnDesc>& columns) {
+    return CreateTable(name, tid, pid, ttl, 
+                       seg_cnt, columns, 
+                       ::rtidb::api::TTLType::kAbsoluteTime);
+}
 
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-        uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
+                               uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
     std::vector<std::string> endpoints;
     return CreateTable(name, id, pid, ttl, true, endpoints, seg_cnt);
 }
 
 bool TabletClient::CreateTable(const std::string& name,
-                               uint32_t tid, uint32_t pid, uint64_t ttl,
-                               bool leader, const std::vector<std::string>& endpoints,
-                               uint32_t seg_cnt) {
+                     uint32_t tid, uint32_t pid, uint64_t ttl,
+                     bool leader, 
+                     const std::vector<std::string>& endpoints,
+                     const ::rtidb::api::TTLType& type,
+                     uint32_t seg_cnt) {
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
@@ -84,6 +95,7 @@ bool TabletClient::CreateTable(const std::string& name,
     for (size_t i = 0; i < endpoints.size(); i++) {
         table_meta->add_replicas(endpoints[i]);
     }
+    table_meta->set_ttl_type(type);
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, 12, 1);
@@ -91,6 +103,13 @@ bool TabletClient::CreateTable(const std::string& name,
         return true;
     }
     return false;
+}
+
+bool TabletClient::CreateTable(const std::string& name,
+                               uint32_t tid, uint32_t pid, uint64_t ttl,
+                               bool leader, const std::vector<std::string>& endpoints,
+                               uint32_t seg_cnt) {
+    return CreateTable(name, tid, pid, ttl, leader, endpoints, ::rtidb::api::TTLType::kAbsoluteTime, seg_cnt);
 }
 
 bool TabletClient::Put(uint32_t tid,
@@ -141,7 +160,6 @@ bool TabletClient::Put(uint32_t tid,
         return true;
     }
     return false;
-
 }
 
 bool TabletClient::Put(uint32_t tid,
@@ -446,7 +464,6 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
                   << "decode_time=" << decode_time << std::endl;
     }
     return kv_it;
-
 }
 
 
@@ -503,12 +520,11 @@ bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
     request.set_pid(pid);
     request.set_is_expire(is_expire);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetExpire,
-            &request, &response, 12, 1);
+                                  &request, &response, 12, 1);
     if (!ok || response.code()  != 0) {
         return false;
     }
     return true;
-
 }
 
 bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
