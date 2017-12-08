@@ -94,6 +94,10 @@ public:
         refs_.fetch_sub(1, boost::memory_order_relaxed);
     }
 
+    uint64_t GetRef() {
+        return refs_.load(boost::memory_order_relaxed);
+    }
+
 public:
     rtidb::base::Slice key;
     TimeEntries entries;
@@ -129,6 +133,8 @@ public:
     bool Get(const Slice& key,
              uint64_t time,
              DataBlock** block);
+
+    void Delete(const Slice& key, uint64_t time);         
 
     // Segment Iterator
     class Iterator {

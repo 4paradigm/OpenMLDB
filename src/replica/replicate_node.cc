@@ -58,11 +58,11 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
 }
 
 
-int ReplicateNode::MatchLogOffsetFromNode() {
+int ReplicateNode::MatchLogOffsetFromNode(uint64_t log_offset) {
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
-    request.set_pre_log_index(0);
+    request.set_pre_log_index(log_offset);
     ::rtidb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
                         &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);

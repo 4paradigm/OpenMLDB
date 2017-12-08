@@ -78,6 +78,10 @@ public:
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
+    void Delete(const Slice& key, uint64_t time, uint32_t idx);
+
+    void Delete(const Slice& key, uint64_t time, const Dimensions& dimensions);
+
     class Iterator {
     public:
         Iterator(Segment::Iterator* it);
@@ -200,6 +204,14 @@ public:
         record_cnt_.fetch_add(cnt, boost::memory_order_relaxed);
     }
 
+    inline uint64_t GetLeaderId() {
+        return leader_id_;
+    }
+
+    inline void SetLeaderId(uint64_t leader_id) {
+        leader_id_ = leader_id;
+    }
+
 
 private:
     std::string const name_;
@@ -215,6 +227,8 @@ private:
     uint64_t ttl_offset_;
     boost::atomic<uint64_t> record_cnt_;
     bool is_leader_;
+    uint64_t leader_id_;
+    std::string leader_endpoint_;
     boost::atomic<int64_t> time_offset_;
     std::vector<std::string> replicas_;
     boost::atomic<uint32_t> table_status_;

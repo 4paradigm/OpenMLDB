@@ -38,7 +38,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), leader_id_(0), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false), record_byte_size_(0)
 {}
@@ -52,7 +52,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), leader_id_(0), time_offset_(0),
     replicas_(), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false)
 {}
@@ -145,6 +145,33 @@ bool Table::Put(const Slice& pk,
     PDLOG(DEBUG, "add row to index %u with pk %s value size %u for tid %u pid %u ok", idx,
                pk.data(), row->size, id_, pid_);
     return true;
+}
+
+void Table::Delete(const Slice& key, uint64_t time, const Dimensions& dimensions) {
+    if (dimensions.size() > 0) {
+        Dimensions::const_iterator it = dimensions.begin();
+        for (;it != dimensions.end(); ++it) {
+            Slice spk(it->key());
+            Delete(spk, time, it->idx());
+        }
+    } else {
+        Delete(key, time, 0);
+    }
+    record_cnt_.fetch_sub(1, boost::memory_order_relaxed);
+}
+
+void Table::Delete(const Slice& pk, uint64_t time, uint32_t idx) {
+    if (idx >= idx_cnt_) {
+        return;
+    }
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.data(), pk.size(), SEED) % seg_cnt_;
+    }
+    Segment* segment = segments_[idx][seg_idx];
+    segment->Delete(pk, time);
+    PDLOG(DEBUG, "idx %u delete with pk %s time %s for tid %u pid %u ok", 
+                  idx, pk.ToString().c_str(), time, id_, pid_);
 }
 
 uint64_t Table::Release() {

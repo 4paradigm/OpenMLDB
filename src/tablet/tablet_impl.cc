@@ -288,26 +288,24 @@ void TabletImpl::Put(RpcController* controller,
         PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     }
     response->set_code(0);
-    bool leader = table->IsLeader();
     std::shared_ptr<LogReplicator> replicator;
-    if (leader) {
-        do {
-            replicator = GetReplicator(request->tid(), request->pid());
-            if (!replicator) {
-                PDLOG(WARNING, "fail to find table tid %ld pid %ld leader's log replicator", request->tid(),
-                        request->pid());
-                break;
-            }
-            ::rtidb::api::LogEntry entry;
-            entry.set_pk(request->pk());
-            entry.set_ts(request->time());
-            entry.set_value(request->value());
-            if (request->dimensions_size() > 0) {
-                entry.mutable_dimensions()->CopyFrom(request->dimensions());
-            }
-            replicator->AppendEntry(entry);
-        } while(false);
-    }
+    do {
+        replicator = GetReplicator(request->tid(), request->pid());
+        if (!replicator) {
+            PDLOG(WARNING, "fail to find table tid %ld pid %ld leader's log replicator", request->tid(),
+                    request->pid());
+            break;
+        }
+        ::rtidb::api::LogEntry entry;
+        entry.set_pk(request->pk());
+        entry.set_ts(request->time());
+        entry.set_value(request->value());
+        entry.set_leader_id(table->GetLeaderId());
+        if (request->dimensions_size() > 0) {
+            entry.mutable_dimensions()->CopyFrom(request->dimensions());
+        }
+        replicator->AppendEntry(entry);
+    } while(false);
     done->Run();
     if (replicator) {
         if (FLAGS_binlog_notify_on_put) {
@@ -629,38 +627,58 @@ void TabletImpl::AppendEntries(RpcController* controller,
         const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response,
         Closure* done) {
+	brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table || table->IsLeader()) {
         PDLOG(WARNING, "table not exist or table is leader tid %d, pid %d", request->tid(),
                 request->pid());
         response->set_code(-1);
         response->set_msg("table not exist or table is leader");
-        done->Run();
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         response->set_code(-1);
         response->set_msg("table is loading now");
         PDLOG(WARNING, "table is loading now. tid %ld, pid %ld", request->tid(), request->pid());
-        done->Run();
         return;
     }    
     std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
     if (!replicator) {
-        response->set_code(-2);
+        response->set_code(-1);
         response->set_msg("no replicator for table");
-        done->Run();
+        return;
+    }
+    if (request->leader_id() < table->GetLeaderId()) {
+        response->set_code(-1);
+        response->set_msg("leader id not match");
+        PDLOG(WARNING, "request leader_id %lu is less than table cur leader_id %lu. tid %ld, pid %ld", 
+                        request->leader_id(), table->GetLeaderId(), request->tid(), request->pid());
+    }
+    if (request->entries_size() == 0) {
+		uint64_t offset = replicator->GetOffset();
+    	brpc::Controller *cntl = static_cast<brpc::Controller*>(controller);
+		std::string leader_endpoint(butil::endpoint2str(cntl->remote_side()).c_str());
+        PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u] leader_id[%lu] endpoint[%s]",
+                    offset, request->tid(), request->pid(), request->leader_id(), leader_endpoint.c_str());
+		response->set_log_offset(offset);
+		table->SetLeaderId(request->leader_id());
+		if (request->pre_log_index() >= offset) {
+			response->set_code(0);
+			response->set_msg("ok");
+		} else {
+			response->set_code(-2);
+			response->set_msg("log offset not match!");
+			PDLOG(WARNING, "log offset not match! tid[%u] pid[%u]", request->tid(), request->pid());
+		}
         return;
     }
     bool ok = replicator->AppendEntries(request, response);
     if (!ok) {
         response->set_code(-1);
         response->set_msg("fail to append entries to replicator");
-        done->Run();
-    }else {
+    } else {
         response->set_code(0);
         response->set_msg("ok");
-        done->Run();
     }
 }
 

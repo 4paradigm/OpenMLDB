@@ -252,6 +252,7 @@ message LogEntry {
     optional bytes value = 4;
     optional uint64 ts = 5;
     repeated Dimension dimensions = 6;
+    optional uint64 leader_id = 7;
 }
 
 message AppendEntriesRequest {
