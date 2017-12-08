@@ -728,6 +728,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_record_cnt(table->GetRecordCnt());
             status->set_record_byte_size(table->GetRecordByteSize());
             status->set_record_idx_byte_size(table->GetRecordIdxByteSize());
+            status->set_record_pk_cnt(table->GetRecordPkCnt());
             uint64_t record_idx_cnt = 0;
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
             for (;iit != table->GetMapping().end(); ++iit) {
@@ -1512,6 +1513,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
+    ::rtidb::api::TTLType type = table_meta->ttl_type();
     PDLOG(INFO, "start creating table tid[%u] pid[%u]", tid, pid);
     uint64_t ttl = table_meta->ttl();
     std::string name = table_meta->name();
@@ -1567,8 +1569,8 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     table->SetTableStat(::rtidb::storage::kNormal);
     replicator->MatchLogOffset();
-    PDLOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu", tid, 
-            pid, name.c_str(), seg_cnt, ttl);
+    PDLOG(INFO, "create table with id %d pid %d name %s seg_cnt %d ttl %llu type %s", tid, 
+            pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
     if (ttl > 0) {
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
         PDLOG(INFO, "table %s with tid %ld pid %ld enable ttl %llu", name.c_str(), tid, pid, ttl);
@@ -1657,6 +1659,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());
+    table->SetTTLType(table_meta->ttl_type());
     std::string table_db_path = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(table_meta->tid()) +
                 "_" + boost::lexical_cast<std::string>(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;

@@ -323,6 +323,7 @@ message TableStatus {
     optional string name = 12;
     optional uint64 record_byte_size = 13;
     optional uint64 record_idx_byte_size = 14;
+    optional uint64 record_pk_cnt = 15;
 }
 
 message GetTableStatusResponse {

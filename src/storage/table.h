@@ -115,6 +115,7 @@ public:
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
     uint64_t GetRecordIdxByteSize();
+    uint64_t GetRecordPkCnt();
 
     inline uint64_t GetRecordByteSize() const {
         return record_byte_size_.load(boost::memory_order_relaxed);    
@@ -123,6 +124,7 @@ public:
     inline uint64_t GetRecordCnt() const {
         return record_cnt_.load(boost::memory_order_relaxed);
     }
+
 
     inline std::string GetName() const {
         return name_;
@@ -212,6 +214,13 @@ public:
         leader_id_ = leader_id;
     }
 
+    inline void SetTTLType(const ::rtidb::api::TTLType& type) {
+        ttl_type_ = type;
+    }
+
+    inline ::rtidb::api::TTLType& GetTTLType() {
+        return ttl_type_;
+    }
 
 private:
     std::string const name_;
@@ -236,6 +245,7 @@ private:
     std::map<std::string, uint32_t> mapping_;
     bool segment_released_;
     boost::atomic<uint64_t> record_byte_size_;
+    ::rtidb::api::TTLType ttl_type_;
 };
 
 }
