@@ -13,7 +13,7 @@
 #include <vector>
 #include "zk/zk_client.h"
 #include "thread_pool.h"
-#include "boost/atomic.hpp"
+#include <atomic>
 
 using ::baidu::common::ThreadPool;
 using ::rtidb::zk::ZkClient;
@@ -63,9 +63,9 @@ private:
     ZkClient* zk_client_;
     // sequence path from zookeeper
     std::string assigned_path_;
-    boost::atomic<LockState> lock_state_;
+    std::atomic<LockState> lock_state_;
     ThreadPool pool_;
-    boost::atomic<bool> running_;
+    std::atomic<bool> running_;
     std::string lock_value_;
     std::string current_lock_node_;
     std::string current_lock_value_;

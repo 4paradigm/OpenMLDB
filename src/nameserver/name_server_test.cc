@@ -14,7 +14,6 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "proto/name_server.pb.h"
-#include <boost/lexical_cast.hpp>
 #include "name_server_impl.h"
 #include "rpc/rpc_client.h"
 #include <brpc/server.h>
@@ -38,7 +37,7 @@ uint32_t counter = 10;
 static int32_t endpoint_size = 1;
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 class MockClosure : public ::google::protobuf::Closure {

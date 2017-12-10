@@ -12,7 +12,6 @@
 #include "storage/record.h"
 #include "logging.h"
 #include "timer.h"
-#include <boost/lexical_cast.hpp>
 #include <gflags/gflags.h>
 
 using ::baidu::common::INFO;
@@ -95,7 +94,7 @@ bool Table::Put(const std::string& pk,
     Segment* segment = segments_[0][index];
     Slice spk(pk);
     segment->Put(spk, time, data, size);
-    record_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    record_cnt_.fetch_add(1, std::memory_order_relaxed);
     record_byte_size_.fetch_add(GetRecordSize(size));
     PDLOG(DEBUG, "record key %s, value %s tid %u pid %u", pk.c_str(), data, id_, pid_);
     return true;
@@ -123,7 +122,7 @@ bool Table::Put(uint64_t time,
         delete block;
         return false;
     }
-    record_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    record_cnt_.fetch_add(1, std::memory_order_relaxed);
     record_byte_size_.fetch_add(GetRecordSize(value.length()));
     return true;
 }
@@ -168,14 +167,14 @@ void Table::SetGcSafeOffset(uint64_t offset) {
 }
 
 uint64_t Table::SchedGc() {
-    if (!enable_gc_.load(boost::memory_order_relaxed)) {
+    if (!enable_gc_.load(std::memory_order_relaxed)) {
         return 0;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
             id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
+    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
@@ -198,18 +197,18 @@ uint64_t Table::SchedGc() {
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    record_cnt_.fetch_sub(gc_record_cnt, boost::memory_order_relaxed);
-    record_byte_size_.fetch_sub(gc_record_byte_size, boost::memory_order_relaxed);
+    record_cnt_.fetch_sub(gc_record_cnt, std::memory_order_relaxed);
+    record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
     PDLOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
             gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
     return gc_record_cnt;
 }
 
 bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
-    if (!enable_gc_.load(boost::memory_order_relaxed) || ttl_ == 0) {
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) {
         return false;
     }
-    uint64_t time = cur_time + time_offset_.load(boost::memory_order_relaxed) - ttl_offset_ - ttl_;
+    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
     if (entry.ts() < time) {
         return true;
     }

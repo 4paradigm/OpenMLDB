@@ -10,7 +10,6 @@
 
 #include <vector>
 #include "base/skiplist.h"
-#include "boost/function.hpp"
 #include "log/log_writer.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"

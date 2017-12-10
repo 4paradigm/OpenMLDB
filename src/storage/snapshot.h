@@ -13,7 +13,6 @@
 #include <atomic>
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
-#include "boost/atomic.hpp"
 #include "base/count_down_latch.h"
 #include "storage/table.h"
 #include "log/log_writer.h"
@@ -73,7 +72,7 @@ private:
     uint32_t tid_;
     uint32_t pid_;
     uint64_t offset_;
-    boost::atomic<bool> making_snapshot_;
+    std::atomic<bool> making_snapshot_;
     LogParts* log_part_;
     // the snapshot path
     std::string snapshot_path_;

@@ -12,8 +12,6 @@
 #include "storage/segment.h"
 #include "log/log_format.h"
 #include "logging.h"
-#include <boost/ref.hpp>
-#include <boost/lexical_cast.hpp>
 #include <cstring>
 #include <gflags/gflags.h>
 #include <stdio.h>
@@ -50,7 +48,7 @@ LogReplicator::LogReplicator(const std::string& path,
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
     binlog_index_ = 0;
-    snapshot_log_part_index_.store(-1, boost::memory_order_relaxed);;
+    snapshot_log_part_index_.store(-1, std::memory_order_relaxed);;
 }
 
 LogReplicator::~LogReplicator() {
@@ -143,7 +141,7 @@ bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
         PDLOG(WARNING, "fail to parse binlog index from name %s, num %s", name.c_str(), num.c_str());
         return false;
     }
-    index = boost::lexical_cast<uint32_t>(num);
+    index = std::stoul(num);
     return true;
 }
 
@@ -198,7 +196,7 @@ bool LogReplicator::Recover() {
         logs_->Insert(binlog_index, offset);
         PDLOG(INFO, "recover binlog index %u and offset %lu from path %s",
                 binlog_index, entry.log_index(), full_path.c_str());
-        binlog_index_.store(binlog_index + 1, boost::memory_order_relaxed);
+        binlog_index_.store(binlog_index + 1, std::memory_order_relaxed);
     }
     return true;
 }
@@ -208,22 +206,22 @@ LogParts* LogReplicator::GetLogPart() {
 }
 
 void LogReplicator::SetOffset(uint64_t offset) {
-    log_offset_.store(offset, boost::memory_order_relaxed);
+    log_offset_.store(offset, std::memory_order_relaxed);
 }
 
 uint64_t LogReplicator::GetOffset() {
-    return log_offset_.load(boost::memory_order_relaxed);
+    return log_offset_.load(std::memory_order_relaxed);
 }
 
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
     log_reader.SetOffset(offset);
     int log_part_index = log_reader.RollRLogFile();
-    snapshot_log_part_index_.store(log_part_index, boost::memory_order_relaxed);
+    snapshot_log_part_index_.store(log_part_index, std::memory_order_relaxed);
 }
 
 void LogReplicator::DeleteBinlog() {
-    if (!running_.load(boost::memory_order_relaxed)) {
+    if (!running_.load(std::memory_order_relaxed)) {
         return;
     }
     if (logs_->GetSize() <= 1) {
@@ -231,7 +229,7 @@ void LogReplicator::DeleteBinlog() {
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
-    int min_log_index = snapshot_log_part_index_.load(boost::memory_order_relaxed);
+    int min_log_index = snapshot_log_part_index_.load(std::memory_order_relaxed);
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
@@ -248,7 +246,7 @@ void LogReplicator::DeleteBinlog() {
     }
 
     PDLOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
-                min_log_index, binlog_index_.load(boost::memory_order_relaxed));
+                min_log_index, binlog_index_.load(std::memory_order_relaxed));
     ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
     {
         std::lock_guard<std::mutex> lock(wmu_);
@@ -322,7 +320,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             return false;
         }
         ApplyEntryToTable(request->entries(i));
-        log_offset_.store(request->entries(i).log_index(), boost::memory_order_relaxed);
+        log_offset_.store(request->entries(i).log_index(), std::memory_order_relaxed);
         response->set_log_offset(GetOffset());
     }
     PDLOG(DEBUG, "sync log entry to offset %lld for %s", GetOffset(), path_.c_str());
@@ -392,7 +390,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
             return false;
         }
     }
-    entry.set_log_index(1 + log_offset_.fetch_add(1, boost::memory_order_relaxed));
+    entry.set_log_index(1 + log_offset_.fetch_add(1, std::memory_order_relaxed));
     std::string buffer;
     entry.SerializeToString(&buffer);
     ::rtidb::base::Slice slice(buffer);
@@ -402,7 +400,7 @@ bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
         return false;
     }
     // add record header size
-    PDLOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(boost::memory_order_relaxed));
+    PDLOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(std::memory_order_relaxed));
     return true;
 }
 
@@ -413,16 +411,16 @@ bool LogReplicator::RollWLogFile() {
         wh_ = NULL;
     }
     std::string name = ::rtidb::base::FormatToString(
-                binlog_index_.load(boost::memory_order_relaxed), FLAGS_binlog_name_length) + ".log";
+                binlog_index_.load(std::memory_order_relaxed), FLAGS_binlog_name_length) + ".log";
     std::string full_path = log_path_ + "/" + name;
     FILE* fd = fopen(full_path.c_str(), "ab+");
     if (fd == NULL) {
         PDLOG(WARNING, "fail to create file %s", full_path.c_str());
         return false;
     }
-    uint64_t offset = log_offset_.load(boost::memory_order_relaxed);
-    logs_->Insert(binlog_index_.load(boost::memory_order_relaxed), offset);
-    binlog_index_.fetch_add(1, boost::memory_order_relaxed);
+    uint64_t offset = log_offset_.load(std::memory_order_relaxed);
+    logs_->Insert(binlog_index_.load(std::memory_order_relaxed), offset);
+    binlog_index_.fetch_add(1, std::memory_order_relaxed);
     PDLOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
     wh_ = new WriteHandle(name, fd);
     return true;
@@ -457,7 +455,7 @@ void LogReplicator::MatchLogOffset() {
 
 void LogReplicator::ReplicateToNode(const std::string& endpoint) {
     uint32_t coffee_time = 0;
-    while (running_.load(boost::memory_order_relaxed)) {
+    while (running_.load(std::memory_order_relaxed)) {
         std::shared_ptr<ReplicateNode> node;
         {
             std::unique_lock<std::mutex> lock(mu_);
@@ -477,14 +475,14 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
                 coffee_time = 0;
             }
         }
-        int ret = node->SyncData(log_offset_.load(boost::memory_order_relaxed));
+        int ret = node->SyncData(log_offset_.load(std::memory_order_relaxed));
         if (ret == 1) {
             coffee_time = FLAGS_binlog_coffee_time;
         }
         std::unique_lock<std::mutex> lock(mu_);
-        while (node->GetLastSyncOffset() >= (log_offset_.load(boost::memory_order_relaxed))) {
+        while (node->GetLastSyncOffset() >= (log_offset_.load(std::memory_order_relaxed))) {
             cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_binlog_sync_wait_time));
-            if (!running_.load(boost::memory_order_relaxed)) {
+            if (!running_.load(std::memory_order_relaxed)) {
                 PDLOG(INFO, "replicate log exist for path %s", path_.c_str());
                 return;
             }
@@ -493,7 +491,7 @@ void LogReplicator::ReplicateToNode(const std::string& endpoint) {
 }
 
 void LogReplicator::Stop() {
-    running_.store(false, boost::memory_order_relaxed);
+    running_.store(false, std::memory_order_relaxed);
     // wait all task to shutdown
     tp_.Stop(true);
     PDLOG(INFO, "stop replicator for path %s ok", path_.c_str());
