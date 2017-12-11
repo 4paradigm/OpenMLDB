@@ -8,7 +8,6 @@
 #include "nameserver/name_server_impl.h"
 
 #include <gflags/gflags.h>
-#include <boost/lexical_cast.hpp>
 #include "gflags/gflags.h"
 #include "timer.h"
 #include "base/strings.h"
@@ -64,7 +63,7 @@ bool NameServerImpl::Recover() {
         table_index_ = 1;
         PDLOG(INFO, "init table_index[%u]", table_index_);
     } else {
-        table_index_ = boost::lexical_cast<uint64_t>(value);
+        table_index_ = std::stoull(value);
         PDLOG(INFO, "recover table_index[%u]", table_index_);
     }
     value.clear();
@@ -76,7 +75,7 @@ bool NameServerImpl::Recover() {
         op_index_ = 1;
         PDLOG(INFO, "init op_index[%u]", op_index_);
     } else {
-        op_index_ = boost::lexical_cast<uint64_t>(value);
+        op_index_ = std::stoull(value);
         PDLOG(INFO, "recover op_index[%u]", op_index_);
     }
 
@@ -171,7 +170,7 @@ bool NameServerImpl::RecoverOPTask() {
                 return false;
         }
 
-        uint64_t cur_op_id = boost::lexical_cast<uint64_t>(op_id);;
+        uint64_t cur_op_id = std::stoull(op_id);;
         task_map_.insert(std::make_pair(cur_op_id, op_data));
         PDLOG(INFO, "recover op[%s] success. op_id[%lu]", 
                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), cur_op_id);
@@ -430,7 +429,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
         op_data->op_info_.set_task_index(cur_task_index + 1);
         std::string value;
         op_data->op_info_.SerializeToString(&value);
-        std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(op_id);
+        std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
         if (zk_client_->SetNodeValue(node, value)) {
             PDLOG(DEBUG, "set zk status value success. node[%s] value[%s]",
                         node.c_str(), value.c_str());
@@ -580,7 +579,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         return;
     }
 
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, boost::lexical_cast<std::string>(op_index_ + 1))) {
+    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
         response->set_code(-1);
         response->set_msg("set op index node failed");
         PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
@@ -609,7 +608,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     op_data->task_list_.push_back(task);
     value.clear();
     op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(op_index_);
+    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
     if (!zk_client_->CreateNode(node, value)) {
         response->set_code(-1);
         response->set_msg("create op node failed");
@@ -725,8 +724,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
-    if (!zk_client_->SetNodeValue(zk_table_index_node_, 
-                boost::lexical_cast<std::string>(table_index_ + 1))) {
+    if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
         response->set_code(-1);
         response->set_msg("set table index node failed");
         PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
@@ -806,7 +804,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         return;
     }
 
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, boost::lexical_cast<std::string>(op_index_ + 1))) {
+    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
         response->set_code(-1);
         response->set_msg("set op index node failed");
         PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
@@ -872,7 +870,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
 
     value.clear();
     op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + boost::lexical_cast<std::string>(op_index_);
+    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
     if (!zk_client_->CreateNode(node, value)) {
         response->set_code(-1);
         response->set_msg("create op node failed");

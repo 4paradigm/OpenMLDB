@@ -13,8 +13,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <gtest/gtest.h>
-#include <boost/lexical_cast.hpp>
-#include <boost/atomic.hpp>
 #include "base/file_util.h"
 #include <iostream>
 #include "log/crc32c.h"
@@ -35,7 +33,7 @@ public:
 };
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 uint32_t type_crc_[kMaxRecordType + 1];

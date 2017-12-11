@@ -68,14 +68,14 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
             entry = new KeyEntry(pk, (uint32_t)key.size());
             uint8_t height = entries_->Insert(entry->key, entry);
             byte_size += GetRecordPkIdxSize(height, key.size());
-            pk_cnt_.fetch_add(1, boost::memory_order_relaxed);
+            pk_cnt_.fetch_add(1, std::memory_order_relaxed);
         }
     }
-    idx_cnt_.fetch_add(1, boost::memory_order_relaxed);
+    idx_cnt_.fetch_add(1, std::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
     PDLOG(DEBUG, "add ts with height %u", height);
     byte_size += GetRecordTsIdxSize(height);
-    idx_byte_size_.fetch_add(byte_size, boost::memory_order_relaxed);
+    idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
 
 void Segment::Delete(const Slice& key, uint64_t time) {
@@ -94,7 +94,7 @@ void Segment::Delete(const Slice& key, uint64_t time) {
         return;
     }
     idx_byte_size_.fetch_sub(GetRecordTsIdxSize(node->Height()));
-    idx_cnt_.fetch_sub(1, boost::memory_order_relaxed);
+    idx_cnt_.fetch_sub(1, std::memory_order_relaxed);
     if (node->GetValue()->dim_cnt_down > 1) {
         node->GetValue()->dim_cnt_down--;
     } else {
@@ -179,13 +179,13 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     }
     PDLOG(DEBUG, "[Gc4Head] segment gc keep cnt %lu consumed %lld, count %lld", keep_cnt,
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
+    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
     // skip entry that ocupied by reader
-    if (entry->refs_.load(boost::memory_order_acquire) <= 0) {
+    if (entry->refs_.load(std::memory_order_acquire) <= 0) {
         *node = entry->entries.Split(ts);
     }
 }
@@ -208,7 +208,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, boost::memory_order_relaxed);
+    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
 

@@ -7,9 +7,10 @@
 #define RTIDB_BASE_SKIPLIST_H
 
 #include <stdint.h>
-#include <boost/atomic.hpp>
+#include <atomic>
 #include "base/random.h"
 #include <iostream>
+#include <assert.h>
 
 namespace rtidb {
 namespace base {
@@ -34,23 +35,23 @@ public:
     Node(const K& key, V& value, uint8_t height):height_(height),
     key_(key), 
     value_(value) {
-        nexts_ = new boost::atomic< Node<K,V>* >[height];
+        nexts_ = new std::atomic< Node<K,V>* >[height];
     }
 
     Node(uint8_t height):height_(height), key_(), value_() {
-        nexts_ = new boost::atomic< Node<K,V>* >[height];
+        nexts_ = new std::atomic< Node<K,V>* >[height];
     }
    
     // Set the next node with memory barrier
     void SetNext(uint8_t level, Node<K,V>* node) {
         assert(level < height_ && level >= 0);
-        nexts_[level].store(node, boost::memory_order_release);
+        nexts_[level].store(node, std::memory_order_release);
     }
 
     // Set the next node without memory barrier
     void SetNextNoBarrier(uint8_t level, Node<K,V>* node) {
         assert(level < height_ && level >= 0);
-        nexts_[level].store(node, boost::memory_order_relaxed);
+        nexts_[level].store(node, std::memory_order_relaxed);
     }
 
     uint8_t Height() {
@@ -59,12 +60,12 @@ public:
 
     Node<K,V>* GetNext(uint8_t level) {
         assert(level < height_ && level >= 0);
-        return nexts_[level].load(boost::memory_order_acquire);
+        return nexts_[level].load(std::memory_order_acquire);
     }
 
     Node<K,V>* GetNextNoBarrier(uint8_t level) {
         assert(level < height_ && level >= 0);
-        return nexts_[level].load(boost::memory_order_relaxed);
+        return nexts_[level].load(std::memory_order_relaxed);
     }
 
     V& GetValue() {
@@ -83,7 +84,7 @@ private:
     uint8_t const height_;
     K  const key_;
     V  value_;
-    boost::atomic< Node<K,V>* >* nexts_;
+    std::atomic< Node<K,V>* >* nexts_;
 };
 
 
@@ -101,7 +102,7 @@ public:
         for (uint8_t i = 0; i < head_->Height(); i++) {
             head_->SetNext(i, NULL);
         }
-        max_height_.store(1, boost::memory_order_relaxed);
+        max_height_.store(1, std::memory_order_relaxed);
     }
     ~Skiplist() {
         delete head_;
@@ -116,7 +117,7 @@ public:
             for (uint8_t i = GetMaxHeight(); i < height; i++ ) {
                 pre[i] = head_;
             }
-            max_height_.store(height, boost::memory_order_relaxed);
+            max_height_.store(height, std::memory_order_relaxed);
         }
         Node<K,V>* node = NewNode(key, value, height);
         for (uint8_t i = 0; i < height; i ++) {
@@ -244,7 +245,7 @@ public:
             pre[i] = head_;
         }
         if (height > GetMaxHeight()) { 
-            max_height_.store(height, boost::memory_order_relaxed);
+            max_height_.store(height, std::memory_order_relaxed);
         }
         Node<K,V>* node = NewNode(key, value, height);
         for (uint8_t i = 0; i < height; i ++) {
@@ -374,14 +375,14 @@ private:
     }
 
     uint8_t GetMaxHeight() const {
-        return max_height_.load(boost::memory_order_relaxed);
+        return max_height_.load(std::memory_order_relaxed);
     }
     
 
 private:
     uint8_t const MaxHeight;
     uint8_t const Branch;
-    boost::atomic<uint8_t> max_height_; 
+    std::atomic<uint8_t> max_height_; 
     Comparator const compare_;
     Random rand_;
     Node<K, V>* head_;

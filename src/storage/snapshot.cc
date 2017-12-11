@@ -13,7 +13,6 @@
 #include "base/count_down_latch.h"
 #include "log/sequential_file.h"
 #include "log/log_reader.h"
-#include "boost/lexical_cast.hpp"
 #include "proto/tablet.pb.h"
 #include "gflags/gflags.h"
 #include "logging.h"
@@ -46,8 +45,8 @@ Snapshot::~Snapshot() {
 }
 
 bool Snapshot::Init() {
-    snapshot_path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_) + "/snapshot/";
-    log_path_ = FLAGS_db_root_path + "/" + boost::lexical_cast<std::string>(tid_) + "_" + boost::lexical_cast<std::string>(pid_) + "/binlog/";
+    snapshot_path_ = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
+    log_path_ = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/binlog/";
     if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
         PDLOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
         return false;
@@ -56,7 +55,7 @@ bool Snapshot::Init() {
         PDLOG(WARNING, "fail to create db meta path %s", log_path_.c_str());
         return false;
     }
-    making_snapshot_.store(false, boost::memory_order_release);
+    making_snapshot_.store(false, std::memory_order_release);
     return true;
 }
 
@@ -292,11 +291,11 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 }
 
 int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
-    if (making_snapshot_.load(boost::memory_order_acquire)) {
+    if (making_snapshot_.load(std::memory_order_acquire)) {
         PDLOG(INFO, "snapshot is doing now!");
         return 0;
     }
-    making_snapshot_.store(true, boost::memory_order_release);
+    making_snapshot_.store(true, std::memory_order_release);
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_name = now_time.substr(0, now_time.length() - 2) + ".sdb";
     std::string snapshot_name_tmp = snapshot_name + ".tmp";
@@ -305,7 +304,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
     if (fd == NULL) {
         PDLOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
-        making_snapshot_.store(false, boost::memory_order_release);
+        making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
 
@@ -411,7 +410,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             ret = -1;
         }
     }
-    making_snapshot_.store(false, boost::memory_order_release);
+    making_snapshot_.store(false, std::memory_order_release);
     return ret;
 }
 

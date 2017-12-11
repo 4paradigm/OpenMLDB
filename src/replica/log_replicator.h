@@ -11,8 +11,7 @@
 #include <vector>
 #include <map>
 #include "base/skiplist.h"
-#include "boost/atomic.hpp"
-#include "boost/function.hpp"
+#include <atomic>
 #include <mutex>
 #include <condition_variable>
 #include "thread_pool.h"
@@ -31,8 +30,6 @@ using ::rtidb::log::SequentialFile;
 using ::rtidb::log::Reader;
 using ::rtidb::log::WriteHandle;
 using ::rtidb::storage::Table;
-
-typedef boost::function< bool (const ::rtidb::api::LogEntry& entry)> ApplyLogFunc;
 
 enum ReplicatorRole {
     kLeaderNode = 1,
@@ -88,7 +85,7 @@ public:
     LogParts* GetLogPart();
 
     inline uint64_t GetLogOffset() {
-        return  log_offset_.load(boost::memory_order_relaxed);
+        return  log_offset_.load(std::memory_order_relaxed);
     }
     void SetRole(const ReplicatorRole& role);
 
@@ -106,8 +103,8 @@ private:
     std::string path_;
     std::string log_path_;
     // the term for leader judgement
-    boost::atomic<uint64_t> log_offset_;
-    boost::atomic<uint32_t> binlog_index_;
+    std::atomic<uint64_t> log_offset_;
+    std::atomic<uint32_t> binlog_index_;
     LogParts* logs_;
     WriteHandle* wh_;
     ReplicatorRole role_;
@@ -121,18 +118,16 @@ private:
     std::condition_variable cv_;
     std::condition_variable coffee_cv_;
 
-    ApplyLogFunc func_;
-
     // for background task
-    boost::atomic<bool> running_;
+    std::atomic<bool> running_;
 
     // background task pool
     ThreadPool tp_;
 
     // reference cnt
-    boost::atomic<uint64_t> refs_;
+    std::atomic<uint64_t> refs_;
 
-    boost::atomic<int> snapshot_log_part_index_;
+    std::atomic<int> snapshot_log_part_index_;
 
     std::mutex wmu_;
 

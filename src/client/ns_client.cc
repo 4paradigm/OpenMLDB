@@ -6,7 +6,6 @@
 //
 
 #include "client/ns_client.h"
-#include <boost/lexical_cast.hpp>
 #include "base/strings.h"
 
 namespace rtidb {

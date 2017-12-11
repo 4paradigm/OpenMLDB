@@ -13,7 +13,7 @@
 #include <map>
 #include "storage/segment.h"
 #include "storage/ticket.h"
-#include "boost/atomic.hpp"
+#include <atomic>
 #include "proto/tablet.pb.h"
 
 using ::rtidb::base::Slice;
@@ -118,11 +118,11 @@ public:
     uint64_t GetRecordPkCnt();
 
     inline uint64_t GetRecordByteSize() const {
-        return record_byte_size_.load(boost::memory_order_relaxed);    
+        return record_byte_size_.load(std::memory_order_relaxed);    
     }
 
     inline uint64_t GetRecordCnt() const {
-        return record_cnt_.load(boost::memory_order_relaxed);
+        return record_cnt_.load(std::memory_order_relaxed);
     }
 
 
@@ -163,11 +163,11 @@ public:
     }
 
     inline uint32_t GetTableStat() {
-        return table_status_.load(boost::memory_order_relaxed);
+        return table_status_.load(std::memory_order_relaxed);
     }
 
     inline void SetTableStat(uint32_t table_status) {
-        table_status_.store(table_status, boost::memory_order_relaxed);
+        table_status_.store(table_status, std::memory_order_relaxed);
     }
 
     inline void SetSchema(const std::string& schema) {
@@ -179,19 +179,19 @@ public:
     }
 
     inline void SetExpire(bool is_expire) {
-        enable_gc_.store(is_expire, boost::memory_order_relaxed);
+        enable_gc_.store(is_expire, std::memory_order_relaxed);
     }
 
     inline bool GetExpireStatus() {
-        return enable_gc_.load(boost::memory_order_relaxed);
+        return enable_gc_.load(std::memory_order_relaxed);
     }
 
     inline void SetTimeOffset(int64_t offset) {
-        time_offset_.store(offset * 1000, boost::memory_order_relaxed); // convert to millisecond
+        time_offset_.store(offset * 1000, std::memory_order_relaxed); // convert to millisecond
     }
 
     inline int64_t GetTimeOffset() {
-       return  time_offset_.load(boost::memory_order_relaxed) / 1000;
+       return  time_offset_.load(std::memory_order_relaxed) / 1000;
     }
 
     inline std::map<std::string, uint32_t>& GetMapping() {
@@ -199,11 +199,11 @@ public:
     }
 
     inline void RecordCntIncr() {
-        record_cnt_.fetch_add(1, boost::memory_order_relaxed);
+        record_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
 
     inline void RecordCntIncr(uint32_t cnt) {
-        record_cnt_.fetch_add(cnt, boost::memory_order_relaxed);
+        record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
     }
 
     inline uint64_t GetLeaderId() {
@@ -230,21 +230,21 @@ private:
     uint32_t const idx_cnt_;
     // Segments is readonly
     Segment*** segments_;
-    boost::atomic<uint32_t> ref_;
-    boost::atomic<bool> enable_gc_;
+    std::atomic<uint32_t> ref_;
+    std::atomic<bool> enable_gc_;
     uint64_t const ttl_;
     uint64_t ttl_offset_;
-    boost::atomic<uint64_t> record_cnt_;
+    std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
     uint64_t leader_id_;
     std::string leader_endpoint_;
-    boost::atomic<int64_t> time_offset_;
+    std::atomic<int64_t> time_offset_;
     std::vector<std::string> replicas_;
-    boost::atomic<uint32_t> table_status_;
+    std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
     bool segment_released_;
-    boost::atomic<uint64_t> record_byte_size_;
+    std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
 };
 
