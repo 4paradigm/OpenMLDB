@@ -50,6 +50,7 @@ DECLARE_string(recycle_bin_root_path);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(stream_wait_time_ms);
+DECLARE_int32(stream_close_wait_time_ms);
 DECLARE_int32(stream_block_size);
 DECLARE_int32(stream_bandwidth_limit);
 
@@ -1130,7 +1131,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 	int ret = 0;
 	while (true) {
 		size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
-        if (len < ::rtidb::log::kBlockSize) {
+        if (len < (uint32_t)FLAGS_stream_block_size) {
             if (feof(file)) {
 				if (len > 0) {
                     ret = StreamWrite(stream, buffer, len, limit_time);
@@ -1147,6 +1148,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
             break;
         }
 	}
+    // sleep a moment to make sure the receiver has received all data
+    std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_stream_close_wait_time_ms));
 	fclose(file);
 	brpc::StreamClose(stream);
 	if (ret == 0) {
