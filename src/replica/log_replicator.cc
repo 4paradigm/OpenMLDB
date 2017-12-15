@@ -48,7 +48,8 @@ LogReplicator::LogReplicator(const std::string& path,
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
     binlog_index_ = 0;
-    snapshot_log_part_index_.store(-1, std::memory_order_relaxed);;
+    snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
+    binlog_start_offset_.store(0, std::memory_order_relaxed);
 }
 
 LogReplicator::~LogReplicator() {
@@ -157,7 +158,7 @@ bool LogReplicator::Recover() {
     }
     std::sort(logs.begin(), logs.end());
     std::string buffer;
-    ::rtidb::api::LogEntry entry;
+    LogEntry entry;
     for (uint32_t i = 0; i < logs.size(); i++) {
         std::string& full_path = logs[i];
         uint32_t binlog_index = 0;
@@ -214,6 +215,7 @@ uint64_t LogReplicator::GetOffset() {
 }
 
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
+    binlog_start_offset_.store(offset, std::memory_order_relaxed);
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
     log_reader.SetOffset(offset);
     int log_part_index = log_reader.RollRLogFile();
@@ -224,8 +226,9 @@ void LogReplicator::DeleteBinlog() {
     if (!running_.load(std::memory_order_relaxed)) {
         return;
     }
-    if (logs_->GetSize() <= 1) {
-        PDLOG(DEBUG, "log part size is one or less, need not delete"); 
+    // keep at least one whole binlog file
+    if (logs_->GetSize() <= 2) {
+        PDLOG(DEBUG, "log part size is less than two, need not delete"); 
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
@@ -238,7 +241,7 @@ void LogReplicator::DeleteBinlog() {
             }
         }
     }
-    min_log_index--;
+    min_log_index -= 2;
     if (min_log_index < 0) {
         PDLOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
@@ -269,7 +272,80 @@ void LogReplicator::DeleteBinlog() {
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
-void LogReplicator::ApplyEntryToTable(const ::rtidb::api::LogEntry& entry) {
+void LogReplicator::ReadLogEntry() {
+    uint64_t cur_offset = log_offset_.load(std::memory_order_relaxed);
+    uint64_t binlog_start_offset = binlog_start_offset_.load(std::memory_order_relaxed);
+    uint64_t start_sync_offset = 0;
+    if (binlog_start_offset + FLAGS_max_sync_offset_num > cur_offset) {
+        start_sync_offset = binlog_start_offset;
+    } else {
+        start_sync_offset = cur_offset - FLAGS_max_sync_offset_num;
+    }
+	log_entry_vec_.clear();
+	log_entry_vec_.reserve(cur_offset - start_sync_offset);
+    ::rtidb::log::LogReader log_reader(logs_, log_path_);
+    log_reader.SetOffset(offset);
+    std::string buffer;
+    while (true) {
+        buffer.clear();
+        ::rtidb::base::Slice record;
+        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
+		if (status.IsWaitRecord()) {
+            break;
+        }
+        if (status.IsEof()) {
+            continue;
+        }
+        if (!status.ok()) {
+			break;
+        }
+    	std::shared_ptr<LogEntry> entry = std::make_shared<LogEntry>();
+        bool ok = entry->ParseFromString(record.ToString());
+        if (!ok) {
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+                        ::rtidb::base::DebugString(record.ToString()).c_str());
+            continue;
+        }
+		if (entry->log_index() > cur_offset) {
+			break;
+		}
+		log_entry_vec_.push_back(entry);
+    }
+    PDLOG(INFO, "read record num %u. tid %u, pid %u", log_entry_vec_.size(), tid_, pid_);
+}
+
+int LogReplicator::MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEntry>& log_entries,
+		string& msg, uint64_t& log_index) {
+	for (int idx = 0; idx < log_entries_size(); ) {
+        if (log_entry_vec.empty()) {
+			msg.assign("FULLSYNC");
+            PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu",
+                            tid, pid, log_entry(0).log_index());
+            return 0;
+        }
+        std::shared_ptr<LogEntry> entry = log_entry_vec.back();
+        if (log_entry(idx).log_index() < entry->log_index()) {
+            log_entry_vec.pop_back();
+            continue;
+        } else if (log_entry(idx).log_index() > entry->log_index()) {
+            // empty statement let idx++
+            ;
+        } else {
+            if (log_entry(idx).leader_id() == entry->leader_id()) {
+                msg.assign("ok");
+				log_index = log_entry(idx).log_index();
+                PDLOG(INFO, "succeed to match offset. tid %ld, pid %ld", tid, pid);
+                return 0;
+            }
+            log_entry_vec.pop_back();
+        }
+        idx++;
+    }
+	msg.assign("AGAIN");
+	return 0;
+}
+
+void LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
         table_->Put(entry.ts(), entry.value(), entry.dimensions());
     }else {
@@ -376,7 +452,7 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
     return true;
 }
 
-bool LogReplicator::AppendEntry(::rtidb::api::LogEntry& entry) {
+bool LogReplicator::AppendEntry(LogEntry& entry) {
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();

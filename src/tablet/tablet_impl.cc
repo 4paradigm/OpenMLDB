@@ -977,6 +977,39 @@ void TabletImpl::CreateStream(RpcController* controller,
     response->set_code(0);
 }
 
+void TabletImpl::MatchLogEntry(RpcController* controller,
+            const ::rtidb::api::MatchLogEntryRequest* request,
+            ::rtidb::api::MatchLogEntryResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    std::lock_guard<std::mutex> lock(mu_);
+	uint32_t tid = request->tid();
+	uint32_t pid = request->pid();
+	std::shared_ptr<LogReplicator> replicator = GetReplicatorUnlock(tid, pid);
+	if (!replicator) {
+		PDLOG(WARNING, "replicator not exisit. tid %lu pid %lu", tid, pid);
+		response->set_code(-1);
+		response->set_msg("replicator not exist");
+		return;
+	}
+	if (request->log_entry_size() == 0) {
+		PDLOG(WARNING, "log_entry size is zero. tid %ld, pid %ld", tid, pid);
+		response->set_code(-1);
+		response->set_msg("log_entry size is zero");
+		return;
+	}
+    std::string msg;
+    uint64_t log_index = 0;
+    replicator->MatchLogEntry(request->log_entries(), msg, log_index);
+    response->set_code(0);
+    response->set_msg(msg.c_str());
+    if (msg == "ok") {
+        response->set_log_index(log_index);
+    }
+    PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu", 
+                tid, pid, request->log_entry(0).log_index());
+}
+
 void TabletImpl::SendSnapshot(RpcController* controller,
             const ::rtidb::api::SendSnapshotRequest* request,
             ::rtidb::api::GeneralResponse* response,

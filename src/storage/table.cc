@@ -37,7 +37,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), leader_id_(0), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
 {}
@@ -51,7 +51,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), leader_id_(0), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
     replicas_(), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
 {}

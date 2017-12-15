@@ -236,8 +236,6 @@ private:
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
-    uint64_t leader_id_;
-    std::string leader_endpoint_;
     std::atomic<int64_t> time_offset_;
     std::vector<std::string> replicas_;
     std::atomic<uint32_t> table_status_;
@@ -246,6 +244,7 @@ private:
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
+    std::list<::rtidb::api::LogEntry> log_entry_list;
 };
 
 }
