@@ -40,6 +40,15 @@
 * gc_interval gc运行周期，单位为分钟，建议在一小时以上
 * gc_pool_size gc线程池大小，如果tablet表比较多可以大一点，建议值为2
 
+### binlog 相关重要配置项
+
+* binlog_single_file_max_size binlog单个文件大小，单位是M,建议配置1024
+* binlog_notify_on_put 配置是否put之后马上通过binlog变化，如果是true，主从同步延迟会很低，但是会影响写的性能
+* binlog_sync_to_disk_interval binlog定时刷盘周期
+
+### 定时做snapshot
+
+* make_snapshot_time 配置每天做snapshot开始时间，单位为小时
 
 ### sample 配置
 
