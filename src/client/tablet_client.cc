@@ -53,10 +53,8 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_ttl_type(type);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        std::cout<< "leader" << std::endl;
     }else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
-        std::cout<< "follower" << std::endl;
     }
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
