@@ -830,12 +830,19 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
             seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
         }
         std::vector<::rtidb::base::ColumnDesc> columns;
+        // check duplicate column
+        std::set<std::string> used_column_names;
         for (uint32_t i = 6; i < parts.size(); i++) {
             std::vector<std::string> kv;
             ::rtidb::base::SplitString(parts[i], ":", &kv);
             if (kv.size() < 2) {
                 continue;
             }
+            if (used_column_names.find(kv[0]) != used_column_names.end()) {
+                std::cout << "Duplicated column " << kv[0] << std::endl;
+                return;
+            }
+            used_column_names.insert(kv[0]);
             bool add_ts_idx = false;
             if (kv.size() > 2 && kv[2] == "index") {
                 add_ts_idx = true;
