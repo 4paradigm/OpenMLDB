@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <atomic>
+#include <memory>
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
 #include "base/count_down_latch.h"
@@ -49,7 +50,7 @@ public:
         return offset_;
     }
 
-    int MakeSnapshot(std::shared_ptr<Table> table, uint64_t&out_offset);
+    int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset);
 
     int TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
                 uint64_t& count, uint64_t& expired_key_num);
