@@ -1039,7 +1039,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
 }
 
 void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 6) {
+    if (parts.size() < 5) {
         std::cout << "Bad put format, eg put tid pid time value" << std::endl;
         return;
     }
