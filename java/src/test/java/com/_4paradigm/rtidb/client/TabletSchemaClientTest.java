@@ -25,6 +25,25 @@ public class TabletSchemaClientTest {
     	rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
     	client = TabletClientBuilder.buildSyncClient(rpcClient);
     }
+    @Test
+    public void testDuplicatedCreate() {
+    	int tid = id.incrementAndGet();
+    	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    	ColumnDesc desc1 = new ColumnDesc();
+    	desc1.setAddTsIndex(true);
+    	desc1.setIdx(0);
+    	desc1.setName("card");
+    	desc1.setType(ColumnType.kString);
+    	schema.add(desc1);
+    	ColumnDesc desc2 = new ColumnDesc();
+    	desc2.setAddTsIndex(true);
+    	desc2.setIdx(1);
+    	desc2.setName("card");
+    	desc2.setType(ColumnType.kString);
+    	schema.add(desc2);
+        boolean ok = client.createTable("tj0", tid, 0, 0, 8,schema);
+        Assert.assertFalse(ok);
+    }
     
     @Test
     public void test0Create() {

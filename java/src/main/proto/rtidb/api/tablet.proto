@@ -38,10 +38,17 @@ enum TTLType {
 }
 enum OPType {
     kMakeSnapshotOP = 1;
+    kAddReplicaOP = 2;
 }
 
 enum TaskType {
     kMakeSnapshot = 1;
+    kPauseSnapshot = 2;
+    kRecoverSnapshot = 3;
+    kSendSnapshot = 4;
+    kLoadTable = 5;
+    kChangeFollower = 6;
+    kAddReplica = 7;
 }
 
 enum TaskStatus {
@@ -162,6 +169,7 @@ message ReplicaRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional string endpoint = 3;
+    optional TaskInfo task_info = 4;
 }
 
 message AddReplicaResponse {
@@ -198,6 +206,7 @@ message CreateTableResponse {
 
 message LoadTableRequest {
     optional TableMeta table_meta = 1;
+    optional TaskInfo task_info = 2;
 }
 
 message DropTableRequest {
@@ -269,6 +278,19 @@ message ChangeRoleRequest {
     repeated string replicas = 3;
 }
 
+message SendSnapshotRequest {
+    required uint32 tid = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+    optional TaskInfo task_info = 4;
+}
+
+message CreateStreamRequest {
+    required uint32 tid = 1;
+    required uint32 pid = 2;
+    required string file_name = 3;
+}
+
 message ChangeRoleResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -277,6 +299,11 @@ message ChangeRoleResponse {
 
 // Get all table status information on tablet
 message GetTableStatusRequest {}
+
+message TsIdxStatus {
+    optional string idx_name = 1;
+    repeated uint64 seg_cnts = 2;
+}
 
 // table status message
 message TableStatus {
@@ -288,6 +315,13 @@ message TableStatus {
     optional uint64 ttl = 6;
     optional bool is_expire = 7;
     optional int64 time_offset = 8;
+    optional uint64 record_cnt = 9;
+    optional uint64 idx_cnt = 10;
+    repeated TsIdxStatus ts_idx_status = 11;
+    optional string name = 12;
+    optional uint64 record_byte_size = 13;
+    optional uint64 record_idx_byte_size = 14;
+    optional uint64 record_pk_cnt = 15;
 }
 
 message GetTableStatusResponse {
@@ -336,6 +370,9 @@ service TabletServer {
     rpc MakeSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
+    rpc SendSnapshot(SendSnapshotRequest) returns(GeneralResponse);
+
+    rpc CreateStream(CreateStreamRequest) returns(GeneralResponse);
 
     rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
     rpc SetTTLClock(SetTTLClockRequest) returns(GeneralResponse);
@@ -343,8 +380,5 @@ service TabletServer {
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
 
-    // http interface
-    rpc ShowTables(HttpRequest) returns (HttpResponse);
-    rpc ShowMetric(HttpRequest) returns (HttpResponse);
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
 }
