@@ -820,7 +820,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         return;
     }
     try {
-        uint64_t ttl = 0;
+        int64_t ttl = 0;
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
@@ -828,7 +828,11 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
             if (vec.size() > 1 && vec[0] == "latest") {
                 type = ::rtidb::api::TTLType::kLatestTime;
             }
-            ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
+            ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
+        }
+        if (ttl <= 0) {
+            std::cout << "invalid ttl which should be greater than 0" << std::endl;
+            return;
         }
         uint32_t seg_cnt = 16;
         if (parts.size() > 5) {
@@ -883,7 +887,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl, seg_cnt, columns, type, leader);
+                                      (uint64_t)ttl, seg_cnt, columns, type, leader);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
