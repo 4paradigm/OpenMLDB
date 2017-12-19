@@ -1235,7 +1235,7 @@ void StartNsClient() {
         std::string buffer;
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
-        }else {
+        } else {
             std::getline(std::cin, buffer);
             if (buffer.empty()) {
                 continue;
@@ -1245,13 +1245,13 @@ void StartNsClient() {
         ::rtidb::base::SplitString(buffer, " ", &parts);
         if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
-        } else  if (parts[0] == "showopstatus") {
+        } else if (parts[0] == "showopstatus") {
             HandleNSShowOPStatus(parts, &client);
-        } else  if (parts[0] == "create") {
+        } else if (parts[0] == "create") {
             HandleNSCreateTable(parts, &client);
-        } else  if (parts[0] == "makesnapshot") {
+        } else if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
-        } else  if (parts[0] == "addreplica") {
+        } else if (parts[0] == "addreplica") {
             HandleNSAddReplica(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;

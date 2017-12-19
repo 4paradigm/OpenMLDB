@@ -90,6 +90,9 @@ public:
     }
     void SetRole(const ReplicatorRole& role);
 
+    uint64_t GetLeaderId();
+    void SetLeaderId(uint64_t leader_id);
+
     void SetSnapshotLogPartIndex(uint64_t offset);
 
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);
@@ -97,7 +100,7 @@ public:
     void ReadLogEntry();
 
     int MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEntry>& log_entry,
-                string& msg, uint64_t& log_index);
+                std::string& msg, uint64_t& log_index);
 
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);

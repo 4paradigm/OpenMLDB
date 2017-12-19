@@ -206,14 +206,6 @@ public:
         record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
     }
 
-    inline uint64_t GetLeaderId() {
-        return leader_id_;
-    }
-
-    inline void SetLeaderId(uint64_t leader_id) {
-        leader_id_ = leader_id;
-    }
-
     inline void SetTTLType(const ::rtidb::api::TTLType& type) {
         ttl_type_ = type;
     }
@@ -244,7 +236,6 @@ private:
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
-    std::list<::rtidb::api::LogEntry> log_entry_list;
 };
 
 }

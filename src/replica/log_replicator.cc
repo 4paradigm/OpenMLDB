@@ -29,6 +29,7 @@ DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_match_logoffset_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_int32(binlog_name_length);
+DECLARE_int32(sync_offset_range);
 
 namespace rtidb {
 namespace replica {
@@ -272,19 +273,27 @@ void LogReplicator::DeleteBinlog() {
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
+uint64_t LogReplicator::GetLeaderId() {
+    return leader_id_;
+}
+
+void LogReplicator::SetLeaderId(uint64_t leader_id) {
+   leader_id_ = leader_id;
+}
+
 void LogReplicator::ReadLogEntry() {
     uint64_t cur_offset = log_offset_.load(std::memory_order_relaxed);
     uint64_t binlog_start_offset = binlog_start_offset_.load(std::memory_order_relaxed);
-    uint64_t start_sync_offset = 0;
-    if (binlog_start_offset + FLAGS_max_sync_offset_num > cur_offset) {
-        start_sync_offset = binlog_start_offset;
+    uint64_t start_offset = 0;
+    if (binlog_start_offset + FLAGS_sync_offset_range> cur_offset) {
+        start_offset = binlog_start_offset;
     } else {
-        start_sync_offset = cur_offset - FLAGS_max_sync_offset_num;
+        start_offset = cur_offset - FLAGS_sync_offset_range;
     }
 	log_entry_vec_.clear();
-	log_entry_vec_.reserve(cur_offset - start_sync_offset);
+	log_entry_vec_.reserve(cur_offset - start_offset);
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
-    log_reader.SetOffset(offset);
+    log_reader.SetOffset(start_offset);
     std::string buffer;
     while (true) {
         buffer.clear();
@@ -302,7 +311,8 @@ void LogReplicator::ReadLogEntry() {
     	std::shared_ptr<LogEntry> entry = std::make_shared<LogEntry>();
         bool ok = entry->ParseFromString(record.ToString());
         if (!ok) {
-            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", 
+                        table_->GetId(), table_->GetPid(),
                         ::rtidb::base::DebugString(record.ToString()).c_str());
             continue;
         }
@@ -311,35 +321,45 @@ void LogReplicator::ReadLogEntry() {
 		}
 		log_entry_vec_.push_back(entry);
     }
-    PDLOG(INFO, "read record num %u. tid %u, pid %u", log_entry_vec_.size(), tid_, pid_);
+    if (log_entry_vec_.empty()) {
+        PDLOG(WARNING, "read record error. tid %u, pid %u", 
+                        log_entry_vec_.size(), table_->GetId(), table_->GetPid());
+    } else {
+        PDLOG(INFO, "read record num %u. tid %u, pid %u", 
+                        log_entry_vec_.size(), table_->GetId(), table_->GetPid());
+    }
 }
 
 int LogReplicator::MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEntry>& log_entries,
-		string& msg, uint64_t& log_index) {
-	for (int idx = 0; idx < log_entries_size(); ) {
-        if (log_entry_vec.empty()) {
+		std::string& msg, uint64_t& log_index) {
+    if (log_entry_vec_.empty()) {
+        ReadLogEntry();
+    }
+	for (auto iter = log_entries.begin(); iter != log_entries.end(); ) {
+        if (log_entry_vec_.empty()) {
 			msg.assign("FULLSYNC");
             PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu",
-                            tid, pid, log_entry(0).log_index());
+                         table_->GetId(), table_->GetPid(), iter->log_index());
             return 0;
         }
-        std::shared_ptr<LogEntry> entry = log_entry_vec.back();
-        if (log_entry(idx).log_index() < entry->log_index()) {
-            log_entry_vec.pop_back();
+        std::shared_ptr<LogEntry> entry = log_entry_vec_.back();
+        if (iter->log_index() < entry->log_index()) {
+            log_entry_vec_.pop_back();
             continue;
-        } else if (log_entry(idx).log_index() > entry->log_index()) {
+        } else if (iter->log_index() > entry->log_index()) {
             // empty statement let idx++
             ;
         } else {
-            if (log_entry(idx).leader_id() == entry->leader_id()) {
+            if (iter->leader_id() == entry->leader_id()) {
                 msg.assign("ok");
-				log_index = log_entry(idx).log_index();
-                PDLOG(INFO, "succeed to match offset. tid %ld, pid %ld", tid, pid);
+				log_index = iter->log_index();
+                PDLOG(INFO, "succeed to match offset. tid %ld, pid %ld", 
+                            table_->GetId(), table_->GetPid());
                 return 0;
             }
-            log_entry_vec.pop_back();
+            log_entry_vec_.pop_back();
         }
-        idx++;
+        iter++;
     }
 	msg.assign("AGAIN");
 	return 0;

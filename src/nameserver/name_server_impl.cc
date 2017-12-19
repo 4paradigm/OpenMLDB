@@ -278,8 +278,72 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint %s", tit->first.c_str());
             tit->second->state_ = ::rtidb::api::TabletState::kTabletOffline;
+
+            UpdateTableInfo(tit->first);
         }
     }
+}
+
+void NameServerImpl::UpdateTableInfo(const std::string& endpoint) {
+    for (auto& kv : table_info_) {
+        for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
+            if (kv.second->table_partition(idx).endpoint() == endpoint) {
+                PDLOG(INFO, "tablet %s was offline. remove name %s tid %u pid %u at this endpoint", 
+                            endpoint.c_str(), kv.first.c_str(), kv.second->name(), kv.second->tid(), 
+                            kv.second->table_partition(idx).pid());
+                if ((kv.second->table_partition(idx).is_leader()) {
+                   // change leader
+
+                } else {
+                    ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition >* table_partition = 
+                            kv.second->mutable_table_partition();
+                    if (idx != kv.second->table_partition_size() - 1) {
+                        table_partition->SwapElements(idx, kv.second->table_partition_size() - 1);
+                    }
+                    if (running_.load(std::memory_order_acquire)) {
+                        if (table_partition->empty()) {
+                            if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + table_info->name())) {
+                                PDLOG(WARNING, "failed to delete table node[%s/%s]! value[%s]", 
+                                                zk_table_data_path_.c_str(), table_info->name().c_str(), 
+                                                table_value.c_str());
+                                break;
+                            }
+                            PDLOG(INFO, "delete table node[%s/%s] success. value[%s]", 
+                                            zk_table_data_path_.c_str(), table_info->name().c_str(), 
+                                            table_value.c_str());
+
+                        } else {
+                            std::string table_value;
+                            kv.second->SerializeToString(&table_value);
+                            if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+                                PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                                                zk_table_data_path_.c_str(), table_info->name().c_str(), 
+                                                table_value.c_str());
+                                break;                
+                            }
+                            PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
+                                            zk_table_data_path_.c_str(), table_info->name().c_str(), 
+                                            table_value.c_str());
+                        }
+                    }
+                    PDLOG(INFO, "remove pid %u in table %s", 
+                    table_partition->RemoveLast();
+                }
+            }
+            break;
+        }
+    }
+
+    for (auto iter = table_info_.begin(); iter != table_info_.end(); ) {
+        auto cur_iter = iter;
+        iter++;
+        if ((*cur_iter->second)->table_partition_size() == 0) {
+            PDLOG(INFO, "table_partition is empty, delete table info. name %s tid %u",
+                        (*cur_iter->second)->name(), (*cur_iter->second)->tid());
+            table_info_.erase(cur_iter);
+        }
+    }
+
 }
 
 void NameServerImpl::ShowTablet(RpcController* controller,

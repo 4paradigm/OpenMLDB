@@ -298,7 +298,7 @@ void TabletImpl::Put(RpcController* controller,
         entry.set_pk(request->pk());
         entry.set_ts(request->time());
         entry.set_value(request->value());
-        entry.set_leader_id(table->GetLeaderId());
+        entry.set_leader_id(replicator->GetLeaderId());
         if (request->dimensions_size() > 0) {
             entry.mutable_dimensions()->CopyFrom(request->dimensions());
         }
@@ -646,11 +646,11 @@ void TabletImpl::AppendEntries(RpcController* controller,
         response->set_msg("no replicator for table");
         return;
     }
-    if (request->leader_id() < table->GetLeaderId()) {
+    if (request->leader_id() < replicator->GetLeaderId()) {
         response->set_code(-1);
         response->set_msg("leader id not match");
         PDLOG(WARNING, "request leader_id %lu is less than table cur leader_id %lu. tid %ld, pid %ld", 
-                        request->leader_id(), table->GetLeaderId(), request->tid(), request->pid());
+                        request->leader_id(), replicator->GetLeaderId(), request->tid(), request->pid());
     }
     if (request->entries_size() == 0) {
 		uint64_t offset = replicator->GetOffset();
@@ -659,7 +659,7 @@ void TabletImpl::AppendEntries(RpcController* controller,
         PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u] leader_id[%lu] endpoint[%s]",
                     offset, request->tid(), request->pid(), request->leader_id(), leader_endpoint.c_str());
 		response->set_log_offset(offset);
-		table->SetLeaderId(request->leader_id());
+		replicator->SetLeaderId(request->leader_id());
 		if (request->pre_log_index() >= offset) {
 			response->set_code(0);
 			response->set_msg("ok");
@@ -985,14 +985,14 @@ void TabletImpl::MatchLogEntry(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
 	uint32_t tid = request->tid();
 	uint32_t pid = request->pid();
-	std::shared_ptr<LogReplicator> replicator = GetReplicatorUnlock(tid, pid);
+	std::shared_ptr<LogReplicator> replicator = GetReplicatorUnLock(tid, pid);
 	if (!replicator) {
 		PDLOG(WARNING, "replicator not exisit. tid %lu pid %lu", tid, pid);
 		response->set_code(-1);
 		response->set_msg("replicator not exist");
 		return;
 	}
-	if (request->log_entry_size() == 0) {
+	if (request->log_entries_size() == 0) {
 		PDLOG(WARNING, "log_entry size is zero. tid %ld, pid %ld", tid, pid);
 		response->set_code(-1);
 		response->set_msg("log_entry size is zero");
@@ -1007,7 +1007,7 @@ void TabletImpl::MatchLogEntry(RpcController* controller,
         response->set_log_index(log_index);
     }
     PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu", 
-                tid, pid, request->log_entry(0).log_index());
+                tid, pid, request->log_entries(0).log_index());
 }
 
 void TabletImpl::SendSnapshot(RpcController* controller,
