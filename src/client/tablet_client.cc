@@ -31,7 +31,8 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid,
                      uint64_t ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
-                     const ::rtidb::api::TTLType& type) {
+                     const ::rtidb::api::TTLType& type,
+                     bool leader) {
     std::string schema;
     ::rtidb::base::SchemaCodec codec;
     codec.Encode(columns, schema);
@@ -50,6 +51,11 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     table_meta->set_schema(schema);
     table_meta->set_ttl_type(type);
+    if (leader) {
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+    }else {
+        table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
+    }
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, 12, 1);
@@ -65,7 +71,8 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
                                const std::vector<::rtidb::base::ColumnDesc>& columns) {
     return CreateTable(name, tid, pid, ttl, 
                        seg_cnt, columns, 
-                       ::rtidb::api::TTLType::kAbsoluteTime);
+                       ::rtidb::api::TTLType::kAbsoluteTime, 
+                       true);
 }
 
 bool TabletClient::CreateTable(const std::string& name, uint32_t id,

@@ -821,18 +821,27 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
     }
     try {
         uint64_t ttl = 0;
+        ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
-            ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            std::vector<std::string> vec;
+            ::rtidb::base::SplitString(parts[4], ":", &vec);
+            if (vec.size() > 1 && vec[0] == "latest") {
+                type = ::rtidb::api::TTLType::kLatestTime;
+            }
+            ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
         }
-
         uint32_t seg_cnt = 16;
         if (parts.size() > 5) {
             seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
         }
+        bool leader = true;
+        if (parts.size() > 6 && parts[6].compare("false") == 0) {
+            leader = false;
+        }
         std::vector<::rtidb::base::ColumnDesc> columns;
         // check duplicate column
         std::set<std::string> used_column_names;
-        for (uint32_t i = 6; i < parts.size(); i++) {
+        for (uint32_t i = 7; i < parts.size(); i++) {
             std::vector<std::string> kv;
             ::rtidb::base::SplitString(parts[i], ":", &kv);
             if (kv.size() < 2) {
@@ -874,7 +883,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl, seg_cnt, columns);
+                                      ttl, seg_cnt, columns, type, leader);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -882,7 +891,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         }
 
     } catch(std::exception const& e) {
-        std::cout << "Invalid args, tid , pid or ttl should be uint32_t" << std::endl;
+        std::cout << "Invalid args " << e.what() << std::endl;
     }
 }
 
