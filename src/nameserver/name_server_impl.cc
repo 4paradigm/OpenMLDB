@@ -299,7 +299,6 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     done->Run();
 }
 
-
 bool NameServerImpl::Init() {
     if (FLAGS_zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");
@@ -703,6 +702,23 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
 	done->Run();
 }
 
+void NameServerImpl::ShowTable(RpcController* controller,
+            const ShowTableRequest* request,
+            ShowTableResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    std::lock_guard<std::mutex> lock(mu_);
+	for (const auto& kv : table_info_) {
+        if (request->has_name() && request->name() != kv.first) {
+            continue;
+        }
+		::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
+		table_info->CopyFrom(*(kv.second));
+	}
+	response->set_code(0);
+	response->set_msg("ok");
+}
+
 void NameServerImpl::DropTable(RpcController* controller, 
         const DropTableRequest* request, 
         GeneralResponse* response, 
@@ -724,9 +740,6 @@ void NameServerImpl::DropTable(RpcController* controller,
     }
     int code = 0;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
-        if (request->has_pid() && request->pid() != iter->second->table_partition(idx).pid()) {
-            continue;
-        }
         do {
             auto tablets_iter = tablets_.find(iter->second->table_partition(idx).endpoint());
             // check tablet if exist
@@ -746,7 +759,7 @@ void NameServerImpl::DropTable(RpcController* controller,
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
                                 iter->second->tid(), iter->second->table_partition(idx).pid(),
                                 iter->second->table_partition(idx).endpoint().c_str());
-                code = -1; // if drop table fail, return error                
+                code = -1; // if drop table failed, return error                
                 break;
             }
             PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", 

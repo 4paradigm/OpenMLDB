@@ -31,6 +31,8 @@ public:
     int Init();
 
     bool ShowTablet(std::vector<TabletInfo>& tablets);
+    
+    bool ShowTable(const std::string& name, std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     bool MakeSnapshot(const std::string& name, uint32_t pid);
 

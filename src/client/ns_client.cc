@@ -36,6 +36,26 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets) {
     return false;
 }
 
+bool NsClient::ShowTable(const std::string& name, 
+            std::vector<::rtidb::nameserver::TableInfo>& tables) {
+    ::rtidb::nameserver::ShowTableRequest request;
+    if (!name.empty()) {
+        request.set_name(name);
+    }
+    ::rtidb::nameserver::ShowTableResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        for (int32_t i = 0; i < response.table_info_size(); i++) {
+            ::rtidb::nameserver::TableInfo table_info;
+            table_info.CopyFrom(response.table_info(i));
+            tables.push_back(table_info);
+        }
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid) {
     ::rtidb::nameserver::MakeSnapshotNSRequest request;
     request.set_name(name);

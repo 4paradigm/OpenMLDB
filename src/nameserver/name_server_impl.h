@@ -91,6 +91,11 @@ public:
             ShowTabletResponse* response,
             Closure* done);
 
+    void ShowTable(RpcController* controller,
+            const ShowTableRequest* request,
+            ShowTableResponse* response,
+            Closure* done);
+
     void MakeSnapshotNS(RpcController* controller,
             const MakeSnapshotNSRequest* request,
             GeneralResponse* response,
