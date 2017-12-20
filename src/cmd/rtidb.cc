@@ -184,17 +184,12 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::cli
         std::cout << "Bad format" << std::endl;
         return;
     }
-    try {
-        std::string name = parts[1];
-        bool ret = client->DropTable(parts[1]);
-        if (!ret) {
-            std::cout << "failed to drop" << std::endl;
-            return;
-        }
-        std::cout << "drop ok" << std::endl;
-    } catch(std::exception const& e) {
-        std::cout << "Invalid args." << std::endl;
-    } 
+    bool ret = client->DropTable(parts[1]);
+    if (!ret) {
+        std::cout << "failed to drop" << std::endl;
+        return;
+    }
+    std::cout << "drop ok" << std::endl;
 }
 
 void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {

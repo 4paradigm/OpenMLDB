@@ -155,6 +155,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
             &drop_request, &response, 12, 1);
     ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_FALSE(ok);
 }
