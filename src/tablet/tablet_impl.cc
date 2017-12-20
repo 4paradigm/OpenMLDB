@@ -1496,7 +1496,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     ::rtidb::api::TTLType type = table_meta->ttl_type();
-    PDLOG(INFO, "start creating table tid[%u] pid[%u]", tid, pid);
+    PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     uint64_t ttl = table_meta->ttl();
     std::string name = table_meta->name();
     uint32_t seg_cnt = 8;
