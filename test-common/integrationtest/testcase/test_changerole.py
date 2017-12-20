@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 import unittest
-from framework import TestCaseBase
+from testcasebase import TestCaseBase
 import xmlrunner
+from libs.test_loader import load
+
 
 class TestChangeRole(TestCaseBase):
 
     def test_changerole_to_leader(self):
-        '''
+        """
         换从节点为主节点后，mode变为Leader
         :return:
-        '''
+        """
         rs1 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.changerole(self.slave1, self.tid, self.pid, 'leader')
@@ -19,10 +21,10 @@ class TestChangeRole(TestCaseBase):
 
 
     def test_changerole_to_leader_can_put(self):
-        '''
-        换从节点为主节点后，mode变为Leader
+        """
+        换从节点为主节点后，mode变为Leader，可以成功put
         :return:
-        '''
+        """
         rs1 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.changerole(self.slave1, self.tid, self.pid, 'leader')
@@ -37,10 +39,10 @@ class TestChangeRole(TestCaseBase):
 
 
     def test_changerole_to_leader_can_makesnapshot(self):
-        '''
+        """
         切换从节点为主节点后，可以成功pausesnapshot
         :return:
-        '''
+        """
         rs1 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.changerole(self.slave1, self.tid, self.pid, 'leader')
@@ -61,10 +63,10 @@ class TestChangeRole(TestCaseBase):
 
 
     def test_changerole_to_leader_can_pausesnapshot(self):
-        '''
+        """
         切换从节点为主节点后，可以成功pausesnapshot
         :return:
-        '''
+        """
         rs1 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.changerole(self.slave1, self.tid, self.pid, 'leader')
@@ -76,10 +78,10 @@ class TestChangeRole(TestCaseBase):
 
 
     def test_changerole_to_leader_can_addreplica(self):
-        '''
+        """
         切换从节点为主节点后，可以成功addreplica slave，slave可以同步leader数据
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'false', self.leader)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.changerole(self.leader, self.tid, self.pid, 'leader')
@@ -99,13 +101,5 @@ class TestChangeRole(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-    suite = unittest.TestSuite()
-    if len(sys.argv) == 1:
-        suite = unittest.TestLoader().loadTestsFromTestCase(TestChangeRole)
-    else:
-        for test_name in sys.argv[1:]:
-            suite.addTest(TestChangeRole(test_name))
-    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
-    runner.run(suite)
+    import libs.test_loader
+    load(TestChangeRole)

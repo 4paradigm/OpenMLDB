@@ -4,8 +4,9 @@ import commands
 import importlib
 import os
 import sys
+sys.path.append(os.getenv('testpath'))
+import libs.conf as conf
 
-sys.path.append("test-common/integrationtest")
 
 if __name__ == "__main__":
     testpath = os.getenv('testpath')
@@ -21,5 +22,5 @@ if __name__ == "__main__":
         test_suite.append(unittest.TestLoader().loadTestsFromTestCase(eval('mo.' + test_class)))
 
     suite = unittest.TestSuite(test_suite)
-    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
+    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'), failfast=conf.failfast)
     runner.run(suite)

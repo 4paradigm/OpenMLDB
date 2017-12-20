@@ -1,20 +1,47 @@
 # -*- coding: utf-8 -*-
 import unittest
-from framework import TestCaseBase
+from testcasebase import TestCaseBase
 import threading
 import time
 import xmlrunner
+from libs.deco import *
+from libs.logger import infoLogger
+import libs.conf as conf
+import libs.ddt as ddt
+from libs.test_loader import load
+import ctypes
 
+
+@ddt.ddt
 class TestPut(TestCaseBase):
 
+    def test_put_normal(self):
+        """
+        put成功后可以scan出来
+        :return:
+        """
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2)
+        self.assertTrue('Create table ok' in rs1)
+        rs2 = self.put(self.leader,
+                       self.tid,
+                       self.pid,
+                       'testkey0',
+                       self.now(),
+                       'testvalue0')
+        self.assertTrue('Put ok' in rs2)
+        time.sleep(1)
+        self.assertTrue(
+            'testvalue0' in self.scan(self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
+
+
     def test_put_slave_sync(self):
-        '''
+        """
         put到leader后，slave同步成功
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
-        rs2 = self.create( self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs2)
         rs2 = self.put(self.leader,
                        self.tid,
@@ -29,10 +56,10 @@ class TestPut(TestCaseBase):
 
 
     def test_put_slave_cannot_put(self):
-        '''
+        """
         slave不允许put
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false', self.leader)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.put(self.leader,
@@ -45,11 +72,11 @@ class TestPut(TestCaseBase):
 
 
     def test_put_slave_killed_while_leader_putting(self):
-        '''
+        """
         写数据过程中从节点挂掉，不影响主节点
         重新启动后可以loadtable成功，数据与主节点一致
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true', self.slave1)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
@@ -67,11 +94,9 @@ class TestPut(TestCaseBase):
         def stop_client(endpoint):
             self.stop_client(endpoint)
 
-        threads = []
-        threads.append(threading.Thread(
-            target=put, args=(20,)))
-        threads.append(threading.Thread(
-            target=stop_client, args=(self.slave1,)))
+        threads = [threading.Thread(
+            target=put, args=(20,)), threading.Thread(
+            target=stop_client, args=(self.slave1,))]
 
         # 写入数据1s后节点挂掉
         for t in threads:
@@ -89,14 +114,133 @@ class TestPut(TestCaseBase):
         self.assertTrue('testvalue19' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
 
 
+    @multi_dimension(True)
+    @ddt.data(
+        ({'card': ('string:index', 'str1'), 'card2': ('int32:index', 3), 'amt': ('double', 1.1)}, 'Put ok'),
+        ({'card': ('string:index', 'card0')}, 'Put ok'),
+        ({'card': ('string', 'card0')}, 'Put ok'),
+        ({'card': ('string:index', 'str1'), 'card2': ('int32:index', 3), 'amt': ('double', '')},
+         'Input value mismatch schema'),
+        ({'card': ('string:index', 'str1'), 'card2': ('int32', 3), 'amt': ('double', 1.1)}, 'Put ok'),
+        ({'card': ('string', 'str1'), 'card2': ('int32', 3), 'amt': ('double', 1.1)}, 'Put ok'),
+    )
+    @ddt.unpack
+    def test_sput_index(self, kv, rsp_msg):
+        """
+        创建高维表，对index进行测试
+        :return:
+        """
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
+        self.assertTrue(rsp_msg in rs1)
+
+
+    @multi_dimension(True)
+    @ddt.data(
+        ({'card': ('string:index', '0'), 's2': ('int32', 2147483647)},
+         'Put ok', {'card': '0'}, '2147483647'),
+        ({'card': ('string:index', '1'), 's2': ('int32', 1.1)},
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
+        ({'card': ('string:index', '2'), 's2': ('int32', 1e+5)},
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
+        ({'card': ('string:index', '3'), 's2': ('int32', 'aaaa')},
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
+        ({'card': ('string:index', '4'), 's2': ('int32', 2147483648)},
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
+        ({'card': ('string:index', '5'), 's2': ('int32', -214)},
+         'Put ok', {'card': '5'}, '-214'),
+        ({'card': ('string:index', '6'), 's2': ('int64', -9223372036854775808)},
+         'Put ok', {'card': '6'}, '-9223372036854775808'),
+        ({'card': ('string:index', '7'), 's2': ('int64', -9223372036854775809)},
+         'Put ok', {'card': '7'}, '-9223372036854775809'),
+    )
+    @ddt.unpack
+    def test_sput_int(self, kv, rsp_msg, scan_kv, scan_value):
+        """
+        创建高维表，对int32和int64类型进行测试
+        :return:
+        """
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
+        self.assertTrue(rsp_msg in rs1)
+        self.assertTrue(
+            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+
+
+    @multi_dimension(True)
+    @ddt.data(
+        ({'card': ('string:index', '0'), 's2': ('uint32', 2147483648)},
+         'Put ok', {'card': '0'}, '2147483648'),
+        ({'card': ('string:index', '1'), 's2': ('uint32', 1.1)},
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
+        ({'card': ('string:index', '2'), 's2': ('uint32', 1e+5)},
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
+        ({'card': ('string:index', '3'), 's2': ('uint32', 'aaaa')},
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
+        ({'card': ('string:index', '4'), 's2': ('uint32', -2)},
+         'Put ok', {'card': '4'}, ctypes.c_uint32(-2).value),
+        ({'card': ('string:index', '5'), 's2': ('uint64', 1)},
+         'Put ok', {'card': '5'}, 1),
+        ({'card': ('string:index', '6'), 's2': ('uint64', -111111111111111111)},
+         'Put ok', {'card': '6'}, ctypes.c_uint64(-111111111111111111).value),
+    )
+    @ddt.unpack
+    def test_sput_uint(self, kv, rsp_msg, scan_kv, scan_value):
+        """
+        创建高维表，对uint32和uint64类型进行测试
+        :return:
+        """
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
+        self.assertTrue(rsp_msg in rs1)
+        self.assertTrue(
+            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+
+
+    @multi_dimension(True)
+    @ddt.data(
+        ({'card': ('string:index', '0'), 's2': ('string', '\\"\\"\'\'^\\n')},
+         'Put ok', {'card': '0'}, '\"\"\'\'^\\n'),
+        ({'card': ('string:index', '1'), 's2': ('string', ' ')},
+         'Bad put format, eg put tid pid time value', {}, ''),
+    )
+    @ddt.unpack
+    def test_sput_string(self, kv, rsp_msg, scan_kv, scan_value):
+        """
+        创建高维表，对string类型进行测试
+        :return:
+        """
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
+        infoLogger.info(rs1)
+        self.assertTrue(rsp_msg in rs1)
+        self.assertTrue(
+            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+
+
+    @multi_dimension(True)
+    @ddt.data(
+        ({'card': ('string:index', '0'), 's2': ('float', 10.0)}, 'Put ok', {'card': '0'}, 10.0),
+        ({'card': ('string:index', '1'), 's2': ('float', 10.01)}, 'Put ok', {'card': '1'}, 10.01),
+        ({'card': ('string:index', '2'), 's2': ('float', -1e-1)}, 'Put ok', {'card': '2'}, -0.1),
+        ({'card': ('string:index', '3'), 's2': ('float', 1e-10)}, 'Put ok', {'card': '3'}, 1e-10),
+        ({'card': ('string:index', '4'), 's2': ('double', -10.01)}, 'Put ok', {'card': '4'}, -10.01),
+        ({'card': ('string:index', '5'), 's2': ('double', -1e-1)}, 'Put ok', {'card': '5'}, -0.1),
+        ({'card': ('string:index', '6'), 's2': ('double', 1e-10)}, 'Put ok', {'card': '6'}, 1e-10),
+    )
+    @ddt.unpack
+    def test_sput_float_double(self, kv, rsp_msg, scan_kv, scan_value):
+        """
+        创建高维表，对float和double类型进行测试
+        :return:
+        """
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
+        self.assertTrue(rsp_msg in rs1)
+        self.assertTrue(
+            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+
+
 if __name__ == "__main__":
-    import sys
-    import os
-    suite = unittest.TestSuite()
-    if len(sys.argv) == 1:
-        suite = unittest.TestLoader().loadTestsFromTestCase(TestPut)
-    else:
-        for test_name in sys.argv[1:]:
-            suite.addTest(TestPut(test_name))
-    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
-    runner.run(suite)
+    import libs.test_loader
+    load(TestPut)

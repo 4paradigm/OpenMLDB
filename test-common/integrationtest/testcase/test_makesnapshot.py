@@ -1,17 +1,23 @@
 # -*- coding: utf-8 -*-
 import unittest
-from framework import TestCaseBase
+from testcasebase import TestCaseBase
 import time
 import threading
 import xmlrunner
+from libs.test_loader import load
+<<<<<<< HEAD
+from libs.logger import infoLogger
+=======
+>>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d
+
 
 class TestMakeSnapshot(TestCaseBase):
 
     def test_makesnapshot_normal_success(self):
-        '''
+        """
         makesnapshot功能正常
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 6):
@@ -32,10 +38,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_ttl_first_make(self):
-        '''
+        """
         首次makesnapshot，MANIFEST文件中统计剔除过期数据
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 6):
@@ -56,10 +62,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_ttl_second_make(self):
-        '''
+        """
         第二次makesnapshot，MANIFEST文件中统计剔除过期数据
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 6):
@@ -82,12 +88,12 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_ttl_put_some_expried_data(self):
-        '''
+        """
         写入部分过期数据和部分未过期数据，首次makesnapshot
         再写入部分过期数据和部分未过期数据，再次makesnapshot
         此时MANIFEST文件中统计剔除了上次snapshot的过期数据，没有提出binlog中的过期数据
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 6):
@@ -119,10 +125,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_fail_after_drop(self):
-        '''
+        """
         drop table后，makesnapshot失败
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 3):
@@ -139,16 +145,17 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_fail_making_snapshot(self):
-        '''
+        """
         makesnapshot过程中，无法再makesnapshot
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(200, 5)
+        self.put_large_datas(500, 20)
 
         rs_list = []
+
         def makesnapshot(endpoint):
             rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(self.tid, self.pid))
             rs_list.append(rs)
@@ -164,24 +171,26 @@ class TestMakeSnapshot(TestCaseBase):
         for t in threads:
             t.join()
 
-        self.assertEqual(rs_list.count('MakeSnapshot ok'), 1)
+        rss = [rs.split('\n')[1] for rs in rs_list]
+        infoLogger.info(rss)
+        self.assertEqual(rss.count('MakeSnapshot ok'), 1)
 
         time.sleep(5)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '1000')
+        self.assertEqual(mf['offset'], '10000')
         self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '1000')
+        self.assertEqual(mf['count'], '10000')
 
 
     def test_makesnapshot_block_drop_table(self):
-        '''
+        """
         makesnapshot过程中，无法drop table
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(100, 50)
+        self.put_large_datas(200, 50)
 
         rs2 = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
         rs3 = self.drop(self.leader, self.tid, self.pid)
@@ -191,10 +200,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_when_loading_table(self):
-        '''
+        """
         loadtable过程中，无法makesnapshot
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -205,19 +214,19 @@ class TestMakeSnapshot(TestCaseBase):
             leaderpath=self.leaderpath, tid=self.tid, pid=self.pid, slave1path=self.slave1path))
 
         rs_list = []
+
         def loadtable(endpoint):
             rs = self.loadtable(endpoint, 't', self.tid, self.pid)
             rs_list.append(rs)
+
         def makesnapshot(endpoint):
             rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(self.tid, self.pid))
             rs_list.append(rs)
 
         # 5个线程并发loadtable，最后只有1个线程是load ok的
-        threads = []
-        threads.append(threading.Thread(
-            target=loadtable, args=(self.slave1,)))
-        threads.append(threading.Thread(
-            target=makesnapshot, args=(self.slave1,)))
+        threads = [threading.Thread(
+            target=loadtable, args=(self.slave1,)), threading.Thread(
+            target=makesnapshot, args=(self.slave1,))]
 
         for t in threads:
             time.sleep(0.0001)
@@ -229,10 +238,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_manifest_deleted(self):
-        '''
+        """
         MANIFEST文件被删除，makesnapshot无法做出新的snapshot文件，日志中有warning
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -272,10 +281,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_snapshot_deleted(self):
-        '''
+        """
         删除snapshot后，makesnapshot无法做出新的snapshot文件，日志中有warning
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -296,10 +305,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_snapshot_name_mismatch(self):
-        '''
+        """
         snapshot和MANIFEST名字不匹配，makesnapshot时日志中有warning，且无法生成新的snapshot
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -320,10 +329,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_fail_after_pausesnapshot(self):
-        '''
+        """
         pausesnapshot后，无法makesnapshot
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -341,10 +350,10 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_success_after_recoversnapshot(self):
-        '''
+        """
         recoversnapshot后，可以成功makesnapshot
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -364,13 +373,13 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_while_binlog_without_ending(self):
-        '''
+        """
         写入少量数据，binlog未到滚动大小时节点挂掉
         重新启动后loadtable，再写入数据
         此时makesnapshot，包含了重启后写入的数据
         再cp到新节点，新节点loadtable，数据完整
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -416,13 +425,13 @@ class TestMakeSnapshot(TestCaseBase):
 
 
     def test_makesnapshot_after_restart_while_putting(self):
-        '''
+        """
         写数据过程中节点挂掉，造成binlog不完整
         重新启动后可以loadtable成功
         再写入数据后makesnapshot，snapshot中包含了重启后写入的数据
         将db cp到新节点，新节点loadtable，数据完整
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
@@ -438,11 +447,9 @@ class TestMakeSnapshot(TestCaseBase):
         def stop_client(endpoint):
             self.stop_client(endpoint)
 
-        threads = []
-        threads.append(threading.Thread(
-            target=put, args=(10,)))
-        threads.append(threading.Thread(
-            target=stop_client, args=(self.leader,)))
+        threads = [threading.Thread(
+            target=put, args=(10,)), threading.Thread(
+            target=stop_client, args=(self.leader,))]
 
         # 写入数据1s后节点挂掉
         for t in threads:
@@ -489,13 +496,5 @@ class TestMakeSnapshot(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-    suite = unittest.TestSuite()
-    if len(sys.argv) == 1:
-        suite = unittest.TestLoader().loadTestsFromTestCase(TestMakeSnapshot)
-    else:
-        for test_name in sys.argv[1:]:
-            suite.addTest(TestMakeSnapshot(test_name))
-    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
-    runner.run(suite)
+    import libs.test_loader
+    load(TestMakeSnapshot)

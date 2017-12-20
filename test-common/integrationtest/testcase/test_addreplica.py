@@ -1,24 +1,26 @@
 # -*- coding: utf-8 -*-
 import unittest
-from framework import TestCaseBase
+from testcasebase import TestCaseBase
 import xmlrunner
 import time
+from libs.test_loader import load
+
 
 class TestAddReplica(TestCaseBase):
 
     def test_addreplica_leader_add(self):
-        '''
+        """
         主节点addreplica slave成功
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         self.put(self.leader,
-                       self.tid,
-                       self.pid,
-                       'k1',
-                       self.now() - 1,
-                       'v1')
+                 self.tid,
+                 self.pid,
+                 'k1',
+                 self.now() - 1,
+                 'v1')
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
         self.assertTrue('Create table ok' in rs2)
         rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false', self.slave2)
@@ -45,10 +47,10 @@ class TestAddReplica(TestCaseBase):
 
 
     def test_addreplica_change_to_normal(self):
-        '''
+        """
         主节点addreplica之后，状态变回normal
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
@@ -62,10 +64,10 @@ class TestAddReplica(TestCaseBase):
 
 
     def test_addreplica_slave_cannot_add(self):
-        '''
+        """
         从节点不允许addreplica
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
@@ -75,10 +77,10 @@ class TestAddReplica(TestCaseBase):
 
 
     def test_delreplica_slave_cannot_scan(self):
-        '''
+        """
         主节点删除replica后put数据，slave scan不出来
         :return:
-        '''
+        """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
         self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
@@ -106,13 +108,5 @@ class TestAddReplica(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-    suite = unittest.TestSuite()
-    if len(sys.argv) == 1:
-        suite = unittest.TestLoader().loadTestsFromTestCase(TestAddReplica)
-    else:
-        for test_name in sys.argv[1:]:
-            suite.addTest(TestAddReplica(test_name))
-    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
-    runner.run(suite)
+    import libs.test_loader
+    load(TestAddReplica)

@@ -1,28 +1,30 @@
 # -*- coding: utf-8 -*-
 import unittest
-from framework import TestCaseBase
+from testcasebase import TestCaseBase
 import xmlrunner
+from libs.test_loader import load
+
 
 class TestGetTableStatus(TestCaseBase):
 
     def test_gettablestatus_all(self):
-        '''
+        """
         查看所有表状态
         :return:
-        '''
-        rs = self.create(self.leader, 't', self.tid, self.pid)
+        """
+        self.create(self.leader, 't', self.tid, self.pid)
+        rs = self.create(self.leader, 't', self.tid, self.pid + 1)
         self.assertTrue('ok' in rs)
         table_status = self.get_table_status(self.leader)
         self.assertTrue(len(table_status) > 1)
-        self.assertEqual(table_status[(0, 0)], ['0', 'kTableFollower', 'kTableUndefined', 'true', '43200min', '0s'])
         self.assertEqual(table_status[(self.tid, self.pid)], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_gettablestatus_tid_pid(self):
-        '''
+        """
         查看指定tid和pid的表状态
         :return:
-        '''
+        """
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
@@ -30,10 +32,10 @@ class TestGetTableStatus(TestCaseBase):
 
 
     def test_gettablestatus_making_snapshot(self):
-        '''
+        """
         makesnapshot的过程中查看标的状态会显示为kMakingSnapshot
         :return:
-        '''
+        """
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
 
@@ -47,13 +49,5 @@ class TestGetTableStatus(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-    suite = unittest.TestSuite()
-    if len(sys.argv) == 1:
-        suite = unittest.TestLoader().loadTestsFromTestCase(TestGetTableStatus)
-    else:
-        for test_name in sys.argv[1:]:
-            suite.addTest(TestGetTableStatus(test_name))
-    runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'))
-    runner.run(suite)
+    import libs.test_loader
+    load(TestGetTableStatus)

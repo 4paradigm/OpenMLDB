@@ -22,6 +22,28 @@ else
     echo "install xmlrunner done"
 fi
 
+# setup ddt
+if [ -f "${testpath}/libs/ddt.py" ]
+then
+    echo "ddt exist"
+else
+    echo "start install ddt...."
+    wget -O ${projectpath}/thirdsrc/ddt.tar.gz http://pkg.4paradigm.com:81/rtidb/dev/ddt.tar.gz >/dev/null
+    tar -zxvf ${projectpath}/thirdsrc/ddt.tar.gz -C ${testpath}/libs >/dev/null
+    echo "install ddt done"
+fi
+
+# setup zk
+if [ -d "${projectpath}/thirdsrc/zookeeper-3.4.10" ]
+then
+    echo "zookeeper exist"
+else
+    echo "start install zookeeper...."
+    wget -O ${projectpath}/thirdsrc/zookeeper-3.4.10.tar.gz http://pkg.4paradigm.com:81/rtidb/dev/zookeeper-3.4.10.tar.gz >/dev/null
+    tar -zxvf ${projectpath}/thirdsrc/zookeeper-3.4.10.tar.gz -C ${projectpath}/thirdsrc >/dev/null
+    echo "install zookeeper done"
+fi
+
 # run integration test
 python ${testpath}/runall.py
 
