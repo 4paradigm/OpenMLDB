@@ -179,6 +179,24 @@ void HandleNSAddReplica(const std::vector<std::string>& parts, ::rtidb::client::
     } 
 }
 
+void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        std::string name = parts[1];
+        bool ret = client->DropTable(parts[1]);
+        if (!ret) {
+            std::cout << "failed to drop" << std::endl;
+            return;
+        }
+        std::cout << "drop ok" << std::endl;
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args." << std::endl;
+    } 
+}
+
 void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
@@ -1230,7 +1248,7 @@ void StartNsClient() {
         std::string buffer;
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
-        }else {
+        } else {
             std::getline(std::cin, buffer);
             if (buffer.empty()) {
                 continue;
@@ -1240,14 +1258,16 @@ void StartNsClient() {
         ::rtidb::base::SplitString(buffer, " ", &parts);
         if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
-        } else  if (parts[0] == "showopstatus") {
+        } else if (parts[0] == "showopstatus") {
             HandleNSShowOPStatus(parts, &client);
-        } else  if (parts[0] == "create") {
+        } else if (parts[0] == "create") {
             HandleNSCreateTable(parts, &client);
-        } else  if (parts[0] == "makesnapshot") {
+        } else if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
-        } else  if (parts[0] == "addreplica") {
+        } else if (parts[0] == "addreplica") {
             HandleNSAddReplica(parts, &client);
+        } else if (parts[0] == "drop") {
+            HandleNSClientDropTable(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

@@ -81,6 +81,11 @@ public:
         GeneralResponse* response, 
         Closure* done);
 
+    void DropTable(RpcController* controller,
+        const DropTableRequest* request,
+        GeneralResponse* response, 
+        Closure* done);
+
     void ShowTablet(RpcController* controller,
             const ShowTabletRequest* request,
             ShowTabletResponse* response,

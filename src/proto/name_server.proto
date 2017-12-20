@@ -23,6 +23,10 @@ message CreateTableRequest {
     required TableInfo table_info = 1;
 }
 
+message DropTableRequest {
+    required string name = 1;
+}
+
 message MakeSnapshotNSRequest {
 	required string name = 1;
     required uint32 pid = 2;
@@ -72,6 +76,7 @@ message ShowOPStatusResponse {
 
 service NameServer {
 	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+	rpc DropTable(DropTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
     rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
     rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);

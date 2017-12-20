@@ -148,6 +148,15 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
     ASSERT_EQ(table_info->table_partition_size(), table_info1.table_partition_size());
 
+    // check drop table
+    DropTableRequest drop_request;
+    drop_request.set_name(name);
+    response.Clear();
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
+            &drop_request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+    ok = zk_client.GetNodeValue(table_data_node, value);
+    ASSERT_FALSE(ok);
 }
 
 }

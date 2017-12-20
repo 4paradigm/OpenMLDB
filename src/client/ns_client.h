@@ -38,6 +38,8 @@ public:
 
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info);
 
+    bool DropTable(const std::string& name);
+
     bool AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint);
 	
 private:
