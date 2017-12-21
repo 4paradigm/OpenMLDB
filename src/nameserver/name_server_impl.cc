@@ -734,8 +734,8 @@ void NameServerImpl::DropTable(RpcController* controller,
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
         response->set_code(-1);
-        response->set_msg("table is already exisit!");
-        PDLOG(WARNING, "table[%s] is already exisit!", request->name().c_str());
+        response->set_msg("table is not exisit!");
+        PDLOG(WARNING, "table[%s] is not exisit!", request->name().c_str());
         return;
     }
     int code = 0;
