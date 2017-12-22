@@ -527,28 +527,11 @@ void TabletImpl::AddReplica(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
 	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
 	if (request->has_task_info() && request->task_info().IsInitialized()) {
-		std::lock_guard<std::mutex> lock(mu_);
-		if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
 			response->set_code(-1);
-			response->set_msg("task is running");
-			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
-							request->task_info().op_id(),
-							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-			return;
-		}
-		task_ptr.reset(request->task_info().New());
-		task_ptr->CopyFrom(request->task_info());
-		task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-		AddOPTask(task_ptr);
-		if (request->task_info().task_type() != ::rtidb::api::TaskType::kAddReplica) {
-			response->set_code(-1);
-			response->set_msg("task type is not match");
-			PDLOG(WARNING, "task type is not match. type is[%s]", 
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-			return;
-		}
+			response->set_msg("add task failed");
+            return;
+        }
 	}
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     do {
@@ -591,34 +574,50 @@ void TabletImpl::DelReplica(RpcController* controller,
             const ::rtidb::api::ReplicaRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
+    brpc::ClosureGuard done_guard(done);        
+	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+	if (request->has_task_info() && request->task_info().IsInitialized()) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDelReplica, task_ptr) < 0) {
+			response->set_code(-1);
+			response->set_msg("add task failed");
+            return;
+        }
+	}
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table || !table->IsLeader()) {
-        PDLOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
-                request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist or table is leader");
-        done->Run();
-        return;
+    do {
+        if (!table || !table->IsLeader()) {
+            PDLOG(WARNING, "table not exist or table is not leader tid %ld, pid %ld", request->tid(),
+                    request->pid());
+            response->set_code(-1);
+            response->set_msg("table not exist or table is leader");
+            break;
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
+        if (!replicator) {
+            response->set_code(-2);
+            response->set_msg("no replicator for table");
+            PDLOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
+            break;
+        }
+        bool ok = replicator->DelReplicateNode(request->endpoint());
+        if (ok) {
+            response->set_code(0);
+            response->set_msg("ok");
+            if (task_ptr) {
+	            std::lock_guard<std::mutex> lock(mu_);
+                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+            }
+            return;
+        } else {
+            response->set_code(-3);
+            PDLOG(WARNING, "fail to del endpoint for table %d pid %d", request->tid(), request->pid());
+            response->set_msg("fail to del endpoint");
+        }  
+    } while (0);
+    if (task_ptr) {
+	    std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
-    if (!replicator) {
-        response->set_code(-2);
-        response->set_msg("no replicator for table");
-        PDLOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
-        done->Run();
-        return;
-    }
-    bool ok = replicator->DelReplicateNode(request->endpoint());
-    if (ok) {
-        response->set_code(0);
-        response->set_msg("ok");
-        done->Run();
-    } else {
-        response->set_code(-3);
-        PDLOG(WARNING, "fail to del endpoint for table %d pid %d", request->tid(), request->pid());
-        response->set_msg("fail to del endpoint");
-        done->Run();
-    }  
 }
 
 void TabletImpl::AppendEntries(RpcController* controller,
@@ -626,6 +625,14 @@ void TabletImpl::AppendEntries(RpcController* controller,
         ::rtidb::api::AppendEntriesResponse* response,
         Closure* done) {
 	brpc::ClosureGuard done_guard(done);
+	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+	if (request->has_task_info() && request->task_info().IsInitialized()) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kAddReplica, task_ptr) < 0) {
+			response->set_code(-1);
+			response->set_msg("add task failed");
+            return;
+        }
+	}
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table || table->IsLeader()) {
         PDLOG(WARNING, "table not exist or table is leader tid %d, pid %d", request->tid(),
@@ -853,9 +860,16 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kMakeSnapshot, task_ptr) < 0) {
+			response->set_code(-1);
+			response->set_msg("add task failed");
+            return;
+        }
+    }    
     uint32_t tid = request->tid();        
     uint32_t pid = request->pid();        
-    bool has_error = true;
     std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
     do {
@@ -879,40 +893,17 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
                          table->GetTableStat(), tid, pid);
             break;
         }
-        has_error = false;
-    } while (0);
-    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
-    if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (request->task_info().task_type() != ::rtidb::api::TaskType::kMakeSnapshot) {
-            response->set_code(-1);
-            response->set_msg("task type is not match");
-            PDLOG(WARNING, "task type is not match. type is[%s]", 
-                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-            has_error = true;
-        } else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
-            response->set_code(-1);
-            response->set_msg("task is running");
-            PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
-                            request->task_info().op_id(),
-                            ::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
-                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-            return;
-        }
-        task_ptr.reset(request->task_info().New());
-        task_ptr->CopyFrom(request->task_info());
-        if (has_error) {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-        } else {
+        if (task_ptr) {       
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-        }
-        AddOPTask(task_ptr);
+        }    
+        task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
+        response->set_code(0);
+        response->set_msg("ok");
+        return;
+    } while (0);
+    if (task_ptr) {       
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
-    if (has_error) {
-		return;
-	}
-    task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
-    response->set_code(0);
-    response->set_msg("ok");
 }
 
 void TabletImpl::SchedMakeSnapshot() {
@@ -1015,11 +1006,18 @@ void TabletImpl::SendSnapshot(RpcController* controller,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kSendSnapshot, task_ptr) < 0) {
+			response->set_code(-1);
+			response->set_msg("add task failed");
+            return;
+        }
+    }    
     std::lock_guard<std::mutex> lock(mu_);
 	uint32_t tid = request->tid();
 	uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
-    bool has_error = true;
     std::string sync_snapshot_key = request->endpoint() + "_" + 
                     std::to_string(tid) + "_" + std::to_string(pid);
 	do {
@@ -1048,44 +1046,19 @@ void TabletImpl::SendSnapshot(RpcController* controller,
 			response->set_msg("table is unavailable now");
 			break;
 		}
-		has_error = false;
-	} while(0);
-    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
-    if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (request->task_info().task_type() != ::rtidb::api::TaskType::kSendSnapshot) {
-            response->set_code(-1);
-            response->set_msg("task type is not match");
-            PDLOG(WARNING, "task type is not match. type is[%s]", 
-                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-            has_error = true;
-        } else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
-            // task is already exisit, do not add task.
-            response->set_code(-1);
-            response->set_msg("task is running");
-            PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
-                            request->task_info().op_id(),
-                            ::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
-                            ::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-            return;
-        }
-        task_ptr.reset(request->task_info().New());
-        task_ptr->CopyFrom(request->task_info());
-        AddOPTask(task_ptr);
-        if (has_error) {
-            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-			return;
-        } else {
+        if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-        }
-    }
-    if (has_error) {
+        }    
+        sync_snapshot_set_.insert(sync_snapshot_key);
+        task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
+                    request->endpoint(), tid, pid, task_ptr));
+        response->set_code(0);
+        response->set_msg("ok");
         return;
+	} while(0);
+    if (task_ptr) {
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
-    sync_snapshot_set_.insert(sync_snapshot_key);
-    task_pool_.AddTask(boost::bind(&TabletImpl::SendSnapshotInternal, this, 
-                request->endpoint(), tid, pid, task_ptr));
-    response->set_code(0);
-    response->set_msg("ok");
 }
 
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
@@ -1243,15 +1216,21 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
     brpc::ClosureGuard done_guard(done);        
+    std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+    if (request->has_task_info() && request->task_info().IsInitialized()) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kPauseSnapshot, task_ptr) < 0) {
+			response->set_code(-1);
+			response->set_msg("add task failed");
+            return;
+        }
+    }    
     std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
-    bool has_error = false;
     do {
         if (!table) {
             PDLOG(WARNING, "table not exist. tid %ld, pid %ld", request->tid(), request->pid());
             response->set_code(-1);
             response->set_msg("table not exist");
-			has_error = true;
             break;
         }
 		if (table->GetTableStat() != ::rtidb::storage::kNormal) {
@@ -1259,48 +1238,21 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
 					table->GetTableStat(), request->tid(), request->pid());
 			response->set_code(-1);
 			response->set_msg("table status is not kNormal");
-			has_error = true;
 			break;
 		}
+        table->SetTableStat(::rtidb::storage::kSnapshotPaused);
+        PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+                   table->GetTableStat(), request->tid(), request->pid());
+        if (task_ptr) {
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        }
+        response->set_code(0);
+        response->set_msg("ok");
+        return;
     } while(0);
-	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
-	if (request->has_task_info() && request->task_info().IsInitialized()) {
-		if (request->task_info().task_type() != ::rtidb::api::TaskType::kPauseSnapshot) {
-			response->set_code(-1);
-			response->set_msg("task type is not match");
-			PDLOG(WARNING, "task type is not match. type is[%s]", 
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-			has_error = true;
-		} else if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
-			response->set_code(-1);
-			response->set_msg("task is running");
-			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
-							request->task_info().op_id(),
-							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-			return;
-		}
-		task_ptr.reset(request->task_info().New());
-		task_ptr->CopyFrom(request->task_info());
-		AddOPTask(task_ptr);
-		if (has_error) {
-			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-			return;
-		} else {
-			task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-		}
+    if (task_ptr) {
+    	task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
 	}
-	if (has_error) {
-		return;
-	}
-	table->SetTableStat(::rtidb::storage::kSnapshotPaused);
-	PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-			   table->GetTableStat(), request->tid(), request->pid());
-	if (task_ptr) {
-		task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-	}
-    response->set_code(0);
-    response->set_msg("ok");
 }
 
 void TabletImpl::RecoverSnapshot(RpcController* controller,
@@ -1310,28 +1262,11 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
 	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
 	if (request->has_task_info() && request->task_info().IsInitialized()) {
-		std::lock_guard<std::mutex> lock(mu_);
-		if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kRecoverSnapshot, task_ptr) < 0) {
 			response->set_code(-1);
-			response->set_msg("task is running");
-			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
-							request->task_info().op_id(),
-							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-			return;
-		}
-		task_ptr.reset(request->task_info().New());
-		task_ptr->CopyFrom(request->task_info());
-		task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-		AddOPTask(task_ptr);
-		if (request->task_info().task_type() != ::rtidb::api::TaskType::kRecoverSnapshot) {
-			response->set_code(-1);
-			response->set_msg("task type is not match");
-			PDLOG(WARNING, "task type is not match. type is[%s]", 
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-			return;
-		}
+			response->set_msg("add task failed");
+            return;
+        }
 	}
     do {
         std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
@@ -1373,30 +1308,12 @@ void TabletImpl::LoadTable(RpcController* controller,
             Closure* done) {
 	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
 	if (request->has_task_info() && request->task_info().IsInitialized()) {
-		std::lock_guard<std::mutex> lock(mu_);
-		if (FindTask(request->task_info().op_id(), request->task_info().task_type())) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadTable, task_ptr) < 0) {
 			response->set_code(-1);
-			response->set_msg("task is running");
-			PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
-							request->task_info().op_id(),
-							::rtidb::api::OPType_Name(request->task_info().op_type()).c_str(),
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
+			response->set_msg("add task failed");
             done->Run();
-			return;
-		}
-		task_ptr.reset(request->task_info().New());
-		task_ptr->CopyFrom(request->task_info());
-		task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
-		AddOPTask(task_ptr);
-		if (request->task_info().task_type() != ::rtidb::api::TaskType::kLoadTable) {
-			response->set_code(-1);
-			response->set_msg("task type is not match");
-			PDLOG(WARNING, "task type is not match. type is[%s]", 
-							::rtidb::api::TaskType_Name(request->task_info().task_type()).c_str());
-			task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-            done->Run();
-			return;
-		}
+            return;
+        }
 	}
     do {
         ::rtidb::api::TableMeta table_meta;
@@ -1760,9 +1677,11 @@ void TabletImpl::GetTaskStatus(RpcController* controller,
         ::rtidb::api::TaskStatusResponse* response,
         Closure* done) {
     std::lock_guard<std::mutex> lock(mu_);
-    for (auto iter = task_list_.begin(); iter != task_list_.end(); ++iter) {
-        ::rtidb::api::TaskInfo* task = response->add_task();
-        task->CopyFrom(**iter);
+    for (const auto& kv : task_map_) {
+        for (const auto& task_info : kv.second) {
+            ::rtidb::api::TaskInfo* task = response->add_task();
+            task->CopyFrom(*task_info);
+        }
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -1775,29 +1694,56 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
 		Closure* done) {
     std::lock_guard<std::mutex> lock(mu_);
 	for (int idx = 0; idx < request->op_id_size(); idx++) {
-		for (auto iter = task_list_.begin(); iter != task_list_.end(); ) {
-			if ((*iter)->op_id() == request->op_id(idx)) {
-                PDLOG(INFO, "delete task. op_id[%lu] op_type[%s] task_type[%s] endpoint[%s]", 
-                          (*iter)->op_id(), ::rtidb::api::OPType_Name((*iter)->op_type()).c_str(),
-                          ::rtidb::api::TaskType_Name((*iter)->task_type()).c_str(), FLAGS_endpoint.c_str());
-				iter = task_list_.erase(iter);
-				continue;
-			}
-			iter++;
-		}
+        auto iter = task_map_.find(request->op_id(idx));
+        if (!iter->second.empty()) {
+            PDLOG(INFO, "delete op task. op_id[%lu] op_type[%s] task_num[%u]", 
+                        request->op_id(idx),
+                        ::rtidb::api::OPType_Name(iter->second.front()->op_type()).c_str(),
+                        iter->second.size());
+            iter->second.clear();
+        }
+        task_map_.erase(iter);
 	}
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
 }
 
-void TabletImpl::AddOPTask(std::shared_ptr<::rtidb::api::TaskInfo> task) {
-    task_list_.push_back(task);
+int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
+            std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (FindTask(task_info.op_id(), task_info.task_type())) {
+        PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", 
+                        task_info.op_id(),
+                        ::rtidb::api::OPType_Name(task_info.op_type()).c_str(),
+                        ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
+        return -1;
+    }
+    task_ptr.reset(task_info.New());
+    task_ptr->CopyFrom(task_info);
+    task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
+    auto iter = task_map_.find(task_info.op_id());
+    if (iter == task_map_.end()) {
+        task_map_.insert(std::make_pair(task_info.op_id(), 
+                std::list<std::shared_ptr<::rtidb::api::TaskInfo>>()));
+    }
+    task_map_[task_info.op_id()].push_back(task_ptr);
+    if (task_info.task_type() != task_type) {
+        PDLOG(WARNING, "task type is not match. type is[%s]", 
+                        ::rtidb::api::TaskType_Name(task_info.task_type()).c_str());
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        return -1;
+    }
+    return 0;
 }
 
 std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type) {
-    for (auto& task : task_list_) {
+    auto iter = task_map_.find(op_id);
+    if (iter == task_map_.end()) {
+        return std::shared_ptr<::rtidb::api::TaskInfo>();
+    }
+    for (auto& task : iter->second) {
         if (task->op_id() == op_id && task->task_type() == task_type) {
             return task;
         }

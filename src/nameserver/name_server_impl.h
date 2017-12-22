@@ -96,6 +96,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void DelReplicaNS(RpcController* controller,
+            const DelReplicaNSRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     void ShowOPStatus(RpcController* controller,
             const ShowOPStatusRequest* request,
             ShowOPStatusResponse* response,
@@ -140,7 +145,12 @@ private:
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
 
+    void UpdateTableInfo(const std::string& endpoint);
+
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
+
+    void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
+                    std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
@@ -162,6 +172,15 @@ private:
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
 					const std::string& des_endpoint);
+
+    std::shared_ptr<Task> CreateDelReplicaTask(const std::string& endpoint, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
+					const std::string& des_endpoint);
+
+    std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
+                    const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    int CreateDelReplicaOP(const DelReplicaData& del_replica_data);
 
 private:
     std::mutex mu_;

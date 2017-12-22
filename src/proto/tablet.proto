@@ -39,6 +39,7 @@ enum TTLType {
 enum OPType {
     kMakeSnapshotOP = 1;
     kAddReplicaOP = 2;
+    kDelReplicaOP = 3;
 }
 
 enum TaskType {
@@ -49,6 +50,8 @@ enum TaskType {
     kLoadTable = 5;
     kChangeFollower = 6;
     kAddReplica = 7;
+    kDelReplica = 8;
+    kDelTableInfo = 9;
 }
 
 enum TaskStatus {
@@ -263,6 +266,7 @@ message AppendEntriesRequest {
     optional uint32 pid = 7;
     optional uint64 term = 8;
     optional uint64 leader_id = 9;
+    optional TaskInfo task_info = 10;
 }
 
 message AppendEntriesResponse {

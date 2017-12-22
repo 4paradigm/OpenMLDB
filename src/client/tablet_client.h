@@ -16,6 +16,7 @@
 
 namespace rtidb {
 namespace client {
+using ::rtidb::api::TaskInfo;
 
 class TabletClient {
 
@@ -110,27 +111,28 @@ public:
     bool DropTable(uint32_t id, uint32_t pid);
 
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
-                std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::shared_ptr<::rtidb::api::TaskInfo>());
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint);
+    bool DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool MakeSnapshot(uint32_t tid, uint32_t pid, 
-                std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::shared_ptr<::rtidb::api::TaskInfo>());
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool SendSnapshot(uint32_t tid, uint32_t pid, const std::string& endpoint, 
-                std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::shared_ptr<::rtidb::api::TaskInfo>());
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool PauseSnapshot(uint32_t tid, uint32_t pid, 
-                std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::shared_ptr<::rtidb::api::TaskInfo>());
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool RecoverSnapshot(uint32_t tid, uint32_t pid,
-                std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::shared_ptr<::rtidb::api::TaskInfo>());
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl, uint32_t seg_cnt);
 
     bool LoadTable(const std::string& name, uint32_t id, uint32_t pid, uint64_t ttl,
                bool leader, const std::vector<std::string>& endpoints, uint32_t seg_cnt,
-               std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::shared_ptr<::rtidb::api::TaskInfo>());
+               std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader);
 
