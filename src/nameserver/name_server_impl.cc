@@ -943,6 +943,15 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         return;
     }
     op_data->task_list_.push_back(task);
+	task = CreateAddTableInfoTask(request->name(), pid, request->endpoint(),
+				op_index_, ::rtidb::api::OPType::kAddReplicaOP);
+    if (!task) {
+        response->set_code(-1);
+        response->set_msg("create addtableinfo task failed");
+        PDLOG(WARNING, "create addtableinfo task failed. tid %u pid %u", tid, pid);
+        return;
+    }
+    op_data->task_list_.push_back(task);
 
     value.clear();
     op_data->op_info_.SerializeToString(&value);
@@ -1036,6 +1045,13 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
                 ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid %u pid %u", tid, pid);
+        return false;
+    }
+    op_data->task_list_.push_back(task);
+	task = CreateAddTableInfoTask(request.name(), pid, request.endpoint(),
+				op_index_, ::rtidb::api::OPType::kAddReplicaOP);
+    if (!task) {
+        PDLOG(WARNING, "create addtableinfo task failed. tid %u pid %u", tid, pid);
         return false;
     }
     op_data->task_list_.push_back(task);
@@ -1163,6 +1179,43 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaTask(const std::string& en
 	return task;
 }
 
+std::shared_ptr<Task> NameServerImpl::CreateAddTableInfoTask(const std::string& name,  uint32_t pid,
+                    const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type) {
+	std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::make_shared<::rtidb::api::TaskInfo>();
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kAddTableInfo);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->fun_ = boost::bind(&NameServerImpl::AddTableInfo, this, name, endpoint, pid, task->task_info_);
+	return task;
+}
+
+void NameServerImpl::AddTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
+                std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+	std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
+		task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        return;
+    }
+	::rtidb::nameserver::TablePartition* table_partition = iter->second->add_table_partition();
+	table_partition->set_endpoint(endpoint);
+	table_partition->set_pid(pid);
+	table_partition->set_is_leader(false);
+	std::string table_value;
+	iter->second->SerializeToString(&table_value);
+	if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+		PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+						zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+		task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+		return;         
+	}
+	PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
+					zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+	task_info->set_status(::rtidb::api::TaskStatus::kDone);
+}
 
 }
 }
