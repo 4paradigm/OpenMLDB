@@ -24,21 +24,21 @@ class TestCaseBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.welcome = 'Welcome to rtidb with version {}\n'.format(os.getenv('rtidbver'))
+        cls.testpath = os.getenv('testpath')
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')
-        cls.leaderpath = os.getenv('leaderpath')
-        cls.slave1path = os.getenv('slave1path')
-        cls.slave2path = os.getenv('slave2path')
-        cls.ns1path = os.getenv('ns1path')
-        cls.ns2path = os.getenv('ns1path')
-        cls.leader = os.getenv('leader')
-        cls.slave1 = os.getenv('slave1')
-        cls.slave2 = os.getenv('slave2')
-<<<<<<< HEAD:test-common/integrationtest/testcase/testcasebase.py
-        cls.ns1 = os.getenv('ns1')
-        cls.ns2 = os.getenv('ns2')
-=======
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d:test-common/integrationtest/testcase/testcasebase.py
+        cls.ns_leader = cls.exe_shell('cat {}/ns_leader'.format(cls.testpath))
+        cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
+        cls.leaderpath = cls.testpath + '/tablet1'
+        cls.slave1path = cls.testpath + '/tablet2'
+        cls.slave2path = cls.testpath + '/tablet3'
+        # cls.ns1path = os.getenv('ns1path')
+        # cls.ns2path = os.getenv('ns1path')
+        # cls.leader = os.getenv('leader')
+        # cls.slave1 = os.getenv('slave1')
+        # cls.slave2 = os.getenv('slave2')
+        # cls.ns1 = os.getenv('ns1')
+        # cls.ns2 = os.getenv('ns2')
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
@@ -60,8 +60,12 @@ class TestCaseBase(unittest.TestCase):
         return int(1000 * time.time())
 
     def start_client(self, client_path):
-        self.exe_shell('cd {} && ../mon ./conf/boot.sh -d -l ./rtidb_mon.log'.format(client_path))
-        time.sleep(2)
+        cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(test_path, client_path)
+        args = shlex.split(cmd)
+        subprocess.Popen(args, stdout=open('{}/log.log'.format(client_path), 'w'))
+        time.sleep(3)
+        # self.exe_shell('cd {} && ../mon ./conf/boot.sh -d -l ./rtidb_mon.log'.format(client_path))
+        # time.sleep(2)
 
     # def start_client(self, client_path):
     #     infoLogger.info('!!!!!!!!111')
@@ -69,21 +73,19 @@ class TestCaseBase(unittest.TestCase):
     #         client_path, client_path, client_path))
     #     time.sleep(2)
 
-    def stop_client(self, endpoint):
-        pid = self.exe_shell("lsof -i:" + endpoint.split(':')[1] + " |grep LISTEN|awk '{print $2}'")
-        self.exe_shell("ps xf|grep -B 2 " + str(pid) + "|grep rtidb_mon.log|awk '{print $1}'|xargs kill -9")
-        self.exe_shell("kill -9 {}".format(pid))
+    def stop_client(self, *endpoint):
+        cmd = "for i in {};".format(endpoint) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill;done"
+        exe_shell(cmd)
+    #
+    # def stop_client(self, endpoint):
+    #     pid = self.exe_shell("lsof -i:" + endpoint.split(':')[1] + " |grep LISTEN|awk '{print $2}'")
+    #     self.exe_shell("ps xf|grep -B 2 " + str(pid) + "|grep rtidb_mon.log|awk '{print $1}'|xargs kill -9")
+    #     self.exe_shell("kill -9 {}".format(pid))
 
-<<<<<<< HEAD:test-common/integrationtest/testcase/testcasebase.py
     def run_client(self, endpoint, cmd, role='client'):
         cmd = cmd.strip()
         rs = self.exe_shell('{} --endpoint={} --role={} --interactive=false --cmd="{}"'.format(
             self.rtidb_path, endpoint, role, cmd))
-=======
-    def run_client(self, endpoint, cmd):
-        rs = self.exe_shell('{} --endpoint={} --role=client --interactive=false --cmd="{}"'.format(
-            self.rtidb_path, endpoint, cmd))
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d:test-common/integrationtest/testcase/testcasebase.py
         return rs.replace(self.welcome, '').replace('>', '')
 
     def get_table_status(self, endpoint, tid='', pid=''):
@@ -127,11 +129,7 @@ class TestCaseBase(unittest.TestCase):
     def create(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='true', *slave_endpoints, **schema):
         if not schema:
             if self.multidimension:
-<<<<<<< HEAD:test-common/integrationtest/testcase/testcasebase.py
                 infoLogger.debug('create with default multi dimension')
-=======
-                infoLogger.info('create with default multi dimension')
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d:test-common/integrationtest/testcase/testcasebase.py
                 cmd = 'screate'
                 schema = {k: v[0] for k, v in self.multidimension_vk.items()}  # default schema
             else:
@@ -145,11 +143,7 @@ class TestCaseBase(unittest.TestCase):
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
             if self.multidimension and key is not '':
-<<<<<<< HEAD:test-common/integrationtest/testcase/testcasebase.py
                 infoLogger.debug('put with default multi dimension')
-=======
-                infoLogger.info('put with default multi dimension')
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d:test-common/integrationtest/testcase/testcasebase.py
                 default_values = [str(v[1]) for v in self.multidimension_vk.values()]
                 return self.run_client(endpoint, 'sput {} {} {} {}'.format(
                     tid, pid, ts, ' '.join(default_values)))
@@ -172,11 +166,7 @@ class TestCaseBase(unittest.TestCase):
         """
         if not isinstance(vk, dict):
             if self.multidimension:
-<<<<<<< HEAD:test-common/integrationtest/testcase/testcasebase.py
                 infoLogger.debug('scan with default multi dimension')
-=======
-                infoLogger.info('scan with default multi dimension')
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d:test-common/integrationtest/testcase/testcasebase.py
                 default_vk = self.multidimension_scan_vk
                 value_key = ['{} {}'.format(v, k) for k, v in default_vk.items()]
                 return self.run_client(endpoint, 'sscan {} {} {} {} {}'.format(
@@ -192,8 +182,8 @@ class TestCaseBase(unittest.TestCase):
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))
 
-    def makesnapshot(self, endpoint, tid, pid):
-        rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(tid, pid))
+    def makesnapshot(self, endpoint, tid, pid, role='client'):
+        rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(tid, pid), role)
         time.sleep(2)
         return rs
 
@@ -269,3 +259,6 @@ class TestCaseBase(unittest.TestCase):
             t.start()
         for t in threads:
             t.join()
+
+    def get_ns_leader(self):
+        return exe_shell('cat {}/ns_leader'.format(self.testpath))

@@ -6,14 +6,12 @@ from libs.deco import *
 import libs.conf as conf
 from libs.test_loader import load
 import libs.ddt as ddt
-<<<<<<< HEAD
-=======
 from libs.test_loader import load
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d
 
 
 class TestCreateTable(TestCaseBase):
 
+    @multi_dimension(False)
     def test_create_table(self):
         """
         创建带有主从关系的表成功
@@ -41,7 +39,7 @@ class TestCreateTable(TestCaseBase):
         创建高维表，所有schema字段都是index
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '',
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
                           card='string:index', merchant='string:index', amt='double:index')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
@@ -57,7 +55,7 @@ class TestCreateTable(TestCaseBase):
         创建高维表，1个index，检查schema
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '',
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
                           card='string:index', merchant='string')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
@@ -72,7 +70,7 @@ class TestCreateTable(TestCaseBase):
         创建高维表，无index，检查schema
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '',
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
                           card='string', merchant='string')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
@@ -87,7 +85,7 @@ class TestCreateTable(TestCaseBase):
         创建高维表，无schema
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{'': ''})
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{'': ''})
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
         self.assertTrue('No schema for table' in schema)
@@ -99,7 +97,7 @@ class TestCreateTable(TestCaseBase):
         创建高维表，仅有1个schema字段，创建成功
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', card='string:index')
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', card='string:index')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
         schema_d = self.parse_sechema(schema)
@@ -112,9 +110,9 @@ class TestCreateTable(TestCaseBase):
         创建高维表，schema字段重复，创建失败
         :return:
         """
-        rs1 = self.run_client(self.leader, 'screate t {} {} 144000 2 card:string:index card:string:index'.format(
+        rs1 = self.run_client(self.leader, 'screate t {} {} 144000 2 true card:string:index card:string:index'.format(
             self.tid, self.pid))
-        self.assertTrue('Create table failed' in rs1)
+        self.assertTrue('Duplicated column card' in rs1)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from logger import infoLogger
 import commands
+import copy
 
 
 def exe_shell(cmd):
@@ -62,10 +63,27 @@ def gen_table_metadata(name, ttl, seg_cnt, *table_partitions):
     basic_info_schema = ('name', 'ttl', 'seg_cnt')
     basic_info = zip(basic_info_schema, (name, ttl, seg_cnt))
     metadata.append(basic_info)
-    tp_schema = ('endpoint', 'pid_group', 'is_leader')
+    tp_schema = ['endpoint', 'pid_group', 'is_leader']
     for tp in table_partitions:
-        metadata.append(zip(tp_schema, tp))
-    infoLogger.info(metadata)
+        if tp is not None:
+            tp_schema_tmp = copy.copy(tp_schema)
+            if tp[0] is None:
+                tp_schema_tmp.remove(tp_schema_tmp[0])
+            if tp[1] is None:
+                tp_schema_tmp.remove(tp_schema_tmp[1])
+            if tp[2] is None:
+                tp_schema_tmp.remove(tp_schema_tmp[2])
+            metadata.append(zip(tp_schema_tmp, tp))
+        else:
+            metadata.append({})
+    if name is None:
+        metadata[0].remove(metadata[0][0])
+    elif ttl is None:
+        metadata[0].remove(metadata[0][1])
+    elif seg_cnt is None:
+        metadata[0].remove(metadata[0][2])
+    # infoLogger.info(metadata)
+    # print metadata
     return metadata
 
 
@@ -79,4 +97,9 @@ def gen_table_metadata_file(metadata, filepath):
             s += '{}:{}\n'.format(i[0], i[1])
         s += '}\n'
     # infoLogger.info(s)
+    print s
     write(s, filepath, 'w')
+
+
+# m = gen_table_metadata('"1"', 3, 3, None)
+# gen_table_metadata_file(m, 'naysameta')

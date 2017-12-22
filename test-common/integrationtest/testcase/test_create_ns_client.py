@@ -13,37 +13,36 @@ from libs.clients.tb_cluster import TbCluster
 from libs.logger import infoLogger
 
 
-nsc = NsCluster('127.0.0.1:22181', '127.0.0.1:37773', '127.0.0.1:37774')
-tbc = TbCluster('127.0.0.1:22181', '127.0.0.1:37770', '127.0.0.1:37771', '127.0.0.1:37772')
+nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints], [i[1] for i in conf.tb_scan_endpoints])
 nsc.stop_zk()
 nsc.clear_zk()
 nsc.start_zk()
 nsc.kill(*nsc.endpoints)
 nsc.start(*nsc.endpoints)
 tbc.kill(*tbc.endpoints)
-tbc.start(*tbc.endpoints)
+tbc.start(tbc.endpoints, tbc.scan_endpoints)
 
 
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
     @ddt.data(
-        ('t{}'.format(int(time.time() * 1000000 % 10000000000)), 144000, 8, 'Create table ok'),
-        ('aaa', 144000, 8, 'Create table ok'),
-        ('aaa', 144000, 8, 'Fail to create table'),
-        ('', 144000, 8, 'Fail to create table'),
-        ('t{}'.format(int(time.time() * 1000000 % 10000000000)), -1, 8,
+        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), 144000, 8, 'Create table ok'),
+        ('"aaa"', 144000, 8, 'Create table ok'),
+        ('"aaa"', 144000, 8, 'Fail to create table'),
+        ('""', 144000, 8, 'Fail to create table'),
+        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), -1, 8,
          'Error parsing text-format rtidb.client.TableInfo: 2:5: Expected integer.'),
-        ('t{}'.format(int(time.time() * 1000000 % 10000000000)), '', 8,
+        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), '', 8,
          'Error parsing text-format rtidb.client.TableInfo: 3:1: Expected integer.'),
-        ('t{}'.format(int(time.time() * 1000000 % 10000000000)), 144, -8,
+        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), 144, -8,
          'Error parsing text-format rtidb.client.TableInfo: 3:9: Expected integer.'),
-        ('t{}'.format(int(time.time() * 1000000 % 10000000000)), 144, '',
+        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), 144, '',
          'Error parsing text-format rtidb.client.TableInfo: 4:1: Expected integer.'),
         (None, 144000, 8, 'Message missing required fields: name'),
-        ('t{}'.format(int(time.time() * 1000000 % 10000000000)), None, 8, 'Message missing required fields: ttl'),
-        ('t{}'.format(int(time.time() * 1000000 % 10000000000)), 14, None, 'Message missing required fields: seg_cnt'),
-
+        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, 8, 'Message missing required fields: ttl'),
+        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), 9, None, 'Message missing required fields: seg_cnt'),
     )
     @ddt.unpack
     def test_create_name_ttl_seg(self, name, ttl, seg_cnt, exp_msg):
@@ -55,18 +54,12 @@ class TestCreateTableByNsClient(TestCaseBase):
         :param exp_msg:
         :return:
         """
-        metadata_path = '{}/metadata.txt'.format(self.leaderpath)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
-            '"{}"'.format(name), ttl, seg_cnt,
+            name, ttl, seg_cnt,
             ('"{}"'.format(self.leader), '"1-3"', 'true'),
             ('"{}"'.format(self.slave1), '"1-2"', 'false'),
             ('"{}"'.format(self.slave2), '"2-3"', 'false'))
-        if name is None:
-            m[0].remove(m[0][0])
-        elif ttl is None:
-            m[0].remove(m[0][1])
-        elif seg_cnt is None:
-            m[0].remove(m[0][2])
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(nsc.leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
@@ -89,6 +82,8 @@ class TestCreateTableByNsClient(TestCaseBase):
         (('1-3', 'true'), ('2-4', 'true'), 'pid 2 has two leader'),
         (('', 'true'), ('2-4', 'true'), 'pid_group[] format error.'),
         (('0', 'true'), ('1-1024', 'true'), 'Create table ok'),
+        (('0', 'true'), (None, 'false'), 'pid_group[None] format error.'),
+        ((None, 'true'), ('1-3', 'false'), 'pid_group[None] format error.'),
     )
     @ddt.unpack
     def test_create_pid_group(self, pid_group1, pid_group2, exp_msg):
@@ -99,7 +94,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :param exp_msg:
         :return:
         """
-        metadata_path = '{}/metadata.txt'.format(self.leaderpath)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"tname{}"'.format(int(time.time() * 1000000 % 10000000000)), 144000, 2,
             ('"{}"'.format(self.leader), '"{}"'.format(pid_group1[0]), pid_group1[1]),
@@ -136,11 +131,35 @@ class TestCreateTableByNsClient(TestCaseBase):
         :param exp_msg:
         :return:
         """
-        metadata_path = '{}/metadata.txt'.format(self.leaderpath)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"tname{}"'.format(int(time.time() * 1000000 % 10000000000)), 144000, 2,
             ('"{}"'.format(ep[0]), '"1-3"', 'true'),
             ('"{}"'.format(ep[1]), '"1-3"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs = self.run_client(nsc.leader, 'create ' + metadata_path, 'ns_client')
+        infoLogger.info(rs)
+        self.assertTrue(exp_msg in rs)
+
+
+    @ddt.data(
+        (('"127.0.0.1:37770"', '"1-3"', None), 'table meta file format error'),
+        (('"127.0.0.1:37770"', '"1-3"', 'false'), 'pid 1 has not leader'),
+        (('"127.0.0.1:37770"', '"1-3"', 'true'), 'Create table ok'),
+        (('"127.0.0.1:37770"', '"1-3"', '""'), 'table meta file format error'),
+    )
+    @ddt.unpack
+    def test_create_is_leader(self, table_partition, exp_msg):
+        """
+
+        :param table_partition:
+        :param exp_msg:
+        :return:
+        """
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata(
+            '"tname{}"'.format(int(time.time() * 1000000 % 10000000000)), 144000, 2,
+            table_partition)
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(nsc.leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)

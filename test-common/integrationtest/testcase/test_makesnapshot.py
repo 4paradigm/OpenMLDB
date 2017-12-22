@@ -5,10 +5,7 @@ import time
 import threading
 import xmlrunner
 from libs.test_loader import load
-<<<<<<< HEAD
 from libs.logger import infoLogger
-=======
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d
 
 
 class TestMakeSnapshot(TestCaseBase):

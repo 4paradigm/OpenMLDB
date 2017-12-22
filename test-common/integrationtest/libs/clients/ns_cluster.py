@@ -46,13 +46,15 @@ class NsCluster(object):
             exe_shell("echo '--role=nameserver' >> {}/conf/rtidb.flags".format(ns_path))
             exe_shell("echo '--zk_cluster='{} >> {}/conf/rtidb.flags".format(self.zk_endpoint, ns_path))
             exe_shell("echo '--zk_root_path=/onebox' >> {}/conf/rtidb.flags".format(ns_path))
-            cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(test_path, ns_path, ns_path)
+            cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(test_path, ns_path)
             args = shlex.split(cmd)
+            print cmd
             subprocess.Popen(args, stdout=open('{}/log.log'.format(ns_path), 'w'))
             time.sleep(5)
             if_lock = exe_shell('grep "get lock with assigned_path" {}/log.log'.format(ns_path))
             if 'get lock with assigned_path' in if_lock:
                 self.leader = ep
+                exe_shell('echo "{}" > {}/ns_leader'.format(ep, test_path))
 
 
     def kill(self, *endpoints):

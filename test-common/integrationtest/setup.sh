@@ -12,23 +12,16 @@ leaderpath=${testpath}/leader
 slave1path=${testpath}/slave1
 slave2path=${testpath}/slave2
 reportpath=${projectpath}/test-output/integrationtest/test-reports
-<<<<<<< HEAD
 leader="127.0.0.1:37770"
 slave1="127.0.0.1:37771"
 slave2="127.0.0.1:37772"
 leader_scan="127.0.0.1:47770"
 slave1_scan="127.0.0.1:47771"
 slave2_scan="127.0.0.1:47772"
+ns1="127.0.0.1:37773"
+ns2="127.0.0.1:37774"
 zk="127.0.0.1:22181"
 zkpath=${testpath}/../../thirdsrc/zookeeper-3.4.10
-=======
-leader="0.0.0.0:37770"
-slave1="0.0.0.0:37771"
-slave2="0.0.0.0:37772"
-leader_scan="0.0.0.0:47770"
-slave1_scan="0.0.0.0:47771"
-slave2_scan="0.0.0.0:47772"
->>>>>>> 0847407a87ce9732510bbf5c8dda820127cc7f7d
 
 echo export rtidbver=${rtidbver} > ${testenvpath}
 echo export testpath=${testpath} >> ${testenvpath}
@@ -99,12 +92,12 @@ function stop_all_clients() {
 }
 
 setup
-
-stop_all_clients
-sleep 5
-
-start_client ${leaderpath}
-start_client ${slave1path}
-start_client ${slave2path}
-
-sleep 2
+#
+#stop_all_clients
+#sleep 5
+#
+#start_client ${leaderpath}
+#start_client ${slave1path}
+#start_client ${slave2path}
+#
+#sleep 2

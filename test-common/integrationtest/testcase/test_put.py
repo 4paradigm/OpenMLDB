@@ -130,7 +130,7 @@ class TestPut(TestCaseBase):
         创建高维表，对index进行测试
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         self.assertTrue(rsp_msg in rs1)
 
@@ -160,7 +160,7 @@ class TestPut(TestCaseBase):
         创建高维表，对int32和int64类型进行测试
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         self.assertTrue(rsp_msg in rs1)
         self.assertTrue(
@@ -190,11 +190,13 @@ class TestPut(TestCaseBase):
         创建高维表，对uint32和uint64类型进行测试
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         self.assertTrue(rsp_msg in rs1)
-        self.assertTrue(
-            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+        self.assertTrue(rsp_msg in rs1)
+        rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
+        infoLogger.info(rs2)
+        self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
 
 
     @multi_dimension(True)
@@ -210,7 +212,7 @@ class TestPut(TestCaseBase):
         创建高维表，对string类型进行测试
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         infoLogger.info(rs1)
         self.assertTrue(rsp_msg in rs1)
@@ -234,11 +236,13 @@ class TestPut(TestCaseBase):
         创建高维表，对float和double类型进行测试
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         self.assertTrue(rsp_msg in rs1)
+        rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
+        infoLogger.info(rs2)
         self.assertTrue(
-            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+            ' ' + str(scan_value) + ' ' in rs2)
 
 
 if __name__ == "__main__":
