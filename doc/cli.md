@@ -160,3 +160,17 @@ cmd addreplica 表名 分片id 新副本所在节点的ip:port
 
 ```
 
+### cluster开启时从ns_client删除表
+
+```
+> drop tablename
+```
+
+### cluster开启时从ns_client获取表的信息
+
+```
+列出所有表的信息
+> showtable
+列出test1表的信息
+> showtable test1
+```
