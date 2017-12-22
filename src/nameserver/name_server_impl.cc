@@ -862,14 +862,14 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         return;
     }
     uint32_t tid = pos->second->tid();
-    uint32_t pid = 0;
+    uint32_t pid = request->pid();;
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
     for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).is_leader()) {
+        if (pos->second->table_partition(idx).is_leader() &&
+                pid == pos->second->table_partition(idx).pid()) {
             leader_endpoint = pos->second->table_partition(idx).endpoint();
-            pid = pos->second->table_partition(idx).pid();
             break;
         }
     }
