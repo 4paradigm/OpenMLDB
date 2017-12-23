@@ -451,9 +451,10 @@ int NameServerImpl::DeleteTask() {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-            if (iter->second->task_list_.empty() && 
-                    (iter->second->task_status_ == ::rtidb::api::kDoing ||
-						iter->second->task_status_ == ::rtidb::api::kFailed)) {
+            if ((iter->second->task_list_.empty() && 
+                    iter->second->task_status_ == ::rtidb::api::kDoing) ||
+					(!iter->second->task_list_.empty() && 
+                    iter->second->task_status_ == ::rtidb::api::kFailed)) {
                 done_task_vec.push_back(iter->first);
             }
         }
@@ -489,6 +490,7 @@ int NameServerImpl::DeleteTask() {
 					if (pos->second->task_status_ == ::rtidb::api::kDoing) {
                     	pos->second->task_status_ = ::rtidb::api::kDone;
 					}
+                    pos->second->task_list_.clear();
                 }
             } else {
                 PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
@@ -520,7 +522,6 @@ void NameServerImpl::ProcessTask() {
 									::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
 									iter->first);
 					iter->second->task_status_ = ::rtidb::api::kFailed;
-					iter->second->task_list_.clear();
                 } else if (task->task_info_->status() == ::rtidb::api::kInited) {
                     PDLOG(DEBUG, "run task. opid[%lu] op_type[%s] task_type[%s]", iter->first, 
                                 ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
