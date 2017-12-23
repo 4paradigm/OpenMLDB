@@ -3,6 +3,8 @@ package com._4paradigm.rtidb.client.impl;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
@@ -87,10 +89,15 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 			                   int segCnt, List<ColumnDesc> schema) {
 
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
+        Set<String> usedColumnName = new HashSet<String>();
 		if (schema != null && schema.size() > 0) {
 			ByteBuffer buffer = SchemaCodec.encode(schema);
 			builder.setSchema(ByteString.copyFrom(buffer.array()));
 			for (ColumnDesc desc : schema) {
+                if (usedColumnName.contains(desc.getName())) {
+                    return false;
+                }
+                usedColumnName.add(desc.getName());
 				if (desc.isAddTsIndex()) {
 					builder.addDimensions(desc.getName());
 				}

@@ -81,9 +81,19 @@ public:
         GeneralResponse* response, 
         Closure* done);
 
+    void DropTable(RpcController* controller,
+        const DropTableRequest* request,
+        GeneralResponse* response, 
+        Closure* done);
+
     void ShowTablet(RpcController* controller,
             const ShowTabletRequest* request,
             ShowTabletResponse* response,
+            Closure* done);
+
+    void ShowTable(RpcController* controller,
+            const ShowTableRequest* request,
+            ShowTableResponse* response,
             Closure* done);
 
     void MakeSnapshotNS(RpcController* controller,

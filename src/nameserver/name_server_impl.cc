@@ -328,7 +328,6 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     done->Run();
 }
 
-
 bool NameServerImpl::Init() {
     if (FLAGS_zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");
@@ -730,6 +729,83 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
 	response->set_code(0);
 	response->set_msg("ok");
 	done->Run();
+}
+
+void NameServerImpl::ShowTable(RpcController* controller,
+            const ShowTableRequest* request,
+            ShowTableResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    std::lock_guard<std::mutex> lock(mu_);
+	for (const auto& kv : table_info_) {
+        if (request->has_name() && request->name() != kv.first) {
+            continue;
+        }
+		::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
+		table_info->CopyFrom(*(kv.second));
+	}
+	response->set_code(0);
+	response->set_msg("ok");
+}
+
+void NameServerImpl::DropTable(RpcController* controller, 
+        const DropTableRequest* request, 
+        GeneralResponse* response, 
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(request->name());
+    if (iter == table_info_.end()) {
+        response->set_code(-1);
+        response->set_msg("table is not exisit!");
+        PDLOG(WARNING, "table[%s] is not exisit!", request->name().c_str());
+        return;
+    }
+    int code = 0;
+    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+        do {
+            auto tablets_iter = tablets_.find(iter->second->table_partition(idx).endpoint());
+            // check tablet if exist
+            if (tablets_iter == tablets_.end()) {
+                PDLOG(WARNING, "endpoint[%s] can not find client", 
+                                iter->second->table_partition(idx).endpoint().c_str());
+                break;
+            }
+            // check tablet healthy
+            if (tablets_iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                PDLOG(WARNING, "endpoint [%s] is offline",
+                                iter->second->table_partition(idx).endpoint().c_str());
+                break;
+            }
+            if (!tablets_iter->second->client_->DropTable(iter->second->tid(),
+                                    iter->second->table_partition(idx).pid())) {
+                PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
+                                iter->second->tid(), iter->second->table_partition(idx).pid(),
+                                iter->second->table_partition(idx).endpoint().c_str());
+                code = -1; // if drop table failed, return error                
+                break;
+            }
+            PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", 
+                            iter->second->tid(), iter->second->table_partition(idx).pid(),
+                            iter->second->table_partition(idx).endpoint().c_str());
+        } while (0);       
+    }
+    if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + request->name())) {
+        PDLOG(WARNING, "delete table node[%s/%s] failed! value[%s]", 
+                        zk_table_data_path_.c_str(), request->name().c_str());
+        code = -1;
+    } else {
+        PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), request->name().c_str());
+    }
+    table_info_.erase(request->name());
+    response->set_code(code);
+    code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
 }
 
 void NameServerImpl::CreateTable(RpcController* controller, 

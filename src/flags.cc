@@ -29,7 +29,6 @@ DEFINE_uint32(scan_reserve_size, 1024, "config the size of vec reserve");
 // binlog configuration
 DEFINE_int32(binlog_single_file_max_size, 1024*4, "the max size of single binlog file");
 DEFINE_int32(binlog_sync_batch_size, 32, "the batch size of sync binlog");
-DEFINE_int32(binlog_apply_batch_size, 32, "the batch size of apply binlog");
 DEFINE_bool(binlog_notify_on_put, false, "config the sync log to follower strategy");
 DEFINE_bool(binlog_enable_crc, false, "enable crc");
 DEFINE_int32(binlog_coffee_time, 1000, "config the coffee time");
@@ -52,6 +51,7 @@ DEFINE_int32(request_max_retry, 3, "max retry time when request error");
 DEFINE_int32(request_timeout_ms, 500, "request timeout");
 
 DEFINE_int32(stream_wait_time_ms, 5, "the wait time when send too fast");
+DEFINE_int32(stream_close_wait_time_ms, 1000, "the wait time before close stream");
 DEFINE_int32(stream_block_size, 4 * 1024 * 1024, "config the write/read block size in streaming");
 DEFINE_int32(stream_bandwidth_limit, 1 * 1204 * 1024, "the limit bandwidth. Byte/Second");
 

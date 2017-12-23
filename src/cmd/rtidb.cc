@@ -196,6 +196,60 @@ void HandleNSDelReplica(const std::vector<std::string>& parts, ::rtidb::client::
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     } 
 }
+    
+void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    bool ret = client->DropTable(parts[1]);
+    if (!ret) {
+        std::cout << "failed to drop" << std::endl;
+        return;
+    }
+    std::cout << "drop ok" << std::endl;
+}
+
+void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::string name;
+    if (parts.size() >= 2) {
+        name = parts[1];
+    }
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    bool ret = client->ShowTable(name, tables);
+    if (!ret) {
+        std::cout << "failed to showtable" << std::endl;
+        return;
+    }
+    std::vector<std::string> row;
+    row.push_back("name");
+    row.push_back("tid");
+    row.push_back("pid");
+    row.push_back("endpoint");
+    row.push_back("role");
+    row.push_back("seg_cnt");
+    row.push_back("ttl");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    for (const auto& value : tables) {
+        for (int idx = 0; idx < value.table_partition_size(); idx++) {
+            row.clear();
+            row.push_back(value.name());
+            row.push_back(std::to_string(value.tid()));
+            row.push_back(std::to_string(value.table_partition(idx).pid()));
+            row.push_back(value.table_partition(idx).endpoint());
+            if (value.table_partition(idx).is_leader()) {
+                row.push_back("leader");
+            } else {
+                row.push_back("follower");
+            }
+            row.push_back(std::to_string(value.seg_cnt()));
+            row.push_back(std::to_string(value.ttl()));
+            tp.AddRow(row);
+        }
+    }
+    tp.Print(true);
+}
 
 void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
@@ -413,7 +467,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
     }
 
     try {
-        uint64_t ttl = 0;
+        int64_t ttl = 0;
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
@@ -422,6 +476,10 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
                 type = ::rtidb::api::TTLType::kLatestTime;
             }
             ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
+        }
+        if (ttl < 0) {
+            std::cout << "ttl should be equal or greater than 0" << std::endl;
+            return;
         }
         uint32_t seg_cnt = 16;
         if (parts.size() > 5) {
@@ -438,7 +496,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl, is_leader, endpoints, type, seg_cnt);
+                                      (uint64_t)ttl, is_leader, endpoints, type, seg_cnt);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -843,22 +901,42 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         return;
     }
     try {
-        uint64_t ttl = 0;
+        int64_t ttl = 0;
+        ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
-            ttl = boost::lexical_cast<uint64_t>(parts[4]);
+            std::vector<std::string> vec;
+            ::rtidb::base::SplitString(parts[4], ":", &vec);
+            if (vec.size() > 1 && vec[0] == "latest") {
+                type = ::rtidb::api::TTLType::kLatestTime;
+            }
+            ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         }
-
+        if (ttl < 0) {
+            std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
+            return;
+        }
         uint32_t seg_cnt = 16;
         if (parts.size() > 5) {
             seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
         }
+        bool leader = true;
+        if (parts.size() > 6 && parts[6].compare("false") == 0) {
+            leader = false;
+        }
         std::vector<::rtidb::base::ColumnDesc> columns;
-        for (uint32_t i = 6; i < parts.size(); i++) {
+        // check duplicate column
+        std::set<std::string> used_column_names;
+        for (uint32_t i = 7; i < parts.size(); i++) {
             std::vector<std::string> kv;
             ::rtidb::base::SplitString(parts[i], ":", &kv);
             if (kv.size() < 2) {
                 continue;
             }
+            if (used_column_names.find(kv[0]) != used_column_names.end()) {
+                std::cout << "Duplicated column " << kv[0] << std::endl;
+                return;
+            }
+            used_column_names.insert(kv[0]);
             bool add_ts_idx = false;
             if (kv.size() > 2 && kv[2] == "index") {
                 add_ts_idx = true;
@@ -890,7 +968,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      ttl, seg_cnt, columns);
+                                      (uint64_t)ttl, seg_cnt, columns, type, leader);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -898,7 +976,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         }
 
     } catch(std::exception const& e) {
-        std::cout << "Invalid args, tid , pid or ttl should be uint32_t" << std::endl;
+        std::cout << "Invalid args " << e.what() << std::endl;
     }
 }
 
@@ -1062,7 +1140,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
 }
 
 void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 6) {
+    if (parts.size() < 5) {
         std::cout << "Bad put format, eg put tid pid time value" << std::endl;
         return;
     }
@@ -1273,6 +1351,10 @@ void StartNsClient() {
             HandleNSAddReplica(parts, &client);
         } else if (parts[0] == "delreplica") {
             HandleNSDelReplica(parts, &client);
+        } else if (parts[0] == "drop") {
+            HandleNSClientDropTable(parts, &client);
+        } else if (parts[0] == "showtable") {
+            HandleNSClientShowTable(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

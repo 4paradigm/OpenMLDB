@@ -13,15 +13,15 @@
 ```
 # 在slave1 上创建表信息
 ./rtidb --endpoint=slave1 --role=client
->create t1 1 1 0 false slave1 slave2
+>create t1 1 1 0 8 false slave1 slave2
 
 # 在slave2 上创建表信息
 ./rtidb --endpoint=slave2 --role=client
->create t1 1 1 0 false slave1 slave2
+>create t1 1 1 0 8 false slave1 slave2
 
 # 在leader 上创建表信息
 ./rtidb --endpoint=leader --role=client
->create t1 1 1 0 true slave1 slave2
+>create t1 1 1 0 8 true slave1 slave2
 
 ```
 
@@ -58,9 +58,24 @@ create t1 1 0 latest:2 8
 
 ## tablet schema相关操作
 
+### 创建一个带schema的leader表保留最新两条记录配置
+
+```
+>screate tx 1 0 latest:2 true card:string:index merchant:string:index amt:double
+```
+
+### 创建一个带schema的follower表保留最新两条记录配置
+
+```
+>screate tx 1 0 latest:2 false card:string:index merchant:string:index amt:double
+```
+
+### 相关操作示例
+
 ```
 Welcome to rtidb with version 1.1.0
->screate tx 1 0 0 8 card:string:index merchant:string:index amt:double
+#创建一个带schema 的leader表
+>screate tx 1 0 0 8 true card:string:index merchant:string:index amt:double
 Create table ok
 >showschema 1 0
   #  name      type    index
@@ -145,3 +160,17 @@ cmd addreplica 表名 分片id 新副本所在节点的ip:port
 
 ```
 
+### cluster开启时从ns_client删除表
+
+```
+> drop tablename
+```
+
+### cluster开启时从ns_client获取表的信息
+
+```
+列出所有表的信息
+> showtable
+列出test1表的信息
+> showtable test1
+```

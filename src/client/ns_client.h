@@ -31,12 +31,16 @@ public:
     int Init();
 
     bool ShowTablet(std::vector<TabletInfo>& tablets);
+    
+    bool ShowTable(const std::string& name, std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     bool MakeSnapshot(const std::string& name, uint32_t pid);
 
     bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response);
 
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info);
+
+    bool DropTable(const std::string& name);
 
     bool AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint);
 
