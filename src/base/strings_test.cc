@@ -27,6 +27,13 @@ TEST_F(StringsTest, FormatToString) {
 
 }
 
+TEST_F(StringsTest, ReadableTime) {
+
+    std::string result = HumanReadableTime(60000);
+    ASSERT_EQ("1.000m", result);
+}
+
+
 }
 }
 
