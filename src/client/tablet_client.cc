@@ -53,7 +53,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_ttl_type(type);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    }else {
+    } else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
     ::rtidb::api::CreateTableResponse response;
@@ -65,28 +65,12 @@ bool TabletClient::CreateTable(const std::string& name,
     return false;
 }
 
-bool TabletClient::CreateTable(const std::string& name, uint32_t tid, 
-                               uint32_t pid,
-                               uint64_t ttl, uint32_t seg_cnt, 
-                               const std::vector<::rtidb::base::ColumnDesc>& columns) {
-    return CreateTable(name, tid, pid, ttl, 
-                       seg_cnt, columns, 
-                       ::rtidb::api::TTLType::kAbsoluteTime, 
-                       true);
-}
-
-bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-                               uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
-    std::vector<std::string> endpoints;
-    return CreateTable(name, id, pid, ttl, true, endpoints, seg_cnt);
-}
-
 bool TabletClient::CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid, uint64_t ttl,
                      bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
-                     uint32_t seg_cnt) {
+                     uint32_t seg_cnt, uint64_t leader_id) {
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
@@ -96,6 +80,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        request.set_leader_id(leader_id);
     }else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
@@ -110,13 +95,6 @@ bool TabletClient::CreateTable(const std::string& name,
         return true;
     }
     return false;
-}
-
-bool TabletClient::CreateTable(const std::string& name,
-                               uint32_t tid, uint32_t pid, uint64_t ttl,
-                               bool leader, const std::vector<std::string>& endpoints,
-                               uint32_t seg_cnt) {
-    return CreateTable(name, tid, pid, ttl, leader, endpoints, ::rtidb::api::TTLType::kAbsoluteTime, seg_cnt);
 }
 
 bool TabletClient::Put(uint32_t tid,
@@ -189,6 +167,21 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::MakeSnapshot,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t& offset) {
+    ::rtidb::api::AppendEntriesRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_leader_id(0);
+    ::rtidb::api::AppendEntriesResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        offset = response.log_offset();
         return true;
     }
     return false;
@@ -289,12 +282,13 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader) {
 }
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
-        const std::vector<std::string>& endpoints) {
+        const std::vector<std::string>& endpoints, uint64_t leader_id) {
     ::rtidb::api::ChangeRoleRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (leader) {
         request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        request.set_leader_id(leader_id);
     } else {
         request.set_mode(::rtidb::api::TableMode::kTableFollower);
     }

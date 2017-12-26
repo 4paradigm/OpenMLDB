@@ -29,30 +29,13 @@ public:
 
     std::string GetEndpoint();
 
-    bool CreateTable(const std::string& name, 
-                     uint32_t id, 
-                     uint32_t pid,
-                     uint64_t ttl,
-                     uint32_t seg_cnt=16);
-
-    bool CreateTable(const std::string& name,
-                     uint32_t tid, uint32_t pid, uint64_t ttl,
-                     bool leader, 
-                     const std::vector<std::string>& endpoints,
-                     uint32_t seg_cnt=16);
-
     bool CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid, uint64_t ttl,
                      bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
-                     uint32_t seg_cnt=16);
+                     uint32_t seg_cnt, uint64_t leader_id = 0);
 
-
-    bool CreateTable(const std::string& name, 
-                     uint32_t tid, uint32_t pid,
-                     uint64_t ttl, uint32_t seg_cnt, 
-                     const std::vector<::rtidb::base::ColumnDesc>& columns);
 
     bool CreateTable(const std::string& name, 
                      uint32_t tid, uint32_t pid,
@@ -138,7 +121,7 @@ public:
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader);
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
-                    const std::vector<std::string>& endpoints);
+                    const std::vector<std::string>& endpoints, uint64_t leader_id = 0);
 
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
 
@@ -147,6 +130,8 @@ public:
     int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     int GetTableStatus(uint32_t tid, uint32_t pid,
                     ::rtidb::api::TableStatus& table_status);
+
+    bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t& offset);                
     
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);

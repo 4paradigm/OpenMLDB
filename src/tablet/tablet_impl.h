@@ -197,7 +197,7 @@ private:
 
     inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
-    int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
+    int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, uint64_t leader_id,
                             std::string& msg);
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
@@ -212,7 +212,7 @@ private:
     void SchedMakeSnapshot();
 
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
-                       const std::vector<std::string>& replicas);
+                       const std::vector<std::string>& replicas, uint64_t leader_id);
 
     void CheckZkClient();
 

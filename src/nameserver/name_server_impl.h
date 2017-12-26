@@ -190,7 +190,15 @@ private:
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
+    std::shared_ptr<Task> CreateChangeLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
+                    const std::string& name, uint32_t tid, uint32_t pid, 
+                    std::vector<std::string>& follower_endpoint);
+
     int CreateDelReplicaOP(const DelReplicaData& del_replica_data);
+    int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
+    void ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
+                    std::vector<std::string>& follower_endpoint, 
+                    std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
 private:
     std::mutex mu_;
@@ -201,8 +209,10 @@ private:
     ::baidu::common::ThreadPool thread_pool_;
     ::baidu::common::ThreadPool task_thread_pool_;
     std::string zk_table_index_node_;
+    std::string zk_leader_id_node_;
     std::string zk_table_data_path_;
     uint32_t table_index_;
+    uint64_t leader_id_;
     std::string zk_op_index_node_;
     std::string zk_op_data_path_;
     uint64_t op_index_;

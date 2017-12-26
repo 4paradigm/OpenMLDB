@@ -40,6 +40,7 @@ enum OPType {
     kMakeSnapshotOP = 1;
     kAddReplicaOP = 2;
     kDelReplicaOP = 3;
+    KSelectLeaderOP = 4;
 }
 
 enum TaskType {
@@ -48,10 +49,10 @@ enum TaskType {
     kRecoverSnapshot = 3;
     kSendSnapshot = 4;
     kLoadTable = 5;
-    kChangeFollower = 6;
-    kAddReplica = 7;
-    kDelReplica = 8;
-    kDelTableInfo = 9;
+    kAddReplica = 6;
+    kDelReplica = 7;
+    kDelTableInfo = 8;
+    kChangeLeader = 9;
 }
 
 enum TaskStatus {
@@ -200,6 +201,7 @@ message TableMeta {
 
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
+    optional uint64 leader_id = 2 [default = 0];
 }
 
 message CreateTableResponse {
@@ -210,6 +212,7 @@ message CreateTableResponse {
 message LoadTableRequest {
     optional TableMeta table_meta = 1;
     optional TaskInfo task_info = 2;
+    optional uint64 leader_id = 3 [default = 0];
 }
 
 message DropTableRequest {
@@ -266,7 +269,6 @@ message AppendEntriesRequest {
     optional uint32 pid = 7;
     optional uint64 term = 8;
     optional uint64 leader_id = 9;
-    optional TaskInfo task_info = 10;
 }
 
 message AppendEntriesResponse {
@@ -277,11 +279,12 @@ message AppendEntriesResponse {
 }
 
 message ChangeRoleRequest {
-    optional uint32 tid = 6;
-    optional uint32 pid = 7;
-    optional uint64 term = 1;
-    optional TableMode mode = 2;
-    repeated string replicas = 3;
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint64 term = 3;
+    optional TableMode mode = 4;
+    repeated string replicas = 5;
+    optional uint64 leader_id = 6;
 }
 
 message SendSnapshotRequest {
