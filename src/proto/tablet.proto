@@ -49,6 +49,7 @@ enum TaskType {
     kLoadTable = 5;
     kChangeFollower = 6;
     kAddReplica = 7;
+    kAddTableInfo = 8;
 }
 
 enum TaskStatus {
