@@ -299,7 +299,7 @@ void TabletImpl::Put(RpcController* controller,
         entry.set_pk(request->pk());
         entry.set_ts(request->time());
         entry.set_value(request->value());
-        entry.set_leader_id(replicator->GetLeaderId());
+        entry.set_term(replicator->GetLeaderTerm());
         if (request->dimensions_size() > 0) {
             entry.mutable_dimensions()->CopyFrom(request->dimensions());
         }
@@ -472,7 +472,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
         vec.push_back(request->replicas(idx).c_str());
     }
     if (is_leader) {
-        if (ChangeToLeader(tid, pid, vec, request->leader_id()) < 0) {
+        if (ChangeToLeader(tid, pid, vec, request->term()) < 0) {
             response->set_code(-1);
             response->set_msg("table change to leader failed!");
             done->Run();
@@ -488,7 +488,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
     }
 }
 
-int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std::string>& replicas, uint64_t leader_id) {
+int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std::string>& replicas, uint64_t term) {
     std::shared_ptr<Table> table;
     std::shared_ptr<LogReplicator> replicator;
     {
@@ -512,7 +512,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
         table->SetReplicas(replicas);
         replicator->SetRole(ReplicatorRole::kLeaderNode);
         if (!FLAGS_zk_cluster.empty()) {
-            replicator->SetLeaderId(leader_id);
+            replicator->SetLeaderTerm(term);
         }
     }
     if (!replicator->AddReplicateNode(replicas)) {
@@ -961,7 +961,7 @@ void TabletImpl::MatchLogEntry(RpcController* controller,
 	}
     std::string msg;
     uint64_t log_offset = 0;
-    replicator->SetLeaderId(request->leader_id());
+    replicator->SetLeaderTerm(request->term());
     replicator->MatchLogEntry(request->log_entries(), msg, log_offset);
     response->set_code(0);
     response->set_msg(msg.c_str());
@@ -1325,7 +1325,7 @@ void TabletImpl::LoadTable(RpcController* controller,
                     break;
                 }
                 std::string msg;
-                if (CreateTableInternal(&table_meta, request->leader_id(), msg) < 0) {
+                if (CreateTableInternal(&table_meta, msg) < 0) {
                     response->set_code(-1);
                     response->set_msg(msg.c_str());
                     done->Run();
@@ -1470,7 +1470,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
 		}
         std::string msg;
-        if (CreateTableInternal(table_meta, request->leader_id(), msg) < 0) {
+        if (CreateTableInternal(table_meta, msg) < 0) {
             response->set_code(-1);
             response->set_msg(msg.c_str());
             done->Run();
@@ -1546,7 +1546,7 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
     return 0;
 }
 
-int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, uint64_t leader_id, std::string& msg) {
+int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
     uint32_t seg_cnt = 8;
     std::string name = table_meta->name();
     if (table_meta->seg_cnt() > 0) {
@@ -1610,7 +1610,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, u
         return -1;
     }
     if (!FLAGS_zk_cluster.empty() && is_leader) {
-        replicator->SetLeaderId(leader_id);
+        replicator->SetLeaderTerm(table_meta->term());
     }
     std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(table_meta->tid(), table_meta->pid(), replicator->GetLogPart());
     ok = snapshot->Init();

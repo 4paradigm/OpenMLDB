@@ -34,7 +34,7 @@ public:
                      bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
-                     uint32_t seg_cnt, uint64_t leader_id = 0);
+                     uint32_t seg_cnt, uint64_t term = 0);
 
 
     bool CreateTable(const std::string& name, 
@@ -121,7 +121,7 @@ public:
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader);
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
-                    const std::vector<std::string>& endpoints, uint64_t leader_id = 0);
+                    const std::vector<std::string>& endpoints, uint64_t term = 0);
 
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
 

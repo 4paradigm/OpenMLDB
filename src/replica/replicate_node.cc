@@ -60,13 +60,13 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
 }
 
 int ReplicateNode::MatchFollowerLogEntry(const std::vector<std::shared_ptr<::rtidb::api::LogEntry>>& log_entry_vec, 
-                uint64_t leader_id) {
-    leader_id_ = leader_id;            
+                uint64_t term) {
+    term_ = term;            
     int log_entry_idx = log_entry_vec.size();
     ::rtidb::api::MatchLogEntryRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
-    request.set_leader_id(leader_id);
+    request.set_term(term);
     while (true) {
         request.clear_log_entries();
         for (int idx = 0; idx < FLAGS_log_entry_batch_size; idx++) {
@@ -153,7 +153,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         request.set_pid(pid_);
         request.set_pre_log_index(last_sync_offset_);
         if (!FLAGS_zk_cluster.empty()) {
-            request.set_leader_id(leader_id_);
+            request.set_term(term_);
         }
         uint32_t batchSize = log_offset - last_sync_offset_;
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);

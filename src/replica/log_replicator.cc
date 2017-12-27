@@ -45,7 +45,7 @@ LogReplicator::LogReplicator(const std::string& path,
                              const ReplicatorRole& role,
                              std::shared_ptr<Table> table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
-    endpoints_(endpoints), nodes_(), leader_id_(0), mu_(), cv_(),coffee_cv_(),
+    endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),coffee_cv_(),
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
     binlog_index_ = 0;
@@ -273,12 +273,12 @@ void LogReplicator::DeleteBinlog() {
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
-uint64_t LogReplicator::GetLeaderId() {
-    return leader_id_;
+uint64_t LogReplicator::GetLeaderTerm() {
+    return term_;
 }
 
-void LogReplicator::SetLeaderId(uint64_t leader_id) {
-   leader_id_ = leader_id;
+void LogReplicator::SetLeaderTerm(uint64_t term) {
+   term_ = term;
 }
 
 void LogReplicator::ReadLogEntry() {
@@ -324,9 +324,9 @@ void LogReplicator::ReadLogEntry() {
 		if (tmp_entry.log_index() > last_offset) {
 			break;
 		}
-        // only set log_index and leader_id for use less memory
+        // only set log_index and term for use less memory
         entry->set_log_index(tmp_entry.log_index());
-        entry->set_leader_id(tmp_entry.leader_id());
+        entry->set_term(tmp_entry.term());
 		log_entry_vec_.push_back(entry);
     }
     if (log_entry_vec_.empty()) {
@@ -358,7 +358,7 @@ int LogReplicator::MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEnt
             // empty statement let idx++
             ;
         } else {
-            if (iter->leader_id() == entry->leader_id()) {
+            if (iter->term() == entry->term()) {
                 msg.assign("ok");
 				log_index = iter->log_index();
                 PDLOG(INFO, "succeed to match offset. tid %ld, pid %ld", 
@@ -404,8 +404,8 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
     if (request->entries_size() == 0) {
         response->set_log_offset(last_log_offset);
         if (!FLAGS_zk_cluster.empty()) {
-            if (request->leader_id() == 0) {
-                leader_id_ = 0;
+            if (request->term() == 0) {
+                term_ = 0;
                 PDLOG(INFO, "get log_offset %lu. tid %ld, pid %ld", last_log_offset, request->tid(), request->pid());
                 return true;
             }
@@ -420,9 +420,9 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         }
     }
     if (!FLAGS_zk_cluster.empty()) {
-        if (leader_id_ == 0 || request->leader_id() < leader_id_) {
-            PDLOG(WARNING, "leader id not match. request leader_id  %lu, cur leader_id %lu, tid %ld, pid %ld",
-                            request->leader_id(), leader_id_, request->tid(), request->pid());
+        if (term_ == 0 || request->term() < term_) {
+            PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %ld, pid %ld",
+                            request->term(), term_, request->tid(), request->pid());
             return false;
         }
     }
@@ -588,7 +588,7 @@ void LogReplicator::MatchLogOffset() {
         }
         for (auto& node : vec) {
             if (!FLAGS_zk_cluster.empty()) {
-                if (node->MatchFollowerLogEntry(log_entry_vec_, leader_id_) < 0) {
+                if (node->MatchFollowerLogEntry(log_entry_vec_, term_) < 0) {
                     all_matched = false;
                     continue;
                 }

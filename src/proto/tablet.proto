@@ -195,14 +195,13 @@ message TableMeta {
 	optional TableMode mode = 8;
     optional bool wal = 9 [default = true];
     // term for change role
-    optional uint64 term = 10;
+    optional uint64 term = 10 [default = 0];
     optional bytes schema = 11;
     repeated string dimensions = 12;
 }
 
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
-    optional uint64 leader_id = 2 [default = 0];
 }
 
 message CreateTableResponse {
@@ -213,7 +212,6 @@ message CreateTableResponse {
 message LoadTableRequest {
     optional TableMeta table_meta = 1;
     optional TaskInfo task_info = 2;
-    optional uint64 leader_id = 3 [default = 0];
 }
 
 message DropTableRequest {
@@ -259,7 +257,6 @@ message LogEntry {
     optional bytes value = 4;
     optional uint64 ts = 5;
     repeated Dimension dimensions = 6;
-    optional uint64 leader_id = 7;
 }
 
 message AppendEntriesRequest {
@@ -269,7 +266,6 @@ message AppendEntriesRequest {
     optional uint32 tid = 6;
     optional uint32 pid = 7;
     optional uint64 term = 8;
-    optional uint64 leader_id = 9;
 }
 
 message AppendEntriesResponse {
@@ -285,7 +281,6 @@ message ChangeRoleRequest {
     optional uint64 term = 3;
     optional TableMode mode = 4;
     repeated string replicas = 5;
-    optional uint64 leader_id = 6;
 }
 
 message SendSnapshotRequest {
@@ -298,7 +293,7 @@ message SendSnapshotRequest {
 message MatchLogEntryRequest {
     required uint32 tid = 1;
     required uint32 pid = 2;
-    required uint64 leader_id = 3;
+    required uint64 term = 3;
     repeated LogEntry log_entries = 4;
 }
 
@@ -317,7 +312,6 @@ message CreateStreamRequest {
 message ChangeRoleResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional uint64 term = 3;
 }
 
 // Get all table status information on tablet

@@ -70,7 +70,7 @@ bool TabletClient::CreateTable(const std::string& name,
                      bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
-                     uint32_t seg_cnt, uint64_t leader_id) {
+                     uint32_t seg_cnt, uint64_t term) {
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
@@ -80,7 +80,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-        request.set_leader_id(leader_id);
+        table_meta->set_term(term);
     }else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
@@ -176,7 +176,7 @@ bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t& offset) {
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_leader_id(0);
+    request.set_term(0);
     ::rtidb::api::AppendEntriesResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
             &request, &response, 12, 1);
@@ -282,13 +282,13 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader) {
 }
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
-        const std::vector<std::string>& endpoints, uint64_t leader_id) {
+        const std::vector<std::string>& endpoints, uint64_t term) {
     ::rtidb::api::ChangeRoleRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (leader) {
         request.set_mode(::rtidb::api::TableMode::kTableLeader);
-        request.set_leader_id(leader_id);
+        request.set_term(term);
     } else {
         request.set_mode(::rtidb::api::TableMode::kTableFollower);
     }

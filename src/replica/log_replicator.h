@@ -90,8 +90,8 @@ public:
     }
     void SetRole(const ReplicatorRole& role);
 
-    uint64_t GetLeaderId();
-    void SetLeaderId(uint64_t leader_id);
+    uint64_t GetLeaderTerm();
+    void SetLeaderTerm(uint64_t term);
 
     void SetSnapshotLogPartIndex(uint64_t offset);
 
@@ -120,7 +120,7 @@ private:
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
 
-    uint64_t leader_id_;
+    uint64_t term_;
     // sync mutex
     std::mutex mu_;
     std::condition_variable cv_;
