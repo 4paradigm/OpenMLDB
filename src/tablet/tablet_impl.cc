@@ -515,11 +515,8 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
             replicator->SetLeaderId(leader_id);
         }
     }
-    for (auto iter = replicas.begin(); iter != replicas.end(); ++iter) {
-        if (!replicator->AddReplicateNode(*iter)) {
-            PDLOG(WARNING,"add replicator[%s] for table tid[%u] pid[%u] failed!", 
-                        iter->c_str(), tid, pid);
-        }
+    if (!replicator->AddReplicateNode(replicas)) {
+        PDLOG(WARNING,"add replicator failed. tid[%u] pid[%u]", tid, pid);
     }
     return 0;
 }
@@ -553,7 +550,9 @@ void TabletImpl::AddReplica(RpcController* controller,
             PDLOG(WARNING,"no replicator for table %d, pid %d", request->tid(), request->pid());
             break;
         }
-        bool ok = replicator->AddReplicateNode(request->endpoint());
+        std::vector<std::string> vec;
+        vec.push_back(request->endpoint());
+        bool ok = replicator->AddReplicateNode(vec);
         if (ok) {
             if (task_ptr) {
 	            std::lock_guard<std::mutex> lock(mu_);
@@ -647,40 +646,6 @@ void TabletImpl::AppendEntries(RpcController* controller,
     if (!replicator) {
         response->set_code(-1);
         response->set_msg("no replicator for table");
-        return;
-    }
-    if (!FLAGS_zk_cluster.empty()) {
-        if (request->leader_id() == 0) {
-            response->set_log_offset(replicator->GetOffset());
-            replicator->SetLeaderId(0);
-            return;
-        }
-        if (replicator->GetLeaderId() == 0 || request->leader_id() < replicator->GetLeaderId()) {
-            response->set_code(-1);
-            response->set_msg("leader id not match");
-            PDLOG(WARNING, "leader id not match. request leader_id  %lu, cur leader_id %lu, tid %ld, pid %ld", 
-                            request->leader_id(), replicator->GetLeaderId(), request->tid(), request->pid());
-            return;                
-        }
-    }
-    if (request->entries_size() == 0) {
-		uint64_t offset = replicator->GetOffset();
-    	brpc::Controller *cntl = static_cast<brpc::Controller*>(controller);
-		std::string leader_endpoint(butil::endpoint2str(cntl->remote_side()).c_str());
-        PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u] leader_id[%lu] endpoint[%s]",
-                    offset, request->tid(), request->pid(), request->leader_id(), leader_endpoint.c_str());
-		response->set_log_offset(offset);
-        if (!FLAGS_zk_cluster.empty()) {
-		    replicator->SetLeaderId(request->leader_id());
-        }
-		if (request->pre_log_index() >= offset) {
-			response->set_code(0);
-			response->set_msg("ok");
-		} else {
-			response->set_code(-2);
-			response->set_msg("log offset not match!");
-			PDLOG(WARNING, "log offset not match! tid[%u] pid[%u]", request->tid(), request->pid());
-		}
         return;
     }
     bool ok = replicator->AppendEntries(request, response);
@@ -979,10 +944,9 @@ void TabletImpl::MatchLogEntry(RpcController* controller,
             ::rtidb::api::MatchLogEntryResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
-    std::lock_guard<std::mutex> lock(mu_);
 	uint32_t tid = request->tid();
 	uint32_t pid = request->pid();
-	std::shared_ptr<LogReplicator> replicator = GetReplicatorUnLock(tid, pid);
+	std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
 	if (!replicator) {
 		PDLOG(WARNING, "replicator not exisit. tid %lu pid %lu", tid, pid);
 		response->set_code(-1);
@@ -996,12 +960,16 @@ void TabletImpl::MatchLogEntry(RpcController* controller,
 		return;
 	}
     std::string msg;
-    uint64_t log_index = 0;
-    replicator->MatchLogEntry(request->log_entries(), msg, log_index);
+    uint64_t log_offset = 0;
+    replicator->SetLeaderId(request->leader_id());
+    replicator->MatchLogEntry(request->log_entries(), msg, log_offset);
     response->set_code(0);
     response->set_msg(msg.c_str());
     if (msg == "ok") {
-        response->set_log_index(log_index);
+        response->set_log_offset(log_offset);
+        return;
+    } else if (msg == "FULLSYNC") {
+        // TODO. clear table and load snapshot.
     }
     PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu", 
                 tid, pid, request->log_entries(0).log_index());

@@ -36,6 +36,8 @@ public:
     std::string GetEndPoint();
     uint64_t GetLastSyncOffset();
     int GetLogIndex();
+    int MatchFollowerLogEntry(const std::vector<std::shared_ptr<::rtidb::api::LogEntry>>& log_entry_vec,
+                uint64_t leader_id);
 
     ReplicateNode(const ReplicateNode&) = delete;
     ReplicateNode& operator= (const ReplicateNode&) = delete;
@@ -49,6 +51,7 @@ private:
     bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
+    uint64_t leader_id_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> rpc_client_;
 };
 

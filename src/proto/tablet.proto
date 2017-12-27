@@ -297,13 +297,14 @@ message SendSnapshotRequest {
 message MatchLogEntryRequest {
     required uint32 tid = 1;
     required uint32 pid = 2;
-    repeated LogEntry log_entries = 3;
+    required uint64 leader_id = 3;
+    repeated LogEntry log_entries = 4;
 }
 
 message MatchLogEntryResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional uint64 log_index = 3;
+    optional uint64 log_offset = 3;
 }
 
 message CreateStreamRequest {

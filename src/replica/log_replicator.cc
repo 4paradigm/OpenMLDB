@@ -29,6 +29,7 @@ DECLARE_int32(binlog_match_logoffset_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_int32(binlog_name_length);
 DECLARE_int32(sync_offset_range);
+DECLARE_string(zk_cluster);
 
 namespace rtidb {
 namespace replica {
@@ -44,7 +45,7 @@ LogReplicator::LogReplicator(const std::string& path,
                              const ReplicatorRole& role,
                              std::shared_ptr<Table> table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
-    endpoints_(endpoints), nodes_(), mu_(), cv_(),coffee_cv_(),
+    endpoints_(endpoints), nodes_(), leader_id_(0), mu_(), cv_(),coffee_cv_(),
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
     binlog_index_ = 0;
@@ -215,7 +216,6 @@ uint64_t LogReplicator::GetOffset() {
 }
 
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
-    binlog_start_offset_.store(offset, std::memory_order_relaxed);
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
     log_reader.SetOffset(offset);
     int log_part_index = log_reader.RollRLogFile();
@@ -269,6 +269,7 @@ void LogReplicator::DeleteBinlog() {
         }
         delete tmp_node;
     }
+    binlog_start_offset_.store(logs_->GetLast()->GetValue(), std::memory_order_relaxed);
     tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
@@ -281,16 +282,20 @@ void LogReplicator::SetLeaderId(uint64_t leader_id) {
 }
 
 void LogReplicator::ReadLogEntry() {
-    uint64_t cur_offset = log_offset_.load(std::memory_order_relaxed);
+	log_entry_vec_.clear();
+    uint64_t last_offset = log_offset_.load(std::memory_order_relaxed);
+    if (last_offset <= 0) {
+        PDLOG(INFO, "no data in binlog. tid %u pid %u", table_->GetId(), table_->GetPid());
+        return;
+    }
     uint64_t binlog_start_offset = binlog_start_offset_.load(std::memory_order_relaxed);
     uint64_t start_offset = 0;
-    if (binlog_start_offset + FLAGS_sync_offset_range> cur_offset) {
+    if (binlog_start_offset + FLAGS_sync_offset_range > last_offset) {
         start_offset = binlog_start_offset;
     } else {
-        start_offset = cur_offset - FLAGS_sync_offset_range;
+        start_offset = last_offset - FLAGS_sync_offset_range;
     }
-	log_entry_vec_.clear();
-	log_entry_vec_.reserve(cur_offset - start_offset);
+	log_entry_vec_.reserve(last_offset - start_offset + 1);
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
     log_reader.SetOffset(start_offset);
     std::string buffer;
@@ -315,7 +320,7 @@ void LogReplicator::ReadLogEntry() {
                         ::rtidb::base::DebugString(record.ToString()).c_str());
             continue;
         }
-		if (entry->log_index() > cur_offset) {
+		if (entry->log_index() > last_offset) {
 			break;
 		}
 		log_entry_vec_.push_back(entry);
@@ -354,13 +359,23 @@ int LogReplicator::MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEnt
 				log_index = iter->log_index();
                 PDLOG(INFO, "succeed to match offset. tid %ld, pid %ld", 
                             table_->GetId(), table_->GetPid());
+                // clear log_entry_vec and free memory
+                std::vector<std::shared_ptr<LogEntry>> vec;
+                log_entry_vec_.swap(vec);
                 return 0;
             }
             log_entry_vec_.pop_back();
         }
         iter++;
     }
-	msg.assign("AGAIN");
+    if (log_entry_vec_.empty()) {
+        msg.assign("FULLSYNC");
+        PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu",
+                     table_->GetId(), table_->GetPid(), log_entries.begin()->log_index());
+        log_entry_vec_.shrink_to_fit();
+    } else {
+	    msg.assign("AGAIN");
+    }
 	return 0;
 }
 
@@ -382,6 +397,32 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         ::rtidb::api::AppendEntriesResponse* response) {
     std::lock_guard<std::mutex> lock(wmu_);
     uint64_t last_log_offset = GetOffset();
+    if (request->entries_size() == 0) {
+        response->set_log_offset(last_log_offset);
+        if (!FLAGS_zk_cluster.empty()) {
+            if (request->leader_id() == 0) {
+                leader_id_ = 0;
+                PDLOG(INFO, "get log_offset %lu. tid %ld, pid %ld", last_log_offset, request->tid(), request->pid());
+                return true;
+            }
+        }
+        PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]",
+                    last_log_offset, request->tid(), request->pid());
+        if (request->pre_log_index() >= last_log_offset) {
+        	return true;
+        } else {
+            PDLOG(WARNING, "log offset not match! tid[%u] pid[%u]", request->tid(), request->pid());
+        	return false;
+        }
+    }
+    if (!FLAGS_zk_cluster.empty()) {
+        if (leader_id_ == 0 || request->leader_id() < leader_id_) {
+            PDLOG(WARNING, "leader id not match. request leader_id  %lu, cur leader_id %lu, tid %ld, pid %ld",
+                            request->leader_id(), leader_id_, request->tid(), request->pid());
+            return false;
+        }
+    }
+
     if (wh_ == NULL || (wh_->GetSize() / (1024* 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
         if (!ok) {
@@ -416,13 +457,16 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
     return true;
 }
 
-bool LogReplicator::AddReplicateNode(const std::string& endpoint) {
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (role_ != kLeaderNode) {
-            PDLOG(WARNING, "cur table is not leader, cannot add replicate");
-            return false;
-        }
+bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec) {
+    if (endpoint_vec.empty()) {
+        return true;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    if (role_ != kLeaderNode) {
+        PDLOG(WARNING, "cur table is not leader, cannot add replicate");
+        return false;
+    }
+    for (const auto& endpoint : endpoint_vec) {
         std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
         for (; it != nodes_.end(); ++it) {
             std::string ep = (*it)->GetEndPoint();
@@ -521,23 +565,44 @@ void LogReplicator::Notify() {
 
 
 void LogReplicator::MatchLogOffset() {
-    std::lock_guard<std::mutex> lock(mu_);
     bool all_matched = true;
-    std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
-    for (; it != nodes_.end(); ++it) {
-        std::shared_ptr<ReplicateNode> node = *it;
-        if (node->IsLogMatched()) {
-            continue;
-        }
-        if (node->MatchLogOffsetFromNode(binlog_index_.load(std::memory_order_relaxed)) < 0) {
+    std::vector<std::shared_ptr<ReplicateNode>> vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& node : nodes_) {
+            if (node->IsLogMatched()) {
+                continue;
+            }
             all_matched = false;
-        } else {
+            vec.push_back(node);
+        }
+    }
+    if (!all_matched) {
+        all_matched = true;
+        if (!FLAGS_zk_cluster.empty()) {
+            ReadLogEntry();
+        }
+        for (auto& node : vec) {
+            if (!FLAGS_zk_cluster.empty()) {
+                if (node->MatchFollowerLogEntry(log_entry_vec_, leader_id_) < 0) {
+                    all_matched = false;
+                    continue;
+                }
+            } else {
+                if (node->MatchLogOffsetFromNode(binlog_index_.load(std::memory_order_relaxed)) < 0) {
+                    all_matched = false;
+                    continue;
+                }
+            }
             tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node->GetEndPoint()));
         }
     }
     if (!all_matched) {
         // retry after 1 second
         tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
+    } else {
+        std::vector<std::shared_ptr<LogEntry>> vec;
+        log_entry_vec_.swap(vec);
     }
 }
 

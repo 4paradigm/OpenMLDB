@@ -70,7 +70,7 @@ public:
     void DeleteBinlog();
 
     // add replication
-    bool AddReplicateNode(const std::string& endpoint);
+    bool AddReplicateNode(const std::vector<std::string>& endpoint_vec);
 
     bool DelReplicateNode(const std::string& endpoint);
 
@@ -120,7 +120,6 @@ private:
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
 
-    std::string leader_endpoint_;
     uint64_t leader_id_;
     // sync mutex
     std::mutex mu_;
@@ -142,7 +141,7 @@ private:
     std::mutex wmu_;
 
     std::shared_ptr<Table> table_;
-    std::vector<std::shared_ptr<::rtidb::api::LogEntry>> log_entry_vec_;
+    std::vector<std::shared_ptr<LogEntry>> log_entry_vec_;
 };
 
 } // end of replica

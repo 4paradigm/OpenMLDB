@@ -13,6 +13,8 @@
 DECLARE_int32(binlog_sync_batch_size);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
+DECLARE_int32(log_entry_batch_size);
+DECLARE_string(zk_cluster);
 
 namespace rtidb {
 namespace replica {
@@ -57,6 +59,50 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
     last_sync_offset_ = offset;
 }
 
+int ReplicateNode::MatchFollowerLogEntry(const std::vector<std::shared_ptr<::rtidb::api::LogEntry>>& log_entry_vec, 
+                uint64_t leader_id) {
+    leader_id_ = leader_id;            
+    int log_entry_idx = log_entry_vec.size();
+    ::rtidb::api::MatchLogEntryRequest request;
+    request.set_tid(tid_);
+    request.set_pid(pid_);
+    request.set_leader_id(leader_id);
+    while (true) {
+        request.clear_log_entries();
+        for (int idx = 0; idx < FLAGS_log_entry_batch_size; idx++) {
+            if (log_entry_idx < 0) {
+                break;
+            }
+            ::rtidb::api::LogEntry* log_entry = request.add_log_entries();
+            log_entry->CopyFrom(*(log_entry_vec[log_entry_idx]));
+            log_entry_idx--;
+        }
+        if (request.log_entries_size() == 0) {
+            break;
+        }
+        ::rtidb::api::MatchLogEntryResponse response;
+        bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::MatchLogEntry,
+                            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+        if (ret && response.code() == 0) { 
+            if (response.msg() == "ok") {
+                last_sync_offset_ = response.log_offset();
+                log_matched_ = true;
+                log_reader_.SetOffset(last_sync_offset_);
+                return 0;
+            } else if (response.msg() == "AGAIN") {
+                continue;
+            } else {
+                break;
+            }
+        } else {
+            PDLOG(WARNING, "MatchLogEntry error. tid %u pid %u", tid_, pid_);
+            return -1;
+        }
+    }
+    PDLOG(INFO, "not matched, need full sync. tid %u pid %u", tid_, pid_);
+    // TODO. fullsync
+    return 0;
+}
 
 int ReplicateNode::MatchLogOffsetFromNode(uint64_t log_offset) {
     ::rtidb::api::AppendEntriesRequest request;
@@ -106,6 +152,9 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         request.set_tid(tid_);
         request.set_pid(pid_);
         request.set_pre_log_index(last_sync_offset_);
+        if (!FLAGS_zk_cluster.empty()) {
+            request.set_leader_id(leader_id_);
+        }
         uint32_t batchSize = log_offset - last_sync_offset_;
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
         for (uint64_t i = 0; i < batchSize; ) {
