@@ -313,16 +313,20 @@ void LogReplicator::ReadLogEntry() {
 			break;
         }
     	std::shared_ptr<LogEntry> entry = std::make_shared<LogEntry>();
-        bool ok = entry->ParseFromString(record.ToString());
+        LogEntry tmp_entry;
+        bool ok = tmp_entry.ParseFromString(record.ToString());
         if (!ok) {
             PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", 
                         table_->GetId(), table_->GetPid(),
                         ::rtidb::base::DebugString(record.ToString()).c_str());
             continue;
         }
-		if (entry->log_index() > last_offset) {
+		if (tmp_entry.log_index() > last_offset) {
 			break;
 		}
+        // only set log_index and leader_id for use less memory
+        entry->set_log_index(tmp_entry.log_index());
+        entry->set_leader_id(tmp_entry.leader_id());
 		log_entry_vec_.push_back(entry);
     }
     if (log_entry_vec_.empty()) {

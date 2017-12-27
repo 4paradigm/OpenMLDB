@@ -186,7 +186,7 @@ void HandleNSDelReplica(const std::vector<std::string>& parts, ::rtidb::client::
     }
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        bool ok = client->AddReplica(parts[1], pid, parts[3]);
+        bool ok = client->DelReplica(parts[1], pid, parts[3]);
         if (!ok) {
             std::cout << "Fail to delreplica" << std::endl;
             return;
@@ -773,24 +773,19 @@ void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::clien
         std::cout << "Bad changerole format" << std::endl;
         return;
     }
-    bool is_leader = false;
-    if (parts[3].compare("leader") == 0) {
-        is_leader = true;
-    } else if (parts[3].compare("follower") == 0) {
-        is_leader = false;
-    } else {
-        std::cout << "role must be leader or follower" << std::endl;
-        return;
-    }
-    try {
-        bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), is_leader);
-        if (ok) {
-            std::cout << "ChangeRole ok" << std::endl;
-        } else {
-            std::cout << "Fail to Change to " << parts[3] << std::endl;
+ 	if (parts[3].compare("leader") == 0) {
+        try {
+            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
+            if (ok) {
+                std::cout << "ChangeRole ok" << std::endl;
+            } else {
+                std::cout << "Fail to Change leader" << std::endl;
+            }
+        } catch (boost::bad_lexical_cast& e) {
+            std::cout << "Bad changerole format" << std::endl;
         }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad changerole format" << std::endl;
+    } else {
+        std::cout << "not support to change follower" << std::endl;
     }
 }
 
@@ -1256,7 +1251,7 @@ void StartClient() {
         std::string buffer;
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
-        }else {
+        } else {
             std::getline(std::cin, buffer);
             if (buffer.empty()) {
                 continue;
@@ -1369,7 +1364,6 @@ void StartNsClient() {
     }
 
 }
-
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
