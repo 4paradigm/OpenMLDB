@@ -502,9 +502,10 @@ int NameServerImpl::DeleteTask() {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-            if (iter->second->task_list_.empty() && 
-                    (iter->second->task_status_ == ::rtidb::api::kDoing ||
-						iter->second->task_status_ == ::rtidb::api::kFailed)) {
+            if ((iter->second->task_list_.empty() && 
+                    iter->second->task_status_ == ::rtidb::api::kDoing) ||
+					(!iter->second->task_list_.empty() && 
+                    iter->second->task_status_ == ::rtidb::api::kFailed)) {
                 done_task_vec.push_back(iter->first);
             }
         }
@@ -540,6 +541,7 @@ int NameServerImpl::DeleteTask() {
 					if (pos->second->task_status_ == ::rtidb::api::kDoing) {
                     	pos->second->task_status_ = ::rtidb::api::kDone;
 					}
+                    pos->second->task_list_.clear();
                 }
             } else {
                 PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
@@ -571,7 +573,6 @@ void NameServerImpl::ProcessTask() {
 									::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
 									iter->first);
 					iter->second->task_status_ = ::rtidb::api::kFailed;
-					iter->second->task_list_.clear();
                 } else if (task->task_info_->status() == ::rtidb::api::kInited) {
                     PDLOG(DEBUG, "run task. opid[%lu] op_type[%s] task_type[%s]", iter->first, 
                                 ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
@@ -922,14 +923,14 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         return;
     }
     uint32_t tid = pos->second->tid();
-    uint32_t pid = 0;
+    uint32_t pid = request->pid();;
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
     for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).is_leader()) {
+        if (pos->second->table_partition(idx).is_leader() &&
+                pid == pos->second->table_partition(idx).pid()) {
             leader_endpoint = pos->second->table_partition(idx).endpoint();
-            pid = pos->second->table_partition(idx).pid();
             break;
         }
     }
@@ -1000,6 +1001,15 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         response->set_code(-1);
         response->set_msg("create recoversnapshot task failed");
         PDLOG(WARNING, "create recoversnapshot task failed. tid %u pid %u", tid, pid);
+        return;
+    }
+    op_data->task_list_.push_back(task);
+	task = CreateAddTableInfoTask(request->name(), pid, request->endpoint(),
+				op_index_, ::rtidb::api::OPType::kAddReplicaOP);
+    if (!task) {
+        response->set_code(-1);
+        response->set_msg("create addtableinfo task failed");
+        PDLOG(WARNING, "create addtableinfo task failed. tid %u pid %u", tid, pid);
         return;
     }
     op_data->task_list_.push_back(task);
@@ -1096,6 +1106,13 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
                 ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid %u pid %u", tid, pid);
+        return false;
+    }
+    op_data->task_list_.push_back(task);
+	task = CreateAddTableInfoTask(request.name(), pid, request.endpoint(),
+				op_index_, ::rtidb::api::OPType::kAddReplicaOP);
+    if (!task) {
+        PDLOG(WARNING, "create addtableinfo task failed. tid %u pid %u", tid, pid);
         return false;
     }
     op_data->task_list_.push_back(task);
@@ -1399,6 +1416,44 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaTask(const std::string& en
     task->fun_ = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, 
                 des_endpoint, task->task_info_);
 	return task;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateAddTableInfoTask(const std::string& name,  uint32_t pid,
+                    const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type) {
+	std::shared_ptr<::rtidb::api::TaskInfo> task_info = std::make_shared<::rtidb::api::TaskInfo>();
+    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kAddTableInfo);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->fun_ = boost::bind(&NameServerImpl::AddTableInfo, this, name, endpoint, pid, task->task_info_);
+	return task;
+}
+
+void NameServerImpl::AddTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
+                std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+	std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
+		task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        return;
+    }
+	::rtidb::nameserver::TablePartition* table_partition = iter->second->add_table_partition();
+	table_partition->set_endpoint(endpoint);
+	table_partition->set_pid(pid);
+	table_partition->set_is_leader(false);
+	std::string table_value;
+	iter->second->SerializeToString(&table_value);
+	if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+		PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+						zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+		task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+		return;         
+	}
+	PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
+					zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+	task_info->set_status(::rtidb::api::TaskStatus::kDone);
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateDelReplicaTask(const std::string& endpoint,

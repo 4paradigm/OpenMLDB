@@ -50,9 +50,10 @@ enum TaskType {
     kSendSnapshot = 4;
     kLoadTable = 5;
     kAddReplica = 6;
-    kDelReplica = 7;
-    kDelTableInfo = 8;
-    kChangeLeader = 9;
+    kAddTableInfo = 7;
+    kDelReplica = 8;
+    kDelTableInfo = 9;
+    kChangeLeader = 10;
 }
 
 enum TaskStatus {
