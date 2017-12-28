@@ -262,7 +262,6 @@ message LogEntry {
 message AppendEntriesRequest {
     optional uint64 pre_log_index = 2;
     repeated LogEntry entries = 4;
-    optional uint64 leader_endpoint = 5;
     optional uint32 tid = 6;
     optional uint32 pid = 7;
     optional uint64 term = 8;

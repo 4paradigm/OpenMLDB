@@ -155,7 +155,7 @@ private:
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
 
-    void UpdateTableInfo(const std::string& endpoint);
+    void OnTabletOffline(const std::string& endpoint);
 
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
@@ -191,7 +191,7 @@ private:
 
     std::shared_ptr<Task> CreateDelReplicaTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
-					const std::string& des_endpoint);
+					const std::string& follower_endpoint);
 
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
@@ -215,10 +215,10 @@ private:
     ::baidu::common::ThreadPool thread_pool_;
     ::baidu::common::ThreadPool task_thread_pool_;
     std::string zk_table_index_node_;
-    std::string zk_leader_id_node_;
+    std::string zk_term_node_;
     std::string zk_table_data_path_;
     uint32_t table_index_;
-    uint64_t leader_id_;
+    uint64_t term_;
     std::string zk_op_index_node_;
     std::string zk_op_data_path_;
     uint64_t op_index_;

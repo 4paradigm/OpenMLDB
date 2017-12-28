@@ -211,7 +211,7 @@ private:
     void SchedMakeSnapshot();
 
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
-                       const std::vector<std::string>& replicas, uint64_t leader_id);
+                       const std::vector<std::string>& replicas, uint64_t term);
 
     void CheckZkClient();
 

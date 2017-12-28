@@ -79,16 +79,19 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
 }
 
 void Segment::Delete(const Slice& key, uint64_t time) {
-    std::lock_guard<std::mutex> lock(mu_);
-    KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || scmp(key, entry->key) != 0) {
-        // key is not exisit
-        return;
+    KeyEntry* entry = NULL;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        entry = entries_->Get(key);
+        if (entry == NULL || scmp(key, entry->key) != 0) {
+            // key is not exisit
+            return;
+        }
     }
     while (entry->GetRef() > 0) {
         // some other thread is reading this key
-
     }
+    std::lock_guard<std::mutex> lock(mu_);
     ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.Remove(time);
     if (node == NULL) {
         return;

@@ -85,15 +85,15 @@ public:
     }
 
     void Ref() {
-        refs_.fetch_add(1, std::memory_order_relaxed);
+        refs_.fetch_add(1, std::memory_order_acq_rel);
     }
 
     void UnRef() {
-        refs_.fetch_sub(1, std::memory_order_relaxed);
+        refs_.fetch_sub(1, std::memory_order_acq_rel);
     }
 
     uint64_t GetRef() {
-        return refs_.load(std::memory_order_relaxed);
+        return refs_.load(std::memory_order_acquire);
     }
 
 public:

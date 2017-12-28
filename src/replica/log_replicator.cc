@@ -313,20 +313,17 @@ void LogReplicator::ReadLogEntry() {
 			break;
         }
     	std::shared_ptr<LogEntry> entry = std::make_shared<LogEntry>();
-        LogEntry tmp_entry;
-        bool ok = tmp_entry.ParseFromString(record.ToString());
+        bool ok = entry->ParseFromString(record.ToString());
         if (!ok) {
             PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", 
                         table_->GetId(), table_->GetPid(),
                         ::rtidb::base::DebugString(record.ToString()).c_str());
             continue;
         }
-		if (tmp_entry.log_index() > last_offset) {
+		if (entry->log_index() > last_offset) {
 			break;
 		}
-        // only set log_index and term for use less memory
-        entry->set_log_index(tmp_entry.log_index());
-        entry->set_term(tmp_entry.term());
+        entry->clear_value();
 		log_entry_vec_.push_back(entry);
     }
     if (log_entry_vec_.empty()) {
@@ -348,11 +345,14 @@ int LogReplicator::MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEnt
 			msg.assign("FULLSYNC");
             PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu",
                          table_->GetId(), table_->GetPid(), iter->log_index());
+            log_entry_vec_.shrink_to_fit();
             return 0;
         }
         std::shared_ptr<LogEntry> entry = log_entry_vec_.back();
         if (iter->log_index() < entry->log_index()) {
             log_entry_vec_.pop_back();
+            // delete data in memory
+            table_->Delete(Slice(entry->pk()), entry->ts(), entry->dimensions());
             continue;
         } else if (iter->log_index() > entry->log_index()) {
             // empty statement let idx++
@@ -361,6 +361,8 @@ int LogReplicator::MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEnt
             if (iter->term() == entry->term()) {
                 msg.assign("ok");
 				log_index = iter->log_index();
+                // reset log replicator log_offset
+                log_offset_ = log_index;
                 PDLOG(INFO, "succeed to match offset. tid %ld, pid %ld", 
                             table_->GetId(), table_->GetPid());
                 // clear log_entry_vec and free memory
@@ -369,6 +371,7 @@ int LogReplicator::MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEnt
                 return 0;
             }
             log_entry_vec_.pop_back();
+            table_->Delete(Slice(entry->pk()), entry->ts(), entry->dimensions());
         }
         iter++;
     }
@@ -403,12 +406,10 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
     uint64_t last_log_offset = GetOffset();
     if (request->entries_size() == 0) {
         response->set_log_offset(last_log_offset);
-        if (!FLAGS_zk_cluster.empty()) {
-            if (request->term() == 0) {
-                term_ = 0;
-                PDLOG(INFO, "get log_offset %lu. tid %ld, pid %ld", last_log_offset, request->tid(), request->pid());
-                return true;
-            }
+        if (!FLAGS_zk_cluster.empty() && request->term() == 0) {
+            term_ = 0;
+            PDLOG(INFO, "get log_offset %lu. tid %ld, pid %ld", last_log_offset, request->tid(), request->pid());
+            return true;
         }
         PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]",
                     last_log_offset, request->tid(), request->pid());
