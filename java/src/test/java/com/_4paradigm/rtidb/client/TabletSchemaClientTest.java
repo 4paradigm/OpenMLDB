@@ -13,6 +13,7 @@ import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.Table;
 
 import io.brpc.client.RpcClient;
+import rtidb.api.Tablet.TTLType;
 
 
 
@@ -25,19 +26,36 @@ public class TabletSchemaClientTest {
     	rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
     	client = TabletClientBuilder.buildSyncClient(rpcClient);
     }
+    
     @Test
-    public void testDuplicatedCreate() {
+    public void testEmptyTableNameCreate() {
     	int tid = id.incrementAndGet();
     	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     	ColumnDesc desc1 = new ColumnDesc();
     	desc1.setAddTsIndex(true);
-    	desc1.setIdx(0);
-    	desc1.setName("card");
+    	desc1.setName("card1");
     	desc1.setType(ColumnType.kString);
     	schema.add(desc1);
     	ColumnDesc desc2 = new ColumnDesc();
     	desc2.setAddTsIndex(true);
-    	desc2.setIdx(1);
+    	desc2.setName("card2");
+    	desc2.setType(ColumnType.kString);
+    	schema.add(desc2);
+        boolean ok = client.createTable("", tid, 0, 0, 8,schema);
+        Assert.assertFalse(ok);
+    }
+    
+    @Test
+    public void testEmptyColNameCreate() {
+    	int tid = id.incrementAndGet();
+    	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    	ColumnDesc desc1 = new ColumnDesc();
+    	desc1.setAddTsIndex(true);
+    	desc1.setName("");
+    	desc1.setType(ColumnType.kString);
+    	schema.add(desc1);
+    	ColumnDesc desc2 = new ColumnDesc();
+    	desc2.setAddTsIndex(true);
     	desc2.setName("card");
     	desc2.setType(ColumnType.kString);
     	schema.add(desc2);
@@ -46,32 +64,81 @@ public class TabletSchemaClientTest {
     }
     
     @Test
-    public void test0Create() {
+    public void testNullNameCreate() {
     	int tid = id.incrementAndGet();
     	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     	ColumnDesc desc1 = new ColumnDesc();
     	desc1.setAddTsIndex(true);
-    	desc1.setIdx(0);
+    	desc1.setName(null);
+    	desc1.setType(ColumnType.kString);
+    	schema.add(desc1);
+    	ColumnDesc desc2 = new ColumnDesc();
+    	desc2.setAddTsIndex(true);
+    	desc2.setName("card");
+    	desc2.setType(ColumnType.kString);
+    	schema.add(desc2);
+        boolean ok = client.createTable("tj0", tid, 0, 0, 8,schema);
+        Assert.assertFalse(ok);
+    }
+    
+    @Test
+    public void testDuplicatedCreate() {
+    	int tid = id.incrementAndGet();
+    	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    	ColumnDesc desc1 = new ColumnDesc();
+    	desc1.setAddTsIndex(true);
     	desc1.setName("card");
     	desc1.setType(ColumnType.kString);
     	schema.add(desc1);
     	ColumnDesc desc2 = new ColumnDesc();
     	desc2.setAddTsIndex(true);
-    	desc2.setIdx(1);
+    	desc2.setName("card");
+    	desc2.setType(ColumnType.kString);
+    	schema.add(desc2);
+        boolean ok = client.createTable("tj0", tid, 0, 0, 8,schema);
+        Assert.assertFalse(ok);
+    }
+    
+    @Test
+    public void testEmptyTTLLatestCreate() {
+    	int tid = id.incrementAndGet();
+    	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    	ColumnDesc desc1 = new ColumnDesc();
+    	desc1.setAddTsIndex(true);
+    	desc1.setName("card1");
+    	desc1.setType(ColumnType.kString);
+    	schema.add(desc1);
+    	ColumnDesc desc2 = new ColumnDesc();
+    	desc2.setAddTsIndex(true);
+    	desc2.setName("card2");
+    	desc2.setType(ColumnType.kString);
+    	schema.add(desc2);
+        boolean ok = client.createTable("tj0", tid, 0, 2, TTLType.kLatestTime, 8,schema);
+        Assert.assertTrue(ok);
+    }
+    
+    @Test
+    public void test0Create() {
+    	int tid = id.incrementAndGet();
+    	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    	ColumnDesc desc1 = new ColumnDesc();
+    	desc1.setAddTsIndex(true);
+    	desc1.setName("card");
+    	desc1.setType(ColumnType.kString);
+    	schema.add(desc1);
+    	ColumnDesc desc2 = new ColumnDesc();
+    	desc2.setAddTsIndex(true);
     	desc2.setName("merchant");
     	desc2.setType(ColumnType.kString);
     	schema.add(desc2);
     	ColumnDesc desc3 = new ColumnDesc();
     	desc3.setAddTsIndex(false);
-    	desc3.setIdx(2);
     	desc3.setName("amt");
     	desc3.setType(ColumnType.kDouble);
     	schema.add(desc3);
         boolean ok = client.createTable("tj0", tid, 0, 0, 8,schema);
         Assert.assertTrue(ok);
-        
         Table table = client.getTable(tid, 0);
-        
         Assert.assertTrue(table.getIndexes().size() == 2);
         Assert.assertTrue(table.getSchema().size() == 3);
         
@@ -97,19 +164,16 @@ public class TabletSchemaClientTest {
     	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     	ColumnDesc desc1 = new ColumnDesc();
     	desc1.setAddTsIndex(true);
-    	desc1.setIdx(0);
     	desc1.setName("card");
     	desc1.setType(ColumnType.kString);
     	schema.add(desc1);
     	ColumnDesc desc2 = new ColumnDesc();
     	desc2.setAddTsIndex(true);
-    	desc2.setIdx(1);
     	desc2.setName("merchant");
     	desc2.setType(ColumnType.kString);
     	schema.add(desc2);
     	ColumnDesc desc3 = new ColumnDesc();
     	desc3.setAddTsIndex(false);
-    	desc3.setIdx(2);
     	desc3.setName("amt");
     	desc3.setType(ColumnType.kDouble);
     	schema.add(desc3);
@@ -126,19 +190,16 @@ public class TabletSchemaClientTest {
     	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     	ColumnDesc desc1 = new ColumnDesc();
     	desc1.setAddTsIndex(true);
-    	desc1.setIdx(0);
     	desc1.setName("card");
     	desc1.setType(ColumnType.kString);
     	schema.add(desc1);
     	ColumnDesc desc2 = new ColumnDesc();
     	desc2.setAddTsIndex(true);
-    	desc2.setIdx(1);
     	desc2.setName("merchant");
     	desc2.setType(ColumnType.kString);
     	schema.add(desc2);
     	ColumnDesc desc3 = new ColumnDesc();
     	desc3.setAddTsIndex(false);
-    	desc3.setIdx(2);
     	desc3.setName("amt");
     	desc3.setType(ColumnType.kDouble);
     	schema.add(desc3);
