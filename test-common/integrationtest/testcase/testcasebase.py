@@ -7,6 +7,8 @@ import time
 import sys
 import threading
 import collections
+import shlex
+import subprocess
 sys.path.append(os.getenv('testpath'))
 from libs.logger import infoLogger
 import libs.conf as conf
@@ -16,7 +18,7 @@ class TestCaseBase(unittest.TestCase):
 
     @staticmethod
     def exe_shell(cmd):
-        infoLogger.debug(cmd)
+        infoLogger.info(cmd)
         retcode, output = commands.getstatusoutput(cmd)
         return output
 
@@ -32,13 +34,6 @@ class TestCaseBase(unittest.TestCase):
         cls.leaderpath = cls.testpath + '/tablet1'
         cls.slave1path = cls.testpath + '/tablet2'
         cls.slave2path = cls.testpath + '/tablet3'
-        # cls.ns1path = os.getenv('ns1path')
-        # cls.ns2path = os.getenv('ns1path')
-        # cls.leader = os.getenv('leader')
-        # cls.slave1 = os.getenv('slave1')
-        # cls.slave2 = os.getenv('slave2')
-        # cls.ns1 = os.getenv('ns1')
-        # cls.ns2 = os.getenv('ns2')
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
@@ -60,27 +55,16 @@ class TestCaseBase(unittest.TestCase):
         return int(1000 * time.time())
 
     def start_client(self, client_path):
-        cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(test_path, client_path)
+        cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(self.testpath, client_path)
+        infoLogger.info(cmd)
         args = shlex.split(cmd)
-        subprocess.Popen(args, stdout=open('{}/log.log'.format(client_path), 'w'))
+        p = subprocess.Popen(args, stdout=open('{}/log.log'.format(client_path), 'w'))
+        infoLogger.info(p)
         time.sleep(3)
-        # self.exe_shell('cd {} && ../mon ./conf/boot.sh -d -l ./rtidb_mon.log'.format(client_path))
-        # time.sleep(2)
 
-    # def start_client(self, client_path):
-    #     infoLogger.info('!!!!!!!!111')
-    #     self.exe_shell('{}/rtidb --flagfile={}/conf/rtidb.flags > {}/log.log 2>&1 &'.format(
-    #         client_path, client_path, client_path))
-    #     time.sleep(2)
-
-    def stop_client(self, *endpoint):
-        cmd = "for i in {};".format(endpoint) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill;done"
-        exe_shell(cmd)
-    #
-    # def stop_client(self, endpoint):
-    #     pid = self.exe_shell("lsof -i:" + endpoint.split(':')[1] + " |grep LISTEN|awk '{print $2}'")
-    #     self.exe_shell("ps xf|grep -B 2 " + str(pid) + "|grep rtidb_mon.log|awk '{print $1}'|xargs kill -9")
-    #     self.exe_shell("kill -9 {}".format(pid))
+    def stop_client(self, endpoint):
+        cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
+        self.exe_shell(cmd)
 
     def run_client(self, endpoint, cmd, role='client'):
         cmd = cmd.strip()
@@ -197,13 +181,13 @@ class TestCaseBase(unittest.TestCase):
         time.sleep(1)
         return rs
 
-    def addreplica(self, endpoint, tid, pid, *slave_endpoints):
-        rs = self.run_client(endpoint, 'addreplica {} {} {}'.format(tid, pid, ' '.join(slave_endpoints)))
+    def addreplica(self, endpoint, tid, pid, role='client', *slave_endpoints):
+        rs = self.run_client(endpoint, 'addreplica {} {} {}'.format(tid, pid, ' '.join(slave_endpoints)), role)
         time.sleep(1)
         return rs
 
-    def delreplica(self, endpoint, tid, pid, *slave_endpoints):
-        rs = self.run_client(endpoint, 'delreplica {} {} {}'.format(tid, pid, ' '.join(slave_endpoints)))
+    def delreplica(self, endpoint, tid, pid, role='client', *slave_endpoints):
+        rs = self.run_client(endpoint, 'delreplica {} {} {}'.format(tid, pid, ' '.join(slave_endpoints)), role)
         time.sleep(1)
         return rs
 
@@ -241,6 +225,60 @@ class TestCaseBase(unittest.TestCase):
             except KeyError, e:
                 infoLogger.error('table {} is not exist!'.format(e))
 
+    @staticmethod
+    def parse_tablet(rs):
+        tablet_dict = {}
+        rs = rs.split('\n')
+        for line in rs:
+            if not "endpoint" in line and not '------' in line and not '>' in line:
+                line_list = line.split(' ')
+                schema_line_list = [i for i in line_list if i is not '']
+                try:
+                    tablet_dict[schema_line_list[0]] = schema_line_list[1:]
+                except Exception, e:
+                    infoLogger.error(e)
+        return tablet_dict
+
+    def showtablet(self, endpoint):
+        rs = self.run_client(endpoint, 'showtablet', 'ns_client')
+        return self.parse_tablet(rs)
+
+    @staticmethod
+    def parse_opstatus(rs):
+        tablet_dict = {}
+        rs = rs.split('\n')
+        for line in rs:
+            if not "op_id" in line and not '------' in line and not '>' in line:
+                line_list = line.split(' ')
+                schema_line_list = [i for i in line_list if i is not '']
+                try:
+                    tablet_dict[int(schema_line_list[0])] = schema_line_list[1:]
+                except Exception, e:
+                    infoLogger.error(e)
+        return tablet_dict
+
+    def showopstatus(self, endpoint):
+        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+        return self.parse_opstatus(rs)
+
+    @staticmethod
+    def parse_table(rs):
+        tablet_dict = {}
+        rs = rs.split('\n')
+        for line in rs:
+            if not "endpoint" in line and not '------' in line and not '>' in line:
+                line_list = line.split(' ')
+                schema_line_list = [i for i in line_list if i is not '']
+                try:
+                    tablet_dict[schema_line_list[0]] = schema_line_list[1:]
+                except Exception, e:
+                    infoLogger.error(e)
+        return tablet_dict
+
+    def showtable(self, endpoint):
+        rs = self.run_client(endpoint, 'showtable', 'ns_client')
+        return self.parse_table(rs)
+
     def cp_db(self, from_node, to_node, tid, pid):
         self.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
             from_node=from_node, tid=tid, pid=pid, to_node=to_node))
@@ -250,7 +288,7 @@ class TestCaseBase(unittest.TestCase):
 
         def put():
             for i in range(0, count):
-                self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, 'testvalue'*10000)
+                self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, 'testvalue'*100)
         threads = []
         for _ in range(0, thread_count):
             threads.append(threading.Thread(

@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
 import time
 import threading
-import xmlrunner
 from libs.test_loader import load
 from libs.logger import infoLogger
 
@@ -168,9 +166,9 @@ class TestMakeSnapshot(TestCaseBase):
         for t in threads:
             t.join()
 
-        rss = [rs.split('\n')[1] for rs in rs_list]
-        infoLogger.info(rss)
-        self.assertEqual(rss.count('MakeSnapshot ok'), 1)
+        print rs_list
+        infoLogger.info(rs_list)
+        self.assertEqual(rs_list.count('MakeSnapshot ok'), 1)
 
         time.sleep(5)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
@@ -204,7 +202,11 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(50, 20)
+        # for multidimension test
+        self.multidimension_vk = {'card': ('string:index', 'testvalue0'),
+                                  'merchant': ('string:index', 'testvalue1'*100),
+                                  'amt': ('double', 1.1)}
+        self.put_large_datas(200, 20)
 
         # 将table目录拷贝到新节点
         self.exe_shell('cp -r {leaderpath}/db/{tid}_{pid} {slave1path}/db/'.format(
@@ -382,6 +384,10 @@ class TestMakeSnapshot(TestCaseBase):
 
         offset = 3
         for i in range(0, offset):
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'testkey{}'.format(i)),
+                                      'merchant': ('string:index', 'testvalue'),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader,
                      self.tid,
                      self.pid,
@@ -390,11 +396,15 @@ class TestMakeSnapshot(TestCaseBase):
                      'testvalue'*100)
 
         self.stop_client(self.leader)
-
+        time.sleep(10)
         self.start_client(self.leaderpath)
         rs1 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertTrue('LoadTable ok' in rs1)
 
+        # for multidimension test
+        self.multidimension_vk = {'card': ('string:index', 'testkey11'),
+                                  'merchant': ('string:index', 'testvalue11'),
+                                  'amt': ('double', 1.1)}
         rs2 = self.put(self.leader,
                        self.tid,
                        self.pid,
@@ -413,12 +423,12 @@ class TestMakeSnapshot(TestCaseBase):
         rs4 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs4)
         for i in range(0, offset):
+            self.multidimension_scan_vk = {'card': 'testkey{}'.format(i)}  # for multidimension test
             self.assertTrue('testvalue' in self.scan(
                 self.slave1, self.tid, self.pid, 'testkey{}'.format(i), self.now(), 1))
-        self.assertTrue('testvalue11' in self.scan(self.slave1, self.tid, self.pid, 'testkey11', self.now(), 1))
 
-        # 启动leader
-        self.start_client(self.leaderpath)
+        self.multidimension_scan_vk = {'card': 'testkey11'}  # for multidimension test
+        self.assertTrue('testvalue11' in self.scan(self.slave1, self.tid, self.pid, 'testkey11', self.now(), 1))
 
 
     def test_makesnapshot_after_restart_while_putting(self):
@@ -434,6 +444,10 @@ class TestMakeSnapshot(TestCaseBase):
 
         def put(count):
             for i in range(0, count):
+                # for multidimension test
+                self.multidimension_vk = {'card': ('string:index', 'testkey{}'.format(i)),
+                                          'merchant': ('string:index', 'testvalue'),
+                                          'amt': ('double', 1.1)}
                 self.put(self.leader,
                          self.tid,
                          self.pid,
@@ -455,6 +469,7 @@ class TestMakeSnapshot(TestCaseBase):
         for t in threads:
             t.join()
 
+        time.sleep(10)
         self.start_client(self.leaderpath)
         rs2 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertTrue('LoadTable ok' in rs2)
@@ -465,6 +480,10 @@ class TestMakeSnapshot(TestCaseBase):
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
         offset = int(mf['offset'])
 
+        # for multidimension test
+        self.multidimension_vk = {'card': ('string:index', 'testkey100'),
+                                  'merchant': ('string:index', 'testvalue100'),
+                                  'amt': ('double', 1.1)}
         rs4 = self.put(self.leader,
                        self.tid,
                        self.pid,
@@ -484,14 +503,13 @@ class TestMakeSnapshot(TestCaseBase):
         rs6 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs6)
         for i in range(0, offset):
+            self.multidimension_scan_vk = {'card': 'testkey{}'.format(i)}  # for multidimension test
             self.assertTrue('testvalue' in self.scan(
                 self.slave1, self.tid, self.pid, 'testkey{}'.format(i), self.now(), 1))
-        self.assertTrue('testvalue100' in self.scan(self.slave1, self.tid, self.pid, 'testkey100', self.now(), 1))
 
-        # 启动leader
-        self.start_client(self.leaderpath)
+        self.multidimension_scan_vk = {'card': 'testkey100'}  # for multidimension test
+        self.assertTrue('testvalue100' in self.scan(self.slave1, self.tid, self.pid, 'testkey100', self.now(), 1))
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestMakeSnapshot)

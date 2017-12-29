@@ -29,6 +29,7 @@ class NsCluster(object):
 
     def stop_zk(self):
         exe_shell("sh {}/bin/zkServer.sh stop".format(os.getenv('zkpath')))
+        time.sleep(1)
 
 
     def clear_zk(self):

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
-import xmlrunner
 from libs.test_loader import load
 
 
@@ -39,15 +37,14 @@ class TestGetTableStatus(TestCaseBase):
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
 
-        self.put_large_datas(1000, 5)
+        self.put_large_datas(1000, 10)
 
         rs2 = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
         self.assertTrue('MakeSnapshot ok' in rs2)
 
         table_status = self.get_table_status(self.leader)
-        self.assertEqual(table_status[(self.tid, self.pid)], ['5000', 'kTableLeader', 'kMakingSnapshot', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[(self.tid, self.pid)], ['10000', 'kTableLeader', 'kMakingSnapshot', 'true', '144000min', '0s'])
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestGetTableStatus)

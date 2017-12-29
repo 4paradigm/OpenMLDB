@@ -6,8 +6,6 @@ import os
 import sys
 sys.path.append(os.getenv('testpath'))
 import libs.conf as conf
-from libs.clients.ns_cluster import NsCluster
-from libs.clients.tb_cluster import TbCluster
 
 
 if __name__ == "__main__":

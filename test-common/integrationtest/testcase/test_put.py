@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
 import threading
 import time
-import xmlrunner
-from libs.deco import *
+from libs.deco import multi_dimension
 from libs.logger import infoLogger
-import libs.conf as conf
 import libs.ddt as ddt
 from libs.test_loader import load
 import ctypes
@@ -71,6 +68,7 @@ class TestPut(TestCaseBase):
         self.assertTrue('Put failed' in rs2)
 
 
+    @multi_dimension(False)
     def test_put_slave_killed_while_leader_putting(self):
         """
         写数据过程中从节点挂掉，不影响主节点
@@ -104,6 +102,7 @@ class TestPut(TestCaseBase):
             time.sleep(2)
         for t in threads:
             t.join()
+        time.sleep(10)
 
         self.start_client(self.slave1path)
         self.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
@@ -112,6 +111,51 @@ class TestPut(TestCaseBase):
         self.assertTrue('LoadTable ok' in rs4)
         time.sleep(1)
         self.assertTrue('testvalue19' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+
+
+    @multi_dimension(True)
+    def test_put_slave_killed_while_leader_putting_md(self):
+        """
+        写数据过程中从节点挂掉，不影响主节点
+        重新启动后可以loadtable成功，数据与主节点一致
+        :return:
+        """
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
+        self.assertTrue('Create table ok' in rs1)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        self.assertTrue('Create table ok' in rs2)
+
+        def put(count):
+            for i in range(0, count):
+                self.put(self.leader,
+                         self.tid,
+                         self.pid,
+                         '',
+                         self.now() - 1,
+                         'testvalue{}'.format(i), '1.1', 'testkey')
+
+        def stop_client(endpoint):
+            self.stop_client(endpoint)
+
+        threads = [threading.Thread(
+            target=put, args=(20,)), threading.Thread(
+            target=stop_client, args=(self.slave1,))]
+
+        # 写入数据1s后节点挂掉
+        for t in threads:
+            t.start()
+            time.sleep(2)
+        for t in threads:
+            t.join()
+        time.sleep(10)
+
+        self.start_client(self.slave1path)
+        self.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
+        self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
+        rs4 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        self.assertTrue('LoadTable ok' in rs4)
+        time.sleep(1)
+        self.assertTrue('testvalue19' in self.scan(self.slave1, self.tid, self.pid, {'card':'testkey'}, self.now(), 1))
 
 
     @multi_dimension(True)
@@ -152,7 +196,7 @@ class TestPut(TestCaseBase):
         ({'card': ('string:index', '6'), 's2': ('int64', -9223372036854775808)},
          'Put ok', {'card': '6'}, '-9223372036854775808'),
         ({'card': ('string:index', '7'), 's2': ('int64', -9223372036854775809)},
-         'Put ok', {'card': '7'}, '-9223372036854775809'),
+         'bad lexical cast: source type value could not be interpreted as target', {}, ''),
     )
     @ddt.unpack
     def test_sput_int(self, kv, rsp_msg, scan_kv, scan_value):
@@ -163,8 +207,9 @@ class TestPut(TestCaseBase):
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         self.assertTrue(rsp_msg in rs1)
-        self.assertTrue(
-            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+        if scan_kv != {}:
+            rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
+            self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
 
 
     @multi_dimension(True)
@@ -193,17 +238,17 @@ class TestPut(TestCaseBase):
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         self.assertTrue(rsp_msg in rs1)
-        self.assertTrue(rsp_msg in rs1)
-        rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
-        infoLogger.info(rs2)
-        self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
+        if scan_kv != {}:
+            rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
+            infoLogger.info(rs2)
+            self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
 
 
     @multi_dimension(True)
     @ddt.data(
         ({'card': ('string:index', '0'), 's2': ('string', '\\"\\"\'\'^\\n')},
          'Put ok', {'card': '0'}, '\"\"\'\'^\\n'),
-        ({'card': ('string:index', '1'), 's2': ('string', ' ')},
+        ({'card': ('string:index', '1'), 's2': ('string', '" "')},
          'Bad put format, eg put tid pid time value', {}, ''),
     )
     @ddt.unpack
@@ -216,8 +261,9 @@ class TestPut(TestCaseBase):
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         infoLogger.info(rs1)
         self.assertTrue(rsp_msg in rs1)
-        self.assertTrue(
-            ' ' + str(scan_value) + ' ' in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+        if scan_kv != {}:
+            self.assertTrue(' ' + str(scan_value) + ' ' in self.scan(
+                self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
 
 
     @multi_dimension(True)
@@ -241,10 +287,8 @@ class TestPut(TestCaseBase):
         self.assertTrue(rsp_msg in rs1)
         rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
         infoLogger.info(rs2)
-        self.assertTrue(
-            ' ' + str(scan_value) + ' ' in rs2)
+        self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestPut)

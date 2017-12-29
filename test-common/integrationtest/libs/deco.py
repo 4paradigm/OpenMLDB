@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import unittest
 from libs.logger import infoLogger
 import libs.conf as conf
@@ -7,8 +6,7 @@ import time
 
 
 def multi_dimension(md_open):
-    open_multi_dimension = conf.multidimension
-    if md_open == open_multi_dimension:
+    if md_open == conf.multidimension:
         return lambda func: func
     else:
         return unittest.skip('multi_dimension closed, case skipped.')

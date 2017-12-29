@@ -97,7 +97,6 @@ def gen_table_metadata_file(metadata, filepath):
             s += '{}:{}\n'.format(i[0], i[1])
         s += '}\n'
     # infoLogger.info(s)
-    print s
     write(s, filepath, 'w')
 
 

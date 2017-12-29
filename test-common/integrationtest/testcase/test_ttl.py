@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
-import xmlrunner
-from libs.deco import multi_dimension
-import libs.conf as conf
 from libs.test_loader import load
 import libs.ddt as ddt
 import time
@@ -13,10 +9,9 @@ from libs.logger import infoLogger
 @ddt.ddt
 class TestTtl(TestCaseBase):
 
-    @multi_dimension(False)
     @ddt.data(
         ('latest:0', 'Create table failed'),
-        ('latest:-1', 'Create table failed'),
+        ('latest:-1', 'ttl should be equal or greater than 0'),
         ('latest:1.0', 'Invalid args, tid , pid or ttl should be uint32_t'),
         ('latest:1.5', 'Invalid args, tid , pid or ttl should be uint32_t'),
         ('latest:1111111111111111', 'Create table ok'),
@@ -29,12 +24,11 @@ class TestTtl(TestCaseBase):
         ttl = latest:abnormal
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, ttl, 2, '')
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
         infoLogger.info(rs1)
         self.assertTrue(exp_msg in rs1)
 
 
-    @multi_dimension(False)
     @ddt.data(
         ('latest:1', {('v1', 10): False, ('v2', 20): False, ('v3', 30): True}),
         ('latest:1', {('v1', 20): False, ('v2', 30): True, ('v3', 10): False}),
@@ -54,10 +48,15 @@ class TestTtl(TestCaseBase):
         :param value_ts_scannable:
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, ttl, 2, '')
+        self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
         for i in value_ts_scannable.keys():
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'pk'),
+                                      'merchant': ('string:index', '|{}|'.format(i[0])),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
         time.sleep(1)
+        self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
         rs = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
         infoLogger.info(rs)
         for i in value_ts_scannable.keys():
@@ -72,7 +71,6 @@ class TestTtl(TestCaseBase):
                 self.assertFalse('|{}|'.format(k[0]) in rs1)
 
 
-    @multi_dimension(False)
     @ddt.data(
         ('latest:1', {('v1', 10): False, ('v2', 20): True}, [('v3', 30)], {('v2', 10): False, ('v3', 30): True}),
         ('latest:1', {('v1', 10): False, ('v2', 20): True}, [('v3', 10)], {('v2', 20): True, ('v3', 10): False}),
@@ -87,10 +85,16 @@ class TestTtl(TestCaseBase):
         :param value_ts_scannable2:
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, ttl, 2, '')
+        self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
         for i in value_ts_scannable.keys():
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'pk'),
+                                      'merchant': ('string:index', '|{}|'.format(i[0])),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
         time.sleep(1)
+
+        self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
         rs = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
         infoLogger.info(rs)
         for i in value_ts_scannable.keys():
@@ -105,8 +109,14 @@ class TestTtl(TestCaseBase):
                 self.assertFalse('|{}|'.format(k[0]) in rs1)
         # put again after the last gc
         for i in put_value_ts:
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'pk'),
+                                      'merchant': ('string:index', '|{}|'.format(i[0])),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
         time.sleep(1)
+
+        self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
         rs = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
         infoLogger.info(rs)
         for i in value_ts_scannable2.keys():
@@ -122,5 +132,4 @@ class TestTtl(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestTtl)

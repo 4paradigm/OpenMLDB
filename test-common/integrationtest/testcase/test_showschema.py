@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
-import xmlrunner
-from libs.deco import *
-import libs.conf as conf
+from libs.deco import multi_dimension
 from libs.test_loader import load
 
 
@@ -15,7 +12,7 @@ class TestShowSchema(TestCaseBase):
         tid不存在，查看schema
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '',
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
                           card='string:index', merchant='string:index', amt='double:index')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
@@ -30,5 +27,4 @@ class TestShowSchema(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestShowSchema)

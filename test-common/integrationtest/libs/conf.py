@@ -9,6 +9,7 @@ cf.read(os.getenv("testconfpath"))
 
 failfast = cf.getboolean("test_opt", "failfast")
 
+# multidimension = eval(cf.get("dimension", "multidimension"))
 multidimension = cf.getboolean("dimension", "multidimension")
 multidimension_vk = eval(cf.get("dimension", "multidimension_vk"))
 multidimension_scan_vk = eval(cf.get("dimension", "multidimension_scan_vk"))

@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
-import xmlrunner
-from libs.deco import *
-import libs.conf as conf
-from libs.test_loader import load
-import libs.ddt as ddt
+from libs.deco import multi_dimension
 from libs.test_loader import load
 
 
 class TestCreateTable(TestCaseBase):
 
     @multi_dimension(False)
-    def test_create_table(self):
+    def test_create_table_success(self):
         """
         创建带有主从关系的表成功
         :return:
@@ -116,5 +111,4 @@ class TestCreateTable(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestCreateTable)

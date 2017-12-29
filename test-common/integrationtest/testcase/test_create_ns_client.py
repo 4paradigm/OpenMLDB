@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-import unittest
 import time
 from testcasebase import TestCaseBase
-import xmlrunner
 from libs.deco import *
 import libs.conf as conf
 from libs.test_loader import load
@@ -167,5 +165,4 @@ class TestCreateTableByNsClient(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestCreateTableByNsClient)

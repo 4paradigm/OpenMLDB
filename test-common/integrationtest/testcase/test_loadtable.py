@@ -6,7 +6,7 @@ import threading
 import xmlrunner
 from libs.test_loader import load
 from libs.logger import infoLogger
-from libs.deco import *
+from libs.deco import multi_dimension
 
 
 class TestLoadTable(TestCaseBase):
@@ -37,15 +37,22 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('LoadTable ok' in rs3)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
         self.assertEqual(table_status, ['6', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
+
+        # for multidimension test
+        self.multidimension_vk = {'card': ('string:index', 'testkey111'),
+                                  'merchant': ('string:index', 'testvalue111'),
+                                  'amt': ('double', 1.1)}
+        self.multidimension_scan_vk = {'card': 'testkey111'}
+
         rs4 = self.put(self.slave1,
                        self.tid,
                        self.pid,
-                       'testkey0',
+                       'testkey111',
                        self.now(),
-                       'testvalue0')
+                       'testvalue111')
         self.assertTrue('Put ok' in rs4)
         self.assertTrue(
-            'testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
+            'testvalue111' in self.scan(self.slave1, self.tid, self.pid, 'testkey111', self.now(), 1))
 
 
     def test_loadtable_newslave_success_cannot_put(self):
@@ -63,6 +70,7 @@ class TestLoadTable(TestCaseBase):
                      'testkey',
                      self.now() - i,
                      'testvalue')
+        time.sleep(1)
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
 
@@ -74,15 +82,22 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('LoadTable ok' in rs3)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
         self.assertEqual(table_status, ['6', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+
+        # for multidimension test
+        self.multidimension_vk = {'card': ('string:index', 'testkey111'),
+                                  'merchant': ('string:index', 'testvalue111'),
+                                  'amt': ('double', 1.1)}
         rs4 = self.put(self.slave1,
                        self.tid,
                        self.pid,
-                       'testkey0',
+                       'testkey111',
                        self.now(),
-                       'testvalue0')
+                       'testvalue111')
         self.assertTrue('Put failed' in rs4)
+
+        self.multidimension_scan_vk = {'card': 'testkey111'}  # for multidimension test
         self.assertFalse(
-            'testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
+            'testvalue111' in self.scan(self.slave1, self.tid, self.pid, 'testkey111', self.now(), 1))
 
 
     def test_loadtable_failed_after_drop(self):
@@ -105,9 +120,10 @@ class TestLoadTable(TestCaseBase):
         rs3 = self.drop(self.leader, self.tid, self.pid)
         self.assertTrue('Drop table ok' in rs3)
         rs4 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
-        self.assertTrue('Fail' in rs4)
+        self.assertFalse('Fail' not in rs4)
 
 
+    @multi_dimension(False)
     def test_loadtable_andthen_sync_from_leader(self):
         """
         从节点loadtable后可以同步主节点后写入的数据
@@ -121,6 +137,8 @@ class TestLoadTable(TestCaseBase):
                  'k1',
                  self.now(),
                  'v1')
+        time.sleep(1)
+
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
 
@@ -146,6 +164,52 @@ class TestLoadTable(TestCaseBase):
         self.assertEqual(table_status, ['2', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         self.assertTrue('v1' in self.scan(self.slave1, self.tid, self.pid, 'k1', self.now(), 1))
         self.assertTrue('v2' in self.scan(self.slave1, self.tid, self.pid, 'k2', self.now(), 1))
+
+
+    @multi_dimension(True)
+    def test_loadtable_andthen_sync_from_leader_md(self):
+        """
+        从节点loadtable后可以同步主节点后写入的数据
+        :return:
+        """
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
+        self.assertTrue('Create table ok' in rs1)
+        self.put(self.leader,
+                 self.tid,
+                 self.pid,
+                 '',
+                 self.now(),
+                 'v1', '1.1', 'k1')
+        time.sleep(1)
+
+        rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
+        self.assertTrue('MakeSnapshot ok' in rs2)
+
+        # 将table目录拷贝到新节点
+        self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
+
+        rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        self.assertTrue('LoadTable ok' in rs3)
+
+        rs4 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertTrue('AddReplica ok' in rs4)
+
+        table_status = self.get_table_status(self.slave1, self.tid, self.pid)
+        self.assertEqual(table_status, ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+
+        rs3 = self.put(self.leader,
+                       self.tid,
+                       self.pid,
+                       '',
+                       self.now(),
+                       'v2', '1.1', 'k2')
+        self.assertTrue('Put ok' in rs3)
+        time.sleep(1)
+
+        table_status = self.get_table_status(self.slave1, self.tid, self.pid)
+        self.assertEqual(table_status, ['2', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertTrue('v1' in self.scan(self.slave1, self.tid, self.pid, {'card':'k1'}, self.now(), 1))
+        self.assertTrue('v2' in self.scan(self.slave1, self.tid, self.pid, {'card':'k2'}, self.now(), 1))
 
 
     @multi_dimension(False)
@@ -192,7 +256,7 @@ class TestLoadTable(TestCaseBase):
         :return:
         """
         kv = {'card': ('string:index', ''), 'card2': ('string', '')}
-        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
+        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         for i in range(6):
             kv = {'card': ('string:index', 'card' + str(i)), 'card2': ('string', 'value' + str(i))}
             self.put(self.leader, self.tid, self.pid, '',
@@ -223,10 +287,14 @@ class TestLoadTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 0)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 3):
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'testkey{}'.format(i)),
+                                      'merchant': ('string:index', 'testvalue{}'.format(i)),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader,
                      self.tid,
                      self.pid,
-                     'testkey'.format(i),
+                     'testkey{}'.format(i),
                      self.now() - 100000000000,
                      'testvalue{}'.format(i))
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
@@ -239,7 +307,10 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('LoadTable ok' in rs3)
 
         # 所有数据不过期，全部scan出来
-        self.assertTrue('testvalue' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+        for i in range(0, 3):
+            self.multidimension_scan_vk = {'card': 'testkey{}'.format(i)}  # for multidimension test
+            rs = self.scan(self.slave1, self.tid, self.pid, 'testkey{}'.format(i), self.now(), 1)
+            self.assertTrue('testvalue{}'.format(i) in rs)
 
 
     def test_loadtable_failed_table_exist(self):
@@ -297,7 +368,7 @@ class TestLoadTable(TestCaseBase):
         self.assertEqual(table_status, ['1', 'kTableFollower', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
-    @multi_dimension(False)
+    # @multi_dimension(False)
     def test_loadtable_by_snapshot_and_binlog(self):
         """
         同时通过snapshot和binlog loadtable
@@ -306,22 +377,30 @@ class TestLoadTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 3):
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'testkey{}'.format(i)),
+                                      'merchant': ('string:index', 'testvalue{}'.format(i)),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader,
                      self.tid,
                      self.pid,
-                     'testkey' + str(i),
+                     'testkey{}'.format(i),
                      self.now() - i,
-                     'testvalue' + str(i))
+                     'testvalue{}'.format(i))
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
 
         for i in range(3, 6):
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'testkey{}'.format(i)),
+                                      'merchant': ('string:index', 'testvalue{}'.format(i)),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader,
                      self.tid,
                      self.pid,
-                     'testkey' + str(i),
+                     'testkey{}'.format(i),
                      self.now() - i,
-                     'testvalue' + str(i))
+                     'testvalue{}'.format(i))
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
 
@@ -329,39 +408,12 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('LoadTable ok' in rs3)
 
         for i in range(0, 6):
-            self.assertTrue(
-                'value' + str(i) in self.scan(self.slave1, self.tid, self.pid, 'testkey' + str(i), self.now(), 1))
+            self.multidimension_scan_vk = {'card': 'testkey{}'.format(i)}  # for multidimension test
+            rs = self.scan(self.slave1, self.tid, self.pid, 'testkey{}'.format(i), self.now(), 1)
+            self.assertTrue('testvalue{}'.format(i) in rs)
 
 
-    @multi_dimension(True)
-    def test_loadtable_by_snapshot_and_binlog_md(self):
-        """
-        同时通过snapshot和binlog loadtable高维表
-        :return:
-        """
-        kv = {'card': ('string:index', ''), 'card2': ('string', '')}
-        self.create(self.leader, 't', self.tid, self.pid, 144000, 2, '', **{k: v[0] for k, v in kv.items()})
-        for i in range(3):
-            kv = {'card': ('string:index', 'card' + str(i)), 'card2': ('string', 'value' + str(i))}
-            self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
-        rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
-        self.assertTrue('MakeSnapshot ok' in rs2)
-
-        for i in range(3, 6):
-            kv = {'card': ('string:index', 'card' + str(i)), 'card2': ('string', 'value' + str(i))}
-            self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
-        self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-
-        rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
-        self.assertTrue('LoadTable ok' in rs3)
-
-        for i in range(0, 6):
-            scan_kv = {'card': 'card' + str(i)}
-            self.assertTrue(
-                'value' + str(i) in self.scan(self.slave1, self.tid, self.pid, scan_kv, self.now(), 1))
-
-
-    def test_loadtable_by_binlog(self):
+    def test_loadtable_by_binlog_success(self):
         """
         仅通过binlog loadtable
         :return:
@@ -402,6 +454,10 @@ class TestLoadTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 4):
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'testkey'),
+                                      'merchant': ('string:index', 'testvalue{}'.format(i)),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader,
                      self.tid,
                      self.pid,
@@ -415,6 +471,7 @@ class TestLoadTable(TestCaseBase):
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
+        self.multidimension_scan_vk = {'card': 'testkey'}  # for multidimension test
         self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
         self.assertFalse('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
 
@@ -434,6 +491,10 @@ class TestLoadTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 3):
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'testkey1'),
+                                      'merchant': ('string:index', 'testvalue1'),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader,
                      self.tid,
                      self.pid,
@@ -444,6 +505,10 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('MakeSnapshot ok' in rs2)
 
         for i in range(0, 3):
+            # for multidimension test
+            self.multidimension_vk = {'card': ('string:index', 'testkey2'),
+                                      'merchant': ('string:index', 'testvalue2'),
+                                      'amt': ('double', 1.1)}
             self.put(self.leader,
                      self.tid,
                      self.pid,
@@ -458,7 +523,9 @@ class TestLoadTable(TestCaseBase):
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
 
+        self.multidimension_scan_vk = {'card': 'testkey1'}  # for multidimension test
         self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey1', self.now(), 1))
+        self.multidimension_scan_vk = {'card': 'testkey2'}  # for multidimension test
         self.assertTrue('testvalue2' in self.scan(self.slave1, self.tid, self.pid, 'testkey2', self.now(), 1))
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
@@ -478,6 +545,10 @@ class TestLoadTable(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
+        # for multidimension test
+        self.multidimension_vk = {'card': ('string:index', 'testkey1'),
+                                  'merchant': ('string:index', 'testvalue1'),
+                                  'amt': ('double', 1.1)}
         self.put(self.leader,
                  self.tid,
                  self.pid,
@@ -492,6 +563,10 @@ class TestLoadTable(TestCaseBase):
         rs5 = self.recoversnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('RecoverSnapshot ok' in rs5)
 
+        # for multidimension test
+        self.multidimension_vk = {'card': ('string:index', 'testkey2'),
+                                  'merchant': ('string:index', 'testvalue2'),
+                                  'amt': ('double', 1.1)}
         self.put(self.leader,
                  self.tid,
                  self.pid,
@@ -507,7 +582,9 @@ class TestLoadTable(TestCaseBase):
         rs7 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs7)
 
+        self.multidimension_scan_vk = {'card': 'testkey1'}  # for multidimension test
         self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey1', self.now(), 1))
+        self.multidimension_scan_vk = {'card': 'testkey2'}  # for multidimension test
         self.assertTrue('testvalue2' in self.scan(self.slave1, self.tid, self.pid, 'testkey2', self.now(), 1))
 
         rs8 = self.makesnapshot(self.slave1, self.tid, self.pid)
@@ -616,7 +693,7 @@ class TestLoadTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(500, 8)
+        self.put_large_datas(500, 10)
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
@@ -637,10 +714,11 @@ class TestLoadTable(TestCaseBase):
             t.start()
         for t in threads:
             t.join()
-
+        print rs_list
         self.assertEqual(rs_list.count('LoadTable ok'), 1)
 
 
+    @multi_dimension(False)
     def test_loadtable_and_addreplica_ttl(self):
         """
         主节点将从节点添加为副本，没有snapshot和binlog
@@ -660,7 +738,7 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('Fail' in rs1)
         rs0 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
         self.assertTrue('Create table ok' in rs0)
-        rs2 = self.addreplica(self.leader, self.tid, self.pid, self.slave1)
+        rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertTrue('AddReplica ok' in rs2)
         time.sleep(1)
         self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
@@ -669,7 +747,40 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
         self.assertFalse('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
 
+
+    @multi_dimension(True)
+    def test_loadtable_and_addreplica_ttl_md(self):
+        """
+        主节点将从节点添加为副本，没有snapshot和binlog
+        从节点loadtable，可以正确load到未过期的数据
+        :return:
+        """
+        rs1 = self.create(self.leader, 't', self.tid, self.pid)
+        self.assertTrue('Create table ok' in rs1)
+        for i in range(0, 6):
+            self.put(self.leader,
+                     self.tid,
+                     self.pid,
+                     '',
+                     self.now() - (100000000000 * (i % 2) + 1),
+                     'testvalue{}'.format(i), '1.1', 'testkey')
+        rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        self.assertTrue('Fail' in rs1)
+        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        self.assertTrue('Create table ok' in rs0)
+        rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertTrue('AddReplica ok' in rs2)
+        time.sleep(1)
+        self.assertTrue('testvalue0' in self.scan(
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
+        self.assertTrue('testvalue1' in self.scan(
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
+        time.sleep(60)
+        self.assertTrue('testvalue0' in self.scan(
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
+        self.assertFalse('testvalue1' in self.scan(
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
+
    
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestLoadTable)

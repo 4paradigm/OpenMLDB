@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
 import time
-import threading
-import xmlrunner
 from libs.test_loader import load
-from libs.logger import infoLogger
 import libs.utils as utils
 
 
@@ -16,26 +12,38 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         :return:
         """
+        old_last_op_id = max(self.showopstatus(self.ns_leader).keys()) if self.showopstatus(self.ns_leader) != {} else 1
         name = 't{}'.format(int(time.time() * 1000000 % 10000000000))
         metadata_path = '{}/metadata.txt'.format(self.testpath)
+
+        pid_group = '"{}-{}"'.format(self.pid, int(self.pid) + 2)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), 144000, 8,
-            ('"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('"{}"'.format(self.slave2), '"2-3"', 'false'))
+            ('"{}"'.format(self.leader), pid_group, 'true'),
+            ('"{}"'.format(self.slave1), pid_group, 'false'),
+            ('"{}"'.format(self.slave2), pid_group, 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertTrue('Create table ok' in rs)
 
-        rs3 = self.makesnapshot(self.ns_leader, name, 1, 'ns_client')
-        self.assertTrue('MakeSnapshot ok' in rs3)
+        table_info = self.showtable(self.ns_leader)
+        tid = table_info[name][0]
+        pid = table_info[name][1]
 
-        mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '10000')
+        rs3 = self.makesnapshot(self.ns_leader, name, pid, 'ns_client')
+        self.assertTrue('MakeSnapshot ok' in rs3)
+        time.sleep(2)
+
+        mf = self.get_manifest(self.leaderpath, tid, pid)
+        self.assertEqual(mf['offset'], '0')
         self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '10000')
+        self.assertEqual(mf['count'], '0')
+        last_op_id = max(self.showopstatus(self.ns_leader).keys())
+        print old_last_op_id, last_op_id
+        self.assertFalse(old_last_op_id == last_op_id)
+        last_opstatus = self.showopstatus(self.ns_leader)[last_op_id]
+        self.assertTrue('kAddReplicaOP', last_opstatus)
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestMakeSnapshotNsClient)

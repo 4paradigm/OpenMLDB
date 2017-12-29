@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-import unittest
 from testcasebase import TestCaseBase
-import xmlrunner
-import time
 from libs.test_loader import load
 
 
@@ -26,5 +23,4 @@ class TestRecoverSnapshot(TestCaseBase):
 
 
 if __name__ == "__main__":
-    import libs.test_loader
     load(TestRecoverSnapshot)
