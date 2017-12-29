@@ -3,9 +3,10 @@ projectpath=${testpath}/../..
 
 # get rtidb ver
 rtidbver=`echo \`grep "RTIDB_VERSION" ${projectpath}/CMakeLists.txt|awk '{print $2}'|awk -F ')' '{print $1}'\`|sed 's/\ /\./g'`
-if [ $1 ];then
-    rtidbver=$1
+if [ $2 ];then
+    rtidbver=$2
 fi
+echo "RTIDB_VERSION is ${rtidbver}"
 
 # setup test env
 sh ${testpath}/setup.sh ${rtidbver}
@@ -45,6 +46,11 @@ else
 fi
 
 # run integration test
+if [ $1 = 1 ]; then
+    sed -i 's/multidimension\ =\ false/multidimension\ =\ true/g' ${testconfpath}
+else
+    sed -i 's/multidimension\ =\ true/multidimension\ =\ false/g' ${testconfpath}
+fi
 python ${testpath}/runall.py
 
 # reset test env
