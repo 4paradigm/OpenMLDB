@@ -24,7 +24,7 @@ else
 fi
 
 # setup ddt
-if [ -f "${testpath}/libs/ddt.py" ]
+if [ -f "${testpath}/libs/ddt.pyc" ]
 then
     echo "ddt exist"
 else
@@ -55,3 +55,6 @@ python ${testpath}/runall.py
 
 # reset test env
 sh ${testpath}/setup.sh
+
+# start all servers
+python ${testpath}/setup.python
