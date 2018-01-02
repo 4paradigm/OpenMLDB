@@ -22,7 +22,7 @@ class TbCluster(object):
         i = 0
         test_path = os.getenv('testpath')
         for ep in endpoints:
-            ep_scan = '{}:{}'.format(ep.split(':')[0], scan_endpoints[i])
+            ep_scan = '{}:{}'.format(ep.split(':')[0], scan_endpoints[i].split(':')[1])
             i += 1
             tb_path = test_path + '/tablet{}'.format(i)
             exe_shell('mkdir -p {}/conf'.format(tb_path))
