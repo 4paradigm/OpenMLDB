@@ -44,6 +44,7 @@ echo export zk=${zk} >> ${testenvpath}
 echo export zkpath=${zkpath} >> ${testenvpath}
 
 function setup() {
+    mkdir -p ${testlogpath}
     cp -f ${rtidbpath} ${testpath}
 
     mkdir -p ${leaderpath}/conf
