@@ -57,4 +57,4 @@ python ${testpath}/runall.py
 sh ${testpath}/setup.sh
 
 # start all servers
-python ${testpath}/setup.python
+python ${testpath}/setup.py
