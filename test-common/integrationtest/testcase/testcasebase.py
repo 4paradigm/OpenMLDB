@@ -40,6 +40,7 @@ class TestCaseBase(unittest.TestCase):
         cls.failfast = conf.failfast
 
     def setUp(self):
+        infoLogger.info('*** TEST CASE NAME: ' + self._testMethodName)
         try:
             self.tid = int(self.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
         except Exception, e:

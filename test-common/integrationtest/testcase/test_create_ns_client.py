@@ -11,17 +11,6 @@ from libs.clients.tb_cluster import TbCluster
 from libs.logger import infoLogger
 
 
-nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
-tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints], [i[1] for i in conf.tb_scan_endpoints])
-nsc.stop_zk()
-nsc.clear_zk()
-nsc.start_zk()
-nsc.kill(*nsc.endpoints)
-nsc.start(*nsc.endpoints)
-tbc.kill(*tbc.endpoints)
-tbc.start(tbc.endpoints, tbc.scan_endpoints)
-
-
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
@@ -59,7 +48,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             ('"{}"'.format(self.slave1), '"1-2"', 'false'),
             ('"{}"'.format(self.slave2), '"2-3"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
-        rs = self.run_client(nsc.leader, 'create ' + metadata_path, 'ns_client')
+        rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
         self.assertTrue(exp_msg in rs)
 
@@ -98,7 +87,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             ('"{}"'.format(self.leader), '"{}"'.format(pid_group1[0]), pid_group1[1]),
             ('"{}"'.format(self.slave1), '"{}"'.format(pid_group2[0]), pid_group2[1]))
         utils.gen_table_metadata_file(m, metadata_path)
-        rs = self.run_client(nsc.leader, 'create ' + metadata_path, 'ns_client')
+        rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
         self.assertTrue(exp_msg in rs)
         if exp_msg == 'Create table ok':
@@ -135,7 +124,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             ('"{}"'.format(ep[0]), '"1-3"', 'true'),
             ('"{}"'.format(ep[1]), '"1-3"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
-        rs = self.run_client(nsc.leader, 'create ' + metadata_path, 'ns_client')
+        rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
         self.assertTrue(exp_msg in rs)
 
@@ -159,7 +148,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             '"tname{}"'.format(int(time.time() * 1000000 % 10000000000)), 144000, 2,
             table_partition)
         utils.gen_table_metadata_file(m, metadata_path)
-        rs = self.run_client(nsc.leader, 'create ' + metadata_path, 'ns_client')
+        rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
         self.assertTrue(exp_msg in rs)
 

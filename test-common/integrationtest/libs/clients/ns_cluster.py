@@ -25,11 +25,12 @@ class NsCluster(object):
         exe_shell("echo dataDir={}/data >> {}/conf/zoo.cfg".format(zk_path, zk_path))
         exe_shell("echo clientPort={} >> {}/conf/zoo.cfg".format(port, zk_path))
         exe_shell("sh {}/bin/zkServer.sh start".format(zk_path))
+        time.sleep(2)
 
 
     def stop_zk(self):
         exe_shell("sh {}/bin/zkServer.sh stop".format(os.getenv('zkpath')))
-        time.sleep(1)
+        time.sleep(2)
 
 
     def clear_zk(self):
@@ -68,6 +69,7 @@ class NsCluster(object):
         cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill;done"
         infoLogger.info(cmd)
         exe_shell(cmd)
+        time.sleep(2)
 
 
 #
