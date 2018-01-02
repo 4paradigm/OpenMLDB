@@ -2,7 +2,6 @@ package com._4paradigm.rtidb.client.schema;
 
 public class ColumnDesc {
 
-	private int idx;
 	private ColumnType type;
 	private String name;
 	private boolean addTsIndex;
@@ -11,12 +10,6 @@ public class ColumnDesc {
 	}
 	public void setAddTsIndex(boolean addTsIndex) {
 		this.addTsIndex = addTsIndex;
-	}
-	public int getIdx() {
-		return idx;
-	}
-	public void setIdx(int idx) {
-		this.idx = idx;
 	}
 	public ColumnType getType() {
 		return type;
