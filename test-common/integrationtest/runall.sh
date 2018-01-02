@@ -12,6 +12,9 @@ echo "RTIDB_VERSION is ${rtidbver}"
 sh ${testpath}/setup.sh ${rtidbver}
 source ${testpath}/env.conf
 
+# start all servers
+python ${testpath}/setup.py
+
 # setup xmlrunner
 if [ -d "${testpath}/xmlrunner" ]
 then
@@ -56,5 +59,3 @@ python ${testpath}/runall.py
 # reset test env
 sh ${testpath}/setup.sh
 
-# start all servers
-python ${testpath}/setup.py
