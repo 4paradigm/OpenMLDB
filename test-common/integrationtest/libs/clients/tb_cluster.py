@@ -48,7 +48,7 @@ class TbCluster(object):
             infoLogger.info(ep)
             port += ep.split(':')[1] + ' '
         infoLogger.info(port)
-        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep (LISTEN)|awk '{print $2}'|xargs kill;done"
+        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep \"(LISTEN)\"|awk '{print $2}'|xargs kill;done"
         infoLogger.info(cmd)
         exe_shell(cmd)
 
