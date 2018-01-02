@@ -59,3 +59,5 @@ python ${testpath}/runall.py
 # reset test env
 sh ${testpath}/setup.sh
 
+# teardown kill services
+python setup.py teardown

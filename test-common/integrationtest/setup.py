@@ -13,8 +13,11 @@ nsc.stop_zk()
 nsc.kill(*nsc.endpoints)
 tbc.kill(*tbc.endpoints)
 
-nsc.clear_zk()
-nsc.start_zk()
-nsc.start(*nsc.endpoints)
-tbc.start(tbc.endpoints, tbc.scan_endpoints)
-nsc_leader = nsc.leader
+if len(sys.argv) > 1 and sys.argv[1] == 'teardown':
+    pass
+else:
+    nsc.clear_zk()
+    nsc.start_zk()
+    nsc.start(*nsc.endpoints)
+    tbc.start(tbc.endpoints, tbc.scan_endpoints)
+    nsc_leader = nsc.leader
