@@ -5,7 +5,6 @@ import copy
 
 
 def exe_shell(cmd):
-    print cmd
     infoLogger.debug(cmd)
     retcode, output = commands.getstatusoutput(cmd)
     return output

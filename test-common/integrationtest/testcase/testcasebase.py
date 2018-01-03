@@ -6,22 +6,15 @@ import os
 import time
 import sys
 import threading
-import collections
 import shlex
 import subprocess
 sys.path.append(os.getenv('testpath'))
 from libs.logger import infoLogger
 import libs.conf as conf
+import libs.utils as utils
 
 
 class TestCaseBase(unittest.TestCase):
-
-    @staticmethod
-    def exe_shell(cmd):
-        infoLogger.info(cmd)
-        retcode, output = commands.getstatusoutput(cmd)
-        return output
-
 
     @classmethod
     def setUpClass(cls):
@@ -29,7 +22,7 @@ class TestCaseBase(unittest.TestCase):
         cls.testpath = os.getenv('testpath')
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')
-        cls.ns_leader = cls.exe_shell('cat {}/ns_leader'.format(cls.testpath))
+        cls.ns_leader = utils.exe_shell('cat {}/ns_leader'.format(cls.testpath))
         cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
         cls.leaderpath = cls.testpath + '/tablet1'
         cls.slave1path = cls.testpath + '/tablet2'
@@ -42,7 +35,7 @@ class TestCaseBase(unittest.TestCase):
     def setUp(self):
         infoLogger.info('*** TEST CASE NAME: ' + self._testMethodName)
         try:
-            self.tid = int(self.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
+            self.tid = int(utils.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
         except Exception, e:
             self.tid = 1
         self.pid = random.randint(10, 100)
@@ -65,11 +58,11 @@ class TestCaseBase(unittest.TestCase):
 
     def stop_client(self, endpoint):
         cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
-        self.exe_shell(cmd)
+        utils.exe_shell(cmd)
 
     def run_client(self, endpoint, cmd, role='client'):
         cmd = cmd.strip()
-        rs = self.exe_shell('{} --endpoint={} --role={} --interactive=false --cmd="{}"'.format(
+        rs = utils.exe_shell('{} --endpoint={} --role={} --interactive=false --cmd="{}"'.format(
             self.rtidb_path, endpoint, role, cmd))
         return rs.replace(self.welcome, '').replace('>', '')
 
@@ -281,7 +274,7 @@ class TestCaseBase(unittest.TestCase):
         return self.parse_table(rs)
 
     def cp_db(self, from_node, to_node, tid, pid):
-        self.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
+        utils.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
             from_node=from_node, tid=tid, pid=pid, to_node=to_node))
 
     def put_large_datas(self, data_count, thread_count):
@@ -300,4 +293,4 @@ class TestCaseBase(unittest.TestCase):
             t.join()
 
     def get_ns_leader(self):
-        return exe_shell('cat {}/ns_leader'.format(self.testpath))
+        return utils.exe_shell('cat {}/ns_leader'.format(self.testpath))

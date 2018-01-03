@@ -4,6 +4,7 @@ import time
 import threading
 from libs.test_loader import load
 from libs.logger import infoLogger
+import libs.utils as utils
 
 
 class TestMakeSnapshot(TestCaseBase):
@@ -209,7 +210,7 @@ class TestMakeSnapshot(TestCaseBase):
         self.put_large_datas(200, 20)
 
         # 将table目录拷贝到新节点
-        self.exe_shell('cp -r {leaderpath}/db/{tid}_{pid} {slave1path}/db/'.format(
+        utils.exe_shell('cp -r {leaderpath}/db/{tid}_{pid} {slave1path}/db/'.format(
             leaderpath=self.leaderpath, tid=self.tid, pid=self.pid, slave1path=self.slave1path))
 
         rs_list = []
@@ -253,7 +254,7 @@ class TestMakeSnapshot(TestCaseBase):
                      'testvalue'*100)
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        self.exe_shell('rm -f {}/db/{}_{}/snapshot/MANIFEST'.format(self.leaderpath, self.tid, self.pid))
+        utils.exe_shell('rm -f {}/db/{}_{}/snapshot/MANIFEST'.format(self.leaderpath, self.tid, self.pid))
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs3)
         time.sleep(1)
@@ -297,7 +298,7 @@ class TestMakeSnapshot(TestCaseBase):
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
 
-        self.exe_shell('rm -f {}/db/{}_{}/snapshot/*.sdb'.format(self.leaderpath, self.tid, self.pid))
+        utils.exe_shell('rm -f {}/db/{}_{}/snapshot/*.sdb'.format(self.leaderpath, self.tid, self.pid))
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)
         # should be failed?
         self.assertTrue('MakeSnapshot ok' in rs3)
@@ -320,7 +321,7 @@ class TestMakeSnapshot(TestCaseBase):
                      'testvalue')
         rs2 = self.makesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('MakeSnapshot ok' in rs2)
-        self.exe_shell('mv {nodepath}/db/{tid}_{pid}/snapshot/*.sdb \
+        utils.exe_shell('mv {nodepath}/db/{tid}_{pid}/snapshot/*.sdb \
         {nodepath}/db/{tid}_{pid}/snapshot/11111.sdb'.format(
             nodepath=self.leaderpath, tid=self.tid, pid=self.pid))
         rs3 = self.makesnapshot(self.leader, self.tid, self.pid)

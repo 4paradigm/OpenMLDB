@@ -70,8 +70,3 @@ class NsCluster(object):
         infoLogger.info(cmd)
         exe_shell(cmd)
         time.sleep(2)
-
-
-#
-# n = NsCluster('127.0.0.1:22181', '127.0.0.1:37777', '127.0.0.1:37778')
-# print n.leader

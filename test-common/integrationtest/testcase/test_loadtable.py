@@ -3,10 +3,9 @@ import unittest
 from testcasebase import TestCaseBase
 import time
 import threading
-import xmlrunner
 from libs.test_loader import load
-from libs.logger import infoLogger
 from libs.deco import multi_dimension
+import libs.utils as utils
 
 
 class TestLoadTable(TestCaseBase):
@@ -430,7 +429,7 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('MakeSnapshot ok' in rs2)
         # 将table目录拷贝到新节点，删掉snapshot目录，保留binlog目录
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        self.exe_shell('rm -rf {}/db/{}_{}/snapshot/*'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('rm -rf {}/db/{}_{}/snapshot/*'.format(self.slave1path, self.tid, self.pid))
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
@@ -467,7 +466,7 @@ class TestLoadTable(TestCaseBase):
         time.sleep(1)
         # 将table目录拷贝到新节点，删掉snapshot目录，保留binlog目录
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        self.exe_shell('rm -rf {}/db/{}_{}/snapshot/*'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('rm -rf {}/db/{}_{}/snapshot/*'.format(self.slave1path, self.tid, self.pid))
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
@@ -518,7 +517,7 @@ class TestLoadTable(TestCaseBase):
 
         # 将table目录拷贝到新节点，删掉snapshot目录，保留binlog目录
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        self.exe_shell('rm -rf {}/db/{}_{}/snapshot/*'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('rm -rf {}/db/{}_{}/snapshot/*'.format(self.slave1path, self.tid, self.pid))
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
@@ -615,8 +614,8 @@ class TestLoadTable(TestCaseBase):
 
         # 将table目录拷贝到新节点，并删掉manifest和binlog
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        self.exe_shell('rm -f {}/db/{}_{}/snapshot/MANIFEST'.format(self.slave1path, self.tid, self.pid))
-        self.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('rm -f {}/db/{}_{}/snapshot/MANIFEST'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
@@ -647,8 +646,8 @@ class TestLoadTable(TestCaseBase):
 
         # 将table目录拷贝到新节点，并删掉sdb和binlog
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        self.exe_shell('rm -f {}/db/{}_{}/snapshot/*.sdb'.format(self.slave1path, self.tid, self.pid))
-        self.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('rm -f {}/db/{}_{}/snapshot/*.sdb'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
 
         rs3 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertTrue('LoadTable ok' in rs3)
@@ -676,8 +675,8 @@ class TestLoadTable(TestCaseBase):
 
         # 将table目录拷贝到新节点，删除binlog，重命名sdb
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        self.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
-        self.exe_shell('mv {nodepath}/db/{tid}_{pid}/snapshot/*.sdb \
+        utils.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
+        utils.exe_shell('mv {nodepath}/db/{tid}_{pid}/snapshot/*.sdb \
             {nodepath}/db/{tid}_{pid}/snapshot/11111.sdb'.format(
                 nodepath=self.slave1path, tid=self.tid, pid=self.pid))
 
