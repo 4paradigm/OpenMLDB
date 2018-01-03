@@ -223,7 +223,7 @@ bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
         }
     }
     if (endpoint.empty()) {
-        PDLOG(WARNING, "partition[%u] not exisit. table name is [%s]", pid, request.name().c_str());
+        PDLOG(WARNING, "partition[%u] not exist. table name is [%s]", pid, request.name().c_str());
         return false;
     }
 	std::shared_ptr<Task> task = CreateMakeSnapshotTask(endpoint, op_data->op_info_.op_id(), 
@@ -620,8 +620,8 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     }
     if (endpoint.empty()) {
         response->set_code(-1);
-        response->set_msg("partition not exisit");
-        PDLOG(WARNING, "partition[%u] not exisit", pid);
+        response->set_msg("partition not exist");
+        PDLOG(WARNING, "partition[%u] not exist", pid);
         return;
     }
     auto it = tablets_.find(endpoint);
@@ -797,8 +797,8 @@ void NameServerImpl::DropTable(RpcController* controller,
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
         response->set_code(-1);
-        response->set_msg("table is not exisit!");
-        PDLOG(WARNING, "table[%s] is not exisit!", request->name().c_str());
+        response->set_msg("table is not exist!");
+        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
         return;
     }
     int code = 0;
@@ -858,8 +858,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
     table_info->CopyFrom(request->table_info());
     if (table_info_.find(table_info->name()) != table_info_.end()) {
         response->set_code(-1);
-        response->set_msg("table is already exisit!");
-        PDLOG(WARNING, "table[%s] is already exisit!", table_info->name().c_str());
+        response->set_msg("table is already exist!");
+        PDLOG(WARNING, "table[%s] is already exist!", table_info->name().c_str());
         done->Run();
         return;
     }
@@ -920,8 +920,8 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     auto pos = table_info_.find(request->name());
     if (pos == table_info_.end()) {
         response->set_code(-1);
-        response->set_msg("table is not  exisit!");
-        PDLOG(WARNING, "table[%s] is not exisit!", request->name().c_str());
+        response->set_msg("table is not  exist!");
+        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
         return;
     }
     uint32_t tid = pos->second->tid();
@@ -1055,7 +1055,7 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
     }
     auto pos = table_info_.find(request.name());
     if (pos == table_info_.end()) {
-        PDLOG(WARNING, "table[%s] is not exisit!", request.name().c_str());
+        PDLOG(WARNING, "table[%s] is not exist!", request.name().c_str());
         return false;
     }
     uint32_t tid = pos->second->tid();
@@ -1138,8 +1138,8 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
     auto pos = table_info_.find(request->data().name());
     if (pos == table_info_.end()) {
         response->set_code(-1);
-        response->set_msg("table is not  exisit!");
-        PDLOG(WARNING, "table[%s] is not exisit!", request->data().name().c_str());
+        response->set_msg("table is not  exist!");
+        PDLOG(WARNING, "table[%s] is not exist!", request->data().name().c_str());
         return;
     }
     if (CreateDelReplicaOP(request->data()) < 0) {

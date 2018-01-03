@@ -80,7 +80,7 @@ StreamReceiver::~StreamReceiver() {
 int StreamReceiver::Init() {
     std::string combine_key = std::to_string(tid_) + "_" + std::to_string(pid_) + "_" + file_name_;
     if (stream_receiver_set_.contain(combine_key)) {
-        PDLOG(WARNING, "stream is exisit! tid[%u] pid[%u] file[%s]", tid_, pid_, file_name_.c_str());
+        PDLOG(WARNING, "stream is exist! tid[%u] pid[%u] file[%s]", tid_, pid_, file_name_.c_str());
         return -1;
     }
     stream_receiver_set_.insert(combine_key);
@@ -495,7 +495,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
         std::lock_guard<std::mutex> lock(mu_);
         table = GetTableUnLock(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
+            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
             return -1;
         }
         if (table->IsLeader() || table->GetTableStat() != ::rtidb::storage::kNormal) {
@@ -783,7 +783,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
         bool has_error = true;
         do {
             if (!table) {
-                PDLOG(WARNING, "table is not exisit. tid[%u] pid[%u]", tid, pid);
+                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
                 break;
             }
             if (table->GetTableStat() != ::rtidb::storage::kNormal) {
@@ -793,7 +793,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
             }    
             snapshot = GetSnapshotUnLock(tid, pid);
             if (!snapshot) {
-                PDLOG(WARNING, "snapshot is not exisit. tid[%u] pid[%u]", tid, pid);
+                PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
                 break;
             }
             has_error = false;
@@ -847,8 +847,8 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
     do {
         if (!snapshot) {
             response->set_code(-1);
-            response->set_msg("snapshot is not exisit!");
-            PDLOG(WARNING, "snapshot is not exisit! tid[%u] pid[%u]", tid, pid);
+            response->set_msg("snapshot is not exist!");
+            PDLOG(WARNING, "snapshot is not exist! tid[%u] pid[%u]", tid, pid);
             break;
         }
         std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
@@ -1013,7 +1013,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 									std::to_string(pid) + "/snapshot/MANIFEST";
 		int fd = open(manifest_file.c_str(), O_RDONLY);
 		if (fd < 0) {
-			PDLOG(WARNING, "[%s] is not exisit", manifest_file.c_str());
+			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
 			break;
 		}
 		google::protobuf::io::FileInputStream fileInput(fd);
@@ -1492,7 +1492,7 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
     int fd = open(full_path.c_str(), O_RDONLY);
 	::rtidb::api::TableMeta old_meta;
     if (fd < 0) {
-        PDLOG(WARNING, "[%s] is not exisit", "table_meta.txt");
+        PDLOG(WARNING, "[%s] is not exist", "table_meta.txt");
         return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);
