@@ -292,13 +292,13 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint %s", tit->first.c_str());
             tit->second->state_ = ::rtidb::api::TabletState::kTabletOffline;
-
-            OnTabletOffline(tit->first);
+            thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first));
         }
     }
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
+    std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         std::set<uint32_t> leader_pid;
         std::set<uint32_t> follower_pid;
@@ -313,6 +313,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
         }
         for (auto pid : leader_pid) {
             // change leader
+            PDLOG(INFO, "table %s pid %u change leader", kv.first.c_str(), pid);
             CreateChangeLeaderOP(kv.first, pid);
         }
         // delete replica
@@ -1163,7 +1164,7 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data) {
         if (iter->second->table_partition(idx).is_leader() &&
                 iter->second->table_partition(idx).pid() == del_replica_data.pid()) {
             leader_endpoint = iter->second->table_partition(idx).endpoint();
-            PDLOG(DEBUG, "leader is %s. name %s pid %s", 
+            PDLOG(DEBUG, "leader is %s. name %s pid %u", 
                          leader_endpoint.c_str(), del_replica_data.name().c_str(), 
                          del_replica_data.pid());
             break;
@@ -1180,7 +1181,7 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data) {
         return -1;
     }
     if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
+        PDLOG(WARNING, "set op index node failed! op_index[%lu]", op_index_);
         return -1;
     }
     op_index_++;
@@ -1294,7 +1295,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
         return -1;
     }
     task_map_.insert(std::make_pair(op_index_, op_data));
-    PDLOG(INFO, "add changeleader op. op_id[%lu] table %s pid %u endpoint %s", 
+    PDLOG(INFO, "add changeleader op. op_id[%lu] table %s pid %u", 
                 op_index_, name.c_str(), pid);
     cv_.notify_one();
     return 0;
@@ -1538,14 +1539,26 @@ std::shared_ptr<Task> NameServerImpl::CreateChangeLeaderTask(uint64_t op_index, 
     task->task_info_->set_task_type(::rtidb::api::TaskType::kChangeLeader);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->fun_ = boost::bind(&NameServerImpl::ChangeLeader, this, name, tid, pid, follower_endpoint, task->task_info_);
+    PDLOG(INFO, "create change leader task success. name %s tid %u pid %u", name.c_str(), tid, pid);
 	return task;
 }
 
 void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
 		    std::vector<std::string>& follower_endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+    uint64_t cur_term = 0;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 1))) {
+            PDLOG(WARNING, "update leader id  node failed. table name %s pid %u", name.c_str(), pid);
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            return;
+        }
+        term_++;
+        cur_term = term_;
+    }
+    // select the max offset endpoint as leader
     uint64_t max_offset = 0;    
     std::string leader_endpoint;
-    // select the max offset endpoint as leader
 	for (const auto& endpoint : follower_endpoint) {
         mu_.lock();
 		auto it = tablets_.find(endpoint);
@@ -1558,15 +1571,16 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
 		}
         mu_.unlock();
         uint64_t offset = 0;
-        if (!it->second->client_->FollowOfNoOne(tid, pid, offset)) {
+        if (!it->second->client_->FollowOfNoOne(tid, pid, cur_term, offset)) {
 
             PDLOG(WARNING, "followOfNoOne failed. tid[%u] pid[%u] endpoint[%s]", 
                             tid, pid, endpoint);
 			task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
 			return;
         }
-        if (offset > max_offset) {
+        if (offset >= max_offset) {
             leader_endpoint = endpoint;
+            max_offset = offset;
         }
 	}
     PDLOG(INFO, "new leader is %s. name %s tid %u pid %u offset %lu", 
@@ -1586,7 +1600,7 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         return;
     }
     term_++;
-    uint64_t cur_term = term_;
+    cur_term = term_;
     mu_.unlock();
     if (!iter->second->client_->ChangeRole(tid, pid, true, follower_endpoint, cur_term)) {
         PDLOG(WARNING, "change leader failed. name %s tid %u pid %u endpoint %s", 
@@ -1602,7 +1616,6 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         return;
     }
     ::rtidb::nameserver::TableInfo* new_table_info = table_iter->second->New();
-            //std::make_shared<::rtidb::nameserver::TableInfo>();
     new_table_info->CopyFrom(*(table_iter->second));
     new_table_info->clear_table_partition();
     for (int idx = 0; idx < table_iter->second->table_partition_size(); idx++) {
@@ -1631,7 +1644,7 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         return; 
     }
     table_iter->second.reset(new_table_info);
-    PDLOG(INFO, "change leader success. name %s pid %s new leader %s", 
+    PDLOG(INFO, "change leader success. name %s pid %u new leader %s", 
                 name.c_str(), pid, leader_endpoint.c_str());
 	task_info->set_status(::rtidb::api::TaskStatus::kDone);
 }

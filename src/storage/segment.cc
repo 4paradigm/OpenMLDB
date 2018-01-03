@@ -78,36 +78,6 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
 
-void Segment::Delete(const Slice& key, uint64_t time) {
-    KeyEntry* entry = NULL;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        entry = entries_->Get(key);
-        if (entry == NULL || scmp(key, entry->key) != 0) {
-            // key is not exisit
-            return;
-        }
-    }
-    while (entry->GetRef() > 0) {
-        // some other thread is reading this key
-    }
-    std::lock_guard<std::mutex> lock(mu_);
-    ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.Remove(time);
-    if (node == NULL) {
-        return;
-    }
-    idx_byte_size_.fetch_sub(GetRecordTsIdxSize(node->Height()));
-    idx_cnt_.fetch_sub(1, std::memory_order_relaxed);
-    if (node->GetValue()->dim_cnt_down > 1) {
-        node->GetValue()->dim_cnt_down--;
-    } else {
-        PDLOG(INFO, "delele data block for key %s ts %lu", key.ToString().c_str(), time);
-        delete node->GetValue();
-    }
-    PDLOG(INFO, "delete key %s ts %lu", key.ToString().c_str(), time);
-    delete node;
-}
-
 bool Segment::Get(const Slice& key,
                   const uint64_t time,
                   DataBlock** block) {

@@ -78,10 +78,6 @@ public:
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
-    void Delete(const Slice& key, uint64_t time, uint32_t idx);
-
-    void Delete(const Slice& key, uint64_t time, const Dimensions& dimensions);
-
     class Iterator {
     public:
         Iterator(Segment::Iterator* it);

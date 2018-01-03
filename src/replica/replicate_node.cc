@@ -13,7 +13,6 @@
 DECLARE_int32(binlog_sync_batch_size);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
-DECLARE_int32(log_entry_batch_size);
 DECLARE_string(zk_cluster);
 
 namespace rtidb {
@@ -59,56 +58,13 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
     last_sync_offset_ = offset;
 }
 
-int ReplicateNode::MatchFollowerLogEntry(const std::vector<std::shared_ptr<::rtidb::api::LogEntry>>& log_entry_vec, 
-                uint64_t term) {
-    term_ = term;            
-    int log_entry_idx = log_entry_vec.size();
-    ::rtidb::api::MatchLogEntryRequest request;
-    request.set_tid(tid_);
-    request.set_pid(pid_);
-    request.set_term(term);
-    while (true) {
-        request.clear_log_entries();
-        for (int idx = 0; idx < FLAGS_log_entry_batch_size; idx++) {
-            if (log_entry_idx < 0) {
-                break;
-            }
-            ::rtidb::api::LogEntry* log_entry = request.add_log_entries();
-            log_entry->CopyFrom(*(log_entry_vec[log_entry_idx]));
-            log_entry_idx--;
-        }
-        if (request.log_entries_size() == 0) {
-            break;
-        }
-        ::rtidb::api::MatchLogEntryResponse response;
-        bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::MatchLogEntry,
-                            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
-        if (ret && response.code() == 0) { 
-            if (response.msg() == "ok") {
-                last_sync_offset_ = response.log_offset();
-                log_matched_ = true;
-                log_reader_.SetOffset(last_sync_offset_);
-                return 0;
-            } else if (response.msg() == "AGAIN") {
-                continue;
-            } else {
-                break;
-            }
-        } else {
-            PDLOG(WARNING, "MatchLogEntry error. tid %u pid %u", tid_, pid_);
-            return -1;
-        }
-    }
-    PDLOG(INFO, "not matched, need full sync. tid %u pid %u", tid_, pid_);
-    // TODO. fullsync
-    return 0;
-}
-
-int ReplicateNode::MatchLogOffsetFromNode(uint64_t log_offset) {
+int ReplicateNode::MatchLogOffsetFromNode(uint64_t log_offset, uint64_t term) {
+    term_ = term;
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
-    request.set_pre_log_index(log_offset);
+    request.set_term(term);
+    request.set_pre_log_index(0);
     ::rtidb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
                         &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
@@ -116,10 +72,12 @@ int ReplicateNode::MatchLogOffsetFromNode(uint64_t log_offset) {
         last_sync_offset_ = response.log_offset();
         log_matched_ = true;
         log_reader_.SetOffset(last_sync_offset_);
-        PDLOG(INFO, "match node %s log offset %lld for table tid %d pid %d",
+        PDLOG(INFO, "match node %s log offset %lu for table tid %u pid %u",
                   endpoint_.c_str(), last_sync_offset_, tid_, pid_);
         return 0;
     }
+    PDLOG(WARNING, "match node %s log offset failed. tid %u pid %u",
+                    endpoint_.c_str(), tid_, pid_);
     return -1;
 }
 

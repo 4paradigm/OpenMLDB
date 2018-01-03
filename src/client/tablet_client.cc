@@ -172,11 +172,11 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
     return false;
 }
 
-bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t& offset) {
+bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term, uint64_t& offset) {
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_term(0);
+    request.set_term(term);
     ::rtidb::api::AppendEntriesResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
             &request, &response, 12, 1);

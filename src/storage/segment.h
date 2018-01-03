@@ -85,15 +85,11 @@ public:
     }
 
     void Ref() {
-        refs_.fetch_add(1, std::memory_order_acq_rel);
+        refs_.fetch_add(1, std::memory_order_relaxed);
     }
 
     void UnRef() {
-        refs_.fetch_sub(1, std::memory_order_acq_rel);
-    }
-
-    uint64_t GetRef() {
-        return refs_.load(std::memory_order_acquire);
+        refs_.fetch_sub(1, std::memory_order_relaxed);
     }
 
 public:
@@ -131,8 +127,6 @@ public:
     bool Get(const Slice& key,
              uint64_t time,
              DataBlock** block);
-
-    void Delete(const Slice& key, uint64_t time);         
 
     // Segment Iterator
     class Iterator {

@@ -508,6 +508,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
             PDLOG(WARNING,"no replicator for table tid[%u] pid[%u]", tid, pid);
             return -1;
         }
+        PDLOG(INFO, "change to leader. tid[%u] pid[%u]", tid, pid);
         table->SetLeader(true);
         table->SetReplicas(replicas);
         replicator->SetRole(ReplicatorRole::kLeaderNode);
@@ -937,42 +938,6 @@ void TabletImpl::CreateStream(RpcController* controller,
                  request->file_name().c_str(), tid, pid);
     response->set_msg("ok");
     response->set_code(0);
-}
-
-void TabletImpl::MatchLogEntry(RpcController* controller,
-            const ::rtidb::api::MatchLogEntryRequest* request,
-            ::rtidb::api::MatchLogEntryResponse* response,
-            Closure* done) {
-	brpc::ClosureGuard done_guard(done);
-	uint32_t tid = request->tid();
-	uint32_t pid = request->pid();
-	std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-	if (!replicator) {
-		PDLOG(WARNING, "replicator not exisit. tid %lu pid %lu", tid, pid);
-		response->set_code(-1);
-		response->set_msg("replicator not exist");
-		return;
-	}
-	if (request->log_entries_size() == 0) {
-		PDLOG(WARNING, "log_entry size is zero. tid %ld, pid %ld", tid, pid);
-		response->set_code(-1);
-		response->set_msg("log_entry size is zero");
-		return;
-	}
-    std::string msg;
-    uint64_t log_offset = 0;
-    replicator->SetLeaderTerm(request->term());
-    replicator->MatchLogEntry(request->log_entries(), msg, log_offset);
-    response->set_code(0);
-    response->set_msg(msg.c_str());
-    if (msg == "ok") {
-        response->set_log_offset(log_offset);
-        return;
-    } else if (msg == "FULLSYNC") {
-        // TODO. clear table and load snapshot.
-    }
-    PDLOG(INFO, "failed to match offset. tid %ld, pid %ld, first offset %lu", 
-                tid, pid, request->log_entries(0).log_index());
 }
 
 void TabletImpl::SendSnapshot(RpcController* controller,
@@ -1674,6 +1639,9 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
 	for (int idx = 0; idx < request->op_id_size(); idx++) {
         auto iter = task_map_.find(request->op_id(idx));
+        if (iter == task_map_.end()) {
+            continue;
+        }
         if (!iter->second.empty()) {
             PDLOG(INFO, "delete op task. op_id[%lu] op_type[%s] task_num[%u]", 
                         request->op_id(idx),

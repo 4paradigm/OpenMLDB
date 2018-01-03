@@ -146,33 +146,6 @@ bool Table::Put(const Slice& pk,
     return true;
 }
 
-void Table::Delete(const Slice& key, uint64_t time, const Dimensions& dimensions) {
-    if (dimensions.size() > 0) {
-        Dimensions::const_iterator it = dimensions.begin();
-        for (;it != dimensions.end(); ++it) {
-            Slice spk(it->key());
-            Delete(spk, time, it->idx());
-        }
-    } else {
-        Delete(key, time, 0);
-    }
-    record_cnt_.fetch_sub(1, std::memory_order_relaxed);
-}
-
-void Table::Delete(const Slice& pk, uint64_t time, uint32_t idx) {
-    if (idx >= idx_cnt_) {
-        return;
-    }
-    uint32_t seg_idx = 0;
-    if (seg_cnt_ > 1) {
-        seg_idx = ::rtidb::base::hash(pk.data(), pk.size(), SEED) % seg_cnt_;
-    }
-    Segment* segment = segments_[idx][seg_idx];
-    segment->Delete(pk, time);
-    PDLOG(DEBUG, "idx %u delete with pk %s time %s for tid %u pid %u ok", 
-                  idx, pk.ToString().c_str(), time, id_, pid_);
-}
-
 uint64_t Table::Release() {
     if (segment_released_) {
         return 0;

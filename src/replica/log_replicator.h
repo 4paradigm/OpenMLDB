@@ -97,11 +97,6 @@ public:
 
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);
 
-    void ReadLogEntry();
-
-    int MatchLogEntry(const google::protobuf::RepeatedPtrField<LogEntry>& log_entry,
-                std::string& msg, uint64_t& log_index);
-
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
@@ -136,12 +131,10 @@ private:
     std::atomic<uint64_t> refs_;
 
     std::atomic<int> snapshot_log_part_index_;
-    std::atomic<uint64_t> binlog_start_offset_;
 
     std::mutex wmu_;
 
     std::shared_ptr<Table> table_;
-    std::vector<std::shared_ptr<LogEntry>> log_entry_vec_;
 };
 
 } // end of replica

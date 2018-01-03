@@ -141,11 +141,6 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
-    void MatchLogEntry(RpcController* controller,
-            const ::rtidb::api::MatchLogEntryRequest* request,
-            ::rtidb::api::MatchLogEntryResponse* response,
-            Closure* done);
-
     void CreateStream(RpcController* controller,
             const ::rtidb::api::CreateStreamRequest* request,
             ::rtidb::api::GeneralResponse* response,

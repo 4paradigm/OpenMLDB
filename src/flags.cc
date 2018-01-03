@@ -37,8 +37,6 @@ DEFINE_int32(binlog_sync_to_disk_interval, 5000, "config the interval of sync bi
 DEFINE_int32(binlog_delete_interval, 10000, "config the interval of delete binlog");
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
 DEFINE_int32(binlog_name_length, 8, "binlog name length");
-DEFINE_int32(sync_offset_range, 10000, "config the offset range when offset mismatch");
-DEFINE_int32(log_entry_batch_size, 128, "the batch size of sync log entry for match log offset");
 
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");

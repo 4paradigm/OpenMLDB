@@ -289,19 +289,6 @@ message SendSnapshotRequest {
     optional TaskInfo task_info = 4;
 }
 
-message MatchLogEntryRequest {
-    required uint32 tid = 1;
-    required uint32 pid = 2;
-    required uint64 term = 3;
-    repeated LogEntry log_entries = 4;
-}
-
-message MatchLogEntryResponse {
-    optional int32 code = 1;
-    optional string msg = 2;
-    optional uint64 log_offset = 3;
-}
-
 message CreateStreamRequest {
     required uint32 tid = 1;
     required uint32 pid = 2;
@@ -387,7 +374,6 @@ service TabletServer {
     rpc PauseSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc SendSnapshot(SendSnapshotRequest) returns(GeneralResponse);
-    rpc MatchLogEntry(MatchLogEntryRequest) returns(MatchLogEntryResponse);
 
     rpc CreateStream(CreateStreamRequest) returns(GeneralResponse);
 
