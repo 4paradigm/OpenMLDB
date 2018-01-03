@@ -4,13 +4,15 @@ from libs.test_loader import load
 import libs.ddt as ddt
 import time
 from libs.logger import infoLogger
+from libs.deco import multi_dimension
 
 
 @ddt.ddt
 class TestTtl(TestCaseBase):
 
+    @multi_dimension(False)
     @ddt.data(
-        ('latest:0', 'Create table failed'),
+        ('latest:0', 'Create table ok'),
         ('latest:-1', 'ttl should be equal or greater than 0'),
         ('latest:1.0', 'Invalid args, tid , pid or ttl should be uint32_t'),
         ('latest:1.5', 'Invalid args, tid , pid or ttl should be uint32_t'),
@@ -20,6 +22,27 @@ class TestTtl(TestCaseBase):
     )
     @ddt.unpack
     def test_ttl_abnormal_create(self, ttl, exp_msg):
+        """
+        ttl = latest:abnormal
+        :return:
+        """
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
+        infoLogger.info(rs1)
+        self.assertTrue(exp_msg in rs1)
+
+
+    @multi_dimension(True)
+    @ddt.data(
+        ('latest:0', 'Create table ok'),
+        ('latest:-1', 'invalid ttl which should be equal or greater than 0'),
+        ('latest:1.0', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
+        ('latest:1.5', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
+        ('latest:1111111111111111', 'Create table ok'),
+        ('latest:a', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
+        ('latestt:1', 'Create table failed'),
+    )
+    @ddt.unpack
+    def test_ttl_abnormal_create_md(self, ttl, exp_msg):
         """
         ttl = latest:abnormal
         :return:
@@ -39,6 +62,7 @@ class TestTtl(TestCaseBase):
         ('latest:2', {('v1', 10): True, ('v2', 20): True}),
         ('latest:3', {('v1', 10): True, ('v2', 20): True}),
         ('latest:1', {('v1', 10): True}),
+        ('latest:0', {('v1', 10): True, ('v2', 20): True}),
     )
     @ddt.unpack
     def test_ttl_latest(self, ttl, value_ts_scannable):

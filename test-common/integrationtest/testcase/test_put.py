@@ -32,6 +32,7 @@ class TestPut(TestCaseBase):
             'testvalue0' in self.scan(self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
 
 
+    @multi_dimension(False)
     def test_put_slave_sync(self):
         """
         put到leader后，slave同步成功
@@ -51,6 +52,30 @@ class TestPut(TestCaseBase):
         time.sleep(1)
         self.assertTrue(
             'testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
+
+
+    @multi_dimension(True)
+    def test_put_slave_sync_md(self):
+        """
+        put到leader后，slave同步成功
+        :return:
+        """
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true')
+        self.assertTrue('Create table ok' in rs1)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false')
+        self.assertTrue('Create table ok' in rs2)
+        rs3 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertTrue('AddReplica ok' in rs3)
+        rs4 = self.put(self.leader,
+                       self.tid,
+                       self.pid,
+                       '',
+                       self.now(),
+                       'testvalue0', '1.1', 'testkey0')
+        self.assertTrue('Put ok' in rs4)
+        time.sleep(1)
+        self.assertTrue(
+            'testvalue0' in self.scan(self.slave1, self.tid, self.pid, {'card': 'testkey0'}, self.now(), 1))
 
 
     def test_put_slave_cannot_put(self):
@@ -269,13 +294,13 @@ class TestPut(TestCaseBase):
 
     @multi_dimension(True)
     @ddt.data(
-        ({'card': ('string:index', '0'), 's2': ('float', 10.0)}, 'Put ok', {'card': '0'}, 10.0),
-        ({'card': ('string:index', '1'), 's2': ('float', 10.01)}, 'Put ok', {'card': '1'}, 10.01),
-        ({'card': ('string:index', '2'), 's2': ('float', -1e-1)}, 'Put ok', {'card': '2'}, -0.1),
-        ({'card': ('string:index', '3'), 's2': ('float', 1e-10)}, 'Put ok', {'card': '3'}, 1e-10),
-        ({'card': ('string:index', '4'), 's2': ('double', -10.01)}, 'Put ok', {'card': '4'}, -10.01),
-        ({'card': ('string:index', '5'), 's2': ('double', -1e-1)}, 'Put ok', {'card': '5'}, -0.1),
-        ({'card': ('string:index', '6'), 's2': ('double', 1e-10)}, 'Put ok', {'card': '6'}, 1e-10),
+        ({'card': ('string:index', '0'), 's2': ('float', 10.0)}, 'Put ok', {'card': '0'}, '10'),
+        ({'card': ('string:index', '1'), 's2': ('float', 10.01)}, 'Put ok', {'card': '1'}, '10.0100002'),
+        ({'card': ('string:index', '2'), 's2': ('float', -1e-1)}, 'Put ok', {'card': '2'}, '-0.100000001'),
+        ({'card': ('string:index', '3'), 's2': ('float', 1e-10)}, 'Put ok', {'card': '3'}, '1.00000001e-10'),
+        ({'card': ('string:index', '4'), 's2': ('double', -10.01)}, 'Put ok', {'card': '4'}, '-10.01'),
+        ({'card': ('string:index', '5'), 's2': ('double', -1e-1)}, 'Put ok', {'card': '5'}, '-0.10000000000000001'),
+        ({'card': ('string:index', '6'), 's2': ('double', 1e-10)}, 'Put ok', {'card': '6'}, '1e-10'),
     )
     @ddt.unpack
     def test_sput_float_double(self, kv, rsp_msg, scan_kv, scan_value):
@@ -288,7 +313,7 @@ class TestPut(TestCaseBase):
         self.assertTrue(rsp_msg in rs1)
         rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
         infoLogger.info(rs2)
-        self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
+        self.assertTrue(' ' + scan_value + ' ' in rs2)
 
 
 if __name__ == "__main__":

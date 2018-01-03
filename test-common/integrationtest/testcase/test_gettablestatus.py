@@ -43,7 +43,7 @@ class TestGetTableStatus(TestCaseBase):
         self.assertTrue('MakeSnapshot ok' in rs2)
 
         table_status = self.get_table_status(self.leader)
-        self.assertEqual(table_status[(self.tid, self.pid)], ['10000', 'kTableLeader', 'kMakingSnapshot', 'true', '144000min', '0s'])
+        self.assertEqual('kMakingSnapshot' in table_status[(self.tid, self.pid)], True)
 
 
 if __name__ == "__main__":
