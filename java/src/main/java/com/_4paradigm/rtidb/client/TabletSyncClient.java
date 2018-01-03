@@ -7,6 +7,8 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.Table;
 import com.google.protobuf.ByteString;
 
+import rtidb.api.Tablet.TTLType;
+
 public interface TabletSyncClient {
 
 	boolean put(int tid, int pid, String key,
@@ -38,8 +40,18 @@ public interface TabletSyncClient {
 	        int tid, 
 	        int pid, 
 	        long ttl, 
+	        TTLType type,
+	        int segCnt);
+    
+    boolean createTable(String name, 
+	        int tid, 
+	        int pid, 
+	        long ttl, 
 	        int segCnt,
 	        List<ColumnDesc> schema);
+    boolean createTable(String name, 
+    		int tid, int pid, long ttl, TTLType type,
+    		int segCnt, List<ColumnDesc> schema);
     boolean dropTable(int tid, int pid);
     
     Table getTable(int tid, int pid);

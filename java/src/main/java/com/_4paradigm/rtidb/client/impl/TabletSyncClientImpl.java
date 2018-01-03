@@ -20,6 +20,7 @@ import com._4paradigm.rtidb.client.schema.Table;
 import com.google.protobuf.ByteString;
 
 import rtidb.api.Tablet;
+import rtidb.api.Tablet.TTLType;
 import rtidb.api.TabletServer;
 
 public class TabletSyncClientImpl implements TabletSyncClient {
@@ -87,35 +88,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 	@Override
 	public boolean createTable(String name, int tid, int pid, long ttl, 
 			                   int segCnt, List<ColumnDesc> schema) {
-
-		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
-        Set<String> usedColumnName = new HashSet<String>();
-		if (schema != null && schema.size() > 0) {
-			ByteBuffer buffer = SchemaCodec.encode(schema);
-			builder.setSchema(ByteString.copyFrom(buffer.array()));
-			for (ColumnDesc desc : schema) {
-                if (usedColumnName.contains(desc.getName())) {
-                    return false;
-                }
-                usedColumnName.add(desc.getName());
-				if (desc.isAddTsIndex()) {
-					builder.addDimensions(desc.getName());
-				}
-			}
-		}
-		builder.setName(name).setTid(tid).setPid(pid).setTtl(ttl).setSegCnt(segCnt);
-		Tablet.TableMeta meta = builder.build();
-		Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setTableMeta(meta).build();
-		Tablet.CreateTableResponse response = tabletServer.createTable(request);
-		if (response != null && response.getCode() == 0) {
-			if (schema != null) {
-				Table table = new Table(schema);
-				GTableSchema.tableSchema.put(tid, table);
-			}
-			return true;
-		}
-		return false;
-
+		return createTable(name, tid, pid, ttl, null, segCnt, schema);
 	}
 
 	@Override
@@ -187,5 +160,54 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 			return new KvIterator(response.getPairs(), table.getSchema());
 		}
 		return null;
+	}
+
+	@Override
+	public boolean createTable(String name, int tid, int pid, long ttl, TTLType type, int segCnt) {
+		
+		return createTable(name, tid, pid, ttl, type, segCnt, null);
+	}
+
+	@Override
+	public boolean createTable(String name, int tid, int pid, long ttl, TTLType type, int segCnt,
+			List<ColumnDesc> schema) {
+		if (null == name || "".equals(name.trim())) {
+			return false;
+		}
+		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
+        Set<String> usedColumnName = new HashSet<String>();
+		if (schema != null && schema.size() > 0) {
+			for (ColumnDesc desc : schema) {
+				if (null == desc.getName() 
+					||"".equals(desc.getName().trim())) {
+					return false;
+				}
+                if (usedColumnName.contains(desc.getName())) {
+                    return false;
+                }
+                usedColumnName.add(desc.getName());
+				if (desc.isAddTsIndex()) {
+					builder.addDimensions(desc.getName());
+				}
+			}
+			ByteBuffer buffer = SchemaCodec.encode(schema);
+			builder.setSchema(ByteString.copyFrom(buffer.array()));
+			
+		}
+		if (type != null) {
+			builder.setTtlType(type);
+		}
+		builder.setName(name).setTid(tid).setPid(pid).setTtl(ttl).setSegCnt(segCnt);
+		Tablet.TableMeta meta = builder.build();
+		Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setTableMeta(meta).build();
+		Tablet.CreateTableResponse response = tabletServer.createTable(request);
+		if (response != null && response.getCode() == 0) {
+			if (schema != null) {
+				Table table = new Table(schema);
+				GTableSchema.tableSchema.put(tid, table);
+			}
+			return true;
+		}
+		return false;
 	}
 }
