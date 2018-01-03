@@ -60,4 +60,4 @@ python ${testpath}/runall.py
 sh ${testpath}/setup.sh
 
 # teardown kill services
-python setup.py teardown
+python ${testpath}/setup.py teardown
