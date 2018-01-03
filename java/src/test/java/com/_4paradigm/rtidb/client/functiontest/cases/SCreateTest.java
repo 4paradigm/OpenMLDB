@@ -11,6 +11,7 @@ import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Listeners;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
@@ -18,7 +19,7 @@ import com._4paradigm.rtidb.client.schema.Table;
 
 import io.brpc.client.RpcClient;
 
-
+@Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
 public class SCreateTest {
 
   private final static AtomicInteger id = new AtomicInteger(1000);
@@ -33,6 +34,8 @@ public class SCreateTest {
   @BeforeMethod
   public void setUp(){
     tid = id.incrementAndGet();
+    System.out.println("drop..." + tid);
+    client.dropTable(tid, 0);
   }
 
   @AfterMethod
@@ -44,11 +47,22 @@ public class SCreateTest {
   @DataProvider(name = "schema")
   public Object[][] Users() {
     return new Object[][] {
-        new Object[][]{{true}, {true, 0, "card", ColumnType.kString}, {false, 0, "card1", ColumnType.kString}, {false, 2, "amt", ColumnType.kDouble}},
-        new Object[][]{{true}, {true, 0, "card", ColumnType.kString}, {true, 1, "card1", ColumnType.kString}, {true, 2, "amt", ColumnType.kString}},
-        new Object[][]{{true}, {false, 0, "card", ColumnType.kString}, {false, 1, "card1", ColumnType.kString}, {false, 2, "amt", ColumnType.kString}},
-        new Object[][]{{false}, {false, 0, "card", ColumnType.kString}, {false, 1, "card", ColumnType.kString}},
-        new Object[][]{{true}, {false, 0, "card", ColumnType.kString}},
+        new Object[][]{{true},
+            {true, "card", ColumnType.kString},
+            {false, "card1", ColumnType.kString},
+            {false, "amt", ColumnType.kDouble}},
+        new Object[][]{{true},
+            {true, "card", ColumnType.kString},
+            {true, "card1", ColumnType.kString},
+            {true, "amt", ColumnType.kString}},
+        new Object[][]{{true},
+            {false, "card", ColumnType.kString},
+            {false, "card1", ColumnType.kString},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{false}, {false, "card", ColumnType.kDouble}, {false, "card", ColumnType.kString}},
+        new Object[][]{{true}, {false, "card", ColumnType.kString}},
+        new Object[][]{{false}, {true, "", ColumnType.kString}},
+        new Object[][]{{false}, {true, "   ", ColumnType.kString}},
     }; }
 
 
@@ -67,12 +81,11 @@ public class SCreateTest {
         indexes ++;
       }
       desc.setAddTsIndex(index);
-      desc.setIdx((Integer) o[1]);
-      desc.setName((String) o[2]);
-      desc.setType((ColumnType) o[3]);
+      desc.setName((String) o[1]);
+      desc.setType((ColumnType) o[2]);
       schema.add(desc);
     }
-    boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+    Boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
     System.out.println(ok);
     Assert.assertEquals(ok, result);
     if (ok) {

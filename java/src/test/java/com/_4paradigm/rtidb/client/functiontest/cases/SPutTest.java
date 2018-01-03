@@ -11,6 +11,7 @@ import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Listeners;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
@@ -18,6 +19,7 @@ import com._4paradigm.rtidb.client.schema.Table;
 
 import io.brpc.client.RpcClient;
 
+@Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
 public class SPutTest {
 
   private final static AtomicInteger id = new AtomicInteger(1000);
@@ -25,14 +27,14 @@ public class SPutTest {
   private static RpcClient rpcClient = null;
   private static TabletSyncClient client = null;
   static {
-    rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 19521, 100000, 3);
+    rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 37770, 100000, 3);
     client = TabletClientBuilder.buildSyncClient(rpcClient);
   }
 
   @BeforeMethod
   public void setUp(){
-    client.dropTable(tid, 0);
     tid = id.incrementAndGet();
+    client.dropTable(tid, 0);
     System.out.println("drop..." + tid);
   }
 
@@ -45,7 +47,7 @@ public class SPutTest {
   @DataProvider(name = "putdata")
   public Object[][] putdata() {
     return new Object[][] {
-        {ColumnType.kString, "111", true},
+        {ColumnType.kString, "1111", true},
         {ColumnType.kString, " ", true},
         {ColumnType.kString, "、*&……%￥", true},
         {ColumnType.kString, "", false},
@@ -85,12 +87,12 @@ public class SPutTest {
     desc2.setType(type);
     schema.add(desc2);
 
-    boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+    boolean ok = client.createTable("tj0", tid, 0, 144000, 8, schema);
     Assert.assertEquals(ok, true);
 
     Boolean putok = null;
     try {
-      putok = client.put(tid, 0, 10, new Object[] {"9527", value});
+        putok = client.put(tid, 0, 10, new Object[]{"9527", value});
     } catch (Exception e) {
       putok = false;
       System.out.println("!!!!!" + e.getMessage());
