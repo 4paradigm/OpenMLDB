@@ -15,17 +15,17 @@ class TestCreateTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs1)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs2)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['0', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
 
         rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
         self.assertTrue('Create table ok' in rs3)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['0', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     @multi_dimension(True)

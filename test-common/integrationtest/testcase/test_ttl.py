@@ -57,7 +57,7 @@ class TestTtl(TestCaseBase):
         ('latest:1', {('v1', 20): False, ('v2', 30): True, ('v3', 10): False}),
         ('latest:1', {('v1', 30): True, ('v2', 10): False, ('v3', 20): False}),
         ('latest:1', {('v1', 10): False, ('v2', 10): False, ('v3', 30): True}),
-        ('latest:1', {('v1', 10): False, ('v2', 30): False, ('v3', 30): False}),
+        ('latest:1', {('v1', 10): False, ('v2', 30): True, ('v3', 30): False}),
         ('latest:1', {('v1', 10): False, ('v2', 20): True}),
         ('latest:2', {('v1', 10): True, ('v2', 20): True}),
         ('latest:3', {('v1', 10): True, ('v2', 20): True}),
