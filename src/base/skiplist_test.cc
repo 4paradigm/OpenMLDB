@@ -282,9 +282,9 @@ TEST_F(SkiplistTest, SplitByPos) {
     uint32_t value4= 6;
     sl.Insert(key4, value4);
 
-    Node<uint32_t, uint32_t>* node = sl.SplitByPos(4, 6);
+    Node<uint32_t, uint32_t>* node = sl.SplitByPos(6);
     ASSERT_TRUE(node == NULL);
-    node = sl.SplitByPos(2, 3);
+    node = sl.SplitByPos(3);
     ASSERT_EQ(2, node->GetKey());
     node = node->GetNext(0);
     ASSERT_TRUE(node != NULL);
@@ -302,6 +302,25 @@ TEST_F(SkiplistTest, SplitByPos) {
     it->Next();
     ASSERT_FALSE(it->Valid());
 }
+
+TEST_F(SkiplistTest, SplitByPos1) {
+    Comparator cmp;
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    uint32_t key1 = 1;
+    uint32_t value1= 1;
+    sl.Insert(key1, value1);
+    uint32_t key2 = 2;
+    uint32_t value2= 2;
+    sl.Insert(key2, value2);
+    uint32_t key3 = 3;
+    uint32_t value3= 3;
+    sl.Insert(key3, value3);
+    uint32_t key4 = 4;
+    uint32_t value4= 4;
+    sl.Insert(key4, value4);
+    Node<uint32_t, uint32_t>* node = sl.SplitByPos(2);
+    ASSERT_EQ(3, node->GetKey());
+}    
 
 TEST_F(SkiplistTest, Iterator2) {
     StrComparator cmp;

@@ -155,7 +155,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
                 std::lock_guard<std::mutex> lock(mu_);
                 if (entry->refs_.load(std::memory_order_acquire) <= 0) {
                     if (pre_ts == ts || ts == next_ts)  {
-                        node = entry->entries.SplitByPos(ts, keep_cnt);
+                        node = entry->entries.SplitByPos(keep_cnt);
                     } else {
                         node = entry->entries.Split(ts);
                     }

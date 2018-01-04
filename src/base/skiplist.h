@@ -176,8 +176,18 @@ public:
         return result;
     }
 
-    Node<K,V>* SplitByPos(const K& key, uint64_t pos) {
-        uint32_t cnt = 0;
+    Node<K,V>* SplitByPos(uint64_t pos) {
+        uint64_t cnt = 0;
+        Node<K, V>* pos_node = head_->GetNext(0);
+        for (uint64_t idx = 0; idx < pos; idx++) {
+            if (pos_node == NULL) {
+                return NULL;
+            }
+            pos_node = pos_node->GetNext(0);
+        }
+        if (pos_node == NULL) {
+            return NULL;
+        }
         Node<K, V>* node = head_->GetNext(0);
         Node<K, V>* pre = head_;
         while (node != NULL) {
@@ -189,7 +199,7 @@ public:
             }
             for (uint8_t i = 1; i < node->Height(); i++) {
                 Node<K, V>* next = node->GetNext(i);
-                if (next != NULL && compare_(key, next->GetKey()) >= 0) {
+                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) >= 0) {
                     node->SetNext(i, NULL);
                 }
             }
