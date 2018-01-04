@@ -182,7 +182,9 @@ public:
         Node<K, V>* pre = head_;
         while (node != NULL) {
             if (cnt == pos) {
-                pre->SetNext(0, NULL);
+                for (uint8_t i = 0; i < pre->Height(); i++) {
+                    pre->SetNext(i, NULL);
+                }
                 return node;
             }
             for (uint8_t i = 1; i < node->Height(); i++) {
