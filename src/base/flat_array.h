@@ -159,7 +159,7 @@ class FlatArrayIterator {
 public:
 
     FlatArrayIterator(const char* buffer, uint32_t bsize):buffer_(buffer), 
-    col_cnt_(0), bsize_(bsize), offset_(0){
+    col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0){
         memcpy(static_cast<void*>(&col_cnt_), buffer_, 1);
         buffer_ += 1;
         offset_ += 1;
