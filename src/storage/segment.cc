@@ -144,7 +144,9 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
         }
         if (tit->Valid()) {
             tit->Next();
-            next_ts = tit->GetKey();
+            if (tit->Valid()) {
+                next_ts = tit->GetKey();
+            }
         }
         delete tit;
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
