@@ -131,20 +131,33 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
         tit->SeekToFirst();
         uint32_t cnt = 0;
         uint64_t ts = 0;
+        uint64_t pre_ts = 0;
+        uint64_t next_ts = 0;
         while (tit->Valid()) {
             if (cnt >= keep_cnt) {
                 ts = tit->GetKey();
                 break;
             }
+            pre_ts = ts;
             cnt++;
             tit->Next();
+        }
+        if (tit->Valid()) {
+            tit->Next();
+            next_ts = tit->GetKey();
         }
         delete tit;
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         if (cnt >= keep_cnt) {
             {
                 std::lock_guard<std::mutex> lock(mu_);
-                SplitList(entry, ts, &node);
+                if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                    if (pre_ts == ts || ts == next_ts)  {
+                        node = entry->entries.SplitByPos(ts, keep_cnt);
+                    } else {
+                        node = entry->entries.Split(ts);
+                    }
+                }
             }
             FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }

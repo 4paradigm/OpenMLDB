@@ -176,6 +176,28 @@ public:
         return result;
     }
 
+    Node<K,V>* SplitByPos(const K& key, uint64_t pos) {
+        uint32_t cnt = 0;
+        Node<K, V>* node = head_->GetNext(0);
+        Node<K, V>* pre = head_;
+        while (node != NULL) {
+            if (cnt == pos) {
+                pre->SetNext(0, NULL);
+                return node;
+            }
+            for (uint8_t i = 1; i < node->Height(); i++) {
+                Node<K, V>* next = node->GetNext(i);
+                if (next != NULL && compare_(key, next->GetKey()) >= 0) {
+                    node->SetNext(i, NULL);
+                }
+            }
+            pre = node;
+            node = node->GetNext(0);
+            cnt++;
+        }
+        return NULL;
+    }
+
     const V& Get(const K& key) {
         Node<K,V>* node = FindEqual(key);
         return node->GetValue();

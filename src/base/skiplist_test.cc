@@ -263,6 +263,46 @@ TEST_F(SkiplistTest, Split1) {
     ASSERT_FALSE(it->Valid());
 }
 
+TEST_F(SkiplistTest, SplitByPos) {
+    Comparator cmp;
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    uint32_t key1 = 0;
+    uint32_t value1= 0;
+    sl.Insert(key1, value1);
+    uint32_t key2 = 1;
+    uint32_t value2= 1;
+    sl.Insert(key2, value2);
+    uint32_t key3 = 2;
+    uint32_t value3= 2;
+    sl.Insert(key3, value3);
+    // insert the same key
+    uint32_t value3_an= 22;
+    sl.Insert(key3, value3_an);
+    uint32_t key4 = 3;
+    uint32_t value4= 6;
+    sl.Insert(key4, value4);
+
+    Node<uint32_t, uint32_t>* node = sl.SplitByPos(4, 6);
+    ASSERT_TRUE(node == NULL);
+    node = sl.SplitByPos(2, 3);
+    ASSERT_EQ(2, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node != NULL);
+    ASSERT_EQ(3, node->GetKey());
+    node = node->GetNext(0);
+    ASSERT_TRUE(node == NULL);
+    Skiplist<uint32_t, uint32_t, Comparator>::Iterator* it = sl.NewIterator();
+    it->Seek(0);
+    ASSERT_EQ(0, it->GetKey());
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+
+    it->Seek(2);
+    ASSERT_EQ(2, it->GetKey());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+}
+
 TEST_F(SkiplistTest, Iterator2) {
     StrComparator cmp;
     Skiplist<std::string, std::string, StrComparator> sl(12, 4, cmp);
