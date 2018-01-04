@@ -49,6 +49,7 @@ LogReplicator::LogReplicator(const std::string& path,
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
+    snapshot_last_offset_.store(0, std::memory_order_relaxed);
 }
 
 LogReplicator::~LogReplicator() {
@@ -214,6 +215,7 @@ uint64_t LogReplicator::GetOffset() {
 }
 
 void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
+    snapshot_last_offset_.store(offset, std::memory_order_relaxed);
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
     log_reader.SetOffset(offset);
     int log_part_index = log_reader.RollRLogFile();
@@ -469,11 +471,16 @@ void LogReplicator::MatchLogOffset() {
     if (!all_matched) {
         all_matched = true;
         for (auto& node : vec) {
-            if (node->MatchLogOffsetFromNode(binlog_index_.load(std::memory_order_relaxed), term_) < 0) {
+            if (node->MatchLogOffsetFromNode(term_) < 0) {
                 all_matched = false;
                 continue;
             }
-            tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node->GetEndPoint()));
+            if (node->GetLastSyncOffset() >= snapshot_last_offset_.load(std::memory_order_relaxed)) {
+                tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node->GetEndPoint()));
+            } else {
+                // the binlog of matched offset was deleted, need full sync
+                // TODO. full sync
+            }
         }
     }
     if (!all_matched) {

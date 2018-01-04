@@ -58,7 +58,7 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
     last_sync_offset_ = offset;
 }
 
-int ReplicateNode::MatchLogOffsetFromNode(uint64_t log_offset, uint64_t term) {
+int ReplicateNode::MatchLogOffsetFromNode(uint64_t term) {
     term_ = term;
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);

@@ -684,6 +684,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         if (table_partition.is_leader() != is_leader) {
             continue;
         }
+        mu_.lock();
         auto iter = tablets_.find(table_partition.endpoint());
         // check tablet if exist
         if (iter == tablets_.end()) {
@@ -695,12 +696,14 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             PDLOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
             return -1;
         }
+        mu_.unlock();
         std::vector<std::string> endpoint;
         uint64_t term = 0;
         if (is_leader) {
             if (endpoint_map.find(table_partition.pid()) != endpoint_map.end()) {
                 endpoint_map[table_partition.pid()].swap(endpoint);
             }
+            std::lock_guard<std::mutex> lock(mu_);
             if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 1))) {
                 PDLOG(WARNING, "update leader id  node failed. table name %s pid %u", 
                                 table_info->name().c_str(), table_partition.pid());
@@ -846,39 +849,38 @@ void NameServerImpl::CreateTable(RpcController* controller,
         const CreateTableRequest* request, 
         GeneralResponse* response, 
         Closure* done) {
+	brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(-1);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
-        done->Run();
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
-    if (table_info_.find(table_info->name()) != table_info_.end()) {
-        response->set_code(-1);
-        response->set_msg("table is already exist!");
-        PDLOG(WARNING, "table[%s] is already exist!", table_info->name().c_str());
-        done->Run();
-        return;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_info_.find(table_info->name()) != table_info_.end()) {
+            response->set_code(-1);
+            response->set_msg("table is already exist!");
+            PDLOG(WARNING, "table[%s] is already exist!", table_info->name().c_str());
+            return;
+        }
+        if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
+            response->set_code(-1);
+            response->set_msg("set table index node failed");
+            PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
+            return;
+        }
+        table_index_++;
+        table_info->set_tid(table_index_);
     }
-    if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
-        response->set_code(-1);
-        response->set_msg("set table index node failed");
-        PDLOG(WARNING, "set table index node failed! table_index[%u]", table_index_ + 1);
-        done->Run();
-        return;
-    }
-    table_index_++;
-    table_info->set_tid(table_index_);
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     if (CreateTableOnTablet(table_info, false, endpoint_map) < 0 ||
             CreateTableOnTablet(table_info, true, endpoint_map) < 0) {
         response->set_code(-1);
         response->set_msg("create table failed");
         PDLOG(WARNING, "create table failed. tid[%u]", table_index_);
-        done->Run();
         return;
     }
 
@@ -888,14 +890,15 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "create table node[%s/%s] failed! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
         response->set_code(-1);
         response->set_msg("create table node failed");
-        done->Run();
         return;
     }
     PDLOG(DEBUG, "create table node[%s/%s] success! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
-    table_info_.insert(std::make_pair(table_info->name(), table_info));
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        table_info_.insert(std::make_pair(table_info->name(), table_info));
+    }
     response->set_code(0);
     response->set_msg("ok");
-    done->Run();
 }
 
 void NameServerImpl::AddReplicaNS(RpcController* controller,
@@ -1135,8 +1138,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    auto pos = table_info_.find(request->data().name());
-    if (pos == table_info_.end()) {
+    if (table_info_.find(request->data().name()) == table_info_.end()) {
         response->set_code(-1);
         response->set_msg("table is not  exist!");
         PDLOG(WARNING, "table[%s] is not exist!", request->data().name().c_str());

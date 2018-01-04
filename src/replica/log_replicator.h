@@ -131,6 +131,7 @@ private:
     std::atomic<uint64_t> refs_;
 
     std::atomic<int> snapshot_log_part_index_;
+    std::atomic<uint64_t> snapshot_last_offset_;
 
     std::mutex wmu_;
 

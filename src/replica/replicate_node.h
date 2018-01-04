@@ -28,7 +28,7 @@ public:
     ReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path,
             uint32_t tid, uint32_t pid);
     int Init();
-    int MatchLogOffsetFromNode(uint64_t offset, uint64_t term);
+    int MatchLogOffsetFromNode(uint64_t term);
     int SyncData(uint64_t log_offset);
     void SetLastSyncOffset(uint64_t offset);
     bool IsLogMatched();
