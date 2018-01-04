@@ -15,11 +15,11 @@ class TestRecoverSnapshot(TestCaseBase):
         rs2 = self.pausesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs2)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
         rs3 = self.recoversnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('RecoverSnapshot ok' in rs3)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
 if __name__ == "__main__":

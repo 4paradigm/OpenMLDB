@@ -17,7 +17,7 @@ class TestPauseSnapshot(TestCaseBase):
         rs2 = self.pausesnapshot(self.leader, self.tid, self.pid)
         self.assertTrue('PauseSnapshot ok' in rs2)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableFollower', 'kSnapshotPaused', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['0', 'kTableFollower', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
     @multi_dimension(False)
@@ -44,7 +44,7 @@ class TestPauseSnapshot(TestCaseBase):
 
         self.assertTrue('v' in self.scan(self.slave1, self.tid, self.pid, 'k', self.now(), 1))
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['1', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['1', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
     @multi_dimension(True)
@@ -75,7 +75,7 @@ class TestPauseSnapshot(TestCaseBase):
         self.multidimension_scan_vk = {'card': 'k'}  # for multidimension test
         self.assertTrue('v' in self.scan(self.slave1, self.tid, self.pid, 'k', self.now(), 1))
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['1', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['1', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
 
 
 if __name__ == "__main__":

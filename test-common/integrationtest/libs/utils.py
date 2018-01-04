@@ -7,6 +7,7 @@ import copy
 def exe_shell(cmd):
     infoLogger.debug(cmd)
     retcode, output = commands.getstatusoutput(cmd)
+    infoLogger.debug(output)
     return output
 
 
@@ -97,7 +98,3 @@ def gen_table_metadata_file(metadata, filepath):
         s += '}\n'
     # infoLogger.info(s)
     write(s, filepath, 'w')
-
-
-# m = gen_table_metadata('"1"', 3, 3, None)
-# gen_table_metadata_file(m, 'naysameta')

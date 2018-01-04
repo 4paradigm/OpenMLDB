@@ -30,9 +30,9 @@ class TestAddReplica(TestCaseBase):
         rs5 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave2)
         self.assertTrue('AddReplica ok' in rs5)
         table_status1 = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status1, ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status1[:6], ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         table_status2 = self.get_table_status(self.slave2, self.tid, self.pid)
-        self.assertEqual(table_status2, ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status2[:6], ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         self.put(self.leader,
                  self.tid,
                  self.pid,
@@ -69,9 +69,9 @@ class TestAddReplica(TestCaseBase):
         rs5 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave2)
         self.assertTrue('AddReplica ok' in rs5)
         table_status1 = self.get_table_status(self.slave1, self.tid, self.pid)
-        self.assertEqual(table_status1, ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status1[:6], ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         table_status2 = self.get_table_status(self.slave2, self.tid, self.pid)
-        self.assertEqual(table_status2, ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status2[:6], ['1', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
         self.put(self.leader,
                  self.tid,
                  self.pid,
@@ -99,7 +99,7 @@ class TestAddReplica(TestCaseBase):
         rs4 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertTrue('AddReplica ok' in rs4)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status, ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_addreplica_slave_cannot_add(self):
