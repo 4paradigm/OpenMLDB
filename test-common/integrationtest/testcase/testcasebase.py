@@ -277,12 +277,12 @@ class TestCaseBase(unittest.TestCase):
         utils.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
             from_node=from_node, tid=tid, pid=pid, to_node=to_node))
 
-    def put_large_datas(self, data_count, thread_count):
+    def put_large_datas(self, data_count, thread_count, data='testvalue' * 200):
         count = data_count
 
         def put():
             for i in range(0, count):
-                self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, 'testvalue'*100)
+                self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, data)
         threads = []
         for _ in range(0, thread_count):
             threads.append(threading.Thread(
