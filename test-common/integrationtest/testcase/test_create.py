@@ -2,6 +2,7 @@
 from testcasebase import TestCaseBase
 from libs.deco import multi_dimension
 from libs.test_loader import load
+from libs.logger import infoLogger
 
 
 class TestCreateTable(TestCaseBase):
@@ -42,6 +43,24 @@ class TestCreateTable(TestCaseBase):
         self.assertEqual(schema_d['card'], ['string', 'yes'])
         self.assertEqual(schema_d['merchant'], ['string', 'yes'])
         self.assertEqual(schema_d['amt'], ['double', 'yes'])
+
+
+    @multi_dimension(True)
+    def test_screate_table_schema_toolong(self):
+        """
+        创建高维表，所有schema字段都是index
+        :return:
+        """
+        self.multidimension_vk = {'c' * 128: ('string:index', 'pk0'),
+                                  'merchant': ('string:index', 'pk1'),
+                                  'amt': ('string', 'a' * 100)}
+        rs1 = self.create(self.leader, 't', self.tid, self.pid)
+        self.assertTrue('Create table ok' in rs1)
+        self.multidimension_vk = {'c' * 129: ('string:index', 'pk0'),
+                                  'merchant': ('string:index', 'pk1'),
+                                  'amt': ('string', 'a' * 100)}
+        rs2 = self.create(self.leader, 't', self.tid, self.pid)
+        self.assertTrue('Fail to create table' in rs2)
 
 
     @multi_dimension(True)

@@ -2,6 +2,7 @@
 from testcasebase import TestCaseBase
 from libs.test_loader import load
 import libs.ddt as ddt
+from libs.logger import infoLogger
 
 
 @ddt.ddt
@@ -62,15 +63,19 @@ class TestGetTableStatus(TestCaseBase):
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         memused = float(table_status[6])
 
+        infoLogger.info(self.scan(self.leader, self.tid, self.pid, {'card':'pk0'}, self.now(), 1))
+
         self.pid = self.pid + 1
         rs = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('ok' in rs)
         self.multidimension_vk = {'card': ('string:index', 'pk0'),
                                   'merchant': ('string:index', 'pk1'),
-                                  'amt': ('string', 'a' * 200)}
-        self.put_large_datas(1, 1, 'a' * 500)
+                                  'amt': ('string', 'a' * 128)}
+        self.put_large_datas(1, 1, 'a' * 128)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         memused2 = float(table_status[6])
+
+        infoLogger.info(self.scan(self.leader, self.tid, self.pid, {'card':'pk0'}, self.now(), 1))
 
         self.assertEqual(memused2 > memused, True)
 

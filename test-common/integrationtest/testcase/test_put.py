@@ -276,6 +276,10 @@ class TestPut(TestCaseBase):
          'Put ok', {'card': '0'}, '\"\"\'\'^\\n'),
         ({'card': ('string:index', '1'), 's2': ('string', '" "')},
          'Bad put format, eg put tid pid time value', {}, ''),
+        ({'card': ('string:index', '2'), 's2': ('string', 'a' * 128)},
+         'Put ok', {'card': '2'}, 'a' * 128),
+        ({'card': ('string:index', '3'), 's2': ('string', 'a' * 129)},
+         'Put failed', {}, ''),
     )
     @ddt.unpack
     def test_sput_string(self, kv, rsp_msg, scan_kv, scan_value):
@@ -287,6 +291,8 @@ class TestPut(TestCaseBase):
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         infoLogger.info(rs1)
         self.assertTrue(rsp_msg in rs1)
+        infoLogger.info(self.scan(
+            self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
         if scan_kv != {}:
             self.assertTrue(' ' + str(scan_value) + ' ' in self.scan(
                 self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
