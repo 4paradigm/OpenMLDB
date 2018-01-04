@@ -23,7 +23,7 @@ TEST_F(FlatArrayTest, Decode) {
     FlatArrayCodec codec(&buffer, 2);
     bool ok = codec.Append(1.2f);
     ASSERT_TRUE(ok);
-    std::string big_col = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    std::string big_col(100,'a'); 
     ok = codec.Append(big_col);
     ASSERT_TRUE(ok);
     codec.Build();
