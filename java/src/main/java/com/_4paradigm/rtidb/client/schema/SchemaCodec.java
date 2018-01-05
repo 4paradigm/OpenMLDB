@@ -7,10 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.ByteString;
+import com._4paradigm.rtidb.client.TabletException;
 
 public class SchemaCodec {
 	
-	public static ByteBuffer encode(List<ColumnDesc> schema) {
+	public static ByteBuffer encode(List<ColumnDesc> schema) throws TabletException{
 		ByteBuffer buffer = ByteBuffer.allocate(getSize(schema)).order(ByteOrder.LITTLE_ENDIAN);
 		for (ColumnDesc col : schema) {
 			buffer.put((byte)col.getType().getValue());
@@ -19,6 +20,9 @@ public class SchemaCodec {
 			}else {
 				buffer.put((byte)0);
 			}
+            if (col.getName().getBytes().length >= 128) {
+                throw new TabletException("col name size is too big, which should be less than 128");
+            }
 			buffer.put((byte)(col.getName().getBytes().length));
 			buffer.put(col.getName().getBytes());
 		}

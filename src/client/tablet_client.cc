@@ -35,7 +35,10 @@ bool TabletClient::CreateTable(const std::string& name,
                      bool leader) {
     std::string schema;
     ::rtidb::base::SchemaCodec codec;
-    codec.Encode(columns, schema);
+    bool codec_ok = codec.Encode(columns, schema);
+    if (!codec_ok) {
+        return false;
+    }
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     for (uint32_t i = 0; i < columns.size(); i++) {

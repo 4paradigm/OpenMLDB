@@ -190,9 +190,14 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 					builder.addDimensions(desc.getName());
 				}
 			}
-			ByteBuffer buffer = SchemaCodec.encode(schema);
-			builder.setSchema(ByteString.copyFrom(buffer.array()));
-			
+            try {
+            	ByteBuffer buffer = SchemaCodec.encode(schema);
+			    builder.setSchema(ByteString.copyFrom(buffer.array()));
+            }catch (TabletException e) {
+                logger.error("fail to decode schema");
+                return false;
+            }
+					
 		}
 		if (type != null) {
 			builder.setTtlType(type);
