@@ -175,7 +175,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		if (null == name || "".equals(name.trim())) {
 			return false;
 		}
-        if (type == kLatestTime && ttl / 60 / 1000 > KEEP_LATEST_MAX_NUM) {
+        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl <= 0)) {
             return false;
         }
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
