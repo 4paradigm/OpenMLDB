@@ -62,10 +62,7 @@ TEST_F(DistLockTest, Lock) {
     DistLock lock2("/rtidb_lock/nameserver_lock", &client2, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback), "endpoint2");
     lock2.Lock();
     sleep(5);
-    if (!call_invoked) {
-        lock.Stop();
-        ASSERT_TRUE(false);
-    }
+    ASSERT_FALSE(call_invoked);
     lock2.CurrentLockValue(current_lock);
     ASSERT_EQ("endpoint1", current_lock);
     lock.Stop();
