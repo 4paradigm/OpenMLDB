@@ -48,7 +48,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    if (type == ::rtidb::api::kLatestTime && ttl / 60 / 1000 > KEEP_LATEST_MAX_NUM) {
+    if (type == ::rtidb::api::kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl <= 0)) {
         return false;
     }
     table_meta->set_ttl(ttl);
@@ -93,7 +93,7 @@ bool TabletClient::CreateTable(const std::string& name,
                      const ::rtidb::api::TTLType& type,
                      uint32_t seg_cnt) {
     ::rtidb::api::CreateTableRequest request;
-    if (type == ::rtidb::api::kLatestTime && ttl / 60 / 1000 > KEEP_LATEST_MAX_NUM) {
+    if (type == ::rtidb::api::kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl <= 0)) {
         return false;
     }
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
