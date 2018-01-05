@@ -1,13 +1,12 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.functiontest.cases;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import org.junit.Assert;
 import org.testng.annotations.Test;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
@@ -16,7 +15,9 @@ import org.testng.annotations.Listeners;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.Table;
-
+import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.TabletClientBuilder;
+import com._4paradigm.rtidb.client.KvIterator;
 import io.brpc.client.RpcClient;
 
 @Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
@@ -27,7 +28,7 @@ public class SCreateTest {
   private static RpcClient rpcClient = null;
   private static TabletSyncClient client = null;
   static {
-    rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 19521, 100000, 3);
+    rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 37770, 100000, 3);
     client = TabletClientBuilder.buildSyncClient(rpcClient);
   }
 

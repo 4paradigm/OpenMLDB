@@ -1,13 +1,13 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.functiontest.cases;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import org.junit.Assert;
 import org.testng.annotations.Test;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
@@ -16,7 +16,9 @@ import org.testng.annotations.Listeners;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.Table;
-
+import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.TabletClientBuilder;
+import com._4paradigm.rtidb.client.KvIterator;
 import io.brpc.client.RpcClient;
 
 @Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
@@ -27,7 +29,7 @@ public class SScanTest {
   private static RpcClient rpcClient = null;
   private static TabletSyncClient client = null;
   static {
-    rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 19521, 100000, 3);
+    rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 37770, 100000, 3);
     client = TabletClientBuilder.buildSyncClient(rpcClient);
   }
 
@@ -53,7 +55,7 @@ public class SScanTest {
     }; }
 
   @Test(dataProvider = "putdata")
-  public void testScan(String value, String schemaName, boolean scanOk) throws TimeoutException, TabletException {
+  public void testScan(String value, String schemaName, boolean scanOk) {
     List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     ColumnDesc desc1 = new ColumnDesc();
     desc1.setAddTsIndex(true);
@@ -68,22 +70,26 @@ public class SScanTest {
     schema.add(desc2);
 
     Boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
-    Assert.assertEquals(ok, true);
+    Assert.assertFalse(!ok);
 
-    Assert.assertEquals(client.put(tid, 0, 30, new Object[] {"card000", "merchant333"}), true);
-    Assert.assertEquals(client.put(tid, 0, 10, new Object[] {"card000", "merchant111"}), true);
-    Assert.assertEquals(client.put(tid, 0, 20, new Object[] {"card000", "merchant222"}), true);
+    try {
+      Assert.assertEquals(client.put(tid, 0, 30, new Object[] {"card000", "merchant333"}), true);
+      Assert.assertEquals(client.put(tid, 0, 10, new Object[] {"card000", "merchant111"}), true);
+      Assert.assertEquals(client.put(tid, 0, 20, new Object[] {"card000", "merchant222"}), true);
 
-    KvIterator it = client.scan(tid, 0, value, schemaName, 1999999999999L, 0);
-    Assert.assertEquals((it != null), scanOk);
+      KvIterator it = client.scan(tid, 0, value, schemaName, 1999999999999L, 0);
+      Assert.assertEquals((it != null), scanOk);
 
-    if (scanOk) {
-      Assert.assertEquals(it.valid(), true);
-      Object[] row = it.getDecodedValue();
-      Assert.assertTrue(row.length == 2);
-      Assert.assertEquals("card000", row[0]);
-      Assert.assertEquals("merchant333", row[1]);
-      it.next();
+      if (scanOk) {
+        Assert.assertEquals(it.valid(), true);
+        Object[] row = it.getDecodedValue();
+        Assert.assertTrue(row.length == 2);
+        Assert.assertEquals("card000", row[0]);
+        Assert.assertEquals("merchant333", row[1]);
+        it.next();
+      }
+    } catch (Exception e) {
+      Assert.fail();
     }
   }
 }

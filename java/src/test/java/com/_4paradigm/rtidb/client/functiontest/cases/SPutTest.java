@@ -1,13 +1,12 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.functiontest.cases;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import org.junit.Assert;
 import org.testng.annotations.Test;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
@@ -16,7 +15,9 @@ import org.testng.annotations.Listeners;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.Table;
-
+import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.TabletClientBuilder;
+import com._4paradigm.rtidb.client.KvIterator;
 import io.brpc.client.RpcClient;
 
 @Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
@@ -29,6 +30,14 @@ public class SPutTest {
   static {
     rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 37770, 100000, 3);
     client = TabletClientBuilder.buildSyncClient(rpcClient);
+  }
+
+  public static String genLongString(int len) {
+    String str = "";
+    for(int i = 0; i < len; i ++) {
+      str += "a";
+    }
+    return str;
   }
 
   @BeforeMethod
@@ -51,6 +60,8 @@ public class SPutTest {
         {ColumnType.kString, " ", true},
         {ColumnType.kString, "、*&……%￥", true},
         {ColumnType.kString, "", false},
+        {ColumnType.kString, genLongString(128), true},
+        {ColumnType.kString, genLongString(129), false},
         {ColumnType.kFloat, 10.0f, true},
         {ColumnType.kFloat, 10.01f, true},
         {ColumnType.kFloat, -1e-1f, true},
@@ -73,7 +84,7 @@ public class SPutTest {
     }; }
 
   @Test(dataProvider = "putdata")
-  public void testPut(ColumnType type, Object value, boolean putOk) throws TimeoutException, TabletException {
+  public void testPut(ColumnType type, Object value, boolean putOk) {
     List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     ColumnDesc desc1 = new ColumnDesc();
     desc1.setAddTsIndex(true);
@@ -97,22 +108,26 @@ public class SPutTest {
       putok = false;
       System.out.println("!!!!!" + e.getMessage());
     }
-    Assert.assertEquals(putok, putOk);
-    if (putOk) {
-      KvIterator it = client.scan(tid, 0, "9527", "card", 1999999999999L, 0);
-      Assert.assertFalse(it == null);
+    Assert.assertFalse(!putok.equals(putOk));
+    try {
+      if (putOk) {
+        KvIterator it = client.scan(tid, 0, "9527", "card", 1999999999999L, 0);
+        Assert.assertFalse(it == null);
 
-      Assert.assertTrue(it.valid());
-      Object[] row = it.getDecodedValue();
-      Assert.assertTrue(row.length == 2);
-      Assert.assertEquals("9527", row[0]);
-      if (type.equals(ColumnType.kNull)) {
-        Assert.assertEquals(null, row[1]);
+        Assert.assertTrue(it.valid());
+        Object[] row = it.getDecodedValue();
+        Assert.assertTrue(row.length == 2);
+        Assert.assertEquals("9527", row[0]);
+        if (type.equals(ColumnType.kNull)) {
+          Assert.assertEquals(null, row[1]);
+        } else {
+          Assert.assertEquals(value, row[1]);
+        }
+        it.next();
       }
-      else {
-        Assert.assertEquals(value, row[1]);
-      }
-      it.next();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
     }
   }
 
@@ -159,7 +174,7 @@ public class SPutTest {
       schema.add(desc);
     }
     Boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
-    Assert.assertEquals(ok, true);
+    Assert.assertFalse(!ok);
     Boolean actPutOk = null;
     try {
       actPutOk = client.put(tid, 0, 10, putData);
