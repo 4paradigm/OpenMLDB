@@ -26,6 +26,7 @@ import rtidb.api.TabletServer;
 public class TabletSyncClientImpl implements TabletSyncClient {
 	private final static Logger logger = LoggerFactory.getLogger(TabletSyncClientImpl.class);
 	private TabletServer tabletServer;
+    private final static int KEEP_LATEST_MAX_NUM = 1000;
 	public TabletSyncClientImpl(TabletServer tabletServer) {
 		this.tabletServer = tabletServer;
 	}
@@ -174,6 +175,9 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		if (null == name || "".equals(name.trim())) {
 			return false;
 		}
+        if (type == kLatestTime && ttl / 60 / 1000 > KEEP_LATEST_MAX_NUM) {
+            return false;
+        }
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
         Set<String> usedColumnName = new HashSet<String>();
 		if (schema != null && schema.size() > 0) {
