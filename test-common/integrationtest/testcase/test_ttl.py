@@ -52,47 +52,74 @@ class TestTtl(TestCaseBase):
         self.assertTrue(exp_msg in rs1)
 
 
-    @ddt.data(
-        ('latest:1', {('v1', 10): False, ('v2', 20): False, ('v3', 30): True}),
-        ('latest:1', {('v1', 20): False, ('v2', 30): True, ('v3', 10): False}),
-        ('latest:1', {('v1', 30): True, ('v2', 10): False, ('v3', 20): False}),
-        ('latest:1', {('v1', 10): False, ('v2', 10): False, ('v3', 30): True}),
-        ('latest:1', {('v1', 10): False, ('v2', 30): True, ('v3', 30): False}),
-        ('latest:1', {('v1', 10): False, ('v2', 20): True}),
-        ('latest:2', {('v1', 10): True, ('v2', 20): True}),
-        ('latest:3', {('v1', 10): True, ('v2', 20): True}),
-        ('latest:1', {('v1', 10): True}),
-        ('latest:0', {('v1', 10): True, ('v2', 20): True}),
-    )
-    @ddt.unpack
-    def test_ttl_latest(self, ttl, value_ts_scannable):
+    def test_ttl_latest_1_ready_test(self):
         """
 
+        :return:
+        """
+        ddt = (
+            (10000, 'latest:1', {('v1', 10): False, ('v2', 20): False, ('v3', 30): True}),
+            (10001, 'latest:1', {('v1', 20): False, ('v2', 30): True, ('v3', 10): False}),
+            (10002, 'latest:1', {('v1', 30): True, ('v2', 10): False, ('v3', 20): False}),
+            (10003, 'latest:1', {('v1', 10): False, ('v2', 10): False, ('v3', 30): True}),
+            (10004, 'latest:1', {('v1', 10): False, ('v2', 30): True, ('v3', 30): False}),
+            (10005, 'latest:1', {('v1', 10): False, ('v2', 20): True}),
+            (10006, 'latest:2', {('v1', 10): True, ('v2', 20): True}),
+            (10007, 'latest:3', {('v1', 10): True, ('v2', 20): True}),
+            (10008, 'latest:1', {('v1', 10): True}),
+            (10009, 'latest:0', {('v1', 10): True, ('v2', 20): True}),
+        )
+        for data in ddt:
+            tid = data[0]
+            ttl = data[1]
+            value_ts_scannable = data[2]
+            self.drop(self.leader, tid, 0)
+            self.create(self.leader, 't', tid, 0, ttl, 2, 'true')
+            for i in value_ts_scannable.keys():
+                # for multidimension test
+                self.multidimension_vk = {'card': ('string:index', 'pk'),
+                                          'merchant': ('string:index', '|{}|'.format(i[0])),
+                                          'amt': ('double', 1.1)}
+                self.put(self.leader, tid, 0, 'pk', i[1], '|{}|'.format(i[0]))
+            time.sleep(1)
+            self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
+            rs = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
+            infoLogger.info(rs)
+            for i in value_ts_scannable.keys():
+                self.assertTrue('|{}|'.format(i[0]) in rs)
+        time.sleep(61)
+
+
+    @ddt.data(
+        (10000, 'latest:1', {('v1', 10): False, ('v2', 20): False, ('v3', 30): True}),
+        (10001, 'latest:1', {('v1', 20): False, ('v2', 30): True, ('v3', 10): False}),
+        (10002, 'latest:1', {('v1', 30): True, ('v2', 10): False, ('v3', 20): False}),
+        (10003, 'latest:1', {('v1', 10): False, ('v2', 10): False, ('v3', 30): True}),
+        (10004, 'latest:1', {('v1', 10): False, ('v2', 30): True, ('v3', 30): False}),
+        (10005, 'latest:1', {('v1', 10): False, ('v2', 20): True}),
+        (10006, 'latest:2', {('v1', 10): True, ('v2', 20): True}),
+        (10007, 'latest:3', {('v1', 10): True, ('v2', 20): True}),
+        (10008, 'latest:1', {('v1', 10): True}),
+        (10009, 'latest:0', {('v1', 10): True, ('v2', 20): True}),
+    )
+    @ddt.unpack
+    def test_ttl_latest_2_check_ttl(self, tid, ttl, value_ts_scannable):
+        """
+        depends on test_ttl_latest_1_ready_test
+        :param tid:
         :param ttl:
         :param value_ts_scannable:
         :return:
         """
-        self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
-        for i in value_ts_scannable.keys():
-            # for multidimension test
-            self.multidimension_vk = {'card': ('string:index', 'pk'),
-                                      'merchant': ('string:index', '|{}|'.format(i[0])),
-                                      'amt': ('double', 1.1)}
-            self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
-        time.sleep(1)
         self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
-        rs = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
-        infoLogger.info(rs)
-        for i in value_ts_scannable.keys():
-            self.assertTrue('|{}|'.format(i[0]) in rs)
-        time.sleep(61)
-        rs1 = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
+        rs1 = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
         infoLogger.info(rs1)
         for k, v in value_ts_scannable.items():
             if v is True:
                 self.assertTrue('|{}|'.format(k[0]) in rs1)
             else:
                 self.assertFalse('|{}|'.format(k[0]) in rs1)
+        self.drop(self.leader, tid, 0)
 
 
     @ddt.data(
