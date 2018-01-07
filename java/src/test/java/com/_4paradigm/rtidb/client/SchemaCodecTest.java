@@ -34,25 +34,31 @@ public class SchemaCodecTest {
 		col3.setType(ColumnType.kDouble);
 		schema.add(col3);
 		
-		ByteBuffer buffer = SchemaCodec.encode(schema);
-		
-		buffer.rewind();
-		List<ColumnDesc> nschema = SchemaCodec.decode(buffer);
-		
-		Assert.assertEquals(schema.size(), nschema.size());
-		
-		
-		Assert.assertTrue(nschema.get(0).isAddTsIndex());
-		Assert.assertEquals("card", nschema.get(0).getName());
-		Assert.assertEquals(ColumnType.kString, nschema.get(0).getType());
-		
-		Assert.assertTrue(nschema.get(1).isAddTsIndex());
-		Assert.assertEquals("merchant", nschema.get(1).getName());
-		Assert.assertEquals(ColumnType.kString, nschema.get(1).getType());
-		
+		ByteBuffer buffer;
+		try {
+			buffer = SchemaCodec.encode(schema);
+			buffer.rewind();
+			List<ColumnDesc> nschema = SchemaCodec.decode(buffer);
+			
+			Assert.assertEquals(schema.size(), nschema.size());
+			
+			
+			Assert.assertTrue(nschema.get(0).isAddTsIndex());
+			Assert.assertEquals("card", nschema.get(0).getName());
+			Assert.assertEquals(ColumnType.kString, nschema.get(0).getType());
+			
+			Assert.assertTrue(nschema.get(1).isAddTsIndex());
+			Assert.assertEquals("merchant", nschema.get(1).getName());
+			Assert.assertEquals(ColumnType.kString, nschema.get(1).getType());
+			
 
-		Assert.assertFalse(nschema.get(2).isAddTsIndex());
-		Assert.assertEquals("amt", nschema.get(2).getName());
-		Assert.assertEquals(ColumnType.kDouble, nschema.get(2).getType());
+			Assert.assertFalse(nschema.get(2).isAddTsIndex());
+			Assert.assertEquals("amt", nschema.get(2).getName());
+			Assert.assertEquals(ColumnType.kDouble, nschema.get(2).getType());
+		} catch (TabletException e) {
+			Assert.assertTrue(false);
+		}
+		
+		
 	}
 }
