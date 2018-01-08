@@ -631,7 +631,7 @@ void TabletImpl::AppendEntries(RpcController* controller,
 	brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table || table->IsLeader()) {
-        PDLOG(WARNING, "table not exist or table is leader tid %d, pid %d", request->tid(),
+        PDLOG(WARNING, "table not exist or table is leader tid %u, pid %u", request->tid(),
                 request->pid());
         response->set_code(-1);
         response->set_msg("table not exist or table is leader");
@@ -640,7 +640,7 @@ void TabletImpl::AppendEntries(RpcController* controller,
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         response->set_code(-1);
         response->set_msg("table is loading now");
-        PDLOG(WARNING, "table is loading now. tid %ld, pid %ld", request->tid(), request->pid());
+        PDLOG(WARNING, "table is loading now. tid %u, pid %u", request->tid(), request->pid());
         return;
     }    
     std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());

@@ -297,7 +297,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         ::rtidb::api::AppendEntriesResponse* response) {
     std::lock_guard<std::mutex> lock(wmu_);
     if (!FLAGS_zk_cluster.empty() && request->term() < term_) {
-        PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %ld, pid %ld",
+        PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
                         request->term(), term_, request->tid(), request->pid());
         return false;
     }
@@ -306,7 +306,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         response->set_log_offset(last_log_offset);
         if (!FLAGS_zk_cluster.empty() && request->term() > term_) {
             term_ = request->term();
-            PDLOG(INFO, "get log_offset %lu and set term %lu. tid %ld, pid %ld", 
+            PDLOG(INFO, "get log_offset %lu and set term %lu. tid %u, pid %u", 
                         last_log_offset, term_, request->tid(), request->pid());
             return true;
         }
@@ -322,7 +322,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         }
     }
     if (request->pre_log_index() > last_log_offset) {
-        PDLOG(WARNING, "log mismatch for path %s, pre_log_index %lld, come log index %lld", path_.c_str(),
+        PDLOG(WARNING, "log mismatch for path %s, pre_log_index %lu, come log index %lu", path_.c_str(),
                 last_log_offset, request->pre_log_index());
         return false;
     }
@@ -344,7 +344,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         log_offset_.store(request->entries(i).log_index(), std::memory_order_relaxed);
         response->set_log_offset(GetOffset());
     }
-    PDLOG(DEBUG, "sync log entry to offset %lld for %s", GetOffset(), path_.c_str());
+    PDLOG(DEBUG, "sync log entry to offset %lu for %s", GetOffset(), path_.c_str());
     return true;
 }
 
