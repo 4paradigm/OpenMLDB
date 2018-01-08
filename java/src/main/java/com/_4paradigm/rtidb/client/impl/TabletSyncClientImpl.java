@@ -17,6 +17,7 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.client.schema.Table;
+import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
 import rtidb.api.Tablet;
@@ -115,8 +116,8 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		builder.setPid(pid);
 		builder.setTid(tid);
 		builder.setTime(ts);
-		//TODO reduce memory copy
-		builder.setValue(ByteString.copyFrom(buffer.array()));
+		buffer.rewind();
+		builder.setValue(ByteBufferNoCopy.wrap(buffer.asReadOnlyBuffer()));
 		Tablet.PutRequest request = builder.build();
 		Tablet.PutResponse response = tabletServer.put(request);
 		if (response != null && response.getCode() == 0) {
@@ -178,7 +179,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		if (null == name || "".equals(name.trim())) {
 			return false;
 		}
-        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl <= 0)) {
+        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl < 0)) {
             return false;
         }
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();

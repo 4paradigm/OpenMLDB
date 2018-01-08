@@ -118,7 +118,7 @@ void Segment::FreeList(const Slice& pk,
 
 void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     if (keep_cnt == 0) {
-        PDLOG(WARNING, "keep cnt is invalid");
+        PDLOG(WARNING, "[Gc4Head] segment gc4head is disabled");
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();

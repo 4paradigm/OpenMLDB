@@ -29,7 +29,7 @@ public class RowCodec {
 			case kString:
 				byte[] bytes = cache.get(i);
                 if (bytes.length > 128) {
-                    throw new TabletException("kString should be less than 128");
+                    throw new TabletException("kString should be less than or equal 128");
                 }
 				buffer.put((byte)bytes.length);
 				buffer.put(bytes);
@@ -55,7 +55,7 @@ public class RowCodec {
 				buffer.putDouble((Double)row[i]);
 				break;
 			default:
-				break;
+				throw new TabletException(schema.get(i).getType().toString() + " is not support on jvm platform");
 			}
 		}
 		return buffer;
@@ -71,7 +71,7 @@ public class RowCodec {
         while (buffer.position() < buffer.limit()
         		&& index < row.length) {
         	byte type = buffer.get();
-            byte size = buffer.get();
+            int size = buffer.get() & 0xFF ;
             if (size == 0) {
             	row[index] = null;
             	index ++;
