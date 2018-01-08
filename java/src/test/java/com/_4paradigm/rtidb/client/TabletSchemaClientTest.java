@@ -23,7 +23,7 @@ public class TabletSchemaClientTest {
     private static RpcClient rpcClient = null;
     private static TabletSyncClient client = null;
     static {
-    	rpcClient = TabletClientBuilder.buildRpcClient("192.168.33.10", 9527, 100000, 3);
+    	rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
     	client = TabletClientBuilder.buildSyncClient(rpcClient);
     }
     
