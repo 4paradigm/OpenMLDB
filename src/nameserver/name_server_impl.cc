@@ -684,8 +684,11 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         if (table_partition.is_leader() != is_leader) {
             continue;
         }
-        mu_.lock();
-        auto iter = tablets_.find(table_partition.endpoint());
+        Tablets::iterator iter;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            iter = tablets_.find(table_partition.endpoint());
+        }
         // check tablet if exist
         if (iter == tablets_.end()) {
             PDLOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
@@ -696,7 +699,6 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             PDLOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
             return -1;
         }
-        mu_.unlock();
         std::vector<std::string> endpoint;
         uint64_t term = 0;
         if (is_leader) {
@@ -1556,16 +1558,18 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
     uint64_t max_offset = 0;    
     std::string leader_endpoint;
 	for (const auto& endpoint : follower_endpoint) {
-        mu_.lock();
-		auto it = tablets_.find(endpoint);
-		if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        Tablets::iterator it;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+		    it = tablets_.find(endpoint);
+            if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
 
-			PDLOG(WARNING, "endpoint %s is offline. table %s pid %u", 
-							endpoint.c_str(), name.c_str(), pid);
-			task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
-			return;
-		}
-        mu_.unlock();
+                PDLOG(WARNING, "endpoint %s is offline. table %s pid %u", 
+                                endpoint.c_str(), name.c_str(), pid);
+                task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+                return;
+            }
+        }
         uint64_t offset = 0;
         if (!it->second->client_->FollowOfNoOne(tid, pid, cur_term, offset)) {
 
@@ -1582,22 +1586,24 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
     PDLOG(INFO, "new leader is %s. name %s tid %u pid %u offset %lu", 
                 leader_endpoint.c_str(), name.c_str(), tid, pid, max_offset);
 
-    mu_.lock();
-    auto iter = tablets_.find(leader_endpoint);           
-    if (iter == tablets_.end() || iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        PDLOG(WARNING, "endpoint %s is offline", leader_endpoint.c_str());
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
-        return;
-    }
-    follower_endpoint.erase(std::find(follower_endpoint.begin(), follower_endpoint.end(), leader_endpoint));
-    if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 1))) {
-        PDLOG(WARNING, "update leader id  node failed. table name %s pid %u", name.c_str(), pid);
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
-        return;
-    }
-    term_++;
-    cur_term = term_;
-    mu_.unlock();
+    Tablets::iterator iter;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        iter = tablets_.find(leader_endpoint);           
+        if (iter == tablets_.end() || iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            PDLOG(WARNING, "endpoint %s is offline", leader_endpoint.c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            return;
+        }
+        follower_endpoint.erase(std::find(follower_endpoint.begin(), follower_endpoint.end(), leader_endpoint));
+        if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 1))) {
+            PDLOG(WARNING, "update leader id  node failed. table name %s pid %u", name.c_str(), pid);
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            return;
+        }
+        term_++;
+        cur_term = term_;
+    }    
     if (!iter->second->client_->ChangeRole(tid, pid, true, follower_endpoint, cur_term)) {
         PDLOG(WARNING, "change leader failed. name %s tid %u pid %u endpoint %s", 
                         name.c_str(), tid, pid, leader_endpoint.c_str());
