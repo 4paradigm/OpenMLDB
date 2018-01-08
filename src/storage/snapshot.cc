@@ -418,7 +418,7 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     std::string full_path = snapshot_path_ + MANIFEST;
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
-        PDLOG(INFO, "[%s] is not exisit", MANIFEST.c_str());
+        PDLOG(INFO, "[%s] is not exist", MANIFEST.c_str());
         return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);

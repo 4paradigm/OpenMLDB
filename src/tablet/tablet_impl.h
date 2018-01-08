@@ -192,8 +192,7 @@ private:
 
     inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
-    int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
-                            std::string& msg);
+    int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
@@ -207,7 +206,7 @@ private:
     void SchedMakeSnapshot();
 
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
-                       const std::vector<std::string>& replicas);
+                       const std::vector<std::string>& replicas, uint64_t term);
 
     void CheckZkClient();
 
@@ -217,7 +216,8 @@ private:
 
     int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 
-    void AddOPTask(std::shared_ptr<::rtidb::api::TaskInfo> task);
+    int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
+                    std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
 
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);
@@ -234,7 +234,7 @@ private:
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
-    std::list<std::shared_ptr<::rtidb::api::TaskInfo>> task_list_;
+    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
 };
 
