@@ -17,6 +17,7 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.client.schema.Table;
+import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
 import rtidb.api.Tablet;
@@ -115,7 +116,8 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		builder.setPid(pid);
 		builder.setTid(tid);
 		builder.setTime(ts);
-		builder.setValue(ByteString.copyFrom(buffer.array()));
+		buffer.rewind();
+		builder.setValue(ByteBufferNoCopy.wrap(buffer.asReadOnlyBuffer()));
 		Tablet.PutRequest request = builder.build();
 		Tablet.PutResponse response = tabletServer.put(request);
 		if (response != null && response.getCode() == 0) {
