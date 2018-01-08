@@ -115,7 +115,6 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		builder.setPid(pid);
 		builder.setTid(tid);
 		builder.setTime(ts);
-		//TODO reduce memory copy
 		builder.setValue(ByteString.copyFrom(buffer.array()));
 		Tablet.PutRequest request = builder.build();
 		Tablet.PutResponse response = tabletServer.put(request);
@@ -178,7 +177,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		if (null == name || "".equals(name.trim())) {
 			return false;
 		}
-        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl <= 0)) {
+        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl < 0)) {
             return false;
         }
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
