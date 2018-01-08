@@ -508,7 +508,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
             PDLOG(WARNING,"no replicator for table tid[%u] pid[%u]", tid, pid);
             return -1;
         }
-        PDLOG(INFO, "change to leader. tid[%u] pid[%u]", tid, pid);
+        PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, term);
         table->SetLeader(true);
         table->SetReplicas(replicas);
         replicator->SetRole(ReplicatorRole::kLeaderNode);

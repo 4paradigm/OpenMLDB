@@ -1257,12 +1257,6 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
     }
     if (follower_endpoint.empty()) {
         PDLOG(INFO, "table not found follower. name %s pid %u", name.c_str(), pid);
-        if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + name)) {
-            PDLOG(WARNING, "delete table node[%s/%s] failed! value[%s]", 
-                            zk_table_data_path_.c_str(), name.c_str());
-            return -1;
-        }       
-        table_info_.erase(iter);
         return 0;
     }
     if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
