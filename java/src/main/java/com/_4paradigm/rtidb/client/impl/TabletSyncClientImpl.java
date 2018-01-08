@@ -26,6 +26,7 @@ import rtidb.api.TabletServer;
 public class TabletSyncClientImpl implements TabletSyncClient {
 	private final static Logger logger = LoggerFactory.getLogger(TabletSyncClientImpl.class);
 	private TabletServer tabletServer;
+    private final static int KEEP_LATEST_MAX_NUM = 1000;
 	public TabletSyncClientImpl(TabletServer tabletServer) {
 		this.tabletServer = tabletServer;
 	}
@@ -171,9 +172,15 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 	@Override
 	public boolean createTable(String name, int tid, int pid, long ttl, TTLType type, int segCnt,
 			List<ColumnDesc> schema) {
+		if (ttl < 0) {
+			return false;
+		}
 		if (null == name || "".equals(name.trim())) {
 			return false;
 		}
+        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl <= 0)) {
+            return false;
+        }
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
         Set<String> usedColumnName = new HashSet<String>();
 		if (schema != null && schema.size() > 0) {
@@ -190,9 +197,14 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 					builder.addDimensions(desc.getName());
 				}
 			}
-			ByteBuffer buffer = SchemaCodec.encode(schema);
-			builder.setSchema(ByteString.copyFrom(buffer.array()));
-			
+            try {
+            	ByteBuffer buffer = SchemaCodec.encode(schema);
+			    builder.setSchema(ByteString.copyFrom(buffer.array()));
+            }catch (TabletException e) {
+                logger.error("fail to decode schema");
+                return false;
+            }
+					
 		}
 		if (type != null) {
 			builder.setTtlType(type);

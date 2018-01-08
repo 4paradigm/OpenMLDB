@@ -28,6 +28,9 @@ public class RowCodec {
 			switch (schema.get(i).getType()) {
 			case kString:
 				byte[] bytes = cache.get(i);
+                if (bytes.length > 128) {
+                    throw new TabletException("kString should be less than 128");
+                }
 				buffer.put((byte)bytes.length);
 				buffer.put(bytes);
 				break;

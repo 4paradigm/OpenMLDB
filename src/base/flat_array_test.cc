@@ -18,6 +18,31 @@ public:
     ~FlatArrayTest() {}
 };
 
+TEST_F(FlatArrayTest, Decode) {
+    std::string buffer;
+    FlatArrayCodec codec(&buffer, 2);
+    bool ok = codec.Append(1.2f);
+    ASSERT_TRUE(ok);
+    std::string big_col(100,'a'); 
+    ok = codec.Append(big_col);
+    ASSERT_TRUE(ok);
+    codec.Build();
+
+    FlatArrayIterator it(buffer.c_str(), buffer.size());
+    float value = 0;
+    ok = it.GetFloat(&value);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(1.2f, value);
+    std::string value2;
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    ok = it.GetString(&value2);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(big_col, value2);
+    it.Next();
+    ASSERT_FALSE(it.Valid());
+}
+
 TEST_F(FlatArrayTest, Encode) {
     std::string buffer;
     FlatArrayCodec codec(&buffer, 2);
