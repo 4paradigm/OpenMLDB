@@ -43,7 +43,7 @@ public class TtlCreateTest {
     client.dropTable(tid, 0);
   }
 
-//  @AfterMethod
+  @AfterMethod
   public void tearDown(){
     System.out.println("drop..." + tid);
     client.dropTable(tid, 0);
@@ -52,10 +52,11 @@ public class TtlCreateTest {
   @DataProvider(name = "latest")
   public Object[][] latest() {
     return new Object[][] {
+        {-1, false},
         {0, true},
         {1, true},
-        {-1, false},
         {1000, true},
+        {1001, false},
     }; }
 
   @Test(dataProvider = "latest")
@@ -106,7 +107,7 @@ public class TtlCreateTest {
         {true, 10002, 1, TTLType.kLatestTime, "v1,20:0;v2,30:1;v3,10:0"},
         {true, 10003, 1, TTLType.kLatestTime, "v1,30:1;v2,10:0;v3,20:0"},
         {true, 10004, 1, TTLType.kLatestTime, "v1,10:0;v2,10:0;v3,30:1"},
-        {true, 10005, 1, TTLType.kLatestTime, "v1,10:0;v2,30:1;v3,30:0"},
+        {true, 10005, 1, TTLType.kLatestTime, "v1,10:0;v2,30:0;v3,30:1"},
         {true, 10006, 1, TTLType.kLatestTime, "v1,10:0;v2,30:1"},
         {true, 10007, 2, TTLType.kLatestTime, "v1,10:1;v2,30:1"},
         {true, 10008, 3, TTLType.kLatestTime, "v1,10:1;v2,30:1"},
@@ -117,7 +118,7 @@ public class TtlCreateTest {
         {false, 10013, 1, TTLType.kLatestTime, "v1,20:0;v2,30:1;v3,10:0"},
         {false, 10014, 1, TTLType.kLatestTime, "v1,30:1;v2,10:0;v3,20:0"},
         {false, 10015, 1, TTLType.kLatestTime, "v1,10:0;v2,10:0;v3,30:1"},
-        {false, 10016, 1, TTLType.kLatestTime, "v1,10:0;v2,30:1;v3,30:0"},
+        {false, 10016, 1, TTLType.kLatestTime, "v1,10:0;v2,30:0;v3,30:1"},
         {false, 10017, 1, TTLType.kLatestTime, "v1,10:0;v2,30:1"},
         {false, 10018, 2, TTLType.kLatestTime, "v1,10:1;v2,30:1"},
         {false, 10019, 3, TTLType.kLatestTime, "v1,10:1;v2,30:1"},

@@ -47,7 +47,7 @@ public class SPutTest {
     System.out.println("drop..." + tid);
   }
 
-//  @AfterMethod
+  @AfterMethod
   public void tearDown(){
     System.out.println("drop..." + tid);
     client.dropTable(tid, 0);
@@ -60,6 +60,7 @@ public class SPutTest {
         {ColumnType.kString, " ", true},
         {ColumnType.kString, "、*&……%￥", true},
         {ColumnType.kString, "", false},
+        {ColumnType.kString, null, false},
         {ColumnType.kString, genLongString(128), true},
         {ColumnType.kString, genLongString(129), false},
         {ColumnType.kFloat, 10.0f, true},
@@ -78,9 +79,10 @@ public class SPutTest {
         {ColumnType.kDouble, -1e-1d, true},
         {ColumnType.kDouble, -1e-10d, true},
         {ColumnType.kDouble, null, false},
-        {ColumnType.kNull, "13579", true},
+//        {ColumnType.kNull, "111", true},
         {ColumnType.kNull, null, false},
         {ColumnType.kUInt32, 1, false},
+        {ColumnType.kUInt32, null, false},
     }; }
 
   @Test(dataProvider = "putdata")
@@ -125,6 +127,8 @@ public class SPutTest {
           Assert.assertEquals(value, row[1]);
         }
         it.next();
+      } else {
+        Assert.assertFalse(putok);
       }
     } catch (Exception e) {
       e.printStackTrace();

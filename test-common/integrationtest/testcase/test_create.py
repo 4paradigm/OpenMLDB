@@ -51,14 +51,14 @@ class TestCreateTable(TestCaseBase):
         创建高维表，所有schema字段都是index
         :return:
         """
-        self.multidimension_vk = {'c' * 128: ('string:index', 'pk0'),
-                                  'merchant': ('string:index', 'pk1'),
-                                  'amt': ('string', 'a' * 100)}
+        self.multidimension_vk = {'a' * 126: ('string:index', '1'),
+                                  'b': ('string:index', '2'),
+                                  'c': ('string', '3')}
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
-        self.multidimension_vk = {'c' * 129: ('string:index', 'pk0'),
-                                  'merchant': ('string:index', 'pk1'),
-                                  'amt': ('string', 'a' * 100)}
+        self.multidimension_vk = {'a' * 127: ('string:index', '1'),
+                                  'b': ('string:index', '2'),
+                                  'c': ('string', '3')}
         rs2 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Fail to create table' in rs2)
 
