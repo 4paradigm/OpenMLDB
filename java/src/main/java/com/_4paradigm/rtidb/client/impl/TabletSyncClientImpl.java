@@ -172,6 +172,9 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 	@Override
 	public boolean createTable(String name, int tid, int pid, long ttl, TTLType type, int segCnt,
 			List<ColumnDesc> schema) {
+		if (ttl < 0) {
+			return false;
+		}
 		if (null == name || "".equals(name.trim())) {
 			return false;
 		}
