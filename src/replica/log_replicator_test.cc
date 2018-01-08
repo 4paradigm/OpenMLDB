@@ -218,7 +218,9 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         ASSERT_TRUE(ok);
     } 
     leader.Notify();
-    leader.AddReplicateNode("127.0.0.1:17528");
+    std::vector<std::string> vec;
+    vec.push_back("127.0.0.1:17528");
+    leader.AddReplicateNode(vec);
     sleep(2);
 
     std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
@@ -335,7 +337,9 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
     leader.Notify();
-    leader.AddReplicateNode("127.0.0.1:18528");
+    std::vector<std::string> vec;
+    vec.push_back("127.0.0.1:18528");
+    leader.AddReplicateNode(vec);
     sleep(2);
 
     std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);

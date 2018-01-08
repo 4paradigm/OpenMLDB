@@ -30,6 +30,7 @@ using ::rtidb::log::SequentialFile;
 using ::rtidb::log::Reader;
 using ::rtidb::log::WriteHandle;
 using ::rtidb::storage::Table;
+using ::rtidb::api::LogEntry;
 
 enum ReplicatorRole {
     kLeaderNode = 1,
@@ -69,7 +70,7 @@ public:
     void DeleteBinlog();
 
     // add replication
-    bool AddReplicateNode(const std::string& endpoint);
+    bool AddReplicateNode(const std::vector<std::string>& endpoint_vec);
 
     bool DelReplicateNode(const std::string& endpoint);
 
@@ -89,6 +90,9 @@ public:
     }
     void SetRole(const ReplicatorRole& role);
 
+    uint64_t GetLeaderTerm();
+    void SetLeaderTerm(uint64_t term);
+
     void SetSnapshotLogPartIndex(uint64_t offset);
 
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);
@@ -96,7 +100,7 @@ public:
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
-    void ApplyEntryToTable(const ::rtidb::api::LogEntry& entry);
+    void ApplyEntryToTable(const LogEntry& entry);
 
 private:
     // the replicator root data path
@@ -110,6 +114,8 @@ private:
     ReplicatorRole role_;
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
+
+    uint64_t term_;
     // sync mutex
     std::mutex mu_;
     std::condition_variable cv_;
@@ -125,6 +131,7 @@ private:
     std::atomic<uint64_t> refs_;
 
     std::atomic<int> snapshot_log_part_index_;
+    std::atomic<uint64_t> snapshot_last_offset_;
 
     std::mutex wmu_;
 

@@ -179,6 +179,24 @@ void HandleNSAddReplica(const std::vector<std::string>& parts, ::rtidb::client::
     } 
 }
 
+void HandleNSDelReplica(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        bool ok = client->DelReplica(parts[1], pid, parts[3]);
+        if (!ok) {
+            std::cout << "Fail to delreplica" << std::endl;
+            return;
+        }
+        std::cout << "DelReplica ok" << std::endl;
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+    } 
+}
+    
 void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
@@ -755,7 +773,7 @@ void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::clien
         std::cout << "Bad changerole format" << std::endl;
         return;
     }
-    if (parts[3].compare("leader") == 0) {
+ 	if (parts[3].compare("leader") == 0) {
         try {
             bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
             if (ok) {
@@ -1238,7 +1256,7 @@ void StartClient() {
         std::string buffer;
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
-        }else {
+        } else {
             std::getline(std::cin, buffer);
             if (buffer.empty()) {
                 continue;
@@ -1333,6 +1351,8 @@ void StartNsClient() {
             HandleNSMakeSnapshot(parts, &client);
         } else if (parts[0] == "addreplica") {
             HandleNSAddReplica(parts, &client);
+        } else if (parts[0] == "delreplica") {
+            HandleNSDelReplica(parts, &client);
         } else if (parts[0] == "drop") {
             HandleNSClientDropTable(parts, &client);
         } else if (parts[0] == "showtable") {
@@ -1349,7 +1369,6 @@ void StartNsClient() {
     }
 
 }
-
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);

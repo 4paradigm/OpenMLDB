@@ -84,7 +84,8 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     ::rtidb::client::TabletClient client(leader_point);
     client.Init();
     std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints, 
+                ::rtidb::api::TTLType::kAbsoluteTime, 16);
     ASSERT_TRUE(ret);
 
     std::string end_point = "127.0.0.1:18530";
@@ -124,7 +125,8 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ::rtidb::client::TabletClient client(leader_point);
     client.Init();
     std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints,
+                ::rtidb::api::TTLType::kAbsoluteTime, 16);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
@@ -155,7 +157,8 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     //server.RunUntilAskedToQuit();
     ::rtidb::client::TabletClient client1(follower_point);
     client1.Init();
-    ret = client1.CreateTable("table1", tid, pid, 14400, false, endpoints, 8);
+    ret = client1.CreateTable("table1", tid, pid, 14400, false, endpoints,
+                ::rtidb::api::TTLType::kAbsoluteTime, 16);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);

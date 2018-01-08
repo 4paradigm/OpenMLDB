@@ -30,7 +30,8 @@ bool CreateTable(TabletClient* client,
                  const char* name, int tid,
                  int pid, int ttl) {
     std::string n(name);
-    return client->CreateTable(n, tid, pid, ttl);
+    return client->CreateTable(n, tid, pid, ttl, true, std::vector<std::string>(), 
+                    ::rtidb::api::TTLType::kAbsoluteTime, 16);
 }
 
 bool Put(TabletClient* client,
