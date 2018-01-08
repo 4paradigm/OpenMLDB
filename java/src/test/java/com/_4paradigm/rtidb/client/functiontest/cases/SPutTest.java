@@ -47,7 +47,7 @@ public class SPutTest {
     System.out.println("drop..." + tid);
   }
 
-  @AfterMethod
+//  @AfterMethod
   public void tearDown(){
     System.out.println("drop..." + tid);
     client.dropTable(tid, 0);
@@ -114,9 +114,10 @@ public class SPutTest {
         KvIterator it = client.scan(tid, 0, "9527", "card", 1999999999999L, 0);
         Assert.assertFalse(it == null);
 
-        Assert.assertTrue(it.valid());
+        Assert.assertFalse(!it.valid());
         Object[] row = it.getDecodedValue();
         Assert.assertTrue(row.length == 2);
+        System.out.println(row[1]);
         Assert.assertEquals("9527", row[0]);
         if (type.equals(ColumnType.kNull)) {
           Assert.assertEquals(null, row[1]);
