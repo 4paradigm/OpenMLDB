@@ -51,7 +51,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    if (::rtidb::api::kLatestTime && ttl > KEEP_LATEST_MAX_NUM) {
+    if (type == ::rtidb::api::kLatestTime && ttl > KEEP_LATEST_MAX_NUM) {
         return false;
     }
     table_meta->set_ttl(ttl);
