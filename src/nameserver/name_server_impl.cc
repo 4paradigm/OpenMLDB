@@ -684,18 +684,19 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         if (table_partition.is_leader() != is_leader) {
             continue;
         }
-        Tablets::iterator iter;
+        std::shared_ptr<TabletInfo> tablet_ptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
-            iter = tablets_.find(table_partition.endpoint());
+            auto iter = tablets_.find(table_partition.endpoint());
             // check tablet if exist
             if (iter == tablets_.end()) {
                 PDLOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
                 return -1;
             }
+            tablet_ptr = iter->second;
         }
         // check tablet healthy
-        if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
             PDLOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
             return -1;
         }
@@ -719,7 +720,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             }
             endpoint_map[table_partition.pid()].push_back(table_partition.endpoint());
         }
-        if (!iter->second->client_->CreateTable(table_info->name(), table_index_, table_partition.pid(), 
+        if (!tablet_ptr->client_->CreateTable(table_info->name(), table_index_, table_partition.pid(), 
                                 table_info->ttl(), is_leader, endpoint, ::rtidb::api::TTLType::kAbsoluteTime,
                                 table_info->seg_cnt(), term)) {
 
@@ -1586,10 +1587,10 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
     PDLOG(INFO, "new leader is %s. name %s tid %u pid %u offset %lu", 
                 leader_endpoint.c_str(), name.c_str(), tid, pid, max_offset);
 
-    Tablets::iterator iter;
+    std::shared_ptr<TabletInfo> tablet_ptr;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        iter = tablets_.find(leader_endpoint);           
+        auto iter = tablets_.find(leader_endpoint);           
         if (iter == tablets_.end() || iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
             PDLOG(WARNING, "endpoint %s is offline", leader_endpoint.c_str());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
@@ -1601,10 +1602,11 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
             return;
         }
+        tablet_ptr = iter->second;
         term_++;
         cur_term = term_;
-    }    
-    if (!iter->second->client_->ChangeRole(tid, pid, true, follower_endpoint, cur_term)) {
+    }
+    if (!tablet_ptr->client_->ChangeRole(tid, pid, true, follower_endpoint, cur_term)) {
         PDLOG(WARNING, "change leader failed. name %s tid %u pid %u endpoint %s", 
                         name.c_str(), tid, pid, leader_endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
