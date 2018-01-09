@@ -177,7 +177,6 @@ public:
     }
 
     Node<K,V>* SplitByPos(uint64_t pos) {
-        uint64_t cnt = 0;
         Node<K, V>* pos_node = head_->GetNext(0);
         for (uint64_t idx = 0; idx < pos; idx++) {
             if (pos_node == NULL) {
@@ -188,8 +187,11 @@ public:
         if (pos_node == NULL) {
             return NULL;
         }
-        Node<K, V>* node = head_->GetNext(0);
+        Node<K, V>* node = head_;
         Node<K, V>* pre = head_;
+        // read form head node, so let pos plus one
+        pos++;
+        uint64_t cnt = 0;
         while (node != NULL) {
             if (cnt == pos) {
                 for (uint8_t i = 0; i < pre->Height(); i++) {
