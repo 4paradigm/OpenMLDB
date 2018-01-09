@@ -694,11 +694,11 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                 return -1;
             }
             tablet_ptr = iter->second;
-        }
-        // check tablet healthy
-        if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-            PDLOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
-            return -1;
+            // check tablet healthy
+            if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                PDLOG(WARNING, "endpoint [%s] is offline", table_partition.endpoint().c_str());
+                return -1;
+            }
         }
         std::vector<std::string> endpoint;
         uint64_t term = 0;
