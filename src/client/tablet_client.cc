@@ -13,6 +13,8 @@
 namespace rtidb {
 namespace client {
 
+const uint32_t KEEP_LATEST_MAX_NUM = 1000;
+
 TabletClient::TabletClient(const std::string& endpoint):endpoint_(endpoint), client_(endpoint){
 }
 
@@ -35,7 +37,10 @@ bool TabletClient::CreateTable(const std::string& name,
                      bool leader) {
     std::string schema;
     ::rtidb::base::SchemaCodec codec;
-    codec.Encode(columns, schema);
+    bool codec_ok = codec.Encode(columns, schema);
+    if (!codec_ok) {
+        return false;
+    }
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     for (uint32_t i = 0; i < columns.size(); i++) {
@@ -46,6 +51,9 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
+    if (type == ::rtidb::api::kLatestTime && ttl > KEEP_LATEST_MAX_NUM) {
+        return false;
+    }
     table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(seg_cnt);
     table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
@@ -53,7 +61,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_ttl_type(type);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    }else {
+    } else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
     ::rtidb::api::CreateTableResponse response;
@@ -65,29 +73,16 @@ bool TabletClient::CreateTable(const std::string& name,
     return false;
 }
 
-bool TabletClient::CreateTable(const std::string& name, uint32_t tid, 
-                               uint32_t pid,
-                               uint64_t ttl, uint32_t seg_cnt, 
-                               const std::vector<::rtidb::base::ColumnDesc>& columns) {
-    return CreateTable(name, tid, pid, ttl, 
-                       seg_cnt, columns, 
-                       ::rtidb::api::TTLType::kAbsoluteTime, 
-                       true);
-}
-
-bool TabletClient::CreateTable(const std::string& name, uint32_t id,
-                               uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
-    std::vector<std::string> endpoints;
-    return CreateTable(name, id, pid, ttl, true, endpoints, seg_cnt);
-}
-
 bool TabletClient::CreateTable(const std::string& name,
                      uint32_t tid, uint32_t pid, uint64_t ttl,
                      bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
-                     uint32_t seg_cnt) {
+                     uint32_t seg_cnt, uint64_t term) {
     ::rtidb::api::CreateTableRequest request;
+    if (type == ::rtidb::api::kLatestTime && ttl > KEEP_LATEST_MAX_NUM) {
+        return false;
+    }
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
     table_meta->set_tid(tid);
@@ -96,6 +91,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_seg_cnt(seg_cnt);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_term(term);
     }else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
@@ -110,13 +106,6 @@ bool TabletClient::CreateTable(const std::string& name,
         return true;
     }
     return false;
-}
-
-bool TabletClient::CreateTable(const std::string& name,
-                               uint32_t tid, uint32_t pid, uint64_t ttl,
-                               bool leader, const std::vector<std::string>& endpoints,
-                               uint32_t seg_cnt) {
-    return CreateTable(name, tid, pid, ttl, leader, endpoints, ::rtidb::api::TTLType::kAbsoluteTime, seg_cnt);
 }
 
 bool TabletClient::Put(uint32_t tid,
@@ -178,7 +167,7 @@ bool TabletClient::Put(uint32_t tid,
 }
 
 bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+        std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -194,8 +183,23 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
     return false;
 }
 
+bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term, uint64_t& offset) {
+    ::rtidb::api::AppendEntriesRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_term(term);
+    ::rtidb::api::AppendEntriesResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        offset = response.log_offset();
+        return true;
+    }
+    return false;
+}
+
 bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid, 
-        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+        std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -212,7 +216,7 @@ bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+        std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -229,7 +233,7 @@ bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::SendSnapshot(uint32_t tid, uint32_t pid, const std::string& endpoint,
-        std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+        std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::SendSnapshotRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -255,7 +259,7 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t id,
 bool TabletClient::LoadTable(const std::string& name,
                                uint32_t tid, uint32_t pid, uint64_t ttl,
                                bool leader, const std::vector<std::string>& endpoints,
-                               uint32_t seg_cnt, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+                               uint32_t seg_cnt, std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::LoadTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
@@ -289,12 +293,13 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader) {
 }
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
-        const std::vector<std::string>& endpoints) {
+        const std::vector<std::string>& endpoints, uint64_t term) {
     ::rtidb::api::ChangeRoleRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     if (leader) {
         request.set_mode(::rtidb::api::TableMode::kTableLeader);
+        request.set_term(term);
     } else {
         request.set_mode(::rtidb::api::TableMode::kTableFollower);
     }
@@ -489,7 +494,7 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid) {
 }
 
 bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
-            std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+            std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::ReplicaRequest request;
     ::rtidb::api::AddReplicaResponse response;
     request.set_tid(tid);
@@ -506,12 +511,16 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& end
     return true;
 }
 
-bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint) {
+bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
+            std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::ReplicaRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_endpoint(endpoint);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DelReplica,
             &request, &response, 12, 1);
     if (!ok || response.code()  != 0) {

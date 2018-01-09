@@ -118,6 +118,21 @@ bool NsClient::AddReplica(const std::string& name, uint32_t pid, const std::stri
     return false;
 }
 
+bool NsClient::DelReplica(const std::string& name, uint32_t pid, const std::string& endpoint) {
+    ::rtidb::nameserver::DelReplicaNSRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::nameserver::DelReplicaData* data = request.mutable_data();
+    data->set_name(name);
+    data->set_pid(pid);
+    data->set_endpoint(endpoint);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DelReplicaNS,
+            &request, &response, 12, 1);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 }
 }
 

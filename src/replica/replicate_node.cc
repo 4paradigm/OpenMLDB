@@ -13,6 +13,7 @@
 DECLARE_int32(binlog_sync_batch_size);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
+DECLARE_string(zk_cluster);
 
 namespace rtidb {
 namespace replica {
@@ -57,11 +58,12 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
     last_sync_offset_ = offset;
 }
 
-
-int ReplicateNode::MatchLogOffsetFromNode() {
+int ReplicateNode::MatchLogOffsetFromNode(uint64_t term) {
+    term_ = term;
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
+    request.set_term(term);
     request.set_pre_log_index(0);
     ::rtidb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
@@ -70,10 +72,12 @@ int ReplicateNode::MatchLogOffsetFromNode() {
         last_sync_offset_ = response.log_offset();
         log_matched_ = true;
         log_reader_.SetOffset(last_sync_offset_);
-        PDLOG(INFO, "match node %s log offset %lld for table tid %d pid %d",
+        PDLOG(INFO, "match node %s log offset %lu for table tid %u pid %u",
                   endpoint_.c_str(), last_sync_offset_, tid_, pid_);
         return 0;
     }
+    PDLOG(WARNING, "match node %s log offset failed. tid %u pid %u",
+                    endpoint_.c_str(), tid_, pid_);
     return -1;
 }
 
@@ -106,6 +110,9 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         request.set_tid(tid_);
         request.set_pid(pid_);
         request.set_pre_log_index(last_sync_offset_);
+        if (!FLAGS_zk_cluster.empty()) {
+            request.set_term(term_);
+        }
         uint32_t batchSize = log_offset - last_sync_offset_;
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);
         for (uint64_t i = 0; i < batchSize; ) {

@@ -17,14 +17,17 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.client.schema.Table;
+import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
 import rtidb.api.Tablet;
+import rtidb.api.Tablet.TTLType;
 import rtidb.api.TabletServer;
 
 public class TabletSyncClientImpl implements TabletSyncClient {
 	private final static Logger logger = LoggerFactory.getLogger(TabletSyncClientImpl.class);
 	private TabletServer tabletServer;
+    private final static int KEEP_LATEST_MAX_NUM = 1000;
 	public TabletSyncClientImpl(TabletServer tabletServer) {
 		this.tabletServer = tabletServer;
 	}
@@ -87,35 +90,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 	@Override
 	public boolean createTable(String name, int tid, int pid, long ttl, 
 			                   int segCnt, List<ColumnDesc> schema) {
-
-		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
-        Set<String> usedColumnName = new HashSet<String>();
-		if (schema != null && schema.size() > 0) {
-			ByteBuffer buffer = SchemaCodec.encode(schema);
-			builder.setSchema(ByteString.copyFrom(buffer.array()));
-			for (ColumnDesc desc : schema) {
-                if (usedColumnName.contains(desc.getName())) {
-                    return false;
-                }
-                usedColumnName.add(desc.getName());
-				if (desc.isAddTsIndex()) {
-					builder.addDimensions(desc.getName());
-				}
-			}
-		}
-		builder.setName(name).setTid(tid).setPid(pid).setTtl(ttl).setSegCnt(segCnt);
-		Tablet.TableMeta meta = builder.build();
-		Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setTableMeta(meta).build();
-		Tablet.CreateTableResponse response = tabletServer.createTable(request);
-		if (response != null && response.getCode() == 0) {
-			if (schema != null) {
-				Table table = new Table(schema);
-				GTableSchema.tableSchema.put(tid, table);
-			}
-			return true;
-		}
-		return false;
-
+		return createTable(name, tid, pid, ttl, null, segCnt, schema);
 	}
 
 	@Override
@@ -141,8 +116,8 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		builder.setPid(pid);
 		builder.setTid(tid);
 		builder.setTime(ts);
-		//TODO reduce memory copy
-		builder.setValue(ByteString.copyFrom(buffer.array()));
+		buffer.rewind();
+		builder.setValue(ByteBufferNoCopy.wrap(buffer.asReadOnlyBuffer()));
 		Tablet.PutRequest request = builder.build();
 		Tablet.PutResponse response = tabletServer.put(request);
 		if (response != null && response.getCode() == 0) {
@@ -187,5 +162,65 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 			return new KvIterator(response.getPairs(), table.getSchema());
 		}
 		return null;
+	}
+
+	@Override
+	public boolean createTable(String name, int tid, int pid, long ttl, TTLType type, int segCnt) {
+		
+		return createTable(name, tid, pid, ttl, type, segCnt, null);
+	}
+
+	@Override
+	public boolean createTable(String name, int tid, int pid, long ttl, TTLType type, int segCnt,
+			List<ColumnDesc> schema) {
+		if (ttl < 0) {
+			return false;
+		}
+		if (null == name || "".equals(name.trim())) {
+			return false;
+		}
+        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl < 0)) {
+            return false;
+        }
+		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
+        Set<String> usedColumnName = new HashSet<String>();
+		if (schema != null && schema.size() > 0) {
+			for (ColumnDesc desc : schema) {
+				if (null == desc.getName() 
+					||"".equals(desc.getName().trim())) {
+					return false;
+				}
+                if (usedColumnName.contains(desc.getName())) {
+                    return false;
+                }
+                usedColumnName.add(desc.getName());
+				if (desc.isAddTsIndex()) {
+					builder.addDimensions(desc.getName());
+				}
+			}
+            try {
+            	ByteBuffer buffer = SchemaCodec.encode(schema);
+			    builder.setSchema(ByteString.copyFrom(buffer.array()));
+            }catch (TabletException e) {
+                logger.error("fail to decode schema");
+                return false;
+            }
+					
+		}
+		if (type != null) {
+			builder.setTtlType(type);
+		}
+		builder.setName(name).setTid(tid).setPid(pid).setTtl(ttl).setSegCnt(segCnt);
+		Tablet.TableMeta meta = builder.build();
+		Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setTableMeta(meta).build();
+		Tablet.CreateTableResponse response = tabletServer.createTable(request);
+		if (response != null && response.getCode() == 0) {
+			if (schema != null) {
+				Table table = new Table(schema);
+				GTableSchema.tableSchema.put(tid, table);
+			}
+			return true;
+		}
+		return false;
 	}
 }

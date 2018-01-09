@@ -27,7 +27,8 @@ enum ColType {
     kDouble = 4,
     kNull = 5,
     kUInt32 = 6,
-    kUInt64 = 7
+    kUInt64 = 7,
+    kUnknown = 100
 };
 
 struct Column {
@@ -65,6 +66,9 @@ public:
             cbuffer += 1;
             //TODO limit the name length
             const std::string& name = columns[i].name;
+            if (name.size() >= 128) {
+                return false;
+            }
             uint8_t name_size = (uint8_t)name.size();
             memcpy(cbuffer, static_cast<const void*>(&name_size), 1);
             cbuffer += 1;

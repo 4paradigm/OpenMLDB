@@ -25,6 +25,13 @@ public class TabletSyncClientTest {
     }
     
     @Test
+    public void testInvalidTtlCreate() {
+    	int tid = id.incrementAndGet();
+        boolean ok = client.createTable("tj0", tid, 0, -1, 8);
+        Assert.assertFalse(ok);
+    }
+    
+    @Test
     public void test0Create() {
     	int tid = id.incrementAndGet();
         boolean ok = client.createTable("tj0", tid, 0, 0, 8);

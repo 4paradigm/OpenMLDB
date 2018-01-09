@@ -118,7 +118,7 @@ void Segment::FreeList(const Slice& pk,
 
 void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     if (keep_cnt == 0) {
-        PDLOG(WARNING, "keep cnt is invalid");
+        PDLOG(WARNING, "[Gc4Head] segment gc4head is disabled");
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
@@ -127,27 +127,14 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = it->GetValue();
-        TimeEntries::Iterator* tit = entry->entries.NewIterator();
-        tit->SeekToFirst();
-        uint32_t cnt = 0;
-        uint64_t ts = 0;
-        while (tit->Valid()) {
-            if (cnt >= keep_cnt) {
-                ts = tit->GetKey();
-                break;
-            }
-            cnt++;
-            tit->Next();
-        }
-        delete tit;
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
-        if (cnt >= keep_cnt) {
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                SplitList(entry, ts, &node);
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+                node = entry->entries.SplitByPos(keep_cnt);
             }
-            FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }
+        FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4Head] segment gc keep cnt %lu consumed %lld, count %lld", keep_cnt,

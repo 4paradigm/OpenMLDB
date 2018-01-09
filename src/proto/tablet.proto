@@ -39,6 +39,8 @@ enum TTLType {
 enum OPType {
     kMakeSnapshotOP = 1;
     kAddReplicaOP = 2;
+    kDelReplicaOP = 3;
+    KSelectLeaderOP = 4;
 }
 
 enum TaskType {
@@ -47,9 +49,11 @@ enum TaskType {
     kRecoverSnapshot = 3;
     kSendSnapshot = 4;
     kLoadTable = 5;
-    kChangeFollower = 6;
-    kAddReplica = 7;
-    kAddTableInfo = 8;
+    kAddReplica = 6;
+    kAddTableInfo = 7;
+    kDelReplica = 8;
+    kDelTableInfo = 9;
+    kChangeLeader = 10;
 }
 
 enum TaskStatus {
@@ -191,7 +195,7 @@ message TableMeta {
 	optional TableMode mode = 8;
     optional bool wal = 9 [default = true];
     // term for change role
-    optional uint64 term = 10;
+    optional uint64 term = 10 [default = 0];
     optional bytes schema = 11;
     repeated string dimensions = 12;
 }
@@ -258,7 +262,6 @@ message LogEntry {
 message AppendEntriesRequest {
     optional uint64 pre_log_index = 2;
     repeated LogEntry entries = 4;
-    optional uint64 leader_endpoint = 5;
     optional uint32 tid = 6;
     optional uint32 pid = 7;
     optional uint64 term = 8;
@@ -272,11 +275,11 @@ message AppendEntriesResponse {
 }
 
 message ChangeRoleRequest {
-    optional uint32 tid = 6;
-    optional uint32 pid = 7;
-    optional uint64 term = 1;
-    optional TableMode mode = 2;
-    repeated string replicas = 3;
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint64 term = 3;
+    optional TableMode mode = 4;
+    repeated string replicas = 5;
 }
 
 message SendSnapshotRequest {
@@ -295,7 +298,6 @@ message CreateStreamRequest {
 message ChangeRoleResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional uint64 term = 3;
 }
 
 // Get all table status information on tablet
