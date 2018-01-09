@@ -1559,10 +1559,10 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
     uint64_t max_offset = 0;    
     std::string leader_endpoint;
 	for (const auto& endpoint : follower_endpoint) {
-        Tablets::iterator it;
+        std::shared_ptr<TabletInfo> tablet_ptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
-		    it = tablets_.find(endpoint);
+		    auto it = tablets_.find(endpoint);
             if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
 
                 PDLOG(WARNING, "endpoint %s is offline. table %s pid %u", 
@@ -1570,9 +1570,10 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
                 task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
                 return;
             }
+            tablet_ptr = it->second;
         }
         uint64_t offset = 0;
-        if (!it->second->client_->FollowOfNoOne(tid, pid, cur_term, offset)) {
+        if (!tablet_ptr->client_->FollowOfNoOne(tid, pid, cur_term, offset)) {
 
             PDLOG(WARNING, "followOfNoOne failed. tid[%u] pid[%u] endpoint[%s]", 
                             tid, pid, endpoint.c_str());
