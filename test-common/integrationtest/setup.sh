@@ -92,6 +92,7 @@ function stop_all_clients() {
     rm -rf ${leaderpath}/db/* ${slave1path}/db/* ${slave2path}/db/*
 }
 
+rm -rf ${leaderpath}/db/* ${slave1path}/db/* ${slave2path}/db/*
 setup
 
 # setup xmlrunner

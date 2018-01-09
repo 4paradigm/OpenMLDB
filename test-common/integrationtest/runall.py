@@ -10,7 +10,7 @@ import libs.conf as conf
 
 if __name__ == "__main__":
     testpath = os.getenv('testpath')
-    tests = commands.getstatusoutput('ls {}/testcase|egrep -v "frame|pyc|init|ns_client"'.format(testpath))[1].split('\n')
+    tests = commands.getstatusoutput('ls {}/testcase|egrep -v "frame|pyc|init"'.format(testpath))[1].split('\n')
     test_suite = []
     for module in tests:
         mo = importlib.import_module('testcase.{}'.format(module[:-3]))

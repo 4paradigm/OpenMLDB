@@ -152,6 +152,7 @@ public class SPutTest {
         if (type.equals(ColumnType.kNull) || value == "") {
           Assert.assertEquals(null, row[1]);
         } else {
+          System.out.println(value);
           Assert.assertEquals(value, row[1]);
         }
         it.next();

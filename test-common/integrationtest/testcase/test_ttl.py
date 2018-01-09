@@ -39,7 +39,7 @@ class TestTtl(TestCaseBase):
         ('latest:1.5', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
         ('latest:1111111111111111', 'Fail to create table'),
         ('latest:a', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
-        ('latestt:1', 'Create table failed'),
+        ('latestt:1', 'invalid ttl type'),
     )
     @ddt.unpack
     def test_ttl_abnormal_create_md(self, ttl, exp_msg):
