@@ -29,7 +29,7 @@ RpcClient rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 1000
 ### 通过spring配置初始化链接例子
 
 ```
-
+//TODO
 ```
 
 ### 通过代码初始化一个同步客户端
@@ -46,5 +46,16 @@ TabletSyncClient syncClient = TabletClientBuilder.buildSyncClient(rpcClient);
 RpcClient rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
 // 从rpc client里面创建一个异步客户端
 TabletAsyncClient asyncClient = TabletClientBuilder.buildAsyncClient(rpcClient); 
+```
+
+### 创建一个简单kv表
+
+```
+// 第一参数为 table名称 
+// 第二个参数为 table id
+// 第三个参数为 table 分片id ，如果单机版本可以设置为0即可
+// 第四个参数为过期时间，单位为分钟，意思是数据只保留10分钟
+// 第五个参数为 table 分片在tablet上面最大并发数
+boolean ok = syncClient.createTable("kvtable", 1, 0, 10, 8);
 ```
 
