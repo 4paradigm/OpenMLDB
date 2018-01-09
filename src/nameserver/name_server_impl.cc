@@ -688,11 +688,11 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         {
             std::lock_guard<std::mutex> lock(mu_);
             iter = tablets_.find(table_partition.endpoint());
-        }
-        // check tablet if exist
-        if (iter == tablets_.end()) {
-            PDLOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
-            return -1;
+            // check tablet if exist
+            if (iter == tablets_.end()) {
+                PDLOG(WARNING, "endpoint[%s] can not find client", table_partition.endpoint().c_str());
+                return -1;
+            }
         }
         // check tablet healthy
         if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
