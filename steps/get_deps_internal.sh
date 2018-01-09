@@ -125,7 +125,6 @@ else
   tar -zxvf common.tar.gz
   cd common
   sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/include/' Makefile
-  sed -i 's/LOG(/PDLOG(/g' include/logging.h
   make -j2 >/dev/null
   cp -rf include/* ${DEPS_PREFIX}/include
   cp -rf libcommon.a ${DEPS_PREFIX}/lib
