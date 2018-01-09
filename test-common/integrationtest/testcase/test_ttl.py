@@ -18,7 +18,7 @@ class TestTtl(TestCaseBase):
         ('latest:1.5', 'Invalid args, tid , pid or ttl should be uint32_t'),
         ('latest:111111111111', 'Fail to create table'),
         ('latest:a', 'Invalid args, tid , pid or ttl should be uint32_t'),
-        ('latestt:1', 'Create table failed'),
+        ('latestt:1', 'invalid ttl type'),
     )
     @ddt.unpack
     def test_ttl_abnormal_create(self, ttl, exp_msg):
