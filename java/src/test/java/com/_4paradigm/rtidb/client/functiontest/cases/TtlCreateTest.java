@@ -156,7 +156,7 @@ public class TtlCreateTest {
       } else {
         ok = client.createTable("tj0", tid, 0, ttl, ttlType, 8);
       }
-//      Assert.assertFalse(!ok);
+      Assert.assertFalse(!ok);
 
       try {
         String[] data = ttlValues.split(";");
@@ -170,7 +170,7 @@ public class TtlCreateTest {
           } else {
             putok = client.put(tid, 0, "pk", ts, merchant);
           }
-//          Assert.assertFalse(!putok);
+          Assert.assertFalse(!putok);
         }
         KvIterator it = null;
         if (multiDimention) {
@@ -179,12 +179,12 @@ public class TtlCreateTest {
           it = client.scan(tid, 0, "pk", 1999999999999L, 0);
         }
         for (String ele : data) {
-//          Assert.assertEquals(it.valid(), true);
+          Assert.assertEquals(it.valid(), true);
           it.next();
         }
       } catch (Exception e) {
         e.printStackTrace();
-//        Assert.fail("data ready failed!");
+        System.out.println("data ready failed!");
       }
     }
     try {

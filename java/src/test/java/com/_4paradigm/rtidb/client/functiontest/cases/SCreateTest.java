@@ -32,6 +32,14 @@ public class SCreateTest {
     client = TabletClientBuilder.buildSyncClient(rpcClient);
   }
 
+  public static String genLongString(int len) {
+    String str = "";
+    for(int i = 0; i < len; i ++) {
+      str += "a";
+    }
+    return str;
+  }
+
   @BeforeMethod
   public void setUp(){
     tid = id.incrementAndGet();
@@ -46,7 +54,7 @@ public class SCreateTest {
   }
 
   @DataProvider(name = "schema")
-  public Object[][] Users() {
+  public Object[][] Schema() {
     return new Object[][] {
         new Object[][]{{true},
             {true, "card", ColumnType.kString},
@@ -60,15 +68,39 @@ public class SCreateTest {
             {false, "card", ColumnType.kString},
             {false, "card1", ColumnType.kString},
             {false, "amt", ColumnType.kString}},
-        new Object[][]{{false}, {false, "card", ColumnType.kDouble}, {false, "card", ColumnType.kString}},
+        new Object[][]{{false},
+            {true, "card", ColumnType.kString},
+            {false, " ", ColumnType.kString},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{false},
+            {true, " ", ColumnType.kString},
+            {false, "card1", ColumnType.kString},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{false},
+            {true, "card", ColumnType.kString},
+            {false, "", ColumnType.kString},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{false},
+            {true, "", ColumnType.kString},
+            {false, "card1", ColumnType.kString},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{false},
+            {false, "card", ColumnType.kDouble},
+            {false, "card", ColumnType.kString}},
         new Object[][]{{true}, {false, "card", ColumnType.kString}},
         new Object[][]{{false}, {true, "", ColumnType.kString}},
         new Object[][]{{false}, {true, "   ", ColumnType.kString}},
+        new Object[][]{{true}, {true, genLongString(128), ColumnType.kString}},
+        new Object[][]{{true}, {false, genLongString(128), ColumnType.kString}},
+        new Object[][]{{true},
+            {true, genLongString(100), ColumnType.kString},
+            {true, genLongString(29), ColumnType.kString}},
+        new Object[][]{{false}, {true, genLongString(129), ColumnType.kString}},
     }; }
 
 
   @Test(dataProvider = "schema")
-  public void test0Create(Object[] ... array) {
+  public void testCreate(Object[] ... array) {
     Boolean result = (Boolean) array[0][0];
     System.out.println(tid);
     List<ColumnDesc> schema = new ArrayList<ColumnDesc>();

@@ -109,5 +109,4 @@ public class TestReport implements IReporter {
     }
     return statusString;
   }
-
 }

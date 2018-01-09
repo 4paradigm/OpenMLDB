@@ -204,8 +204,8 @@ class TestMakeSnapshot(TestCaseBase):
         self.assertTrue('Create table ok' in rs1)
 
         # for multidimension test
-        self.multidimension_vk = {'card': ('string:index', 'testvalue0'),
-                                  'merchant': ('string:index', 'testvalue1'*100),
+        self.multidimension_vk = {'card': ('string:index', 'v' * 120),
+                                  'merchant': ('string:index', 'v' * 120),
                                   'amt': ('double', 1.1)}
         self.put_large_datas(200, 20)
 
@@ -233,6 +233,7 @@ class TestMakeSnapshot(TestCaseBase):
             t.start()
         for t in threads:
             t.join()
+        print rs_list
         self.assertTrue('LoadTable ok' in rs_list)
         self.assertTrue('Fail to MakeSnapshot' in rs_list)
 
