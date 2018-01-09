@@ -6,7 +6,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.protobuf.ByteString;
 import com._4paradigm.rtidb.client.TabletException;
 
 public class SchemaCodec {
@@ -20,8 +19,8 @@ public class SchemaCodec {
 			}else {
 				buffer.put((byte)0);
 			}
-            if (col.getName().getBytes().length >= 128) {
-                throw new TabletException("col name size is too big, which should be less than 128");
+            if (col.getName().getBytes().length >128) {
+                throw new TabletException("col name size is too big, which should be less than or equal 128");
             }
 			buffer.put((byte)(col.getName().getBytes().length));
 			buffer.put(col.getName().getBytes());
@@ -42,7 +41,7 @@ public class SchemaCodec {
 			if ((int)buffer.get() == 1) {
 				desc.setAddTsIndex(true);
 			} 
-			int size = (int)buffer.get();
+			int size = buffer.get() & 0xFF ;
 			byte[] nameBytes = new byte[size];
 			buffer.get(nameBytes);
 			desc.setName(new String(nameBytes, Charset.forName("utf-8")));

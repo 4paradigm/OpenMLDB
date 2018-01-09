@@ -475,6 +475,10 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
             if (vec.size() > 1 && vec[0] == "latest") {
                 type = ::rtidb::api::TTLType::kLatestTime;
             }
+            if (vec.size() > 1 && vec[0] != "latest") {
+                std::cout << "invalid ttl type" << std::endl;
+                return;
+            }
             ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
         }
         if (ttl < 0) {
@@ -905,6 +909,10 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
             ::rtidb::base::SplitString(parts[4], ":", &vec);
             if (vec.size() > 1 && vec[0] == "latest") {
                 type = ::rtidb::api::TTLType::kLatestTime;
+            }
+            if (vec.size() > 1 && vec[0] != "latest" ) {
+                std::cout << "invalid ttl type " << std::endl;
+                return;
             }
             ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         }

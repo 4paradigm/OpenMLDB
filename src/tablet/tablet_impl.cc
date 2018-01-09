@@ -404,7 +404,7 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t last_time = 0;
     while (it->Valid()) {
         scount ++;
-        PDLOG(DEBUG, "scan key %lld value %s", it->GetKey(), it->GetValue()->data);
+        PDLOG(DEBUG, "scan key %lld", it->GetKey());
         if (it->GetKey() <= end_time) {
             break;
         }

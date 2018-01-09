@@ -6,8 +6,7 @@ Database for Real Time Intelligence , It's awesome!
 ![架构图](images/rtidb_arch.png)
 
 # version
-
-0.9.6
+1.2.0
 [![Build Status](http://jenkins.4paradigm.com/view/rtidb_pipline/job/rtidb/badge/icon)](http://jenkins.4paradigm.com/view/rtidb_pipline/job/rtidb/)
 
 # deployment
