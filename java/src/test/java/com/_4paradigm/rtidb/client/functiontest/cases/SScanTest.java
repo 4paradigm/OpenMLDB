@@ -35,9 +35,9 @@ public class SScanTest {
 
   @BeforeMethod
   public void setUp(){
-    client.dropTable(tid, 0);
     tid = id.incrementAndGet();
     System.out.println("drop..." + tid);
+    client.dropTable(tid, 0);
   }
 
   @AfterMethod
@@ -88,6 +88,41 @@ public class SScanTest {
         Assert.assertEquals("merchant333", row[1]);
         it.next();
       }
+    } catch (Exception e) {
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void testScanBigData() {
+    List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    ColumnDesc desc1 = new ColumnDesc();
+    desc1.setAddTsIndex(false);
+    desc1.setName("merchant");
+    desc1.setType(ColumnType.kString);
+    schema.add(desc1);
+
+    ColumnDesc desc2 = new ColumnDesc();
+    desc2.setAddTsIndex(true);
+    desc2.setName("card");
+    desc2.setType(ColumnType.kString);
+    schema.add(desc2);
+
+    Boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+    Assert.assertFalse(!ok);
+
+    try {
+      for (int i = 0; i < 10000; i ++) {
+        client.put(tid, 0, 30, new Object[] {"merchant" + i, "card000"});
+      }
+      KvIterator it = client.scan(tid, 0, "card000", "card", 1999999999999L, 0);
+      Assert.assertFalse(it == null);
+      int row = 0;
+      while (it.valid()){
+        row ++;
+        it.next();
+      }
+      Assert.assertEquals(row, 10000);
     } catch (Exception e) {
       Assert.fail();
     }

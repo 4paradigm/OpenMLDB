@@ -44,8 +44,8 @@ public class SPutTest {
   @BeforeMethod
   public void setUp(){
     tid = id.incrementAndGet();
-    client.dropTable(tid, 0);
     System.out.println("drop..." + tid);
+    client.dropTable(tid, 0);
   }
 
   @AfterMethod
@@ -141,7 +141,12 @@ public class SPutTest {
     Assert.assertFalse(!putok.equals(putOk));
     try {
       if (putOk) {
-        KvIterator it = client.scan(tid, 0, "9527", "card", 1999999999999L, 0);
+        KvIterator it = null;
+        if (isIndex && System.currentTimeMillis() % 2 == 0) {
+          it = client.scan(tid, 0, value.toString(), "merchant", 1999999999999L, 0);
+        } else {
+          it = client.scan(tid, 0, "9527", "card", 1999999999999L, 0);
+        }
         Assert.assertFalse(it == null);
 
         Assert.assertFalse(!it.valid());

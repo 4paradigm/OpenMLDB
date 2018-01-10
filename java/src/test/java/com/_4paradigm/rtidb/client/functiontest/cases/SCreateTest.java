@@ -96,6 +96,18 @@ public class SCreateTest {
             {true, genLongString(100), ColumnType.kString},
             {true, genLongString(29), ColumnType.kString}},
         new Object[][]{{false}, {true, genLongString(129), ColumnType.kString}},
+        new Object[][]{{true},
+            {true, "card", ColumnType.kFloat},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{true},
+            {true, "card", ColumnType.kInt32},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{true},
+            {true, "card", ColumnType.kInt64},
+            {false, "amt", ColumnType.kString}},
+        new Object[][]{{true},
+            {true, "card", ColumnType.kUInt32},
+            {false, "amt", ColumnType.kString}},
     }; }
 
 
