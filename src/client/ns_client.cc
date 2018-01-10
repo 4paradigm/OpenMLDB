@@ -17,7 +17,7 @@ int NsClient::Init() {
     return client_.Init();
 }
 
-bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets) {
+bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     ::rtidb::nameserver::ShowTabletRequest request;
     ::rtidb::nameserver::ShowTabletResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTablet,
@@ -33,11 +33,12 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets) {
         }
         return true;
     }
+    msg = response.msg();
     return false;
 }
 
 bool NsClient::ShowTable(const std::string& name, 
-            std::vector<::rtidb::nameserver::TableInfo>& tables) {
+            std::vector<::rtidb::nameserver::TableInfo>& tables, std::string& msg) {
     ::rtidb::nameserver::ShowTableRequest request;
     if (!name.empty()) {
         request.set_name(name);
@@ -53,10 +54,11 @@ bool NsClient::ShowTable(const std::string& name,
         }
         return true;
     }
+    msg = response.msg();
     return false;
 }
 
-bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid) {
+bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, std::string& msg) {
     ::rtidb::nameserver::MakeSnapshotNSRequest request;
     request.set_name(name);
     request.set_pid(pid);
@@ -66,20 +68,22 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid) {
     if (ok && response.code() == 0) {
         return true;
     }
+    msg = response.msg();
     return false;
 }
 
-bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response) {
+bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, std::string& msg) {
     ::rtidb::nameserver::ShowOPStatusRequest request;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowOPStatus,
             &request, &response, 12, 1);
     if (ok && response.code() == 0) {
         return true;
     }
+    msg = response.msg();
     return false;
 }
 
-bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info) {
+bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg) {
     ::rtidb::nameserver::CreateTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     ::rtidb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
@@ -89,10 +93,11 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info) {
     if (ok && response.code() == 0) {
         return true;
     }
+    msg = response.msg();
     return false;
 }
 
-bool NsClient::DropTable(const std::string& name) {
+bool NsClient::DropTable(const std::string& name, std::string& msg) {
     ::rtidb::nameserver::DropTableRequest request;
     request.set_name(name);
     ::rtidb::nameserver::GeneralResponse response;
@@ -101,10 +106,12 @@ bool NsClient::DropTable(const std::string& name) {
     if (ok && response.code() == 0) {
         return true;
     }
+    msg = response.msg();
     return false;
 }
 
-bool NsClient::AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint) {
+bool NsClient::AddReplica(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, std::string& msg) {
     ::rtidb::nameserver::AddReplicaNSRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
@@ -115,10 +122,12 @@ bool NsClient::AddReplica(const std::string& name, uint32_t pid, const std::stri
     if (ok && response.code() == 0) {
         return true;
     }
+    msg = response.msg();
     return false;
 }
 
-bool NsClient::DelReplica(const std::string& name, uint32_t pid, const std::string& endpoint) {
+bool NsClient::DelReplica(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, std::string& msg) {
     ::rtidb::nameserver::DelReplicaNSRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     ::rtidb::nameserver::DelReplicaData* data = request.mutable_data();
@@ -130,6 +139,7 @@ bool NsClient::DelReplica(const std::string& name, uint32_t pid, const std::stri
     if (ok && response.code() == 0) {
         return true;
     }
+    msg = response.msg();
     return false;
 }
 

@@ -128,9 +128,10 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     std::vector<::rtidb::client::TabletInfo> tablets;
-    bool ok = client->ShowTablet(tablets);
+    std::string msg;
+    bool ok = client->ShowTablet(tablets, msg);
     if (!ok) {
-        std::cout << "Fail to show tablets" << std::endl;
+        std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
         return;
     }
     for (size_t i = 0; i < tablets.size(); i++) { 
@@ -150,9 +151,10 @@ void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client
     }
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        bool ok = client->MakeSnapshot(parts[1], pid);
+        std::string msg;
+        bool ok = client->MakeSnapshot(parts[1], pid, msg);
         if (!ok) {
-            std::cout << "Fail to makesnapshot" << std::endl;
+            std::cout << "Fail to makesnapshot. error msg:" << msg << std::endl;
             return;
         }
         std::cout << "MakeSnapshot ok" << std::endl;
@@ -168,9 +170,10 @@ void HandleNSAddReplica(const std::vector<std::string>& parts, ::rtidb::client::
     }
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        bool ok = client->AddReplica(parts[1], pid, parts[3]);
+        std::string msg;
+        bool ok = client->AddReplica(parts[1], pid, parts[3], msg);
         if (!ok) {
-            std::cout << "Fail to addreplica" << std::endl;
+            std::cout << "Fail to addreplica. error msg:" << msg  << std::endl;
             return;
         }
         std::cout << "AddReplica ok" << std::endl;
@@ -186,9 +189,10 @@ void HandleNSDelReplica(const std::vector<std::string>& parts, ::rtidb::client::
     }
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        bool ok = client->DelReplica(parts[1], pid, parts[3]);
+        std::string msg;
+        bool ok = client->DelReplica(parts[1], pid, parts[3], msg);
         if (!ok) {
-            std::cout << "Fail to delreplica" << std::endl;
+            std::cout << "Fail to delreplica. error msg:" << msg << std::endl;
             return;
         }
         std::cout << "DelReplica ok" << std::endl;
@@ -202,9 +206,10 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::cli
         std::cout << "Bad format" << std::endl;
         return;
     }
-    bool ret = client->DropTable(parts[1]);
+    std::string msg;
+    bool ret = client->DropTable(parts[1], msg);
     if (!ret) {
-        std::cout << "failed to drop" << std::endl;
+        std::cout << "failed to drop. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "drop ok" << std::endl;
@@ -216,9 +221,10 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
         name = parts[1];
     }
     std::vector<::rtidb::nameserver::TableInfo> tables;
-    bool ret = client->ShowTable(name, tables);
+    std::string msg;
+    bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
-        std::cout << "failed to showtable" << std::endl;
+        std::cout << "failed to showtable. error msg: " << msg << std::endl;
         return;
     }
     std::vector<std::string> row;
@@ -229,6 +235,7 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     row.push_back("role");
     row.push_back("seg_cnt");
     row.push_back("ttl");
+    row.push_back("is_alive");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -245,6 +252,11 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
             }
             row.push_back(std::to_string(value.seg_cnt()));
             row.push_back(std::to_string(value.ttl()));
+            if (value.table_partition(idx).is_alive()) {
+                row.push_back("yes");
+            } else {
+                row.push_back("no");
+            }
             tp.AddRow(row);
         }
     }
@@ -330,8 +342,9 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         }
     }
 
-	if (!client->CreateTable(ns_table_info)) {
-		std::cout << "Fail to create table" << std::endl;
+    std::string msg;
+	if (!client->CreateTable(ns_table_info, msg)) {
+		std::cout << "Fail to create table. error msg: " << msg << std::endl;
 		return;
 	}
     std::cout << "Create table ok" << std::endl;
@@ -349,9 +362,10 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     ::rtidb::nameserver::ShowOPStatusResponse response;
-    bool ok = client->ShowOPStatus(response);
+    std::string msg;
+    bool ok = client->ShowOPStatus(response, msg);
     if (!ok) {
-        std::cout << "Fail to show tablets" << std::endl;
+        std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
         return;
     }
     for (int idx = 0; idx < response.op_status_size(); idx++) { 

@@ -30,21 +30,21 @@ public:
 
     int Init();
 
-    bool ShowTablet(std::vector<TabletInfo>& tablets);
+    bool ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg);
     
-    bool ShowTable(const std::string& name, std::vector<::rtidb::nameserver::TableInfo>& tables);
+    bool ShowTable(const std::string& name, std::vector<::rtidb::nameserver::TableInfo>& tables, std::string& msg);
 
-    bool MakeSnapshot(const std::string& name, uint32_t pid);
+    bool MakeSnapshot(const std::string& name, uint32_t pid, std::string& msg);
 
-    bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response);
+    bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, std::string& msg);
 
-    bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info);
+    bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg);
 
-    bool DropTable(const std::string& name);
+    bool DropTable(const std::string& name, std::string& msg);
 
-    bool AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint);
+    bool AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);
 
-    bool DelReplica(const std::string& name, uint32_t pid, const std::string& endpoint);
+    bool DelReplica(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);
 	
 private:
     std::string endpoint_;

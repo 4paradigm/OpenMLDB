@@ -9,6 +9,7 @@ message TablePartition {
     required string endpoint = 1;
     required bool is_leader = 2;
     required uint32 pid = 3;
+    optional bool is_alive = 4 [default = true];
 }
 
 message TableInfo {
