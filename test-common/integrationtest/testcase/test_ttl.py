@@ -68,6 +68,9 @@ class TestTtl(TestCaseBase):
             (10007, 'latest:3', {('v1', 10): True, ('v2', 20): True}),
             (10008, 'latest:1', {('v1', 10): True}),
             (10009, 'latest:0', {('v1', 10): True, ('v2', 20): True}),
+            (10010, '1', {('v1', 10): False, ('v2', 20): False, ('v3', 30): False}),
+            (10011, '144000', {('v1', int(time.time() * 1000)): True, ('v2', 20): False, ('v3', 30): False}),
+            (10012, '0', {('v1', 10): True, ('v2', 20): True, ('v3', 30): True}),
         )
         for data in ddt:
             tid = data[0]
@@ -101,6 +104,9 @@ class TestTtl(TestCaseBase):
         (10007, 'latest:3', {('v1', 10): True, ('v2', 20): True}),
         (10008, 'latest:1', {('v1', 10): True}),
         (10009, 'latest:0', {('v1', 10): True, ('v2', 20): True}),
+        (10010, '1', {('v1', 10): False, ('v2', 20): False, ('v3', 30): False}),
+        (10011, '144000', {('v1', int(time.time() * 1000)): True, ('v2', 20): False, ('v3', 30): False}),
+        (10012, '0', {('v1', 10): True, ('v2', 20): True, ('v3', 30): True}),
     )
     @ddt.unpack
     def test_ttl_latest_2_check_ttl(self, tid, ttl, value_ts_scannable):

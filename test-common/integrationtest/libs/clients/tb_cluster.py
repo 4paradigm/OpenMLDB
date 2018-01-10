@@ -10,26 +10,23 @@ from libs.logger import infoLogger
 
 
 class TbCluster(object):
-    def __init__(self, zk_endpoint, endpoints, scan_endpoints):
+    def __init__(self, zk_endpoint, endpoints):
         self.endpoints = endpoints
-        self.scan_endpoints = scan_endpoints
         self.zk_endpoint = zk_endpoint
         self.leader = ''
 
 
-    def start(self, endpoints, scan_endpoints):
+    def start(self, endpoints):
         confpath = os.getenv('confpath')
         i = 0
         test_path = os.getenv('testpath')
         for ep in endpoints:
-            ep_scan = '{}:{}'.format(ep.split(':')[0], scan_endpoints[i].split(':')[1])
             i += 1
             tb_path = test_path + '/tablet{}'.format(i)
             exe_shell('mkdir -p {}/conf'.format(tb_path))
             exe_shell('cat {} | egrep -v "endpoint=|--gc_interval=|--db_root_path=|--log_dir=" > '
                       '{}/conf/rtidb.flags'.format(confpath, tb_path))
             exe_shell("sed -i '1a --endpoint='{} {}/conf/rtidb.flags".format(ep, tb_path))
-            exe_shell("sed -i '1a --scan_endpoint='{} {}/conf/rtidb.flags".format(ep_scan, tb_path))
             exe_shell("sed -i '1a --gc_interval=1' {}/conf/rtidb.flags".format(tb_path))
             exe_shell("sed -i '1a --db_root_path={}/db' {}/conf/rtidb.flags".format(tb_path, tb_path))
             exe_shell("sed -i '1a --zk_cluster='{} {}/conf/rtidb.flags".format(self.zk_endpoint, tb_path))

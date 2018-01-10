@@ -15,9 +15,6 @@ reportpath=${projectpath}/test-output/integrationtest/test-reports
 leader="127.0.0.1:37770"
 slave1="127.0.0.1:37771"
 slave2="127.0.0.1:37772"
-leader_scan="127.0.0.1:47770"
-slave1_scan="127.0.0.1:47771"
-slave2_scan="127.0.0.1:47772"
 ns1="127.0.0.1:37773"
 ns2="127.0.0.1:37774"
 zk="127.0.0.1:22181"
@@ -36,9 +33,6 @@ echo export slave2path=${slave2path} >> ${testenvpath}
 echo export leader=${leader} >> ${testenvpath}
 echo export slave1=${slave1} >> ${testenvpath}
 echo export slave2=${slave2} >> ${testenvpath}
-echo export leader_scan=${leader_scan} >> ${testenvpath}
-echo export slave1_scan=${slave1_scan} >> ${testenvpath}
-echo export slave2_scan=${slave2_scan} >> ${testenvpath}
 echo export reportpath=${reportpath} >> ${testenvpath}
 echo export zk=${zk} >> ${testenvpath}
 echo export zkpath=${zkpath} >> ${testenvpath}
@@ -50,7 +44,6 @@ function setup() {
     mkdir -p ${leaderpath}/conf
     cat ${confpath} | egrep -v "endpoint=|--gc_interval=" > ${leaderpath}/conf/rtidb.flags
     sed -i '1a --endpoint='${leader} ${leaderpath}/conf/rtidb.flags
-    sed -i '1a --scan_endpoint='${leader_scan} ${leaderpath}/conf/rtidb.flags
     sed -i '1a --gc_interval=1' ${leaderpath}/conf/rtidb.flags
     sed -i '1a --zk_cluster='${zk} ${leaderpath}/conf/rtidb.flags
     echo '--zk_root_path=/onebox' >> ${leaderpath}/conf/rtidb.flags
@@ -58,7 +51,6 @@ function setup() {
     mkdir -p ${slave1path}/conf
     cat ${confpath} | egrep -v "endpoint=|--gc_interval=" > ${slave1path}/conf/rtidb.flags
     sed -i '1a --endpoint='${slave1} ${slave1path}/conf/rtidb.flags
-    sed -i '1a --scan_endpoint='${slave1_scan} ${slave1path}/conf/rtidb.flags
     sed -i '1a --gc_interval=1' ${slave1path}/conf/rtidb.flags
     sed -i '1a --zk_cluster='${zk} ${slave1path}/conf/rtidb.flags
     echo '--zk_root_path=/onebox' >> ${slave1path}/conf/rtidb.flags
@@ -66,7 +58,6 @@ function setup() {
     mkdir -p ${slave2path}/conf
     cat ${confpath} | egrep -v "endpoint=|--gc_interval=" > ${slave2path}/conf/rtidb.flags
     sed -i '1a --endpoint='${slave2} ${slave2path}/conf/rtidb.flags
-    sed -i '1a --scan_endpoint='${slave2_scan} ${slave2path}/conf/rtidb.flags
     sed -i '1a --gc_interval=1' ${slave2path}/conf/rtidb.flags
     sed -i '1a --zk_cluster='${zk} ${slave2path}/conf/rtidb.flags
     echo '--zk_root_path=/onebox' >> ${slave2path}/conf/rtidb.flags
@@ -86,7 +77,7 @@ function stop_client() {
 
 function stop_all_clients() {
     ps xf | grep rtidb_mon | grep -v grep | awk '{print $1}' |xargs -i kill {}
-    for i in ${leader} ${slave1} ${slave2} ${leader_scan} ${slave1_scan} ${slave2_scan} ${ns1} ${ns2}; do
+    for i in ${leader} ${slave1} ${slave2} ${ns1} ${ns2}; do
         lsof -i:`echo ${i}|awk -F ':' '{print $2}'`|grep -v PID|awk '{print $2}'|xargs -i kill {}
     done
     rm -rf ${leaderpath}/db/* ${slave1path}/db/* ${slave2path}/db/*

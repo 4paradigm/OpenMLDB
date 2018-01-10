@@ -52,11 +52,13 @@ class NsCluster(object):
             args = shlex.split(cmd)
             print cmd
             subprocess.Popen(args, stdout=open('{}/log.log'.format(ns_path), 'w'))
-            time.sleep(5)
-            if_lock = exe_shell('grep "get lock with assigned_path" {}/log.log'.format(ns_path))
-            if 'get lock with assigned_path' in if_lock:
-                self.leader = ep
-                exe_shell('echo "{}" > {}/ns_leader'.format(ep, test_path))
+            infoLogger.info('!!!!!!!!!!!!!!' + self.leader)
+            if not self.leader:
+                time.sleep(5)
+                if_lock = exe_shell('grep "get lock with assigned_path" {}/log.log'.format(ns_path))
+                if 'get lock with assigned_path' in if_lock:
+                    self.leader = ep
+                    exe_shell('echo "{}" > {}/ns_leader'.format(ep, test_path))
 
 
     def kill(self, *endpoints):
@@ -69,4 +71,4 @@ class NsCluster(object):
         cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill;done"
         infoLogger.info(cmd)
         exe_shell(cmd)
-        time.sleep(2)
+        time.sleep(1)

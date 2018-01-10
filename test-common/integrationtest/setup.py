@@ -7,7 +7,7 @@ from libs.clients.tb_cluster import TbCluster
 
 
 nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
-tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints], [i[1] for i in conf.tb_scan_endpoints])
+tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints])
 
 nsc.stop_zk()
 nsc.kill(*nsc.endpoints)
@@ -19,5 +19,5 @@ else:
     nsc.clear_zk()
     nsc.start_zk()
     nsc.start(*nsc.endpoints)
-    tbc.start(tbc.endpoints, tbc.scan_endpoints)
+    tbc.start(tbc.endpoints)
     nsc_leader = nsc.leader
