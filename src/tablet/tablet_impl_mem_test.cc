@@ -8,7 +8,6 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
-#include <boost/lexical_cast.hpp>
 #include "gtest/gtest.h"
 #include "gflags/gflags.h"
 #include "config.h"
@@ -19,15 +18,13 @@
 #endif
 #include <gflags/gflags.h>
 
-DECLARE_string(snapshot_root_path);
-DECLARE_string(binlog_root_path);
-
+DECLARE_string(db_root_path);
 
 namespace rtidb {
 namespace tablet {
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 
@@ -56,11 +53,12 @@ TEST_F(TabletImplMemTest, TestMem) {
     // create table
     {
         ::rtidb::api::CreateTableRequest request;
-        request.set_name("t0");
-        request.set_tid(1);
-        request.set_pid(1);
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(1);
+        table_meta->set_pid(1);
         // 1 minutes
-        request.set_ttl(0);
+        table_meta->set_ttl(0);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
         tablet->CreateTable(NULL, &request, &response,
@@ -129,9 +127,8 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
-    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
-    FLAGS_binlog_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }
 

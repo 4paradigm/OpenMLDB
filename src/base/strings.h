@@ -20,7 +20,7 @@ namespace base {
 
 const static char LABELS[10] = {'0','1','2','3','4','5','6','7','8','9'};
 const static uint32_t TIME_OFFSET[] = {1000, 60, 60, 24};
-const static char TIME_LABEL[] = {'s', 'm', 'h', 'd'};
+const static char* TIME_LABEL[] = { "ms", "s", "m", "h", "d"};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
@@ -83,7 +83,7 @@ static inline char ToHex(uint8_t i) {
     return j;
 }
 
-static inline std::string DebugCharArray(char* data, uint32_t size) {
+static inline std::string DebugCharArray(const char* data, uint32_t size) {
     std::string dst;
     dst.resize(size << 2);
     uint32_t j = 0;
@@ -162,7 +162,7 @@ static inline std::string GetNowTime() {
     tm* timeinfo = localtime(&rawtime);
     char buf[20];
     strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
-    return std::string(buf);               
+    return std::string(buf);
 }
 
 static inline int GetNowHour() {

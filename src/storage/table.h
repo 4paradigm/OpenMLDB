@@ -13,8 +13,10 @@
 #include <map>
 #include "storage/segment.h"
 #include "storage/ticket.h"
-#include "boost/atomic.hpp"
+#include <atomic>
 #include "proto/tablet.pb.h"
+
+using ::rtidb::base::Slice;
 
 namespace rtidb {
 namespace storage {
@@ -32,6 +34,8 @@ enum TableStat {
     kSnapshotPaused
 };
 
+typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
+
 class Table {
 
 public:
@@ -42,31 +46,37 @@ public:
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
+          const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl,
           bool is_leader,
-          const std::vector<std::string>& replicas,
-          bool wal = true);
+          const std::vector<std::string>& replicas);
 
     Table(const std::string& name,
           uint32_t id,
           uint32_t pid,
           uint32_t seg_cnt,
-          uint64_t ttl,
-          bool wal = true);
+          const std::map<std::string, uint32_t>& mapping,
+          uint64_t ttl);
+
+    ~Table();
 
     void Init();
 
     void SetGcSafeOffset(uint64_t offset);
 
     // Put a record
-    void Put(const std::string& pk,
+    bool Put(const std::string& pk,
              uint64_t time,
              const char* data,
              uint32_t size);
 
-    void BatchGet(const std::vector<std::string>& keys,
-                  std::map<uint32_t, DataBlock*>& pairs,
-                  Ticket& ticket);
+    // Put a multi dimension record
+    bool Put(uint64_t time, 
+             const std::string& value,
+             const Dimensions& dimensions);
+
+    // Note the method should incr record_cnt_ manually
+    bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
     class Iterator {
     public:
@@ -78,58 +88,39 @@ public:
         DataBlock* GetValue() const;
         uint64_t GetKey() const;
         void SeekToFirst();
+        uint32_t GetSize();
     private:
         Segment::Iterator* it_;
     };
 
+    // use the first demission
     Table::Iterator* NewIterator(const std::string& pk, Ticket& ticket);
 
-    void Ref();
-
-    void UnRef();
-
+    Table::Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
     // release all memory allocated
     uint64_t Release();
 
     uint64_t SchedGc();
 
-    uint32_t GetTTL() const {
-        return ttl_;
+    uint64_t GetTTL() const {
+        return ttl_ / (60 * 1000);
     }
 
     bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
 
-    inline bool GetWal() {
-        return wal_;
+    uint64_t GetRecordIdxCnt();
+    bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
+    uint64_t GetRecordIdxByteSize();
+    uint64_t GetRecordPkCnt();
+
+    inline uint64_t GetRecordByteSize() const {
+        return record_byte_size_.load(std::memory_order_relaxed);    
     }
 
-    inline void SetTerm(uint64_t term) {
-        term_ = term;
+    inline uint64_t GetRecordCnt() const {
+        return record_cnt_.load(std::memory_order_relaxed);
     }
 
-    inline uint64_t GetTerm() {
-        return term_;
-    }
-
-    inline uint64_t GetDataCnt() const {
-        uint64_t data_cnt = 0;
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            data_cnt += segments_[i]->GetDataCnt();
-        }
-        return data_cnt;
-    }
-
-    inline void GetDataCnt(uint64_t** stat, uint32_t* size) const {
-        if (stat == NULL) {
-            return;
-        }
-        uint64_t* data_array = new uint64_t[seg_cnt_];
-        for (uint32_t i = 0; i < seg_cnt_; i++) {
-            data_array[i] = segments_[i]->GetDataCnt();
-        }
-        *stat = data_array;
-        *size = seg_cnt_;
-    }
 
     inline std::string GetName() const {
         return name_;
@@ -141,6 +132,10 @@ public:
 
     inline uint32_t GetSegCnt() const {
         return seg_cnt_;
+    }
+
+    inline uint32_t GetIdxCnt() const {
+        return idx_cnt_;
     }
 
     inline uint32_t GetPid() const {
@@ -164,34 +159,79 @@ public:
     }
 
     inline uint32_t GetTableStat() {
-        return table_status_.load(boost::memory_order_relaxed);
+        return table_status_.load(std::memory_order_relaxed);
     }
 
     inline void SetTableStat(uint32_t table_status) {
-        table_status_.store(table_status, boost::memory_order_relaxed);
+        table_status_.store(table_status, std::memory_order_relaxed);
     }
 
-private:
+    inline void SetSchema(const std::string& schema) {
+        schema_ = schema;
+    }
 
-    ~Table(){}
+    inline const std::string& GetSchema() {
+        return schema_;
+    }
+
+    inline void SetExpire(bool is_expire) {
+        enable_gc_.store(is_expire, std::memory_order_relaxed);
+    }
+
+    inline bool GetExpireStatus() {
+        return enable_gc_.load(std::memory_order_relaxed);
+    }
+
+    inline void SetTimeOffset(int64_t offset) {
+        time_offset_.store(offset * 1000, std::memory_order_relaxed); // convert to millisecond
+    }
+
+    inline int64_t GetTimeOffset() {
+       return  time_offset_.load(std::memory_order_relaxed) / 1000;
+    }
+
+    inline std::map<std::string, uint32_t>& GetMapping() {
+        return mapping_;
+    }
+
+    inline void RecordCntIncr() {
+        record_cnt_.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    inline void RecordCntIncr(uint32_t cnt) {
+        record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
+    }
+
+    inline void SetTTLType(const ::rtidb::api::TTLType& type) {
+        ttl_type_ = type;
+    }
+
+    inline ::rtidb::api::TTLType& GetTTLType() {
+        return ttl_type_;
+    }
 
 private:
     std::string const name_;
     uint32_t const id_;
     uint32_t const pid_;
     uint32_t const seg_cnt_;
+    uint32_t const idx_cnt_;
     // Segments is readonly
-    Segment** segments_;
-    boost::atomic<uint32_t> ref_;
-    bool enable_gc_;
+    Segment*** segments_;
+    std::atomic<uint32_t> ref_;
+    std::atomic<bool> enable_gc_;
     uint64_t const ttl_;
     uint64_t ttl_offset_;
-    boost::atomic<uint64_t> data_cnt_;
+    std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
+    std::atomic<int64_t> time_offset_;
     std::vector<std::string> replicas_;
-    bool wal_;
-    uint64_t term_;
-    boost::atomic<uint32_t> table_status_;
+    std::atomic<uint32_t> table_status_;
+    std::string schema_;
+    std::map<std::string, uint32_t> mapping_;
+    bool segment_released_;
+    std::atomic<uint64_t> record_byte_size_;
+    ::rtidb::api::TTLType ttl_type_;
 };
 
 }

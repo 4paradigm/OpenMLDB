@@ -16,17 +16,17 @@
 namespace rtidb {
 namespace tablet {
 
-TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
+TabletMetric::TabletMetric(std::shared_ptr<::rtidb::storage::Table> stat):stat_(stat),
     bg_pool_(), throughput_(NULL){
-   throughput_ = new boost::atomic<uint64_t>[4];
+   throughput_ = new std::atomic<uint64_t>[4];
    // record put counter
-   throughput_[0].store(0, boost::memory_order_relaxed);
+   throughput_[0].store(0, std::memory_order_relaxed);
    // record put bandwidth
-   throughput_[1].store(0, boost::memory_order_relaxed);
+   throughput_[1].store(0, std::memory_order_relaxed);
    // record scan counter
-   throughput_[2].store(0, boost::memory_order_relaxed);
+   throughput_[2].store(0, std::memory_order_relaxed);
    // record scan bandwidth
-   throughput_[3].store(0, boost::memory_order_relaxed);
+   throughput_[3].store(0, std::memory_order_relaxed);
    last_throughput_ = new uint64_t[4];
    last_throughput_[0] = 0;
    last_throughput_[1] = 0;
@@ -36,7 +36,6 @@ TabletMetric::TabletMetric(::rtidb::storage::Table* stat):stat_(stat),
 
 
 TabletMetric::~TabletMetric() {
-    stat_->UnRef();
     delete[] throughput_;
     delete[] last_throughput_;
 }
@@ -51,41 +50,41 @@ void TabletMetric::IncrThroughput(const uint64_t& put_count,
                                   const uint64_t& scan_count,
                                   const uint64_t& scan_bytes) {
     if (put_count > 0) {
-        throughput_[0].fetch_add(put_count, boost::memory_order_relaxed);
+        throughput_[0].fetch_add(put_count, std::memory_order_relaxed);
     }
     if (put_bytes > 0) {
-        throughput_[1].fetch_add(put_bytes, boost::memory_order_relaxed);
+        throughput_[1].fetch_add(put_bytes, std::memory_order_relaxed);
     }
     if (scan_count > 0) {
-        throughput_[2].fetch_add(scan_count, boost::memory_order_relaxed);
+        throughput_[2].fetch_add(scan_count, std::memory_order_relaxed);
     }
     if (scan_bytes > 0) {
-        throughput_[3].fetch_add(scan_bytes, boost::memory_order_relaxed);
+        throughput_[3].fetch_add(scan_bytes, std::memory_order_relaxed);
     }
 }
 
 void TabletMetric::CollectThroughput() {
     uint64_t now = ::baidu::common::timer::now_time() * 1000;
     char buffer[8];
-    uint64_t current_put_count = throughput_[0].load(boost::memory_order_relaxed);
+    uint64_t current_put_count = throughput_[0].load(std::memory_order_relaxed);
     uint64_t put_qps = (current_put_count - last_throughput_[0]) / 60;
     last_throughput_[0] = current_put_count;
     memcpy(buffer, static_cast<const void*>(&put_qps), 8);
     stat_->Put("throughput.put_qps", now, buffer, 8);
 
-    uint64_t current_put_bytes = throughput_[1].load(boost::memory_order_relaxed);
+    uint64_t current_put_bytes = throughput_[1].load(std::memory_order_relaxed);
     uint64_t put_bandwidth = (current_put_bytes - last_throughput_[1]) / 60;
     last_throughput_[1] = current_put_bytes;
     memcpy(buffer, static_cast<const void*>(&put_bandwidth), 8);
     stat_->Put("throughput.put_bandwidth", now, buffer, 8);
 
-    uint64_t current_scan_count = throughput_[2].load(boost::memory_order_relaxed);
+    uint64_t current_scan_count = throughput_[2].load(std::memory_order_relaxed);
     uint64_t scan_qps = (current_scan_count - last_throughput_[2]) / 60;
     last_throughput_[2] = current_scan_count;
     memcpy(buffer, static_cast<const void*>(&scan_qps), 8);
     stat_->Put("throughput.scan_qps", now, buffer, 8);
 
-    uint64_t current_scan_bytes = throughput_[3].load(boost::memory_order_relaxed);
+    uint64_t current_scan_bytes = throughput_[3].load(std::memory_order_relaxed);
     uint64_t scan_bandwidth = (current_scan_bytes - last_throughput_[3]) / 60;
     last_throughput_[3] = current_scan_bytes;
     memcpy(buffer, static_cast<const void*>(&scan_bandwidth), 8);

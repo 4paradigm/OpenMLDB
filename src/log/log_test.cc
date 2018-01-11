@@ -13,8 +13,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <gtest/gtest.h>
-#include <boost/lexical_cast.hpp>
-#include <boost/atomic.hpp>
 #include "base/file_util.h"
 #include <iostream>
 #include "log/crc32c.h"
@@ -35,7 +33,7 @@ public:
 };
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 uint32_t type_crc_[kMaxRecordType + 1];
@@ -115,6 +113,20 @@ int AddRecord(const Slice& slice, std::vector<std::string>& vec) {
         begin = false;
     } while (left > 0);
     return 0;
+}
+
+TEST_F(LogWRTest, TestWriteSize) {
+    std::string log_dir = "/tmp/" + GenRand() + "/";
+    ::rtidb::base::MkdirRecur(log_dir);
+    std::string fname = "test.log";
+    std::string full_path = log_dir + "/" + fname;
+    FILE* fd_w = fopen(full_path.c_str(), "ab+");
+    ASSERT_TRUE(fd_w != NULL);
+    WritableFile* wf = NewWritableFile(fname, fd_w);
+    wf->Append(Slice("1234567"));
+    wf->Append(Slice("abcde"));
+    ASSERT_EQ(12, wf->GetSize());
+    delete wf;
 }
 
 TEST_F(LogWRTest, TestWriteAndRead) {

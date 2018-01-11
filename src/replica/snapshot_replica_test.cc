@@ -12,14 +12,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <gtest/gtest.h>
-#include <boost/lexical_cast.hpp>
-#include <boost/atomic.hpp>
-#include <boost/bind.hpp>
 #include <stdio.h>
 #include "proto/tablet.pb.h"
 #include "logging.h"
 #include "thread_pool.h"
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 #include "storage/table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
@@ -43,7 +40,7 @@ DECLARE_string(db_root_path);
 DECLARE_string(endpoint);
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 namespace rtidb {
@@ -67,20 +64,17 @@ public:
 };
 
 TEST_F(SnapshotReplicaTest, AddReplicate) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     tablet->Init();
-    sofa::pbrpc::Servlet webservice =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register tablet rpc service");
+    brpc::Server server;
+    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
+    brpc::ServerOptions options;
     std::string leader_point = "127.0.0.1:18529";
-    if (!rpc_server.Start(leader_point)) {
-        LOG(WARNING, "fail to listen port %s", leader_point.c_str());
+    if (server.Start(leader_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
     }
 
@@ -88,8 +82,10 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     uint32_t pid = 123;
 
     ::rtidb::client::TabletClient client(leader_point);
+    client.Init();
     std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints, 
+                ::rtidb::api::TTLType::kAbsoluteTime, 16);
     ASSERT_TRUE(ret);
 
     std::string end_point = "127.0.0.1:18530";
@@ -108,29 +104,29 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
 }
 
 TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     tablet->Init();
-    sofa::pbrpc::Servlet webservice =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register tablet rpc service");
+    brpc::Server server;
+    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
+    brpc::ServerOptions options;
     std::string leader_point = "127.0.0.1:18529";
-    if (!rpc_server.Start(leader_point)) {
-        LOG(WARNING, "fail to listen port %s", leader_point.c_str());
+    if (server.Start(leader_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
     }
+    //server.RunUntilAskedToQuit();
 
     uint32_t tid = 1;
     uint32_t pid = 123;
 
     ::rtidb::client::TabletClient client(leader_point);
+    client.Init();
     std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints,
+                ::rtidb::api::TTLType::kAbsoluteTime, 16);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
@@ -146,24 +142,23 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     FLAGS_endpoint = "127.0.0.1:18530";
-    sofa::pbrpc::RpcServerOptions options1;
-    sofa::pbrpc::RpcServer rpc_server1(options1);
     ::rtidb::tablet::TabletImpl* tablet1 = new ::rtidb::tablet::TabletImpl();
     tablet1->Init();
-    sofa::pbrpc::Servlet webservice1 =
-            sofa::pbrpc::NewPermanentExtClosure(tablet1, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server1.RegisterService(tablet1)) {
-       LOG(WARNING, "fail to register tablet rpc service");
+    brpc::Server server1;
+    if (server1.AddService(tablet1, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);
     }
-    rpc_server1.RegisterWebServlet("/tablet", webservice1);
     std::string follower_point = "127.0.0.1:18530";
-    if (!rpc_server1.Start(follower_point)) {
-        LOG(WARNING, "fail to listen port %s", follower_point.c_str());
+    if (server1.Start(follower_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", follower_point.c_str());
         exit(1);
     }
+    //server.RunUntilAskedToQuit();
     ::rtidb::client::TabletClient client1(follower_point);
-    ret = client1.CreateTable("table1", tid, pid, 14400, false, endpoints, 8);
+    client1.Init();
+    ret = client1.CreateTable("table1", tid, pid, 14400, false, endpoints,
+                ::rtidb::api::TTLType::kAbsoluteTime, 16);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);
@@ -188,6 +183,12 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, srp.count());
     ASSERT_EQ(0, srp.code());
+    ::rtidb::api::DropTableRequest dr;
+    dr.set_tid(tid);
+    dr.set_pid(pid);
+    ::rtidb::api::DropTableResponse drs;
+    tablet->DropTable(NULL, &dr, &drs, &closure);
+    sleep(2);
 }
 
 }
@@ -196,7 +197,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::GenRand();
     return RUN_ALL_TESTS();

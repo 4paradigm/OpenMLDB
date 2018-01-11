@@ -12,14 +12,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <gtest/gtest.h>
-#include <boost/lexical_cast.hpp>
-#include <boost/atomic.hpp>
-#include <boost/bind.hpp>
 #include <stdio.h>
 #include "proto/tablet.pb.h"
 #include "logging.h"
 #include "thread_pool.h"
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 #include "storage/table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
@@ -45,7 +42,7 @@ public:
     MockTabletImpl(const ReplicatorRole& role,
                    const std::string& path,
                    const std::vector<std::string>& endpoints,
-                   Table* table): role_(role),
+                   std::shared_ptr<Table> table): role_(role),
     path_(path), endpoints_(endpoints), 
     replicator_(path_, endpoints_, role_, table) {
     }
@@ -85,10 +82,10 @@ public:
             Closure* done) {
         bool ok = replicator_.AppendEntries(request, response);
         if (ok) {
-            LOG(INFO, "receive log entry from leader ok");
+            PDLOG(INFO, "receive log entry from leader ok");
             response->set_code(0);
         }else {
-            LOG(INFO, "receive log entry from leader error");
+            PDLOG(INFO, "receive log entry from leader error");
             response->set_code(1);
         }
         done->Run();
@@ -115,29 +112,15 @@ public:
 };
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
-}
-
-bool StartRpcServe(MockTabletImpl* tablet,
-        const std::string& endpoint) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
-    if (!rpc_server.RegisterService(tablet)) {
-        return false;
-    }
-    bool ok =rpc_server.Start(endpoint);
-    if (ok) {
-        LOG(INFO, "register service ok");
-    }else {
-        LOG(WARNING, "fail to start service");
-    }
-    return ok;
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 TEST_F(LogReplicatorTest, Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
-    Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx", 0));
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -148,7 +131,9 @@ TEST_F(LogReplicatorTest, Init) {
 TEST_F(LogReplicatorTest, BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
-    Table* table = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx", 0));
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -162,12 +147,157 @@ TEST_F(LogReplicatorTest, BenchMark) {
     replicator.Stop();
 }
 
+TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
+	brpc::ServerOptions options;
+	brpc::Server server0;
+	brpc::Server server1;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("card", 0));
+    mapping.insert(std::make_pair("merchant", 1));
+    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
+    t7->Init();
+    {
+        std::string follower_addr = "127.0.0.1:17527";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
+                folder, g_endpoints, t7);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+		if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+    	}
+		if (server0.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
+    }
+
+    std::vector<std::string> endpoints;
+    endpoints.push_back("127.0.0.1:17527");
+    std::string folder = "/tmp/" + GenRand() + "/";
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    bool ok = leader.Init();
+    ASSERT_TRUE(ok);
+    // put the first row
+    {
+        ::rtidb::api::LogEntry entry;
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card0");
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant0");
+        d2->set_idx(1);
+        entry.set_ts(9527);
+        entry.set_value("value 1");
+        ok = leader.AppendEntry(entry);
+        ASSERT_TRUE(ok);
+    } 
+    // the second row
+    {
+        ::rtidb::api::LogEntry entry;
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card1");
+        d1->set_idx(0);
+        ::rtidb::api::Dimension* d2 = entry.add_dimensions();
+        d2->set_key("merchant0");
+        d2->set_idx(1);
+        entry.set_ts(9526);
+        entry.set_value("value 2");
+        ok = leader.AppendEntry(entry);
+        ASSERT_TRUE(ok);
+    } 
+    // the third row
+    {
+        ::rtidb::api::LogEntry entry;
+        ::rtidb::api::Dimension* d1 = entry.add_dimensions();
+        d1->set_key("card0");
+        d1->set_idx(0);
+        entry.set_ts(9525);
+        entry.set_value("value 3");
+        ok = leader.AppendEntry(entry);
+        ASSERT_TRUE(ok);
+    } 
+    leader.Notify();
+    std::vector<std::string> vec;
+    vec.push_back("127.0.0.1:17528");
+    leader.AddReplicateNode(vec);
+    sleep(2);
+
+    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
+    t8->Init();
+    {
+        std::string follower_addr = "127.0.0.1:17528";
+        std::string folder = "/tmp/" + GenRand() + "/";
+        MockTabletImpl* follower = new MockTabletImpl(kFollowerNode, 
+                folder, g_endpoints, t8);
+        bool ok = follower->Init();
+        ASSERT_TRUE(ok);
+		if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
+            ASSERT_TRUE(false);
+    	}
+		if (server1.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
+    }
+    sleep(20);
+    leader.Stop();
+    ASSERT_EQ(3, t8->GetRecordCnt());
+    ASSERT_EQ(5, t8->GetRecordIdxCnt());
+    {
+        Ticket ticket;
+        // check 18527
+        Table::Iterator* it = t8->NewIterator(0, "card0", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        DataBlock* value = it->GetValue();
+        std::string value_str(value->data, value->size);
+        ASSERT_EQ("value 1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value->data, value->size);
+        ASSERT_EQ("value 3", value_str1);
+        ASSERT_EQ(9525, it->GetKey());
+
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+    {
+        Ticket ticket;
+        // check 18527
+        Table::Iterator* it = t8->NewIterator(1, "merchant0", ticket);
+        it->Seek(9527);
+        ASSERT_TRUE(it->Valid());
+        DataBlock* value = it->GetValue();
+        std::string value_str(value->data, value->size);
+        ASSERT_EQ("value 1", value_str);
+        ASSERT_EQ(9527, it->GetKey());
+
+        it->Next();
+        ASSERT_TRUE(it->Valid());
+        value = it->GetValue();
+        std::string value_str1(value->data, value->size);
+        ASSERT_EQ("value 2", value_str1);
+        ASSERT_EQ(9526, it->GetKey());
+
+        it->Next();
+        ASSERT_FALSE(it->Valid());
+    }
+
+}
+
+
 
 TEST_F(LogReplicatorTest, LeaderAndFollower) {
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server0(options);
-    sofa::pbrpc::RpcServer rpc_server1(options);
-    Table* t7 = new Table("test", 1, 1, 8, 0, false, g_endpoints);
+	brpc::ServerOptions options;
+	brpc::Server server0;
+	brpc::Server server1;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx", 0));
+    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
@@ -176,12 +306,13 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
                 folder, g_endpoints, t7);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-        if (!rpc_server1.RegisterService(follower)) {
+		if (server0.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-        }
-        ok =rpc_server1.Start(follower_addr);
-        ASSERT_TRUE(ok);
-        LOG(INFO, "start follower");
+    	}
+		if (server0.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
     }
 
     std::vector<std::string> endpoints;
@@ -206,9 +337,12 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
     leader.Notify();
-    leader.AddReplicateNode("127.0.0.1:18528");
+    std::vector<std::string> vec;
+    vec.push_back("127.0.0.1:18528");
+    leader.AddReplicateNode(vec);
     sleep(2);
-    Table* t8 = new Table("test", 1, 1, 8, 0, false, g_endpoints);;
+
+    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
@@ -217,15 +351,18 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
                 folder, g_endpoints, t8);
         bool ok = follower->Init();
         ASSERT_TRUE(ok);
-        if (!rpc_server0.RegisterService(follower)) {
+		if (server1.AddService(follower, brpc::SERVER_OWNS_SERVICE) != 0) {
             ASSERT_TRUE(false);
-        }
-        ok =rpc_server0.Start(follower_addr);
-        ASSERT_TRUE(ok);
-        LOG(INFO, "start follower");
+    	}
+		if (server1.Start(follower_addr.c_str(), &options) != 0) {
+            ASSERT_TRUE(false);
+    	}
+        PDLOG(INFO, "start follower");
     }
     sleep(20);
     leader.Stop();
+    ASSERT_EQ(4, t8->GetRecordCnt());
+    ASSERT_EQ(4, t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527
@@ -265,7 +402,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
 
 int main(int argc, char** argv) {
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

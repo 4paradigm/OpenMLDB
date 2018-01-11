@@ -12,14 +12,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <gtest/gtest.h>
-#include <boost/lexical_cast.hpp>
-#include <boost/atomic.hpp>
-#include <boost/bind.hpp>
 #include <stdio.h>
 #include "proto/tablet.pb.h"
 #include "logging.h"
 #include "thread_pool.h"
-#include <sofa/pbrpc/pbrpc.h>
+#include <brpc/server.h>
 #include "storage/table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
@@ -57,20 +54,18 @@ public:
 TEST_F(BinlogTest, DeleteBinlog) {
     FLAGS_binlog_single_file_max_size = 1;
     FLAGS_binlog_delete_interval = 1000;
-    sofa::pbrpc::RpcServerOptions options;
-    sofa::pbrpc::RpcServer rpc_server(options);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     tablet->Init();
-    sofa::pbrpc::Servlet webservice =
-            sofa::pbrpc::NewPermanentExtClosure(tablet, &rtidb::tablet::TabletImpl::WebService);
-    if (!rpc_server.RegisterService(tablet)) {
-       LOG(WARNING, "fail to register tablet rpc service");
+
+	brpc::Server server;
+    if (server.AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+       PDLOG(WARNING, "fail to register tablet rpc service");
        exit(1);
     }
-    rpc_server.RegisterWebServlet("/tablet", webservice);
+    brpc::ServerOptions options;
     std::string leader_point = "127.0.0.1:18529";
-    if (!rpc_server.Start(leader_point)) {
-        LOG(WARNING, "fail to listen port %s", leader_point.c_str());
+    if (server.Start(leader_point.c_str(), &options) != 0) {
+        PDLOG(WARNING, "fail to start server %s", leader_point.c_str());
         exit(1);
     }
 
@@ -78,8 +73,10 @@ TEST_F(BinlogTest, DeleteBinlog) {
     uint32_t pid = 123;
 
     ::rtidb::client::TabletClient client(leader_point);
+    client.Init();
     std::vector<std::string> endpoints;
-    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints);
+    bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints,
+                    ::rtidb::api::TTLType::kAbsoluteTime, 16);
     ASSERT_TRUE(ret);
     
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -106,7 +103,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
 }
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 int main(int argc, char** argv) {

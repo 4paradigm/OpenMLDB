@@ -2,6 +2,9 @@
 --endpoint=0.0.0.0:9527
 --role=nameserver
 
+# thread pool conf
+--thread_pool_size=8
+
 # log conf
 --log_dir=./logs
 --log_file_count=24

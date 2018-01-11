@@ -101,36 +101,12 @@ else
     echo "install snappy done"
 fi
 
-if [ -f "sofa_succ" ]
-then
-    echo "sofa exist"
-else
-    # sofa-pbrpc
-    wget http://pkg.4paradigm.com:81/rtidb/dev/sofa-pbrpc.tar.gz
-    tar zxf sofa-pbrpc.tar.gz
-    cd sofa-pbrpc
-    echo "BOOST_HEADER_DIR=${DEPS_PREFIX}/include" >> depends.mk
-    echo "PROTOBUF_DIR=${DEPS_PREFIX}" >> depends.mk
-    echo "SNAPPY_DIR=${DEPS_PREFIX}" >> depends.mk
-    echo "PREFIX=${DEPS_PREFIX}" >> depends.mk
-    cd -
-    cd sofa-pbrpc/src
-    sh compile_proto.sh ${DEPS_PREFIX}/include
-    cd -
-    cd sofa-pbrpc
-    make -j2 >/dev/null
-    make install
-    cd -
-    touch sofa_succ
-fi
-
-
 if [ -f "gflags_succ" ]
 then
     echo "gflags-2.1.1.tar.gz exist"
 else
     # gflags
-    wget --no-check-certificate -O gflags-2.2.0.tar.gz https://github.com/elasticlog/deps/files/789206/gflags-2.2.0.tar.gz
+    wget http://pkg.4paradigm.com:81/rtidb/dev/gflags-2.2.0.tar.gz 
     tar zxf gflags-2.2.0.tar.gz
     cd gflags-2.2.0
     cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC >/dev/null
@@ -156,6 +132,20 @@ else
   touch common_succ
 fi
 
+if [ -f "unwind_succ" ] 
+then
+    echo "unwind_exist"
+else
+    wget http://pkg.4paradigm.com:81/rtidb/dev/libunwind-1.1.tar.gz  
+    tar -zxvf libunwind-1.1.tar.gz
+    cd libunwind-1.1
+    autoreconf -i
+    ./configure --prefix=${DEPS_PREFIX}
+    make -j4 && make install 
+    cd -
+    touch unwind_succ
+fi
+
 if [ -f "gperf_tool" ]
 then
     echo "gperf_tool exist"
@@ -163,14 +153,7 @@ else
     wget http://pkg.4paradigm.com:81/rtidb/dev/gperftools-2.5.tar.gz 
     tar -zxvf gperftools-2.5.tar.gz 
     cd gperftools-2.5 
-    if [ "$STAGE" = 'DEBUG' ]
-    then
-        echo "debug stage"
-        ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler --prefix=${DEPS_PREFIX} 
-    else
-        echo "prod stage"
-        ./configure --disable-cpu-profiler --enable-minimal --disable-heap-checker --disable-heap-profiler --enable-shared=no --prefix=${DEPS_PREFIX} 
-    fi
+    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX} 
     make -j2 >/dev/null
     make install
     cd -
@@ -194,11 +177,47 @@ else
     wget http://pkg.4paradigm.com:81/rtidb/dev/leveldb.tar.gz
     tar -zxvf leveldb.tar.gz
     cd leveldb
+    sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
     make -j8
     cp -rf include/* ${DEPS_PREFIX}/include
     cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
     cd -
     touch leveldb_succ
+fi
+
+if [ -f "openssl_succ" ]
+then
+    echo "openssl exist"
+else
+    wget -O OpenSSL_1_1_0.zip http://pkg.4paradigm.com:81/rtidb/dev/OpenSSL_1_1_0.zip > /dev/null
+    unzip OpenSSL_1_1_0.zip
+    cd openssl-OpenSSL_1_1_0
+    ./config --prefix=${DEPS_PREFIX} --openssldir=${DEPS_PREFIX}
+    make -j5
+    make install
+    rm -rf ${DEPS_PREFIX}/lib/libssl.so*
+    rm -rf ${DEPS_PREFIX}/lib/libcrypto.so*
+    cd -
+    touch openssl_succ
+    echo "openssl done"
+fi
+
+if [ -f "brpc_succ" ]
+then
+    echo "brpc exist"
+else
+    wget -O brpc-master.zip http://pkg.4paradigm.com:81/rtidb/dev/brpc-master.zip > /dev/null
+    unzip brpc-master.zip 
+    BRPC_DIR=$DEPS_SOURCE/brpc-master
+    cd brpc-master
+    sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+    make -j5 libbrpc.a
+    make output/include
+    cp -rf output/include/* ${DEPS_PREFIX}/include
+    cp libbrpc.a ${DEPS_PREFIX}/lib
+    cd -
+    touch brpc_succ
+    echo "brpc done"
 fi
 
 if [ -f "zk_succ" ]

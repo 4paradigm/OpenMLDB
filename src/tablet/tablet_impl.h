@@ -9,21 +9,21 @@
 #ifndef RTIDB_TABLET_IMPL_H
 #define RTIDB_TABLET_IMPL_H
 
-#include "mutex.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "storage/snapshot.h"
 #include "storage/table.h"
-#include "tablet/tablet_metric.h"
 #include "thread_pool.h"
+#include "base/set.h"
 #include "zk/zk_client.h"
 #include <map>
-#include <sofa/pbrpc/pbrpc.h>
+#include <list>
+#include <brpc/server.h>
+#include <brpc/stream.h>
+#include <mutex>
 
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
-using ::baidu::common::Mutex;
-using ::baidu::common::MutexLock;
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
 using ::rtidb::storage::Snapshot;
@@ -34,9 +34,28 @@ using ::rtidb::zk::ZkClient;
 namespace rtidb {
 namespace tablet {
 
-typedef std::map<uint32_t, std::map<uint32_t, Table*> > Tables;
-typedef std::map<uint32_t, std::map<uint32_t, LogReplicator*> > Replicators;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
+
+class StreamReceiver : public brpc::StreamInputHandler {
+public:
+	StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid);
+	virtual ~StreamReceiver();
+    int Init();
+    virtual int on_received_messages(brpc::StreamId id,
+                    butil::IOBuf *const messages[],
+                    size_t size) override;
+    virtual void on_idle_timeout(brpc::StreamId id) override;
+    virtual void on_closed(brpc::StreamId id) override;
+private:
+	std::string file_name_;
+    uint32_t tid_;
+    uint32_t pid_;
+    uint64_t size_;
+	FILE* file_;
+	static ::rtidb::base::set<std::string> stream_receiver_set_;
+};
 
 class TabletImpl : public ::rtidb::api::TabletServer {
 
@@ -52,14 +71,14 @@ public:
              ::rtidb::api::PutResponse* response,
              Closure* done);
 
+    void Get(RpcController* controller,
+             const ::rtidb::api::GetRequest* request,
+             ::rtidb::api::GetResponse* response,
+             Closure* done);
+
     void Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
-              Closure* done);
-
-    void BatchGet(RpcController* controller,
-              const ::rtidb::api::BatchGetRequest* request,
-              ::rtidb::api::BatchGetResponse* response,
               Closure* done);
 
     void CreateTable(RpcController* controller,
@@ -116,66 +135,107 @@ public:
             const ::rtidb::api::GeneralRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
-    //
-    //http api
-    // get all table informatiom
-    // 
-    bool WebService(const sofa::pbrpc::HTTPRequest& request,
-            sofa::pbrpc::HTTPResponse& response);
-private:
-    // Get table by table id and Inc reference , no need external synchronization
-    ::rtidb::storage::Table* GetTable(uint32_t tid, uint32_t pid);
-    // Get table by table id and Inc reference , and Need external synchronization  
-    ::rtidb::storage::Table* GetTableUnLock(uint32_t tid, uint32_t pid);
 
-    ::rtidb::replica::LogReplicator* GetReplicator(uint32_t tid, uint32_t pid);
-    ::rtidb::replica::LogReplicator* GetReplicatorUnLock(uint32_t tid, uint32_t pid);
+    void SendSnapshot(RpcController* controller,
+            const ::rtidb::api::SendSnapshotRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void CreateStream(RpcController* controller,
+            const ::rtidb::api::CreateStreamRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void GetTaskStatus(RpcController* controller,
+            const ::rtidb::api::TaskStatusRequest* request,
+            ::rtidb::api::TaskStatusResponse* response,
+            Closure* done);
+
+    void GetTableSchema(RpcController* controller,
+            const ::rtidb::api::GetTableSchemaRequest* request,
+            ::rtidb::api::GetTableSchemaResponse* response,
+            Closure* done);
+
+    void DeleteOPTask(RpcController* controller,
+            const ::rtidb::api::DeleteTaskRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void SetExpire(RpcController* controller,
+            const ::rtidb::api::SetExpireRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void SetTTLClock(RpcController* controller,
+            const ::rtidb::api::SetTTLClockRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+    
+    void ShowMemPool(RpcController* controller,
+            const ::rtidb::api::HttpRequest* request,
+            ::rtidb::api::HttpResponse* response,
+            Closure* done);
+
+private:
+    // Get table by table id , no need external synchronization
+    std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
+    // Get table by table id , and Need external synchronization  
+    std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
+
+    std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
+    std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
-    void ShowTables(const sofa::pbrpc::HTTPRequest& request,
-            sofa::pbrpc::HTTPResponse& response); 
-
-    void ShowMetric(const sofa::pbrpc::HTTPRequest& request,
-            sofa::pbrpc::HTTPResponse& response);
-
-    void ShowMemPool(const sofa::pbrpc::HTTPRequest& request,
-        sofa::pbrpc::HTTPResponse& response);
-
     inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
 
-    inline bool CheckCreateRequest(const rtidb::api::CreateTableRequest* request);
+    inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
-    void CreateTableInternal(const ::rtidb::api::CreateTableRequest* request,
-            ::rtidb::api::CreateTableResponse* response);
+    int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
-    void LoadTableInternal(const ::rtidb::api::LoadTableRequest* request,
-            ::rtidb::api::GeneralResponse* response);
+    void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
-    bool ApplyLogToTable(uint32_t tid, uint32_t pid, const ::rtidb::api::LogEntry& log); 
+    void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
+                        std::shared_ptr<::rtidb::api::TaskInfo> task);
 
-    void MakeSnapshotInternal(uint32_t tid, uint32_t pid);
+    int SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid, const std::string& file_name);
+
+    int StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time);
 
     void SchedMakeSnapshot();
 
     int ChangeToLeader(uint32_t tid, uint32_t pid, 
-                       const std::vector<std::string>& replicas);
+                       const std::vector<std::string>& replicas, uint64_t term);
 
     void CheckZkClient();
 
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid);
 
+    int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
+
+    int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
+
+    int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
+                    std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr);
+
+    std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
+            uint64_t op_id, ::rtidb::api::TaskType task_type);
+
+    int32_t CheckDimessionPut(const ::rtidb::api::PutRequest* request,
+                              std::shared_ptr<Table>& table);
+
 private:
     Tables tables_;
-    Mutex mu_;
+    std::mutex mu_;
     ThreadPool gc_pool_;
-    TabletMetric* metric_;
     Replicators replicators_;
     Snapshots snapshots_;
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
+    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
+    std::set<std::string> sync_snapshot_set_;
 };
 
 

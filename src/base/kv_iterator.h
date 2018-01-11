@@ -25,17 +25,6 @@ public:
         Next();
     }
 
-    KvIterator(::rtidb::api::BatchGetResponse* response):response_(response),buffer_(NULL),
-    tsize_(0),
-    offset_(0), c_size_(0),
-    tmp_(NULL),
-    auto_clean_(true){
-        buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
-        tmp_ = new Slice();
-        tsize_ = response->pairs().size();
-        Next();
-    }
-
     KvIterator(::rtidb::api::ScanResponse* response,
                bool clean):response_(response),buffer_(NULL),
     tsize_(0),

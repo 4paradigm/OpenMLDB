@@ -58,7 +58,7 @@ Status Writer::EndLog() {
         const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
         const size_t fragment_length = (left < avail) ? left : avail;
         RecordType type = kEofType;
-        LOG(INFO, "end log");
+        PDLOG(INFO, "end log");
         s = EmitPhysicalRecord(type, ptr, fragment_length);
         ptr += fragment_length;
         left -= fragment_length;

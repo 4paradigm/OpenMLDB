@@ -8,11 +8,8 @@
 
 #ifndef RTIDB_BASE_COUNT_DOWN_LATCH_H
 #define RTIDB_BASE_COUNT_DOWN_LATCH_H
-#include "mutex.h"
-
-using ::baidu::common::Mutex;
-using ::baidu::common::MutexLock;
-using ::baidu::common::CondVar;
+#include <mutex>
+#include <condition_variable>
 
 namespace rtidb {
 namespace base {
@@ -21,42 +18,42 @@ class CountDownLatch {
 
 public:
     CountDownLatch(int32_t count):count_(count),
-    mu_(), cv_(&mu_){}
+    mu_(), cv_(){}
     ~CountDownLatch() {}
 
     void CountDown() {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         if (--count_ <= 0) {
-            cv_.Broadcast();
+            cv_.notify_all();
         }
     }
 
     void TimeWait(uint64_t timeout) {
-        MutexLock lock(&mu_);
-        cv_.TimeWait(timeout);
+        std::unique_lock<std::mutex> lock(mu_);
+        cv_.wait_for(lock, std::chrono::milliseconds(timeout));
     }
 
     void Wait() {
-        MutexLock lock(&mu_);
+        std::unique_lock<std::mutex> lock(mu_);
         while (count_ > 0) {
-            cv_.Wait();
+            cv_.wait(lock);
         }
     }
 
     bool IsDone() {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         return count_ <= 0;
     }
 
     uint32_t GetCount() {
-        MutexLock lock(&mu_);
+        std::lock_guard<std::mutex> lock(mu_);
         return count_;
     }
 
 private:
     int32_t count_;
-    Mutex mu_;
-    CondVar cv_;
+    std::mutex mu_;
+    std::condition_variable cv_;
 };
 
 }

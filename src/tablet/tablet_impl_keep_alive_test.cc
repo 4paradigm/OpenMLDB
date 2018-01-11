@@ -8,7 +8,6 @@
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
-#include <boost/lexical_cast.hpp>
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "timer.h"
@@ -17,9 +16,8 @@
 #include <unistd.h>
 
 
-DECLARE_string(snapshot_root_path);
-DECLARE_string(binlog_root_path);
 DECLARE_string(endpoint);
+DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
@@ -38,7 +36,7 @@ static int32_t endpoint_size = 1;
 
 
 inline std::string GenRand() {
-    return boost::lexical_cast<std::string>(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);
 }
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
@@ -95,8 +93,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_snapshot_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
-    FLAGS_binlog_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }
 

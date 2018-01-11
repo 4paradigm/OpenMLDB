@@ -10,7 +10,6 @@
 
 #include <vector>
 #include "base/skiplist.h"
-#include "boost/function.hpp"
 #include "log/log_writer.h"
 #include "log/log_reader.h"
 #include "log/sequential_file.h"
@@ -27,8 +26,9 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultCompar
 class ReplicateNode {
 public:
     ReplicateNode(const std::string& point, LogParts* logs, const std::string& log_path,
-            uint32_t tid, uint32_t pid, ::rtidb::RpcClient* rpc_client);
-    int MatchLogOffsetFromNode();        
+            uint32_t tid, uint32_t pid);
+    int Init();
+    int MatchLogOffsetFromNode(uint64_t term);
     int SyncData(uint64_t log_offset);
     void SetLastSyncOffset(uint64_t offset);
     bool IsLogMatched();
@@ -43,13 +43,14 @@ public:
 private:
     LogReader log_reader_;
     std::vector<::rtidb::api::AppendEntriesRequest> cache_;
-    ::rtidb::RpcClient* rpc_client_;
     std::string endpoint_;
     std::atomic<bool> making_snapshot_;
     uint64_t last_sync_offset_;
     bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
+    uint64_t term_;
+    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> rpc_client_;
 };
 
 }

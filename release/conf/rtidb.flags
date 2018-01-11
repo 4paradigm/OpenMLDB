@@ -1,7 +1,12 @@
 # common conf 
 --endpoint=0.0.0.0:9527
---scan_endpoint=0.0.0.0:9526
 --role=tablet
+
+# concurrency conf
+--thread_pool_size=16
+--scan_concurrency_limit=8
+--put_concurrency_limit=8
+--get_concurrency_limit=8
 
 # log conf
 --log_dir=./logs
@@ -10,7 +15,6 @@
 --log_level=info
 
 # binlog conf
---binlog_apply_batch_size=32
 --binlog_coffee_time=1000
 --binlog_match_logoffset_interval=1000
 --binlog_notify_on_put=true
@@ -20,8 +24,10 @@
 --binlog_sync_wait_time=100
 
 --db_root_path=./db
+--recycle_bin_root_path=./recycle
 
 # snapshot conf
+# 每天23点做snapshot
 --make_snapshot_time=23
 --make_snapshot_check_interval=600000
 
@@ -31,5 +37,4 @@
 --gc_pool_size=2
 # 1m
 --gc_safe_offset=1
---enable_statdb=true
 

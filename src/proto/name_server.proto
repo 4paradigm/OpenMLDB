@@ -11,16 +11,41 @@ message TablePartition {
     required uint32 pid = 3;
 }
 
-message TableMeta {
+message TableInfo {
 	required string name = 1;
-	optional uint32 ttl = 2 [default = 0];
+	optional uint64 ttl = 2 [default = 0];
 	optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
 	optional uint32 tid = 5;
 }
 
 message CreateTableRequest {
-    required TableMeta table_meta = 1;
+    required TableInfo table_info = 1;
+}
+
+message DropTableRequest {
+    required string name = 1;
+}
+
+message ShowTableRequest {
+    optional string name = 1;
+}
+
+message ShowTableResponse {
+    repeated TableInfo table_info = 1;
+	required int32 code = 2;
+	optional string msg = 3;
+}
+
+message MakeSnapshotNSRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+}
+
+message AddReplicaNSRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
 }
 
 message GeneralResponse {
@@ -42,7 +67,40 @@ message ShowTabletResponse {
     optional string msg = 3;
 }
 
+message DelReplicaData {
+    required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
+message DelReplicaNSRequest {
+    required DelReplicaData data = 1;
+}
+
+message OPStatus {
+    required uint64 op_id = 1;
+    required string op_type = 2;
+    required string status = 3;
+    required uint64 start_time = 4;
+    required uint64 end_time = 5;
+    required string task_type = 6;
+}
+
+message ShowOPStatusRequest{}
+
+message ShowOPStatusResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated OPStatus op_status = 3;
+}
+
 service NameServer {
 	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+	rpc DropTable(DropTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
+    rpc ShowTable(ShowTableRequest) returns (ShowTableResponse);
+    rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
+    rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
+    rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
+    rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
 }

@@ -17,6 +17,7 @@ extern "C" {
 TabletClient* NewClient(const char* endpoint) {
     std::string ep(endpoint);
     TabletClient* client = new TabletClient(ep);
+    client->Init();
     return client;
 }
 
@@ -29,7 +30,8 @@ bool CreateTable(TabletClient* client,
                  const char* name, int tid,
                  int pid, int ttl) {
     std::string n(name);
-    return client->CreateTable(n, tid, pid, ttl);
+    return client->CreateTable(n, tid, pid, ttl, true, std::vector<std::string>(), 
+                    ::rtidb::api::TTLType::kAbsoluteTime, 16);
 }
 
 bool Put(TabletClient* client,
@@ -53,7 +55,6 @@ bool DropTable(TabletClient* client, uint32_t tid, uint32_t pid) {
 }
 
 bool IteratorValid(KvIterator* it) {
-
     return it->Valid();
 }
 
@@ -79,7 +80,6 @@ void IteratorFree(KvIterator* it) {
 
 void FreeString(const char* str) {
     delete str;
-
 }
 
 }

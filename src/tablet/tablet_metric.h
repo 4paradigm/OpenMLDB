@@ -11,7 +11,7 @@
 
 #include "storage/table.h"
 
-#include <boost/atomic.hpp>
+#include <atomic>
 #include "thread_pool.h"
 
 using ::baidu::common::ThreadPool;
@@ -21,7 +21,7 @@ namespace tablet {
 class TabletMetric {
 
 public:
-    TabletMetric(::rtidb::storage::Table* stat);
+    TabletMetric(std::shared_ptr<::rtidb::storage::Table> stat);
     ~TabletMetric();
 
     void Init();
@@ -36,7 +36,7 @@ private:
     void CollectThroughput();
     void Collect();
 private:
-    ::rtidb::storage::Table* stat_;
+    std::shared_ptr<::rtidb::storage::Table> stat_;
     ThreadPool bg_pool_;
 
     // throughput 
@@ -44,7 +44,7 @@ private:
     // the second put bandwidth
     // the third scan qps
     // the fourth scan bandwidth
-    boost::atomic<uint64_t>* throughput_;
+    std::atomic<uint64_t>* throughput_;
     uint64_t* last_throughput_;
 };
 

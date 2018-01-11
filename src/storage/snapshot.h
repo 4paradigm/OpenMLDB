@@ -11,9 +11,9 @@
 
 #include <vector>
 #include <atomic>
+#include <memory>
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
-#include "boost/atomic.hpp"
 #include "base/count_down_latch.h"
 #include "storage/table.h"
 #include "log/log_writer.h"
@@ -41,18 +41,18 @@ public:
 
     bool Init();
 
-    bool Recover(Table* table, uint64_t& latest_offset);
+    bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset);
 
-    void RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, Table* table);
-    bool RecoverFromBinlog(Table* table, uint64_t offset, uint64_t& latest_offset);
+    void RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table);
+    bool RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, uint64_t& latest_offset);
 
     inline uint64_t GetOffset() {
         return offset_;
     }
 
-    int MakeSnapshot(Table* table, uint64_t&out_offset);
+    int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset);
 
-    int TTLSnapshot(Table* table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
+    int TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
                 uint64_t& count, uint64_t& expired_key_num);
 
     // Read manifest from local storage return 0 if ok , 1 if manifest does not exist,
@@ -65,7 +65,7 @@ private:
 
     // load single snapshot to table
     void RecoverSingleSnapshot(const std::string& path,
-                               Table* table,
+                               std::shared_ptr<Table> table,
                                std::atomic<uint64_t>* g_succ_cnt,
                                std::atomic<uint64_t>* g_failed_cnt);
 
@@ -73,7 +73,7 @@ private:
     uint32_t tid_;
     uint32_t pid_;
     uint64_t offset_;
-    boost::atomic<bool> making_snapshot_;
+    std::atomic<bool> making_snapshot_;
     LogParts* log_part_;
     // the snapshot path
     std::string snapshot_path_;
