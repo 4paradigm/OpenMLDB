@@ -49,6 +49,23 @@ message AddReplicaNSRequest {
     required string endpoint = 3;
 }
 
+message Pair {
+	required string key = 1;
+    required string value = 2;
+}
+
+message ConfSetRequest {
+	required Pair conf = 1;
+}
+
+message ConfGetRequest {}
+
+message ConfGetResponse {
+	required int32 code = 1;
+	optional string msg = 2;
+    repeated Pair conf = 3;
+}
+
 message GeneralResponse {
 	required int32 code = 1;
 	optional string msg = 2;
@@ -104,4 +121,6 @@ service NameServer {
     rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
     rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
+    rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
+    rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
 }

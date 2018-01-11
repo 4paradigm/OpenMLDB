@@ -22,6 +22,7 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     ::rtidb::nameserver::ShowTabletResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTablet,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
             const ::rtidb::nameserver::TabletStatus status = response.tablets(i);
@@ -33,7 +34,6 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
         }
         return true;
     }
-    msg = response.msg();
     return false;
 }
 
@@ -46,6 +46,7 @@ bool NsClient::ShowTable(const std::string& name,
     ::rtidb::nameserver::ShowTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.table_info_size(); i++) {
             ::rtidb::nameserver::TableInfo table_info;
@@ -54,7 +55,6 @@ bool NsClient::ShowTable(const std::string& name,
         }
         return true;
     }
-    msg = response.msg();
     return false;
 }
 
@@ -65,10 +65,10 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, std::string& 
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
     }
-    msg = response.msg();
     return false;
 }
 
@@ -76,10 +76,10 @@ bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
     ::rtidb::nameserver::ShowOPStatusRequest request;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowOPStatus,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
     }
-    msg = response.msg();
     return false;
 }
 
@@ -90,10 +90,10 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std
     table_info_r->CopyFrom(table_info);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
     }
-    msg = response.msg();
     return false;
 }
 
@@ -103,10 +103,10 @@ bool NsClient::DropTable(const std::string& name, std::string& msg) {
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
     }
-    msg = response.msg();
     return false;
 }
 
@@ -119,10 +119,10 @@ bool NsClient::AddReplica(const std::string& name, uint32_t pid,
     request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaNS,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
     }
-    msg = response.msg();
     return false;
 }
 
@@ -136,10 +136,50 @@ bool NsClient::DelReplica(const std::string& name, uint32_t pid,
     data->set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DelReplicaNS,
             &request, &response, 12, 1);
+    msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
     }
+    return false;
+}
+
+bool NsClient::ConfSet(const std::string& key, const std::string& value, std::string& msg) {
+    ::rtidb::nameserver::ConfSetRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::nameserver::Pair* conf = request.mutable_conf();
+    conf->set_key(key);
+    conf->set_value(value);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfSet,
+            &request, &response, 12, 1);
     msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string>& conf_map, 
+            std::string& msg) {
+    ::rtidb::nameserver::ConfGetRequest request;
+    ::rtidb::nameserver::ConfGetResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfGet,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        for (int idx = 0; idx < response.conf_size(); idx++) {
+            if (key.empty()) {
+                conf_map.insert(std::make_pair(response.conf(idx).key(), response.conf(idx).value()));
+            } else if (key == response.conf(idx).key()) {
+                conf_map.insert(std::make_pair(key, response.conf(idx).value()));
+                break;
+            }
+        }
+        if (!key.empty() && conf_map.empty()) {
+            msg = "cannot found key " + key;
+            return false;
+        }
+        return true;
+    }
     return false;
 }
 

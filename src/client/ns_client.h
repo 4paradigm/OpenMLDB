@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <map>
 #include "rpc/rpc_client.h"
 #include "proto/name_server.pb.h"
 
@@ -45,6 +46,10 @@ public:
     bool AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);
 
     bool DelReplica(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);
+
+    bool ConfSet(const std::string& key, const std::string& value, std::string& msg);
+
+    bool ConfGet(const std::string& key, std::map<std::string, std::string>& conf_map, std::string& msg);
 	
 private:
     std::string endpoint_;

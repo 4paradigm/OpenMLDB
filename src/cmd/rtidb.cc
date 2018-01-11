@@ -76,11 +76,11 @@ void StartNameServer() {
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
-	if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
@@ -88,7 +88,7 @@ void StartNameServer() {
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
-	server.RunUntilAskedToQuit();
+    server.RunUntilAskedToQuit();
 }
 
 void StartTablet() {
@@ -102,14 +102,14 @@ void StartTablet() {
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
-	if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
     server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
-	if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
@@ -117,7 +117,7 @@ void StartTablet() {
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
-	server.RunUntilAskedToQuit();
+    server.RunUntilAskedToQuit();
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -215,6 +215,46 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::cli
     std::cout << "drop ok" << std::endl;
 }
 
+void HandleNSClientConfSet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ret = client->ConfSet(parts[1], parts[2], msg);
+    if (!ret) {
+         printf("failed to set %s. error msg: %s", parts[1].c_str(), msg.c_str());
+        return;
+    }
+    printf("set %s ok\n", parts[1].c_str());
+}
+
+void HandleNSClientConfGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string msg;
+    std::map<std::string, std::string> conf_map;
+    bool ret = client->ConfGet(parts[1], conf_map, msg);
+    if (!ret) {
+         printf("failed to set %s. error msg: %s", parts[1].c_str(), msg.c_str());
+        return;
+    }
+    std::vector<std::string> row;
+    row.push_back("key");
+    row.push_back("value");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    for (const auto& kv : conf_map) {
+        row.clear();
+        row.push_back(kv.first);
+        row.push_back(kv.second);
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::string name;
     if (parts.size() >= 2) {
@@ -268,8 +308,8 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         std::cout << "Bad format" << std::endl;
         return;
     }
-	::rtidb::client::TableInfo table_info;
-	int fd = open(parts[1].c_str(), O_RDONLY);
+    ::rtidb::client::TableInfo table_info;
+    int fd = open(parts[1].c_str(), O_RDONLY);
     if (fd < 0) {
         std::cout << "can not open file " << parts[1] << std::endl;
         return;
@@ -343,10 +383,10 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     }
 
     std::string msg;
-	if (!client->CreateTable(ns_table_info, msg)) {
-		std::cout << "Fail to create table. error msg: " << msg << std::endl;
-		return;
-	}
+    if (!client->CreateTable(ns_table_info, msg)) {
+        std::cout << "Fail to create table. error msg: " << msg << std::endl;
+        return;
+    }
     std::cout << "Create table ok" << std::endl;
 }
 
@@ -601,15 +641,15 @@ void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::clie
         std::cout << "Bad format" << std::endl;
         return;
     }
-	struct tm tm;
+    struct tm tm;
     time_t timestamp;
     if (parts[3].length() == 14 && ::rtidb::base::IsNumber(parts[3]) &&
             strptime(parts[3].c_str(), "%Y%m%d%H%M%S", &tm) != NULL) {
         timestamp = mktime(&tm);
     } else {
-		printf("time format error (e.g 20171108204001)");
-		return;
-	}
+        printf("time format error (e.g 20171108204001)");
+        return;
+    }
     try {
         bool ok = client->SetTTLClock(boost::lexical_cast<uint32_t>(parts[1]), 
                                     boost::lexical_cast<uint32_t>(parts[2]), 
@@ -791,7 +831,7 @@ void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::clien
         std::cout << "Bad changerole format" << std::endl;
         return;
     }
- 	if (parts[3].compare("leader") == 0) {
+     if (parts[3].compare("leader") == 0) {
         try {
             bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
             if (ok) {
@@ -1316,7 +1356,7 @@ void StartClient() {
             HandleClientDelReplica(parts, &client);
         } else if (parts[0] == "makesnapshot") {
             HandleClientMakeSnapshot(parts, &client);
-		} else if (parts[0] == "pausesnapshot") {
+        } else if (parts[0] == "pausesnapshot") {
             HandleClientPauseSnapshot(parts, &client);
         } else if (parts[0] == "recoversnapshot") {
             HandleClientRecoverSnapshot(parts, &client);
@@ -1379,6 +1419,10 @@ void StartNsClient() {
             HandleNSClientDropTable(parts, &client);
         } else if (parts[0] == "showtable") {
             HandleNSClientShowTable(parts, &client);
+        } else if (parts[0] == "confset") {
+            HandleNSClientConfSet(parts, &client);
+        } else if (parts[0] == "confget") {
+            HandleNSClientConfGet(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

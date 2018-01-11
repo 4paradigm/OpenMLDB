@@ -10,6 +10,7 @@
 #include <gflags/gflags.h>
 #include "gflags/gflags.h"
 #include "timer.h"
+#include <strings.h>
 #include "base/strings.h"
 #include <chrono>
 
@@ -21,6 +22,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
+DECLARE_bool(auto_failover);
 
 namespace rtidb {
 namespace nameserver {
@@ -35,7 +37,12 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     std::string zk_op_path = FLAGS_zk_root_path + "/op";
     zk_op_index_node_ = zk_op_path + "/op_index";
     zk_op_data_path_ = zk_op_path + "/op_data";
+    std::string zk_config_path = FLAGS_zk_root_path + "/config";
+    zk_auto_failover_node_ = zk_config_path + "/auto_failover";
+    zk_auto_recover_table_node_ = zk_config_path + "/auto_recover_table";
     running_.store(false, std::memory_order_release);
+    auto_failover_.store(false, std::memory_order_release);
+    auto_recover_table_.store(false, std::memory_order_release);
 }
 
 NameServerImpl::~NameServerImpl() {
@@ -90,6 +97,33 @@ bool NameServerImpl::Recover() {
     } else {
         op_index_ = std::stoull(value);
         PDLOG(INFO, "recover op_index[%u]", op_index_);
+    }
+    value.clear();
+    if (!zk_client_->GetNodeValue(zk_auto_failover_node_, value)) {
+        auto_failover_.load(std::memory_order_acquire) ? value = "1" : value = "0";
+        if (!zk_client_->CreateNode(zk_auto_failover_node_, value)) {
+            PDLOG(WARNING, "create auto failover node failed!");
+            return false;
+        }
+        PDLOG(INFO, "set zk_auto_failover_node %s", value.c_str());
+    } else {
+        value == "1" ? auto_failover_.store(true, std::memory_order_release) :
+                       auto_failover_.store(false, std::memory_order_release);
+        PDLOG(INFO, "get zk_auto_failover_node %s", value.c_str());
+    }
+    value.clear();
+    if (!zk_client_->GetNodeValue(zk_auto_recover_table_node_, value)) {
+        auto_recover_table_.load(std::memory_order_acquire) ? value = "1" : value = "0";
+        if (!zk_client_->CreateNode(zk_auto_recover_table_node_, value)) {
+            PDLOG(WARNING, "create auto recover table node failed!");
+            return false;
+        }
+        PDLOG(INFO, "set zk_auto_recover_table_node %s", value.c_str());
+    } else {
+        value == "1" ? auto_recover_table_.store(true, std::memory_order_release) :
+                       auto_recover_table_.store(false, std::memory_order_release);
+        PDLOG(INFO, "get zk_auto_recover_table_node %s", value.c_str());
+
     }
 
     if (!RecoverTableInfo()) {
@@ -294,7 +328,9 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint %s", tit->first.c_str());
             tit->second->state_ = ::rtidb::api::TabletState::kTabletOffline;
-            thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first));
+            if (auto_failover_.load(std::memory_order_acquire)) {
+                thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first));
+            }
         }
     }
 }
@@ -334,13 +370,13 @@ void NameServerImpl::ShowTablet(RpcController* controller,
             ShowTabletResponse* response,
             Closure* done) {
     brpc::ClosureGuard done_guard(done);    
-    std::lock_guard<std::mutex> lock(mu_);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(-1);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    std::lock_guard<std::mutex> lock(mu_);
     Tablets::iterator it = tablets_.begin();
     for (; it !=  tablets_.end(); ++it) {
         TabletStatus* status = response->add_tablets();
@@ -388,6 +424,22 @@ bool NameServerImpl::Init() {
         op_index_ = 1;
         PDLOG(INFO, "init op_index[%u]", op_index_);
     }
+    auto_failover_.load(std::memory_order_acquire) ? value = "1" : value = "0";
+    if (!zk_client_->SetNodeValue(zk_auto_failover_node_, value)) {
+        if (!zk_client_->CreateNode(zk_auto_failover_node_, value)) {
+            PDLOG(WARNING, "create auto failover node failed!");
+            return false;
+        }
+    }
+    PDLOG(INFO, "set zk_auto_failover_node %s", value.c_str());
+    auto_recover_table_.load(std::memory_order_acquire) ? value = "1" : value = "0";
+    if (!zk_client_->SetNodeValue(zk_auto_recover_table_node_, value)) {
+        if (!zk_client_->CreateNode(zk_auto_recover_table_node_, value)) {
+            PDLOG(WARNING, "create auto recover table node failed!");
+            return false;
+        }
+    }
+    PDLOG(INFO, "set zk_auto_recover_table_node %s", value.c_str());
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
         zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
@@ -745,15 +797,93 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     return 0;
 }
 
-void NameServerImpl::ShowOPStatus(RpcController* controller,
-        const ShowOPStatusRequest* request,
-        ShowOPStatusResponse* response,
-        Closure* done) {
+void NameServerImpl::ConfSet(RpcController* controller,
+            const ConfSetRequest* request,
+            GeneralResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(-1);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
-        done->Run();
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    std::string key = request->conf().key();
+    std::string value = request->conf().value();
+    if (key.empty() || value.empty()) {
+        response->set_code(-1);
+        response->set_msg("key or value is empty");
+        PDLOG(WARNING, "key[%s] value[%s]", key.c_str(), value.c_str());
+        return;
+    }
+    if (key == "auto_failover") {
+        if (strcasecmp(value.c_str(), "true") == 0) {
+            auto_failover_.store(true, std::memory_order_release);
+        } else if (strcasecmp(value.c_str(), "false") == 0) {
+            auto_failover_.store(false, std::memory_order_release);
+        } else {
+            response->set_code(-1);
+            response->set_msg("invalid value");
+            PDLOG(WARNING, "invalid value[%s]", value.c_str());
+            return;
+        }
+    } else if (key == "auto_recover_table") {
+        if (strcasecmp(value.c_str(), "true") == 0) {
+            auto_recover_table_.store(true, std::memory_order_release);
+        } else if (strcasecmp(value.c_str(), "false") == 0) {
+            auto_recover_table_.store(false, std::memory_order_release);
+        } else {
+            response->set_code(-1);
+            response->set_msg("invalid value");
+            PDLOG(WARNING, "invalid value[%s]", value.c_str());
+            return;
+        }
+
+    } else {
+        response->set_code(-1);
+        response->set_msg("unsupport set this key");
+        PDLOG(WARNING, "unsupport set key %s", key.c_str());
+        return;
+    }
+    PDLOG(INFO, "config set ok. key %s value %s", key.c_str(), value.c_str());
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::ConfGet(RpcController* controller,
+            const ConfGetRequest* request,
+            ConfGetResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+	::rtidb::nameserver::Pair* conf = response->add_conf();
+	conf->set_key("auto_failover");
+	auto_failover_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
+
+	conf = response->add_conf();
+	conf->set_key("auto_recover_table");
+	auto_recover_table_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
+
+	response->set_code(0);
+	response->set_msg("ok");
+}
+
+void NameServerImpl::ShowOPStatus(RpcController* controller,
+        const ShowOPStatusRequest* request,
+        ShowOPStatusResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
@@ -778,7 +908,6 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
     }
     response->set_code(0);
     response->set_msg("ok");
-    done->Run();
 }
 
 void NameServerImpl::ShowTable(RpcController* controller,

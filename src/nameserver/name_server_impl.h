@@ -116,6 +116,16 @@ public:
             ShowOPStatusResponse* response,
             Closure* done);
 
+    void ConfSet(RpcController* controller,
+            const ConfSetRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void ConfGet(RpcController* controller,
+            const ConfGetRequest* request,
+            ConfGetResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
@@ -223,6 +233,8 @@ private:
     std::string zk_table_index_node_;
     std::string zk_term_node_;
     std::string zk_table_data_path_;
+    std::string zk_auto_failover_node_;
+    std::string zk_auto_recover_table_node_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;
@@ -231,6 +243,8 @@ private:
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
     std::condition_variable cv_;
+    std::atomic<bool> auto_failover_;
+    std::atomic<bool> auto_recover_table_;
 };
 
 }
