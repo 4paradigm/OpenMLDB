@@ -2,7 +2,6 @@
 #
 # java_ut.sh
 #
-
 ROOT_DIR=`pwd`
 
 clear_debug() {
@@ -20,6 +19,6 @@ clear_debug
 sleep 2
 
 cd $ROOT_DIR/java
-mvn surefire-report:report
+mvn test -Dtest=com._4paradigm.rtidb.client.*Test
 clear_debug
 
