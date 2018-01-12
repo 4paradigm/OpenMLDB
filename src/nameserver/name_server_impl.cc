@@ -23,6 +23,7 @@ DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
 DECLARE_bool(auto_failover);
+DECLARE_bool(auto_recover_table);
 
 namespace rtidb {
 namespace nameserver {
@@ -41,8 +42,8 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
     zk_auto_recover_table_node_ = zk_config_path + "/auto_recover_table";
     running_.store(false, std::memory_order_release);
-    auto_failover_.store(false, std::memory_order_release);
-    auto_recover_table_.store(false, std::memory_order_release);
+    auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
+    auto_recover_table_.store(FLAGS_auto_recover_table, std::memory_order_release);
 }
 
 NameServerImpl::~NameServerImpl() {
@@ -1409,8 +1410,7 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, :
     op_data->task_status_ = ::rtidb::api::kDoing;
 
     std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index_, 
-                ::rtidb::api::OPType::kDelReplicaOP, tid, 
-                del_replica_data.pid(), del_replica_data.endpoint());
+                op_type, tid, del_replica_data.pid(), del_replica_data.endpoint());
     if (!task) {
         PDLOG(WARNING, "create delreplica task failed. table %s pid %u endpoint %s", 
                         del_replica_data.name().c_str(), del_replica_data.pid(), 
@@ -1466,10 +1466,9 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
     std::vector<std::string> follower_endpoint;
     bool has_alive_leader = false;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
-        if (iter->second->table_partition(idx).pid() == pid) {
-            if (iter->second->table_partition(idx).is_leader() && 
-                    iter->second->table_partition(idx).is_alive()) {
-                has_alive_leader = true;
+        if (iter->second->table_partition(idx).pid() == pid &&
+                iter->second->table_partition(idx).is_alive()) {
+            if (iter->second->table_partition(idx).is_leader()) { 
                 auto tablets_iter = tablets_.find(iter->second->table_partition(idx).endpoint());
                 if (tablets_iter == tablets_.end()) {
                     PDLOG(WARNING, "endpoint %s is not exist. table %s pid %u",
@@ -1482,7 +1481,8 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
                                     name.c_str(), pid);
                     return -1;
                 }
-            } else if (iter->second->table_partition(idx).is_alive()) {
+                has_alive_leader = true;
+            } else {
                 auto tablets_iter = tablets_.find(iter->second->table_partition(idx).endpoint());
                 if (tablets_iter != tablets_.end() && 
                         tablets_iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
@@ -1806,15 +1806,18 @@ void NameServerImpl::UpdateTableAliveStatus(const std::string& name, const std::
             if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
                 PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-                task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+                task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                 return;         
             }
+            task_info->set_status(::rtidb::api::TaskStatus::kDone);
             PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-            break;
+            return;
         }
     }
-    task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+    PDLOG(WARNING, "name %s endpoint %s pid %u is not exist",
+                    name.c_str(), endpoint.c_str(), pid);
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateChangeLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
