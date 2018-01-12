@@ -66,6 +66,15 @@ message ConfGetResponse {
     repeated Pair conf = 3;
 }
 
+message ChangeLeaderRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+}
+
+message OfflineEndpointRequest {
+	required string endpoint = 1;
+}
+
 message GeneralResponse {
 	required int32 code = 1;
 	optional string msg = 2;
@@ -123,4 +132,6 @@ service NameServer {
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
     rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
+    rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
+    rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
 }

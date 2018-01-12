@@ -160,6 +160,7 @@ bool NsClient::ConfSet(const std::string& key, const std::string& value, std::st
 
 bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string>& conf_map, 
             std::string& msg) {
+    conf_map.clear();        
     ::rtidb::nameserver::ConfGetRequest request;
     ::rtidb::nameserver::ConfGetResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfGet,
@@ -178,6 +179,33 @@ bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string
             msg = "cannot found key " + key;
             return false;
         }
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& msg) {
+    ::rtidb::nameserver::ChangeLeaderRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_name(name);
+    request.set_pid(pid);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ChangeLeader,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::OfflineEndpoint(const std::string& endpoint, std::string& msg) {
+    ::rtidb::nameserver::OfflineEndpointRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_endpoint(endpoint);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::OfflineEndpoint,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
         return true;
     }
     return false;

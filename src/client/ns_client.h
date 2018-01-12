@@ -50,6 +50,10 @@ public:
     bool ConfSet(const std::string& key, const std::string& value, std::string& msg);
 
     bool ConfGet(const std::string& key, std::map<std::string, std::string>& conf_map, std::string& msg);
+
+    bool ChangeLeader(const std::string& name, uint32_t pid, std::string& msg);
+
+    bool OfflineEndpoint(const std::string& endpoint, std::string& msg);
 	
 private:
     std::string endpoint_;

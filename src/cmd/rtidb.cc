@@ -223,22 +223,26 @@ void HandleNSClientConfSet(const std::vector<std::string>& parts, ::rtidb::clien
     std::string msg;
     bool ret = client->ConfSet(parts[1], parts[2], msg);
     if (!ret) {
-         printf("failed to set %s. error msg: %s", parts[1].c_str(), msg.c_str());
+         printf("failed to set %s. error msg: %s\n", parts[1].c_str(), msg.c_str());
         return;
     }
     printf("set %s ok\n", parts[1].c_str());
 }
 
 void HandleNSClientConfGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
-    if (parts.size() < 3) {
+    if (parts.size() < 1) {
         std::cout << "Bad format" << std::endl;
         return;
     }
     std::string msg;
     std::map<std::string, std::string> conf_map;
-    bool ret = client->ConfGet(parts[1], conf_map, msg);
+    std::string key;
+    if (parts.size() > 1) {
+        key = parts[1];
+    }
+    bool ret = client->ConfGet(key, conf_map, msg);
     if (!ret) {
-         printf("failed to set %s. error msg: %s", parts[1].c_str(), msg.c_str());
+         printf("failed to set %s. error msg: %s\n", parts[1].c_str(), msg.c_str());
         return;
     }
     std::vector<std::string> row;
@@ -253,6 +257,40 @@ void HandleNSClientConfGet(const std::vector<std::string>& parts, ::rtidb::clien
         tp.AddRow(row);
     }
     tp.Print(true);
+}
+
+void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        std::string msg;
+        bool ret = client->ChangeLeader(parts[1], pid, msg);
+        if (!ret) {
+            std::cout << "failed to change leader. error msg: " << msg << std::endl;
+            return;
+        }
+    } catch(const std::exception& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        return;
+    }
+    std::cout << "change leader ok" << std::endl;
+}   
+
+void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ret = client->OfflineEndpoint(parts[1], msg);
+    if (!ret) {
+        std::cout << "failed to offline endpoint. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "offline endpoint ok" << std::endl;
 }
 
 void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -1423,6 +1461,10 @@ void StartNsClient() {
             HandleNSClientConfSet(parts, &client);
         } else if (parts[0] == "confget") {
             HandleNSClientConfGet(parts, &client);
+        } else if (parts[0] == "changeleader") {
+            HandleNSClientChangeLeader(parts, &client);
+        } else if (parts[0] == "offlineendpoint") {
+            HandleNSClientOfflineEndpoint(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

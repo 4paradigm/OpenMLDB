@@ -875,6 +875,61 @@ void NameServerImpl::ConfGet(RpcController* controller,
 	response->set_msg("ok");
 }
 
+void NameServerImpl::ChangeLeader(RpcController* controller,
+            const ChangeLeaderRequest* request,
+            GeneralResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    if (CreateChangeLeaderOP(request->name(), request->pid()) < 0) {
+        response->set_code(-1);
+        response->set_msg("change leader failed");
+        PDLOG(WARNING, "change leader failed. name %s pid %u", 
+                        request->name().c_str(), request->pid());
+        return;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::OfflineEndpoint(RpcController* controller,
+            const OfflineEndpointRequest* request,
+            GeneralResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::string endpoint = request->endpoint();
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = tablets_.find(endpoint);
+        if (iter == tablets_.end()) {
+            response->set_code(-1);
+            response->set_msg("endpoint is not exist");
+            PDLOG(WARNING, "endpoint %s is not exist", endpoint.c_str());
+            return;
+        } else if (iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+            response->set_code(-1);
+            response->set_msg("endpoint is healthy");
+            PDLOG(WARNING, "endpoint %s is healthy", endpoint.c_str());
+            return;
+        }
+    }
+    OnTabletOffline(endpoint);
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
 void NameServerImpl::ShowOPStatus(RpcController* controller,
         const ShowOPStatusRequest* request,
         ShowOPStatusResponse* response,
@@ -1409,20 +1464,41 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
     }
     uint32_t tid = iter->second->tid();
     std::vector<std::string> follower_endpoint;
+    bool has_alive_leader = false;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
-        if (iter->second->table_partition(idx).pid() == pid && 
-                 !iter->second->table_partition(idx).is_leader() &&
-                iter->second->table_partition(idx).is_alive()) {
-            auto tablets_iter = tablets_.find(iter->second->table_partition(idx).endpoint());
-            if (tablets_iter != tablets_.end() && 
-                    tablets_iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-                follower_endpoint.push_back(iter->second->table_partition(idx).endpoint());
-            } else {
-                PDLOG(WARNING, "endpoint %s is offline. table %s pid %u", 
-                                iter->second->table_partition(idx).endpoint().c_str(),
-                                name.c_str(), pid);
+        if (iter->second->table_partition(idx).pid() == pid) {
+            if (iter->second->table_partition(idx).is_leader() && 
+                    iter->second->table_partition(idx).is_alive()) {
+                has_alive_leader = true;
+                auto tablets_iter = tablets_.find(iter->second->table_partition(idx).endpoint());
+                if (tablets_iter == tablets_.end()) {
+                    PDLOG(WARNING, "endpoint %s is not exist. table %s pid %u",
+                                    iter->second->table_partition(idx).endpoint().c_str(),
+                                    name.c_str(), pid);
+                    return -1;
+                } else if (tablets_iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                    PDLOG(WARNING, "endpoint %s is healthy, cannot change leader. table %s pid %u",
+                                    iter->second->table_partition(idx).endpoint().c_str(),
+                                    name.c_str(), pid);
+                    return -1;
+                }
+            } else if (iter->second->table_partition(idx).is_alive()) {
+                auto tablets_iter = tablets_.find(iter->second->table_partition(idx).endpoint());
+                if (tablets_iter != tablets_.end() && 
+                        tablets_iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                    follower_endpoint.push_back(iter->second->table_partition(idx).endpoint());
+                } else {
+                    PDLOG(WARNING, "endpoint %s is offline. table %s pid %u", 
+                                    iter->second->table_partition(idx).endpoint().c_str(),
+                                    name.c_str(), pid);
+                }
             }
         }
+    }
+    if (!has_alive_leader) {
+        PDLOG(WARNING, "has not alive leader, cannot change leader. table %s pid %u",
+                        name.c_str(), pid);
+        return -1;
     }
     if (follower_endpoint.empty()) {
         PDLOG(INFO, "table not found follower. name %s pid %u", name.c_str(), pid);

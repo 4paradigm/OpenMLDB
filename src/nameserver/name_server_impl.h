@@ -126,6 +126,16 @@ public:
             ConfGetResponse* response,
             Closure* done);
 
+    void ChangeLeader(RpcController* controller,
+            const ChangeLeaderRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void OfflineEndpoint(RpcController* controller,
+            const OfflineEndpointRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
