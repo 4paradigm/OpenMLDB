@@ -116,6 +116,26 @@ public:
             ShowOPStatusResponse* response,
             Closure* done);
 
+    void ConfSet(RpcController* controller,
+            const ConfSetRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void ConfGet(RpcController* controller,
+            const ConfGetRequest* request,
+            ConfGetResponse* response,
+            Closure* done);
+
+    void ChangeLeader(RpcController* controller,
+            const ChangeLeaderRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void OfflineEndpoint(RpcController* controller,
+            const OfflineEndpointRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
@@ -165,6 +185,9 @@ private:
     int ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
                     std::vector<::rtidb::base::ColumnDesc>& columns);                
 
+    void UpdateTableAliveStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
+                    bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
 
@@ -199,11 +222,14 @@ private:
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
+    std::shared_ptr<Task> CreateUpdateTableAliveStatusTask(const std::string& name, uint32_t pid,
+                    const std::string& endpoint, bool is_alive, uint64_t op_index, ::rtidb::api::OPType op_type);
+
     std::shared_ptr<Task> CreateChangeLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
                     const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint);
 
-    int CreateDelReplicaOP(const DelReplicaData& del_replica_data);
+    int CreateDelReplicaOP(const DelReplicaData& del_replica_data, ::rtidb::api::OPType op_type);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
     void ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
@@ -220,6 +246,8 @@ private:
     std::string zk_table_index_node_;
     std::string zk_term_node_;
     std::string zk_table_data_path_;
+    std::string zk_auto_failover_node_;
+    std::string zk_auto_recover_table_node_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;
@@ -228,6 +256,8 @@ private:
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
     std::condition_variable cv_;
+    std::atomic<bool> auto_failover_;
+    std::atomic<bool> auto_recover_table_;
 };
 
 }

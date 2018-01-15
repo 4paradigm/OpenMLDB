@@ -15,6 +15,7 @@ message TablePartition {
     required string endpoint = 1;
     required bool is_leader = 2;
     required uint32 pid = 3;
+    optional bool is_alive = 4 [default = true];
 }
 
 message TableInfo {
@@ -54,6 +55,32 @@ message AddReplicaNSRequest {
 	required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
+}
+
+message Pair {
+	required string key = 1;
+    required string value = 2;
+}
+
+message ConfSetRequest {
+	required Pair conf = 1;
+}
+
+message ConfGetRequest {}
+
+message ConfGetResponse {
+	required int32 code = 1;
+	optional string msg = 2;
+    repeated Pair conf = 3;
+}
+
+message ChangeLeaderRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+}
+
+message OfflineEndpointRequest {
+	required string endpoint = 1;
 }
 
 message GeneralResponse {
@@ -111,4 +138,8 @@ service NameServer {
     rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
     rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
+    rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
+    rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
+    rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
+    rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
 }

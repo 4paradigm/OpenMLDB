@@ -41,6 +41,7 @@ enum OPType {
     kAddReplicaOP = 2;
     kDelReplicaOP = 3;
     KSelectLeaderOP = 4;
+    kOfflineReplicaOP = 5;
 }
 
 enum TaskType {
@@ -54,6 +55,7 @@ enum TaskType {
     kDelReplica = 8;
     kDelTableInfo = 9;
     kChangeLeader = 10;
+    kUpdateTableAliveStatus = 11;
 }
 
 enum TaskStatus {
