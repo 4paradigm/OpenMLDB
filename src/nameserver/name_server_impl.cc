@@ -864,16 +864,16 @@ void NameServerImpl::ConfGet(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-	::rtidb::nameserver::Pair* conf = response->add_conf();
-	conf->set_key("auto_failover");
-	auto_failover_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
+    ::rtidb::nameserver::Pair* conf = response->add_conf();
+    conf->set_key("auto_failover");
+    auto_failover_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
 
-	conf = response->add_conf();
-	conf->set_key("auto_recover_table");
-	auto_recover_table_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
+    conf = response->add_conf();
+    conf->set_key("auto_recover_table");
+    auto_recover_table_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
 
-	response->set_code(0);
-	response->set_msg("ok");
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 void NameServerImpl::ChangeLeader(RpcController* controller,
@@ -1792,7 +1792,7 @@ void NameServerImpl::UpdateTableAliveStatus(const std::string& name, const std::
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
-         task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
