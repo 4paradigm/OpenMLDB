@@ -18,6 +18,7 @@
 #include "rpc/rpc_client.h"
 #include <brpc/server.h>
 #include "base/file_util.h"
+#include "client/ns_client.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -31,10 +32,6 @@ using ::rtidb::zk::ZkClient;
 
 namespace rtidb {
 namespace nameserver {
-
-
-uint32_t counter = 10;
-static int32_t endpoint_size = 1;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);
@@ -63,7 +60,6 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
-    endpoint_size++;
     sleep(4);
     brpc::ServerOptions options;
 	brpc::Server server;
@@ -159,6 +155,42 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_FALSE(ok);
 }
+
+TEST_F(NameServerImplTest, ConfigGetAndSet) {
+    FLAGS_zk_cluster="127.0.0.1:12181";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
+
+    FLAGS_endpoint = "127.0.0.1:9631";
+    NameServerImpl* nameserver = new NameServerImpl();
+    bool ok = nameserver->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options;
+	brpc::Server server;
+	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ::rtidb::client::NsClient name_server_client(FLAGS_endpoint);
+    name_server_client.Init();
+    std::string key = "auto_failover";
+    std::string msg;
+    std::map<std::string, std::string> conf_map;
+    bool ret = name_server_client.ConfGet(key, conf_map, msg);
+    ASSERT_TRUE(ret);
+    printf("value %s\n", conf_map[key].c_str());
+    ASSERT_STREQ(conf_map[key].c_str(), "false");
+    ret = name_server_client.ConfSet(key, "true", msg);
+    ASSERT_TRUE(ret);
+    conf_map.clear();
+    ret = name_server_client.ConfGet(key, conf_map, msg);
+    ASSERT_TRUE(ret);
+    ASSERT_STREQ(conf_map[key].c_str(), "true");
+}    
 
 }
 }
