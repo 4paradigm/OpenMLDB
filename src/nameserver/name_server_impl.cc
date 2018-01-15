@@ -677,7 +677,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 }
 
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-            bool is_leader,
+            bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map) {
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         const ::rtidb::nameserver::TablePartition& table_partition = table_info->table_partition(idx);
@@ -720,9 +720,13 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             }
             endpoint_map[table_partition.pid()].push_back(table_partition.endpoint());
         }
+        ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
+        if (table_info->ttl_type() == "kLatestTime") {
+            ttl_type = ::rtidb::api::TTLType::kLatestTime;
+        }
         if (!tablet_ptr->client_->CreateTable(table_info->name(), table_index_, table_partition.pid(), 
-                                table_info->ttl(), is_leader, endpoint, ::rtidb::api::TTLType::kAbsoluteTime,
-                                table_info->seg_cnt(), term)) {
+                                table_info->ttl(), table_info->seg_cnt(), columns, ttl_type,
+                                is_leader, endpoint, term)) {
 
             PDLOG(WARNING, "create table failed. tid[%u] pid[%u] endpoint[%s]", 
                     table_index_, table_partition.pid(), table_partition.endpoint().c_str());
@@ -848,6 +852,38 @@ void NameServerImpl::DropTable(RpcController* controller,
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
 }
 
+int NameServerImpl::ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+                    std::vector<::rtidb::base::ColumnDesc>& columns) {
+    for (int idx = 0; idx < table_info->column_desc_size(); idx++) {
+		::rtidb::base::ColType type;
+		std::string raw_type = table_info->column_desc(idx).type();
+		if (raw_type == "int32") {
+			type = ::rtidb::base::ColType::kInt32;
+		} else if (raw_type == "int64") {
+			type = ::rtidb::base::ColType::kInt64;
+		} else if (raw_type == "uint32") {
+			type = ::rtidb::base::ColType::kUInt32;
+		} else if (raw_type == "uint64") {
+			type = ::rtidb::base::ColType::kUInt64;
+		} else if (raw_type == "float") {
+			type = ::rtidb::base::ColType::kFloat;
+		} else if (raw_type == "double") {
+			type = ::rtidb::base::ColType::kDouble;
+		} else if (raw_type == "string") {
+			type = ::rtidb::base::ColType::kString;
+		} else {
+        	PDLOG(WARNING, "invalid type %s", table_info->column_desc(idx).type().c_str());
+			return -1;
+		}
+		::rtidb::base::ColumnDesc column_desc;
+		column_desc.type = type;
+		column_desc.name = table_info->column_desc(idx).name();
+		column_desc.add_ts_idx = table_info->column_desc(idx).add_ts_idx();
+        columns.push_back(column_desc);
+    }
+    return 0;
+}
+
 void NameServerImpl::CreateTable(RpcController* controller, 
         const CreateTableRequest* request, 
         GeneralResponse* response, 
@@ -878,9 +914,16 @@ void NameServerImpl::CreateTable(RpcController* controller,
         table_index_++;
         table_info->set_tid(table_index_);
     }
+    std::vector<::rtidb::base::ColumnDesc> columns;
+    if (ConvertColumnDesc(table_info, columns) < 0) {
+        response->set_code(-1);
+        response->set_msg("create column desc failed");
+        PDLOG(WARNING, "create table column desc failed. tid[%u]", table_index_);
+        return;
+    }
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
-    if (CreateTableOnTablet(table_info, false, endpoint_map) < 0 ||
-            CreateTableOnTablet(table_info, true, endpoint_map) < 0) {
+    if (CreateTableOnTablet(table_info, false, columns, endpoint_map) < 0 ||
+            CreateTableOnTablet(table_info, true, columns, endpoint_map) < 0) {
         response->set_code(-1);
         response->set_msg("create table failed");
         PDLOG(WARNING, "create table failed. tid[%u]", table_index_);

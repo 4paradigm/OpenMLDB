@@ -42,7 +42,8 @@ public:
                      uint64_t ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
-                     bool leader);
+                     bool leader, const std::vector<std::string>& endpoints,
+                     uint64_t term = 0);
 
     bool Put(uint32_t tid,
              uint32_t pid,
