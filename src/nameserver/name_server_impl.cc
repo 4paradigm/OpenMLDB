@@ -917,8 +917,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (ConvertColumnDesc(table_info, columns) < 0) {
         response->set_code(-1);
-        response->set_msg("create column desc failed");
-        PDLOG(WARNING, "create table column desc failed. tid[%u]", table_index_);
+        response->set_msg("convert column desc failed");
+        PDLOG(WARNING, "convert table column desc failed. tid[%u]", table_index_);
         return;
     }
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
