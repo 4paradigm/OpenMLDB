@@ -84,8 +84,10 @@ int StreamReceiver::Init() {
         return -1;
     }
     stream_receiver_set_.insert(combine_key);
-    std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_)
-				+ "/snapshot/";
+    std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
+    if (file_name_ != "table_meta.txt") {
+        tmp_file_path += "snapshot/";
+    }
     if (!::rtidb::base::MkdirRecur(tmp_file_path)) {
         PDLOG(WARNING, "mkdir failed! path[%s]", tmp_file_path.c_str());
         return -1;
@@ -124,8 +126,11 @@ void StreamReceiver::on_idle_timeout(brpc::StreamId id) {
 }
 
 void StreamReceiver::on_closed(brpc::StreamId id) {
-    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_)
-				+ "/snapshot/" + file_name_;
+    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
+    if (file_name_ != "table_meta.txt") {
+        full_path += "snapshot/";
+    }
+	full_path += file_name_;
     std::string tmp_file_path = full_path + ".tmp";
     rename(tmp_file_path.c_str(), full_path.c_str());
     PDLOG(INFO, "file %s received. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
@@ -913,6 +918,13 @@ void TabletImpl::CreateStream(RpcController* controller,
     std::lock_guard<std::mutex> lock(mu_);
     uint32_t tid = request->tid(); 
     uint32_t pid = request->pid(); 
+    std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
+    if (table) {
+        PDLOG(WARNING, "table is exist. tid %u, pid %u", tid, pid);
+        response->set_code(-1);
+        response->set_msg("table is exist");
+        return;
+    }
     StreamReceiver* stream_receiver = new StreamReceiver(request->file_name(), tid, pid);
 	if (stream_receiver->Init() < 0) {
         delete stream_receiver;
@@ -1004,6 +1016,11 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             std::shared_ptr<::rtidb::api::TaskInfo> task) {
     bool has_error = true;
     do {
+		// send table_meta file
+		if (SendFile(endpoint, tid, pid, "table_meta.txt") < 0) {
+			PDLOG(WARNING, "send table_meta.txt failed");
+			break;
+		}
 		// send manifest file
 		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
 			PDLOG(WARNING, "send MANIFEST failed");
@@ -1063,8 +1080,11 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 		return -1;
 	}
 
-    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid)
-				+ "/snapshot/" + file_name;
+    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    if (file_name != "table_meta.txt") {
+        full_path += "snapshot/";
+    }
+	full_path += file_name;
     PDLOG(INFO, "send file %s to %s", full_path.c_str(), endpoint.c_str());
 	FILE* file = fopen(full_path.c_str(), "rb");
 	if (file == NULL) {
