@@ -205,7 +205,8 @@ uint64_t Table::SchedGc() {
 }
 
 bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) {
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0 
+            || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return false;
     }
     uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
