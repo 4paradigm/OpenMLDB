@@ -133,6 +133,40 @@ table_partition {
 上面的配置表示再0.0.0.0:9993创建pid为0到9的leader节点, 在0.0.0.0:9994和0.0.0.0:9995上创建pid为3-7的follower节点
 其中table_partition的结构可以重复多次
 
+如果要创建的表是多维表，元数据文件格式如下
+```
+name : "test3"
+ttl: 100
+ttl_type : "kLatestTime"
+seg_cnt: 8
+table_partition {
+  endpoint: "127.0.0.1:9521"
+  pid_group: "1-3"
+  is_leader: true
+}
+table_partition {
+  endpoint: "127.0.0.1:9522"
+  pid_group: "1-2"
+  is_leader: false
+}
+column_desc {
+  name : "card"
+  type : "string"
+  add_ts_idx : true
+}
+column_desc {
+  name : "demo"
+  type : "string"
+  add_ts_idx : true
+}
+column_desc {
+  name : "value"
+  type : "string"
+  add_ts_idx : false
+}
+```
+column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构
+
 然后再nameserver的client上运行如下命令
 
 ```
