@@ -14,7 +14,7 @@ public class RowCodec {
 		if (row.length  != schema.size()) {
 			throw new TabletException("row length mismatch schema");
 		}
-		List<byte[]> cache = new ArrayList<byte[]>(row.length);
+		Object[] cache = new Object[row.length];
 		//TODO limit the max size
 		int size = getSize(row, schema, cache);
 		ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
@@ -27,7 +27,7 @@ public class RowCodec {
 			}
 			switch (schema.get(i).getType()) {
 			case kString:
-				byte[] bytes = cache.get(i);
+				byte[] bytes = (byte[])cache[i];
                 if (bytes.length > 128) {
                     throw new TabletException("kString should be less than or equal 128");
                 }
@@ -65,8 +65,8 @@ public class RowCodec {
 		if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
-		byte length = buffer.get();
-        Object[] row = new Object[(int)length]; 
+		int length = buffer.get() & 0xFF;
+        Object[] row = new Object[length]; 
         int index = 0;
         while (buffer.position() < buffer.limit()
         		&& index < row.length) {
@@ -107,7 +107,7 @@ public class RowCodec {
 	}
 	
 	
-	private static int getSize(Object[] row, List<ColumnDesc> schema, List<byte[]> cache) {
+	private static int getSize(Object[] row, List<ColumnDesc> schema, Object[] cache) {
 		int totalSize = 1;
 		for (int i = 0; i < row.length; i++) {
 			totalSize += 2;
@@ -117,7 +117,7 @@ public class RowCodec {
 			switch (schema.get(i).getType()) {
 			case kString:
 				byte[] bytes = ((String)row[i]).getBytes(Charset.forName("utf-8"));
-				cache.add(i, bytes);
+				cache[i] =  bytes;
 				totalSize += bytes.length;
 				break;
 			case kInt32:
