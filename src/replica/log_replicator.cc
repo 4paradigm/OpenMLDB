@@ -279,7 +279,7 @@ void LogReplicator::SetLeaderTerm(uint64_t term) {
    term_ = term;
 }
 
-int LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
+bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
         return table_->Put(entry.ts(), entry.value(), entry.dimensions());
     } else {
