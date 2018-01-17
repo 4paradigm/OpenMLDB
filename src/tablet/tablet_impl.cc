@@ -268,6 +268,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
+    bool ok = false;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table);
         if (ret_code != 0) {
@@ -276,15 +277,20 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        table->Put(request->time(), 
+        ok = table->Put(request->time(), 
                    request->value(),
                    request->dimensions());
-    }else {
-        table->Put(request->pk(), 
+    } else {
+        ok = table->Put(request->pk(), 
                    request->time(), 
                    request->value().c_str(),
                    request->value().size());
         PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
+    }
+    if (!ok) {
+        response->set_code(-1);
+        response->set_msg("put failed");
+        return;
     }
     response->set_code(0);
     std::shared_ptr<LogReplicator> replicator;

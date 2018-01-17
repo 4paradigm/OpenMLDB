@@ -100,7 +100,7 @@ public:
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
-    void ApplyEntryToTable(const LogEntry& entry);
+    int ApplyEntryToTable(const LogEntry& entry);
 
 private:
     // the replicator root data path
