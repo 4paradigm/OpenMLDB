@@ -137,7 +137,7 @@ public:
             Closure* done);
 
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-            bool is_leader,
+            bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
 
     void CheckZkClient();
@@ -181,6 +181,9 @@ private:
 
     void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
+    int ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+                    std::vector<::rtidb::base::ColumnDesc>& columns);                
 
     void UpdateTableAliveStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
                     bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);

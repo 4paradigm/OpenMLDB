@@ -5,6 +5,12 @@ option java_generic_services = true;
 option java_package = "com._4paradigm.rtidb";
 option java_outer_classname = "NameServer";
 
+message ColumnDesc {
+    required string name = 1;
+    required string type = 2;
+    required bool add_ts_idx = 3;
+}
+
 message TablePartition {
     required string endpoint = 1;
     required bool is_leader = 2;
@@ -18,6 +24,8 @@ message TableInfo {
 	optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
 	optional uint32 tid = 5;
+    repeated ColumnDesc column_desc = 6;
+    optional string ttl_type = 7 [default = "kAbsoluteTime"];
 }
 
 message CreateTableRequest {

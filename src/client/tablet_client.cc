@@ -34,7 +34,8 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint64_t ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
-                     bool leader) {
+                     bool leader, const std::vector<std::string>& endpoints,
+                     uint64_t term) {
     std::string schema;
     ::rtidb::base::SchemaCodec codec;
     bool codec_ok = codec.Encode(columns, schema);
@@ -61,6 +62,10 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_ttl_type(type);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_term(term);
+        for (size_t i = 0; i < endpoints.size(); i++) {
+            table_meta->add_replicas(endpoints[i]);
+        }
     } else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
