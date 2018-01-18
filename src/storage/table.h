@@ -106,7 +106,7 @@ public:
         return ttl_ / (60 * 1000);
     }
 
-    bool IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time);
+    bool IsExpired(uint64_t pk_time, uint64_t cur_time);
 
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);

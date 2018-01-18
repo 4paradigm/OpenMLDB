@@ -261,7 +261,7 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 			break;
 		}
 		// delete timeout key
-		if (table->IsExpired(entry, cur_time)) {
+		if (table->IsExpired(entry.ts(), cur_time)) {
 			expired_key_num++;
 			continue;
 		}
@@ -351,7 +351,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                 break;
             }
             cur_offset = entry.log_index();
-            if (table->IsExpired(entry, cur_time)) {
+            if (table->IsExpired(entry.ts(), cur_time)) {
                 expired_key_num++;
                 continue;
             }

@@ -204,13 +204,13 @@ uint64_t Table::SchedGc() {
     return gc_record_cnt;
 }
 
-bool Table::IsExpired(const ::rtidb::api::LogEntry& entry, uint64_t cur_time) {
+bool Table::IsExpired(uint64_t pk_time, uint64_t cur_time) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0 
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return false;
     }
     uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
-    if (entry.ts() < time) {
+    if (pk_time < time) {
         return true;
     }
     return false;
