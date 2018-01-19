@@ -519,11 +519,13 @@ void HandleClientGet(const std::vector<std::string>& parts, ::rtidb::client::Tab
     }
     try {
         std::string value;
+        uint64_t ts = 0;
         bool ok = client->Get(boost::lexical_cast<uint32_t>(parts[1]),
                               boost::lexical_cast<uint32_t>(parts[2]),
                               parts[3],
                               boost::lexical_cast<uint64_t>(parts[4]),
-                              value);
+                              value,
+                              ts);
         if (ok) {
             std::cout << "value :" << value << std::endl;
         }else {
@@ -555,8 +557,6 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
         }else {
             std::cout << "Put failed" << std::endl; 
         }
-
-    
     } catch(std::exception const& e) {
         std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
     } 
@@ -1192,6 +1192,90 @@ uint32_t GetDimensionIndex(const std::vector<::rtidb::base::ColumnDesc>& columns
     return 0;
 }
 
+void HandleClientSGet(const std::vector<std::string>& parts, 
+                      ::rtidb::client::TabletClient* client){
+    try {
+        if (parts.size() < 4) {
+            std::cout << "Bad get format, eg sget tid pid key [time]" << std::endl;
+            return;
+        }
+        uint64_t time = 0;
+        if (parts.size() > 4) {
+            time = boost::lexical_cast<uint64_t>(parts[4]);
+        }
+        std::string schema;
+        bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
+                                         boost::lexical_cast<uint32_t>(parts[2]), 
+                                         schema);
+        if(!ok) {
+            std::cout << "No schema for table ,please use command get" << std::endl;
+            return;
+        }
+        std::vector<::rtidb::base::ColumnDesc> raw;
+        ::rtidb::base::SchemaCodec codec;
+        codec.Decode(schema, raw);
+        ::baidu::common::TPrinter tp(raw.size() + 1, 128);
+        std::vector<std::string> row;
+        row.push_back("ts");
+        for (uint32_t i = 0; i < raw.size(); i++) {
+            row.push_back(raw[i].name);
+        }
+        tp.AddRow(row);
+        std::string value;
+        uint64_t ts = 0;
+        ok = client->Get(boost::lexical_cast<uint32_t>(parts[1]),
+                              boost::lexical_cast<uint32_t>(parts[2]),
+                              parts[3],
+                              time,
+                              value,
+                              ts); 
+        if (!ok) {
+            std::cout << "Fail to get value!" << std::endl;
+            return;
+        }
+        rtidb::base::FlatArrayIterator fit(value.data(), value.size());
+        std::vector<std::string> vrow;
+        vrow.push_back(boost::lexical_cast<std::string>(ts));
+        while (fit.Valid()) {
+            std::string col;
+            if (fit.GetType() == ::rtidb::base::ColType::kString) {
+                fit.GetString(&col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
+                int32_t int32_col = 0;
+                fit.GetInt32(&int32_col);
+                col = boost::lexical_cast<std::string>(int32_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kInt64) {
+                int64_t int64_col = 0;
+                fit.GetInt64(&int64_col);
+                col = boost::lexical_cast<std::string>(int64_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kUInt32) {
+                uint32_t uint32_col = 0;
+                fit.GetUInt32(&uint32_col);
+                col = boost::lexical_cast<std::string>(uint32_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kUInt64) {
+                uint64_t uint64_col = 0;
+                fit.GetUInt64(&uint64_col);
+                col = boost::lexical_cast<std::string>(uint64_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
+                double double_col = 0.0d;
+                fit.GetDouble(&double_col);
+                col = boost::lexical_cast<std::string>(double_col);
+            }else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {
+                float float_col = 0.0f;
+                fit.GetFloat(&float_col);
+                col = boost::lexical_cast<std::string>(float_col);
+            }
+            fit.Next();
+            vrow.push_back(col);
+        }
+        tp.AddRow(vrow);
+        tp.Print(true);
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args" << std::endl;
+    }
+    
+}
+
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 7) {
         std::cout << "Bad scan format" << std::endl;
@@ -1411,7 +1495,9 @@ void StartClient() {
             HandleClientCreateTable(parts, &client);
         } else if (parts[0] == "get") {
             HandleClientGet(parts, &client);
-        } else if (parts[0] == "screate") {
+        } else if (parts[0] == "sget") {
+            HandleClientSGet(parts, &client);
+        }else if (parts[0] == "screate") {
             HandleClientSCreateTable(parts, &client);
         } else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
