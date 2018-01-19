@@ -106,8 +106,6 @@ public:
         return ttl_ / (60 * 1000);
     }
 
-    bool IsExpired(uint64_t pk_time, uint64_t cur_time);
-
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
     uint64_t GetRecordIdxByteSize();
@@ -177,6 +175,8 @@ public:
     inline void SetExpire(bool is_expire) {
         enable_gc_.store(is_expire, std::memory_order_relaxed);
     }
+
+    uint64_t GetExpireTime();
 
     inline bool GetExpireStatus() {
         return enable_gc_.load(std::memory_order_relaxed);

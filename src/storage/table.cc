@@ -204,16 +204,13 @@ uint64_t Table::SchedGc() {
     return gc_record_cnt;
 }
 
-bool Table::IsExpired(uint64_t pk_time, uint64_t cur_time) {
+uint64_t Table::GetExpireTime() {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0 
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        return false;
+        return 0;
     }
-    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
-    if (pk_time < time) {
-        return true;
-    }
-    return false;
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
 }
 
 Table::Iterator::Iterator(Segment::Iterator* it):it_(it){}

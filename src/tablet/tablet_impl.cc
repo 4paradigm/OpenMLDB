@@ -413,7 +413,7 @@ void TabletImpl::Scan(RpcController* controller,
     PDLOG(DEBUG, "scan pk %s st %lld et %lld , pk record cnt %u", request->pk().c_str(), request->st(), end_time, it->GetSize());
     uint32_t scount = 0;
     uint64_t last_time = 0;
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    uint64_t expire_time = table->GetExpireTime();
     while (it->Valid()) {
         scount ++;
         PDLOG(DEBUG, "scan key %lld", it->GetKey());
@@ -428,8 +428,8 @@ void TabletImpl::Scan(RpcController* controller,
             continue;
         }
         last_time = it->GetKey();
-        if (table->IsExpired(last_time, cur_time)) {
-            PDLOG(DEBUG, "key %s ts %lu has expired. cur_time %lu", request->pk().c_str(), last_time, cur_time);
+        if (last_time < expire_time) {
+            PDLOG(DEBUG, "key %s ts %lu has expired. expire_time %lu", request->pk().c_str(), last_time, expire_time);
             break;
         }
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
