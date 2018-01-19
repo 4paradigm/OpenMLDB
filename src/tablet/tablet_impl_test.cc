@@ -143,6 +143,62 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ("test9", response.value());
     }
 
+    // create latest ttl table
+    id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t1");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(5);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    int num = 10;
+    while (num) {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test");
+        prequest.set_time(num);
+        prequest.set_value("test" + std::to_string(num));
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+        num--;
+    }    
+    {        
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(5);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_NE(0, response.code());
+        request.set_ts(6);
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ("test6", response.value());
+        request.set_ts(0);
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ("test10", response.value());
+        request.set_ts(7);
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ("test7", response.value());
+    }
+
 }
 
 TEST_F(TabletImplTest, CreateTableWithSchema) {
