@@ -226,6 +226,7 @@ void TabletImpl::Get(RpcController* controller,
                     response->set_msg("Not Found");
                     PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
                             request->ts());
+                    delete it;        
                     return;        
                 }
                 it->Next();
@@ -251,6 +252,7 @@ void TabletImpl::Get(RpcController* controller,
                 request->ts());
 
     }
+    delete it;        
 }
 
 void TabletImpl::Put(RpcController* controller,
