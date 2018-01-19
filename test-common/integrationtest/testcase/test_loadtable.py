@@ -741,11 +741,7 @@ class TestLoadTable(TestCaseBase):
         self.assertTrue('AddReplica ok' in rs2)
         time.sleep(1)
         self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
-        self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
-        time.sleep(60)
-        self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
         self.assertFalse('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
-
 
     @multi_dimension(True)
     def test_loadtable_and_addreplica_ttl_md(self):
