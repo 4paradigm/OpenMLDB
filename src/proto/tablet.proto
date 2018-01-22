@@ -83,6 +83,7 @@ message Manifest {
     optional uint64 offset = 1;
     optional string name = 2;
     optional uint64 count = 3;
+    optional uint64 term = 4;
 }
 
 message Dimension {
@@ -382,6 +383,7 @@ service TabletServer {
     rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
     rpc SetTTLClock(SetTTLClockRequest) returns(GeneralResponse);
 
+    // name server interface
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
 
