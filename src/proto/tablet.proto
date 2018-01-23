@@ -351,6 +351,19 @@ message GetResponse {
     optional bytes value = 5;
 }
 
+message GetTermPairRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message GetTermPairResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional bool has_table = 3;
+    optional uint64 term = 4;
+    optional uint64 offset = 5;
+}
+
 message HttpRequest { }
 message HttpResponse { }
 
@@ -386,6 +399,7 @@ service TabletServer {
     // name server interface
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
+    rpc GetTermPair(GetTermPairRequest) returns(GetTermPairResponse);
 
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
 }

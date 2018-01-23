@@ -128,6 +128,8 @@ public:
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
+    bool GetTermPair(uint32_t tid, uint32_t pid, bool& has_table, uint64_t& term, uint64_t& offset);
+
     int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     int GetTableStatus(uint32_t tid, uint32_t pid,
                     ::rtidb::api::TableStatus& table_status);

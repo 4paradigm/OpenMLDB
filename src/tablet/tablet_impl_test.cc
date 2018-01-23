@@ -335,8 +335,6 @@ TEST_F(TabletImplTest, TTL) {
 
 }
 
-
-
 TEST_F(TabletImplTest, CreateTable) {
     uint32_t id = counter++;
     TabletImpl tablet;
@@ -947,6 +945,72 @@ TEST_F(TabletImplTest, Snapshot) {
     tablet.MakeSnapshot(NULL, &grequest, &gresponse,
             &closure);
     ASSERT_EQ(0, gresponse.code());
+}
+
+TEST_F(TabletImplTest, GetTermPair) {
+    uint32_t id = counter++;
+    MockClosure closure;
+    {
+        TabletImpl tablet;
+        tablet.Init();
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_wal(true);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+
+        ::rtidb::api::PutRequest prequest;
+        ::rtidb::api::PutResponse presponse;
+        prequest.set_pk("test1");
+        prequest.set_time(9527);
+        prequest.set_value("test0");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+        ::rtidb::api::GetTermPairRequest pair_request;
+        ::rtidb::api::GetTermPairResponse pair_response;
+        pair_request.set_tid(id);
+        pair_request.set_pid(1);
+        tablet.GetTermPair(NULL, &pair_request, &pair_response,
+                &closure);
+        ASSERT_EQ(0, pair_response.code());
+        ASSERT_TRUE(pair_response.has_table());
+        ASSERT_EQ(1, pair_response.offset());
+
+        prequest.set_time(9528);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+        ::rtidb::api::GeneralRequest grequest;
+        ::rtidb::api::GeneralResponse gresponse;
+        grequest.set_tid(id);
+        grequest.set_pid(1);
+        tablet.MakeSnapshot(NULL, &grequest, &gresponse,
+                &closure);
+        ASSERT_EQ(0, gresponse.code());
+        sleep(1);
+    }
+    TabletImpl tablet;
+    tablet.Init();
+    ::rtidb::api::GetTermPairRequest pair_request;
+    ::rtidb::api::GetTermPairResponse pair_response;
+    pair_request.set_tid(id);
+    pair_request.set_pid(1);
+    tablet.GetTermPair(NULL, &pair_request, &pair_response,
+            &closure);
+    ASSERT_EQ(0, pair_response.code());
+    ASSERT_FALSE(pair_response.has_table());
+    ASSERT_EQ(2, pair_response.offset());
 }
 
 

@@ -1517,6 +1517,53 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
 }
 
+void TabletImpl::GetTermPair(RpcController* controller,
+            const ::rtidb::api::GetTermPairRequest* request,
+            ::rtidb::api::GetTermPairResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
+	if (!table) {
+		response->set_code(0);
+		response->set_has_table(false);
+		response->set_msg("table is not exist");
+    	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
+									std::to_string(pid) + "/snapshot/MANIFEST";
+		int fd = open(manifest_file.c_str(), O_RDONLY);
+		if (fd < 0) {
+			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+            response->set_term(0);
+            response->set_offset(0);
+			return;
+		}
+		google::protobuf::io::FileInputStream fileInput(fd);
+		fileInput.SetCloseOnDelete(true);
+		::rtidb::api::Manifest manifest;
+		if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+			PDLOG(WARNING, "parse manifest failed");
+            response->set_term(0);
+            response->set_offset(0);
+			return;
+		}
+        response->set_term(manifest.term());
+        response->set_offset(manifest.offset());
+		return;
+	}
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+    if (!replicator) {
+		response->set_code(-1);
+		response->set_msg("replicator is not exist");
+        return;
+    }
+	response->set_code(0);
+	response->set_msg("ok");
+	response->set_has_table(true);
+	response->set_term(replicator->GetLeaderTerm());
+	response->set_offset(replicator->GetOffset());
+}
+
 int TabletImpl::WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta) {
 	if (!::rtidb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());

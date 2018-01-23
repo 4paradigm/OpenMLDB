@@ -348,7 +348,9 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
         std::set<uint32_t> follower_pid;
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+                // tackle the alive partition only
+                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint &&
+                        kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
                         leader_pid.insert(kv.second->table_partition(idx).pid());
                     } else {

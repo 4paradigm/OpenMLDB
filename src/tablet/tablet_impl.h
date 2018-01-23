@@ -176,6 +176,11 @@ public:
             ::rtidb::api::HttpResponse* response,
             Closure* done);
 
+    void GetTermPair(RpcController* controller,
+            const ::rtidb::api::GetTermPairRequest* request,
+            ::rtidb::api::GetTermPairResponse* response,
+            Closure* done);
+
 private:
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);

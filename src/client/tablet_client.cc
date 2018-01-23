@@ -345,6 +345,22 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     return true;
 }
 
+bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, bool& has_table, uint64_t& term, uint64_t& offset) {
+    ::rtidb::api::GetTermPairRequest request;
+    ::rtidb::api::GetTermPairResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTermPair,
+            &request, &response, 12, 1);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    has_table = response.has_table();
+    term = response.term();
+    offset = response.offset();
+    return true;
+}
+
 int TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {
     ::rtidb::api::GetTableStatusRequest request;
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
