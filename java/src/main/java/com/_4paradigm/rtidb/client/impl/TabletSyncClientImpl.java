@@ -11,8 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.TabletClientConfig;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
@@ -34,9 +36,16 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
 	@Override
 	public boolean put(int tid, int pid, String key, long time, byte[] bytes) throws TimeoutException {
+		Long consumed = System.nanoTime();
 		Tablet.PutRequest request = Tablet.PutRequest.newBuilder().setPid(pid).setPk(key).setTid(tid).setTime(time)
 				.setValue(ByteString.copyFrom(bytes)).build();
+		Long encode = System.nanoTime() - consumed;
+		consumed = System.nanoTime();
 		Tablet.PutResponse response = tabletServer.put(request);
+		Long network = System.nanoTime() - consumed;
+		if (TabletClientConfig.isMetricsEnabled()) {
+			TabletMetrics.getInstance().addPut(encode, network);
+		}
 		if (response != null && response.getCode() == 0) {
 			return true;
 		}
@@ -55,9 +64,16 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
 	@Override
 	public ByteString get(int tid, int pid, String key, long time) throws TimeoutException {
+		Long consumed = System.nanoTime();
 		Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
 				.build();
+		Long encode = System.nanoTime() - consumed;
+		consumed = System.nanoTime();
 		Tablet.GetResponse response = tabletServer.get(request);
+		Long network = System.nanoTime() - consumed;
+		if (TabletClientConfig.isMetricsEnabled()) {
+			TabletMetrics.getInstance().addPut(encode, network);
+		}
 		if (response != null && response.getCode() == 0) {
 			return response.getValue();
 		}
@@ -95,6 +111,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
 	@Override
 	public boolean put(int tid, int pid, long ts, Object[] row) throws TimeoutException, TabletException {
+		Long consumed = System.nanoTime();
 		Table table = getTable(tid, pid);
 		Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
 		ByteBuffer buffer = RowCodec.encode(row, table.getSchema());
@@ -119,7 +136,13 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		buffer.rewind();
 		builder.setValue(ByteBufferNoCopy.wrap(buffer.asReadOnlyBuffer()));
 		Tablet.PutRequest request = builder.build();
+		Long encode = System.nanoTime() - consumed;
+		consumed = System.nanoTime();
 		Tablet.PutResponse response = tabletServer.put(request);
+		Long network = System.nanoTime() - consumed;
+		if (TabletClientConfig.isMetricsEnabled()) {
+			TabletMetrics.getInstance().addPut(encode, network);
+		}
 		if (response != null && response.getCode() == 0) {
 			return true;
 		}
@@ -157,16 +180,17 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 			builder.setIdxName(idxName);
 		}
 		Tablet.ScanRequest request = builder.build();
+		Long consuemd = System.nanoTime();
 		Tablet.ScanResponse response = tabletServer.scan(request);
+		Long network = System.nanoTime() - consuemd;
 		if (response != null && response.getCode() == 0) {
-			return new KvIterator(response.getPairs(), table.getSchema());
+			return new KvIterator(response.getPairs(), table.getSchema(), network);
 		}
 		return null;
 	}
 
 	@Override
 	public boolean createTable(String name, int tid, int pid, long ttl, TTLType type, int segCnt) {
-		
 		return createTable(name, tid, pid, ttl, type, segCnt, null);
 	}
 

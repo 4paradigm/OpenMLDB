@@ -9,7 +9,7 @@ import java.util.List;
 import com._4paradigm.rtidb.client.TabletException;
 
 public class RowCodec {
-
+	private static Charset charset = Charset.forName("utf-8");
 	public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
 		if (row.length  != schema.size()) {
 			throw new TabletException("row length mismatch schema");
@@ -65,6 +65,7 @@ public class RowCodec {
 		if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
+		
 		int length = buffer.get() & 0xFF;
         Object[] row = new Object[length]; 
         int index = 0;
@@ -82,7 +83,7 @@ public class RowCodec {
 			case kString:
 				byte[] inner = new byte[size];
                 buffer.get(inner);
-                String val = new String(inner, Charset.forName("utf-8"));
+                String val = new String(inner, charset);
                 row[index] = val;
 				break;
 			case kInt32:
@@ -116,7 +117,7 @@ public class RowCodec {
 			}
 			switch (schema.get(i).getType()) {
 			case kString:
-				byte[] bytes = ((String)row[i]).getBytes(Charset.forName("utf-8"));
+				byte[] bytes = ((String)row[i]).getBytes(charset);
 				cache[i] =  bytes;
 				totalSize += bytes.length;
 				break;

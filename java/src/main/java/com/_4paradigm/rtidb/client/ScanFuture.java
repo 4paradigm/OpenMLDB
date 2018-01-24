@@ -14,13 +14,24 @@ public class ScanFuture implements Future<KvIterator>{
 
 	private Future<Tablet.ScanResponse> f;
 	private Table t;
+	private Long startTime = -1l;
 	public ScanFuture(Future<Tablet.ScanResponse> f, Table t) {
 		this.f = f;
 		this.t = t;
 	}
 	
+	public ScanFuture(Future<Tablet.ScanResponse> f, Table t, Long startTime) {
+		this.f = f;
+		this.t = t;
+		this.startTime = startTime;
+	}
+	
 	public static ScanFuture wrappe(Future<Tablet.ScanResponse> f, Table t) {
 		return new ScanFuture(f, t);
+	}
+	
+	public static ScanFuture wrappe(Future<Tablet.ScanResponse> f, Table t, Long startTime) {
+		return new ScanFuture(f, t, startTime);
 	}
 	
 	@Override
@@ -42,12 +53,16 @@ public class ScanFuture implements Future<KvIterator>{
 	@Override
 	public KvIterator get() throws InterruptedException, ExecutionException {
 		ScanResponse response = f.get();
+		Long network = -1l;
+		if (startTime > 0) {
+			network = System.nanoTime() - startTime;
+		}
 		if (response != null ) {
 			if (response.getCode() == 0) {
 				if (t != null) {
-					return new KvIterator(response.getPairs(), t.getSchema());
+					return new KvIterator(response.getPairs(), t.getSchema(), network);
 				}
-				return new KvIterator(response.getPairs());
+				return new KvIterator(response.getPairs(), network);
 			}
 			return null;
 		}
@@ -57,8 +72,15 @@ public class ScanFuture implements Future<KvIterator>{
 	@Override
 	public KvIterator get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 		ScanResponse response = f.get(timeout, unit);
+		Long network = -1l;
+		if (startTime > 0) {
+			network = System.nanoTime() - startTime;
+		}
 		if (response != null && response.getCode() == 0) {
-			return new KvIterator(response.getPairs());
+			if (t != null) {
+				return new KvIterator(response.getPairs(), t.getSchema(), network);
+			}
+			return new KvIterator(response.getPairs(), network);
 		}
 		throw new ExecutionException("Internal server error", null);
 	}
