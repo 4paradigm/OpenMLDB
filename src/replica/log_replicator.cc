@@ -279,17 +279,17 @@ void LogReplicator::SetLeaderTerm(uint64_t term) {
    term_ = term;
 }
 
-void LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
+bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
-        table_->Put(entry.ts(), entry.value(), entry.dimensions());
-    }else {
+        return table_->Put(entry.ts(), entry.value(), entry.dimensions());
+    } else {
         // the legend way
-        table_->Put(entry.pk(), entry.ts(),
-                   entry.value().c_str(),
-                   entry.value().size());
         PDLOG(DEBUG, "apply log entry %lu #key %s, #ts %lu, #value %s", 
                     entry.log_index(), entry.pk().c_str(),  
                     entry.ts(), entry.value().c_str());
+        return table_->Put(entry.pk(), entry.ts(),
+                       entry.value().c_str(),
+                       entry.value().size());
     }
 }
 
@@ -340,7 +340,10 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
             return false;
         }
-        ApplyEntryToTable(request->entries(i));
+        if (!ApplyEntryToTable(request->entries(i))) {
+            PDLOG(WARNING, "put failed. tid %u pid %u", table_->GetId(), table_->GetPid());
+            return false;
+        }
         log_offset_.store(request->entries(i).log_index(), std::memory_order_relaxed);
         response->set_log_offset(GetOffset());
     }

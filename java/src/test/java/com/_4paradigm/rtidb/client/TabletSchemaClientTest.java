@@ -344,15 +344,7 @@ public class TabletSchemaClientTest {
 			Assert.assertTrue(false);
 		}
         KvIterator it = client.scan(tid, 0, "9527", "card", 12l, 0l);
-        Assert.assertTrue(it != null);
-        Assert.assertTrue(it.valid());
-        Object[] row = it.getDecodedValue();
-        Assert.assertTrue(row.length == 3);
-        Assert.assertEquals(128 , row[1].toString().length());
-        Assert.assertEquals("9527", row[0]);
-        Assert.assertEquals(3.0, row[2]);
-        it.next();
-        Assert.assertFalse(it.valid());
+        Assert.assertFalse(it != null);
         client.dropTable(tid, 0);
     }
 

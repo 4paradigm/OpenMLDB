@@ -188,11 +188,11 @@ void TabletImpl::Get(RpcController* controller,
              const ::rtidb::api::GetRequest* request,
              ::rtidb::api::GetResponse* response,
              Closure* done) {
+    brpc::ClosureGuard done_guard(done);         
     if (request->tid() < 1) {
         PDLOG(WARNING, "invalid table tid %u", request->tid());
         response->set_code(11);
         response->set_msg("invalid table id");
-        done->Run();
         return;
     }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
@@ -201,7 +201,6 @@ void TabletImpl::Get(RpcController* controller,
                 request->pid());
         response->set_code(-1);
         response->set_msg("table not found");
-        done->Run();
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
@@ -209,13 +208,32 @@ void TabletImpl::Get(RpcController* controller,
                       request->tid(), request->pid());
         response->set_code(20);
         response->set_msg("table is unavailable now");
-        done->Run();
         return;
     }
     ::rtidb::storage::Ticket ticket;
     Table::Iterator* it = table->NewIterator(request->key(), ticket);
     if (request->ts() > 0) {
-        it->Seek(request->ts());
+        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
+            uint64_t keep_cnt = table->GetTTL();
+            it->SeekToFirst();
+            while (it->Valid()) {
+                if (it->GetKey() == request->ts()) {
+                    break;
+                }
+                keep_cnt--;
+                if (keep_cnt == 0) {
+                    response->set_code(1);
+                    response->set_msg("Not Found");
+                    PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
+                            request->ts());
+                    delete it;        
+                    return;        
+                }
+                it->Next();
+            }
+        } else {
+            it->Seek(request->ts());
+        }
     }else {
         it->SeekToFirst();
     }
@@ -234,7 +252,7 @@ void TabletImpl::Get(RpcController* controller,
                 request->ts());
 
     }
-    done->Run();
+    delete it;        
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -273,6 +291,7 @@ void TabletImpl::Put(RpcController* controller,
         done->Run();
         return;
     }
+    bool ok = false;
     if (request->dimensions_size() > 0) {
         int32_t ret_code = CheckDimessionPut(request, table);
         if (ret_code != 0) {
@@ -281,15 +300,20 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        table->Put(request->time(), 
+        ok = table->Put(request->time(), 
                    request->value(),
                    request->dimensions());
-    }else {
-        table->Put(request->pk(), 
+    } else {
+        ok = table->Put(request->pk(), 
                    request->time(), 
                    request->value().c_str(),
                    request->value().size());
         PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
+    }
+    if (!ok) {
+        response->set_code(-1);
+        response->set_msg("put failed");
+        return;
     }
     response->set_code(0);
     std::shared_ptr<LogReplicator> replicator;
@@ -366,6 +390,12 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
+    if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
+        response->set_code(21);
+        response->set_msg("table ttl type is kLatestTime, cannot scan");
+        done->Run();
+        return;
+    }
 
     metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
@@ -404,9 +434,11 @@ void TabletImpl::Scan(RpcController* controller,
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
-    PDLOG(DEBUG, "scan pk %s st %lld et %lld , pk record cnt %u", request->pk().c_str(), request->st(), end_time, it->GetSize());
+    PDLOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
     uint64_t last_time = 0;
+    end_time = std::max(end_time, table->GetExpireTime());
+    PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
     while (it->Valid()) {
         scount ++;
         PDLOG(DEBUG, "scan key %lld", it->GetKey());
