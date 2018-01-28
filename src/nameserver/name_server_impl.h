@@ -136,6 +136,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void RecoverEndpoint(RpcController* controller,
+            const RecoverEndpointRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
@@ -176,6 +181,8 @@ private:
     void UpdateTablets(const std::vector<std::string>& endpoints);
 
     void OnTabletOffline(const std::string& endpoint);
+
+    void OnTabletOnline(const std::string& endpoint);
 
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
@@ -229,11 +236,20 @@ private:
                     const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint);
 
+	std::shared_ptr<Task> CreateDropTableTask(const std::string& endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
+
     int CreateDelReplicaOP(const DelReplicaData& del_replica_data, ::rtidb::api::OPType op_type);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
     void ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    void RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint);                    
+    int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
+    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
 
 private:
     std::mutex mu_;

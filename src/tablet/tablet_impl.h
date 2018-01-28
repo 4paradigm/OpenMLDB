@@ -181,6 +181,11 @@ public:
             ::rtidb::api::GetTermPairResponse* response,
             Closure* done);
 
+    void GetManifest(RpcController* controller,
+            const ::rtidb::api::GetManifestRequest* request,
+            ::rtidb::api::GetManifestResponse* response,
+            Closure* done);
+
 private:
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
@@ -215,7 +220,9 @@ private:
 
     void CheckZkClient();
 
-    int32_t DeleteTableInternal(uint32_t tid, uint32_t pid);
+    int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+
+    int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
 

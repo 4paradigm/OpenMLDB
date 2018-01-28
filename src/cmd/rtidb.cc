@@ -293,6 +293,20 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtid
     std::cout << "offline endpoint ok" << std::endl;
 }
 
+void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ret = client->RecoverEndpoint(parts[1], msg);
+    if (!ret) {
+        std::cout << "failed to recover endpoint. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "recover endpoint ok" << std::endl;
+}
+
 void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::string name;
     if (parts.size() >= 2) {
@@ -1521,6 +1535,8 @@ void StartNsClient() {
             HandleNSClientChangeLeader(parts, &client);
         } else if (parts[0] == "offlineendpoint") {
             HandleNSClientOfflineEndpoint(parts, &client);
+        } else if (parts[0] == "recoverendpoint") {
+            HandleNSClientRecoverEndpoint(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

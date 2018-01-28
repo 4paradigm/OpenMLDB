@@ -25,6 +25,10 @@ int TabletClient::Init() {
     return client_.Init();
 }
 
+int TabletClient::Reconnect() {
+    return client_.Reconnect();
+}
+
 std::string TabletClient::GetEndpoint() {
     return endpoint_;
 }
@@ -361,6 +365,23 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, bool& has_table, uint
     return true;
 }
 
+bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, int& code, ::rtidb::api::Manifest& manifest) {
+    ::rtidb::api::GetManifestRequest request;
+    ::rtidb::api::GetManifestResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetManifest,
+            &request, &response, 12, 1);
+    if (!ret) {
+        return false;
+    }
+    code = response.code();
+    if (code == 0) {
+        manifest.CopyFrom(response.manifest());
+    }
+    return true;
+}
+
 int TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {
     ::rtidb::api::GetTableStatusRequest request;
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
@@ -501,10 +522,13 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
 
 
 
-bool TabletClient::DropTable(uint32_t id, uint32_t pid) {
+bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::DropTableRequest request;
     request.set_tid(id);
     request.set_pid(pid);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
     ::rtidb::api::DropTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropTable,
             &request, &response, 12, 1);

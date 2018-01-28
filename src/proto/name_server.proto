@@ -61,6 +61,12 @@ message MakeSnapshotNSRequest {
     required uint32 pid = 2;
 }
 
+message AddReplicaData {
+	required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
 message AddReplicaNSRequest {
 	required string name = 1;
     required uint32 pid = 2;
@@ -90,6 +96,10 @@ message ChangeLeaderRequest {
 }
 
 message OfflineEndpointRequest {
+	required string endpoint = 1;
+}
+
+message RecoverEndpointRequest {
 	required string endpoint = 1;
 }
 
@@ -152,4 +162,5 @@ service NameServer {
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
     rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
+    rpc RecoverEndpoint(RecoverEndpointRequest) returns (GeneralResponse);
 }

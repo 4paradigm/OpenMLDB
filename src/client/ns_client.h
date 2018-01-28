@@ -54,6 +54,8 @@ public:
     bool ChangeLeader(const std::string& name, uint32_t pid, std::string& msg);
 
     bool OfflineEndpoint(const std::string& endpoint, std::string& msg);
+
+    bool RecoverEndpoint(const std::string& endpoint, std::string& msg);
 	
 private:
     std::string endpoint_;
