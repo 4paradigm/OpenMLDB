@@ -192,8 +192,8 @@ private:
     int ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
                     std::vector<::rtidb::base::ColumnDesc>& columns);                
 
-    void UpdateTableAliveStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
-                    bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
+                    bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
@@ -229,8 +229,9 @@ private:
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
-    std::shared_ptr<Task> CreateUpdateTableAliveStatusTask(const std::string& name, uint32_t pid,
-                    const std::string& endpoint, bool is_alive, uint64_t op_index, ::rtidb::api::OPType op_type);
+    std::shared_ptr<Task> CreateUpdatePartitionStatusTask(const std::string& name, uint32_t pid,
+                    const std::string& endpoint, bool is_leader, bool is_alive, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateChangeLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
                     const std::string& name, uint32_t tid, uint32_t pid, 

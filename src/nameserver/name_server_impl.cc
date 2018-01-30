@@ -1572,8 +1572,8 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, :
             return -1;
         }
     } else {
-        task = CreateUpdateTableAliveStatusTask(del_replica_data.name(),
-                    del_replica_data.pid(), del_replica_data.endpoint(), false,
+        task = CreateUpdatePartitionStatusTask(del_replica_data.name(),
+                    del_replica_data.pid(), del_replica_data.endpoint(), false, false,
                     op_index_, op_type);
         if (!task) {
             PDLOG(WARNING, "create update table alive status task failed. table %s pid %u endpoint %s", 
@@ -1884,7 +1884,7 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateUpdateTableAliveStatusTask(name, pid, endpoint, true, 
+    task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, true, 
                 op_index_, ::rtidb::api::OPType::kReAddReplicaOP);
     if (!task) {
         PDLOG(WARNING, "create update table alive status task failed. table %s pid %u endpoint %s", 
@@ -2001,7 +2001,7 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateUpdateTableAliveStatusTask(name, pid, endpoint, true, 
+    task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, true, 
                 op_index_, ::rtidb::api::OPType::kReAddReplicaWithDropOP);
     if (!task) {
         PDLOG(WARNING, "create update table alive status task failed. table %s pid %u endpoint %s", 
@@ -2105,7 +2105,7 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateUpdateTableAliveStatusTask(name, pid, endpoint, true, 
+    task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, true, 
                 op_index_, ::rtidb::api::OPType::kReAddReplicaNoSendOP);
     if (!task) {
         PDLOG(WARNING, "create update table alive status task failed. table %s pid %u endpoint %s", 
@@ -2184,7 +2184,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateUpdateTableAliveStatusTask(name, pid, endpoint, true, 
+    task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, true, 
                 op_index_, ::rtidb::api::OPType::kReAddReplicaSimplifyOP);
     if (!task) {
         PDLOG(WARNING, "create update table alive status task failed. table %s pid %u endpoint %s", 
@@ -2438,14 +2438,14 @@ std::shared_ptr<Task> NameServerImpl::CreateDelTableInfoTask(const std::string& 
     return task;
 }
 
-std::shared_ptr<Task> NameServerImpl::CreateUpdateTableAliveStatusTask(const std::string& name, uint32_t pid,
-                    const std::string& endpoint, bool is_alive, uint64_t op_index, ::rtidb::api::OPType op_type) {
+std::shared_ptr<Task> NameServerImpl::CreateUpdatePartitionStatusTask(const std::string& name, uint32_t pid,
+                    const std::string& endpoint, bool is_leader, bool is_alive, uint64_t op_index, ::rtidb::api::OPType op_type) {
     std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::rtidb::api::TaskType::kUpdateTableAliveStatus);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kUpdatePartitionStatus);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&NameServerImpl::UpdateTableAliveStatus, this, name, endpoint, pid, is_alive, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::UpdatePartitionStatus, this, name, endpoint, pid, is_leader, is_alive, task->task_info_);
     return task;
 }
 
@@ -2495,8 +2495,8 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
     }
 }
 
-void NameServerImpl::UpdateTableAliveStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
-                bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
+                bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2518,6 +2518,7 @@ void NameServerImpl::UpdateTableAliveStatus(const std::string& name, const std::
                         iter->second->mutable_table_partition(idx);
                 ::rtidb::nameserver::PartitionMeta* partition_meta = 
                         table_partition->mutable_partition_meta(meta_idx);        
+                partition_meta->set_is_leader(is_leader);
                 partition_meta->set_is_alive(is_alive);
                 std::string table_value;
                 iter->second->SerializeToString(&table_value);

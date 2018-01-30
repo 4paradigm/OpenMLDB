@@ -59,7 +59,7 @@ enum TaskType {
     kDelReplica = 8;
     kDelTableInfo = 9;
     kChangeLeader = 10;
-    kUpdateTableAliveStatus = 11;
+    kUpdatePartitionStatus = 11;
     kDropTable = 12;
 }
 
