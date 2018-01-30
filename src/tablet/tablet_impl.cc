@@ -1372,16 +1372,6 @@ void TabletImpl::LoadTable(RpcController* controller,
 
 int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     do {
-        std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + 
-                        "_" + std::to_string(pid);
-        if (!::rtidb::base::IsExists(db_path + "/snapshot/MANIFEST")) {
-            if (task_ptr) {
-                std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            }        
-            PDLOG(INFO, "has not snapshot, need not load.  tid %u pid %u", tid, pid);
-            return 0;
-        }
         // load snapshot data
         std::shared_ptr<Table> table = GetTable(tid, pid);        
         if (!table) {

@@ -323,12 +323,13 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
             if (old != ::rtidb::api::TabletState::kTabletHealthy) {
                 if (tit->second->client_->Reconnect() < 0) {
-                    PDLOG(WARNING, "tablet client init error. endpoint %s", it->c_str());
+                    PDLOG(WARNING, "tablet client reconnect error. endpoint %s", it->c_str());
                     continue;
                 }
                 tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint %s", tit->first.c_str());
                 if (auto_recover_table_.load(std::memory_order_acquire)) {
+                    // wait until the tablet serivce start ok
                     thread_pool_.DelayTask(FLAGS_tablet_startup_wait_time, 
                             boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
                 }
