@@ -40,15 +40,27 @@ def get_timestamp():
     local_time = time.localtime(ct)
     data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
     data_secs = (ct - long(ct)) * 1000
-    return "%s.%03d" % (data_head, data_secs) + " +0800"
+    today = time.strftime("%Y%m%d", local_time)
+    return ["%s.%03d" % (data_head, data_secs) + " +0800", today]
 
 
 if __name__ == "__main__":
     conf_map = get_conf()
     url = "http://" + conf_map["endpoint"] + "/status"
-    log_file = open(conf_map["log_dir"]+"/monitor.log", 'w')
+    log_file = conf_map["log_dir"] + "/monitor.log"
+    if not os.path.exists(conf_map["log_dir"]):
+        os.mkdir(conf_map["log_dir"])
+    log_file = open(log_file, 'w')
+    last_date = get_timestamp()[1]
     while True:
-        time_stamp = get_timestamp()
+        time_stamp = get_timestamp()[0]
+        new_date = get_timestamp()[1]
+        if new_date != last_date:
+            log_file.close()
+            os.rename(log_file, log_file + "." + last_date)
+            last_date = new_date
+            log_file = open(log_file, 'w')
+
         result = get_data(url)
         for method_data in result:
             data = time_stamp + "\t" + method_data + "\t" + result[method_data]["count"] + "\t" + result[method_data]["error"] + "\t" + \
