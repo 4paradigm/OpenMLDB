@@ -381,6 +381,10 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
         return;
     }
+    if (table_info.table_partition_size() < 1) {
+        printf("has not table_partition in table meta file\n");
+        return;
+    }
     ns_table_info.set_ttl_type(table_info.ttl_type());
     ns_table_info.set_ttl(table_info.ttl());
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
