@@ -178,6 +178,9 @@ public:
         if (type_ != kFloat) {
             return false;
         }
+        if (fsize_ == 0) {
+            return true;
+        }
         if (offset_ + 4 > bsize_) {
             return false;
         }
@@ -190,6 +193,9 @@ public:
     bool GetUInt32(uint32_t* value) {
         if (type_ != kUInt32) {
             return false;
+        }
+        if (fsize_ == 0) {
+            return true;
         }
         if (offset_ + 4 > bsize_) {
             return false;
@@ -204,6 +210,9 @@ public:
         if (type_ != kInt32) {
             return false;
         }
+        if (fsize_ == 0) {
+            return true;
+        }
         if (offset_ + 4 > bsize_) {
             return false;
         }
@@ -216,6 +225,9 @@ public:
     bool GetUInt64(uint64_t* value) {
         if (type_ != kUInt64) {
             return false;
+        }
+        if (fsize_ == 0) {
+            return true;
         }
         if (offset_ + 4 > bsize_) {
             return false;
@@ -230,6 +242,9 @@ public:
         if (type_ != kInt64) {
             return false;
         }
+        if (fsize_ == 0) {
+            return true;
+        }
         if (offset_ + 8 > bsize_) {
             return false;
         }
@@ -243,6 +258,9 @@ public:
         if (type_ != kDouble) {
             return false;
         }
+        if (fsize_ == 0) {
+            return true;
+        }
         if (offset_ + 8 > bsize_) {
             return false;
         }
@@ -255,6 +273,9 @@ public:
     bool GetString(std::string* value) {
         if (type_ != kString) {
             return false;
+        }
+        if (fsize_ == 0) {
+            return true;
         }
         if (offset_ + fsize_ > bsize_) {
             return false;

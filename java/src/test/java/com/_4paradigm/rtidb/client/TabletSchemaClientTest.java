@@ -23,7 +23,7 @@ public class TabletSchemaClientTest {
     private static RpcClient rpcClient = null;
     private static TabletSyncClient client = null;
     static {
-    	rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
+    	rpcClient = TabletClientBuilder.buildRpcClient("192.168.33.10", 9527, 100000, 3);
     	client = TabletClientBuilder.buildSyncClient(rpcClient);
     }
     
@@ -174,7 +174,7 @@ public class TabletSchemaClientTest {
         Assert.assertEquals(ColumnType.kDouble , table.getSchema().get(2).getType());
         Assert.assertEquals(table.getIndexes().get("card").intValue(), 0);
         Assert.assertEquals(table.getIndexes().get("merchant").intValue(), 1);
-        client.dropTable(tid, 0);
+       
     }
     
     @Test
@@ -199,7 +199,7 @@ public class TabletSchemaClientTest {
         boolean ok = client.createTable("tj0", tid, 0, 0, 8,schema);
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10, new Object[] {"9527", "1222", 1.0}));
-        client.dropTable(tid, 0);
+        
     }
     
     @Test
@@ -267,7 +267,7 @@ public class TabletSchemaClientTest {
         it.next();
         Assert.assertFalse(it.valid());
         
-        client.dropTable(tid, 0);
+       
     }
     
     @Test
@@ -309,7 +309,7 @@ public class TabletSchemaClientTest {
         	Assert.assertFalse(false);
         }
         
-        client.dropTable(tid, 0);
+       
     }
     
     
@@ -345,7 +345,50 @@ public class TabletSchemaClientTest {
 		}
         KvIterator it = client.scan(tid, 0, "9527", "card", 12l, 0l);
         Assert.assertFalse(it != null);
-        client.dropTable(tid, 0);
+       
+    }
+    
+    @Test
+    public void testPutNullAndScan() throws TimeoutException, TabletException {
+    	int tid = id.incrementAndGet();
+    	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    	ColumnDesc desc1 = new ColumnDesc();
+    	desc1.setAddTsIndex(true);
+    	desc1.setName("card");
+    	desc1.setType(ColumnType.kString);
+    	schema.add(desc1);
+    	ColumnDesc desc2 = new ColumnDesc();
+    	desc2.setAddTsIndex(false);
+    	desc2.setName("merchant");
+    	desc2.setType(ColumnType.kString);
+    	schema.add(desc2);
+    	ColumnDesc desc3 = new ColumnDesc();
+    	desc3.setAddTsIndex(false);
+    	desc3.setName("amt");
+    	desc3.setType(ColumnType.kDouble);
+    	schema.add(desc3);
+        boolean ok = client.createTable("tj0", tid, 0, 0, 8,schema);
+        Assert.assertTrue(ok);
+        Assert.assertTrue(client.put(tid, 0, 10l, new Object[] {"9527", null, 2.0d}));
+        Assert.assertTrue(client.put(tid, 0, 1l, new Object[] {"9527", "test", null}));
+       
+        KvIterator it = client.scan(tid, 0, "9527", "card", 12l, 0l);
+        Assert.assertTrue(it.valid());
+        
+        Object[] row = it.getDecodedValue();
+        Assert.assertEquals( "9527", row[0]);
+        Assert.assertEquals( null, row[1]);
+        Assert.assertEquals( 2.0d, row[2]);
+        it.next();
+        
+        Assert.assertTrue(it.valid());
+        row = it.getDecodedValue();
+        Assert.assertEquals( "9527", row[0]);
+        Assert.assertEquals( "test", row[1]);
+        Assert.assertEquals( null, row[2]);
+        it.next();
+        Assert.assertFalse(it.valid());
+      
     }
 
     
