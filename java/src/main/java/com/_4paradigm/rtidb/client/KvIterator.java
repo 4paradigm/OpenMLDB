@@ -22,6 +22,7 @@ public class KvIterator {
     private List<ColumnDesc> schema;
     private Long network = 0l;
     private Long decode = 0l;
+    private int count;
     public KvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -30,7 +31,15 @@ public class KvIterator {
         next();
     }
     
-    public KvIterator(ByteString bs, List<ColumnDesc> schema) {
+    public int getCount() {
+		return count;
+	}
+
+	public void setCount(int count) {
+		this.count = count;
+	}
+
+	public KvIterator(ByteString bs, List<ColumnDesc> schema) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;

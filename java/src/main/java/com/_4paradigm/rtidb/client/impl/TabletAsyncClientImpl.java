@@ -17,6 +17,8 @@ import com._4paradigm.rtidb.client.schema.Table;
 import com.google.protobuf.ByteString;
 
 import io.brpc.client.RpcCallback;
+import io.brpc.client.RpcClient;
+import io.brpc.client.RpcProxy;
 import rtidb.api.Tablet;
 import rtidb.api.Tablet.GetResponse;
 import rtidb.api.Tablet.PutResponse;
@@ -26,6 +28,7 @@ import rtidb.api.TabletServer;
 public class TabletAsyncClientImpl implements TabletAsyncClient {
     private final static Logger logger = LoggerFactory.getLogger(TabletAsyncClientImpl.class);
     private TabletServer tablet;
+    private RpcClient client;
     private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
 
 		@Override
@@ -62,8 +65,12 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
     	
     };
     
-    public TabletAsyncClientImpl(TabletServer tablet) {
-        this.tablet = tablet;
+    public TabletAsyncClientImpl(RpcClient rpcClient) {
+    	this.client = rpcClient;
+    }
+    
+    public void init() {
+    	tablet = RpcProxy.getProxy(client, TabletServer.class);
     }
 
 	@Override
@@ -129,4 +136,8 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 		}
 		return null;
 	}
+
+	
+	
+	
 }

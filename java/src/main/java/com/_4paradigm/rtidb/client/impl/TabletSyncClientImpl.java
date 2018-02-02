@@ -22,6 +22,8 @@ import com._4paradigm.rtidb.client.schema.Table;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
+import io.brpc.client.RpcClient;
+import io.brpc.client.RpcProxy;
 import rtidb.api.Tablet;
 import rtidb.api.Tablet.TTLType;
 import rtidb.api.TabletServer;
@@ -29,9 +31,18 @@ import rtidb.api.TabletServer;
 public class TabletSyncClientImpl implements TabletSyncClient {
 	private final static Logger logger = LoggerFactory.getLogger(TabletSyncClientImpl.class);
 	private TabletServer tabletServer;
-    private final static int KEEP_LATEST_MAX_NUM = 1000;
-	public TabletSyncClientImpl(TabletServer tabletServer) {
-		this.tabletServer = tabletServer;
+	private RpcClient client;
+	private final static int KEEP_LATEST_MAX_NUM = 1000;
+
+	public TabletSyncClientImpl(RpcClient rpcClient) {
+		this.client = rpcClient;
+	}
+
+	public void init() {
+		tabletServer = RpcProxy.getProxy(client, TabletServer.class);
+	}
+
+	public TabletSyncClientImpl() {
 	}
 
 	@Override
@@ -104,8 +115,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 	}
 
 	@Override
-	public boolean createTable(String name, int tid, int pid, long ttl, 
-			                   int segCnt, List<ColumnDesc> schema) {
+	public boolean createTable(String name, int tid, int pid, long ttl, int segCnt, List<ColumnDesc> schema) {
 		return createTable(name, tid, pid, ttl, null, segCnt, schema);
 	}
 
@@ -155,7 +165,8 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		if (table != null) {
 			return table;
 		}
-		Tablet.GetTableSchemaRequest request = Tablet.GetTableSchemaRequest.newBuilder().setTid(tid).setPid(pid).build();
+		Tablet.GetTableSchemaRequest request = Tablet.GetTableSchemaRequest.newBuilder().setTid(tid).setPid(pid)
+				.build();
 		Tablet.GetTableSchemaResponse response = tabletServer.getTableSchema(request);
 		if (response.getCode() == 0) {
 			List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
@@ -165,8 +176,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		}
 		return null;
 	}
-	
-	
+
 	@Override
 	public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et) throws TimeoutException {
 		Table table = getTable(tid, pid);
@@ -184,7 +194,9 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		Tablet.ScanResponse response = tabletServer.scan(request);
 		Long network = System.nanoTime() - consuemd;
 		if (response != null && response.getCode() == 0) {
-			return new KvIterator(response.getPairs(), table.getSchema(), network);
+			KvIterator it = new KvIterator(response.getPairs(), table.getSchema(), network);
+			it.setCount(response.getCount());
+			return it;
 		}
 		return null;
 	}
@@ -203,33 +215,32 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		if (null == name || "".equals(name.trim())) {
 			return false;
 		}
-        if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl < 0)) {
-            return false;
-        }
+		if (type == TTLType.kLatestTime && (ttl > KEEP_LATEST_MAX_NUM || ttl < 0)) {
+			return false;
+		}
 		Tablet.TableMeta.Builder builder = Tablet.TableMeta.newBuilder();
-        Set<String> usedColumnName = new HashSet<String>();
+		Set<String> usedColumnName = new HashSet<String>();
 		if (schema != null && schema.size() > 0) {
 			for (ColumnDesc desc : schema) {
-				if (null == desc.getName() 
-					||"".equals(desc.getName().trim())) {
+				if (null == desc.getName() || "".equals(desc.getName().trim())) {
 					return false;
 				}
-                if (usedColumnName.contains(desc.getName())) {
-                    return false;
-                }
-                usedColumnName.add(desc.getName());
+				if (usedColumnName.contains(desc.getName())) {
+					return false;
+				}
+				usedColumnName.add(desc.getName());
 				if (desc.isAddTsIndex()) {
 					builder.addDimensions(desc.getName());
 				}
 			}
-            try {
-            	ByteBuffer buffer = SchemaCodec.encode(schema);
-			    builder.setSchema(ByteString.copyFrom(buffer.array()));
-            }catch (TabletException e) {
-                logger.error("fail to decode schema");
-                return false;
-            }
-					
+			try {
+				ByteBuffer buffer = SchemaCodec.encode(schema);
+				builder.setSchema(ByteString.copyFrom(buffer.array()));
+			} catch (TabletException e) {
+				logger.error("fail to decode schema");
+				return false;
+			}
+
 		}
 		if (type != null) {
 			builder.setTtlType(type);
@@ -247,4 +258,5 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 		}
 		return false;
 	}
+
 }

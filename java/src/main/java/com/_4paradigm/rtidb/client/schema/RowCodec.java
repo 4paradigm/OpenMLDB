@@ -1,9 +1,8 @@
-package com._4paradigm.rtidb.client.schema;
+ package com._4paradigm.rtidb.client.schema;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.List;
 
 import com._4paradigm.rtidb.client.TabletException;
@@ -102,7 +101,6 @@ public class RowCodec {
 				throw new TabletException(ctype.toString() + " is not support on jvm platform");
 			}
             index ++;
-            
         }
         return row;
 	}

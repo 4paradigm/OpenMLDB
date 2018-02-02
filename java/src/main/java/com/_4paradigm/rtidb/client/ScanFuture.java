@@ -77,10 +77,13 @@ public class ScanFuture implements Future<KvIterator>{
 			network = System.nanoTime() - startTime;
 		}
 		if (response != null && response.getCode() == 0) {
+			KvIterator it = null;
 			if (t != null) {
-				return new KvIterator(response.getPairs(), t.getSchema(), network);
+				it = new KvIterator(response.getPairs(), t.getSchema(), network);
 			}
-			return new KvIterator(response.getPairs(), network);
+			it = new KvIterator(response.getPairs(), network);
+			it.setCount(response.getCount());
+			return it;
 		}
 		throw new ExecutionException("Internal server error", null);
 	}
