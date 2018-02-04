@@ -252,18 +252,9 @@ bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
     uint32_t tid = table_info->tid();
     uint32_t pid = request.pid();
     std::string endpoint;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    if (GetLeader(table_info, pid, endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
+        return false;
     }
     if (endpoint.empty()) {
         PDLOG(WARNING, "partition[%u] not exist. table name is [%s]", pid, request.name().c_str());
@@ -708,18 +699,9 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     uint32_t tid = table_info->tid();
     uint32_t pid = request->pid();
     std::string endpoint;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    if (GetLeader(table_info, pid, endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request->name().c_str(), pid);
+        return;
     }
     if (endpoint.empty()) {
         response->set_code(-1);
@@ -1264,18 +1246,9 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < pos->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (pos->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    pos->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                leader_endpoint = pos->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request->name().c_str(), pid);
+        return;
     }
     if (leader_endpoint.empty()) {
         response->set_code(-1);
@@ -1404,18 +1377,9 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < pos->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (pos->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    pos->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                leader_endpoint = pos->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
+        return false;
     }
     if (leader_endpoint.empty()) {
         PDLOG(WARNING, "table[%s] has not leader", request.name().c_str());
@@ -1511,21 +1475,10 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, :
         return -1;
     }
     tid = iter->second->tid();
-    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
-        if (iter->second->table_partition(idx).pid() != del_replica_data.pid()) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (iter->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                leader_endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                PDLOG(DEBUG, "leader is %s. name %s pid %u", 
-                             leader_endpoint.c_str(), del_replica_data.name().c_str(), 
-                             del_replica_data.pid());
-                break;
-            }
-        }
-        break;
+    if (GetLeader(iter->second, del_replica_data.pid(), leader_endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", 
+                        del_replica_data.name().c_str(), del_replica_data.pid());
+        return -1;
     }
     if (leader_endpoint.empty()) {
         PDLOG(WARNING, "not found leader_endpoint. table %s pid %u", 
@@ -1730,12 +1683,12 @@ void NameServerImpl::RecoverTable(const std::string& name, uint32_t pid, const s
                     std::string leader_endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();    
                     auto tablet_iter = tablets_.find(leader_endpoint);
                     if (tablet_iter == tablets_.end()) {
-                        PDLOG(WARNING, "can not find the endpoint[%s]'s client", leader_endpoint.c_str());
+                        PDLOG(WARNING, "can not find the leader endpoint[%s]'s client", leader_endpoint.c_str());
                         return;
                     }
                     leader_tablet_ptr = tablet_iter->second;
                     if (leader_tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                        PDLOG(WARNING, "endpoint [%s] is offline", leader_endpoint.c_str());
+                        PDLOG(WARNING, "leader endpoint [%s] is offline", leader_endpoint.c_str());
                         return;
                     }
                 }
@@ -1765,6 +1718,8 @@ void NameServerImpl::RecoverTable(const std::string& name, uint32_t pid, const s
 	}
 	int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
 	if (ret_code < 0) {
+		PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+						name.c_str(), tid, pid, endpoint.c_str());
 		return;
 	}
 	if (has_table) {
@@ -1811,18 +1766,9 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < pos->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (pos->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    pos->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                leader_endpoint = pos->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
     }
     if (leader_endpoint.empty()) {
         PDLOG(WARNING, "table[%s] has not leader", name.c_str());
@@ -1901,7 +1847,8 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
         return -1;
     }
     task_map_.insert(std::make_pair(op_index_, op_data));
-    PDLOG(INFO, "create readdreplica op ok. op_id[%lu]", op_index_);
+    PDLOG(INFO, "create readdreplica op ok. op_id %lu name %s pid %u endpoint %s", 
+                op_index_, name.c_str(), pid, endpoint.c_str());
     cv_.notify_one();
 	return 0;
 }
@@ -1923,18 +1870,9 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < pos->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (pos->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    pos->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                leader_endpoint = pos->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
     }
     if (leader_endpoint.empty()) {
         PDLOG(WARNING, "table[%s] has not leader", name.c_str());
@@ -2018,7 +1956,8 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
         return -1;
     }
     task_map_.insert(std::make_pair(op_index_, op_data));
-    PDLOG(INFO, "create readdreplica with drop op ok. op_id[%lu]", op_index_);
+    PDLOG(INFO, "create readdreplica with drop op ok. op_id %lu name %s pid %u endpoint %s", 
+                op_index_, name.c_str(), pid, endpoint.c_str());
     cv_.notify_one();
 	return 0;
 }
@@ -2039,18 +1978,9 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < pos->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (pos->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    pos->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                leader_endpoint = pos->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
     }
     if (leader_endpoint.empty()) {
         PDLOG(WARNING, "table[%s] has not leader", name.c_str());
@@ -2122,8 +2052,26 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
         return -1;
     }
     task_map_.insert(std::make_pair(op_index_, op_data));
-    PDLOG(INFO, "create readdreplica no send op ok. op_id[%lu]", op_index_);
+    PDLOG(INFO, "create readdreplica no send op ok. op_id %lu name %s pid %u endpoint %s", 
+                op_index_, name.c_str(), pid, endpoint.c_str());
     cv_.notify_one();
+    return 0;
+}
+
+int NameServerImpl::GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint) {
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        if (table_info->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader() &&
+                    table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                leader_endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                break;
+            }
+        }
+        break;
+    }
     return 0;
 }
 
@@ -2138,20 +2086,11 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
         return -1;
     }
-    std::string leader_endpoint;
     uint32_t tid = pos->second->tid();
-    for (int idx = 0; idx < pos->second->table_partition_size(); idx++) {
-        if (pos->second->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < pos->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (pos->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                    pos->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                leader_endpoint = pos->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
-            }
-        }
-        break;
+    std::string leader_endpoint;
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
     }
     if (leader_endpoint.empty()) {
         PDLOG(WARNING, "table[%s] has not leader", name.c_str());
@@ -2201,7 +2140,8 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
         return -1;
     }
     task_map_.insert(std::make_pair(op_index_, op_data));
-    PDLOG(INFO, "create readdreplica simplify op ok. op_id[%lu]", op_index_);
+    PDLOG(INFO, "create readdreplica simplify op ok. op_id %lu name %s pid %u endpoint %s", 
+                op_index_, name.c_str(), pid, endpoint.c_str());
     cv_.notify_one();
 	return 0;
 

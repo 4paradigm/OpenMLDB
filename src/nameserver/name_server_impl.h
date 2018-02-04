@@ -246,6 +246,7 @@ private:
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     void RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint);                    
+    int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
     int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint);
