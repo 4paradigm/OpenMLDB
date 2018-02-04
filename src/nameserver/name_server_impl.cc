@@ -252,12 +252,8 @@ bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
     uint32_t tid = table_info->tid();
     uint32_t pid = request.pid();
     std::string endpoint;
-    if (GetLeader(table_info, pid, endpoint) < 0) {
+    if (GetLeader(table_info, pid, endpoint) < 0 || endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
-        return false;
-    }
-    if (endpoint.empty()) {
-        PDLOG(WARNING, "partition[%u] not exist. table name is [%s]", pid, request.name().c_str());
         return false;
     }
     std::shared_ptr<Task> task = CreateMakeSnapshotTask(endpoint, op_data->op_info_.op_id(), 
@@ -699,14 +695,10 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     uint32_t tid = table_info->tid();
     uint32_t pid = request->pid();
     std::string endpoint;
-    if (GetLeader(table_info, pid, endpoint) < 0) {
-        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request->name().c_str(), pid);
-        return;
-    }
-    if (endpoint.empty()) {
+    if (GetLeader(table_info, pid, endpoint) < 0 || endpoint.empty()) {
         response->set_code(-1);
-        response->set_msg("partition not exist");
-        PDLOG(WARNING, "partition[%u] not exist", pid);
+        response->set_msg("get leader failed");
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request->name().c_str(), pid);
         return;
     }
     auto it = tablets_.find(endpoint);
@@ -1246,17 +1238,12 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+        response->set_code(-1);
+        response->set_msg("get leader failed");
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request->name().c_str(), pid);
         return;
     }
-    if (leader_endpoint.empty()) {
-        response->set_code(-1);
-        response->set_msg("table has not leader");
-        PDLOG(WARNING, "table[%s] has not leader", request->name().c_str());
-        return;
-    }
-
     if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
         response->set_code(-1);
         response->set_msg("set op index node failed");
@@ -1377,15 +1364,10 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request.name().c_str(), pid);
         return false;
     }
-    if (leader_endpoint.empty()) {
-        PDLOG(WARNING, "table[%s] has not leader", request.name().c_str());
-        return false;
-    }
-
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
     if (!task) {
@@ -1475,13 +1457,8 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, :
         return -1;
     }
     tid = iter->second->tid();
-    if (GetLeader(iter->second, del_replica_data.pid(), leader_endpoint) < 0) {
+    if (GetLeader(iter->second, del_replica_data.pid(), leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", 
-                        del_replica_data.name().c_str(), del_replica_data.pid());
-        return -1;
-    }
-    if (leader_endpoint.empty()) {
-        PDLOG(WARNING, "not found leader_endpoint. table %s pid %u", 
                         del_replica_data.name().c_str(), del_replica_data.pid());
         return -1;
     }
@@ -1766,15 +1743,10 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (leader_endpoint.empty()) {
-        PDLOG(WARNING, "table[%s] has not leader", name.c_str());
-        return -1;
-    }
-
     if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
         PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
         return -1;
@@ -1870,15 +1842,10 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (leader_endpoint.empty()) {
-        PDLOG(WARNING, "table[%s] has not leader", name.c_str());
-        return -1;
-    }
-
     if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
         PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
         return -1;
@@ -1978,15 +1945,10 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
     uint64_t ttl =  pos->second->ttl();
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::string leader_endpoint;
-    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (leader_endpoint.empty()) {
-        PDLOG(WARNING, "table[%s] has not leader", name.c_str());
-        return -1;
-    }
-
     if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
         PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
         return -1;
@@ -2067,12 +2029,12 @@ int NameServerImpl::GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> ta
             if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader() &&
                     table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                 leader_endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-                break;
+                return 0;
             }
         }
         break;
     }
-    return 0;
+    return -1;
 }
 
 int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
@@ -2088,15 +2050,10 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
     }
     uint32_t tid = pos->second->tid();
     std::string leader_endpoint;
-    if (GetLeader(pos->second, pid, leader_endpoint) < 0) {
+    if (GetLeader(pos->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (leader_endpoint.empty()) {
-        PDLOG(WARNING, "table[%s] has not leader", name.c_str());
-        return -1;
-    }
-
     if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
         PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
         return -1;
