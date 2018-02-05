@@ -1708,6 +1708,36 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
     done->Run();
 }
 
+void TabletImpl::ConnectZK(RpcController* controller,
+            const ::rtidb::api::ConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    if (zk_client_->Register()) {
+		response->set_code(0);
+		response->set_msg("ok");
+        PDLOG(INFO, "connect zk ok"); 
+		return;
+	}
+    response->set_code(-1);
+    response->set_msg("register failed");
+}
+
+void TabletImpl::DisConnectZK(RpcController* controller,
+            const ::rtidb::api::DisConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    if (zk_client_->UnRegister()) {
+		response->set_code(0);
+		response->set_msg("ok");
+        PDLOG(INFO, "disconnect zk ok"); 
+		return;
+	}
+    response->set_code(-1);
+    response->set_msg("register failed");
+}
+
 int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
             std::shared_ptr<::rtidb::api::TaskInfo>& task_ptr) {
     std::lock_guard<std::mutex> lock(mu_);
@@ -1827,6 +1857,7 @@ void TabletImpl::ShowMemPool(RpcController* controller,
 
 void TabletImpl::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
+        PDLOG(WARNING, "reconnect zk"); 
         bool ok = zk_client_->Reconnect();
         if (ok) {
             zk_client_->Register();

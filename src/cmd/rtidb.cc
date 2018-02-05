@@ -781,6 +781,24 @@ void HandleClientSetExpire(const std::vector<std::string> parts, ::rtidb::client
 
 }
 
+void HandleClientConnectZK(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    bool ok = client->ConnectZK();
+    if (ok) {
+        std::cout << "connect zk ok" << std::endl;
+    } else {
+        std::cout << "Fail to connect zk" << std::endl;
+    }
+}
+
+void HandleClientDisConnectZK(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    bool ok = client->DisConnectZK();
+    if (ok) {
+        std::cout << "disconnect zk ok" << std::endl;
+    } else {
+        std::cout << "Fail to disconnect zk" << std::endl;
+    }
+}
+
 void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
@@ -1520,6 +1538,10 @@ void StartClient() {
             HandleClientSetExpire(parts, &client);
         } else if (parts[0] == "setttlclock") {
             HandleClientSetTTLClock(parts, &client);
+        } else if (parts[0] == "connectzk") {
+            HandleClientConnectZK(parts, &client);
+        } else if (parts[0] == "disconnectzk") {
+            HandleClientDisConnectZK(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

@@ -46,6 +46,7 @@ public:
     // the client will create a ephemeral node in zk_root_path
     // eg {zk_root_path}/nodes/000000 -> endpoint
     bool Register();
+    bool UnRegister();
 
     // always watch the all nodes in {zk_root_path}/nodes/
     void WatchNodes(NodesChangedCallback callback);

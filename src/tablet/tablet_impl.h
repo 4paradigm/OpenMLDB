@@ -176,6 +176,16 @@ public:
             ::rtidb::api::HttpResponse* response,
             Closure* done);
 
+    void ConnectZK(RpcController* controller,
+            const ::rtidb::api::ConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void DisConnectZK(RpcController* controller,
+            const ::rtidb::api::DisConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
 private:
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);

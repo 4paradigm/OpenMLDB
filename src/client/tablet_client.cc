@@ -596,8 +596,27 @@ bool TabletClient::Get(uint32_t tid,
     return true;
 }
 
+bool TabletClient::ConnectZK() {
+    ::rtidb::api::ConnectZKRequest request;
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::ConnectZK,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DisConnectZK() {
+    ::rtidb::api::DisConnectZKRequest request;
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DisConnectZK,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+}
+
 }
 }
-
-
-

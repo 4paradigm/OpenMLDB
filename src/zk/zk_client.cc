@@ -114,6 +114,18 @@ bool ZkClient::Register() {
     return false;
 }
 
+bool ZkClient::UnRegister() {
+    std::string node = nodes_root_path_ + "/" + endpoint_;
+    std::lock_guard<std::mutex> lock(mu_);
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    if (zoo_delete(zk_, node.c_str(), -1) == ZOK) {
+        return true;
+    }
+    return false;
+}
+
 bool ZkClient::CreateNode(const std::string& node,
                           const std::string& value) {
     std::string assigned_path_name;
