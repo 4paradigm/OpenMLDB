@@ -1735,7 +1735,7 @@ void TabletImpl::DisConnectZK(RpcController* controller,
 		return;
 	}
     response->set_code(-1);
-    response->set_msg("register failed");
+    response->set_msg("unregister failed");
 }
 
 int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
