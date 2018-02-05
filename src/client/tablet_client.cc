@@ -578,7 +578,8 @@ bool TabletClient::Get(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
              uint64_t time,
-             std::string& value) {
+             std::string& value,
+             uint64_t& ts) {
     ::rtidb::api::GetRequest request;
     ::rtidb::api::GetResponse response;
     request.set_tid(tid);
@@ -590,6 +591,7 @@ bool TabletClient::Get(uint32_t tid,
     if (!ok || response.code()  != 0) {
         return false;
     }
+    ts = response.ts();
     value.assign(response.value());
     return true;
 }
