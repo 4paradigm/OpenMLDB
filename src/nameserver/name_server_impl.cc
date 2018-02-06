@@ -704,8 +704,8 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         response->set_code(-1);
-        response->set_msg("tablet is not online");
-        PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
+        response->set_msg("leader is not online");
+        PDLOG(WARNING, "leader[%s] is not online", endpoint.c_str());
         return;
     }
 
