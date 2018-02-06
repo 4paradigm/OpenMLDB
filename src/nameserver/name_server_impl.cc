@@ -650,6 +650,39 @@ void NameServerImpl::ProcessTask() {
     }
 }
 
+void NameServerImpl::ConnectZK(RpcController* controller,
+        const ConnectZKRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (dist_lock_->TryAcquireLock() < 0) {
+        PDLOG(WARNING, "fail to acquire lock");
+        response->set_code(-1);
+        response->set_msg("fail to acquire lock");
+        return;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+    PDLOG(INFO, "try to acquire lock");
+}        
+
+void NameServerImpl::DisConnectZK(RpcController* controller,
+        const DisConnectZKRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (dist_lock_->GiveUpLock() < 0) {
+        PDLOG(WARNING, "fail to give up lock");
+        response->set_code(-1);
+        response->set_msg("fail to give up lock");
+        return;
+    }
+    OnLostLock();
+    response->set_code(0);
+    response->set_msg("ok");
+    PDLOG(INFO, "give up lock");
+}
+
 void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         const MakeSnapshotNSRequest* request,
         GeneralResponse* response,

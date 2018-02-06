@@ -47,6 +47,10 @@ public:
 
     void CurrentLockValue(std::string& value);
 
+    int GiveUpLock();
+
+    int TryAcquireLock();
+
 private:
 
     void InternalLock();

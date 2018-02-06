@@ -38,6 +38,26 @@ void DistLock::Stop() {
     lock_state_.store(kLostLock, std::memory_order_relaxed);
 }
 
+int DistLock::GiveUpLock() {
+    running_.store(false, std::memory_order_relaxed);
+    sleep(2);
+    PDLOG(INFO, "delete node %s", assigned_path_.c_str());
+    if (!zk_client_->DeleteNode(assigned_path_)) {
+        return -1;
+    }
+    lock_state_.store(kLostLock, std::memory_order_relaxed);
+    return 0;
+}
+
+int DistLock::TryAcquireLock() {
+    if (running_.load(std::memory_order_relaxed)) {
+        return -1;
+    }
+    running_.store(true, std::memory_order_relaxed);
+    Lock();
+    return 0;
+}
+
 void DistLock::InternalLock() {
     while (running_.load(std::memory_order_relaxed)) {
         sleep(1);
@@ -85,7 +105,7 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
         }
         // lost lock
         if (lock_state_.load(std::memory_order_relaxed) == kLocked) {
-                       on_lost_lock_cl_();
+            on_lost_lock_cl_();
             lock_state_.store(kLostLock, std::memory_order_relaxed);
         }
         PDLOG(INFO, "wait a channce to get a lock");
