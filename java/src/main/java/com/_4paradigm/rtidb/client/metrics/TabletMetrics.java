@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 public class TabletMetrics {
 	private final static Logger logger = LoggerFactory.getLogger(TabletMetrics.class);
-	private volatile LinkedList[] latencies = new LinkedList[4];
+	private volatile LinkedList[] latencies = new LinkedList[6];
 	private int maxLength = 10240;
 	private ScheduledExecutorService sched = Executors.newScheduledThreadPool(1);
 	private static TabletMetrics G_METRICS = null;
@@ -28,7 +28,7 @@ public class TabletMetrics {
 		}
 	}
 	private TabletMetrics() {
-		LinkedList[] newLatencies = new LinkedList[4];
+		LinkedList[] newLatencies = new LinkedList[6];
 		for (int i = 0; i < newLatencies.length; i++) {
 			newLatencies[i] = new LinkedList<Long>();
 		}
@@ -41,6 +41,16 @@ public class TabletMetrics {
 		addMetrics(1, network);
 	}
 	
+	public synchronized void addScan(Long decode, Long network) {
+		addMetrics(2, decode);
+		addMetrics(3, network);
+	}
+	
+	public synchronized void addGet(Long decode, Long network) {
+		addMetrics(4, decode);
+		addMetrics(5, network);
+	}
+	
 	private void addMetrics(int index, Long metrics) {
 		latencies[index].addLast(metrics);
 		if (latencies[index].size() > maxLength) {
@@ -48,17 +58,10 @@ public class TabletMetrics {
 		}
 	}
 	
-	
-	
-	public synchronized void addScan(Long decode, Long network) {
-		addMetrics(2, decode);
-		addMetrics(3, network);
-	}
-	
 	private void showMetrics() {
 		try {
 			LinkedList[] oldLatencies = latencies;
-			LinkedList[] newLatencies = new LinkedList[4];
+			LinkedList[] newLatencies = new LinkedList[6];
 			for (int i = 0; i < newLatencies.length; i++) {
 				newLatencies[i] = new LinkedList<Long>();
 			}
@@ -67,6 +70,8 @@ public class TabletMetrics {
 			showSingleMetrics("PutRemote", oldLatencies[1]);
 			showSingleMetrics("ScanDecode", oldLatencies[2]);
 			showSingleMetrics("ScanRemote", oldLatencies[3]);	
+			showSingleMetrics("GetDecode", oldLatencies[4]);
+			showSingleMetrics("GetRemote", oldLatencies[5]);
 		} finally {
 			sched.schedule(new Runnable() {
 				

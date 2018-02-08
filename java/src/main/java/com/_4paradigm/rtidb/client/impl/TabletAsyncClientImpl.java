@@ -26,10 +26,10 @@ import rtidb.api.Tablet.ScanResponse;
 import rtidb.api.TabletServer;
 
 public class TabletAsyncClientImpl implements TabletAsyncClient {
-    private final static Logger logger = LoggerFactory.getLogger(TabletAsyncClientImpl.class);
-    private TabletServer tablet;
-    private RpcClient client;
-    private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
+	private final static Logger logger = LoggerFactory.getLogger(TabletAsyncClientImpl.class);
+	private TabletServer tablet;
+	private RpcClient client;
+	private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
 
 		@Override
 		public void success(PutResponse response) {
@@ -38,10 +38,10 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 		@Override
 		public void fail(Throwable e) {
 		}
-    	
-    };
-    
-    private static RpcCallback<Tablet.GetResponse> getFakeCallback = new RpcCallback<Tablet.GetResponse>() {
+
+	};
+
+	private static RpcCallback<Tablet.GetResponse> getFakeCallback = new RpcCallback<Tablet.GetResponse>() {
 
 		@Override
 		public void success(GetResponse response) {
@@ -50,10 +50,10 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 		@Override
 		public void fail(Throwable e) {
 		}
-    	
-    };
-    
-    private static RpcCallback<Tablet.ScanResponse> scanFakeCallback = new RpcCallback<Tablet.ScanResponse>() {
+
+	};
+
+	private static RpcCallback<Tablet.ScanResponse> scanFakeCallback = new RpcCallback<Tablet.ScanResponse>() {
 
 		@Override
 		public void success(ScanResponse response) {
@@ -62,21 +62,21 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 		@Override
 		public void fail(Throwable e) {
 		}
-    	
-    };
-    
-    public TabletAsyncClientImpl(RpcClient rpcClient) {
-    	this.client = rpcClient;
-    }
-    
-    public void init() {
-    	tablet = RpcProxy.getProxy(client, TabletServer.class);
-    }
+
+	};
+
+	public TabletAsyncClientImpl(RpcClient rpcClient) {
+		this.client = rpcClient;
+	}
+
+	public void init() {
+		tablet = RpcProxy.getProxy(client, TabletServer.class);
+	}
 
 	@Override
 	public PutFuture put(int tid, int pid, String key, long time, byte[] bytes) {
 		Tablet.PutRequest request = Tablet.PutRequest.newBuilder().setPid(pid).setPk(key).setTid(tid).setTime(time)
-                .setValue(ByteString.copyFrom(bytes)).build();
+				.setValue(ByteString.copyFrom(bytes)).build();
 		Future<Tablet.PutResponse> f = tablet.put(request, putFakeCallback);
 		return PutFuture.wrapper(f);
 	}
@@ -93,9 +93,12 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 
 	@Override
 	public GetFuture get(int tid, int pid, String key, long time) {
-		Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time).build();
+		Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
+				.build();
 		Future<Tablet.GetResponse> f = tablet.get(request, getFakeCallback);
-		return GetFuture.wrappe(f);
+		Table table = GTableSchema.getTable(tid, pid, tablet);
+		long startTime = System.nanoTime();
+		return GetFuture.wrappe(f, table, startTime);
 	}
 
 	@Override
@@ -105,39 +108,21 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 
 	@Override
 	public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) {
-		Table table = getTable(tid, pid);
+		Table table = GTableSchema.getTable(tid, pid, tablet);
 		Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
-        builder.setPk(key);
-        builder.setTid(tid);
-        builder.setEt(et);
-        builder.setSt(st);
-        builder.setPid(pid);
-        if (idxName != null && !idxName.isEmpty()) {
-        	builder.setIdxName(idxName);
-        }
-        Tablet.ScanRequest request = builder.build();
-        Future<Tablet.ScanResponse> f =  tablet.scan(request, scanFakeCallback);
+		builder.setPk(key);
+		builder.setTid(tid);
+		builder.setEt(et);
+		builder.setSt(st);
+		builder.setPid(pid);
+		if (idxName != null && !idxName.isEmpty()) {
+			builder.setIdxName(idxName);
+		}
+		Tablet.ScanRequest request = builder.build();
+		Future<Tablet.ScanResponse> f = tablet.scan(request, scanFakeCallback);
 		return ScanFuture.wrappe(f, table);
 	}
-	
-	
-	public Table getTable(int tid, int pid) {
-		Table table = GTableSchema.tableSchema.get(tid);
-		if (table != null) {
-			return table;
-		}
-		Tablet.GetTableSchemaRequest request = Tablet.GetTableSchemaRequest.newBuilder().setTid(tid).setPid(pid).build();
-		Tablet.GetTableSchemaResponse response = tablet.getTableSchema(request);
-		if (response.getCode() == 0) {
-			List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
-			table = new Table(schema);
-			GTableSchema.tableSchema.put(tid, table);
-			return table;
-		}
-		return null;
-	}
 
-	
-	
-	
+
+
 }

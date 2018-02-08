@@ -6,22 +6,19 @@ public class TabletException extends Exception {
 
 	public TabletException() {
 		super();
-		// TODO Auto-generated constructor stub
+
 	}
 
 	public TabletException(String message, Throwable cause) {
 		super(message, cause);
-		// TODO Auto-generated constructor stub
 	}
 
 	public TabletException(String message) {
 		super(message);
-		// TODO Auto-generated constructor stub
 	}
 
 	public TabletException(Throwable cause) {
 		super(cause);
-		// TODO Auto-generated constructor stub
 	}
 
 }

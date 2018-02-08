@@ -14,6 +14,7 @@ public class Table {
 
 	private Map<String, Integer> indexes = new HashMap<String, Integer>();
 	private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+	private int tid;
 	public Table(List<ColumnDesc> schema) {
 		this.schema = schema;
 		int index = 0;
@@ -24,6 +25,9 @@ public class Table {
 			}
 		}
 	}
+	
+	public Table() {}
+	
 	public Map<String, Integer> getIndexes() {
 		return indexes;
 	}
@@ -83,6 +87,19 @@ public class Table {
         }
         return column;
     }
+
+	public int getTid() {
+		return tid;
+	}
+
+	public void setTid(int tid) {
+		this.tid = tid;
+	}
+
+	@Override
+	public String toString() {
+		return "Table [schema_size=" + schema.size() + ", tid=" + tid + "]";
+	}
 	
 	
 }
