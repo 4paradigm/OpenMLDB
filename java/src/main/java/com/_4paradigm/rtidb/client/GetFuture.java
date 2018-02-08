@@ -71,6 +71,9 @@ public class GetFuture implements Future<ByteString>{
             throw new TabletException("no schema for table " + t);
         }
         ByteString raw = get();
+        if (raw == null) {
+            return new Object[t.getSchema().size()];
+        }
         long network = System.nanoTime() - startTime;
         long decode = System.nanoTime();
         Object[] row = RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema());

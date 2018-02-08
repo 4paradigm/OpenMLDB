@@ -91,13 +91,13 @@ public class KvIterator {
     }
     
     public Object[] getDecodedValue() throws TabletException {
-    	Long delta = System.nanoTime();
-    	if (schema == null) {
-    		throw new TabletException("get decoded value is not supported");
-    	}
-    	Object[] row = RowCodec.decode(slice, schema);
-    	decode += System.nanoTime() - delta;
-    	return row;
+        	Long delta = System.nanoTime();
+        	if (schema == null) {
+        		throw new TabletException("get decoded value is not supported");
+        	}
+        	Object[] row = RowCodec.decode(slice, schema);
+        	decode += System.nanoTime() - delta;
+        	return row;
     }
 
     public void next() {

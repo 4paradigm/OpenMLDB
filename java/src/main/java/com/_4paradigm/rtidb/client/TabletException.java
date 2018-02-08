@@ -3,7 +3,7 @@ package com._4paradigm.rtidb.client;
 public class TabletException extends Exception {
 
 	private static final long serialVersionUID = 7871057496216257400L;
-
+	
 	public TabletException() {
 		super();
 
