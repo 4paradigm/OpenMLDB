@@ -10,6 +10,7 @@
 #include <sched.h>
 #include <unistd.h>
 #include <iostream>
+#include <sstream>
 
 #include <gflags/gflags.h>
 #include <brpc/server.h>
@@ -88,6 +89,9 @@ void StartNameServer() {
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
+    std::ostringstream oss;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
 
@@ -117,6 +121,9 @@ void StartTablet() {
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
             RTIDB_VERSION_BUG);
+    std::ostringstream oss;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
 
