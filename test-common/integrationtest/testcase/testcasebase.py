@@ -39,11 +39,13 @@ class TestCaseBase(unittest.TestCase):
         except Exception, e:
             self.tid = 1
         self.pid = random.randint(10, 100)
+        self.clear_ns_table(self.ns_leader)
 
     def tearDown(self):
         self.drop(self.leader, self.tid, self.pid)
         self.drop(self.slave1, self.tid, self.pid)
         self.drop(self.slave2, self.tid, self.pid)
+        # self.clear_ns_table(self.ns_leader)
 
     def now(self):
         return int(1000 * time.time())
@@ -118,6 +120,12 @@ class TestCaseBase(unittest.TestCase):
             cmd, tname, tid, pid, ttl, segment, isleader, ' '.join(slave_endpoints),
             ' '.join(['{}:{}'.format(k, v) for k, v in schema.items() if k != ''])))
 
+    def ns_create(self, endpoint, metadata_path):
+        return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
+
+    def ns_drop(self, endpoint, tname):
+        return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
+
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
             if self.multidimension and key is not '':
@@ -157,6 +165,9 @@ class TestCaseBase(unittest.TestCase):
             return self.run_client(endpoint, 'sscan {} {} {} {} {}'.format(
                 tid, pid, ' '.join(value_key), ts_from, ts_to))
 
+    def get(self, endpoint, tid, pid, pk, ts):
+        return self.run_client(endpoint, 'get {} {} {} {}'.format(tid, pid, pk, ts))
+
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))
 
@@ -194,8 +205,26 @@ class TestCaseBase(unittest.TestCase):
     def changerole(self, endpoint, tid, pid, role):
         return self.run_client(endpoint, 'changerole {} {} {}'.format(tid, pid, role))
 
+    def sendsnapshot(self, endpoint, tid, pid, slave_endpoint):
+        return self.run_client(endpoint, 'sendsnapshot {} {} {}'.format(tid, pid, slave_endpoint))
+
+    def setexpire(self, endpoint, tid, pid, ttl):
+        return self.run_client(endpoint, 'setexpire {} {} {}'.format(tid, pid, ttl))
+
+    def confset(self, endpoint, conf, value):
+        return self.run_client(endpoint, 'confset {} {}'.format(conf, value), 'ns_client')
+
+    def confget(self, endpoint, conf):
+        return self.run_client(endpoint, 'confget {}'.format(conf), 'ns_client')
+
+    def offlineendpoint(self, endpoint, offline_endpoint):
+        return self.run_client(endpoint, 'offlineendpoint {}'.format(offline_endpoint), 'ns_client')
+
+    def changeleader(self, endpoint, tname, pid):
+        return self.run_client(endpoint, 'changeleader {} {}'.format(tname, pid), 'ns_client')
+
     @staticmethod
-    def parse_sechema(rs):
+    def parse_schema(rs):
         schema_dict = {}
         rs = rs.split('\n')
         for line in rs:
@@ -210,14 +239,11 @@ class TestCaseBase(unittest.TestCase):
         return schema_dict
 
     def showschema(self, endpoint, tid='', pid=''):
-        rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
-        if tid == '':
+        try:
+            rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
             return self.parse_schema(rs)
-        else:
-            try:
-                return self.parse_sechma(rs)[(tid, pid)]
-            except KeyError, e:
-                infoLogger.error('table {} is not exist!'.format(e))
+        except KeyError, e:
+            infoLogger.error('table {} is not exist!'.format(e))
 
     @staticmethod
     def parse_tablet(rs):
@@ -264,7 +290,7 @@ class TestCaseBase(unittest.TestCase):
                 line_list = line.split(' ')
                 schema_line_list = [i for i in line_list if i is not '']
                 try:
-                    tablet_dict[schema_line_list[0]] = schema_line_list[1:]
+                    tablet_dict[tuple(schema_line_list[0:4])] = schema_line_list[4:]
                 except Exception, e:
                     infoLogger.error(e)
         return tablet_dict
@@ -272,6 +298,13 @@ class TestCaseBase(unittest.TestCase):
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_table(rs)
+
+    def clear_ns_table(self, endpoint):
+        table_dict = self.showtable(endpoint)
+        tname_tids = table_dict.keys()
+        tnames = set([i[0] for i in tname_tids])
+        for tname in tnames:
+            self.ns_drop(endpoint, tname)
 
     def cp_db(self, from_node, to_node, tid, pid):
         utils.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(

@@ -21,7 +21,7 @@ import com._4paradigm.rtidb.client.KvIterator;
 import io.brpc.client.RpcClient;
 
 
-@Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
+@Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class SPutTest {
 
   private final static AtomicInteger id = new AtomicInteger(1000);
@@ -110,7 +110,7 @@ public class SPutTest {
     }; }
 
   @Test(dataProvider = "putdata")
-  public void testPutIndex(boolean isIndex, ColumnType type, Object value, boolean putOk) {
+  public void testPutColumnType(boolean isIndex, ColumnType type, Object value, boolean putOk) {
     List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     ColumnDesc desc1 = new ColumnDesc();
     desc1.setAddTsIndex(true);

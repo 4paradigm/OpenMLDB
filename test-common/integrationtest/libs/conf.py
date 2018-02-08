@@ -20,3 +20,8 @@ tb_endpoints = cf.items("tb_endpoints")
 ns_endpoints = cf.items("ns_endpoints")
 
 zk_endpoint = cf.get("zookeeper", "zk")
+
+table_meta_ele = {
+    'table_partition': ['endpoint', 'pid_group', 'is_leader'],
+    'column_desc': ['name', 'type', 'add_ts_idx']
+}

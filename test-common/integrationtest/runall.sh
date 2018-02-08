@@ -23,8 +23,5 @@ else
 fi
 python ${testpath}/runall.py
 
-# reset test env
-sh ${testpath}/setup.sh
-
 # teardown kill services
-python ${testpath}/setup.py teardown
+python ${testpath}/setup.py -T=True

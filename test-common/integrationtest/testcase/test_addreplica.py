@@ -3,8 +3,10 @@ from testcasebase import TestCaseBase
 import time
 from libs.test_loader import load
 from libs.deco import multi_dimension
+import libs.ddt as ddt
 
 
+@ddt.ddt
 class TestAddReplica(TestCaseBase):
 
     @multi_dimension(False)
@@ -182,6 +184,36 @@ class TestAddReplica(TestCaseBase):
         self.assertFalse('v2' in self.scan(self.slave1, self.tid, self.pid, {'card':'k2'}, self.now(), 1))
         self.assertFalse('v1' not in self.scan(self.slave2, self.tid, self.pid, {'card':'k1'}, self.now(), 1))
         self.assertFalse('v2' not in self.scan(self.slave2, self.tid, self.pid, {'card':'k2'}, self.now(), 1))
+
+
+    @multi_dimension(True)
+    @ddt.data(
+        ({'k2': ('string:index', 'testvalue1'),
+          'k3': ('double', 1.1)}),
+        ({'k0': ('string:index', 1.1),
+          'k2': ('string:index', 'testvalue1'),
+          'k3': ('double', 1.1)}),
+        ({'k1': ('double:index', 1.1),
+          'k2': ('string:index', 'testvalue1'),
+          'k3': ('double', 1.1)}),
+        ({'k1': ('string', 1.1),
+          'k2': ('string:index', 'testvalue1'),
+          'k3': ('double', 1.1)}),
+    )
+    def test_addreplica_fail_schema_mismatch(self, slave_schema):
+        """
+        添加高维副本表时，副本schema主表不匹配，添加失败
+        :return:
+        """
+        self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string:index', 'testvalue1'),
+                                  'k3': ('double', 1.1)}
+        rs1 = self.create(self.leader, 't', self.tid, self.pid)
+        self.assertTrue('Create table ok' in rs1)
+        self.multidimension_vk = slave_schema
+        self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertTrue('AddReplica failed' in rs2)
 
 
 if __name__ == "__main__":

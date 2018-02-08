@@ -24,7 +24,7 @@ import io.brpc.client.RpcClient;
 import rtidb.api.Tablet.TTLType;
 
 
-@Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
+@Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class TtlCreateTest {
 
   private final static AtomicInteger id = new AtomicInteger(1000);

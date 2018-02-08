@@ -27,7 +27,7 @@ errorHandler = logging.FileHandler(errorLogName, 'a')
 errorHandler.setFormatter(formatter)
 
 testHandler = logging.StreamHandler()
-testHandler.setLevel(logging.INFO)
+testHandler.setLevel(eval('logging.' + log_level.upper()))
 testHandler.setFormatter(formatter)
 
 infoLogger.addHandler(infoHandler)
