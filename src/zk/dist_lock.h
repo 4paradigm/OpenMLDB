@@ -47,10 +47,6 @@ public:
 
     void CurrentLockValue(std::string& value);
 
-    int GiveUpLock();
-
-    int TryAcquireLock();
-
 private:
 
     void InternalLock();
@@ -73,6 +69,7 @@ private:
     std::string lock_value_;
     std::string current_lock_node_;
     std::string current_lock_value_;
+    uint64_t client_session_term_;
 };
 
 }

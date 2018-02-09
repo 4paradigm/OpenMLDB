@@ -401,46 +401,6 @@ bool NameServerImpl::Init() {
         return false;
     }
     std::string value;
-    if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
-        if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
-            PDLOG(WARNING, "create table index node failed!");
-            return false;
-        }
-        table_index_ = 1;
-        PDLOG(INFO, "init table_index[%u]", table_index_);
-    }
-    if (!zk_client_->GetNodeValue(zk_term_node_, value)) {
-        if (!zk_client_->CreateNode(zk_term_node_, "1")) {
-            PDLOG(WARNING, "create term node failed!");
-            return false;
-        }
-        term_ = 1;
-        PDLOG(INFO, "init term[%lu]", term_);
-    }
-    if (!zk_client_->GetNodeValue(zk_op_index_node_, value)) {
-        if (!zk_client_->CreateNode(zk_op_index_node_, "1")) {
-            PDLOG(WARNING, "create op index node failed!");
-            return false;
-        }
-        op_index_ = 1;
-        PDLOG(INFO, "init op_index[%u]", op_index_);
-    }
-    auto_failover_.load(std::memory_order_acquire) ? value = "1" : value = "0";
-    if (!zk_client_->SetNodeValue(zk_auto_failover_node_, value)) {
-        if (!zk_client_->CreateNode(zk_auto_failover_node_, value)) {
-            PDLOG(WARNING, "create auto failover node failed!");
-            return false;
-        }
-    }
-    PDLOG(INFO, "set zk_auto_failover_node %s", value.c_str());
-    auto_recover_table_.load(std::memory_order_acquire) ? value = "1" : value = "0";
-    if (!zk_client_->SetNodeValue(zk_auto_recover_table_node_, value)) {
-        if (!zk_client_->CreateNode(zk_auto_recover_table_node_, value)) {
-            PDLOG(WARNING, "create auto recover table node failed!");
-            return false;
-        }
-    }
-    PDLOG(INFO, "set zk_auto_recover_table_node %s", value.c_str());
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
         zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
@@ -458,7 +418,11 @@ bool NameServerImpl::Init() {
 
 void NameServerImpl::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
-        zk_client_->Reconnect();
+        OnLostLock();
+        PDLOG(WARNING, "reconnect zk");
+        if (zk_client_->Reconnect()) {
+            PDLOG(INFO, "reconnect zk ok");
+        }
     }
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
 }
@@ -655,15 +619,14 @@ void NameServerImpl::ConnectZK(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (dist_lock_->TryAcquireLock() < 0) {
-        PDLOG(WARNING, "fail to acquire lock");
-        response->set_code(-1);
-        response->set_msg("fail to acquire lock");
+	if (zk_client_->Reconnect()) {
+        response->set_code(0);
+        response->set_msg("ok");
+        PDLOG(INFO, "connect zk ok");
         return;
     }
-    response->set_code(0);
-    response->set_msg("ok");
-    PDLOG(INFO, "try to acquire lock");
+    response->set_code(-1);
+    response->set_msg("reconnect failed");
 }        
 
 void NameServerImpl::DisConnectZK(RpcController* controller,
@@ -671,16 +634,11 @@ void NameServerImpl::DisConnectZK(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (dist_lock_->GiveUpLock() < 0) {
-        PDLOG(WARNING, "fail to give up lock");
-        response->set_code(-1);
-        response->set_msg("fail to give up lock");
-        return;
-    }
-    OnLostLock();
+    zk_client_->CloseZK();
+	OnLostLock();
     response->set_code(0);
     response->set_msg("ok");
-    PDLOG(INFO, "give up lock");
+    PDLOG(INFO, "disconnect zk ok");
 }
 
 void NameServerImpl::MakeSnapshotNS(RpcController* controller,
@@ -1622,6 +1580,7 @@ void NameServerImpl::OnLocked() {
     PDLOG(INFO, "become the leader name server");
     bool ok = Recover();
     if (!ok) {
+        PDLOG(WARNING, "recover failed");
         //TODO fail to recover discard the lock
     }
     running_.store(true, std::memory_order_release);

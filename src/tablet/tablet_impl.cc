@@ -1713,14 +1713,14 @@ void TabletImpl::ConnectZK(RpcController* controller,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
-    if (zk_client_->Register()) {
+    if (zk_client_->Reconnect() && zk_client_->Register()) {
 		response->set_code(0);
 		response->set_msg("ok");
         PDLOG(INFO, "connect zk ok"); 
 		return;
 	}
     response->set_code(-1);
-    response->set_msg("register failed");
+    response->set_msg("reconnect failed");
 }
 
 void TabletImpl::DisConnectZK(RpcController* controller,
@@ -1728,14 +1728,11 @@ void TabletImpl::DisConnectZK(RpcController* controller,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
-    if (zk_client_->UnRegister()) {
-		response->set_code(0);
-		response->set_msg("ok");
-        PDLOG(INFO, "disconnect zk ok"); 
-		return;
-	}
-    response->set_code(-1);
-    response->set_msg("unregister failed");
+    zk_client_->CloseZK();
+    response->set_code(0);
+    response->set_msg("ok");
+    PDLOG(INFO, "disconnect zk ok"); 
+    return;
 }
 
 int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
@@ -1858,9 +1855,8 @@ void TabletImpl::ShowMemPool(RpcController* controller,
 void TabletImpl::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
         PDLOG(WARNING, "reconnect zk"); 
-        bool ok = zk_client_->Reconnect();
-        if (ok) {
-            zk_client_->Register();
+        if (zk_client_->Reconnect() && zk_client_->Register()) {
+            PDLOG(INFO, "reconnect zk ok"); 
         }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));

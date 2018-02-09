@@ -49,16 +49,19 @@ void NodeWatcher(zhandle_t* zh, int type, int state,
 
 ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
         const std::string& endpoint, const std::string& zk_root_path):hosts_(hosts),
-    session_timeout_(session_timeout), endpoint_(endpoint), zk_root_path_(zk_root_path),
-    nodes_root_path_(zk_root_path_ + "/nodes"), nodes_watch_callbacks_(), mu_(), cv_(),
-    zk_(NULL),
-    nodes_watching_(false), data_(), connected_(false), children_callbacks_() {
-        data_.count = 0;
-        data_.data = NULL;
-    }
+        session_timeout_(session_timeout), endpoint_(endpoint), zk_root_path_(zk_root_path),
+        nodes_root_path_(zk_root_path_ + "/nodes"), nodes_watch_callbacks_(), mu_(), cv_(),
+        zk_(NULL),
+        nodes_watching_(false), data_(), connected_(false), children_callbacks_(),
+        session_term_(0) {
+    data_.count = 0;
+    data_.data = NULL;
+}
 
 ZkClient::~ZkClient() {
-    zookeeper_close(zk_);
+    if (zk_) {
+        zookeeper_close(zk_);
+    }
 }
 
 bool ZkClient::Init() {
@@ -72,6 +75,7 @@ bool ZkClient::Init() {
         PDLOG(WARNING, "fail to init zk handler with hosts %s, session_timeout %d", hosts_.c_str(), session_timeout_);
         return false;
     }
+    session_term_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 
@@ -114,16 +118,14 @@ bool ZkClient::Register() {
     return false;
 }
 
-bool ZkClient::UnRegister() {
-    std::string node = nodes_root_path_ + "/" + endpoint_;
+bool ZkClient::CloseZK() {
     std::lock_guard<std::mutex> lock(mu_);
-    if (zk_ == NULL || !connected_) {
-        return false;
+    connected_ = false;
+    if (zk_) {
+        zookeeper_close(zk_);
+        zk_ = NULL;
     }
-    if (zoo_delete(zk_, node.c_str(), -1) == ZOK) {
-        return true;
-    }
-    return false;
+    return true;
 }
 
 bool ZkClient::CreateNode(const std::string& node,
@@ -352,6 +354,7 @@ bool ZkClient::Reconnect() {
     if (zk_ == NULL || !connected_) {
         return false;
     }
+    session_term_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 
