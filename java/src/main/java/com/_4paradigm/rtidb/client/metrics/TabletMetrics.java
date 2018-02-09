@@ -54,7 +54,12 @@ public class TabletMetrics {
 	private void addMetrics(int index, Long metrics) {
 		latencies[index].addLast(metrics);
 		if (latencies[index].size() > maxLength) {
-			latencies[index].removeFirst();
+		    try {
+		        latencies[index].removeFirst();
+		    }catch(Exception e) {
+		        logger.error("remove empty ", e);
+		    }
+			
 		}
 	}
 	
