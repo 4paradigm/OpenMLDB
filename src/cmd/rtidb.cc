@@ -369,6 +369,26 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtid
     std::cout << "offline endpoint ok" << std::endl;
 }
 
+void HandleNSClientConnectZK(const std::vector<std::string> parts, ::rtidb::client::NsClient* client) {
+    std::string msg;
+    bool ok = client->ConnectZK(msg);
+    if (ok) {
+        std::cout << "connect zk ok" << std::endl;
+    } else {
+        std::cout << "Fail to connect zk" << std::endl;
+    }
+}
+
+void HandleNSClientDisConnectZK(const std::vector<std::string> parts, ::rtidb::client::NsClient* client) {
+    std::string msg;
+    bool ok = client->DisConnectZK(msg);
+    if (ok) {
+        std::cout << "disconnect zk ok" << std::endl;
+    } else {
+        std::cout << "Fail to disconnect zk" << std::endl;
+    }
+}
+
 void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::string name;
     if (parts.size() >= 2) {
@@ -786,6 +806,24 @@ void HandleClientSetExpire(const std::vector<std::string> parts, ::rtidb::client
         std::cout << "Bad format" << std::endl;
     }
 
+}
+
+void HandleClientConnectZK(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    bool ok = client->ConnectZK();
+    if (ok) {
+        std::cout << "connect zk ok" << std::endl;
+    } else {
+        std::cout << "Fail to connect zk" << std::endl;
+    }
+}
+
+void HandleClientDisConnectZK(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    bool ok = client->DisConnectZK();
+    if (ok) {
+        std::cout << "disconnect zk ok" << std::endl;
+    } else {
+        std::cout << "Fail to disconnect zk" << std::endl;
+    }
 }
 
 void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
@@ -1527,6 +1565,10 @@ void StartClient() {
             HandleClientSetExpire(parts, &client);
         } else if (parts[0] == "setttlclock") {
             HandleClientSetTTLClock(parts, &client);
+        } else if (parts[0] == "connectzk") {
+            HandleClientConnectZK(parts, &client);
+        } else if (parts[0] == "disconnectzk") {
+            HandleClientDisConnectZK(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
@@ -1582,6 +1624,10 @@ void StartNsClient() {
             HandleNSClientChangeLeader(parts, &client);
         } else if (parts[0] == "offlineendpoint") {
             HandleNSClientOfflineEndpoint(parts, &client);
+        } else if (parts[0] == "connectzk") {
+            HandleNSClientConnectZK(parts, &client);
+        } else if (parts[0] == "disconnectzk") {
+            HandleNSClientDisConnectZK(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

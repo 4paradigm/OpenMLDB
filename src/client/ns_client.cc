@@ -211,6 +211,30 @@ bool NsClient::OfflineEndpoint(const std::string& endpoint, std::string& msg) {
     return false;
 }
 
+bool NsClient::ConnectZK(std::string& msg) {
+    ::rtidb::nameserver::ConnectZKRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConnectZK,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::DisConnectZK(std::string& msg) {
+    ::rtidb::nameserver::DisConnectZKRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DisConnectZK,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 }
 }
 
