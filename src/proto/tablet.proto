@@ -381,6 +381,9 @@ message GetManifestResponse{
     optional Manifest manifest = 3;
 }
 
+message ConnectZKRequest {}
+message DisConnectZKRequest {}
+
 message HttpRequest { }
 message HttpResponse { }
 
@@ -420,4 +423,7 @@ service TabletServer {
     rpc GetManifest(GetManifestRequest) returns(GetManifestResponse);
 
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
+
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
 }

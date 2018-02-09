@@ -42,7 +42,6 @@ public class SchemaCodecTest {
 			
 			Assert.assertEquals(schema.size(), nschema.size());
 			
-			
 			Assert.assertTrue(nschema.get(0).isAddTsIndex());
 			Assert.assertEquals("card", nschema.get(0).getName());
 			Assert.assertEquals(ColumnType.kString, nschema.get(0).getType());

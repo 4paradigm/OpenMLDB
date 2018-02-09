@@ -56,6 +56,10 @@ public:
     bool OfflineEndpoint(const std::string& endpoint, std::string& msg);
 
     bool RecoverEndpoint(const std::string& endpoint, std::string& msg);
+
+    bool ConnectZK(std::string& msg);
+
+    bool DisConnectZK(std::string& msg);
 	
 private:
     std::string endpoint_;

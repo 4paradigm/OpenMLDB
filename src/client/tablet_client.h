@@ -70,7 +70,8 @@ public:
              uint32_t pid,
              const std::string& pk,
              uint64_t time,
-             std::string& value);
+             std::string& value,
+             uint64_t& ts);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
@@ -143,6 +144,8 @@ public:
     
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
+    bool ConnectZK();
+    bool DisConnectZK();
     
     void ShowTp();
 
