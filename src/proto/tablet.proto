@@ -40,7 +40,7 @@ enum OPType {
     kMakeSnapshotOP = 1;
     kAddReplicaOP = 2;
     kDelReplicaOP = 3;
-    KSelectLeaderOP = 4;
+    kSelectLeaderOP = 4;
     kOfflineReplicaOP = 5;
     kReAddReplicaOP = 6; 
     kReAddReplicaNoSendOP = 7;     // need not send snapshot

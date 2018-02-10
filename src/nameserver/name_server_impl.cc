@@ -700,23 +700,15 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         return;
     }
 
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        response->set_code(-1);
-        response->set_msg("set op index node failed");
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
-        return;
-    }
-    op_index_++;
-
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::kMakeSnapshotOP);
-    op_data->op_info_.set_task_index(0);
+    std::shared_ptr<OPData> op_data;
     std::string value;
     request->SerializeToString(&value);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    if (CreateOPData(::rtidb::api::OPType::kMakeSnapshotOP, value, op_data) < 0) {
+        response->set_code(-1);
+        response->set_msg("create makesnapshot op date error");
+        PDLOG(WARNING, "create makesnapshot op data error. tid %u pid %u", tid, pid);
+        return;
+    }
 
     std::shared_ptr<Task> task = CreateMakeSnapshotTask(endpoint, op_index_, 
                 ::rtidb::api::OPType::kMakeSnapshotOP, tid, pid);
@@ -1235,22 +1227,14 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", request->name().c_str(), pid);
         return;
     }
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        response->set_code(-1);
-        response->set_msg("set op index node failed");
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
-        return;
-    }
-    op_index_++;
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::kAddReplicaOP);
-    op_data->op_info_.set_task_index(0);
+    std::shared_ptr<OPData> op_data;
     std::string value;
     request->SerializeToString(&value);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    if (CreateOPData(::rtidb::api::OPType::kAddReplicaOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create AddReplicaOP data error. table %s pid %u",
+                        request->name().c_str(), pid);
+        return;
+    }
 
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kAddReplicaOP, tid, pid);
@@ -1432,7 +1416,24 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         response->set_code(0);
         response->set_msg("ok");
     }
-}    
+}
+
+int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string& value, 
+        std::shared_ptr<OPData>& op_data) {
+    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
+        PDLOG(WARNING, "set op index node failed! op_index[%lu]", op_index_);
+        return -1;
+    }
+    op_index_++;
+    op_data = std::make_shared<OPData>();
+    op_data->start_time_ = ::baidu::common::timer::now_time();
+    op_data->op_info_.set_op_id(op_index_);
+    op_data->op_info_.set_op_type(op_type);
+    op_data->op_info_.set_task_index(0);
+    op_data->op_info_.set_data(value);
+    op_data->task_status_ = ::rtidb::api::kDoing;
+    return 0;
+}
 
 int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, ::rtidb::api::OPType op_type) {
     if (op_type != ::rtidb::api::OPType::kDelReplicaOP && 
@@ -1458,20 +1459,14 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, :
                         del_replica_data.name().c_str(), del_replica_data.pid());
         return -1;
     }
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%lu]", op_index_);
-        return -1;
-    }
-    op_index_++;
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(op_type);
-    op_data->op_info_.set_task_index(0);
     std::string value;
     del_replica_data.SerializeToString(&value);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    std::shared_ptr<OPData> op_data;
+    if (CreateOPData(op_type, value, op_data) < 0) {
+        PDLOG(WARNING, "create op data error. table %s pid %u",
+                        del_replica_data.name().c_str(), del_replica_data.pid());
+        return -1;
+    }
 
     std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index_, 
                 op_type, tid, del_replica_data.pid(), del_replica_data.endpoint());
@@ -1571,22 +1566,16 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
         PDLOG(INFO, "table not found follower. name %s pid %u", name.c_str(), pid);
         return 0;
     }
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
+    std::shared_ptr<OPData> op_data;
+    std::string value = name + "\t" + std::to_string(pid);
+    if (CreateOPData(::rtidb::api::OPType::kSelectLeaderOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create SelectLeaderOP data error. table %s pid %u",
+                        name.c_str(), pid);
         return -1;
     }
-    op_index_++;
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::KSelectLeaderOP);
-    op_data->op_info_.set_task_index(0);
-    std::string value = name + "\t" + std::to_string(pid);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
 
     std::shared_ptr<Task> task = CreateChangeLeaderTask(
-                op_index_, ::rtidb::api::OPType::KSelectLeaderOP, 
+                op_index_, ::rtidb::api::OPType::kSelectLeaderOP, 
                 name, tid, pid, follower_endpoint);
     if (!task) {
         PDLOG(WARNING, "create changeleader task failed. table %s pid %u", 
@@ -1739,24 +1728,18 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
-        return -1;
-    }
-    op_index_++;
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::kReAddReplicaOP);
-    op_data->op_info_.set_task_index(0);
+    std::shared_ptr<OPData> op_data;
     std::string value;
     AddReplicaData data;
     data.set_name(name);
     data.set_pid(pid);
     data.set_endpoint(endpoint);
     data.SerializeToString(&value);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    if (CreateOPData(::rtidb::api::OPType::kReAddReplicaOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create ReAddReplicaOP data error. table %s pid %u endpoint %s",
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
 
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kReAddReplicaOP, tid, pid);
@@ -1838,24 +1821,18 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
-        return -1;
-    }
-    op_index_++;
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::kReAddReplicaWithDropOP);
-    op_data->op_info_.set_task_index(0);
+    std::shared_ptr<OPData> op_data;
     std::string value;
     AddReplicaData data;
     data.set_name(name);
     data.set_pid(pid);
     data.set_endpoint(endpoint);
     data.SerializeToString(&value);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    if (CreateOPData(::rtidb::api::OPType::kReAddReplicaWithDropOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create ReAddReplicaWithDropOP data error. table %s pid %u endpoint %s",
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
 
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kReAddReplicaWithDropOP, tid, pid);
@@ -1941,24 +1918,18 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
-        return -1;
-    }
-    op_index_++;
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::kReAddReplicaNoSendOP);
-    op_data->op_info_.set_task_index(0);
+    std::shared_ptr<OPData> op_data;
     std::string value;
     AddReplicaData data;
     data.set_name(name);
     data.set_pid(pid);
     data.set_endpoint(endpoint);
     data.SerializeToString(&value);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    if (CreateOPData(::rtidb::api::OPType::kReAddReplicaNoSendOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create ReAddReplicaNoSendOP data error. table %s pid %u endpoint %s",
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
 
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kReAddReplicaNoSendOP, tid, pid);
@@ -2046,24 +2017,18 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
-        return -1;
-    }
-    op_index_++;
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::kReAddReplicaSimplifyOP);
-    op_data->op_info_.set_task_index(0);
+    std::shared_ptr<OPData> op_data;
     std::string value;
     AddReplicaData data;
     data.set_name(name);
     data.set_pid(pid);
     data.set_endpoint(endpoint);
     data.SerializeToString(&value);
-    op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    if (CreateOPData(::rtidb::api::OPType::kReAddReplicaSimplifyOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create ReAddReplicaSimplifyOP data error. table %s pid %u endpoint %s",
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
 
     std::shared_ptr<Task> task = CreateAddReplicaTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kReAddReplicaSimplifyOP, tid, pid, endpoint);
