@@ -719,21 +719,16 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         return;
     }
     op_data->task_list_.push_back(task);
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
+    if (AddOPData(op_data) < 0) {
         response->set_code(-1);
-        response->set_msg("create op node failed");
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+        response->set_msg("add op data failed");
+        PDLOG(WARNING, "add op data failed. tid[%u] pid[%u]", tid, pid);
         return;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
     response->set_code(0);
     response->set_msg("ok");
-
-    PDLOG(DEBUG, "add makesnapshot op ok. op_id[%lu]", op_index_);
-    cv_.notify_one();
+    PDLOG(INFO, "add makesnapshot op ok. op_id[%lu] tid[%u] pid[%u]", 
+                op_index_, tid, pid);
 }
 
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
@@ -1292,19 +1287,14 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     }
     op_data->task_list_.push_back(task);
 
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
+    if (AddOPData(op_data) < 0) {
         response->set_code(-1);
-        response->set_msg("create op node failed");
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
-        done->Run();
+        response->set_msg("add op data failed");
+        PDLOG(WARNING, "add op data failed. tid[%u] pid[%u]", tid, pid);
         return;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
-    PDLOG(INFO, "add addreplica op ok. op_id[%lu]", op_index_);
-    cv_.notify_one();
+    PDLOG(INFO, "add addreplica op ok. op_id[%lu] tid[%u] pid[%u]", 
+                op_index_, tid, pid);
     response->set_code(0);
     response->set_msg("ok");
 }
@@ -1435,6 +1425,21 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
     return 0;
 }
 
+int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
+    std::string value;
+    op_data->op_info_.SerializeToString(&value);
+    std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+    if (!zk_client_->CreateNode(node, value)) {
+        PDLOG(WARNING, "create op node[%s] failed. op_index[%lu] op_type[%s]", 
+                        node.c_str(), op_data->op_info_.op_id(),
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()));
+        return -1;
+    }
+    task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+    cv_.notify_one();
+    return 0;
+}
+
 int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, ::rtidb::api::OPType op_type) {
     if (op_type != ::rtidb::api::OPType::kDelReplicaOP && 
             op_type != ::rtidb::api::OPType::kOfflineReplicaOP) {
@@ -1499,19 +1504,15 @@ int NameServerImpl::CreateDelReplicaOP(const DelReplicaData& del_replica_data, :
         }
     }
     op_data->task_list_.push_back(task);
-
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name %s pid %u endpoint %s", 
+                        del_replica_data.name().c_str(), del_replica_data.pid(), 
+                        del_replica_data.endpoint().c_str());
         return -1;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
     PDLOG(INFO, "add delreplica op. op_id[%lu] table %s pid %u endpoint %s", 
                 op_index_, del_replica_data.name().c_str(), del_replica_data.pid(),
                 del_replica_data.endpoint().c_str());
-    cv_.notify_one();
     return 0;
 }
 
@@ -1584,17 +1585,12 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
     }
     op_data->task_list_.push_back(task);
 
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name %s pid %u", name.c_str(), pid);
         return -1;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
     PDLOG(INFO, "add changeleader op. op_id[%lu] table %s pid %u", 
                 op_index_, name.c_str(), pid);
-    cv_.notify_one();
     return 0;
 }
 
@@ -1785,18 +1781,13 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
         return -1;
     }
     op_data->task_list_.push_back(task);
-
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name %s pid %u endpoint %s", 
+                        name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
     PDLOG(INFO, "create readdreplica op ok. op_id %lu name %s pid %u endpoint %s", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-    cv_.notify_one();
 	return 0;
 }
 
@@ -1884,17 +1875,13 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
     }
     op_data->task_list_.push_back(task);
 
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name %s pid %u endpoint %s", 
+                        name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
     PDLOG(INFO, "create readdreplica with drop op ok. op_id %lu name %s pid %u endpoint %s", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-    cv_.notify_one();
 	return 0;
 }
 
@@ -1969,17 +1956,13 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
     }
     op_data->task_list_.push_back(task);
 
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name %s pid %u endpoint %s", 
+                        name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
     PDLOG(INFO, "create readdreplica no send op ok. op_id %lu name %s pid %u endpoint %s", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-    cv_.notify_one();
     return 0;
 }
 
@@ -2046,17 +2029,13 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
     }
     op_data->task_list_.push_back(task);
 
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name %s pid %u endpoint %s", 
+                        name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
     PDLOG(INFO, "create readdreplica simplify op ok. op_id %lu name %s pid %u endpoint %s", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-    cv_.notify_one();
 	return 0;
 
 }
