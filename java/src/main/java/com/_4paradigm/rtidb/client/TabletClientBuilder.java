@@ -6,9 +6,7 @@ import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import io.brpc.client.EndPoint;
 import io.brpc.client.RpcClient;
 import io.brpc.client.RpcClientOptions;
-import io.brpc.client.RpcProxy;
 import io.brpc.protocol.Options;
-import rtidb.api.TabletServer;
 
 public class TabletClientBuilder {
 
@@ -24,14 +22,14 @@ public class TabletClientBuilder {
 	}
 	
 	public static TabletAsyncClient buildAsyncClient(RpcClient client) {
-		TabletServer ts = RpcProxy.getProxy(client, TabletServer.class);
-		TabletAsyncClient asyncClient = new TabletAsyncClientImpl(ts);
+		TabletAsyncClientImpl asyncClient = new TabletAsyncClientImpl(client);
+		asyncClient.init();
 		return asyncClient;
 	}
 	
 	public static TabletSyncClient buildSyncClient(RpcClient client) {
-		TabletServer ts = RpcProxy.getProxy(client, TabletServer.class);
-		TabletSyncClient syncClient = new TabletSyncClientImpl(ts);
+		TabletSyncClientImpl syncClient = new TabletSyncClientImpl(client);
+		syncClient.init();
 		return syncClient;
 	}
 	

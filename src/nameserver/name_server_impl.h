@@ -136,6 +136,16 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void ConnectZK(RpcController* controller,
+            const ConnectZKRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void DisConnectZK(RpcController* controller,
+            const DisConnectZKRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);

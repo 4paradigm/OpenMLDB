@@ -3,137 +3,134 @@ package com._4paradigm.rtidb.client.schema;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.List;
 
 import com._4paradigm.rtidb.client.TabletException;
 
 public class RowCodec {
+    private static Charset charset = Charset.forName("utf-8");
 
-	public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
-		if (row.length  != schema.size()) {
-			throw new TabletException("row length mismatch schema");
-		}
-		Object[] cache = new Object[row.length];
-		//TODO limit the max size
-		int size = getSize(row, schema, cache);
-		ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-		buffer.put((byte)row.length);
-		for (int i = 0; i < row.length; i++) {
-			buffer.put((byte)schema.get(i).getType().getValue());
-			if (row[i] == null) {
-				buffer.put((byte)0);
-				continue;
-			}
-			switch (schema.get(i).getType()) {
-			case kString:
-				byte[] bytes = (byte[])cache[i];
+    public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
+        if (row.length != schema.size()) {
+            throw new TabletException("row length mismatch schema");
+        }
+        Object[] cache = new Object[row.length];
+        // TODO limit the max size
+        int size = getSize(row, schema, cache);
+        ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+        buffer.put((byte) row.length);
+        for (int i = 0; i < row.length; i++) {
+            buffer.put((byte) schema.get(i).getType().getValue());
+            if (row[i] == null) {
+                buffer.put((byte) 0);
+                continue;
+            }
+            switch (schema.get(i).getType()) {
+            case kString:
+                byte[] bytes = (byte[]) cache[i];
                 if (bytes.length > 128) {
                     throw new TabletException("kString should be less than or equal 128");
                 }
-				buffer.put((byte)bytes.length);
-				buffer.put(bytes);
-				break;
-			case kInt32:
-				buffer.put((byte)4);
-				buffer.putInt((Integer)row[i]);
-				break;
-			case kUInt32:
-				throw new TabletException("kUInt32 is not support on jvm platform");
-			case kFloat:
-				buffer.put((byte)4);
-				buffer.putFloat((Float)row[i]);
-				break;
-			case kInt64:
-				buffer.put((byte)8);
-				buffer.putLong((Long)row[i]);
-				break;
-			case kUInt64:
-				throw new TabletException("kUInt64 is not support on jvm platform");
-			case kDouble:
-				buffer.put((byte)8);
-				buffer.putDouble((Double)row[i]);
-				break;
-			default:
-				throw new TabletException(schema.get(i).getType().toString() + " is not support on jvm platform");
-			}
-		}
-		return buffer;
-	}
-	
-	public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
-		if (buffer.order() == ByteOrder.BIG_ENDIAN) {
+                buffer.put((byte) bytes.length);
+                buffer.put(bytes);
+                break;
+            case kInt32:
+                buffer.put((byte) 4);
+                buffer.putInt((Integer) row[i]);
+                break;
+            case kUInt32:
+                throw new TabletException("kUInt32 is not support on jvm platform");
+            case kFloat:
+                buffer.put((byte) 4);
+                buffer.putFloat((Float) row[i]);
+                break;
+            case kInt64:
+                buffer.put((byte) 8);
+                buffer.putLong((Long) row[i]);
+                break;
+            case kUInt64:
+                throw new TabletException("kUInt64 is not support on jvm platform");
+            case kDouble:
+                buffer.put((byte) 8);
+                buffer.putDouble((Double) row[i]);
+                break;
+            default:
+                throw new TabletException(schema.get(i).getType().toString() + " is not support on jvm platform");
+            }
+        }
+        return buffer;
+    }
+
+    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
+        if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
-		int length = buffer.get() & 0xFF;
-        Object[] row = new Object[length]; 
+        int length = buffer.get() & 0xFF;
+        Object[] row = new Object[length];
         int index = 0;
-        while (buffer.position() < buffer.limit()
-        		&& index < row.length) {
-        	byte type = buffer.get();
-            int size = buffer.get() & 0xFF ;
+        while (buffer.position() < buffer.limit() && index < row.length) {
+            byte type = buffer.get();
+            int size = buffer.get() & 0xFF;
             if (size == 0) {
-            	row[index] = null;
-            	index ++;
-            	continue;
+                row[index] = null;
+                index++;
+                continue;
             }
-            ColumnType ctype = ColumnType.valueOf((int)type);
+            ColumnType ctype = ColumnType.valueOf((int) type);
             switch (ctype) {
-			case kString:
-				byte[] inner = new byte[size];
+            case kString:
+                byte[] inner = new byte[size];
                 buffer.get(inner);
-                String val = new String(inner, Charset.forName("utf-8"));
+                String val = new String(inner, charset);
                 row[index] = val;
-				break;
-			case kInt32:
-				row[index] = buffer.getInt();
-				break;
-			case kInt64:
-				row[index] = buffer.getLong();
-				break;
-			case kDouble:
-				row[index] = buffer.getDouble();
-				break;
-			case kFloat:
-				row[index] = buffer.getFloat();
-				break;
-			default:
-				throw new TabletException(ctype.toString() + " is not support on jvm platform");
-			}
-            index ++;
-            
+                break;
+            case kInt32:
+                row[index] = buffer.getInt();
+                break;
+            case kInt64:
+                row[index] = buffer.getLong();
+                break;
+            case kDouble:
+                row[index] = buffer.getDouble();
+                break;
+            case kFloat:
+                row[index] = buffer.getFloat();
+                break;
+            default:
+                throw new TabletException(ctype.toString() + " is not support on jvm platform");
+            }
+            index++;
         }
         return row;
-	}
-	
-	
-	private static int getSize(Object[] row, List<ColumnDesc> schema, Object[] cache) {
-		int totalSize = 1;
-		for (int i = 0; i < row.length; i++) {
-			totalSize += 2;
-			if (row[i] == null) {
-				continue;
-			}
-			switch (schema.get(i).getType()) {
-			case kString:
-				byte[] bytes = ((String)row[i]).getBytes(Charset.forName("utf-8"));
-				cache[i] =  bytes;
-				totalSize += bytes.length;
-				break;
-			case kInt32:
-			case kUInt32:
-			case kFloat:
-				totalSize += 4;
-				break;
-			case kInt64:
-			case kUInt64:
-			case kDouble:
-				totalSize += 8;
-				break;
-			default:
-				break;
-			}
-		}
-		return totalSize;
-	} 
+    }
+
+    private static int getSize(Object[] row, List<ColumnDesc> schema, Object[] cache) {
+        int totalSize = 1;
+        for (int i = 0; i < row.length; i++) {
+            totalSize += 2;
+            if (row[i] == null) {
+                continue;
+            }
+            switch (schema.get(i).getType()) {
+            case kString:
+                byte[] bytes = ((String) row[i]).getBytes(charset);
+                cache[i] = bytes;
+                totalSize += bytes.length;
+                break;
+            case kInt32:
+            case kUInt32:
+            case kFloat:
+                totalSize += 4;
+                break;
+            case kInt64:
+            case kUInt64:
+            case kDouble:
+                totalSize += 8;
+                break;
+            default:
+                break;
+            }
+        }
+        return totalSize;
+    }
 }

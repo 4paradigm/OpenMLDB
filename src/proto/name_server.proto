@@ -123,6 +123,9 @@ message OPStatus {
 
 message ShowOPStatusRequest{}
 
+message ConnectZKRequest {}
+message DisConnectZKRequest {}
+
 message ShowOPStatusResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -142,4 +145,6 @@ service NameServer {
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
     rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
 }
