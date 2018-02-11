@@ -567,8 +567,8 @@ int NameServerImpl::DeleteTask() {
                     pos->second->end_time_ = ::baidu::common::timer::now_time();
                     if (pos->second->task_status_ == ::rtidb::api::kDoing) {
                         pos->second->task_status_ = ::rtidb::api::kDone;
+                        pos->second->task_list_.clear();
                     }
-                    pos->second->task_list_.clear();
                 }
             } else {
                 PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
@@ -1382,6 +1382,13 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         response->set_code(-1);
         response->set_msg("table is not  exist!");
         PDLOG(WARNING, "table[%s] is not exist!", request->data().name().c_str());
+        return;
+    }
+    auto it = tablets_.find(request->data().endpoint());
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        response->set_code(-1);
+        response->set_msg("tablet is not online");
+        PDLOG(WARNING, "tablet[%s] is not online", request->data().endpoint().c_str());
         return;
     }
     if (CreateDelReplicaOP(request->data(), ::rtidb::api::OPType::kDelReplicaOP) < 0) {
