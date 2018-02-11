@@ -108,7 +108,7 @@ TEST_F(TabletImplTest, Get) {
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test");
-        prequest.set_time(now - 1);
+        prequest.set_time(now - 2);
         prequest.set_value("test9");
         prequest.set_tid(id);
         prequest.set_pid(1);
@@ -141,6 +141,17 @@ TEST_F(TabletImplTest, Get) {
         request.set_pid(1);
         request.set_key("test");
         request.set_ts(now - 1);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(1, response.code());
+    }
+    {        
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(now - 2);
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
