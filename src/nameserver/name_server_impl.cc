@@ -1432,7 +1432,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
     if (!zk_client_->CreateNode(node, value)) {
         PDLOG(WARNING, "create op node[%s] failed. op_index[%lu] op_type[%s]", 
                         node.c_str(), op_data->op_info_.op_id(),
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()));
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
         return -1;
     }
     task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
