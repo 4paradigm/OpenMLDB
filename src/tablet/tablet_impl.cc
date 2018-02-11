@@ -231,10 +231,10 @@ void TabletImpl::Get(RpcController* controller,
                 }
                 it->Next();
             }
-        } else {
+        } else if (request->ts() > table->GetExpireTime()) {
             it->Seek(request->ts());
         }
-    }else {
+    } else {
         it->SeekToFirst();
     }
     if (it->Valid()) {
@@ -245,7 +245,7 @@ void TabletImpl::Get(RpcController* controller,
         response->set_value(it->GetValue()->data, it->GetValue()->size);
         PDLOG(DEBUG, "Get key %s ts %lu value %s", request->key().c_str(),
                 request->ts(), it->GetValue()->data);
-    }else {
+    } else {
         response->set_code(1);
         response->set_msg("Not Found");
         PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
