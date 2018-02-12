@@ -1420,14 +1420,20 @@ void NameServerImpl::Migrate(RpcController* controller,
         std::string leader_endpoint;
         bool has_found_endpoint = false;
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-            if (table_info->table_partition(idx).pid() == pid &&
-                    table_info->table_partition(idx).is_alive()) {
-                if (table_info->table_partition(idx).is_leader()) {
-                    leader_endpoint = table_info->table_partition(idx).endpoint();
-                } else if (table_info->table_partition(idx).endpoint() == request->src_endpoint()) {
-                    has_found_endpoint = true;
+            if (table_info->table_partition(idx).pid() != pid) {
+                continue;
+            }
+            for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+                if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                        leader_endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    } else if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() 
+                                == request->src_endpoint()) {
+                        has_found_endpoint = true;
+                    }
                 }
             }
+            break;
         }
         if (leader_endpoint.empty()) {
             PDLOG(WARNING, "leader endpoint is empty. name[%s] pid[%u]", 
@@ -1451,11 +1457,11 @@ void NameServerImpl::Migrate(RpcController* controller,
                             request->name().c_str(), pid, request->src_endpoint().c_str());
             continue;
         }
-        CreateMigrateOP(src_endpoint, request->name(), pid, des_endpoint);
+        CreateMigrateOP(request->src_endpoint(), request->name(), pid, request->des_endpoint());
     }
 }
 
-int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::strint& name, 
+int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::string& name, 
             uint32_t pid, const std::string& des_endpoint) {
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
@@ -1465,39 +1471,24 @@ int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
     uint32_t tid = table_info->tid();
     std::string leader_endpoint;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        if (table_info->table_partition(idx).is_leader() &&
-                table_info->table_partition(idx).pid() == pid &&
-                table_info->table_partition(idx).is_alive()) {
-            leader_endpoint = table_info->table_partition(idx).endpoint();
-            break;
-        }
-    }
-    if (leader_endpoint.empty()) {
-        PDLOG(WARNING, "leader endpoint is empty. name[%s] pid[%u]", name.c_str(), pid);
+	if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    auto it = tablets_.find(endpoint);
+    auto it = tablets_.find(leader_endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        PDLOG(WARNING, "leader[%s] is not online", endpoint.c_str());
+        PDLOG(WARNING, "leader[%s] is not online", leader_endpoint.c_str());
         return -1;
     }
-
-    if (!zk_client_->SetNodeValue(zk_op_index_node_, std::to_string(op_index_ + 1))) {
-        PDLOG(WARNING, "set op index node failed! op_index[%s]", op_index_);
-        return -1;
-    }
-    op_index_++;
-
-    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
-    op_data->op_info_.set_op_id(op_index_);
-    op_data->op_info_.set_op_type(::rtidb::api::OPType::kMigrateOP);
-    op_data->op_info_.set_task_index(0);
-    //std::string value;
+    std::shared_ptr<OPData> op_data;
+    std::string value;
     //request->SerializeToString(&value);
-    //op_data->op_info_.set_data(value);
     op_data->task_status_ = ::rtidb::api::kDoing;
+	if (CreateOPData(::rtidb::api::OPType::kMigrateOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create migrate op data failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
+                		src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+        return -1;
+    }
 
     std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kMigrateOP, tid, pid);
@@ -1555,21 +1546,13 @@ int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::
         return -1;
     }
     op_data->task_list_.push_back(task);
-
-    value.clear();
-    op_data->op_info_.SerializeToString(&value);
-    std::string node = zk_op_data_path_ + "/" + std::to_string(op_index_);
-    if (!zk_client_->CreateNode(node, value)) {
-        response->set_code(-1);
-        response->set_msg("create op node failed");
-        PDLOG(WARNING, "create op node[%s] failed", node.c_str());
+	if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add migrate op data failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
+                		src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
         return -1;
     }
-    task_map_.insert(std::make_pair(op_index_, op_data));
-
     PDLOG(INFO, "add migrate op ok. op_id[%lu] src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
                 op_index_, src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
-    cv_.notify_one();
     return 0;
 }            
 

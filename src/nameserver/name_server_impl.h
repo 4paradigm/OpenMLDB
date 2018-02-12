@@ -272,7 +272,7 @@ private:
     void ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
-    int CreateMigrateOP(const std::string& src_endpoint, const std::strint& name, uint32_t pid,
+    int CreateMigrateOP(const std::string& src_endpoint, const std::string& name, uint32_t pid,
                     const std::string& des_endpoint);
     void RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint);                    
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
