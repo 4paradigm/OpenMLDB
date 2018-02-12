@@ -70,6 +70,7 @@ TEST_F(TabletImplTest, Get) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         table_meta->set_wal(true);
+        table_meta->set_ttl(1);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
@@ -77,13 +78,14 @@ TEST_F(TabletImplTest, Get) {
                 &closure);
         ASSERT_EQ(0, response.code());
     }
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     // key not found
     {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
-        request.set_ts(0);
+        request.set_ts(now);
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
@@ -93,7 +95,7 @@ TEST_F(TabletImplTest, Get) {
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test");
-        prequest.set_time(10);
+        prequest.set_time(now);
         prequest.set_value("test10");
         prequest.set_tid(id);
         prequest.set_pid(1);
@@ -106,7 +108,7 @@ TEST_F(TabletImplTest, Get) {
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test");
-        prequest.set_time(9);
+        prequest.set_time(now - 2);
         prequest.set_value("test9");
         prequest.set_tid(id);
         prequest.set_pid(1);
@@ -115,32 +117,58 @@ TEST_F(TabletImplTest, Get) {
         tablet.Put(NULL, &prequest, &presponse,
                 &closure);
         ASSERT_EQ(0, presponse.code());
+
+        prequest.set_time(now - 120 * 1000);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
     }
-    // get the 10
     {        
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
-        request.set_ts(0);
+        request.set_ts(now);
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ("test10", response.value());
     }
-    // get the 9 
     {        
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
-        request.set_ts(9);
+        request.set_ts(now - 1);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(1, response.code());
+    }
+    {        
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(now - 2);
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ("test9", response.value());
+    }
+    {        
+        // get expired key
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(now - 120 * 1000);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(1, response.code());
     }
 
     // create latest ttl table

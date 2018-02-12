@@ -212,6 +212,7 @@ void TabletImpl::Get(RpcController* controller,
     }
     ::rtidb::storage::Ticket ticket;
     Table::Iterator* it = table->NewIterator(request->key(), ticket);
+    bool has_found = true;
     if (request->ts() > 0) {
         if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
             uint64_t keep_cnt = table->GetTTL();
@@ -222,22 +223,21 @@ void TabletImpl::Get(RpcController* controller,
                 }
                 keep_cnt--;
                 if (keep_cnt == 0) {
-                    response->set_code(1);
-                    response->set_msg("Not Found");
-                    PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
-                            request->ts());
-                    delete it;        
-                    return;        
+                    has_found = false;
+                    break;
                 }
                 it->Next();
             }
-        } else {
+        } else if (request->ts() > table->GetExpireTime()) {
             it->Seek(request->ts());
+            if (it->Valid() && it->GetKey() != request->ts()) {
+                has_found = false;
+            }
         }
-    }else {
+    } else {
         it->SeekToFirst();
     }
-    if (it->Valid()) {
+    if (it->Valid() && has_found) {
         response->set_code(0);
         response->set_msg("ok");
         response->set_key(request->key());
@@ -245,14 +245,14 @@ void TabletImpl::Get(RpcController* controller,
         response->set_value(it->GetValue()->data, it->GetValue()->size);
         PDLOG(DEBUG, "Get key %s ts %lu value %s", request->key().c_str(),
                 request->ts(), it->GetValue()->data);
-    }else {
+    } else {
         response->set_code(1);
         response->set_msg("Not Found");
         PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
                 request->ts());
 
     }
-    delete it;        
+    delete it; 
 }
 
 void TabletImpl::Put(RpcController* controller,
