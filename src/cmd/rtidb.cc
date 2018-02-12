@@ -362,6 +362,50 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtid
     std::cout << "offline endpoint ok" << std::endl;
 }
 
+void HandleNSClientMigrate(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "Bad format. eg, migrate 127.0.0.1:9991 table1 1-10 127.0.0.1:9992" << std::endl;
+        return;
+    }
+    if (parts[1] == parts[4]) {
+        std::cout << "src_endpoint is same as des_endpoint" << std::endl;
+        return;
+    }
+    std::string msg;
+    std::vector<uint32_t> pid_vec;
+    try {
+        if (::rtidb::base::IsNumber(parts[3])) {
+            pid_vec.push_back(boost::lexical_cast<uint32_t>(parts[3]));
+        } else {
+            std::vector<std::string> vec;
+            boost::split(vec, parts[3], boost::is_any_of("-"));
+            if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
+                printf("pid_group[%s] format error.\n", parts[3].c_str());
+                return;
+            }
+            uint32_t start_index = boost::lexical_cast<uint32_t>(vec[0]);
+            uint32_t end_index = boost::lexical_cast<uint32_t>(vec[1]);
+            while (start_index <= end_index) {
+                pid_vec.push_back(start_index);
+                start_index++;
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        return;
+    }
+    if (pid_vec.empty()) {
+        std::cout << "has not valid pid" << std::endl;
+        return;
+    }
+    bool ret = client->Migrate(parts[1], parts[2], pid_vec, parts[4], msg);
+    if (!ret) {
+        std::cout << "failed to migrate partitiont. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "partition migrate ok" << std::endl;
+}
+
 void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::string name;
     if (parts.size() >= 2) {
@@ -1597,6 +1641,8 @@ void StartNsClient() {
             HandleNSClientChangeLeader(parts, &client);
         } else if (parts[0] == "offlineendpoint") {
             HandleNSClientOfflineEndpoint(parts, &client);
+        } else if (parts[0] == "migrate") {
+            HandleNSClientMigrate(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

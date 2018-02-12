@@ -211,6 +211,25 @@ bool NsClient::OfflineEndpoint(const std::string& endpoint, std::string& msg) {
     return false;
 }
 
+bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name, 
+            const std::vector<uint32_t>& pid_vec, const std::string& des_endpoint, std::string& msg) {
+    ::rtidb::nameserver::MigrateRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_src_endpoint(src_endpoint);
+    request.set_name(name);
+    request.set_des_endpoint(des_endpoint);
+    for (auto pid : pid_vec) {
+        request.add_pid(pid);       
+    }
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::Migrate,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}            
+
 }
 }
 

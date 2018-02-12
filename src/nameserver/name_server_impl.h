@@ -136,6 +136,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void Migrate(RpcController* controller,
+            const MigrateRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
@@ -222,6 +227,13 @@ private:
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
+    std::shared_ptr<Task> CreateMigrateTableInfoTask(const std::string& name, 
+                    const std::string& src_endpoint, const std::string& des_endpoint,
+                    uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    void MigrateTableInfo(const std::string& name, const std::string& src_endpoint, const std::string& des_endpoint,
+                    uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
     std::shared_ptr<Task> CreateUpdateTableAliveStatusTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, bool is_alive, uint64_t op_index, ::rtidb::api::OPType op_type);
 
@@ -234,6 +246,8 @@ private:
     void ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    int CreateMigrateOP(const std::string& src_endpoint, const std::strint& name, uint32_t pid,
+                    const std::string& des_endpoint);
 
 private:
     std::mutex mu_;

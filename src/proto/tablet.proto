@@ -42,6 +42,7 @@ enum OPType {
     kDelReplicaOP = 3;
     KSelectLeaderOP = 4;
     kOfflineReplicaOP = 5;
+    kMigrateOP = 6;
 }
 
 enum TaskType {
