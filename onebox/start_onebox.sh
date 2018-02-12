@@ -5,7 +5,7 @@
 # first start zookeeper
 
 # start tablet0
-../build/bin/rtidb --db_root_path=/tmp/tablet1-binlogs \
+../build/bin/rtidb --db_root_path=/tmp/tablet0-binlogs \
                    --endpoint=127.0.0.1:9520 --role=tablet \
                    --zk_cluster=127.0.0.1:12181\
                    --zk_root_path=/onebox > tablet0.log 2>&1 &

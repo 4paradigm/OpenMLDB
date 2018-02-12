@@ -1003,12 +1003,6 @@ TEST_F(TabletImplTest, GetTermPair) {
         ASSERT_EQ(0, pair_response.code());
         ASSERT_TRUE(pair_response.has_table());
         ASSERT_EQ(1, pair_response.offset());
-
-        prequest.set_time(9528);
-        tablet.Put(NULL, &prequest, &presponse,
-                &closure);
-        ASSERT_EQ(20, presponse.code());
-
     }
     TabletImpl tablet;
     tablet.Init();

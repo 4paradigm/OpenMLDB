@@ -1663,43 +1663,55 @@ void NameServerImpl::RecoverTable(const std::string& name, uint32_t pid, const s
         }
     }
 	bool has_table = false;
+    bool is_leader = false;
 	uint64_t term = 0;
 	uint64_t offset = 0;
-	if (!tablet_ptr->client_->GetTermPair(tid, pid, has_table, term, offset)) {
+	if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
 		PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
 						name.c_str(), tid, pid, endpoint.c_str());
 		return;
 	}
+    if (has_table && is_leader) {
+        if (!tablet_ptr->client_->ChangeRole(tid, pid, false)) {
+            PDLOG(WARNING, "change role failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                            name.c_str(), tid, pid, endpoint.c_str());
+            return;
+        }
+		PDLOG(INFO, "change to follower. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                    name.c_str(), tid, pid, endpoint.c_str());
+    }
 	int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
 	if (ret_code < 0) {
 		PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
 						name.c_str(), tid, pid, endpoint.c_str());
 		return;
-	}
+	} else if (ret_code == 1) {
+        if (!tablet_ptr->client_->DeleteBinlog(tid, pid)) {
+            PDLOG(WARNING, "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                            name.c_str(), tid, pid, endpoint.c_str());
+            return;
+        }
+        PDLOG(INFO, "delete binlog ok. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                            name.c_str(), tid, pid, endpoint.c_str());
+
+    }
+    ::rtidb::api::Manifest manifest;
+    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
+        PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u]", 
+                name.c_str(), tid, pid);
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
 	if (has_table) {
-		if (ret_code == 0) {
-			int code = 0;
-			::rtidb::api::Manifest manifest;
-			if (!leader_tablet_ptr->client_->GetManifest(tid, pid, code, manifest) || code < 0) {
-				PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u]", 
-						name.c_str(), tid, pid);
-				return;
-			}
-        	std::lock_guard<std::mutex> lock(mu_);
-			if (code == 0 && offset > manifest.offset()) {
-				CreateReAddReplicaSimplifyOP(name, pid, endpoint);
-			} else {
-				CreateReAddReplicaWithDropOP(name, pid, endpoint);
-			}
+		if (ret_code == 0 && offset >= manifest.offset()) {
+			CreateReAddReplicaSimplifyOP(name, pid, endpoint);
 		} else {
-        	std::lock_guard<std::mutex> lock(mu_);
 			CreateReAddReplicaWithDropOP(name, pid, endpoint);
 		}
 	} else {
-        std::lock_guard<std::mutex> lock(mu_);
-		if (ret_code == 0) {
-			CreateReAddReplicaNoSendOP(name, pid, endpoint);
-		} else {	
+		if (ret_code == 0 && offset >= manifest.offset()) {
+		    CreateReAddReplicaNoSendOP(name, pid, endpoint);
+		} else {
 			CreateReAddReplicaOP(name, pid, endpoint);
 		}
 	}
@@ -2042,6 +2054,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
 
 int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset) {
     if (!has_table && offset == 0) {
+        PDLOG(INFO, "has not table, offset is zero. name %s pid %u", name.c_str(), pid);
         return 1;
     }
 	std::map<uint64_t, uint64_t> term_map;
@@ -2069,15 +2082,15 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
 						term, name.c_str(), pid);
 		return -1;
 	} else if (iter->second > offset) {
-        PDLOG(WARNING, "offset match error. name %s pid %u term %lu term start offset %lu cur offset %lu", 
+        PDLOG(INFO, "offset is not matched. name %s pid %u term %lu term start offset %lu cur offset %lu", 
 						name.c_str(), pid, term, iter->second, offset);
-		return -1;
+		return 1;
 	}
 	iter++;
 	if (iter == term_map.end()) {
-        PDLOG(WARNING, "cur term %lu is the last one. name %s pid %u", 
+        PDLOG(INFO, "cur term %lu is the last one. name %s pid %u", 
 						term, name.c_str(), pid);
-		return -1;
+		return 0;
 	}
 	if (iter->second <= offset) {
         PDLOG(INFO, "term %lu offset not matched. name %s pid %u offset %lu", 

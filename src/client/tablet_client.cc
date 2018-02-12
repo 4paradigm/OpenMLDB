@@ -349,7 +349,8 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     return true;
 }
 
-bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, bool& has_table, uint64_t& term, uint64_t& offset) {
+bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, 
+            bool& has_table, bool& is_leader) {
     ::rtidb::api::GetTermPairRequest request;
     ::rtidb::api::GetTermPairResponse response;
     request.set_tid(tid);
@@ -362,23 +363,23 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, bool& has_table, uint
     has_table = response.has_table();
     term = response.term();
     offset = response.offset();
+    if (has_table) {
+        is_leader = response.is_leader();
+    }
     return true;
 }
 
-bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, int& code, ::rtidb::api::Manifest& manifest) {
+bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest) {
     ::rtidb::api::GetManifestRequest request;
     ::rtidb::api::GetManifestResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetManifest,
             &request, &response, 12, 1);
-    if (!ret) {
+    if (!ret || response.code() != 0) {
         return false;
     }
-    code = response.code();
-    if (code == 0) {
-        manifest.CopyFrom(response.manifest());
-    }
+    manifest.CopyFrom(response.manifest());
     return true;
 }
 
@@ -651,6 +652,19 @@ bool TabletClient::DisConnectZK() {
     ::rtidb::api::DisConnectZKRequest request;
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DisConnectZK,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
+    ::rtidb::api::GeneralRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DeleteBinlog,
             &request, &response, 12, 1);
     if (!ok || response.code()  != 0) {
         return false;

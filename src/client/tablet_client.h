@@ -128,13 +128,15 @@ public:
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
                     const std::vector<std::string>& endpoints, uint64_t term = 0);
 
+    bool DeleteBinlog(uint32_t tid, uint32_t pid);
+
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
-    bool GetTermPair(uint32_t tid, uint32_t pid, bool& has_table, uint64_t& term, uint64_t& offset);
+    bool GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader);
 
-    bool GetManifest(uint32_t tid, uint32_t pid, int& code, ::rtidb::api::Manifest& manifest);
+    bool GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest);
 
     int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     int GetTableStatus(uint32_t tid, uint32_t pid,

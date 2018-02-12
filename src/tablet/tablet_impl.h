@@ -196,6 +196,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
+    void DeleteBinlog(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
 private:
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);

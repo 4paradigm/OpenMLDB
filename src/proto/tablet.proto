@@ -365,9 +365,10 @@ message GetTermPairRequest {
 message GetTermPairResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional bool has_table = 3;
-    optional uint64 term = 4;
-    optional uint64 offset = 5;
+    optional uint64 term = 3;
+    optional uint64 offset = 4;
+    optional bool has_table = 5;
+    optional bool is_leader = 6;
 }
 
 message GetManifestRequest {
@@ -421,6 +422,7 @@ service TabletServer {
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
     rpc GetTermPair(GetTermPairRequest) returns(GetTermPairResponse);
     rpc GetManifest(GetManifestRequest) returns(GetManifestResponse);
+    rpc DeleteBinlog(GeneralRequest) returns(GeneralResponse);
 
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
 

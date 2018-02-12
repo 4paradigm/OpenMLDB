@@ -498,6 +498,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
             Closure* done) {
+	brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     bool is_leader = false;
@@ -512,17 +513,40 @@ void TabletImpl::ChangeRole(RpcController* controller,
         if (ChangeToLeader(tid, pid, vec, request->term()) < 0) {
             response->set_code(-1);
             response->set_msg("table change to leader failed!");
-            done->Run();
             return;
         }
-        response->set_code(0);
-        response->set_msg("ok");
-        done->Run();
     } else {
-        response->set_code(-1);
-        response->set_msg("not support change to follower");
-        done->Run();
+        std::shared_ptr<Table> table = GetTable(tid, pid);
+        if (!table) {
+            response->set_code(-1);
+            response->set_msg("table is not exist");
+            return;
+        }
+        if (!table->IsLeader()) {
+            PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
+            response->set_code(0);
+            response->set_msg("table is follower.");
+            return;
+        }
+        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table state[%u] can not change role. tid[%u] pid[%u]", 
+                        table->GetTableStat(), tid, pid);
+            response->set_code(-1);
+            response->set_msg("can not change role");
+            return;
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        if (!replicator) {
+            response->set_code(-1);
+            response->set_msg("replicator is not exist");
+            return;
+        }
+        replicator->DelAllReplicateNode();
+        replicator->SetRole(ReplicatorRole::kFollowerNode);
+        table->SetLeader(false);
     }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std::string>& replicas, uint64_t term) {
@@ -1560,13 +1584,6 @@ void TabletImpl::GetTermPair(RpcController* controller,
 		response->set_msg("table is not exist");
 
         std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
-        // delete binlog
-        std::string binlog_path = db_path + "/binlog";
-        if (::rtidb::base::IsExists(binlog_path)) {
-            std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + std::to_string(tid) + 
-                   "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
-            ::rtidb::base::Rename(binlog_path, recycle_path);
-        }
     	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
 		int fd = open(manifest_file.c_str(), O_RDONLY);
 	    response->set_msg("ok");
@@ -1600,14 +1617,27 @@ void TabletImpl::GetTermPair(RpcController* controller,
 	response->set_has_table(true);
 	response->set_term(replicator->GetLeaderTerm());
 	response->set_offset(replicator->GetOffset());
-
-    // change to follower
-    if (table->IsLeader()) {
-        replicator->DelAllReplicateNode();
-        replicator->SetRole(ReplicatorRole::kFollowerNode);
-        table->SetLeader(false);
-    }
 }
+
+void TabletImpl::DeleteBinlog(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string binlog_path = db_path + "/binlog";
+    if (::rtidb::base::IsExists(binlog_path)) {
+        std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + std::to_string(tid) + 
+               "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
+        ::rtidb::base::Rename(binlog_path, recycle_path);
+        PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
+                    binlog_path.c_str(), recycle_path.c_str(), tid, pid);
+    }
+	response->set_code(0);
+	response->set_msg("ok");
+}        
 
 void TabletImpl::GetManifest(RpcController* controller,
             const ::rtidb::api::GetManifestRequest* request,
@@ -1617,21 +1647,20 @@ void TabletImpl::GetManifest(RpcController* controller,
 	std::string db_path = FLAGS_db_root_path + "/" + std::to_string(request->tid()) + "_" + 
                 std::to_string(request->pid());
 	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
-	int fd = open(manifest_file.c_str(), O_RDONLY);
-	if (fd < 0) {
-		PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
-		response->set_code(1);
-		response->set_msg("manifest is not exist");
-		return;
-	}
-	google::protobuf::io::FileInputStream fileInput(fd);
-	fileInput.SetCloseOnDelete(true);
 	::rtidb::api::Manifest manifest;
-	if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-		PDLOG(WARNING, "parse manifest failed");
-		response->set_code(-1);
-		response->set_msg("parse manifest failed");
-		return;
+	int fd = open(manifest_file.c_str(), O_RDONLY);
+    if (fd >= 0) {
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+            PDLOG(WARNING, "parse manifest failed");
+            response->set_code(-1);
+            response->set_msg("parse manifest failed");
+            return;
+        }
+    } else {
+		PDLOG(INFO, "[%s] is not exist", manifest_file.c_str());
+        manifest.set_offset(0);
 	}
 	response->set_code(0);
 	response->set_msg("ok");
