@@ -40,8 +40,12 @@ enum OPType {
     kMakeSnapshotOP = 1;
     kAddReplicaOP = 2;
     kDelReplicaOP = 3;
-    KSelectLeaderOP = 4;
+    kSelectLeaderOP = 4;
     kOfflineReplicaOP = 5;
+    kReAddReplicaOP = 6; 
+    kReAddReplicaNoSendOP = 7;     // need not send snapshot
+    kReAddReplicaWithDropOP = 8;   // should droptable before loadtable
+    kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
 }
 
 enum TaskType {
@@ -55,7 +59,8 @@ enum TaskType {
     kDelReplica = 8;
     kDelTableInfo = 9;
     kChangeLeader = 10;
-    kUpdateTableAliveStatus = 11;
+    kUpdatePartitionStatus = 11;
+    kDropTable = 12;
 }
 
 enum TaskStatus {
@@ -83,6 +88,7 @@ message Manifest {
     optional uint64 offset = 1;
     optional string name = 2;
     optional uint64 count = 3;
+    optional uint64 term = 4;
 }
 
 message Dimension {
@@ -219,6 +225,7 @@ message LoadTableRequest {
 message DropTableRequest {
 	optional int32 tid = 1;
 	optional int32 pid = 2;
+    optional TaskInfo task_info = 3;
 }
 
 message DropTableResponse {
@@ -350,6 +357,31 @@ message GetResponse {
     optional bytes value = 5;
 }
 
+message GetTermPairRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message GetTermPairResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 term = 3;
+    optional uint64 offset = 4;
+    optional bool has_table = 5;
+    optional bool is_leader = 6;
+}
+
+message GetManifestRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message GetManifestResponse{ 
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional Manifest manifest = 3;
+}
+
 message ConnectZKRequest {}
 message DisConnectZKRequest {}
 
@@ -385,8 +417,12 @@ service TabletServer {
     rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
     rpc SetTTLClock(SetTTLClockRequest) returns(GeneralResponse);
 
+    // name server interface
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
+    rpc GetTermPair(GetTermPairRequest) returns(GetTermPairResponse);
+    rpc GetManifest(GetManifestRequest) returns(GetManifestResponse);
+    rpc DeleteBinlog(GeneralRequest) returns(GeneralResponse);
 
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
 

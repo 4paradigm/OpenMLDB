@@ -97,6 +97,8 @@ public:
 
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);
 
+    bool DelAllReplicateNode();
+
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
