@@ -5,19 +5,30 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.metrics.TabletMetrics;
+
 import rtidb.api.Tablet;
 import rtidb.api.Tablet.PutResponse;
 
 public class PutFuture implements Future<Boolean>{
 
 	private Future<Tablet.PutResponse> f;
-	
+	private Long startTime = -1l;
 	public PutFuture(Future<Tablet.PutResponse> f) {
 		this.f = f;
 	}
 	
+	public PutFuture(Future<Tablet.PutResponse> f, Long startTime) {
+		this.f = f;
+		this.startTime = startTime;
+	}
+	
 	public static PutFuture wrapper(Future<Tablet.PutResponse> f) {
 		return new PutFuture(f);
+	}
+	
+	public static PutFuture wrapper(Future<Tablet.PutResponse> f, Long startTime) {
+		return new PutFuture(f, startTime);
 	}
 	
 	@Override
@@ -38,6 +49,13 @@ public class PutFuture implements Future<Boolean>{
 	@Override
 	public Boolean get() throws InterruptedException, ExecutionException {
 		PutResponse response = f.get();
+		
+		if (startTime > 0) {
+			Long network = System.nanoTime() - startTime;
+			if(TabletClientConfig.isMetricsEnabled()) {
+				TabletMetrics.getInstance().addPut(-1l, network);
+			}
+		}
 		if (response != null && response.getCode() == 0) {
 			return true;
 		}

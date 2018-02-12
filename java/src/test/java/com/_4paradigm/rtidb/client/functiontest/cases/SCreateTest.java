@@ -16,6 +16,7 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.impl.GTableSchema;
 import com._4paradigm.rtidb.client.TabletClientBuilder;
 import com._4paradigm.rtidb.client.KvIterator;
 import io.brpc.client.RpcClient;
@@ -134,7 +135,7 @@ public class SCreateTest {
     System.out.println(ok);
     Assert.assertEquals(ok, result);
     if (ok) {
-      Table table = client.getTable(tid, 0);
+      Table table = GTableSchema.getTable(tid, 0);
       Assert.assertEquals(table.getSchema().size(), schemaCount);
       Assert.assertEquals(table.getIndexes().size(), indexes);}
   }

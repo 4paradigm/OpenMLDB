@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
 
+import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com.google.protobuf.ByteString;
@@ -19,6 +20,9 @@ public class KvIterator {
     private long time;
     private int totalSize;
     private List<ColumnDesc> schema;
+    private Long network = 0l;
+    private Long decode = 0l;
+    private int count;
     public KvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -27,7 +31,15 @@ public class KvIterator {
         next();
     }
     
-    public KvIterator(ByteString bs, List<ColumnDesc> schema) {
+    public int getCount() {
+		return count;
+	}
+
+	public void setCount(int count) {
+		this.count = count;
+	}
+
+	public KvIterator(ByteString bs, List<ColumnDesc> schema) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
@@ -35,10 +47,36 @@ public class KvIterator {
         next();
         this.schema = schema;
     }
+    
+    public KvIterator(ByteString bs, Long network) {
+        this.bs = bs;
+        this.bb = this.bs.asReadOnlyByteBuffer();
+        this.offset = 0;
+        this.totalSize = this.bs.size();
+        next();
+        this.network = network;
+    }
+    
+    public KvIterator(ByteString bs, List<ColumnDesc> schema, Long network) {
+        this.bs = bs;
+        this.bb = this.bs.asReadOnlyByteBuffer();
+        this.offset = 0;
+        this.totalSize = this.bs.size();
+        next();
+        this.schema = schema;
+        this.network = network;
+    }
 
-    public boolean valid() {
+    public List<ColumnDesc> getSchema() {
+		return schema;
+	}
+
+	public boolean valid() {
         if (offset <= totalSize) {
             return true;
+        }
+        if (TabletClientConfig.isMetricsEnabled()) {
+        	TabletMetrics.getInstance().addScan(decode, network);
         }
         return false;
     }
@@ -53,13 +91,17 @@ public class KvIterator {
     }
     
     public Object[] getDecodedValue() throws TabletException {
-    	if (schema == null) {
-    		throw new TabletException("get decoded value is not supported");
-    	}
-    	return RowCodec.decode(slice, schema);
+        	Long delta = System.nanoTime();
+        	if (schema == null) {
+        		throw new TabletException("get decoded value is not supported");
+        	}
+        	Object[] row = RowCodec.decode(slice, schema);
+        	decode += System.nanoTime() - delta;
+        	return row;
     }
 
     public void next() {
+    	Long delta = System.nanoTime();
         if (offset + 4 > totalSize) {
             offset += 4;
             return;
@@ -75,5 +117,6 @@ public class KvIterator {
         }
         offset += (4 + size);
         slice.limit(offset);
+        decode += System.nanoTime() - delta;
     }
 }
