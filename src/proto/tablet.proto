@@ -62,6 +62,7 @@ enum TaskType {
     kChangeLeader = 10;
     kUpdatePartitionStatus = 11;
     kDropTable = 12;
+    kUpdateTableInfo = 13;
 }
 
 enum TaskStatus {

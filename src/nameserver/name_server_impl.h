@@ -244,15 +244,12 @@ private:
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
-    std::shared_ptr<Task> CreateMigrateTableInfoTask(const std::string& name, 
-                    const std::string& src_endpoint, const std::string& des_endpoint,
-                    uint32_t pid, uint64_t op_index, ::rtidb::api::OPType op_type);
+    std::shared_ptr<Task> CreateUpdateTableInfoTask(const std::string& src_endpoint, 
+                    const std::string& name, uint32_t pid, const std::string& des_endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type);
 
-    void MigrateTableInfo(const std::string& name, const std::string& src_endpoint, const std::string& des_endpoint,
-                    uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
-
-    std::shared_ptr<Task> CreateUpdateTableAliveStatusTask(const std::string& name, uint32_t pid,
-                    const std::string& endpoint, bool is_alive, uint64_t op_index, ::rtidb::api::OPType op_type);
+    void UpdateTableInfo(const std::string& src_endpoint, const std::string& name, uint32_t pid,
+                    const std::string& des_endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateUpdatePartitionStatusTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, bool is_leader, bool is_alive, 

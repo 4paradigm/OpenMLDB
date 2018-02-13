@@ -375,7 +375,7 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts, ::rtidb::clien
         return;
     }
     if (parts[1] == parts[4]) {
-        std::cout << "src_endpoint is same as des_endpoint" << std::endl;
+        std::cout << "migrate error. src_endpoint is same as des_endpoint" << std::endl;
         return;
     }
     std::string msg;
@@ -383,7 +383,7 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts, ::rtidb::clien
     try {
         if (::rtidb::base::IsNumber(parts[3])) {
             pid_vec.push_back(boost::lexical_cast<uint32_t>(parts[3]));
-        } else {
+        } else if (parts[3].find('-') != std::string::npos) {
             std::vector<std::string> vec;
             boost::split(vec, parts[3], boost::is_any_of("-"));
             if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
@@ -396,6 +396,19 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts, ::rtidb::clien
                 pid_vec.push_back(start_index);
                 start_index++;
             }
+        } else if (parts[3].find(',') != std::string::npos) {
+            std::vector<std::string> vec;
+            boost::split(vec, parts[3], boost::is_any_of(","));
+            for (const auto& pid_str : vec) {
+                if (!::rtidb::base::IsNumber(pid_str)) {
+                    printf("partition[%s] format error.\n", parts[3].c_str());
+                    return;
+                }
+                pid_vec.push_back(boost::lexical_cast<uint32_t>(pid_str));
+            }
+        } else {
+            printf("partition[%s] format error\n", parts[3].c_str());
+            return;
         }
     } catch (const std::exception& e) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
@@ -407,7 +420,7 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts, ::rtidb::clien
     }
     bool ret = client->Migrate(parts[1], parts[2], pid_vec, parts[4], msg);
     if (!ret) {
-        std::cout << "failed to migrate partitiont. error msg: " << msg << std::endl;
+        std::cout << "failed to migrate partition. error msg: " << msg << std::endl;
         return;
     }
     std::cout << "partition migrate ok" << std::endl;
