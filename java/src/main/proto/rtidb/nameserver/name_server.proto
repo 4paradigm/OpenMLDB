@@ -1,0 +1,149 @@
+package rtidb.nameserver;
+
+option cc_generic_services = true;
+option java_package = "com._4paradigm.rtidb.ns";
+option java_outer_classname = "NS";
+
+message ColumnDesc {
+    required string name = 1;
+    required string type = 2;
+    required bool add_ts_idx = 3;
+}
+
+message TablePartition {
+    required string endpoint = 1;
+    required bool is_leader = 2;
+    required uint32 pid = 3;
+    optional bool is_alive = 4 [default = true];
+}
+
+message TableInfo {
+	required string name = 1;
+	optional uint64 ttl = 2 [default = 0];
+	optional uint32 seg_cnt = 3 [default = 8];
+    repeated TablePartition table_partition = 4;
+	optional uint32 tid = 5;
+    repeated ColumnDesc column_desc = 6;
+    optional string ttl_type = 7 [default = "kAbsoluteTime"];
+}
+
+message CreateTableRequest {
+    required TableInfo table_info = 1;
+}
+
+message DropTableRequest {
+    required string name = 1;
+}
+
+message ShowTableRequest {
+    optional string name = 1;
+}
+
+message ShowTableResponse {
+    repeated TableInfo table_info = 1;
+	required int32 code = 2;
+	optional string msg = 3;
+}
+
+message MakeSnapshotNSRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+}
+
+message AddReplicaNSRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
+message Pair {
+	required string key = 1;
+    required string value = 2;
+}
+
+message ConfSetRequest {
+	required Pair conf = 1;
+}
+
+message ConfGetRequest {}
+
+message ConfGetResponse {
+	required int32 code = 1;
+	optional string msg = 2;
+    repeated Pair conf = 3;
+}
+
+message ChangeLeaderRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+}
+
+message OfflineEndpointRequest {
+	required string endpoint = 1;
+}
+
+message GeneralResponse {
+	required int32 code = 1;
+	optional string msg = 2;
+}
+
+message ShowTabletRequest {}
+
+message TabletStatus {
+    optional string endpoint = 1;
+    optional string state = 2;
+    optional uint64 age = 3;
+}
+
+message ShowTabletResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message DelReplicaData {
+    required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
+message DelReplicaNSRequest {
+    required DelReplicaData data = 1;
+}
+
+message OPStatus {
+    required uint64 op_id = 1;
+    required string op_type = 2;
+    required string status = 3;
+    required uint64 start_time = 4;
+    required uint64 end_time = 5;
+    required string task_type = 6;
+}
+
+message ShowOPStatusRequest{}
+
+message ConnectZKRequest {}
+message DisConnectZKRequest {}
+
+message ShowOPStatusResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated OPStatus op_status = 3;
+}
+
+service NameServer {
+	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+	rpc DropTable(DropTableRequest) returns (GeneralResponse);
+    rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
+    rpc ShowTable(ShowTableRequest) returns (ShowTableResponse);
+    rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
+    rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
+    rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
+    rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
+    rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
+    rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
+    rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
+    rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+}

@@ -12,14 +12,14 @@ import com._4paradigm.rtidb.client.impl.GTableSchema;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.Table;
+import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 
-import io.brpc.client.RpcClient;
-import rtidb.api.Tablet.TTLType;
+import io.brpc.client.DefaultRpcClient;
 
 public class TabletSchemaClientTest {
 
     private final static AtomicInteger id = new AtomicInteger(1000);
-    private static RpcClient rpcClient = null;
+    private static DefaultRpcClient rpcClient = null;
     private static TabletSyncClient client = null;
     static {
         rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
@@ -172,7 +172,7 @@ public class TabletSchemaClientTest {
         Assert.assertEquals(ColumnType.kDouble, table.getSchema().get(2).getType());
         Assert.assertEquals(table.getIndexes().get("card").intValue(), 0);
         Assert.assertEquals(table.getIndexes().get("merchant").intValue(), 1);
-       
+
     }
 
     @Test
@@ -339,52 +339,52 @@ public class TabletSchemaClientTest {
         }
         KvIterator it = client.scan(tid, 0, "9527", "card", 12l, 0l);
         Assert.assertFalse(it != null);
-       
+
     }
-    
+
     @Test
     public void testPutNullAndScan() throws TimeoutException, TabletException {
-    	int tid = id.incrementAndGet();
-    	List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
-    	ColumnDesc desc1 = new ColumnDesc();
-    	desc1.setAddTsIndex(true);
-    	desc1.setName("card");
-    	desc1.setType(ColumnType.kString);
-    	schema.add(desc1);
-    	ColumnDesc desc2 = new ColumnDesc();
-    	desc2.setAddTsIndex(false);
-    	desc2.setName("merchant");
-    	desc2.setType(ColumnType.kString);
-    	schema.add(desc2);
-    	ColumnDesc desc3 = new ColumnDesc();
-    	desc3.setAddTsIndex(false);
-    	desc3.setName("amt");
-    	desc3.setType(ColumnType.kDouble);
-    	schema.add(desc3);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8,schema);
+        int tid = id.incrementAndGet();
+        List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+        ColumnDesc desc1 = new ColumnDesc();
+        desc1.setAddTsIndex(true);
+        desc1.setName("card");
+        desc1.setType(ColumnType.kString);
+        schema.add(desc1);
+        ColumnDesc desc2 = new ColumnDesc();
+        desc2.setAddTsIndex(false);
+        desc2.setName("merchant");
+        desc2.setType(ColumnType.kString);
+        schema.add(desc2);
+        ColumnDesc desc3 = new ColumnDesc();
+        desc3.setAddTsIndex(false);
+        desc3.setName("amt");
+        desc3.setType(ColumnType.kDouble);
+        schema.add(desc3);
+        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
-        Assert.assertTrue(client.put(tid, 0, 10l, new Object[] {"9527", null, 2.0d}));
-        Assert.assertTrue(client.put(tid, 0, 1l, new Object[] {"9527", "test", null}));
-       
+        Assert.assertTrue(client.put(tid, 0, 10l, new Object[] { "9527", null, 2.0d }));
+        Assert.assertTrue(client.put(tid, 0, 1l, new Object[] { "9527", "test", null }));
+
         KvIterator it = client.scan(tid, 0, "9527", "card", 12l, 0l);
         Assert.assertTrue(it.valid());
-        
+
         Object[] row = it.getDecodedValue();
-        Assert.assertEquals( "9527", row[0]);
-        Assert.assertEquals( null, row[1]);
-        Assert.assertEquals( 2.0d, row[2]);
+        Assert.assertEquals("9527", row[0]);
+        Assert.assertEquals(null, row[1]);
+        Assert.assertEquals(2.0d, row[2]);
         it.next();
-        
+
         Assert.assertTrue(it.valid());
         row = it.getDecodedValue();
-        Assert.assertEquals( "9527", row[0]);
-        Assert.assertEquals( "test", row[1]);
-        Assert.assertEquals( null, row[2]);
+        Assert.assertEquals("9527", row[0]);
+        Assert.assertEquals("test", row[1]);
+        Assert.assertEquals(null, row[2]);
         it.next();
         Assert.assertFalse(it.valid());
-      
+
     }
-    
+
     @Test
     public void testSchemaGet() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
@@ -411,7 +411,7 @@ public class TabletSchemaClientTest {
         Object[] row = client.getRow(tid, 0, "9528", 0l);
         Assert.assertEquals(3, row.length);
         Assert.assertEquals(null, row[0]);
-        
+
         // get head
         row = client.getRow(tid, 0, "9527", 0l);
         Assert.assertEquals(3, row.length);
@@ -425,5 +425,32 @@ public class TabletSchemaClientTest {
         Assert.assertEquals("merchant0", row[1]);
         Assert.assertEquals(2.0d, row[2]);
     }
-
+    
+    public void testUtf8() throws TimeoutException, TabletException {
+        int tid = id.incrementAndGet();
+        List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+        ColumnDesc desc1 = new ColumnDesc();
+        desc1.setAddTsIndex(true);
+        desc1.setName("card");
+        desc1.setType(ColumnType.kString);
+        schema.add(desc1);
+        ColumnDesc desc2 = new ColumnDesc();
+        desc2.setAddTsIndex(true);
+        desc2.setName("merchant");
+        desc2.setType(ColumnType.kString);
+        schema.add(desc2);
+        ColumnDesc desc3 = new ColumnDesc();
+        desc3.setAddTsIndex(false);
+        desc3.setName("amt");
+        desc3.setType(ColumnType.kDouble);
+        schema.add(desc3);
+        boolean ok = client.createTable("schema-get", tid, 0, 0, 8, schema);
+        Assert.assertTrue(ok);
+        Assert.assertTrue(client.put(tid, 0, 10l, new Object[] { "a", "中文2", 2.0d }));
+        Object[] row = client.getRow(tid, 0, "a", 0l);
+        Assert.assertEquals(3, row.length);
+        Assert.assertEquals("a", row[0]);
+        Assert.assertEquals("中文2", row[1]);
+        Assert.assertEquals(2.0d, row[2]);
+    }
 }

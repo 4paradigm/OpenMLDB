@@ -8,14 +8,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
-import io.brpc.client.RpcClient;
+import io.brpc.client.DefaultRpcClient;
 
 
 
 public class TabletAsyncClientTest {
 
     private AtomicInteger id = new AtomicInteger(300);
-    private static RpcClient rpcClient = null;
+    private static DefaultRpcClient rpcClient = null;
     private static TabletAsyncClient client = null;
     private static TabletSyncClient syncClient = null;
     static {

@@ -1,7 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
 import java.nio.charset.Charset;
-import java.util.List;
 import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
@@ -11,24 +10,22 @@ import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TabletAsyncClient;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.client.schema.Table;
+import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
+import com._4paradigm.rtidb.tablet.Tablet.PutResponse;
+import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 import com.google.protobuf.ByteString;
 
 import io.brpc.client.RpcCallback;
-import io.brpc.client.RpcClient;
+import io.brpc.client.DefaultRpcClient;
 import io.brpc.client.RpcProxy;
-import rtidb.api.Tablet;
-import rtidb.api.Tablet.GetResponse;
-import rtidb.api.Tablet.PutResponse;
-import rtidb.api.Tablet.ScanResponse;
 import rtidb.api.TabletServer;
 
 public class TabletAsyncClientImpl implements TabletAsyncClient {
 	private final static Logger logger = LoggerFactory.getLogger(TabletAsyncClientImpl.class);
 	private TabletServer tablet;
-	private RpcClient client;
+	private DefaultRpcClient client;
 	private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
 
 		@Override
@@ -37,6 +34,7 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 
 		@Override
 		public void fail(Throwable e) {
+		    
 		}
 
 	};
@@ -65,7 +63,7 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 
 	};
 
-	public TabletAsyncClientImpl(RpcClient rpcClient) {
+	public TabletAsyncClientImpl(DefaultRpcClient rpcClient) {
 		this.client = rpcClient;
 	}
 
@@ -122,6 +120,12 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
 		Future<Tablet.ScanResponse> f = tablet.scan(request, scanFakeCallback);
 		return ScanFuture.wrappe(f, table);
 	}
+
+    @Override
+    public PutFuture put(String name, String key, long time, byte[] bytes) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
 
 

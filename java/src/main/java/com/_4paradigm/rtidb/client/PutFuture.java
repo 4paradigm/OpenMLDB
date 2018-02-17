@@ -5,10 +5,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
-
-import rtidb.api.Tablet;
-import rtidb.api.Tablet.PutResponse;
+import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.tablet.Tablet.PutResponse;
 
 public class PutFuture implements Future<Boolean>{
 
@@ -52,7 +52,7 @@ public class PutFuture implements Future<Boolean>{
 		
 		if (startTime > 0) {
 			Long network = System.nanoTime() - startTime;
-			if(TabletClientConfig.isMetricsEnabled()) {
+			if(RTIDBClientConfig.isMetricsEnabled()) {
 				TabletMetrics.getInstance().addPut(-1l, network);
 			}
 		}

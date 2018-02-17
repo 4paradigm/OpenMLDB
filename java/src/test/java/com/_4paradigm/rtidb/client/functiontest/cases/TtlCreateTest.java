@@ -20,7 +20,7 @@ import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.client.TabletSyncClient;
 import com._4paradigm.rtidb.client.TabletClientBuilder;
 import com._4paradigm.rtidb.client.KvIterator;
-import io.brpc.client.RpcClient;
+import io.brpc.client.DefaultRpcClient;
 import rtidb.api.Tablet.TTLType;
 
 
@@ -29,7 +29,7 @@ public class TtlCreateTest {
 
   private final static AtomicInteger id = new AtomicInteger(1000);
   public static int tid = 0;
-  private static RpcClient rpcClient = null;
+  private static DefaultRpcClient rpcClient = null;
   private static TabletSyncClient client = null;
   static {
     rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 37770, 100000, 3);

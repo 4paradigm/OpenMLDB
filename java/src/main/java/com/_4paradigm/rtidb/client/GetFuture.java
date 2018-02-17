@@ -5,13 +5,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.Table;
+import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com.google.protobuf.ByteString;
-
-import rtidb.api.Tablet;
-import rtidb.api.Tablet.GetResponse;
 
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
@@ -59,7 +59,7 @@ public class GetFuture implements Future<ByteString>{
 		long network = System.nanoTime() - startTime;
 		long decode = System.nanoTime();
 		Object[] row = RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema());
-		if (TabletClientConfig.isMetricsEnabled()) {
+		if (RTIDBClientConfig.isMetricsEnabled()) {
 		    decode = System.nanoTime() - decode;
 		    TabletMetrics.getInstance().addGet(decode, network);
 		}
@@ -77,7 +77,7 @@ public class GetFuture implements Future<ByteString>{
         long network = System.nanoTime() - startTime;
         long decode = System.nanoTime();
         Object[] row = RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema());
-        if (TabletClientConfig.isMetricsEnabled()) {
+        if (RTIDBClientConfig.isMetricsEnabled()) {
             decode = System.nanoTime() - decode;
             TabletMetrics.getInstance().addGet(decode, network);
         }

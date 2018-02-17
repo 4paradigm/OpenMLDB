@@ -6,9 +6,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.schema.Table;
-
-import rtidb.api.Tablet;
-import rtidb.api.Tablet.ScanResponse;
+import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 
 public class ScanFuture implements Future<KvIterator> {
 

@@ -3,7 +3,7 @@ package com._4paradigm.rtidb.client;
 public interface TabletAsyncClient {
 
     PutFuture put(int tid, int pid, String key,
-    		      long time, byte[] bytes);
+            long time, byte[] bytes);
     
     PutFuture put(int tid, int pid, String key,
     		      long time, String value);
@@ -17,4 +17,7 @@ public interface TabletAsyncClient {
     
     ScanFuture scan(int tid, int pid, String key,
     				String idxName, long st, long et);
+    
+    PutFuture put(String name, String key,
+            long time, byte[] bytes);
 }

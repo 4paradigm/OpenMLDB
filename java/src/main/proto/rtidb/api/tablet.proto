@@ -2,7 +2,8 @@ syntax="proto2";
 package rtidb.api;
 
 option cc_generic_services = true;
-option java_package = "rtidb.api";
+option java_generic_services = true;
+option java_package = "com._4paradigm.rtidb.tablet";
 option java_outer_classname = "Tablet";
 
 enum TableMode {
@@ -350,6 +351,9 @@ message GetResponse {
     optional bytes value = 5;
 }
 
+message ConnectZKRequest {}
+message DisConnectZKRequest {}
+
 message HttpRequest { }
 message HttpResponse { }
 
@@ -386,4 +390,7 @@ service TabletServer {
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
 
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
+
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
 }

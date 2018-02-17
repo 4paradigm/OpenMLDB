@@ -12,12 +12,12 @@ import org.junit.Test;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 
-import io.brpc.client.RpcClient;
+import io.brpc.client.DefaultRpcClient;
 
 public class TabletSchemaAsyncClientTest {
 
     private final static AtomicInteger id = new AtomicInteger(4000);
-    private static RpcClient rpcClient = null;
+    private static DefaultRpcClient rpcClient = null;
     private static TabletAsyncClient aclient = null;
     private static TabletSyncClient sclient = null;
     static {

@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.client.schema.Table;
+import com._4paradigm.rtidb.tablet.Tablet;
 
-import rtidb.api.Tablet;
 import rtidb.api.TabletServer;
 
 public class GTableSchema {

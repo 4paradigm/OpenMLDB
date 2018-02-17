@@ -10,12 +10,12 @@ import org.junit.Test;
 
 import com.google.protobuf.ByteString;
 
-import io.brpc.client.RpcClient;
+import io.brpc.client.DefaultRpcClient;
 
 public class TabletSyncClientTest {
 
     private AtomicInteger id = new AtomicInteger(100);
-    private static RpcClient rpcClient = null;
+    private static DefaultRpcClient rpcClient = null;
     private static TabletSyncClient client = null;
     static {
         rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 10000, 3);
