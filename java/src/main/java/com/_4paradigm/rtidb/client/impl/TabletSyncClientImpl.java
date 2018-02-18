@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.TabletSyncClient;
-import com._4paradigm.rtidb.client.ha.MurmurHash;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
@@ -29,6 +28,7 @@ import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.TTLType;
+import com._4paradigm.utils.MurmurHash;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
@@ -84,7 +84,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException {
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
-        Tablet.GetResponse response = client.getHandler(tid).getHandler(0).getLeader().get(request);
+        Tablet.GetResponse response = client.getHandler(tid).getHandler(pid).getLeader().get(request);
         if (response != null && response.getCode() == 0) {
             return response.getValue();
         }
@@ -320,11 +320,12 @@ public class TabletSyncClientImpl implements TabletSyncClient {
             }
         }
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
+        boolean ret = true;
         while (it.hasNext()) {
             Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
             // TODO(wangtaize) support retry
-            put(th.getTableInfo().getTid(), entry.getKey(), time, entry.getValue(), buffer, th);
+            ret = ret && put(th.getTableInfo().getTid(), entry.getKey(), time, entry.getValue(), buffer, th);
         }
-        return true;
+        return ret;
     }
 }

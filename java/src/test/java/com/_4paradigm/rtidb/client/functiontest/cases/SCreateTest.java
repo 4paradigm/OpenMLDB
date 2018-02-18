@@ -21,7 +21,7 @@ import com._4paradigm.rtidb.client.TabletClientBuilder;
 import com._4paradigm.rtidb.client.KvIterator;
 import io.brpc.client.DefaultRpcClient;
 
-@Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
+@Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class SCreateTest {
 
   private final static AtomicInteger id = new AtomicInteger(1000);

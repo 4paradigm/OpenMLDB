@@ -54,4 +54,14 @@ public enum ColumnType {
 			return null;
 		}
 	}
+	
+	public static ColumnType valueFrom(String val) {
+	    if ("string".equals(val)) {
+	        return kString;
+	    }else if ("int32".equals(val)) {
+	        return kInt32;
+	    }
+	    return null;
+	}
+	
 }

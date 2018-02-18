@@ -6,22 +6,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.RowCodec;
-import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com.google.protobuf.ByteString;
 
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
-	private Table t;
+	private TableHandler t;
 	private long startTime;
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, long startTime) {
 		return new GetFuture(f, startTime);
 	}
 	
-	public static GetFuture wrappe(Future<Tablet.GetResponse> f, Table t, long startTime) {
+	public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, long startTime) {
 		return new GetFuture(f, t, startTime);
 	}
 	
@@ -30,7 +30,7 @@ public class GetFuture implements Future<ByteString>{
 		this.startTime = startTime;
 	}
 	
-	public GetFuture(Future<Tablet.GetResponse> f, Table t, long startTime) {
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long startTime) {
 		this.f = f;
 		this.t = t;
 		this.startTime = startTime;

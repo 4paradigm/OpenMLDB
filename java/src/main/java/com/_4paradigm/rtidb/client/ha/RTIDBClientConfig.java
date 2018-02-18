@@ -2,67 +2,79 @@ package com._4paradigm.rtidb.client.ha;
 
 public class RTIDBClientConfig {
 
+    public enum Mode {
+        kSingleNodeMode, kClusterMode
+    }
 	private static boolean ENABLE_METRICS = true;
-	private static String zkEndpoints = "";
-	private static String zkTableRootPath = "";
-	private static String zkTableNotifyPath = "";
-	private static String zkNodeRootPath = "";
-	private static int zkSesstionTimeout = 10000;
-	private static int ioThreadNum = 2;
-	private static int writeTimeout = 10000;
-	private static int readTimeout = 10000;
-	private static int maxCntCnnPerHost = 2;
-	
+	private String zkEndpoints = "";
+	private String zkTableRootPath = "";
+	private String zkTableNotifyPath = "";
+	private String zkNodeRootPath = "";
+	private int zkSesstionTimeout = 10000;
+	private int ioThreadNum = 2;
+	private int writeTimeout = 10000;
+	private int readTimeout = 10000;
+	private int maxCntCnnPerHost = 2;
+	private Mode mode;
 	public static void disableMetrics() {
 		ENABLE_METRICS = false;
 	}
 	
-	public static int getMaxCntCnnPerHost() {
+
+    public Mode getMode() {
+        return mode;
+    }
+
+    public void setMode(Mode mode) {
+        this.mode = mode;
+    }
+
+    public int getMaxCntCnnPerHost() {
         return maxCntCnnPerHost;
     }
 
-    public static void setMaxCntCnnPerHost(int maxCntCnnPerHost) {
-        RTIDBClientConfig.maxCntCnnPerHost = maxCntCnnPerHost;
+    public void setMaxCntCnnPerHost(int maxCntCnnPerHost) {
+        this.maxCntCnnPerHost = maxCntCnnPerHost;
     }
 
-    public static String getZkNodeRootPath() {
+    public String getZkNodeRootPath() {
         return zkNodeRootPath;
     }
 
-    public static void setZkNodeRootPath(String zkNodeRootPath) {
-        RTIDBClientConfig.zkNodeRootPath = zkNodeRootPath;
+    public void setZkNodeRootPath(String zkNodeRootPath) {
+        this.zkNodeRootPath = zkNodeRootPath;
     }
 
-    public static int getIoThreadNum() {
+    public int getIoThreadNum() {
         return ioThreadNum;
     }
 
-    public static void setIoThreadNum(int ioThreadNum) {
-        RTIDBClientConfig.ioThreadNum = ioThreadNum;
+    public void setIoThreadNum(int ioThreadNum) {
+        this.ioThreadNum = ioThreadNum;
     }
 
-    public static int getWriteTimeout() {
+    public int getWriteTimeout() {
         return writeTimeout;
     }
 
-    public static void setWriteTimeout(int writeTimeout) {
-        RTIDBClientConfig.writeTimeout = writeTimeout;
+    public void setWriteTimeout(int writeTimeout) {
+        this.writeTimeout = writeTimeout;
     }
 
-    public static int getReadTimeout() {
+    public int getReadTimeout() {
         return readTimeout;
     }
 
-    public static void setReadTimeout(int readTimeout) {
-        RTIDBClientConfig.readTimeout = readTimeout;
+    public void setReadTimeout(int readTimeout) {
+        this.readTimeout = readTimeout;
     }
 
-    public static int getZkSesstionTimeout() {
+    public int getZkSesstionTimeout() {
         return zkSesstionTimeout;
     }
 
-    public static void setZkSesstionTimeout(int zkSesstionTimeout) {
-        RTIDBClientConfig.zkSesstionTimeout = zkSesstionTimeout;
+    public void setZkSesstionTimeout(int zkSesstionTimeout) {
+        this.zkSesstionTimeout = zkSesstionTimeout;
     }
 
     public static void enableMetrics() {
@@ -73,28 +85,28 @@ public class RTIDBClientConfig {
 		return ENABLE_METRICS;
 	}
 
-    public static String getZkEndpoints() {
+    public String getZkEndpoints() {
         return zkEndpoints;
     }
 
-    public static void setZkEndpoints(String zkEndpoints) {
-        RTIDBClientConfig.zkEndpoints = zkEndpoints;
+    public  void setZkEndpoints(String zkEndpoints) {
+        this.zkEndpoints = zkEndpoints;
     }
 
-    public static String getZkTableRootPath() {
+    public String getZkTableRootPath() {
         return zkTableRootPath;
     }
 
-    public static void setZkTableRootPath(String zkTableRootPath) {
-        RTIDBClientConfig.zkTableRootPath = zkTableRootPath;
+    public void setZkTableRootPath(String zkTableRootPath) {
+        this.zkTableRootPath = zkTableRootPath;
     }
 
-    public static String getZkTableNotifyPath() {
+    public String getZkTableNotifyPath() {
         return zkTableNotifyPath;
     }
 
-    public static void setZkTableNotifyPath(String zkTableNotifyPath) {
-        RTIDBClientConfig.zkTableNotifyPath = zkTableNotifyPath;
+    public void setZkTableNotifyPath(String zkTableNotifyPath) {
+        this.zkTableNotifyPath = zkTableNotifyPath;
     }
 
     

@@ -1,6 +1,5 @@
 package com._4paradigm.rtidb.client.impl;
 
-import java.nio.charset.Charset;
 import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
@@ -10,123 +9,128 @@ import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TabletAsyncClient;
+import com._4paradigm.rtidb.client.ha.PartitionHandler;
+import com._4paradigm.rtidb.client.ha.RTIDBClient;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.tablet.Tablet.PutResponse;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
+import com.google.common.base.Charsets;
 import com.google.protobuf.ByteString;
 
 import io.brpc.client.RpcCallback;
-import io.brpc.client.DefaultRpcClient;
-import io.brpc.client.RpcProxy;
-import rtidb.api.TabletServer;
 
 public class TabletAsyncClientImpl implements TabletAsyncClient {
-	private final static Logger logger = LoggerFactory.getLogger(TabletAsyncClientImpl.class);
-	private TabletServer tablet;
-	private DefaultRpcClient client;
-	private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
+    private final static Logger logger = LoggerFactory.getLogger(TabletAsyncClientImpl.class);
+    private RTIDBClient client;
+    private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
 
-		@Override
-		public void success(PutResponse response) {
-		}
+        @Override
+        public void success(PutResponse response) {
+        }
 
-		@Override
-		public void fail(Throwable e) {
-		    
-		}
+        @Override
+        public void fail(Throwable e) {
 
-	};
+        }
 
-	private static RpcCallback<Tablet.GetResponse> getFakeCallback = new RpcCallback<Tablet.GetResponse>() {
+    };
 
-		@Override
-		public void success(GetResponse response) {
-		}
+    private static RpcCallback<Tablet.GetResponse> getFakeCallback = new RpcCallback<Tablet.GetResponse>() {
 
-		@Override
-		public void fail(Throwable e) {
-		}
+        @Override
+        public void success(GetResponse response) {
+        }
 
-	};
+        @Override
+        public void fail(Throwable e) {
+        }
 
-	private static RpcCallback<Tablet.ScanResponse> scanFakeCallback = new RpcCallback<Tablet.ScanResponse>() {
+    };
 
-		@Override
-		public void success(ScanResponse response) {
-		}
+    private static RpcCallback<Tablet.ScanResponse> scanFakeCallback = new RpcCallback<Tablet.ScanResponse>() {
 
-		@Override
-		public void fail(Throwable e) {
-		}
+        @Override
+        public void success(ScanResponse response) {
+        }
 
-	};
+        @Override
+        public void fail(Throwable e) {
+        }
 
-	public TabletAsyncClientImpl(DefaultRpcClient rpcClient) {
-		this.client = rpcClient;
-	}
+    };
 
-	public void init() {
-		tablet = RpcProxy.getProxy(client, TabletServer.class);
-	}
+    public TabletAsyncClientImpl(RTIDBClient client) {
+        this.client = client;
+    }
 
-	@Override
-	public PutFuture put(int tid, int pid, String key, long time, byte[] bytes) {
-		Tablet.PutRequest request = Tablet.PutRequest.newBuilder().setPid(pid).setPk(key).setTid(tid).setTime(time)
-				.setValue(ByteString.copyFrom(bytes)).build();
-		Future<Tablet.PutResponse> f = tablet.put(request, putFakeCallback);
-		return PutFuture.wrapper(f);
-	}
+    @Override
+    public PutFuture put(int tid, int pid, String key, long time, byte[] bytes) {
+        PartitionHandler ph = client.getHandler(tid).getHandler(pid);
+        return put(tid, pid, key, time, bytes, ph);
+    }
 
-	@Override
-	public PutFuture put(int tid, int pid, String key, long time, String value) {
-		return put(tid, pid, key, time, value.getBytes(Charset.forName("utf-8")));
-	}
+    @Override
+    public PutFuture put(int tid, int pid, String key, long time, String value) {
+        PartitionHandler ph = client.getHandler(tid).getHandler(pid);
+        return put(tid, pid, key, time, value.getBytes(Charsets.UTF_8), ph);
+    }
 
-	@Override
-	public GetFuture get(int tid, int pid, String key) {
-		return get(tid, pid, key, 0l);
-	}
+    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph) {
+        Tablet.PutRequest request = Tablet.PutRequest.newBuilder().setPid(pid).setPk(key).setTid(tid).setTime(time)
+                .setValue(ByteString.copyFrom(bytes)).build();
+        Future<Tablet.PutResponse> f = ph.getLeader().put(request, putFakeCallback);
+        return PutFuture.wrapper(f);
+    }
 
-	@Override
-	public GetFuture get(int tid, int pid, String key, long time) {
-		Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
-				.build();
-		Future<Tablet.GetResponse> f = tablet.get(request, getFakeCallback);
-		Table table = GTableSchema.getTable(tid, pid, tablet);
-		long startTime = System.nanoTime();
-		return GetFuture.wrappe(f, table, startTime);
-	}
+    @Override
+    public GetFuture get(int tid, int pid, String key) {
+        return get(tid, pid, key, 0l);
+    }
 
-	@Override
-	public ScanFuture scan(int tid, int pid, String key, long st, long et) {
-		return scan(tid, pid, key, null, st, et);
-	}
+    @Override
+    public GetFuture get(int tid, int pid, String key, long time) {
+        TableHandler th = client.getHandler(tid);
+        return get(tid, pid, key, time, th);
+    }
 
-	@Override
-	public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) {
-		Table table = GTableSchema.getTable(tid, pid, tablet);
-		Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
-		builder.setPk(key);
-		builder.setTid(tid);
-		builder.setEt(et);
-		builder.setSt(st);
-		builder.setPid(pid);
-		if (idxName != null && !idxName.isEmpty()) {
-			builder.setIdxName(idxName);
-		}
-		Tablet.ScanRequest request = builder.build();
-		Future<Tablet.ScanResponse> f = tablet.scan(request, scanFakeCallback);
-		return ScanFuture.wrappe(f, table);
-	}
+    private GetFuture get(int tid, int pid, String key, long time, TableHandler th) {
+        Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
+                .build();
+        // TODO add read strategy
+        long startTime = System.nanoTime();
+        Future<Tablet.GetResponse> f = th.getHandler(pid).getLeader().get(request, getFakeCallback);
+        return GetFuture.wrappe(f, th, startTime);
+    }
+
+    @Override
+    public ScanFuture scan(int tid, int pid, String key, long st, long et) {
+        return scan(tid, pid, key, null, st, et);
+    }
+
+    @Override
+    public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) {
+        TableHandler th = client.getHandler(tid);
+        Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
+        builder.setPk(key);
+        builder.setTid(tid);
+        builder.setEt(et);
+        builder.setSt(st);
+        builder.setPid(pid);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.ScanRequest request = builder.build();
+        Future<Tablet.ScanResponse> f = th.getHandler(pid).getLeader().scan(request, scanFakeCallback);
+        return ScanFuture.wrappe(f, th);
+    }
 
     @Override
     public PutFuture put(String name, String key, long time, byte[] bytes) {
         // TODO Auto-generated method stub
         return null;
     }
-
-
 
 }

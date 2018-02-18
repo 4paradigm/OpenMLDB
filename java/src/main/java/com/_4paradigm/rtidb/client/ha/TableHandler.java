@@ -22,14 +22,26 @@ public class TableHandler {
             ColumnDesc ncd = new ColumnDesc();
             ncd.setName(cd.getName());
             ncd.setAddTsIndex(cd.getAddTsIdx());
-            ncd.setType(ColumnType.valueOf(cd.getType()));
+            ncd.setType(ColumnType.valueFrom(cd.getType()));
             schema.add(ncd);
             indexes.put(cd.getName(), index);
             index ++;
         }
         
     }
-
+    
+    public TableHandler(List<ColumnDesc> schema) {
+        int index = 0;
+        for (ColumnDesc col : schema) {
+            if (col.isAddTsIndex()) {
+                indexes.put(col.getName(), index);
+                index ++;
+            }
+        }
+        this.schema = schema;
+    }
+    
+    public TableHandler() {}
     public PartitionHandler getHandler(int pid) {
         return partitions[pid];
     }

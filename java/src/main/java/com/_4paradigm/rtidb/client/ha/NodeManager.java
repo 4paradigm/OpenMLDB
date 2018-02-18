@@ -18,15 +18,14 @@ public class NodeManager {
     private volatile Map<EndPoint, BrpcChannelGroup> endpoints = new HashMap<EndPoint, BrpcChannelGroup>();
     private volatile Set<EndPoint> endpointSet = new HashSet<EndPoint>();
     private RpcBaseClient bs;
-    
+
     public NodeManager(RpcBaseClient bs) {
         this.bs = bs;
     }
-    
+
     public BrpcChannelGroup getChannel(EndPoint endpoint) {
         return endpoints.get(endpoint);
     }
-    
 
     public Set<EndPoint> getEndpointSet() {
         return endpointSet;
@@ -45,18 +44,18 @@ public class NodeManager {
             if (!oldEndpoints.containsKey(endpoint)) {
                 // new add endpoint
                 newEndpoints.put(endpoint, new BrpcChannelGroup(endpoint.getIp(), endpoint.getPort(),
-                bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap()));
+                        bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap()));
                 logger.info("add new alive endpoint ip:{} port:{}", endpoint.getIp(), endpoint.getPort());
-            }else {
+            } else {
                 // reuse old endpoint channel
                 newEndpoints.put(endpoint, oldEndpoints.get(endpoint));
             }
         }
-        
-        // swap 
+
+        // swap
         endpoints = newEndpoints;
         endpointSet = newEndpointSet;
-        
+
         // close dead endpoint
         it = oldEndpointSet.iterator();
         while (it.hasNext()) {
@@ -71,5 +70,5 @@ public class NodeManager {
         oldEndpoints.clear();
         oldEndpointSet.clear();
     }
-    
+
 }
