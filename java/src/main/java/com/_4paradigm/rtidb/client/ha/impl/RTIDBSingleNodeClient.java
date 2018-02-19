@@ -55,6 +55,11 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
         singleNodeClient = new SingleEndpointRpcClient(baseClient);
         singleNodeClient.updateEndpoint(endpoint, nodeManager.getChannel(endpoint));
         tabletServer = (TabletServer) RpcProxy.getProxy(singleNodeClient, TabletServer.class);
+        TableHandler th = new TableHandler();
+        PartitionHandler ph = new PartitionHandler();
+        ph.setLeader(tabletServer);
+        th.setPartitions(new PartitionHandler[] {ph});
+        id2tables.putIfAbsent(0, th);
         logger.info("start single rtidb client with endpoint {} ok", endpoint);
     }
 

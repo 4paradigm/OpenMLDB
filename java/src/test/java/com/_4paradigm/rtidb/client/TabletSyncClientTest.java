@@ -8,18 +8,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
+import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com.google.protobuf.ByteString;
 
-import io.brpc.client.DefaultRpcClient;
+import io.brpc.client.EndPoint;
 
 public class TabletSyncClientTest {
 
-    private AtomicInteger id = new AtomicInteger(100);
-    private static DefaultRpcClient rpcClient = null;
-    private static TabletSyncClient client = null;
+    private AtomicInteger id = new AtomicInteger(200);
+    private static TabletSyncClientImpl client = null;
+    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static RTIDBClientConfig config = new RTIDBClientConfig();
+    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     static {
-        rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 10000, 3);
-        client = TabletClientBuilder.buildSyncClient(rpcClient);
+        try {
+            snc.init();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        client = new TabletSyncClientImpl(snc);
     }
 
     @Test

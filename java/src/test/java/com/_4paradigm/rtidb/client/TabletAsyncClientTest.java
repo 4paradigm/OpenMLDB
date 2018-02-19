@@ -8,29 +8,38 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
-import io.brpc.client.DefaultRpcClient;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
+import com._4paradigm.rtidb.client.impl.TabletAsyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 
-
+import io.brpc.client.EndPoint;
 
 public class TabletAsyncClientTest {
 
     private AtomicInteger id = new AtomicInteger(300);
-    private static DefaultRpcClient rpcClient = null;
     private static TabletAsyncClient client = null;
     private static TabletSyncClient syncClient = null;
+    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static RTIDBClientConfig config = new RTIDBClientConfig();
+    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     static {
-    	rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 1000, 3);
-    	client = TabletClientBuilder.buildAsyncClient(rpcClient);
-    	syncClient = TabletClientBuilder.buildSyncClient(rpcClient);
+        try {
+            snc.init();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        client = new TabletAsyncClientImpl(snc);
+        syncClient = new TabletSyncClientImpl(snc);
     }
-    
 
     @Test
     public void test1Put() throws TimeoutException, InterruptedException, ExecutionException {
-    	int tid = id.incrementAndGet();
+        int tid = id.incrementAndGet();
         boolean ok = syncClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
-        PutFuture future = client.put(tid, 0,"pk", 9527, "test0");
+        PutFuture future = client.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(future.get());
         GetFuture gf = client.get(tid, 0, "pk");
         Assert.assertEquals("test0", gf.get().toStringUtf8());
@@ -39,10 +48,10 @@ public class TabletAsyncClientTest {
 
     @Test
     public void test3Scan() throws TimeoutException, InterruptedException, ExecutionException {
-    	int tid = id.incrementAndGet();
+        int tid = id.incrementAndGet();
         boolean ok = syncClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
-        PutFuture pf = client.put(tid, 0,"pk", 9527, "test0");
+        PutFuture pf = client.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(pf.get());
         ScanFuture sf = client.scan(tid, 0, "pk", 9527l, 9526l);
         KvIterator it = sf.get();

@@ -8,24 +8,34 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
 import com._4paradigm.rtidb.client.impl.GTableSchema;
+import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 
-import io.brpc.client.DefaultRpcClient;
+import io.brpc.client.EndPoint;
 
 public class TabletSchemaClientTest {
 
-    private final static AtomicInteger id = new AtomicInteger(1000);
-    private static DefaultRpcClient rpcClient = null;
-    private static TabletSyncClient client = null;
+    private final static AtomicInteger id = new AtomicInteger(100);
+    private static TabletSyncClientImpl client = null;
+    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static RTIDBClientConfig config = new RTIDBClientConfig();
+    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     static {
-        rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
-        client = TabletClientBuilder.buildSyncClient(rpcClient);
+        try {
+            snc.init();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        client = new TabletSyncClientImpl(snc);
     }
-
     @Test
     public void testEmptyTableNameCreate() {
         int tid = id.incrementAndGet();
@@ -155,23 +165,23 @@ public class TabletSchemaClientTest {
         schema.add(desc3);
         boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
-        Table table = GTableSchema.getTable(tid, 0);
-        Assert.assertTrue(table.getIndexes().size() == 2);
-        Assert.assertTrue(table.getSchema().size() == 3);
+        TableHandler th = snc.getHandler(tid);
+        Assert.assertTrue(th.getIndexes().size() == 2);
+        Assert.assertTrue(th.getSchema().size() == 3);
 
-        Assert.assertEquals(true, table.getSchema().get(0).isAddTsIndex());
-        Assert.assertEquals("card", table.getSchema().get(0).getName());
-        Assert.assertEquals(ColumnType.kString, table.getSchema().get(0).getType());
+        Assert.assertEquals(true, th.getSchema().get(0).isAddTsIndex());
+        Assert.assertEquals("card", th.getSchema().get(0).getName());
+        Assert.assertEquals(ColumnType.kString, th.getSchema().get(0).getType());
 
-        Assert.assertEquals(true, table.getSchema().get(1).isAddTsIndex());
-        Assert.assertEquals("merchant", table.getSchema().get(1).getName());
-        Assert.assertEquals(ColumnType.kString, table.getSchema().get(1).getType());
+        Assert.assertEquals(true, th.getSchema().get(1).isAddTsIndex());
+        Assert.assertEquals("merchant", th.getSchema().get(1).getName());
+        Assert.assertEquals(ColumnType.kString, th.getSchema().get(1).getType());
 
-        Assert.assertEquals(false, table.getSchema().get(2).isAddTsIndex());
-        Assert.assertEquals("amt", table.getSchema().get(2).getName());
-        Assert.assertEquals(ColumnType.kDouble, table.getSchema().get(2).getType());
-        Assert.assertEquals(table.getIndexes().get("card").intValue(), 0);
-        Assert.assertEquals(table.getIndexes().get("merchant").intValue(), 1);
+        Assert.assertEquals(false, th.getSchema().get(2).isAddTsIndex());
+        Assert.assertEquals("amt", th.getSchema().get(2).getName());
+        Assert.assertEquals(ColumnType.kDouble, th.getSchema().get(2).getType());
+        Assert.assertEquals(th.getIndexes().get("card").intValue(), 0);
+        Assert.assertEquals(th.getIndexes().get("merchant").intValue(), 1);
 
     }
 

@@ -239,16 +239,12 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         if (type != null) {
             builder.setTtlType(type);
         }
-        TabletServer tabletServer = client.getHandler(tid).getHandler(pid).getLeader();
+        TabletServer tabletServer = client.getHandler(0).getHandler(0).getLeader();
         builder.setName(name).setTid(tid).setPid(pid).setTtl(ttl).setSegCnt(segCnt);
         Tablet.TableMeta meta = builder.build();
         Tablet.CreateTableRequest request = Tablet.CreateTableRequest.newBuilder().setTableMeta(meta).build();
         Tablet.CreateTableResponse response = tabletServer.createTable(request);
         if (response != null && response.getCode() == 0) {
-            if (schema != null) {
-                Table table = new Table(schema);
-                GTableSchema.tableSchema.put(tid, table);
-            }
             return true;
         }
         return false;
