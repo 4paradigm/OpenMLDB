@@ -28,7 +28,7 @@ public class SPutTest {
   private final static AtomicInteger id = new AtomicInteger(1000);
   private static int tid = 0;
   private static TabletSyncClient client = null;
-  private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
+  private static EndPoint endpoint = new EndPoint("192.168.33.10:9527");
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
   static {
@@ -142,7 +142,7 @@ public class SPutTest {
 
     Boolean putok = null;
     try {
-        putok = client.put(tid, 0, 10, new Object[]{"9527", value});
+        putok = client.put(tid, 0, System.currentTimeMillis(), new Object[]{"9527", value});
     } catch (Exception e) {
       putok = false;
       System.out.println("!!!!!" + e.getMessage());

@@ -13,12 +13,11 @@ import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.TabletSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
-import com._4paradigm.rtidb.client.impl.GTableSchema;
 import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.client.schema.Table;
 
 import io.brpc.client.EndPoint;
 
@@ -143,8 +142,8 @@ public class SCreateTest {
     System.out.println(ok);
     Assert.assertEquals(ok, result);
     if (ok) {
-      Table table = GTableSchema.getTable(tid, 0);
-      Assert.assertEquals(table.getSchema().size(), schemaCount);
-      Assert.assertEquals(table.getIndexes().size(), indexes);}
+      TableHandler th = snc.getHandler(tid);
+      Assert.assertEquals(th.getSchema().size(), schemaCount);
+      Assert.assertEquals(th.getIndexes().size(), indexes);}
   }
 }

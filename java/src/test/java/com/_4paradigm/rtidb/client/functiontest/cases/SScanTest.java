@@ -27,7 +27,7 @@ public class SScanTest {
   private final static AtomicInteger id = new AtomicInteger(1000);
   private static int tid = 0;
   private static TabletSyncClient client = null;
-  private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
+  private static EndPoint endpoint = new EndPoint("192.168.33.10:9527");
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
   static {
@@ -80,9 +80,10 @@ public class SScanTest {
     Assert.assertFalse(!ok);
 
     try {
-      Assert.assertEquals(client.put(tid, 0, 30, new Object[] {"card000", "merchant333"}), true);
-      Assert.assertEquals(client.put(tid, 0, 10, new Object[] {"card000", "merchant111"}), true);
-      Assert.assertEquals(client.put(tid, 0, 20, new Object[] {"card000", "merchant222"}), true);
+      Long ctime = System.currentTimeMillis();
+      Assert.assertEquals(client.put(tid, 0, ctime - 10l, new Object[] {"card000", "merchant333"}), true);
+      Assert.assertEquals(client.put(tid, 0, ctime - 30l, new Object[] {"card000", "merchant111"}), true);
+      Assert.assertEquals(client.put(tid, 0, ctime - 20l, new Object[] {"card000", "merchant222"}), true);
 
       KvIterator it = client.scan(tid, 0, value, schemaName, 1999999999999L, 0);
       Assert.assertEquals((it != null), scanOk);

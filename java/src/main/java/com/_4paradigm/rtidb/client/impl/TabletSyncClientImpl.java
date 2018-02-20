@@ -107,7 +107,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         builder.setTid(tid);
         builder.setPid(pid);
         Tablet.DropTableRequest request = builder.build();
-        Tablet.DropTableResponse response = client.getHandler(tid).getHandler(pid).getLeader().dropTable(request);
+        Tablet.DropTableResponse response = client.getHandler(0).getHandler(0).getLeader().dropTable(request);
         if (response != null && response.getCode() == 0) {
             logger.info("drop table tid {} pid {} ok", tid, pid);
             return true;
