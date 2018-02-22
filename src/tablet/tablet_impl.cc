@@ -544,6 +544,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
         replicator->DelAllReplicateNode();
         replicator->SetRole(ReplicatorRole::kFollowerNode);
         table->SetLeader(false);
+        PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -1615,6 +1616,11 @@ void TabletImpl::GetTermPair(RpcController* controller,
 	response->set_code(0);
 	response->set_msg("ok");
 	response->set_has_table(true);
+    if (table->IsLeader()) {
+        response->set_is_leader(true);
+    } else {
+        response->set_is_leader(false);
+    }
 	response->set_term(replicator->GetLeaderTerm());
 	response->set_offset(replicator->GetOffset());
 }
