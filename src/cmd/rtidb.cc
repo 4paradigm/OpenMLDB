@@ -497,7 +497,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of("-"));
             if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
-                printf("pid_group[%s] format error.\n", pid_group.c_str());
+                printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
                 return;
             }
             start_index = boost::lexical_cast<uint32_t>(vec[0]);
@@ -507,7 +507,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         for (uint32_t pid = start_index; pid <= end_index; pid++) {
             if (table_info.table_partition(idx).is_leader()) {
                 if (leader_map.find(pid) != leader_map.end()) {
-                    printf("pid %u has two leader\n", pid);
+                    printf("Fail to create table. pid %u has two leader\n", pid);
                     return;
                 }
                 leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
@@ -516,12 +516,22 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     follower_map.insert(std::make_pair(pid, std::set<std::string>()));
                 }
                 if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
-                    printf("pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
+                    printf("Fail to create table. pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
                     return;
                 }
                 follower_map[pid].insert(table_info.table_partition(idx).endpoint());
             }
         }
+    }
+
+    // check leader pid
+    uint32_t right_pid = 0;
+    for (const auto& kv : leader_map) {
+        if (kv.first != right_pid) {
+            printf("Fail to create table. leader's pid must start with zero and be continuous\n");
+            return;
+        }
+        right_pid++;
     }
 
     // check follower's leader 
