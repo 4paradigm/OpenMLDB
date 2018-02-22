@@ -551,11 +551,19 @@ int NameServerImpl::DeleteTask() {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-            if ((iter->second->task_list_.empty() && 
-                    iter->second->task_status_ == ::rtidb::api::kDoing) ||
-                    (!iter->second->task_list_.empty() && 
-                    iter->second->task_status_ == ::rtidb::api::kFailed)) {
-                done_task_vec.push_back(iter->first);
+            if (iter->second->task_status_ == ::rtidb::api::kDoing) {
+                if (iter->second->task_list_.empty()) {
+                    done_task_vec.push_back(iter->first);
+                } else {
+                    std::shared_ptr<Task> task = iter->second->task_list_.front();
+                    if (task->task_info_->status() == ::rtidb::api::kFailed) {
+                        done_task_vec.push_back(iter->first);
+                        iter->second->task_status_ = ::rtidb::api::kFailed;
+                        PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
+                                        ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
+                                        iter->first);
+                    }
+                }
             }
         }
         if (done_task_vec.empty()) {
@@ -612,7 +620,8 @@ void NameServerImpl::ProcessTask() {
             }
             
             for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-                if (iter->second->task_list_.empty()) {
+                if (iter->second->task_list_.empty() || 
+                        iter->second->task_status_ == ::rtidb::api::kFailed) {
                     continue;
                 }
                 std::shared_ptr<Task> task = iter->second->task_list_.front();
@@ -621,7 +630,6 @@ void NameServerImpl::ProcessTask() {
                                     ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
                                     ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
                                     iter->first);
-                    iter->second->task_status_ = ::rtidb::api::kFailed;
                 } else if (task->task_info_->status() == ::rtidb::api::kInited) {
                     PDLOG(DEBUG, "run task. opid[%lu] op_type[%s] task_type[%s]", iter->first, 
                                 ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
@@ -1856,6 +1864,7 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
         PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
+    op_data->task_list_.push_back(task);
     task = CreateSendSnapshotTask(leader_endpoint, op_index_, 
                 ::rtidb::api::OPType::kReAddReplicaWithDropOP, tid, pid, endpoint);
     if (!task) {

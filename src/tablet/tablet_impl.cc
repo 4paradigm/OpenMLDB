@@ -1387,7 +1387,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
         response->set_code(0);
         response->set_msg("ok");
-
+        return;
     } while(0);
     if (task_ptr) {
 		std::lock_guard<std::mutex> lock(mu_);
@@ -1806,7 +1806,7 @@ void TabletImpl::DropTable(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
 	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
 	if (request->has_task_info() && request->task_info().IsInitialized()) {
-		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadTable, task_ptr) < 0) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDropTable, task_ptr) < 0) {
 			response->set_code(-1);
 			response->set_msg("add task failed");
             return;
