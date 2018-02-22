@@ -385,27 +385,34 @@ bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_ve
 }
 
 bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (role_ != kLeaderNode) {
-            PDLOG(WARNING, "cur table is not leader, cannot delete replicate");
-            return false;
-        }
-        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
-        for (; it != nodes_.end(); ++it) {
-            if ((*it)->GetEndPoint().compare(endpoint) == 0) {
-                break;
-            }
-        }
-        if (it == nodes_.end()) {
-            PDLOG(WARNING, "replica endpoint[%s] does not exist", endpoint.c_str());
-            return false;
-        }
-        nodes_.erase(it);
-        endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
-        PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", 
-                    endpoint.c_str(), table_->GetId(), table_->GetPid());
+    std::lock_guard<std::mutex> lock(mu_);
+    if (role_ != kLeaderNode) {
+        PDLOG(WARNING, "cur table is not leader, cannot delete replicate");
+        return false;
     }
+    std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
+    for (; it != nodes_.end(); ++it) {
+        if ((*it)->GetEndPoint().compare(endpoint) == 0) {
+            break;
+        }
+    }
+    if (it == nodes_.end()) {
+        PDLOG(WARNING, "replica endpoint[%s] does not exist", endpoint.c_str());
+        return false;
+    }
+    nodes_.erase(it);
+    endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
+    PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", 
+                endpoint.c_str(), table_->GetId(), table_->GetPid());
+    return true;
+}
+
+bool LogReplicator::DelAllReplicateNode() {
+    std::lock_guard<std::mutex> lock(mu_);
+    PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]", 
+                nodes_.size(), table_->GetId(), table_->GetPid());
+    nodes_.clear();
+    endpoints_.clear();
     return true;
 }
 

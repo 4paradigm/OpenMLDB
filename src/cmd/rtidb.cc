@@ -369,6 +369,20 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtid
     std::cout << "offline endpoint ok" << std::endl;
 }
 
+void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ret = client->RecoverEndpoint(parts[1], msg);
+    if (!ret) {
+        std::cout << "failed to recover endpoint. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "recover endpoint ok" << std::endl;
+}    
+
 void HandleNSClientConnectZK(const std::vector<std::string> parts, ::rtidb::client::NsClient* client) {
     std::string msg;
     bool ok = client->ConnectZK(msg);
@@ -414,24 +428,26 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     tp.AddRow(row);
     for (const auto& value : tables) {
         for (int idx = 0; idx < value.table_partition_size(); idx++) {
-            row.clear();
-            row.push_back(value.name());
-            row.push_back(std::to_string(value.tid()));
-            row.push_back(std::to_string(value.table_partition(idx).pid()));
-            row.push_back(value.table_partition(idx).endpoint());
-            if (value.table_partition(idx).is_leader()) {
-                row.push_back("leader");
-            } else {
-                row.push_back("follower");
+            for (int meta_idx = 0; meta_idx < value.table_partition(idx).partition_meta_size(); meta_idx++) {
+                row.clear();
+                row.push_back(value.name());
+                row.push_back(std::to_string(value.tid()));
+                row.push_back(std::to_string(value.table_partition(idx).pid()));
+                row.push_back(value.table_partition(idx).partition_meta(meta_idx).endpoint());
+                if (value.table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                    row.push_back("leader");
+                } else {
+                    row.push_back("follower");
+                }
+                row.push_back(std::to_string(value.seg_cnt()));
+                row.push_back(std::to_string(value.ttl()));
+                if (value.table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    row.push_back("yes");
+                } else {
+                    row.push_back("no");
+                }
+                tp.AddRow(row);
             }
-            row.push_back(std::to_string(value.seg_cnt()));
-            row.push_back(std::to_string(value.ttl()));
-            if (value.table_partition(idx).is_alive()) {
-                row.push_back("yes");
-            } else {
-                row.push_back("no");
-            }
-            tp.AddRow(row);
         }
     }
     tp.Print(true);
@@ -461,6 +477,10 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
         return;
     }
+    if (table_info.table_partition_size() < 1) {
+        printf("has not table_partition in table meta file\n");
+        return;
+    }
     ns_table_info.set_ttl_type(table_info.ttl_type());
     ns_table_info.set_ttl(table_info.ttl());
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
@@ -485,10 +505,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 
         }
         for (uint32_t pid = start_index; pid <= end_index; pid++) {
-            ::rtidb::nameserver::TablePartition* table_partition = ns_table_info.add_table_partition();
-            table_partition->set_endpoint(table_info.table_partition(idx).endpoint());
-            table_partition->set_pid(pid);
-            table_partition->set_is_leader(table_info.table_partition(idx).is_leader());
             if (table_info.table_partition(idx).is_leader()) {
                 if (leader_map.find(pid) != leader_map.end()) {
                     printf("pid %u has two leader\n", pid);
@@ -507,6 +523,38 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             }
         }
     }
+
+    // check follower's leader 
+    for (const auto& kv : follower_map) {
+        auto iter = leader_map.find(kv.first);
+        if (iter == leader_map.end()) {
+            printf("pid %u has not leader\n", kv.first);
+            return;
+        }
+        if (kv.second.find(iter->second) != kv.second.end()) {
+            printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
+            return;
+        }
+    }
+
+    for (const auto& kv : leader_map) {
+        ::rtidb::nameserver::TablePartition* table_partition = ns_table_info.add_table_partition();
+        table_partition->set_pid(kv.first);
+        ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
+        partition_meta->set_endpoint(kv.second);
+        partition_meta->set_is_leader(true);
+        auto iter = follower_map.find(kv.first);
+        if (iter == follower_map.end()) {
+            continue;
+        }
+        // add follower
+        for (const auto& endpoint : iter->second) {
+            ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
+            partition_meta->set_endpoint(endpoint);
+            partition_meta->set_is_leader(false);
+        }
+    }
+
     std::set<std::string> type_set;
     type_set.insert("int32");
     type_set.insert("uint32");
@@ -539,19 +587,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     if (!has_index && table_info.column_desc_size() > 0) {
         std::cout << "no index" << std::endl;
         return;
-    }
-
-    // check follower's leader 
-    for (const auto& kv : follower_map) {
-        auto iter = leader_map.find(kv.first);
-        if (iter == leader_map.end()) {
-            printf("pid %u has not leader\n", kv.first);
-            return;
-        }
-        if (kv.second.find(iter->second) != kv.second.end()) {
-            printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
-            return;
-        }
     }
 
     std::string msg;
@@ -1624,6 +1659,8 @@ void StartNsClient() {
             HandleNSClientChangeLeader(parts, &client);
         } else if (parts[0] == "offlineendpoint") {
             HandleNSClientOfflineEndpoint(parts, &client);
+        } else if (parts[0] == "recoverendpoint") {
+            HandleNSClientRecoverEndpoint(parts, &client);
         } else if (parts[0] == "connectzk") {
             HandleNSClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {

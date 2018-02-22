@@ -99,9 +99,10 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::string name = "test" + GenRand();
     table_info->set_name(name);
     TablePartition* partion = table_info->add_table_partition();
-    partion->set_endpoint("127.0.0.1:9530");
-    partion->set_is_leader(true);
     partion->set_pid(0);
+    PartitionMeta* meta = partion->add_partition_meta();
+    meta->set_endpoint("127.0.0.1:9530");
+    meta->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, 12, 1);
     ASSERT_TRUE(ok);

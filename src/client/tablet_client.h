@@ -27,6 +27,8 @@ public:
 
     int Init();
 
+    int Reconnect();
+
     std::string GetEndpoint();
 
     bool CreateTable(const std::string& name,
@@ -94,7 +96,8 @@ public:
     bool GetTableSchema(uint32_t tid, uint32_t pid, 
                         std::string& schema);
 
-    bool DropTable(uint32_t id, uint32_t pid);
+    bool DropTable(uint32_t id, uint32_t pid,
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
@@ -125,9 +128,15 @@ public:
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
                     const std::vector<std::string>& endpoints, uint64_t term = 0);
 
+    bool DeleteBinlog(uint32_t tid, uint32_t pid);
+
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
+
+    bool GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader);
+
+    bool GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest);
 
     int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     int GetTableStatus(uint32_t tid, uint32_t pid,

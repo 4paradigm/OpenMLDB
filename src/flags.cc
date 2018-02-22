@@ -17,6 +17,7 @@ DEFINE_int32(name_server_task_pool_size, 3, "config the size of name server task
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
 DEFINE_bool(auto_recover_table, false, "enable or disable auto recover table");
+DEFINE_int32(tablet_startup_wait_time, 1000, "config the time when server startup");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");

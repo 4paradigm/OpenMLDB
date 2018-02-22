@@ -37,15 +37,29 @@ public:
     RpcClient(const std::string& endpoint) : endpoint_(endpoint), log_id_(0), stub_(NULL), channel_() {
     }
     ~RpcClient() {
+        delete channel_;
         delete stub_;
     }
 
     int Init() {
+        channel_ = new brpc::Channel();
         brpc::ChannelOptions options;
-        if (channel_.Init(endpoint_.c_str(), "", &options) != 0) {
+        if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
             return -1;
         }
-        stub_ = new T(&channel_);
+        stub_ = new T(channel_);
+        return 0;
+    }
+
+    int Reconnect() {
+        delete channel_;
+        delete stub_;
+        channel_ = new brpc::Channel();
+        brpc::ChannelOptions options;
+        if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
+            return -1;
+        }
+        stub_ = new T(channel_);
         return 0;
     }
 
@@ -79,7 +93,7 @@ private:
     std::string endpoint_;
     uint64_t log_id_;
     T* stub_;
-    brpc::Channel channel_;
+    brpc::Channel* channel_;
 };
 
 } // namespace rtidb 
