@@ -172,8 +172,8 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
     @Override
     public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et) throws TimeoutException {
-        TabletServer tabletServer = client.getHandler(tid).getHandler(pid).getLeader();
-        Table table = GTableSchema.getTable(tid, pid, tabletServer);
+        TableHandler th = client.getHandler(tid);
+        TabletServer tabletServer = th.getHandler(pid).getLeader();
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
@@ -188,7 +188,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         Tablet.ScanResponse response = tabletServer.scan(request);
         Long network = System.nanoTime() - consuemd;
         if (response != null && response.getCode() == 0) {
-            KvIterator it = new KvIterator(response.getPairs(), table.getSchema(), network);
+            KvIterator it = new KvIterator(response.getPairs(), th.getSchema(), network);
             it.setCount(response.getCount());
             return it;
         }
@@ -252,16 +252,15 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
     @Override
     public Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
-        TabletServer tabletServer = client.getHandler(tid).getHandler(pid).getLeader();
-        Table table = GTableSchema.getTable(tid, pid, tabletServer);
+        TableHandler th = client.getHandler(tid);
         long consumed = System.nanoTime();
         ByteString response = get(tid, pid, key, time);
         if (response == null) {
-            return new Object[table.getSchema().size()];
+            return new Object[th.getSchema().size()];
         }
         long network = System.nanoTime() - consumed;
         consumed = System.nanoTime();
-        Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), table.getSchema());
+        Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         if (RTIDBClientConfig.isMetricsEnabled()) {
             long decode = System.nanoTime() - consumed;
             TabletMetrics.getInstance().addGet(decode, network);

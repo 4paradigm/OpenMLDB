@@ -7,6 +7,7 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 import com.google.protobuf.ByteString;
 
+@Deprecated
 public interface TabletSyncClient {
 
 	boolean put(int tid, int pid, String key,
@@ -29,28 +30,31 @@ public interface TabletSyncClient {
 		    		String idxName,
 		    		long st, long et) throws TimeoutException;
 
+    @Deprecated
     boolean createTable(String name, 
     			        int tid, 
     			        int pid, 
     			        long ttl, 
     			        int segCnt);
-    
+    @Deprecated
     boolean createTable(String name, 
 	        int tid, 
 	        int pid, 
 	        long ttl, 
 	        TTLType type,
 	        int segCnt);
-    
+    @Deprecated
     boolean createTable(String name, 
 	        int tid, 
 	        int pid, 
 	        long ttl, 
 	        int segCnt,
 	        List<ColumnDesc> schema);
+    @Deprecated
     boolean createTable(String name, 
     		int tid, int pid, long ttl, TTLType type,
     		int segCnt, List<ColumnDesc> schema);
+    @Deprecated
     boolean dropTable(int tid, int pid);
     
     

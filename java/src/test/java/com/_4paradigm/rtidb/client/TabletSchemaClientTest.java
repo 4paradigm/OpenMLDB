@@ -22,7 +22,7 @@ import io.brpc.client.EndPoint;
 
 public class TabletSchemaClientTest {
 
-    private final static AtomicInteger id = new AtomicInteger(100);
+    private final static AtomicInteger id = new AtomicInteger(5000);
     private static TabletSyncClientImpl client = null;
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();

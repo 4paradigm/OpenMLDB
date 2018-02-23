@@ -27,7 +27,7 @@ import io.brpc.client.EndPoint;
 @Listeners({com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class TtlCreateTest {
 
-  private final static AtomicInteger id = new AtomicInteger(1000);
+  private final static AtomicInteger id = new AtomicInteger(300);
   public static int tid = 0;
   private static TabletSyncClient client = null;
   private static EndPoint endpoint = new EndPoint("192.168.33.10:9527");

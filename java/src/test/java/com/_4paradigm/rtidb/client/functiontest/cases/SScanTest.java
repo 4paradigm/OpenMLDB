@@ -24,10 +24,10 @@ import io.brpc.client.EndPoint;
 @Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class SScanTest {
 
-  private final static AtomicInteger id = new AtomicInteger(1000);
+  private final static AtomicInteger id = new AtomicInteger(200);
   private static int tid = 0;
   private static TabletSyncClient client = null;
-  private static EndPoint endpoint = new EndPoint("192.168.33.10:9527");
+  private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
   static {

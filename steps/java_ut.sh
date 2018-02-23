@@ -10,7 +10,10 @@ clear_debug() {
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
 
 sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
-cp -rf src/proto/tablet.proto java/src/main/proto/rtidb/api
+mkdir -p java/src/main/proto/rtidb/api
+mkdir -p java/src/main/proto/rtidb/nameserver
+cp -rf src/proto/tablet.proto java/src/main/proto/rtidb/api/
+cp -rf src/proto/name_server.proto java/src/main/proto/rtidb/nameserver/
 
 clear_debug
 
@@ -19,6 +22,6 @@ clear_debug
 sleep 2
 
 cd $ROOT_DIR/java
-mvn test -Dtest=com._4paradigm.rtidb.client.*Test
+mvn test 
 clear_debug
 

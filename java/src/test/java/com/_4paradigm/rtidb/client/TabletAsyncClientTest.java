@@ -17,7 +17,7 @@ import io.brpc.client.EndPoint;
 
 public class TabletAsyncClientTest {
 
-    private AtomicInteger id = new AtomicInteger(300);
+    private AtomicInteger id = new AtomicInteger(3000);
     private static TabletAsyncClient client = null;
     private static TabletSyncClient syncClient = null;
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
