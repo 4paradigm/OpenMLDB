@@ -463,7 +463,7 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
     if (!ret) {
-        std::cout << "failed to showtable. error msg: " << msg << std::endl;
+        std::cout << "failed to showschema. error msg: " << msg << std::endl;
         return;
     }
     if (tables.empty()) {
