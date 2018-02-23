@@ -528,7 +528,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     uint32_t right_pid = 0;
     for (const auto& kv : leader_map) {
         if (kv.first != right_pid) {
-            printf("Fail to create table. leader's pid must start with zero and be continuous\n");
+            printf("Fail to create table. leader's pid must start with zero and be consecutive\n");
             return;
         }
         right_pid++;
