@@ -11,11 +11,21 @@ message ColumnDesc {
     required bool add_ts_idx = 3;
 }
 
-message TablePartition {
+message PartitionMeta {
     required string endpoint = 1;
     required bool is_leader = 2;
-    required uint32 pid = 3;
-    optional bool is_alive = 4 [default = true];
+    optional bool is_alive = 3 [default = true];
+}
+
+message TermPair {
+    required uint64 term = 1;
+    required uint64 offset = 2;
+}
+
+message TablePartition {
+    required uint32 pid = 1;
+    repeated PartitionMeta partition_meta = 2;
+    repeated TermPair term_offset = 3;
 }
 
 message TableInfo {
@@ -51,6 +61,12 @@ message MakeSnapshotNSRequest {
     required uint32 pid = 2;
 }
 
+message AddReplicaData {
+	required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
 message AddReplicaNSRequest {
 	required string name = 1;
     required uint32 pid = 2;
@@ -80,6 +96,10 @@ message ChangeLeaderRequest {
 }
 
 message OfflineEndpointRequest {
+	required string endpoint = 1;
+}
+
+message RecoverEndpointRequest {
 	required string endpoint = 1;
 }
 
@@ -123,6 +143,9 @@ message OPStatus {
 
 message ShowOPStatusRequest{}
 
+message ConnectZKRequest {}
+message DisConnectZKRequest {}
+
 message ShowOPStatusResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -142,4 +165,7 @@ service NameServer {
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
     rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
+    rpc RecoverEndpoint(RecoverEndpointRequest) returns (GeneralResponse);
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
 }

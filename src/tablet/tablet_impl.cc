@@ -212,6 +212,7 @@ void TabletImpl::Get(RpcController* controller,
     }
     ::rtidb::storage::Ticket ticket;
     Table::Iterator* it = table->NewIterator(request->key(), ticket);
+    bool has_found = true;
     if (request->ts() > 0) {
         if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
             uint64_t keep_cnt = table->GetTTL();
@@ -222,22 +223,21 @@ void TabletImpl::Get(RpcController* controller,
                 }
                 keep_cnt--;
                 if (keep_cnt == 0) {
-                    response->set_code(1);
-                    response->set_msg("Not Found");
-                    PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
-                            request->ts());
-                    delete it;        
-                    return;        
+                    has_found = false;
+                    break;
                 }
                 it->Next();
             }
-        } else {
+        } else if (request->ts() > table->GetExpireTime()) {
             it->Seek(request->ts());
+            if (it->Valid() && it->GetKey() != request->ts()) {
+                has_found = false;
+            }
         }
-    }else {
+    } else {
         it->SeekToFirst();
     }
-    if (it->Valid()) {
+    if (it->Valid() && has_found) {
         response->set_code(0);
         response->set_msg("ok");
         response->set_key(request->key());
@@ -245,14 +245,14 @@ void TabletImpl::Get(RpcController* controller,
         response->set_value(it->GetValue()->data, it->GetValue()->size);
         PDLOG(DEBUG, "Get key %s ts %lu value %s", request->key().c_str(),
                 request->ts(), it->GetValue()->data);
-    }else {
+    } else {
         response->set_code(1);
         response->set_msg("Not Found");
         PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
                 request->ts());
 
     }
-    delete it;        
+    delete it; 
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -498,6 +498,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
             Closure* done) {
+	brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     bool is_leader = false;
@@ -512,17 +513,40 @@ void TabletImpl::ChangeRole(RpcController* controller,
         if (ChangeToLeader(tid, pid, vec, request->term()) < 0) {
             response->set_code(-1);
             response->set_msg("table change to leader failed!");
-            done->Run();
             return;
         }
-        response->set_code(0);
-        response->set_msg("ok");
-        done->Run();
     } else {
-        response->set_code(-1);
-        response->set_msg("not support change to follower");
-        done->Run();
+        std::shared_ptr<Table> table = GetTable(tid, pid);
+        if (!table) {
+            response->set_code(-1);
+            response->set_msg("table is not exist");
+            return;
+        }
+        if (!table->IsLeader()) {
+            PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
+            response->set_code(0);
+            response->set_msg("table is follower.");
+            return;
+        }
+        if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table state[%u] can not change role. tid[%u] pid[%u]", 
+                        table->GetTableStat(), tid, pid);
+            response->set_code(-1);
+            response->set_msg("can not change role");
+            return;
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        if (!replicator) {
+            response->set_code(-1);
+            response->set_msg("replicator is not exist");
+            return;
+        }
+        replicator->DelAllReplicateNode();
+        replicator->SetRole(ReplicatorRole::kFollowerNode);
+        table->SetLeader(false);
     }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std::string>& replicas, uint64_t term) {
@@ -1053,16 +1077,17 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 			PDLOG(WARNING, "send table_meta.txt failed");
 			break;
 		}
-		// send manifest file
-		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
-			PDLOG(WARNING, "send MANIFEST failed");
-			break;
-		}
     	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
 									std::to_string(pid) + "/snapshot/MANIFEST";
 		int fd = open(manifest_file.c_str(), O_RDONLY);
 		if (fd < 0) {
 			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+            has_error = false;
+			break;
+		}
+		// send manifest file
+		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
+			PDLOG(WARNING, "send MANIFEST failed");
 			break;
 		}
 		google::protobuf::io::FileInputStream fileInput(fd);
@@ -1299,12 +1324,12 @@ void TabletImpl::LoadTable(RpcController* controller,
             const ::rtidb::api::LoadTableRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
+	brpc::ClosureGuard done_guard(done);
 	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
 	if (request->has_task_info() && request->task_info().IsInitialized()) {
 		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadTable, task_ptr) < 0) {
 			response->set_code(-1);
 			response->set_msg("add task failed");
-            done->Run();
             return;
         }
 	}
@@ -1314,7 +1339,6 @@ void TabletImpl::LoadTable(RpcController* controller,
         if (!CheckTableMeta(&table_meta)) {
             response->set_code(8);
             response->set_msg("table name is empty");
-            done->Run();
             break;
         }
         uint32_t tid = table_meta.tid();
@@ -1326,7 +1350,6 @@ void TabletImpl::LoadTable(RpcController* controller,
             PDLOG(WARNING, "no db data for table tid %u, pid %u", tid, pid);
             response->set_code(-1);
             response->set_msg("no db data for table");
-            done->Run();
             break;
         }
         {
@@ -1338,24 +1361,20 @@ void TabletImpl::LoadTable(RpcController* controller,
                     PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
                     response->set_code(-1);
                     response->set_msg("write table_meta failed");
-                    done->Run();
                     break;
                 }
                 std::string msg;
                 if (CreateTableInternal(&table_meta, msg) < 0) {
                     response->set_code(-1);
                     response->set_msg(msg.c_str());
-                    done->Run();
                     break;
                 }
             } else {
                 response->set_code(1);
                 response->set_msg("table with tid and pid exists");
-                done->Run();
                 break;
             }
         }
-        done->Run();
         uint64_t ttl = table_meta.ttl();
         std::string name = table_meta.name();
         uint32_t seg_cnt = 8;
@@ -1364,7 +1383,19 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
         PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
                    pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
-       
+        task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
+        response->set_code(0);
+        response->set_msg("ok");
+
+    } while(0);
+    if (task_ptr) {
+		std::lock_guard<std::mutex> lock(mu_);
+	    task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+    }        
+}
+
+int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    do {
         // load snapshot data
         std::shared_ptr<Table> table = GetTable(tid, pid);        
         if (!table) {
@@ -1381,8 +1412,11 @@ void TabletImpl::LoadTable(RpcController* controller,
             PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
             break;
         }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            table->SetTableStat(::rtidb::storage::kLoading);
+        }
         uint64_t latest_offset = 0;
-        table->SetTableStat(::rtidb::storage::kLoading);
         bool ok = snapshot->Recover(table, latest_offset);
         if (ok) {
             table->SetTableStat(::rtidb::storage::kNormal);
@@ -1390,28 +1424,33 @@ void TabletImpl::LoadTable(RpcController* controller,
             replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
             replicator->MatchLogOffset();
             table->SchedGc();
-            if (ttl > 0) {
+            if (table->GetTTL() > 0) {
                 gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
             }
-            PDLOG(INFO, "load table success. name %s tid %u pid %u ttl %lu", name.c_str(), tid, pid, ttl);
+            PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
                 task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-                return;
-            }        
+                return 0;
+            }
         } else {
-           DeleteTableInternal(tid, pid);
+           DeleteTableInternal(tid, pid, std::shared_ptr<::rtidb::api::TaskInfo>());
         }
-    } while(0);
+    } while (0);    
     if (task_ptr) {
 		std::lock_guard<std::mutex> lock(mu_);
 	    task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-    }        
+    }
+    return -1;
 }
 
-int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
+int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+        }        
         return -1;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
@@ -1431,12 +1470,20 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid) {
     std::string source_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
 
     if (!::rtidb::base::IsExists(source_path)) {
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        }        
         return 0;
     }
 
     std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + std::to_string(tid) + 
            "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
     ::rtidb::base::Rename(source_path, recycle_path);
+    if (task_ptr) {
+		std::lock_guard<std::mutex> lock(mu_);
+	    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+    }        
     return 0;
 }
 
@@ -1515,6 +1562,110 @@ void TabletImpl::CreateTable(RpcController* controller,
         gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
         PDLOG(INFO, "table %s with tid %u pid %u enable ttl %llu", name.c_str(), tid, pid, ttl);
     }
+}
+
+void TabletImpl::GetTermPair(RpcController* controller,
+            const ::rtidb::api::GetTermPairRequest* request,
+            ::rtidb::api::GetTermPairResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    if (FLAGS_zk_cluster.empty()) {
+		response->set_code(-1);
+		response->set_msg("tablet is not run in cluster mode");
+        PDLOG(WARNING, "tablet is not run in cluster mode");
+        return;
+    }
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
+	if (!table) {
+		response->set_code(0);
+		response->set_has_table(false);
+		response->set_msg("table is not exist");
+
+        std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
+		int fd = open(manifest_file.c_str(), O_RDONLY);
+	    response->set_msg("ok");
+		if (fd < 0) {
+			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+            response->set_term(0);
+            response->set_offset(0);
+			return;
+		}
+		google::protobuf::io::FileInputStream fileInput(fd);
+		fileInput.SetCloseOnDelete(true);
+		::rtidb::api::Manifest manifest;
+		if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+			PDLOG(WARNING, "parse manifest failed");
+            response->set_term(0);
+            response->set_offset(0);
+			return;
+		}
+        response->set_term(manifest.term());
+        response->set_offset(manifest.offset());
+		return;
+	}
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+    if (!replicator) {
+		response->set_code(-1);
+		response->set_msg("replicator is not exist");
+        return;
+    }
+	response->set_code(0);
+	response->set_msg("ok");
+	response->set_has_table(true);
+	response->set_term(replicator->GetLeaderTerm());
+	response->set_offset(replicator->GetOffset());
+}
+
+void TabletImpl::DeleteBinlog(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string binlog_path = db_path + "/binlog";
+    if (::rtidb::base::IsExists(binlog_path)) {
+        std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + std::to_string(tid) + 
+               "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
+        ::rtidb::base::Rename(binlog_path, recycle_path);
+        PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
+                    binlog_path.c_str(), recycle_path.c_str(), tid, pid);
+    }
+	response->set_code(0);
+	response->set_msg("ok");
+}        
+
+void TabletImpl::GetManifest(RpcController* controller,
+            const ::rtidb::api::GetManifestRequest* request,
+            ::rtidb::api::GetManifestResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+	std::string db_path = FLAGS_db_root_path + "/" + std::to_string(request->tid()) + "_" + 
+                std::to_string(request->pid());
+	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
+	::rtidb::api::Manifest manifest;
+	int fd = open(manifest_file.c_str(), O_RDONLY);
+    if (fd >= 0) {
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+            PDLOG(WARNING, "parse manifest failed");
+            response->set_code(-1);
+            response->set_msg("parse manifest failed");
+            return;
+        }
+    } else {
+		PDLOG(INFO, "[%s] is not exist", manifest_file.c_str());
+        manifest.set_offset(0);
+	}
+	response->set_code(0);
+	response->set_msg("ok");
+	::rtidb::api::Manifest* manifest_r = response->mutable_manifest();
+	manifest_r->CopyFrom(manifest);
 }
 
 int TabletImpl::WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta) {
@@ -1646,26 +1797,39 @@ void TabletImpl::DropTable(RpcController* controller,
             const ::rtidb::api::DropTableRequest* request,
             ::rtidb::api::DropTableResponse* response,
             Closure* done) {
+    brpc::ClosureGuard done_guard(done);        
+	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
+	if (request->has_task_info() && request->task_info().IsInitialized()) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadTable, task_ptr) < 0) {
+			response->set_code(-1);
+			response->set_msg("add task failed");
+            return;
+        }
+	}
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
-        response->set_code(-1);
-        response->set_msg("table dose not exists");
-        done->Run();
+    do {
+        std::shared_ptr<Table> table = GetTable(tid, pid);
+        if (!table) {
+            response->set_code(-1);
+            response->set_msg("table dose not exists");
+            break;
+        }
+        if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
+            PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
+            response->set_code(-1);
+            response->set_msg("table is making snapshot");
+            break;
+        }
+        response->set_code(0);
+        response->set_msg("ok");
+        task_pool_.AddTask(boost::bind(&TabletImpl::DeleteTableInternal, this, tid, pid, task_ptr));
         return;
+    } while (0);
+    if (task_ptr) {       
+        std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
     }
-    if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
-        PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
-        response->set_code(-1);
-        response->set_msg("table is making snapshot");
-        done->Run();
-        return;
-    }
-    response->set_code(0);
-    response->set_msg("ok");
-    done->Run();
-    DeleteTableInternal(tid, pid);
 }
 
 void TabletImpl::GetTaskStatus(RpcController* controller,
@@ -1706,6 +1870,33 @@ void TabletImpl::DeleteOPTask(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
     done->Run();
+}
+
+void TabletImpl::ConnectZK(RpcController* controller,
+            const ::rtidb::api::ConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    if (zk_client_->Reconnect() && zk_client_->Register()) {
+		response->set_code(0);
+		response->set_msg("ok");
+        PDLOG(INFO, "connect zk ok"); 
+		return;
+	}
+    response->set_code(-1);
+    response->set_msg("connect failed");
+}
+
+void TabletImpl::DisConnectZK(RpcController* controller,
+            const ::rtidb::api::DisConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    zk_client_->CloseZK();
+    response->set_code(0);
+    response->set_msg("ok");
+    PDLOG(INFO, "disconnect zk ok"); 
+    return;
 }
 
 int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,
@@ -1827,9 +2018,9 @@ void TabletImpl::ShowMemPool(RpcController* controller,
 
 void TabletImpl::CheckZkClient() {
     if (!zk_client_->IsConnected()) {
-        bool ok = zk_client_->Reconnect();
-        if (ok) {
-            zk_client_->Register();
+        PDLOG(WARNING, "reconnect zk"); 
+        if (zk_client_->Reconnect() && zk_client_->Register()) {
+            PDLOG(INFO, "reconnect zk ok"); 
         }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));

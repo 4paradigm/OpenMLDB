@@ -14,6 +14,7 @@
 #include <condition_variable>
 #include <map>
 #include <vector>
+#include <atomic>
 
 extern "C" {
 #include "zookeeper/zookeeper.h"
@@ -46,6 +47,9 @@ public:
     // the client will create a ephemeral node in zk_root_path
     // eg {zk_root_path}/nodes/000000 -> endpoint
     bool Register();
+
+    // close zk connection
+    bool CloseZK();
 
     // always watch the all nodes in {zk_root_path}/nodes/
     void WatchNodes(NodesChangedCallback callback);
@@ -100,6 +104,10 @@ public:
         return connected_;
     }
 
+	inline uint64_t GetSessionTerm() {
+        return session_term_.load(std::memory_order_relaxed);
+    }
+
     // when reconnect, need Register and Watchnodes again
     bool Reconnect();
 
@@ -128,6 +136,7 @@ private:
     bool connected_;
     std::map<std::string, NodesChangedCallback> children_callbacks_;
     char buffer_[ZK_MAX_BUFFER_SIZE];
+    std::atomic<uint64_t> session_term_;
 };
 
 }
