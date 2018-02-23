@@ -524,14 +524,15 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         }
     }
 
+    if (leader_map.empty()) {
+        printf("Fail to create table. has not leader pid\n");
+        return;
+    }
     // check leader pid
-    uint32_t right_pid = 0;
-    for (const auto& kv : leader_map) {
-        if (kv.first != right_pid) {
-            printf("Fail to create table. leader's pid must start with zero and be consecutive\n");
-            return;
-        }
-        right_pid++;
+    auto iter = leader_map.rbegin();
+    if (iter->first != leader_map.size() -1) {
+        printf("Fail to create table. pid is not start with zero and consecutive\n");
+        return;
     }
 
     // check follower's leader 
