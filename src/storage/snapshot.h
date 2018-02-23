@@ -59,7 +59,7 @@ public:
     // or -1 if some error ocurrs 
     int GetSnapshotRecord(::rtidb::api::Manifest& manifest);
 
-    int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset);
+    int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
 
 private:
 

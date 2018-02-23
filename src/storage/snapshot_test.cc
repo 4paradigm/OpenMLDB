@@ -373,7 +373,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(3, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20170609.sdb", 3, 2);
+    int ret = snapshot.RecordOffset("20170609.sdb", 3, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -486,7 +486,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20170609.sdb", 2, 2);
+    int ret = snapshot.RecordOffset("20170609.sdb", 2, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -529,6 +529,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_pk(key);
         entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");
+        entry.set_term(5);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -541,6 +542,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_log_index(offset);
         std::string key = "key" + std::to_string(count);
         entry.set_pk(key);
+        entry.set_term(6);
         if (count == 20) {
             // set one timeout key
             entry.set_ts(::baidu::common::timer::get_micros() / 1000 - 4 * 60 * 1000);
@@ -575,6 +577,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     }
     ASSERT_EQ(29, manifest.offset());
     ASSERT_EQ(28, manifest.count());
+    ASSERT_EQ(6, manifest.term());
 
     for (; count < 50; count++) {
         ::rtidb::api::LogEntry entry;
@@ -583,6 +586,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_pk(key);
         entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");
+        entry.set_term(7);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -608,6 +612,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 
     ASSERT_EQ(49, manifest.offset());
     ASSERT_EQ(48, manifest.count());
+    ASSERT_EQ(7, manifest.term());
 }
 
 TEST_F(SnapshotTest, RecordOffset) {
@@ -616,23 +621,27 @@ TEST_F(SnapshotTest, RecordOffset) {
     snapshot.Init();
     uint64_t offset = 1122;
     uint64_t key_count = 3000;
+    uint64_t term = 0;
     std::string snapshot_name = ::rtidb::base::GetNowTime() + ".sdb";
-    int ret = snapshot.RecordOffset(snapshot_name, key_count, offset);
+    int ret = snapshot.RecordOffset(snapshot_name, key_count, offset, term);
     ASSERT_EQ(0, ret);
 	std::string value;
 	::rtidb::api::Manifest manifest;
 	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
+    ASSERT_EQ(term, manifest.term());
     sleep(1);
 
     std::string snapshot_name1 = ::rtidb::base::GetNowTime() + ".sdb";
     uint64_t key_count1 = 3001;
 	offset = 1124;
-    ret = snapshot.RecordOffset(snapshot_name1, key_count1, offset);
+    term = 10;
+    ret = snapshot.RecordOffset(snapshot_name1, key_count1, offset, term);
     ASSERT_EQ(0, ret);
 	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
     ASSERT_EQ(key_count1, manifest.count());
+    ASSERT_EQ(term, manifest.term());
 }
 
 
