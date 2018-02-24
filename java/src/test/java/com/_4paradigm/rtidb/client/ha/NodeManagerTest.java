@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.ha;
 import java.util.HashSet;
 import java.util.Set;
 

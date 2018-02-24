@@ -1,7 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -23,6 +22,7 @@ import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.utils.MurmurHash;
+import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
@@ -44,7 +44,12 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public boolean put(int tid, int pid, String key, long time, String value) throws TimeoutException {
-        return put(tid, pid, key, time, value.getBytes(Charset.forName("utf-8")));
+        return put(tid, pid, key, time, value.getBytes(Charsets.UTF_8));
+    }
+    
+    @Override
+    public boolean put(String tname, String key, long time, String value) throws TimeoutException, TabletException {
+        return put(tname, key, time, value.getBytes(Charsets.UTF_8));
     }
 
     @Override
@@ -276,5 +281,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return false;
     }
+
+    
     
 }

@@ -25,6 +25,7 @@ public interface TableSyncClient {
 
     // for cluster
     boolean put(String tname, String key, long time, byte[] bytes) throws TimeoutException, TabletException;
+    boolean put(String tname, String key, long time, String value) throws TimeoutException, TabletException;
     boolean put(String tname, long time, Object[] row) throws TimeoutException, TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
     ByteString get(String tname, String key, long time) throws TimeoutException, TabletException;
