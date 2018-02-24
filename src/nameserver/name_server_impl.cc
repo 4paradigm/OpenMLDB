@@ -1135,6 +1135,23 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
+    if (table_info->table_partition_size() == 0) {
+        response->set_code(-1);
+        response->set_msg("table_partition size is zero");
+        PDLOG(WARNING, "table_partition size is zero");
+        return;
+    }
+    std::set<uint32_t> pid_set;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        pid_set.insert(table_info->table_partition(idx).pid());
+    }
+    auto iter = pid_set.rbegin();
+    if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
+        response->set_code(-1);
+        response->set_msg("pid is not start with zero and consecutive");
+        PDLOG(WARNING, "pid is not start with zero and consecutive");
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {
