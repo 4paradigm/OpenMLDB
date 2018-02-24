@@ -1392,8 +1392,8 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             return;
         }
         uint64_t time = 0;
-        if (parts.size() > 4) {
-            time = boost::lexical_cast<uint64_t>(parts[4]);
+        if (parts.size() > 5) {
+            time = boost::lexical_cast<uint64_t>(parts[5]);
         }
         std::string schema;
         bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
@@ -1421,6 +1421,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
                               boost::lexical_cast<uint32_t>(parts[2]),
                               parts[3],
                               time,
+                              parts[5],
                               value,
                               ts); 
         if (!ok) {
