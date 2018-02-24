@@ -6,6 +6,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
+import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 
@@ -66,7 +67,8 @@ public class NameServerTest {
     
     @Test
     public void testAllFlow() {
-        TablePartition tp = TablePartition.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).setPid(0).build();
+        PartitionMeta pm = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
+        TablePartition tp = TablePartition.newBuilder().addPartitionMeta(pm).setPid(0).build();
         TableInfo tableInfo = TableInfo.newBuilder().setName("t1").setSegCnt(8).addTablePartition(tp).build();
         try {
             NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);

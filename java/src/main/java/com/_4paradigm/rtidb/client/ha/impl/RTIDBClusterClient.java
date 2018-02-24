@@ -19,6 +19,7 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -97,25 +98,27 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
             for (TableInfo table : newTableList) {
                 TableHandler handler = new TableHandler(table);
-                PartitionHandler[] partitionHandlerGroup = new PartitionHandler[countLeader(table)];
+                PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
                 for (TablePartition partition : table.getTablePartitionList()) {
                     PartitionHandler ph = partitionHandlerGroup[partition.getPid()];
                     if (ph == null) {
                         ph = new PartitionHandler();
                         partitionHandlerGroup[partition.getPid()] = ph;
                     }
-                    EndPoint endpoint = new EndPoint(partition.getEndpoint());
-                    BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
-                    if (bcg == null) {
-                        logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(), endpoint);
-                        continue;
-                    }
-                    SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
-                    client.updateEndpoint(endpoint, bcg);
-                    if (partition.getIsLeader()) {
-                        ph.setLeader((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
-                    } else {
-                        ph.getFollowers().add((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
+                    for (PartitionMeta pm : partition.getPartitionMetaList()) {
+                        EndPoint endpoint = new EndPoint(pm.getEndpoint());
+                        BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
+                        if (bcg == null) {
+                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(), endpoint);
+                            continue;
+                        }
+                        SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
+                        client.updateEndpoint(endpoint, bcg);
+                        if (pm.getIsLeader()) {
+                            ph.setLeader((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
+                        } else {
+                            ph.getFollowers().add((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
+                        }
                     }
                 }
                 handler.setPartitions(partitionHandlerGroup);
@@ -138,15 +141,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         }
     }
 
-    private int countLeader(TableInfo table) {
-        int leaderCnt = 0;
-        for (TablePartition p : table.getTablePartitionList()) {
-            if (p.getIsLeader()) {
-                leaderCnt++;
-            }
-        }
-        return leaderCnt;
-    }
 
     public boolean refreshNodeList() {
         try {

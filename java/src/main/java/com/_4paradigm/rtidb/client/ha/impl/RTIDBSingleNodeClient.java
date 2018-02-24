@@ -63,15 +63,6 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
         logger.info("start single rtidb client with endpoint {} ok", endpoint);
     }
 
-    private int countLeader(TableInfo table) {
-        int leaderCnt = 0;
-        for (TablePartition p : table.getTablePartitionList()) {
-            if (p.getIsLeader()) {
-                leaderCnt++;
-            }
-        }
-        return leaderCnt;
-    }
 
     public TableHandler getHandler(String name) {
         return name2tables.get(name);

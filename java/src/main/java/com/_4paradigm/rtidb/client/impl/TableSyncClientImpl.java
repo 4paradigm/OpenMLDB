@@ -165,6 +165,37 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et) throws TimeoutException {
         TableHandler th = client.getHandler(tid);
+        return scan(tid, pid, key, idxName, st, et, th);
+    }
+    
+    @Override
+    public KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
+        if (pid < 0) {
+            pid = pid * -1;
+        }
+        return scan(th.getTableInfo().getTid(), pid, key, null, st, et, th);
+    }
+
+    @Override
+    public KvIterator scan(String tname, String key, String idxName, long st, long et)
+            throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
+        if (pid < 0) {
+            pid = pid * -1;
+        }
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, th);
+    }
+
+    private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th)throws TimeoutException  {
         TabletServer tabletServer = th.getHandler(pid).getLeader();
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
@@ -186,7 +217,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return null;
     }
-
+    
     @Override
     public boolean put(String name, String key, long time, byte[] bytes) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(name);

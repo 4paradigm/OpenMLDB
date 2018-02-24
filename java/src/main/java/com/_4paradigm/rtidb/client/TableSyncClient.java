@@ -30,5 +30,7 @@ public interface TableSyncClient {
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
     ByteString get(String tname, String key, long time) throws TimeoutException, TabletException;
     Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException;
+    KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException ;
+    KvIterator scan(String tname, String key, String idxName, long st, long et) throws TimeoutException, TabletException ;
     
 }

@@ -60,6 +60,12 @@ public enum ColumnType {
 	        return kString;
 	    }else if ("int32".equals(val)) {
 	        return kInt32;
+	    }else if ("double".equals(val)) {
+	        return kDouble;
+	    }else if ("int64".equals(val)) {
+	        return kInt64;
+	    }else if ("float".equals(val)) {
+	        return kFloat;
 	    }
 	    return null;
 	}
