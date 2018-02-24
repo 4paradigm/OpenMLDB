@@ -1146,7 +1146,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         pid_set.insert(table_info->table_partition(idx).pid());
     }
     auto iter = pid_set.rbegin();
-    if (*iter != pid_set.size() - 1) {
+    if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
         response->set_code(-1);
         response->set_msg("pid is not start with zero and consecutive");
         PDLOG(WARNING, "pid is not start with zero and consecutive");
