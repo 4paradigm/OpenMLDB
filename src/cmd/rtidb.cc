@@ -453,6 +453,49 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     tp.Print(true);
 }
 
+void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "showschema format error. eg: showschema tablename" << std::endl;
+        return;
+    }
+    std::string name = parts[1];
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(name, tables, msg);
+    if (!ret) {
+        std::cout << "failed to showschema. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("table %s is not exist\n", name.c_str());
+        return;
+    }
+    if (tables[0].column_desc_size() == 0) {
+        printf("table %s has not schema\n", name.c_str());
+        return;
+    }
+    std::vector<std::string> row;
+    row.push_back("#");
+    row.push_back("name");
+    row.push_back("type");
+    row.push_back("index");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    for (int idx = 0; idx < tables[0].column_desc_size(); idx++) {
+        row.clear();
+        row.push_back(std::to_string(idx));
+        row.push_back(tables[0].column_desc(idx).name());
+        row.push_back(tables[0].column_desc(idx).type());
+        if (tables[0].column_desc(idx).add_ts_idx()) {
+            row.push_back("yes");
+        } else {
+            row.push_back("no");
+        }
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
         std::cout << "Bad format" << std::endl;
@@ -497,7 +540,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of("-"));
             if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
-                printf("pid_group[%s] format error.\n", pid_group.c_str());
+                printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
                 return;
             }
             start_index = boost::lexical_cast<uint32_t>(vec[0]);
@@ -507,7 +550,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         for (uint32_t pid = start_index; pid <= end_index; pid++) {
             if (table_info.table_partition(idx).is_leader()) {
                 if (leader_map.find(pid) != leader_map.end()) {
-                    printf("pid %u has two leader\n", pid);
+                    printf("Fail to create table. pid %u has two leader\n", pid);
                     return;
                 }
                 leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
@@ -516,12 +559,23 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     follower_map.insert(std::make_pair(pid, std::set<std::string>()));
                 }
                 if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
-                    printf("pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
+                    printf("Fail to create table. pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
                     return;
                 }
                 follower_map[pid].insert(table_info.table_partition(idx).endpoint());
             }
         }
+    }
+
+    if (leader_map.empty()) {
+        printf("Fail to create table. has not leader pid\n");
+        return;
+    }
+    // check leader pid
+    auto iter = leader_map.rbegin();
+    if (iter->first != leader_map.size() -1) {
+        printf("Fail to create table. pid is not start with zero and consecutive\n");
+        return;
     }
 
     // check follower's leader 
@@ -1651,6 +1705,8 @@ void StartNsClient() {
             HandleNSClientDropTable(parts, &client);
         } else if (parts[0] == "showtable") {
             HandleNSClientShowTable(parts, &client);
+        } else if (parts[0] == "showschema") {
+            HandleNSClientShowSchema(parts, &client);
         } else if (parts[0] == "confset") {
             HandleNSClientConfSet(parts, &client);
         } else if (parts[0] == "confget") {
