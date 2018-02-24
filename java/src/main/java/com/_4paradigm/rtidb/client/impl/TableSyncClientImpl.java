@@ -276,10 +276,5 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return false;
     }
-
-   
-
-   
-
     
 }

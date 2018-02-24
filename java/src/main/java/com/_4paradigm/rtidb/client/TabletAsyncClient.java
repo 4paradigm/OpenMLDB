@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client;
 
+@Deprecated
 public interface TabletAsyncClient {
 
     PutFuture put(int tid, int pid, String key,
@@ -20,4 +21,5 @@ public interface TabletAsyncClient {
     
     PutFuture put(String name, String key,
             long time, byte[] bytes);
+    
 }
