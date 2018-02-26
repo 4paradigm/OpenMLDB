@@ -540,7 +540,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             std::vector<std::string> vec;
             boost::split(vec, pid_group, boost::is_any_of("-"));
             if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
-                printf("pid_group[%s] format error.\n", pid_group.c_str());
+                printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
                 return;
             }
             start_index = boost::lexical_cast<uint32_t>(vec[0]);
@@ -550,7 +550,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         for (uint32_t pid = start_index; pid <= end_index; pid++) {
             if (table_info.table_partition(idx).is_leader()) {
                 if (leader_map.find(pid) != leader_map.end()) {
-                    printf("pid %u has two leader\n", pid);
+                    printf("Fail to create table. pid %u has two leader\n", pid);
                     return;
                 }
                 leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
@@ -559,12 +559,23 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     follower_map.insert(std::make_pair(pid, std::set<std::string>()));
                 }
                 if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
-                    printf("pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
+                    printf("Fail to create table. pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
                     return;
                 }
                 follower_map[pid].insert(table_info.table_partition(idx).endpoint());
             }
         }
+    }
+
+    if (leader_map.empty()) {
+        printf("Fail to create table. has not leader pid\n");
+        return;
+    }
+    // check leader pid
+    auto iter = leader_map.rbegin();
+    if (iter->first != leader_map.size() -1) {
+        printf("Fail to create table. pid is not start with zero and consecutive\n");
+        return;
     }
 
     // check follower's leader 
@@ -1099,19 +1110,26 @@ void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::clien
         std::cout << "Bad changerole format" << std::endl;
         return;
     }
-     if (parts[3].compare("leader") == 0) {
-        try {
+    try {
+        if (parts[3].compare("leader") == 0) {
             bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
             if (ok) {
                 std::cout << "ChangeRole ok" << std::endl;
             } else {
-                std::cout << "Fail to Change leader" << std::endl;
+                std::cout << "Fail to change leader" << std::endl;
             }
-        } catch (boost::bad_lexical_cast& e) {
-            std::cout << "Bad changerole format" << std::endl;
+        } else if (parts[3].compare("follower") == 0) {
+            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), false);
+            if (ok) {
+                std::cout << "ChangeRole ok" << std::endl;
+            } else {
+                std::cout << "Fail to change follower" << std::endl;
+            }
+        } else {
+            std::cout << "role must be leader or follower" << std::endl;
         }
-    } else {
-        std::cout << "not support to change follower" << std::endl;
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad changerole format" << std::endl;
     }
 }
 
