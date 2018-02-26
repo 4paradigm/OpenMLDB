@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.ut;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,21 +9,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.PutFuture;
+import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
-import com._4paradigm.rtidb.client.impl.TabletAsyncClientImpl;
-import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 
-import io.brpc.client.DefaultRpcClient;
 import io.brpc.client.EndPoint;
 
-public class TabletSchemaAsyncClientTest {
+public class TableSchemaAsyncClientTest {
 
-    private final static AtomicInteger id = new AtomicInteger(4000);
-    private static TabletAsyncClient aclient = null;
-    private static TabletSyncClient sclient = null;
+    private final static AtomicInteger id = new AtomicInteger(9000);
+    private static TableAsyncClientImpl tableClient = null;
+    private static TabletClientImpl tabletClient = null;
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
@@ -34,8 +37,8 @@ public class TabletSchemaAsyncClientTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        aclient = new TabletAsyncClientImpl(snc);
-        sclient = new TabletSyncClientImpl(snc);
+        tableClient = new TableAsyncClientImpl(snc);
+        tabletClient = new TabletClientImpl(snc);
     }
     
     private int createTable() {
@@ -56,14 +59,14 @@ public class TabletSchemaAsyncClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = sclient.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         return tid;
     }
     
     @Test
     public void testAsyncScanTableNotExist() throws TimeoutException, TabletException {
-        ScanFuture sf = aclient.scan(0, 0, "pl", "test_idx_name", 1000l, 0l);
+        ScanFuture sf = tableClient.scan(0, 0, "pl", "test_idx_name", 1000l, 0l);
         try {
             sf.get();
             Assert.assertTrue(false);
@@ -78,7 +81,7 @@ public class TabletSchemaAsyncClientTest {
     @Test
     public void testAsyncScanTableIdxNotExist() throws TimeoutException, TabletException {
         int tid = createTable();
-        ScanFuture sf = aclient.scan(tid, 0, "pl", "card11", 1000l, 0l);
+        ScanFuture sf = tableClient.scan(tid, 0, "pl", "card11", 1000l, 0l);
         try {
             sf.get();
             Assert.assertTrue(false);
@@ -91,7 +94,7 @@ public class TabletSchemaAsyncClientTest {
     
     public void testAsyncScanTableDataNotExist() {
         int tid = createTable();
-        ScanFuture sf = aclient.scan(tid, 0, "pl", "card", 1000l, 0l);
+        ScanFuture sf = tableClient.scan(tid, 0, "pl", "card", 1000l, 0l);
         try {
             KvIterator it = sf.get();
             Assert.assertEquals(0, it.getCount());
@@ -104,12 +107,15 @@ public class TabletSchemaAsyncClientTest {
     }
 
     @Test
-    public void testAsyncScanTable() throws TimeoutException, TabletException {
+    public void testAsyncScanTable() throws TimeoutException, TabletException, InterruptedException, ExecutionException {
         int tid = createTable();
-        Assert.assertTrue(sclient.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 }));
-        Assert.assertTrue(sclient.put(tid, 0, 11, new Object[] { "9527", "1221", 2.0 }));
-        Assert.assertTrue(sclient.put(tid, 0, 12, new Object[] { "9524", "1222", 3.0 }));
-        ScanFuture sf = aclient.scan(tid, 0, "9527", "card", 12, 9);
+        PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 });
+        Assert.assertTrue(pf.get());
+        pf = tableClient.put(tid, 0, 11, new Object[] { "9527", "1221", 2.0 });
+        Assert.assertTrue(pf.get());
+        pf = tableClient.put(tid, 0, 12, new Object[] { "9524", "1222", 3.0 });
+        Assert.assertTrue(pf.get());
+        ScanFuture sf = tableClient.scan(tid, 0, "9527", "card", 12, 9);
         try {
             KvIterator it = sf.get();
             Assert.assertEquals(2, it.getCount());

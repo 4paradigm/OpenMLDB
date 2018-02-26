@@ -16,7 +16,7 @@ public interface TableAsyncClient {
     ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et);
 
     PutFuture put(String name, String key, long time, byte[] bytes);
-
+    PutFuture put(String name, long time, Object[] row);
     ScanFuture scan(String name, String key, String idxName, long st, long et);
 
     ScanFuture scan(String name, String key, long st, long et);

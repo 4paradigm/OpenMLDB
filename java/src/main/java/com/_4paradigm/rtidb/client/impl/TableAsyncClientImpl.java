@@ -82,6 +82,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
     
     @Override
+    public PutFuture put(String name, long time, Object[] row) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
     public GetFuture get(int tid, int pid, String key) {
         TableHandler th = client.getHandler(tid);
         return get(tid, pid, key, 0l, th);
@@ -233,6 +239,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     };
 
+   
     
 
 }

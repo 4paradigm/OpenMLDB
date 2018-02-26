@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client.ha;
+package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.List;
 

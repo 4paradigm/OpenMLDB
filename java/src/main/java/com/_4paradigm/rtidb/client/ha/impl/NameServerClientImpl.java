@@ -66,6 +66,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         if (response != null && response.getCode() == 0) {
             return true;
         }
+        logger.warn("fail to create table for error {}", response.getMsg());
         return false;
     }
 
@@ -76,6 +77,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         if (response != null && response.getCode() == 0) {
             return true;
         }
+        logger.warn("fail to drop table for error {}", response.getMsg());
         return false;
     }
 

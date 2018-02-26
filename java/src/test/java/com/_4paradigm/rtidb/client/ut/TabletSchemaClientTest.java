@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.ut;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +8,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;

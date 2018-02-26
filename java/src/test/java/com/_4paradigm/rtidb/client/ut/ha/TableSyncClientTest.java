@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client.ha;
+package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
@@ -18,14 +19,14 @@ import com.google.protobuf.ByteString;
 
 public class TableSyncClientTest {
 
-    private static String zkEndpoints = "192.168.33.10:12181";
+    private static String zkEndpoints = "127.0.0.1:12181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(1000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
-    private static String[] nodes = new String[] {"192.168.33.10:9522", "192.168.33.10:9521", "192.168.33.10:9520"};
+    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     static {
         try {
             nsc.init();
@@ -87,7 +88,6 @@ public class TableSyncClientTest {
             ByteString bs = tableSyncClient.get(name, "test1");
             String value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value0");
-            
             bs = tableSyncClient.get(name, "test2");
             value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value1");
@@ -163,4 +163,5 @@ public class TableSyncClientTest {
             nsc.dropTable(name);
         }
     }
+    
 }
