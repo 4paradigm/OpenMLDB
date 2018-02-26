@@ -18,7 +18,7 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
  */
 public class NameServerTest {
 
-    private static String zkEndpoints = "127.0.0.1:12181";
+    private static String zkEndpoints = "127.0.0.1:22181";
     private static String leaderPath  = "/onebox/leader";
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     static {
