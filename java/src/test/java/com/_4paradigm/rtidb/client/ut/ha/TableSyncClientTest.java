@@ -21,7 +21,7 @@ public class TableSyncClientTest {
 
     private static String zkEndpoints = "127.0.0.1:12181";
     private static String leaderPath  = "/onebox/leader";
-    private static AtomicInteger id = new AtomicInteger(1000);
+    private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
