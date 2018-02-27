@@ -100,6 +100,13 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
     
     public void close() {
+        try {
+            if (zookeeper != null) {
+                zookeeper.close();
+            }
+        }catch(Exception e) {
+            
+        }
         
     }
 

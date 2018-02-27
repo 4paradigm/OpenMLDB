@@ -18,7 +18,7 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
  */
 public class NameServerTest {
 
-    private static String zkEndpoints = "127.0.0.1:22181";
+    private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     static {
@@ -37,6 +37,7 @@ public class NameServerTest {
             NameServerClientImpl nsc = new NameServerClientImpl("xxxxx", "xxxx");
             nsc.init();
             Assert.assertTrue(false);
+            nsc.close();
         } catch(Exception e) {
             Assert.assertTrue(true);
         }
@@ -48,6 +49,7 @@ public class NameServerTest {
             NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, "xxxx");
             nsc.init();
             Assert.assertTrue(false);
+            nsc.close();
         } catch(Exception e) {
             Assert.assertTrue(true);
         }
@@ -59,6 +61,7 @@ public class NameServerTest {
             NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
             nsc.init();
             Assert.assertTrue(true);
+            nsc.close();
         } catch(Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -81,6 +84,7 @@ public class NameServerTest {
             Assert.assertTrue( nsc.dropTable("t1"));
             tables = nsc.showTable("t1");
             Assert.assertTrue(tables.size() == 0);
+            nsc.close();
         } catch(Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);

@@ -19,7 +19,7 @@ import com.google.protobuf.ByteString;
 
 public class TableSyncClientTest {
 
-    private static String zkEndpoints = "127.0.0.1:22181";
+    private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);

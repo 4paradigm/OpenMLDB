@@ -17,6 +17,7 @@ cp -rf src/proto/name_server.proto java/src/main/proto/rtidb/nameserver/
 
 clear_debug
 test -d /tmp/ut_zookeeper && rm -rf /tmp/ut_zookeeper
+cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
 cd thirdsrc/zookeeper-3.4.10/bin && ./zkServer.sh start && cd $ROOT_DIR
 
 ./build/bin/rtidb --db_root_path=/tmp/$RANDOM --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9501 --role=tablet &
