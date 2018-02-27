@@ -86,11 +86,15 @@ void ZkClient::HandleNodesChanged(int type, int state) {
         if (!ok) {
             return;
         }
-        std::lock_guard<std::mutex> lock(mu_);
+        std::vector<NodesChangedCallback> watch_callbacks_vec;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            watch_callbacks_vec = nodes_watch_callbacks_;
+        }
         PDLOG(INFO, "handle node changed event with type %d, and state %d, endpoints size %d, callback size %d", 
-                type, state, endpoints.size(), nodes_watch_callbacks_.size());
-        std::vector<NodesChangedCallback>::iterator it = nodes_watch_callbacks_.begin();
-        for (; it != nodes_watch_callbacks_.end(); ++it) {
+                type, state, endpoints.size(), watch_callbacks_vec.size());
+        std::vector<NodesChangedCallback>::iterator it = watch_callbacks_vec.begin();
+        for (; it != watch_callbacks_vec.end(); ++it) {
             (*it)(endpoints);
         }
     }
