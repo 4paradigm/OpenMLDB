@@ -1,5 +1,7 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.zookeeper.WatchedEvent;
@@ -47,6 +49,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         if (children.isEmpty()) {
             throw new TabletException("no nameserver avaliable");
         }
+        Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
         EndPoint endpoint = new EndPoint(new String(bytes));
         RpcBaseClient bs = new RpcBaseClient();
@@ -55,7 +58,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
         rpcClient.updateEndpoint(endpoint, bcg);
         ns = (NameServer) RpcProxy.getProxy(rpcClient, NameServer.class);
-        logger.info("connect leader {} ok", endpoint);
+        logger.info("connect leader path {} endpoint {} ok", children.get(0), endpoint);
 
     }
 
