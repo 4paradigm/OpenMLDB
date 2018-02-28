@@ -180,5 +180,23 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     @Override
     public void process(WatchedEvent event) {}
+
+    @Override
+    public void close() {
+        if (nodeManager != null) {
+            nodeManager.close();
+        }
+            
+        if (zookeeper != null) {
+            try {
+                zookeeper.close();
+            } catch (InterruptedException e) {
+                logger.error("fail to close zk", e);
+            }
+        }
+        if (baseClient != null) {
+            baseClient.stop();
+        }
+    }
     
 }

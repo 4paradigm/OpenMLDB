@@ -93,5 +93,11 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
         }
         return th;
     }
+
+    @Override
+    public void close() {
+        // TODO Auto-generated method stub
+        
+    }
     
 }

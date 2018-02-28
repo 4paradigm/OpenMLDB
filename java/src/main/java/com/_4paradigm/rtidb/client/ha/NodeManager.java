@@ -70,5 +70,13 @@ public class NodeManager {
         oldEndpoints.clear();
         oldEndpointSet.clear();
     }
+    
+    public void close() {
+        Iterator<Map.Entry<EndPoint, BrpcChannelGroup>> it = endpoints.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<EndPoint, BrpcChannelGroup> entry = it.next();
+            entry.getValue().close();
+        }
+    }
 
 }

@@ -1,6 +1,5 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
