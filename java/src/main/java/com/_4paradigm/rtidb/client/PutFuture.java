@@ -36,6 +36,10 @@ public class PutFuture implements Future<Boolean>{
 		return new PutFuture(f, startTime);
 	}
 	
+	public static PutFuture wrapper(List<Future<Tablet.PutResponse>> bf) {
+        return new PutFuture(bf);
+    }
+	
 	@Override
 	public boolean cancel(boolean mayInterruptIfRunning) {
 	    boolean ok = true;

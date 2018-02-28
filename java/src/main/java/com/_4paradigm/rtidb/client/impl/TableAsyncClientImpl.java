@@ -2,7 +2,10 @@ package com._4paradigm.rtidb.client.impl;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
@@ -82,9 +85,53 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
     
     @Override
-    public PutFuture put(String name, long time, Object[] row) {
-        // TODO Auto-generated method stub
-        return null;
+    public PutFuture put(String name, long time, Object[] row) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
+        Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
+        int index = 0;
+        for (int i = 0; i < th.getSchema().size(); i++) {
+            if (th.getSchema().get(i).isAddTsIndex()) {
+                if (row[i] == null) {
+                    throw new TabletException("index " + index + "column is empty");
+                }
+                String value = row[i].toString();
+                if (value.isEmpty()) {
+                    throw new TabletException("index" + index + " column is empty");
+                }
+                int pid = (int) (MurmurHash.hash64(value) % th.getPartitions().length);
+                if (pid < 0) {
+                    pid = pid * -1;
+                }
+                Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
+                List<Tablet.Dimension> dimList = mapping.get(pid);
+                if (dimList == null) {
+                    dimList = new ArrayList<Tablet.Dimension>();
+                    mapping.put(pid, dimList);
+                }
+                dimList.add(dim);
+                index++;
+            }
+        }
+        List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
+        Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
+            Future<PutResponse> response = putForInternal(th.getTableInfo().getTid(), entry.getKey(), null, 
+                             time, entry.getValue(), buffer, 
+                             th.getHandler(entry.getKey()));
+            pl.add(response);
+        }
+        return PutFuture.wrapper(pl);
+    }
+    
+    @Override
+    public PutFuture put(String name, String key, long time, String value) {
+        
+        return put(name, key, time, value.getBytes(Charsets.UTF_8));
     }
 
     @Override
@@ -154,7 +201,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             String key, long time, 
             List<Tablet.Dimension> ds, 
             ByteBuffer row, PartitionHandler ph) {
-        
+        long start = System.currentTimeMillis();
+        Future<PutResponse> response = putForInternal(tid, pid, key, time, ds, row, ph);
+        return PutFuture.wrapper(response, start);
+    }
+    
+    private Future<PutResponse> putForInternal(int tid, int pid, 
+            String key, long time, 
+            List<Tablet.Dimension> ds, 
+            ByteBuffer row, PartitionHandler ph) {
         TabletServer tablet = ph.getLeader();
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         if (ds != null) {
@@ -171,9 +226,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         row.rewind();
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
         Tablet.PutRequest request = builder.build();
-        Long start = System.nanoTime();
         Future<PutResponse> response = tablet.put(request, putFakeCallback);
-        return PutFuture.wrapper(response, start);
+        return response;
     }
     
     private GetFuture get(int tid, int pid, String key, long time, TableHandler th) {
@@ -239,6 +293,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     };
 
+   
    
     
 
