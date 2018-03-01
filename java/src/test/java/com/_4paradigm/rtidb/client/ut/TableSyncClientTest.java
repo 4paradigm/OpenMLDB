@@ -70,13 +70,18 @@ public class TableSyncClientTest {
     @Test
     public void test3Scan() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
-        KvIterator it = tableClient.scan(tid, 0, "pk", 9527, 9526);
-        Assert.assertNull(it);
+        try {
+            tableClient.scan(tid, 0, "pk", 9527, 9526);
+            Assert.assertTrue(false);
+        }catch (TabletException e) {
+            Assert.assertTrue(true);
+        }
+        
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = tableClient.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(ok);
-        it = tableClient.scan(tid, 0, "pk", 9527l, 9526l);
+        KvIterator it = tableClient.scan(tid, 0, "pk", 9527l, 9526l);
         Assert.assertTrue(it != null);
         Assert.assertTrue(it.valid());
         Assert.assertEquals(9527l, it.getKey());

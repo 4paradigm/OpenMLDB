@@ -350,8 +350,14 @@ public class TabletSchemaClientTest {
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
-        KvIterator it = tableClient.scan(tid, 0, "9527", "card", 12l, 0l);
-        Assert.assertFalse(it != null);
+        try {
+            tableClient.scan(tid, 0, "9527", "card", 12l, 0l);
+            Assert.assertTrue(false);
+        }catch(TabletException e) {
+            Assert.assertTrue(true);
+        }
+        
+        
 
     }
 

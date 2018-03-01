@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,6 +15,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.NodeManager;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
@@ -45,7 +47,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         this.config = config;
     }
 
-    public void init() throws Exception {
+    public void init() throws TabletException, IOException {
         RpcClientOptions options = new RpcClientOptions();
         options.setIoThreadNum(config.getIoThreadNum());
         options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
@@ -54,17 +56,23 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
         zookeeper = new ZooKeeper(config.getZkEndpoints(), (int) config.getZkSesstionTimeout(), this);
-        try {
-            while (!zookeeper.getState().isConnected()) {
+
+        int failedCountDown = 10;
+        while (!zookeeper.getState().isConnected() && failedCountDown > 0) {
+            try {
                 Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                logger.error("interrupted", e);
             }
-            onZkConnected();
-        } catch (Exception e) {
-            logger.error("fail to init rtidb client", e);
+            failedCountDown--;
         }
 
-    }
+        if (!zookeeper.getState().isConnected()) {
+            throw new TabletException("fail to connect zookeeper " + config.getZkEndpoints());
+        }
+        onZkConnected();
 
+    }
 
     private void onZkConnected() {
         try {
@@ -106,7 +114,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         EndPoint endpoint = new EndPoint(pm.getEndpoint());
                         BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
                         if (bcg == null) {
-                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(), endpoint);
+                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
+                                    endpoint);
                             continue;
                         }
                         SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
@@ -137,7 +146,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             logger.error("fail to refresh table", e);
         }
     }
-
 
     public boolean refreshNodeList() {
         try {
@@ -176,14 +184,15 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     }
 
     @Override
-    public void process(WatchedEvent event) {}
+    public void process(WatchedEvent event) {
+    }
 
     @Override
     public void close() {
         if (nodeManager != null) {
             nodeManager.close();
         }
-            
+
         if (zookeeper != null) {
             try {
                 zookeeper.close();
@@ -200,5 +209,5 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     public RTIDBClientConfig getConfig() {
         return config;
     }
-    
+
 }
