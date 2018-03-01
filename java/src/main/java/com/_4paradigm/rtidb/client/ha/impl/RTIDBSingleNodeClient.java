@@ -49,7 +49,7 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
         nodeManager = new NodeManager(baseClient);
         Set<EndPoint> nodes = new HashSet<EndPoint>();
         nodes.add(endpoint);
-        nodeManager.swap(nodes);
+        nodeManager.update(nodes);
         singleNodeClient = new SingleEndpointRpcClient(baseClient);
         singleNodeClient.updateEndpoint(endpoint, nodeManager.getChannel(endpoint));
         tabletServer = (TabletServer) RpcProxy.getProxy(singleNodeClient, TabletServer.class);

@@ -159,7 +159,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     logger.error("fail to add endpoint", e);
                 }
             }
-            nodeManager.swap(endpoinSet);
+            nodeManager.update(endpoinSet);
             return true;
         } catch (Exception e) {
             logger.error("fail to refresh node manger", e);

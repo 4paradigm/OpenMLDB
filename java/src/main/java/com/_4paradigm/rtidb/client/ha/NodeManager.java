@@ -31,7 +31,7 @@ public class NodeManager {
         return endpointSet;
     }
 
-    public void swap(Set<EndPoint> aliveEndpointSet) {
+    public void update(Set<EndPoint> aliveEndpointSet) {
         Map<EndPoint, BrpcChannelGroup> oldEndpoints = endpoints;
         Set<EndPoint> oldEndpointSet = endpointSet;
         // new add endpoint

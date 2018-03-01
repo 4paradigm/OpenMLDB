@@ -18,18 +18,18 @@ public class NodeManagerTest {
         NodeManager nm = new NodeManager(bc);
         Assert.assertEquals(0, nm.getEndpointSet().size());
         Set<EndPoint> nodes = new HashSet<EndPoint>();
-        nm.swap(nodes);
+        nm.update(nodes);
         Assert.assertEquals(0, nm.getEndpointSet().size());
         EndPoint endpoint1 = new EndPoint("127.0.0.1:12345");
         nodes.add(endpoint1);
-        nm.swap(nodes);
+        nm.update(nodes);
         Assert.assertEquals(1, nm.getEndpointSet().size());
         Assert.assertEquals(endpoint1, nm.getEndpointSet().iterator().next());
         BrpcChannelGroup bcg = nm.getChannel(endpoint1);
         Assert.assertTrue(bcg.getIp().equals("127.0.0.1"));
         Assert.assertEquals(bcg.getPort(), 12345);
         
-        nm.swap(nodes);
+        nm.update(nodes);
         
         BrpcChannelGroup bcg2 = nm.getChannel(endpoint1);
         // test reuse channel
@@ -40,7 +40,7 @@ public class NodeManagerTest {
         EndPoint endPoint2 = new EndPoint("127.0.0.1:12346");
         nodes.add(endPoint2);
         
-        nm.swap(nodes);
+        nm.update(nodes);
         
         BrpcChannelGroup bcg3 = nm.getChannel(endpoint1);
         // test reuse channel
@@ -55,7 +55,7 @@ public class NodeManagerTest {
         Set<EndPoint> newNodes = new HashSet<EndPoint>();
         EndPoint endPoint3 = new EndPoint("127.0.0.1:12347");
         newNodes.add(endPoint3);
-        nm.swap(newNodes);
+        nm.update(newNodes);
         
         Assert.assertEquals(1, nm.getEndpointSet().size());
         BrpcChannelGroup bcg6 = nm.getChannel(endPoint3);
