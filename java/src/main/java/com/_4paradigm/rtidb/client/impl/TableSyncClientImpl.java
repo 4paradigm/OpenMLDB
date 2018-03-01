@@ -8,15 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.RowCodec;
@@ -29,21 +25,25 @@ import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 
 public class TableSyncClientImpl implements TableSyncClient {
-    private final static Logger logger = LoggerFactory.getLogger(TableSyncClientImpl.class);
     private RTIDBClient client;
-
     public TableSyncClientImpl(RTIDBClient client) {
         this.client = client;
     }
-
     @Override
-    public boolean put(int tid, int pid, String key, long time, byte[] bytes) throws TimeoutException {
-        PartitionHandler ph = client.getHandler(tid).getHandler(pid);
+    public boolean put(int tid, int pid, String key, long time, byte[] bytes) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
+        if (th.getPartitions().length <= pid) {
+            throw new TabletException("fail to find partition with pid "+ pid +" from table " +th.getTableInfo().getName());
+        }
+        PartitionHandler ph = th.getHandler(pid);
         return put(tid, pid, key, time, bytes, ph);
     }
 
     @Override
-    public boolean put(int tid, int pid, String key, long time, String value) throws TimeoutException {
+    public boolean put(int tid, int pid, String key, long time, String value) throws TimeoutException, TabletException {
         return put(tid, pid, key, time, value.getBytes(Charsets.UTF_8));
     }
     
@@ -96,7 +96,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         long network = System.nanoTime() - consumed;
         consumed = System.nanoTime();
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        if (RTIDBClientConfig.isMetricsEnabled()) {
+        if (client.getConfig().isMetricsEnabled()) {
             long decode = System.nanoTime() - consumed;
             TabletMetrics.getInstance().addGet(decode, network);
         }
@@ -126,7 +126,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         long network = System.nanoTime() - consumed;
         consumed = System.nanoTime();
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        if (RTIDBClientConfig.isMetricsEnabled()) {
+        if (client.getConfig().isMetricsEnabled()) {
             long decode = System.nanoTime() - consumed;
             TabletMetrics.getInstance().addGet(decode, network);
         }
@@ -303,7 +303,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Long encode = System.nanoTime() - consumed;
         consumed = System.nanoTime();
         Tablet.PutResponse response = tablet.put(request);
-        if (RTIDBClientConfig.isMetricsEnabled()) {
+        if (client.getConfig().isMetricsEnabled()) {
             Long network = System.nanoTime() - consumed;
             TabletMetrics.getInstance().addPut(encode, network);
         }

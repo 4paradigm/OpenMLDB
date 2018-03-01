@@ -96,8 +96,17 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
 
     @Override
     public void close() {
-        // TODO Auto-generated method stub
-        
+        if (baseClient != null) {
+            baseClient.stop();
+        }
+        if (nodeManager != null) {
+            nodeManager.close();
+        }
+    }
+
+    @Override
+    public RTIDBClientConfig getConfig() {
+        return config;
     }
     
 }

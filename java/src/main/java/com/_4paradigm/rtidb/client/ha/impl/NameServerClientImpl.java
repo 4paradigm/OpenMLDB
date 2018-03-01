@@ -107,7 +107,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 zookeeper.close();
             }
         }catch(Exception e) {
-            
+            logger.error("fail to close zookeeper", e);
         }
         
     }

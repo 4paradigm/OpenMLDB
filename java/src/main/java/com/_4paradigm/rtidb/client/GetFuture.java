@@ -16,25 +16,31 @@ import com.google.protobuf.ByteString;
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
 	private TableHandler t;
-	private long startTime;
-	public static GetFuture wrappe(Future<Tablet.GetResponse> f, long startTime) {
-		return new GetFuture(f, startTime);
-	}
+	private long startTime = 0;
+	private RTIDBClientConfig config = null;
 	
-	public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, long startTime) {
-		return new GetFuture(f, t, startTime);
-	}
+	public static GetFuture wrappe(Future<Tablet.GetResponse> f, long startTime, RTIDBClientConfig config) {
+        return new GetFuture(f, startTime, config);
+    }
+    
+    public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, long startTime, RTIDBClientConfig config) {
+        return new GetFuture(f, t, startTime, config);
+    }
 	
-	public GetFuture(Future<Tablet.GetResponse> f, long startTime) {
-		this.f = f;
-		this.startTime = startTime;
-	}
 	
-	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long startTime) {
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long startTime, RTIDBClientConfig config) {
 		this.f = f;
 		this.t = t;
 		this.startTime = startTime;
+		this.config = config;
 	}
+	
+	public GetFuture(Future<Tablet.GetResponse> f,  long startTime, RTIDBClientConfig config) {
+        this.f = f;
+        this.startTime = startTime;
+        this.config = config;
+    }
+    
 	
 	@Override
 	public boolean cancel(boolean mayInterruptIfRunning) {
@@ -59,7 +65,7 @@ public class GetFuture implements Future<ByteString>{
 		long network = System.nanoTime() - startTime;
 		long decode = System.nanoTime();
 		Object[] row = RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema());
-		if (RTIDBClientConfig.isMetricsEnabled()) {
+		if (config != null && config.isMetricsEnabled()) {
 		    decode = System.nanoTime() - decode;
 		    TabletMetrics.getInstance().addGet(decode, network);
 		}
@@ -77,7 +83,7 @@ public class GetFuture implements Future<ByteString>{
         long network = System.nanoTime() - startTime;
         long decode = System.nanoTime();
         Object[] row = RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema());
-        if (RTIDBClientConfig.isMetricsEnabled()) {
+        if (config != null && config.isMetricsEnabled()) {
             decode = System.nanoTime() - decode;
             TabletMetrics.getInstance().addGet(decode, network);
         }

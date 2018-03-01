@@ -5,7 +5,7 @@ public class RTIDBClientConfig {
     public enum Mode {
         kSingleNodeMode, kClusterMode
     }
-	private static boolean ENABLE_METRICS = true;
+	private boolean enableMetrics = true;
 	private String zkEndpoints = "";
 	private String zkTableRootPath = "";
 	private String zkTableNotifyPath = "";
@@ -16,11 +16,10 @@ public class RTIDBClientConfig {
 	private int readTimeout = 10000;
 	private int maxCntCnnPerHost = 2;
 	private Mode mode;
-	public static void disableMetrics() {
-		ENABLE_METRICS = false;
+	public void disableMetrics() {
+	    enableMetrics = false;
 	}
 	
-
     public Mode getMode() {
         return mode;
     }
@@ -77,12 +76,12 @@ public class RTIDBClientConfig {
         this.zkSesstionTimeout = zkSesstionTimeout;
     }
 
-    public static void enableMetrics() {
-		ENABLE_METRICS = true;
+    public void enableMetrics() {
+        enableMetrics = true;
 	}
 	
-	public static boolean isMetricsEnabled() {
-		return ENABLE_METRICS;
+	public boolean isMetricsEnabled() {
+		return enableMetrics;
 	}
 
     public String getZkEndpoints() {

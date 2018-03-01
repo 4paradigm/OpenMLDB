@@ -102,7 +102,7 @@ public class TabletAsyncClientImpl implements TabletAsyncClient {
         // TODO add read strategy
         long startTime = System.nanoTime();
         Future<Tablet.GetResponse> f = th.getHandler(pid).getLeader().get(request, getFakeCallback);
-        return GetFuture.wrappe(f, th, startTime);
+        return GetFuture.wrappe(f, th, startTime, client.getConfig());
     }
 
     @Override

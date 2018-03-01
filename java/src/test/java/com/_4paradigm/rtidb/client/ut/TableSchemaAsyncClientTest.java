@@ -92,7 +92,7 @@ public class TableSchemaAsyncClientTest {
         }
     }
     
-    public void testAsyncScanTableDataNotExist() {
+    public void testAsyncScanTableDataNotExist() throws TabletException {
         int tid = createTable();
         ScanFuture sf = tableClient.scan(tid, 0, "pl", "card", 1000l, 0l);
         try {

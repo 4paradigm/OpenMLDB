@@ -6,5 +6,7 @@ public interface RTIDBClient {
     
     TableHandler getHandler(int tid);
     
+    RTIDBClientConfig getConfig();
+    
     void close();
 }

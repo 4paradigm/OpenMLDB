@@ -65,9 +65,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     }
 
-    private void watchNotifier() {
-
-    }
 
     private void onZkConnected() {
         try {
@@ -197,6 +194,11 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         if (baseClient != null) {
             baseClient.stop();
         }
+    }
+
+    @Override
+    public RTIDBClientConfig getConfig() {
+        return config;
     }
     
 }

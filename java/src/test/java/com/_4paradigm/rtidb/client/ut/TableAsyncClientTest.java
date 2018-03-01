@@ -12,6 +12,7 @@ import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
@@ -39,7 +40,7 @@ public class TableAsyncClientTest {
     }
 
     @Test
-    public void test1Put() throws TimeoutException, InterruptedException, ExecutionException {
+    public void test1Put() throws TimeoutException, InterruptedException, ExecutionException, TabletException {
         int tid = id.incrementAndGet();
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
@@ -51,7 +52,7 @@ public class TableAsyncClientTest {
     }
 
     @Test
-    public void test3Scan() throws TimeoutException, InterruptedException, ExecutionException {
+    public void test3Scan() throws TimeoutException, InterruptedException, ExecutionException, TabletException {
         int tid = id.incrementAndGet();
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);

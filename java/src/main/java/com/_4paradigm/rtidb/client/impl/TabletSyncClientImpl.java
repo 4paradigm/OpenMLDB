@@ -19,13 +19,11 @@ import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.TabletSyncClient;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
-import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 import com._4paradigm.utils.MurmurHash;
@@ -48,6 +46,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
     @Override
     public boolean put(int tid, int pid, String key, long time, byte[] bytes) throws TimeoutException {
+        
         PartitionHandler ph = client.getHandler(tid).getHandler(pid);
         return put(tid, pid, key, time, bytes, ph);
     }
@@ -61,7 +60,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         consumed = System.nanoTime();
         Tablet.PutResponse response = ph.getLeader().put(request);
         Long network = System.nanoTime() - consumed;
-        if (RTIDBClientConfig.isMetricsEnabled()) {
+        if (client.getConfig().isMetricsEnabled()) {
             TabletMetrics.getInstance().addPut(encode, network);
         }
         if (response != null && response.getCode() == 0) {
@@ -137,7 +136,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         Long encode = System.nanoTime() - consumed;
         consumed = System.nanoTime();
         Tablet.PutResponse response = tablet.put(request);
-        if (RTIDBClientConfig.isMetricsEnabled()) {
+        if (client.getConfig().isMetricsEnabled()) {
             Long network = System.nanoTime() - consumed;
             TabletMetrics.getInstance().addPut(encode, network);
         }
@@ -261,7 +260,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         long network = System.nanoTime() - consumed;
         consumed = System.nanoTime();
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        if (RTIDBClientConfig.isMetricsEnabled()) {
+        if (client.getConfig().isMetricsEnabled()) {
             long decode = System.nanoTime() - consumed;
             TabletMetrics.getInstance().addGet(decode, network);
         }

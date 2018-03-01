@@ -15,15 +15,17 @@ public class PutFuture implements Future<Boolean>{
 
 	private List<Future<Tablet.PutResponse>> bf = new ArrayList<Future<Tablet.PutResponse>>();
 	private Long startTime = -1l;
+	private RTIDBClientConfig config = null;
 	public PutFuture(Future<Tablet.PutResponse> f) {
 	    bf.add(f);
 	}
 	
-	public PutFuture(Future<Tablet.PutResponse> f, Long startTime) {
-		bf.add(f);
-		this.startTime = startTime;
-	}
-	
+	public PutFuture(Future<Tablet.PutResponse> f, Long startTime, RTIDBClientConfig config) {
+        this(f);
+        this.startTime = startTime;
+        this.config = config;
+    }
+    
 	public PutFuture(List<Future<Tablet.PutResponse>> bf) {
 	    this.bf = bf;
 	}
@@ -32,8 +34,8 @@ public class PutFuture implements Future<Boolean>{
 		return new PutFuture(f);
 	}
 	
-	public static PutFuture wrapper(Future<Tablet.PutResponse> f, Long startTime) {
-		return new PutFuture(f, startTime);
+	public static PutFuture wrapper(Future<Tablet.PutResponse> f, Long startTime, RTIDBClientConfig config) {
+		return new PutFuture(f, startTime, config);
 	}
 	
 	public static PutFuture wrapper(List<Future<Tablet.PutResponse>> bf) {
@@ -75,7 +77,7 @@ public class PutFuture implements Future<Boolean>{
         }
 		if (startTime > 0) {
 			Long network = System.nanoTime() - startTime;
-			if(RTIDBClientConfig.isMetricsEnabled()) {
+			if(config != null && config.isMetricsEnabled()) {
 				TabletMetrics.getInstance().addPut(-1l, network);
 			}
 		}

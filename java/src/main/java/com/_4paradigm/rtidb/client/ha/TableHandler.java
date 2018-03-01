@@ -43,6 +43,9 @@ public class TableHandler {
     
     public TableHandler() {}
     public PartitionHandler getHandler(int pid) {
+        if (pid >= partitions.length) {
+            return null;
+        }
         return partitions[pid];
     }
 

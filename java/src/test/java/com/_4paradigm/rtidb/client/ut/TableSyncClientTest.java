@@ -9,6 +9,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
@@ -53,7 +54,7 @@ public class TableSyncClientTest {
     }
 
     @Test
-    public void test1Put() throws TimeoutException {
+    public void test1Put() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
         Assert.assertFalse(tableClient.put(tid, 0, "pk", 9527, "test0"));
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
@@ -67,7 +68,7 @@ public class TableSyncClientTest {
     }
 
     @Test
-    public void test3Scan() throws TimeoutException {
+    public void test3Scan() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
         KvIterator it = tableClient.scan(tid, 0, "pk", 9527, 9526);
         Assert.assertNull(it);

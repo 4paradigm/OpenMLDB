@@ -8,9 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
@@ -32,7 +29,7 @@ import io.brpc.client.RpcCallback;
 import rtidb.api.TabletServer;
 
 public class TableAsyncClientImpl implements TableAsyncClient {
-    private final static Logger logger = LoggerFactory.getLogger(TableAsyncClientImpl.class);
+    
     private RTIDBClient client;
     
     public TableAsyncClientImpl(RTIDBClient client) {
@@ -42,6 +39,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     @Override
     public PutFuture put(int tid, int pid, long time, Object[] row) throws TabletException {
         TableHandler tableHandler = client.getHandler(tid);
+        if (tableHandler == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
+        if (tableHandler.getPartitions().length <= pid) {
+            throw new TabletException("fail to find partition with pid "+ pid +" from table " +tableHandler.getTableInfo().getName());
+        }
         ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         int index = 0;
@@ -63,20 +66,29 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
     
     @Override
-    public PutFuture put(int tid, int pid, String key, long time, byte[] bytes) {
-        PartitionHandler ph = client.getHandler(tid).getHandler(pid);
+    public PutFuture put(int tid, int pid, String key, long time, byte[] bytes) throws TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
+        if (th.getPartitions().length <= pid) {
+            throw new TabletException("fail to find partition with pid "+ pid +" from table " +th.getTableInfo().getName());
+        }
+        PartitionHandler ph = th.getHandler(pid);
         return put(tid, pid, key, time, bytes, ph);
     }
 
     @Override
-    public PutFuture put(int tid, int pid, String key, long time, String value) {
-        PartitionHandler ph = client.getHandler(tid).getHandler(pid);
-        return put(tid, pid, key, time, value.getBytes(Charsets.UTF_8), ph);
+    public PutFuture put(int tid, int pid, String key, long time, String value) throws TabletException {
+        return put(tid, pid, key, time, value.getBytes(Charsets.UTF_8));
     }
 
     @Override
-    public PutFuture put(String name, String key, long time, byte[] bytes) {
+    public PutFuture put(String name, String key, long time, byte[] bytes) throws TabletException {
         TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("fail to find table with name " + name);
+        }
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -129,38 +141,45 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
     
     @Override
-    public PutFuture put(String name, String key, long time, String value) {
-        
+    public PutFuture put(String name, String key, long time, String value) throws TabletException {
         return put(name, key, time, value.getBytes(Charsets.UTF_8));
     }
 
     @Override
-    public GetFuture get(int tid, int pid, String key) {
-        TableHandler th = client.getHandler(tid);
-        return get(tid, pid, key, 0l, th);
+    public GetFuture get(int tid, int pid, String key) throws TabletException {
+        return get(tid, pid, key, 0l);
     }
 
     @Override
-    public GetFuture get(int tid, int pid, String key, long time) {
+    public GetFuture get(int tid, int pid, String key, long time) throws TabletException {
         TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with id " + tid);
+        }
         return get(tid, pid, key, time, th);
     }
 
     @Override
-    public ScanFuture scan(int tid, int pid, String key, long st, long et) {
+    public ScanFuture scan(int tid, int pid, String key, long st, long et) throws TabletException {
         return scan(tid, pid, key, null, st, et);
     }
 
     @Override
-    public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) {
+    public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) throws TabletException {
         TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with id " + tid);
+        }
         return scan(tid, pid, key, idxName, st, et, th);
     }
 
     
     @Override
-    public ScanFuture scan(String name, String key, String idxName, long st, long et) {
+    public ScanFuture scan(String name, String key, String idxName, long st, long et) throws TabletException {
         TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -169,8 +188,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
-    public ScanFuture scan(String name, String key, long st, long et) {
+    public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
         TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -179,8 +201,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
-    public GetFuture get(String name, String key, long time) {
+    public GetFuture get(String name, String key, long time) throws TabletException {
         TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -189,7 +214,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
-    public GetFuture get(String name, String key) {
+    public GetFuture get(String name, String key) throws TabletException {
         return get(name, key, 0l);
     }
     
@@ -203,7 +228,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             ByteBuffer row, PartitionHandler ph) {
         long start = System.currentTimeMillis();
         Future<PutResponse> response = putForInternal(tid, pid, key, time, ds, row, ph);
-        return PutFuture.wrapper(response, start);
+        return PutFuture.wrapper(response, start, client.getConfig());
     }
     
     private Future<PutResponse> putForInternal(int tid, int pid, 
@@ -235,7 +260,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                 .build();
         Long startTime = System.currentTimeMillis();
         Future<Tablet.GetResponse> response = th.getHandler(pid).getLeader().get(request, getFakeCallback);
-        return GetFuture.wrappe(response, th, startTime);
+        return GetFuture.wrappe(response, th, startTime, client.getConfig());
     }
     
     
