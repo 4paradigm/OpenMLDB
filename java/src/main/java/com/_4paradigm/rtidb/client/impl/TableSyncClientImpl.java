@@ -158,12 +158,12 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
     
     @Override
-    public KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException {
+    public KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException, TabletException {
         return scan(tid, pid, key, null, st, et);
     }
     
     @Override
-    public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et) throws TimeoutException {
+    public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
         return scan(tid, pid, key, idxName, st, et, th);
     }
@@ -195,7 +195,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, th);
     }
 
-    private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th)throws TimeoutException  {
+    private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th)throws TimeoutException, TabletException  {
         TabletServer tabletServer = th.getHandler(pid).getLeader();
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
@@ -215,7 +215,10 @@ public class TableSyncClientImpl implements TableSyncClient {
             it.setCount(response.getCount());
             return it;
         }
-        return null;
+        if (response != null) {
+            throw new TabletException(response.getMsg());
+        }
+        throw new TabletException("rtidb internal server error");
     }
     
     @Override
