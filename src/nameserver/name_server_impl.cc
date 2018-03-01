@@ -2648,14 +2648,15 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
         return;
     }
-    int old_leader_index = 0;
-    int new_leader_index = 0;
+    int old_leader_index = -1;
+    int new_leader_index = -1;
     for (int idx = 0; idx < table_iter->second->table_partition_size(); idx++) {
         if (table_iter->second->table_partition(idx).pid() != pid) {
             continue;
         }
         for (int meta_idx = 0; meta_idx < table_iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (table_iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+            if (table_iter->second->table_partition(idx).partition_meta(meta_idx).is_leader() && 
+                    table_iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                 old_leader_index = meta_idx;
             } else if (table_iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == leader_endpoint) {
                 new_leader_index = meta_idx;
@@ -2663,9 +2664,17 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         }
         ::rtidb::nameserver::TablePartition* table_partition = 
                 table_iter->second->mutable_table_partition(idx);
-        ::rtidb::nameserver::PartitionMeta* old_leader_meta = 
-                table_partition->mutable_partition_meta(old_leader_index);
-        old_leader_meta->set_is_alive(false);
+        if (old_leader_index >= 0) {
+            ::rtidb::nameserver::PartitionMeta* old_leader_meta = 
+                    table_partition->mutable_partition_meta(old_leader_index);
+            old_leader_meta->set_is_alive(false);
+        }
+        if (new_leader_index < 0) {
+            PDLOG(WARNING, "endpoint[%s] is not exist. name[%s] pid[%u]", 
+                            leader_endpoint.c_str(),  name.c_str(), pid);
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            return;
+        }
         ::rtidb::nameserver::PartitionMeta* new_leader_meta = 
                 table_partition->mutable_partition_meta(new_leader_index);
         new_leader_meta->set_is_leader(true);
@@ -2685,6 +2694,8 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         task_info->set_status(::rtidb::api::TaskStatus::kDone);
         break;
     }
+    PDLOG(WARNING, "partition[%u] is not exist. name[%s]", pid, name.c_str());
+    task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
 }
 
 }
