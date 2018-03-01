@@ -268,7 +268,7 @@ TEST_F(NameServerImplTest, CreateTable) {
 }    
 
 TEST_F(NameServerImplTest, Offline) {
-    FLAGS_zk_cluster = "127.0.0.1:12181";
+    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_auto_failover = true;
     FLAGS_endpoint = "127.0.0.1:9633";
