@@ -2692,7 +2692,7 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         PDLOG(INFO, "change leader success. name[%s] pid[%u] new leader[%s]", 
                     name.c_str(), pid, leader_endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kDone);
-        break;
+        return;
     }
     PDLOG(WARNING, "partition[%u] is not exist. name[%s]", pid, name.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
