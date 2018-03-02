@@ -25,5 +25,6 @@ if __name__ == '__main__':
     if not args.teardown or args.teardown.lower() == 'false':
         nsc.start_zk()
         nsc.start(*nsc.endpoints)
+        nsc.get_ns_leader()
         tbc.start(tbc.endpoints)
         nsc_leader = nsc.leader

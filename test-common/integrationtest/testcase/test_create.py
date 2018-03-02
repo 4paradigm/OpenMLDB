@@ -73,9 +73,14 @@ class TestCreateTable(TestCaseBase):
                           card='string:index', merchant='string')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
-        schema_d = self.parse_sechema(schema)
+        schema_d = self.parse_schema(schema)
         self.assertEqual(schema_d['card'], ['string', 'yes'])
         self.assertEqual(schema_d['merchant'], ['string', 'no'])
+        rs2 = self.get_table_meta(self.leaderpath, self.tid, self.pid)
+        self.assertEqual(rs2['ttl'], '144000')
+        self.assertEqual(rs2['ttl_type'], 'kAbsoluteTime')
+        self.assertEqual(rs2['dimensions'], '"card"')
+        self.assertEqual(rs2['schema'], '"\\000\\000\\010merchant\\000\\001\\004card"')
 
 
     @multi_dimension(True)
@@ -127,6 +132,25 @@ class TestCreateTable(TestCaseBase):
         rs1 = self.run_client(self.leader, 'screate t {} {} 144000 2 true card:string:index card:string:index'.format(
             self.tid, self.pid))
         self.assertTrue('Duplicated column card' in rs1)
+
+
+    @multi_dimension(True)
+    def test_screate_table_latest_ttl(self):
+        """
+        创建高维表，ttl是latest
+        :return:
+        """
+        rs1 = self.run_client(
+            self.leader,
+            'screate t {} {} latest:10 2 true k1:string:index k2:string:index k3:string:index'.format(
+            self.tid, self.pid))
+        self.assertTrue('Create table ok' in rs1)
+        rs2 = self.get_table_meta(self.leaderpath, self.tid, self.pid)
+        infoLogger.info(rs2)
+        self.assertEqual(rs2['ttl_type'], 'kLatestTime')
+        self.assertEqual(rs2['ttl'], '10')
+        self.assertEqual(rs2['dimensions'], '"k3"|"k2"|"k1"')
+        self.assertEqual(rs2['schema'], '"\\000\\001\\002k1\\000\\001\\002k2\\000\\001\\002k3"')
 
 
 if __name__ == "__main__":

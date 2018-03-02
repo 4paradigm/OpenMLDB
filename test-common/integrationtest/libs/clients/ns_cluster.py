@@ -14,23 +14,26 @@ class NsCluster(object):
     def __init__(self, zk_endpoint, *endpoints):
         self.endpoints = endpoints
         self.zk_endpoint = zk_endpoint
+        self.zk_path = os.getenv('zkpath')
+        self.test_path = os.getenv('testpath')
+        self.ns_edp_path = {endpoints[i]: self.test_path + '/ns{}'.format(i + 1) for i in range(len(endpoints))}
         self.leader = ''
+        self.leaderpath = ''
 
 
     def start_zk(self):
-        zk_path = os.getenv('zkpath')
+        exe_shell("echo 1 >> {}/data/myid".format(self.zk_path))
         port = self.zk_endpoint.split(':')[-1]
-        zoo_cfg = '{}/conf/zoo.cfg'.format(zk_path)
+        zoo_cfg = '{}/conf/zoo.cfg'.format(self.zk_path)
         exe_shell("echo tickTime=2000 > {}".format(zoo_cfg))
         exe_shell("echo initLimit=10 >> {}".format(zoo_cfg))
         exe_shell("echo syncLimit=5 >> {}".format(zoo_cfg))
-        exe_shell("echo dataDir={}/data >> {}".format(zk_path, zoo_cfg))
+        exe_shell("echo dataDir={}/data >> {}".format(self.zk_path, zoo_cfg))
         exe_shell("echo clientPort={} >> {}".format(port, zoo_cfg))
         exe_shell("echo server.1=172.27.128.35:2888:2890 >> {}".format(zoo_cfg))
         # exe_shell("echo server.2=172.27.2.252:2888:2890 >> {}".format(zoo_cfg))
         # exe_shell("echo server.3=172.27.128.37:2888:2890 >> {}".format(zoo_cfg))
-        exe_shell("echo 1 >> {}/data/myid".format(zk_path))
-        exe_shell("sh {}/bin/zkServer.sh start".format(zk_path))
+        exe_shell("sh {}/bin/zkServer.sh start".format(self.zk_path))
         time.sleep(3)
 
 
@@ -50,8 +53,7 @@ class NsCluster(object):
         i = 0
         for ep in endpoints:
             i += 1
-            test_path = os.getenv('testpath')
-            ns_path = test_path + '/ns{}'.format(i)
+            ns_path = self.ns_edp_path[ep]
             nameserver_flags = '{}/conf/nameserver.flags'.format(ns_path)
             exe_shell('mkdir -p {}/conf'.format(ns_path))
             exe_shell('cat {} | egrep -v "endpoint=|gc_interval=|db_root_path=|--log_dir=" > {}'.format(
@@ -63,18 +65,32 @@ class NsCluster(object):
             exe_shell("echo '--auto_recover_table=true' >> {}".format(nameserver_flags))
             exe_shell("echo '--get_task_status_interval=1' >> {}".format(nameserver_flags))
             exe_shell("echo '--name_server_task_pool_size=10' >> {}".format(nameserver_flags))
-            cmd = '{}/rtidb --flagfile={}'.format(test_path, nameserver_flags)
+            exe_shell("echo '--tablet_startup_wait_time=3000' >> {}".format(nameserver_flags))
+            exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(nameserver_flags))
+            cmd = '{}/rtidb --flagfile={}'.format(self.test_path, nameserver_flags)
+            infoLogger.info('start rtidb: {}'.format(cmd))
             args = shlex.split(cmd)
-            print cmd
             subprocess.Popen(args, stdout=open('{}/info.log'.format(ns_path), 'w'),
                              stderr=open('{}/warning.log'.format(ns_path), 'w'))
-            infoLogger.info('!!!!!!!!!!!!!!' + self.leader)
-            if not self.leader:
-                time.sleep(5)
-                if_lock = exe_shell('grep "get lock with assigned_path" {}/info.log'.format(ns_path))
-                if 'get lock with assigned_path' in if_lock:
-                    self.leader = ep
-                    exe_shell('echo "{}" > {}/ns_leader'.format(ep, test_path))
+            time.sleep(5)
+
+
+    def get_ns_leader(self):
+        locks = exe_shell("echo \"ls /onebox/leader\"|sh {}/bin/zkCli.sh -server {}"
+                          "|tail -n 2".format(self.zk_path, self.zk_endpoint))
+        if locks:
+            nodes = locks.split('\n')[0][1:-1].split(',')
+            nodex = [int(node.strip()[-10:]) for node in nodes]
+        nodex.sort()
+        node = str(nodex[0])
+        node_leader = 'lock_request0000000000'[:-len(node)] + node
+        output = exe_shell("echo \"get /onebox/leader/{}\""
+                              "|sh {}/bin/zkCli.sh -server {}"
+                              "|tail -n 2".format(node_leader, self.zk_path, self.zk_endpoint))
+        ns_leader = output.split('\n')[-2]
+        self.ns_leader = ns_leader
+        exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
+        exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
 
 
     def kill(self, *endpoints):
@@ -84,7 +100,7 @@ class NsCluster(object):
             infoLogger.info(ep)
             port += ep.split(':')[1] + ' '
         infoLogger.info(port)
-        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill -I {};done"
+        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill;done"
         exe_shell(cmd)
         time.sleep(1)
 

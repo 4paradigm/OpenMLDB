@@ -35,8 +35,10 @@ class TbCluster(object):
             exe_shell("echo '--stream_close_wait_time_ms=10' >> {}".format(rtidb_flags))
             exe_shell("echo '--stream_bandwidth_limit=0' >> {}".format(rtidb_flags))
             exe_shell("echo '--zk_root_path=/onebox' >> {}".format(rtidb_flags))
+            exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(rtidb_flags))
             exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(test_path, tb_path)
+            infoLogger.info('start rtidb: {}'.format(cmd))
             args = shlex.split(cmd)
             subprocess.Popen(args,stdout=open('{}/info.log'.format(tb_path), 'w'),
                              stderr=open('{}/warning.log'.format(tb_path), 'w'))
