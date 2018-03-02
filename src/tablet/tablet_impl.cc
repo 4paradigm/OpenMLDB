@@ -211,7 +211,26 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = table->NewIterator(request->key(), ticket);
+    Table::Iterator* it = NULL;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(30);
+            response->set_msg("idx name not found");
+            return;
+        }
+        it = table->NewIterator(iit->second,
+                                request->key(), ticket);
+    } else {
+        it = table->NewIterator(request->key(), ticket);
+    }
+    if (it == NULL) {
+        response->set_code(30);
+        response->set_msg("idx name not found");
+        return;
+    }
     bool has_found = true;
     if (request->ts() > 0) {
         if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
