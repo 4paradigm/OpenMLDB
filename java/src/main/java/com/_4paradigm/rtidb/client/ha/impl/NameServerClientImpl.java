@@ -41,8 +41,17 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public void init() throws Exception {
 
         zookeeper = new ZooKeeper(zkEndpoints, 10000, this);
-        while (!zookeeper.getState().isConnected()) {
-            Thread.sleep(1000);
+        int tryCnt = 10;
+        while (!zookeeper.getState().isConnected() && tryCnt > 0) {
+            try {
+                Thread.sleep(1000);
+            }catch(InterruptedException e) {
+                logger.error("interrupted", e);
+            }
+            tryCnt --;
+        }
+        if (!zookeeper.getState().isConnected()) {
+            throw new TabletException("fail to connect to zookeeper " + zkEndpoints);
         }
         List<String> children = zookeeper.getChildren(leaderPath, false);
         if (children.isEmpty()) {
@@ -89,7 +98,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         if (tname == null || tname.isEmpty()) {
             request = ShowTableRequest.newBuilder().build();
         } else {
-            request = ShowTableRequest.newBuilder().build();
+            request = ShowTableRequest.newBuilder().setName(tname).build();
         }
         ShowTableResponse response = ns.showTable(request);
         return response.getTableInfoList();

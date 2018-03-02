@@ -86,6 +86,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     public void refreshRouteTable() {
         Map<String, TableHandler> oldTables = name2tables;
         Map<String, TableHandler> newTables = new HashMap<String, TableHandler>();
+        Map<Integer, TableHandler> oldid2tables = id2tables;
+        Map<Integer, TableHandler> newid2tables = new HashMap<Integer, TableHandler>();
         try {
             List<TableInfo> newTableList = new ArrayList<TableInfo>();
             List<String> children = zookeeper.getChildren(config.getZkTableRootPath(), false);
@@ -129,16 +131,10 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 }
                 handler.setPartitions(partitionHandlerGroup);
                 newTables.put(table.getName(), handler);
+                newid2tables.put(table.getTid(), handler);
             }
             // swap
             name2tables = newTables;
-            Map<Integer, TableHandler> oldid2tables = id2tables;
-            Map<Integer, TableHandler> newid2tables = new HashMap<Integer, TableHandler>();
-            Iterator<Map.Entry<String, TableHandler>> it = newTables.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry<String, TableHandler> entry = it.next();
-                newid2tables.put(entry.getValue().getTableInfo().getTid(), entry.getValue());
-            }
             id2tables = newid2tables;
             oldTables.clear();
             oldid2tables.clear();
