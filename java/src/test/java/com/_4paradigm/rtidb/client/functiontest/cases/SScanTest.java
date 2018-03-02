@@ -27,7 +27,7 @@ public class SScanTest {
   private final static AtomicInteger id = new AtomicInteger(200);
   private static int tid = 0;
   private static TabletSyncClient client = null;
-  private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+  private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
   static {
