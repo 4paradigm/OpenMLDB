@@ -747,7 +747,7 @@ class TestLoadTable(TestCaseBase):
     def test_loadtable_and_addreplica_ttl_md(self):
         """
         主节点将从节点添加为副本，没有snapshot和binlog
-        从节点loadtable，可以正确load到未过期的数据
+        从节点createtable，可以正确同步到未过期的数据
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
@@ -766,11 +766,6 @@ class TestLoadTable(TestCaseBase):
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertTrue('AddReplica ok' in rs2)
         time.sleep(1)
-        self.assertTrue('testvalue0' in self.scan(
-            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
-        self.assertTrue('testvalue1' in self.scan(
-            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
-        time.sleep(60)
         self.assertTrue('testvalue0' in self.scan(
             self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
         self.assertFalse('testvalue1' in self.scan(

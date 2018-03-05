@@ -214,7 +214,7 @@ class TestMakeSnapshot(TestCaseBase):
             target=makesnapshot, args=(self.slave1,))]
 
         for t in threads:
-            time.sleep(0.0010)
+            time.sleep(0.0001)
             t.start()
         for t in threads:
             t.join()
