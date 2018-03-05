@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
@@ -23,12 +24,18 @@ public class KvIterator {
     private Long network = 0l;
     private Long decode = 0l;
     private int count;
+    private RTIDBClientConfig config = null;
     public KvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
         this.totalSize = this.bs.size();
         next();
+    }
+    
+    public KvIterator(ByteString bs, RTIDBClientConfig config) {
+        this(bs);
+        this.config = config;
     }
     
     public int getCount() {
@@ -40,12 +47,13 @@ public class KvIterator {
 	}
 
 	public KvIterator(ByteString bs, List<ColumnDesc> schema) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer();
-        this.offset = 0;
-        this.totalSize = this.bs.size();
-        next();
+        this(bs);
         this.schema = schema;
+    }
+	
+	public KvIterator(ByteString bs, List<ColumnDesc> schema, RTIDBClientConfig config) {
+        this(bs, schema);
+        this.config = config;
     }
     
     public KvIterator(ByteString bs, Long network) {
@@ -75,8 +83,8 @@ public class KvIterator {
         if (offset <= totalSize) {
             return true;
         }
-        if (TabletClientConfig.isMetricsEnabled()) {
-        	TabletMetrics.getInstance().addScan(decode, network);
+        if (config!=null && config.isMetricsEnabled()) {
+        	    TabletMetrics.getInstance().addScan(decode, network);
         }
         return false;
     }

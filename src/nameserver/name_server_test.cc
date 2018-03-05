@@ -54,7 +54,7 @@ public:
 };
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
-    FLAGS_zk_cluster="127.0.0.1:12181";
+    FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -160,7 +160,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
 }
 
 TEST_F(NameServerImplTest, ConfigGetAndSet) {
-    FLAGS_zk_cluster="127.0.0.1:12181";
+    FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -196,7 +196,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
 }    
 
 TEST_F(NameServerImplTest, CreateTable) {
-    FLAGS_zk_cluster="127.0.0.1:12181";
+    FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9632";
@@ -268,7 +268,7 @@ TEST_F(NameServerImplTest, CreateTable) {
 }    
 
 TEST_F(NameServerImplTest, Offline) {
-    FLAGS_zk_cluster = "127.0.0.1:12181";
+    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
     FLAGS_auto_failover = true;
     FLAGS_endpoint = "127.0.0.1:9633";
