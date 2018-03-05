@@ -218,14 +218,17 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return get(name, key, 0l);
     }
     
-    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph){
+    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph) throws TabletException{
         return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), ph);
     }
     
     private PutFuture put(int tid, int pid, 
             String key, long time, 
             List<Tablet.Dimension> ds, 
-            ByteBuffer row, PartitionHandler ph) {
+            ByteBuffer row, PartitionHandler ph) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         long start = System.currentTimeMillis();
         Future<PutResponse> response = putForInternal(tid, pid, key, time, ds, row, ph);
         return PutFuture.wrapper(response, start, client.getConfig());
@@ -234,7 +237,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     private Future<PutResponse> putForInternal(int tid, int pid, 
             String key, long time, 
             List<Tablet.Dimension> ds, 
-            ByteBuffer row, PartitionHandler ph) {
+            ByteBuffer row, PartitionHandler ph) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         TabletServer tablet = ph.getLeader();
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         if (ds != null) {
@@ -255,7 +261,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return response;
     }
     
-    private GetFuture get(int tid, int pid, String key, long time, TableHandler th) {
+    private GetFuture get(int tid, int pid, String key, long time, TableHandler th) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
         Long startTime = System.currentTimeMillis();
@@ -264,7 +273,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
     
     
-    private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th) {
+    private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         TabletServer tabletServer = th.getHandler(pid).getLeader();
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);

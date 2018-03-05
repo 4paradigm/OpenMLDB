@@ -15,6 +15,7 @@ import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.TTLType;
+import com._4paradigm.rtidb.tablet.Tablet.TableStatus;
 import com.google.protobuf.ByteString;
 
 import rtidb.api.TabletServer;
@@ -106,5 +107,19 @@ public class TabletClientImpl implements TabletClient {
         }
         return false;
     }
+
+    @Override
+    public TableStatus getTableStatus(int tid, int pid) {
+        Tablet.GetTableStatusRequest request = Tablet.GetTableStatusRequest.newBuilder().build();
+        Tablet.GetTableStatusResponse response = client.getHandler(0).getHandler(0).getLeader().getTableStatus(request);
+        for (TableStatus status : response.getAllTableStatusList()) {
+            if (status.getTid() == tid && status.getPid() == pid) {
+                return status;
+            }
+        }
+        return null;
+    }
+    
+    
 
 }

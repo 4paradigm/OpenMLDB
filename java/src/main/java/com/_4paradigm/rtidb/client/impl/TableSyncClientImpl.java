@@ -76,12 +76,12 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public ByteString get(int tid, int pid, String key) throws TimeoutException {
+    public ByteString get(int tid, int pid, String key) throws TimeoutException, TabletException {
         return get(tid, pid, key, 0l);
     }
 
     @Override
-    public ByteString get(int tid, int pid, String key, long time) throws TimeoutException {
+    public ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
         return get(tid, pid, key, time, client.getHandler(tid).getHandler(pid));
     }
 
@@ -110,6 +110,9 @@ public class TableSyncClientImpl implements TableSyncClient {
     
     @Override
     public Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -147,7 +150,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         return response;
     }
     
-    private ByteString get(int tid, int pid, String key, long time, PartitionHandler ph) {
+    private ByteString get(int tid, int pid, String key, long time, PartitionHandler ph) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
         Tablet.GetResponse response = ph.getLeader().get(request);
@@ -196,6 +202,9 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th)throws TimeoutException, TabletException  {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         TabletServer tabletServer = th.getHandler(pid).getLeader();
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
@@ -278,14 +287,17 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
     
     
-    private boolean put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph){
+    private boolean put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph) throws TabletException{
         return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), ph);
     }
     
     private boolean put(int tid, int pid, 
             String key, long time, 
             List<Tablet.Dimension> ds, 
-            ByteBuffer row, PartitionHandler ph) {
+            ByteBuffer row, PartitionHandler ph) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
         Long consumed = System.nanoTime();
         TabletServer tablet = ph.getLeader();
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();

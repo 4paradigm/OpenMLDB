@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,6 +11,7 @@ import java.util.Set;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,6 +89,11 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         Map<Integer, TableHandler> oldid2tables = id2tables;
         Map<Integer, TableHandler> newid2tables = new HashMap<Integer, TableHandler>();
         try {
+            Stat stat = zookeeper.exists(config.getZkTableRootPath(), false);
+            if (stat == null) {
+                logger.warn("path {} does not exist", config.getZkTableRootPath());
+                return;
+            }
             List<TableInfo> newTableList = new ArrayList<TableInfo>();
             List<String> children = zookeeper.getChildren(config.getZkTableRootPath(), false);
             for (String path : children) {
@@ -145,6 +150,11 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     public boolean refreshNodeList() {
         try {
+            Stat stat = zookeeper.exists(config.getZkNodeRootPath(), false);
+            if (stat == null) {
+                logger.warn("path {} does not exist", config.getZkNodeRootPath());
+                return true;
+            }
             Set<EndPoint> endpoinSet = new HashSet<EndPoint>();
             List<String> children = zookeeper.getChildren(config.getZkNodeRootPath(), false);
             for (String path : children) {
