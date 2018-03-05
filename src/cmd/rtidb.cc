@@ -1405,13 +1405,13 @@ uint32_t GetDimensionIndex(const std::vector<::rtidb::base::ColumnDesc>& columns
 void HandleClientSGet(const std::vector<std::string>& parts, 
                       ::rtidb::client::TabletClient* client){
     try {
-        if (parts.size() < 4) {
-            std::cout << "Bad get format, eg sget tid pid key [time]" << std::endl;
+        if (parts.size() < 5) {
+            std::cout << "Bad sget format, eg sget tid pid key [time]" << std::endl;
             return;
         }
         uint64_t time = 0;
-        if (parts.size() > 4) {
-            time = boost::lexical_cast<uint64_t>(parts[4]);
+        if (parts.size() > 5) {
+            time = boost::lexical_cast<uint64_t>(parts[5]);
         }
         std::string schema;
         bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
@@ -1439,10 +1439,11 @@ void HandleClientSGet(const std::vector<std::string>& parts,
                               boost::lexical_cast<uint32_t>(parts[2]),
                               parts[3],
                               time,
+                              parts[4],
                               value,
                               ts); 
         if (!ok) {
-            std::cout << "Fail to get value!" << std::endl;
+            std::cout << "Fail to sget value!" << std::endl;
             return;
         }
         ShowTableRow(raw, value.c_str(), value.size(), ts, 1, tp);
