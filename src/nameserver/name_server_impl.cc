@@ -1712,12 +1712,7 @@ void NameServerImpl::RecoverTable(const std::string& name, uint32_t pid, const s
 		PDLOG(INFO, "change to follower. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                     name.c_str(), tid, pid, endpoint.c_str());
     }
-	int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
-	if (ret_code < 0) {
-		PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-						name.c_str(), tid, pid, endpoint.c_str());
-		return;
-	} else if (ret_code == 1) {
+    if (!has_table) {
         if (!tablet_ptr->client_->DeleteBinlog(tid, pid)) {
             PDLOG(WARNING, "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                             name.c_str(), tid, pid, endpoint.c_str());
@@ -1725,8 +1720,13 @@ void NameServerImpl::RecoverTable(const std::string& name, uint32_t pid, const s
         }
         PDLOG(INFO, "delete binlog ok. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                             name.c_str(), tid, pid, endpoint.c_str());
-
     }
+	int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
+	if (ret_code < 0) {
+		PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+						name.c_str(), tid, pid, endpoint.c_str());
+		return;
+	}
     ::rtidb::api::Manifest manifest;
     if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u]", 
