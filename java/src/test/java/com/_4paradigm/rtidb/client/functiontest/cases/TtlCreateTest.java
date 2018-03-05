@@ -33,7 +33,7 @@ public class TtlCreateTest {
     private final static AtomicInteger id = new AtomicInteger(300);
     public static int tid = 0;
     private static TabletSyncClient client = null;
-    private static EndPoint endpoint = new EndPoint("192.168.33.10:9527");
+    private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     private static TabletClient tc = null;

@@ -295,7 +295,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             String key, long time, 
             List<Tablet.Dimension> ds, 
             ByteBuffer row, PartitionHandler ph) throws TabletException {
-        if (key == null || key.isEmpty()) {
+        if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
         Long consumed = System.nanoTime();

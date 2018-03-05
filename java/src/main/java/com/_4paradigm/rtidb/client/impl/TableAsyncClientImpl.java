@@ -226,7 +226,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             String key, long time, 
             List<Tablet.Dimension> ds, 
             ByteBuffer row, PartitionHandler ph) throws TabletException {
-        if (key == null || key.isEmpty()) {
+        if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
         long start = System.currentTimeMillis();
@@ -238,7 +238,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             String key, long time, 
             List<Tablet.Dimension> ds, 
             ByteBuffer row, PartitionHandler ph) throws TabletException {
-        if (key == null || key.isEmpty()) {
+        if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
         TabletServer tablet = ph.getLeader();
