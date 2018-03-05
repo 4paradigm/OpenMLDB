@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.ut;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;

@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client;
+package com._4paradigm.rtidb.client.ut;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,21 +9,38 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.TabletAsyncClient;
+import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
+import com._4paradigm.rtidb.client.impl.TabletAsyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 
-import io.brpc.client.RpcClient;
+import io.brpc.client.DefaultRpcClient;
+import io.brpc.client.EndPoint;
 
 public class TabletSchemaAsyncClientTest {
 
     private final static AtomicInteger id = new AtomicInteger(4000);
-    private static RpcClient rpcClient = null;
     private static TabletAsyncClient aclient = null;
     private static TabletSyncClient sclient = null;
+    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static RTIDBClientConfig config = new RTIDBClientConfig();
+    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     static {
-        rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 9501, 100000, 3);
-        aclient = TabletClientBuilder.buildAsyncClient(rpcClient);
-        sclient = TabletClientBuilder.buildSyncClient(rpcClient);
+        try {
+            snc.init();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        aclient = new TabletAsyncClientImpl(snc);
+        sclient = new TabletSyncClientImpl(snc);
     }
     
     private int createTable() {

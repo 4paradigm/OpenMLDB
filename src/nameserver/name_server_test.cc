@@ -26,6 +26,7 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
+DECLARE_bool(auto_failover);
 
 using ::rtidb::zk::ZkClient;
 
@@ -53,7 +54,7 @@ public:
 };
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
-    FLAGS_zk_cluster="127.0.0.1:12181";
+    FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -106,6 +107,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, 12, 1);
     ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
 
     MakeSnapshotNSRequest m_request;
     m_request.set_name(name);
@@ -158,7 +160,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
 }
 
 TEST_F(NameServerImplTest, ConfigGetAndSet) {
-    FLAGS_zk_cluster="127.0.0.1:12181";
+    FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -192,6 +194,188 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ASSERT_TRUE(ret);
     ASSERT_STREQ(conf_map[key].c_str(), "true");
 }    
+
+TEST_F(NameServerImplTest, CreateTable) {
+    FLAGS_zk_cluster="127.0.0.1:6181";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
+
+    FLAGS_endpoint = "127.0.0.1:9632";
+    NameServerImpl* nameserver = new NameServerImpl();
+    bool ok = nameserver->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options;
+	brpc::Server server;
+	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint);
+    name_server_client.Init();
+
+    FLAGS_endpoint="127.0.0.1:9531";
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ok = tablet->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+
+    brpc::ServerOptions options1;
+	brpc::Server server1;
+	if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+
+    sleep(2);
+    
+    CreateTableRequest request;
+    GeneralResponse response;
+    TableInfo *table_info = request.mutable_table_info();
+    std::string name = "test" + GenRand();
+    table_info->set_name(name);
+    TablePartition* partion = table_info->add_table_partition();
+    partion->set_pid(1);
+    PartitionMeta* meta = partion->add_partition_meta();
+    meta->set_endpoint("127.0.0.1:9531");
+    meta->set_is_leader(true);
+    TablePartition* partion1 = table_info->add_table_partition();
+    partion1->set_pid(2);
+    PartitionMeta* meta1 = partion1->add_partition_meta();
+    meta1->set_endpoint("127.0.0.1:9531");
+    meta1->set_is_leader(true);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+            &request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(-1, response.code());
+
+    TablePartition* partion2 = table_info->add_table_partition();
+    partion2->set_pid(0);
+    PartitionMeta* meta2 = partion2->add_partition_meta();
+    meta2->set_endpoint("127.0.0.1:9531");
+    meta2->set_is_leader(true);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+            &request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+}    
+
+TEST_F(NameServerImplTest, Offline) {
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_auto_failover = true;
+    FLAGS_endpoint = "127.0.0.1:9633";
+    NameServerImpl* nameserver = new NameServerImpl();
+    bool ok = nameserver->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options;
+	brpc::Server server;
+	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint);
+    name_server_client.Init();
+
+    FLAGS_endpoint="127.0.0.1:9533";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ok = tablet->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+
+    brpc::ServerOptions options1;
+	brpc::Server server1;
+	if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+
+    FLAGS_endpoint="127.0.0.1:9534";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    ::rtidb::tablet::TabletImpl* tablet2 = new ::rtidb::tablet::TabletImpl();
+    ok = tablet2->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+
+    brpc::ServerOptions options2;
+	brpc::Server server2;
+	if (server2.AddService(tablet2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server2.Start(FLAGS_endpoint.c_str(), &options2) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+
+    sleep(2);
+    CreateTableRequest request;
+    GeneralResponse response;
+    TableInfo *table_info = request.mutable_table_info();
+    std::string name = "test" + GenRand();
+    table_info->set_name(name);
+    TablePartition* partion = table_info->add_table_partition();
+    partion->set_pid(1);
+    PartitionMeta* meta = partion->add_partition_meta();
+    meta->set_endpoint("127.0.0.1:9534");
+    meta->set_is_leader(true);
+    meta =  partion->add_partition_meta();
+    meta->set_endpoint("127.0.0.1:9533");
+    meta->set_is_leader(false);
+    TablePartition* partion1 = table_info->add_table_partition();
+    partion1->set_pid(2);
+    PartitionMeta* meta1 = partion1->add_partition_meta();
+    meta1->set_endpoint("127.0.0.1:9534");
+    meta1->set_is_leader(true);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+            &request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(-1, response.code());
+
+    TablePartition* partion2 = table_info->add_table_partition();
+    partion2->set_pid(0);
+    PartitionMeta* meta2 = partion2->add_partition_meta();
+    meta2->set_endpoint("127.0.0.1:9534");
+    meta2->set_is_leader(true);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+            &request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+
+    {
+        ::rtidb::api::ConnectZKRequest request;
+        ::rtidb::api::GeneralResponse response;
+        MockClosure closure;
+        tablet->ConnectZK(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    sleep(6);
+    {
+        ::rtidb::nameserver::ShowTableRequest request;
+        ::rtidb::nameserver::ShowTableResponse response;
+        ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+                    &request, &response, 12, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+    }
+}
 
 }
 }

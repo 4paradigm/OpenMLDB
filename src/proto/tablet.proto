@@ -2,7 +2,8 @@ syntax="proto2";
 package rtidb.api;
 
 option cc_generic_services = true;
-option java_package = "rtidb.api";
+option java_generic_services = true;
+option java_package = "com._4paradigm.rtidb.tablet";
 option java_outer_classname = "Tablet";
 
 enum TableMode {
@@ -347,6 +348,7 @@ message GetRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional uint64 ts = 4 [default = 0];
+    optional string idx_name = 5;
 }
 
 message GetResponse {

@@ -211,7 +211,26 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = table->NewIterator(request->key(), ticket);
+    Table::Iterator* it = NULL;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(30);
+            response->set_msg("idx name not found");
+            return;
+        }
+        it = table->NewIterator(iit->second,
+                                request->key(), ticket);
+    } else {
+        it = table->NewIterator(request->key(), ticket);
+    }
+    if (it == NULL) {
+        response->set_code(30);
+        response->set_msg("idx name not found");
+        return;
+    }
     bool has_found = true;
     if (request->ts() > 0) {
         if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
@@ -544,6 +563,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
         replicator->DelAllReplicateNode();
         replicator->SetRole(ReplicatorRole::kFollowerNode);
         table->SetLeader(false);
+        PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -1386,7 +1406,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
         response->set_code(0);
         response->set_msg("ok");
-
+        return;
     } while(0);
     if (task_ptr) {
 		std::lock_guard<std::mutex> lock(mu_);
@@ -1615,6 +1635,11 @@ void TabletImpl::GetTermPair(RpcController* controller,
 	response->set_code(0);
 	response->set_msg("ok");
 	response->set_has_table(true);
+    if (table->IsLeader()) {
+        response->set_is_leader(true);
+    } else {
+        response->set_is_leader(false);
+    }
 	response->set_term(replicator->GetLeaderTerm());
 	response->set_offset(replicator->GetOffset());
 }
@@ -1800,7 +1825,7 @@ void TabletImpl::DropTable(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
 	std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
 	if (request->has_task_info() && request->task_info().IsInitialized()) {
-		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kLoadTable, task_ptr) < 0) {
+		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kDropTable, task_ptr) < 0) {
 			response->set_code(-1);
 			response->set_msg("add task failed");
             return;
