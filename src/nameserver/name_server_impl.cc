@@ -483,7 +483,7 @@ int NameServerImpl::UpdateTaskStatus() {
                 std::shared_ptr<Task> task = it->second->task_list_.front();
                 if (task->task_info_->task_type() == response.task(idx).task_type() && 
                         task->task_info_->status() != response.task(idx).status()) {
-                    PDLOG(DEBUG, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
+                    PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
                                 ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
                                 ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
                                 response.task(idx).op_id(), 
