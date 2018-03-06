@@ -9,5 +9,7 @@ public interface NameServerClient {
     boolean createTable(TableInfo tableInfo);
     boolean dropTable(String tname);
     List<TableInfo> showTable(String tname);
+    boolean changeLeader(String tname, int pid);
+    boolean recoverEndpoint(String endpoint);
     
 }

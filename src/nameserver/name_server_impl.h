@@ -265,6 +265,8 @@ private:
     int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
 
+    void NotifyTableChanged();
+
 private:
     std::mutex mu_;
     Tablets tablets_;
@@ -278,6 +280,7 @@ private:
     std::string zk_table_data_path_;
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
+    std::string zk_table_changed_notify_node_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;
