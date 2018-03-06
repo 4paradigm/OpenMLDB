@@ -47,6 +47,7 @@ enum OPType {
     kReAddReplicaNoSendOP = 7;     // need not send snapshot
     kReAddReplicaWithDropOP = 8;   // should droptable before loadtable
     kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
+    kUpdateTableAliveOP = 10;
 }
 
 enum TaskType {
@@ -62,6 +63,7 @@ enum TaskType {
     kChangeLeader = 10;
     kUpdatePartitionStatus = 11;
     kDropTable = 12;
+    kUpdateTableAlive = 13;
 }
 
 enum TaskStatus {
