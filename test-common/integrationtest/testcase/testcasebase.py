@@ -157,6 +157,23 @@ class TestCaseBase(unittest.TestCase):
             return self.run_client(endpoint, 'sscan {} {} {} {} {}'.format(
                 tid, pid, ' '.join(value_key), ts_from, ts_to))
 
+    def get(self, endpoint, tid, pid, vk, ts):
+        """
+
+        :param endpoint:
+        :param tid:
+        :param pid:
+        :param vk: e.g. {'key': 'pk', 'idx_name': 'card'} or 'naysakey'
+        :param ts:
+        :return:
+        """
+        if not isinstance(vk, dict):
+            return self.run_client(endpoint, 'get {} {} {} {}'.format(
+                    tid, pid, vk, ts))
+        else:
+            return self.run_client(endpoint, 'sget {} {} {} {} {}'.format(
+                tid, pid, vk['key'], vk['idx_name'], ts))
+
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))
 
