@@ -32,7 +32,6 @@ class TestCaseBase(unittest.TestCase):
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
         cls.failfast = conf.failfast
-        infoLogger.info(cls.ns_leader)
 
     def setUp(self):
         infoLogger.info('*** TEST CASE NAME: ' + self._testMethodName)

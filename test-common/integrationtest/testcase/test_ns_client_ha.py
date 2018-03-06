@@ -26,10 +26,15 @@ class TestNameserverHa(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
             ('column_desc', '"k1"', '"string"', 'true'),
             ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"double"', 'false'))
+            ('column_desc', '"k3"', '"string"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertEqual('Create table ok' in rs, True)
+
+        self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string', 'testvalue1'),
+                                  'k3': ('string', 1.1)}
+        self.multidimension_scan_vk = {'k1': 'testvalue0'}
         table_info = self.showtable(self.ns_leader)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3

@@ -19,31 +19,31 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, 144000, 8,
+        ('"t{}"'.format(int(time.time())), None, 144000, 8,
          'Create table ok'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), '"latest"', 144000, 8,
+        ('"t{}"'.format(int(time.time())), '"latest"', 144000, 8,
          'ttl type latest is invalid'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), '', 144000, 8,
+        ('"t{}"'.format(int(time.time())), '', 144000, 8,
          'table meta file format error'),
         ('""', None, 144000, 8,
          'Fail to create table'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, -1, 8,
+        ('"t{}"'.format(int(time.time())), None, -1, 8,
          'Error parsing text-format rtidb.client.TableInfo: 2:5: Expected integer.'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, '', 8,
+        ('"t{}"'.format(int(time.time())), None, '', 8,
          'Error parsing text-format rtidb.client.TableInfo: 3:1: Expected integer.'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, '"144000"', 8,
+        ('"t{}"'.format(int(time.time())), None, '"144000"', 8,
          'table meta file format error'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, 144, -8,
+        ('"t{}"'.format(int(time.time())), None, 144, -8,
          'Error parsing text-format rtidb.client.TableInfo: 3:9: Expected integer.'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, 144, '',
+        ('"t{}"'.format(int(time.time())), None, 144, '',
          'Error parsing text-format rtidb.client.TableInfo: 4:1: Expected integer.'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, 144, '"8"',
+        ('"t{}"'.format(int(time.time())), None, 144, '"8"',
          'table meta file format error'),
         (None, None, 144000, 8,
          'Message missing required fields: name'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, None, 8,
+        ('"t{}"'.format(int(time.time())), None, None, 8,
          'Message missing required fields: ttl'),
-        ('"t{}"'.format(int(time.time() * 1000000 % 10000000000)), None, 9, None,
+        ('"t{}"'.format(int(time.time())), None, 9, None,
          'Message missing required fields: seg_cnt'),
     )
     @ddt.unpack
@@ -148,7 +148,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         (('"0"', 'true'), ('"0"', 'true'), 'pid 0 has two leader'),
         (('"0-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
         (('""', 'true'), ('"2-4"', 'true'), 'pid_group[] format error.'),
-        (('"0"', 'true'), ('"1-1024"', 'true'), 'Create table ok'),
+        (('"0"', 'true'), ('"1-128"', 'true'), 'Create table ok'),
         (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
         ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
         (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),
@@ -331,8 +331,8 @@ class TestCreateTableByNsClient(TestCaseBase):
         m = utils.gen_table_metadata(
             '"tname{}"'.format(int(time.time())), '"kAbsoluteTime"', 144000, 8,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-2"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
             *column_descs)
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)

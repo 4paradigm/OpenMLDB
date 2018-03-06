@@ -11,9 +11,10 @@ import libs.ddt as ddt
 @ddt.ddt
 class TestChangeLeader(TestCaseBase):
 
-    def test_changeleader_master_killed(self):
+
+    def test_changeleader_master_disconnect(self):
         """
-        changeleader功能正常，主节点挂掉后，可以手工故障切换
+        changeleader功能正常，主节点断网后，可以手工故障切换，切换成功后从节点可以同步数据
         :return:
         """
         self.start_client(self.leaderpath)
@@ -24,10 +25,77 @@ class TestChangeLeader(TestCaseBase):
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false')
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertTrue('Create table ok' in rs0)
+        self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string', 'testvalue0'),
+                                  'k3': ('string', 'testvalue0')}
+        self.multidimension_scan_vk = {'k1': 'testvalue0'}
+
+        rs1 = self.showtable(self.ns_leader)
+        tid = rs1.keys()[0][1]
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.confset(self.ns_leader, 'auto_recover_table', 'false')
+
+        self.disconnectzk(self.leader)
+        time.sleep(10)
+
+        self.changeleader(self.ns_leader, name, 0)
+
+        rs2 = self.showtable(self.ns_leader)
+        self.connectzk(self.leader)
+
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
+        act1 = rs2[(name, tid, '0', self.slave1)]
+        act2 = rs2[(name, tid, '0', self.slave2)]
+        roles = [x[0] for x in [act1, act2]]
+        self.assertEqual(roles.count('leader'), 1)
+        self.assertEqual(roles.count('follower'), 1)
+
+        leader_new = self.slave1 if 'leader' in act1 else self.slave2
+        follower = self.slave1 if 'follower' in act1 else self.slave2
+        rs2 = self.put(self.leader, tid, 1, 'testkey0', self.now(), 'testvalue0')
+        self.assertTrue('Put ok' in rs2)
+        rs3 = self.put(self.slave1, tid, 1, 'testkey0', self.now(), 'testvalue0')
+        self.assertTrue('Put failed' in rs3)
+        rs4 = self.put(leader_new, tid, 0, 'testkey0', self.now(), 'testvalue0')
+        self.assertTrue('Put ok' in rs4)
+        time.sleep(1)
+        self.assertTrue('testvalue0' in self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
+
+
+    def test_changeleader_master_killed(self):
+        """
+        changeleader功能正常，主节点挂掉后，可以手工故障切换，切换成功后从节点可以同步数据
+        :return:
+        """
+        self.start_client(self.leaderpath)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = 'tname{}'.format(time.time())
+        m = utils.gen_table_metadata(
+            '"{}"'.format(name), None, 144000, 2,
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false')
+        )
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs0 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertTrue('Create table ok' in rs0)
+        self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string', 'testvalue0'),
+                                  'k3': ('string', 'testvalue0')}
+        self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -55,10 +123,10 @@ class TestChangeLeader(TestCaseBase):
         leader_new = self.slave1 if 'leader' in act1 else self.slave2
         follower = self.slave1 if 'follower' in act1 else self.slave2
         rs2 = self.put(self.leader, tid, 1, 'testkey0', self.now(), 'testvalue0')
-        self.assertTrue('Put failed' in rs2)
         rs3 = self.put(self.slave1, tid, 1, 'testkey0', self.now(), 'testvalue0')
-        self.assertTrue('Put failed' in rs3)
         rs4 = self.put(leader_new, tid, 0, 'testkey0', self.now(), 'testvalue0')
+        self.assertTrue('Fail to get table schema' in rs2 or 'Put failed' in rs2)
+        self.assertTrue('Put failed' in rs3)
         self.assertTrue('Put ok' in rs4)
         time.sleep(1)
         self.assertTrue('testvalue0' in self.scan(follower, tid, 0, 'testkey0', self.now(), 1))

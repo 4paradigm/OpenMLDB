@@ -130,7 +130,7 @@ class TestSendSnapshot(TestCaseBase):
             -1: 'time.sleep(5)',
             0: 'self.create(self.slave1, self.tname, self.tid, self.pid, 144000, 2, "false")',
             1: 'self.create(self.leader, self.tname, self.tid, self.pid, 144000, 2, "true")',
-            2: 'self.put_data(self.leader, self.tid, self.pid, 100)',
+            2: 'self.put_data(self.leader, self.tid, self.pid, 50)',
             3: 'self.get_table_meta_tname()',
             4: 'self.get_sdb_name(self.tid, self.pid)',
             5: 'self.changerole(self.leader, self.tid, self.pid, "follower")',
@@ -145,10 +145,10 @@ class TestSendSnapshot(TestCaseBase):
             14: 'self.assertTrue("RecoverSnapshot ok" in self.recoversnapshot(self.leader, self.tid, self.pid))',
             15: 'self.assertTrue("SendSnapshot ok" in self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))',
             16: 'self.assertTrue("LoadTable ok" in self.loadtable(self.slave1, self.tname, self.tid, self.pid))',
-            17: 'self.check_manifest(self.slave1path, self.tid, self.pid, "100", self.sdb_name, "100")',
-            18: 'self.check_manifest(self.slave1path, self.tid, self.pid, "200", self.sdb_name, "200")',
-            19: 'self.assertEqual("100", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
-            20: 'self.assertEqual("200", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
+            17: 'self.check_manifest(self.slave1path, self.tid, self.pid, "100", self.sdb_name, "50")',
+            18: 'self.check_manifest(self.slave1path, self.tid, self.pid, "200", self.sdb_name, "100")',
+            19: 'self.assertEqual("50", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
+            20: 'self.assertEqual("100", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
             21: 'self.assert_send_fail_by_log()',
             22: 'self.check_manifest(self.slave2path, self.tid, self.pid, "100", self.sdb_name, "100")',
             23: 'self.assertEqual(len(filter(lambda x:"SendSnapshot ok" in x,'
@@ -160,8 +160,19 @@ class TestSendSnapshot(TestCaseBase):
         }
 
 
+    def test_sendsnapshot_normal_0(self):
+        """
+        test_sendsnapshot_normal执行之前不限速并重启
+        :return:
+        """
+        self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 0)
+        self.stop_client(self.leader)
+        time.sleep(5)
+        self.start_client(self.leaderpath)
+
+
     @ddt.data(
-        (1, 2, 12, 13, 15, 14, -1, 3, 4, 17, 2, 12, 13, 15, 14, 16, 18, 20),  # 主表可以多次sendsnapshot给新的目标节点
+        (1, 2, 12, 13, 15, 14, -1, 3, 4, 17, 2, 12, 13, 15, 14, 18, 16, 20),  # 主表可以多次sendsnapshot给新的目标节点
         (11, 100),  # 表不存在不能sendsnapshot
         (1, 2, 11),  # 主表没有生成snapshot，不可以sendsnapshot给目标节点
         (1, 2, 12, 11),  # 主表没有pausesnapshot，不可以sendsnapshot给目标节点
@@ -178,6 +189,17 @@ class TestSendSnapshot(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
+
+
+    def test_sendsnapshot_normal_z(self):
+        """
+        test_sendsnapshot_normal执行之后还原配置并重启
+        :return:
+        """
+        self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
+        self.stop_client(self.leader)
+        time.sleep(5)
+        self.start_client(self.leaderpath)
 
 
     def test_sendsnapshot_multi_to_one(self):
@@ -224,7 +246,7 @@ class TestSendSnapshot(TestCaseBase):
             self.check_manifest(self.leaderpath, t, pid, str(t), self.get_sdb_name(t, pid), str(t))
 
 
-    def test_speed_limit(self):
+    def test_speed_limit(self):  # RTIDB-227
         """
         限速测试，stream_bandwidth_limit = 1024, 10k左右文件会在8s-12s之间发送成功
         :return:
@@ -252,6 +274,7 @@ class TestSendSnapshot(TestCaseBase):
         self.start_client(self.leaderpath)
         self.assertEqual(check_manifest_sent1, False)  # files sending because of stream_bandwidth_limit
         self.assertEqual(check_manifest_sent, True)
+        time.sleep(2)
 
 
     def test_speed_without_limit(self):

@@ -37,5 +37,4 @@ def load_all():
         else:
             test_class = test_classes[0]
         test_suite.append(unittest.TestLoader().loadTestsFromTestCase(eval('mo.' + test_class)))
-        print '*'*88, test_suite
-        return test_suite
+    return test_suite
