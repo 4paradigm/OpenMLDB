@@ -1,74 +1,93 @@
 package com._4paradigm.rtidb.client;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
+import com._4paradigm.rtidb.tablet.Tablet;
 
-import rtidb.api.Tablet;
-import rtidb.api.Tablet.PutResponse;
+public class PutFuture implements Future<Boolean> {
 
-public class PutFuture implements Future<Boolean>{
+    private List<Future<Tablet.PutResponse>> bf = new ArrayList<Future<Tablet.PutResponse>>();
+    private Long startTime = -1l;
+    private RTIDBClientConfig config = null;
 
-	private Future<Tablet.PutResponse> f;
-	private Long startTime = -1l;
-	public PutFuture(Future<Tablet.PutResponse> f) {
-		this.f = f;
-	}
-	
-	public PutFuture(Future<Tablet.PutResponse> f, Long startTime) {
-		this.f = f;
-		this.startTime = startTime;
-	}
-	
-	public static PutFuture wrapper(Future<Tablet.PutResponse> f) {
-		return new PutFuture(f);
-	}
-	
-	public static PutFuture wrapper(Future<Tablet.PutResponse> f, Long startTime) {
-		return new PutFuture(f, startTime);
-	}
-	
-	@Override
-	public boolean cancel(boolean mayInterruptIfRunning) {
-		return f.cancel(mayInterruptIfRunning);
-	}
+    public PutFuture(Future<Tablet.PutResponse> f) {
+        bf.add(f);
+    }
 
-	@Override
-	public boolean isCancelled() {
-		return f.isCancelled();
-	}
+    public PutFuture(Future<Tablet.PutResponse> f, Long startTime, RTIDBClientConfig config) {
+        this(f);
+        this.startTime = startTime;
+        this.config = config;
+    }
 
-	@Override
-	public boolean isDone() {
-		return f.isDone();
-	}
+    public PutFuture(List<Future<Tablet.PutResponse>> bf) {
+        this.bf = bf;
+    }
 
-	@Override
-	public Boolean get() throws InterruptedException, ExecutionException {
-		PutResponse response = f.get();
-		
-		if (startTime > 0) {
-			Long network = System.nanoTime() - startTime;
-			if(TabletClientConfig.isMetricsEnabled()) {
-				TabletMetrics.getInstance().addPut(-1l, network);
-			}
-		}
-		if (response != null && response.getCode() == 0) {
-			return true;
-		}
-		return false;
-	}
+    public static PutFuture wrapper(Future<Tablet.PutResponse> f) {
+        return new PutFuture(f);
+    }
 
-	@Override
-	public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-		PutResponse response = f.get(timeout, unit);
-		if (response != null && response.getCode() == 0) {
-			return true;
-		}
-		return false;
-	}
+    public static PutFuture wrapper(Future<Tablet.PutResponse> f, Long startTime, RTIDBClientConfig config) {
+        return new PutFuture(f, startTime, config);
+    }
+
+    public static PutFuture wrapper(List<Future<Tablet.PutResponse>> bf) {
+        return new PutFuture(bf);
+    }
+
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+        boolean ok = true;
+        for (Future<Tablet.PutResponse> f : bf) {
+            ok = ok && f.cancel(mayInterruptIfRunning);
+        }
+        return ok;
+    }
+
+    @Override
+    public boolean isCancelled() {
+        boolean isCancelled = true;
+        for (Future<Tablet.PutResponse> f : bf) {
+            isCancelled = isCancelled && f.isCancelled();
+        }
+        return isCancelled;
+    }
+
+    @Override
+    public boolean isDone() {
+        boolean done = true;
+        for (Future<Tablet.PutResponse> f : bf) {
+            done = done && f.isDone();
+        }
+        return done;
+    }
+
+    @Override
+    public Boolean get() throws InterruptedException, ExecutionException {
+        boolean ok = true;
+        for (Future<Tablet.PutResponse> f : bf) {
+            ok = ok && f.get() != null && f.get().getCode() == 0;
+        }
+        if (startTime > 0) {
+            Long network = System.nanoTime() - startTime;
+            if (config != null && config.isMetricsEnabled()) {
+                TabletMetrics.getInstance().addPut(-1l, network);
+            }
+        }
+        return ok;
+    }
+
+    @Override
+    public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        throw new ExecutionException("no implementation", null);
+    }
 
 }

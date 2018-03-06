@@ -25,3 +25,5 @@ table_meta_ele = {
     'table_partition': ['endpoint', 'pid_group', 'is_leader'],
     'column_desc': ['name', 'type', 'add_ts_idx']
 }
+
+rtidb_log_info = cf.get("rtidb", "log_level")

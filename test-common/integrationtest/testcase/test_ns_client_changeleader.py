@@ -21,9 +21,9 @@ class TestChangeLeader(TestCaseBase):
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"1-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
@@ -38,30 +38,30 @@ class TestChangeLeader(TestCaseBase):
         self.stop_client(self.leader)
         time.sleep(10)
 
-        self.changeleader(self.ns_leader, name, 1)
+        self.changeleader(self.ns_leader, name, 0)
 
         rs2 = self.showtable(self.ns_leader)
         self.start_client(self.leaderpath)
 
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '3', self.leader)], ['leader', '2', '144000', 'yes'])
-        act1 = rs2[(name, tid, '1', self.slave1)]
-        act2 = rs2[(name, tid, '1', self.slave2)]
+        act1 = rs2[(name, tid, '0', self.slave1)]
+        act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
 
         leader_new = self.slave1 if 'leader' in act1 else self.slave2
         follower = self.slave1 if 'follower' in act1 else self.slave2
-        rs2 = self.put(self.leader, tid, 2, 'testkey0', self.now(), 'testvalue0')
+        rs2 = self.put(self.leader, tid, 1, 'testkey0', self.now(), 'testvalue0')
         self.assertTrue('Put failed' in rs2)
-        rs3 = self.put(self.slave1, tid, 2, 'testkey0', self.now(), 'testvalue0')
+        rs3 = self.put(self.slave1, tid, 1, 'testkey0', self.now(), 'testvalue0')
         self.assertTrue('Put failed' in rs3)
-        rs4 = self.put(leader_new, tid, 1, 'testkey0', self.now(), 'testvalue0')
+        rs4 = self.put(leader_new, tid, 0, 'testkey0', self.now(), 'testvalue0')
         self.assertTrue('Put ok' in rs4)
         time.sleep(1)
-        self.assertTrue('testvalue0' in self.scan(follower, tid, 1, 'testkey0', self.now(), 1))
+        self.assertTrue('testvalue0' in self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
 
 
     def test_changeleader_master_alive(self):
@@ -73,14 +73,14 @@ class TestChangeLeader(TestCaseBase):
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertEqual('Create table ok' in rs1, True)
 
-        rs2 = self.changeleader(self.ns_leader, name, 1)
+        rs2 = self.changeleader(self.ns_leader, name, 0)
         self.assertEqual('failed to change leader. error msg: change leader failed' in rs2, True)
 
 
@@ -92,14 +92,14 @@ class TestChangeLeader(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format('tname{}'.format(time.time())), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertEqual('Create table ok' in rs1, True)
 
-        rs2 = self.changeleader(self.ns_leader, 'nullnullnull', 1)
+        rs2 = self.changeleader(self.ns_leader, 'nullnullnull', 0)
         self.assertEqual('failed to change leader. error msg: change leader failed' in rs2, True)
 
 

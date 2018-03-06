@@ -140,33 +140,33 @@ class TestAutoRecoverTable(TestCaseBase):
 
 
     @ddt.data(
+        (1, 3, 0, 6, 15, 0, 20, 24),  # offset = manifest.offset
+        (1, 3, 0, 6, 12, 15, 0, 20),  # offset = manifest.offset
+        (1, 3, 0, 6, 8, 15, 0, 20),  # offset = manifest.offset
+        (1, 3, 0, 6, 8, 12, 15, 0, 19, 23),  # offset < manifest.offset
+        (1, 12, 3, 0, 12, 15, 0, 20),  # offset = manifest.offset
+        (1, 11, 7, 10, 3, 0, 15, 0, 20),  # offset > manifest.offset
+        (1, 3, 0, 6, 7, 15, 0, 19),  # not match
+        (1, 3, 0, 6, 7, 12, 15, 0, 19),  # not match
+        (1, 3, 0, 6, 7, 8, 15, 0, 19),  # not match
+        (1, 3, 0, 7, 10, 2, 12, 13, 0, 17),  # not match
+        (1, 12, 2, 0, 6, 12, 13, 0, 18, 22),  # offset = manifest.offset
+        (1, 11, 7, 10, 2, 0, 13, 0, 18),  # 12 offset > manifest.offset
+        (13, 1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 18),  # 13 offset > manifest.offset
+        (1, 2, 0, 6, 13, 0, 17, 21),  # offset < manifest.offset
+        (1, 2, 0, 6, 12, 13, 0, 17),  # offset < manifest.offset
+        (1, 2, 0, 6, 8, 13, 0, 17),
+        (1, 2, 0, 6, 10, 12, 13, 0, 17),
+        (1, 2, 0, 6, 8, 12, 13, 0, 17),
+        (1, 5, 0, 16, 0, 20),
+        (1, 4, 0, 14, 0, 17),
         (1, 12, 3, 7, 2, 0, 13, 0, 18),  # RTIDB-222
-        # (1, 3, 0, 6, 15, 0, 20, 24),  # offset = manifest.offset
-        # (1, 3, 0, 6, 12, 15, 0, 20),  # offset = manifest.offset
-        # (1, 3, 0, 6, 8, 15, 0, 20),  # offset = manifest.offset
-        # (1, 3, 0, 6, 8, 12, 15, 0, 19, 23),  # offset < manifest.offset
-        # (1, 12, 3, 0, 12, 15, 0, 20),  # offset = manifest.offset
-        # (1, 11, 7, 10, 3, 0, 15, 0, 20),  # offset > manifest.offset
-        # (1, 3, 0, 6, 7, 15, 0, 19),  # not match
-        # (1, 3, 0, 6, 7, 12, 15, 0, 19),  # not match
-        # (1, 3, 0, 6, 7, 8, 15, 0, 19),  # not match
-        # (1, 3, 0, 7, 10, 2, 12, 13, 0, 17),  # not match
-        # (1, 12, 2, 0, 6, 12, 13, 0, 18, 22),  # offset = manifest.offset
-        # (1, 11, 7, 10, 2, 0, 13, 0, 18),  # 12 offset > manifest.offset
-        # (1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 18),  # 13 offset > manifest.offset
-        # (1, 2, 0, 6, 13, 0, 17, 21),  # offset < manifest.offset
-        # (1, 2, 0, 6, 12, 13, 0, 17),  # offset < manifest.offset
-        # (1, 2, 0, 6, 8, 13, 0, 17),
-        # (1, 2, 0, 6, 10, 12, 13, 0, 17),
-        # (1, 2, 0, 6, 8, 12, 13, 0, 17),
-        # (1, 5, 0, 16, 0, 20),
-        # (1, 4, 0, 14, 0, 17),
-
     )
     @ddt.unpack
     def test_auto_recover_table(self, *steps):
         steps_dict = self.get_steps_dict()
         for i in steps:
+            infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
         rs = self.showtable(self.ns_leader)
         role_x = [v[0] for k, v in rs.items()]

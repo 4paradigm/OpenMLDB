@@ -18,7 +18,7 @@ class TestShowTablet(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 8,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
@@ -42,7 +42,7 @@ class TestShowTablet(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), '"kLatestTime"', 100, 8,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
             ('column_desc', '"k1"', '"string"', 'true'),

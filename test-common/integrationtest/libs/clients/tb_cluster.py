@@ -5,6 +5,7 @@ import shlex
 import subprocess
 import time
 sys.path.append(os.getenv('testpath'))
+import libs.conf as conf
 from libs.utils import exe_shell
 from libs.logger import infoLogger
 
@@ -25,13 +26,14 @@ class TbCluster(object):
             tb_path = test_path + '/tablet{}'.format(i)
             rtidb_flags = '{}/conf/rtidb.flags'.format(tb_path)
             exe_shell('mkdir -p {}/conf'.format(tb_path))
-            exe_shell('cat {} | egrep -v "endpoint|gc_interval|db_root_path|log_dir|recycle_bin_root_path" > '
+            exe_shell('cat {} | egrep -v "endpoint|log_level|gc_interval|db_root_path|log_dir|recycle_bin_root_path" > '
                       '{}'.format(tbconfpath, rtidb_flags))
             exe_shell("sed -i '1a --endpoint='{} {}".format(ep, rtidb_flags))
             exe_shell("sed -i '1a --gc_interval=1' {}".format(rtidb_flags))
             exe_shell("sed -i '1a --db_root_path={}/db' {}".format(tb_path, rtidb_flags))
             exe_shell("sed -i '1a --zk_cluster='{} {}".format(self.zk_endpoint, rtidb_flags))
             exe_shell("sed -i '1a --recycle_bin_root_path={}/recycle' {}".format(tb_path, rtidb_flags))
+            exe_shell("echo '--log_level={}' >> {}".format(conf.rtidb_log_info, rtidb_flags))
             exe_shell("echo '--stream_close_wait_time_ms=10' >> {}".format(rtidb_flags))
             exe_shell("echo '--stream_bandwidth_limit=0' >> {}".format(rtidb_flags))
             exe_shell("echo '--zk_root_path=/onebox' >> {}".format(rtidb_flags))

@@ -1,4 +1,4 @@
 #! /bin/sh
 #
 # stop_all.sh
-pkill rtidb
+ps -ef | grep rtidb | grep onebox | awk '{print $2}' | while read line; do kill -9 $line; done

@@ -361,14 +361,15 @@ class TestCaseBase(unittest.TestCase):
 
     def find_new_tb_leader(self, tname, tid, pid):
         line_count = utils.exe_shell('cat {}/info.log|wc -l'.format(self.ns_leader_path))
-        cmd = "grep -n {} {}/info.log|head -1".format(tname, self.ns_leader_path)
+        cmd = "grep -n {} {}/info.log -m 1".format(tname, self.ns_leader_path)
         op_start_line = utils.exe_shell(cmd + "|awk -F ':' '{print $1}'")
-        new_leader = utils.exe_shell("tail -n {} {}/info.log"
-                                     "|grep \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
-            int(line_count) - int(op_start_line), self.ns_leader_path, tname, tid, pid) +
-                                     "|awk -F 'new leader is\\\\[' '{print $2}'"
-                                     "|awk -F '\\\\]. name\\\\[tname' '{print $1}'"
-                                     "|tail -n 1")
+        cmd1 = "tail -n {} {}/info.log|grep \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
+            int(line_count) - int(op_start_line),
+            self.ns_leader_path, tname, tid, pid) + \
+              "|awk -F 'new leader is\\\\[' '{print $2}'" \
+              "|awk -F '\\\\]. name\\\\[tname' '{print $1}'" \
+              "|tail -n 1"
+        new_leader = utils.exe_shell(cmd1)
         self.new_tb_leader = new_leader
         return new_leader
 
@@ -380,4 +381,5 @@ class TestCaseBase(unittest.TestCase):
         elif role == 'ns_client':
             conf_file = 'nameserver.flags'
         utils.exe_shell("sed -i '/{}/d' {}/conf/{}".format(conf_item, nodepath, conf_file))
-        utils.exe_shell("sed -i '1i--{}={}' {}/conf/{}".format(conf_item, conf_value, nodepath, conf_file))
+        if conf_value is not None:
+            utils.exe_shell("sed -i '1i--{}={}' {}/conf/{}".format(conf_item, conf_value, nodepath, conf_file))

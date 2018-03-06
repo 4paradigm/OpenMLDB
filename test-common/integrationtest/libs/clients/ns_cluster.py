@@ -56,8 +56,9 @@ class NsCluster(object):
             ns_path = self.ns_edp_path[ep]
             nameserver_flags = '{}/conf/nameserver.flags'.format(ns_path)
             exe_shell('mkdir -p {}/conf'.format(ns_path))
-            exe_shell('cat {} | egrep -v "endpoint=|gc_interval=|db_root_path=|--log_dir=" > {}'.format(
+            exe_shell('cat {} | egrep -v "endpoint=|log_level=|gc_interval=|db_root_path=|--log_dir=" > {}'.format(
                 nsconfpath, nameserver_flags))
+            exe_shell("echo '--log_level={}' >> {}".format(conf.rtidb_log_info, nameserver_flags))
             exe_shell("echo '--endpoint='{} >> {}".format(ep, nameserver_flags))
             exe_shell("echo '--zk_cluster='{} >> {}".format(self.zk_endpoint, nameserver_flags))
             exe_shell("echo '--zk_root_path=/onebox' >> {}".format(nameserver_flags))

@@ -60,9 +60,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             name, ttl_type, ttl, seg_cnt,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'))
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertTrue(exp_msg in rs)
@@ -96,9 +96,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             name, ttl_type, ttl, seg_cnt,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'))
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertTrue('Create table ok' in rs)
@@ -123,9 +123,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"naysatest"', None, 144000, 8,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'))
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertTrue('Create table ok' in rs1)
@@ -136,24 +136,26 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.data(
         (('"0-9"', 'true'), ('"1-3"', 'false'), 'Create table ok'),
         (('"0-9"', 'true'), ('"0-9"', 'false'), 'Create table ok'),
-        (('"1-3"', 'true'), ('"2-9"', 'false'), 'pid 4 has not leader'),
-        (('"1-3"', 'true'), ('"0-2"', 'false'), 'pid 0 has not leader'),
+        (('"0-3"', 'true'), ('"2-9"', 'false'), 'pid 4 has not leader'),
+        (('"0-3"', 'true'), ('"0-4"', 'false'), 'pid 4 has not leader'),
         (('"-1-3"', 'true'), ('"0-2"', 'false'), 'pid_group[-1-3] format error.'),
-        (('"2"', 'true'), ('"2"', 'false'), 'Create table ok'),
+        (('"0"', 'true'), ('"0"', 'false'), 'Create table ok'),
         (('"-1"', 'true'), ('"-1"', 'false'), 'pid_group[-1] format error.'),
-        (('"1"', 'true'), ('"2"', 'false'), 'pid 2 has not leader'),
-        (('"3-1"', 'true'), ('"2"', 'false'), 'pid 2 has not leader'),
-        (('"3-1"', 'true'), ('"2"', 'true'), 'Create table ok'),
-        (('"1"', 'true'), ('"2"', 'true'), 'Create table ok'),
-        (('"1"', 'true'), ('"1"', 'true'), 'pid 1 has two leader'),
-        (('"1-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
+        (('"0"', 'true'), ('"2"', 'false'), 'pid 2 has not leader'),
+        (('"3-0"', 'true'), ('"2"', 'false'), 'has not leader pid'),
+        (('"3-0"', 'true'), ('"2"', 'true'), 'pid is not start with zero and consecutive'),
+        (('"0"', 'true'), ('"1"', 'true'), 'Create table ok'),
+        (('"0"', 'true'), ('"0"', 'true'), 'pid 0 has two leader'),
+        (('"0-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
         (('""', 'true'), ('"2-4"', 'true'), 'pid_group[] format error.'),
         (('"0"', 'true'), ('"1-1024"', 'true'), 'Create table ok'),
         (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
         ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
         (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),
         (('""', 'true'), ('"1-3"', 'false'), 'pid_group[] format error.'),
-        (('"0-9"', 'false'), ('"1-3"', 'false'), 'pid 0 has not leader'),
+        (('"0-9"', 'false'), ('"1-3"', 'false'), 'has not leader pid'),
+        (('"1-1"', 'false'), ('"0-3"', 'true'), 'Create table ok'),
+        ((None, 'false'), (None, 'true'), 'table meta file format error'),
     )
     @ddt.unpack
     def test_create_pid_group(self, pid_group1, pid_group2, exp_msg):
@@ -189,7 +191,7 @@ class TestCreateTableByNsClient(TestCaseBase):
 
 
     @ddt.data(
-        (('"127.0.0.1:37770"', '"127.0.0.1:37770"'), 'pid 1 leader and follower at same endpoint'),
+        (('"127.0.0.1:37770"', '"127.0.0.1:37770"'), 'pid 0 leader and follower at same endpoint'),
         (('"127.0.0.1:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
         (('"0.0.0.0:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
         (('"127.0.0.1:37770"', '"127.0.0.1:47771"'), 'Fail to create table'),
@@ -213,8 +215,8 @@ class TestCreateTableByNsClient(TestCaseBase):
         name = '"tname{}"'.format(int(time.time() * 1000000 % 10000000000))
         m = utils.gen_table_metadata(
             name, None, 144000, 2,
-            ('table_partition', ep[0], '"1-3"', 'true'),
-            ('table_partition', ep[1], '"1-3"', 'false'))
+            ('table_partition', ep[0], '"0-2"', 'true'),
+            ('table_partition', ep[1], '"0-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
@@ -224,20 +226,20 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @ddt.data(
         ('table meta file format error',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', None)),
+         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', None)),
 
-        ('pid 1 has not leader',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', 'false'),
-         ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"1-3"', 'false')),
+        ('has not leader pid',
+         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', 'false'),
+         ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-3"', 'false')),
 
         ('Create table ok',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', 'true'),
-         ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"1-3"', 'false')),
+         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', 'true'),
+         ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-3"', 'false')),
 
         ('table meta file format error',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', '""')),
+         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', '""')),
 
-        ('table meta file format error', None),  # RTIDB-193
+        ('has not table_partition in table meta file', None),  # RTIDB-193
 
         ('missing required fields: table_partition[0].endpoint, table_partition[0].pid_group, table_partition[0].is_leader',
          ('table_partition', None, None, None)),
@@ -328,9 +330,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"tname{}"'.format(int(time.time())), '"kAbsoluteTime"', 144000, 8,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
             *column_descs)
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
@@ -351,9 +353,9 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @ddt.data(
         ('Create table ok',
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"1-2"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"2-3"', 'false'),
+        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"double"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),),
@@ -362,24 +364,24 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"double"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"1-2"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"2-3"', 'false'),),
+        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),),
 
         ('Create table ok',
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', 'true'),
+        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
         ('column_desc', '"k1"', '"string"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"1-2"', 'false'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
         ('column_desc', '"k2"', '"double"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"2-3"', 'false'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),),
 
         ('Create table ok',
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"double"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"1-3"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"1-2"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"2-3"', 'false'),
+        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
+        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),),
     )
     @ddt.unpack
@@ -400,10 +402,10 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
         infoLogger.info(rs1)
-        self.assertEqual(rs1[(tname, tid, '1', self.leader)], ['leader', '8', '144000', 'yes'])
-        self.assertEqual(rs1[(tname, tid, '1', self.slave1)], ['follower', '8', '144000', 'yes'])
-        self.assertEqual(rs1[(tname, tid, '3', self.slave2)], ['follower', '8', '144000', 'yes'])
-        schema = self.showschema(self.slave1, tid, 1)
+        self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '8', '144000', 'yes'])
+        self.assertEqual(rs1[(tname, tid, '0', self.slave1)], ['follower', '8', '144000', 'yes'])
+        self.assertEqual(rs1[(tname, tid, '2', self.slave2)], ['follower', '8', '144000', 'yes'])
+        schema = self.showschema(self.slave1, tid, 0)
         infoLogger.info(schema)
         self.assertEqual(len(schema), 3)
         self.assertEqual(schema['k1'], ['string', 'yes'])

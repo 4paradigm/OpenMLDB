@@ -89,8 +89,8 @@ class TestNameserverHa(TestCaseBase):
         (9,8,9),  # RTIDB-223
         (9,1,3,8,5,5,5,5,5,-1,9,13,14),  # ns_leader断网，可以继续put及同步数据
         (9,1,2,7,5,5,5,5,5,-1,9,13,14),  # ns_leader挂掉，可以继续put及同步数据
-        # (9,1,4,6,3,0,8,12,9),  # ns_leader断网，可以makesnapshot成功
-        # (9,1,4,6,2,0,7,12,9),  # ns_leader挂掉，可以makesnapshot成功
+        (9,1,4,6,3,0,8,12,9),  # ns_leader断网，可以makesnapshot成功
+        (9,1,4,6,2,0,7,12,9),  # ns_leader挂掉，可以makesnapshot成功
         (9,1,2,0,7,9,14,15,-1),  # ns_leader挂掉，可以drop表
         (9,1,3,0,8,9,14,15,-1),  # ns_leader断网，可以drop表
         (9,1,2,0,7,9,1,15,-1),  # ns_leader挂掉，可以create并put
@@ -100,7 +100,7 @@ class TestNameserverHa(TestCaseBase):
     def test_ns_ha(self, *steps):
         steps_dict = self.get_steps_dict()
         for i in steps:
-            infoLogger.info("\n\n" + str(i))
+            infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
         infoLogger.info(self.showtable(self.ns_slaver))
         self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'],

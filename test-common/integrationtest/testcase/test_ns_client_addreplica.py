@@ -61,28 +61,29 @@ class TestAddReplicaNs(TestCaseBase):
     @multi_dimension(False)
     def test_addreplica_no_snapshot(self):
         """
-        没有snapshot，添加副本失败
+        没有snapshot，添加副本成功，数据追加成功
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertTrue('Create table ok' in rs1)
         rs2 = self.showtable(self.ns_leader)
         tid = rs2.keys()[0][1]
-        rs3 = self.put(self.leader, tid, 1, 'testkey0', self.now() + 10000, 'testvalue0')
+        rs3 = self.put(self.leader, tid, 1, 'testkey0', self.now() + 9999, 'testvalue0')
         self.assertTrue('Put ok' in rs3)
         rs4 = self.addreplica(self.ns_leader, name, 1, 'ns_client', self.slave1)
         self.assertTrue('AddReplica ok' in rs4)
         time.sleep(5)
         rs5 = self.showtable(self.ns_leader)
         self.assertEqual((name, tid, '1', self.leader) in rs5.keys(), True)
-        self.assertEqual((name, tid, '1', self.slave1) in rs5.keys(), False)
+        self.assertEqual((name, tid, '1', self.slave1) in rs5.keys(), True)
+        self.assertEqual('testvalue0' in self.scan(self.slave1, tid, 1, 'testkey0', self.now() + 9999, 1), True)
 
 
     @multi_dimension(False)
@@ -96,7 +97,7 @@ class TestAddReplicaNs(TestCaseBase):
         name = '"tname{}"'.format(int(time.time() * 1000000 % 10000000000))
         m = utils.gen_table_metadata(
             name, None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
@@ -112,9 +113,9 @@ class TestAddReplicaNs(TestCaseBase):
 
 
     @ddt.data(
-        (None, None, get_base_attr('slave1'), 'Fail to addreplica. already added'),
+        (None, None, get_base_attr('slave1'), 'AddReplica ok'),  # 需要log中看是fail的
         ('notexsit', None, None, 'Fail to addreplica. error msg:table is not  exist!'),
-        (None, 10, None, 'Fail to addreplica. error msg:table has not leader'),
+        (None, 10, None, 'Fail to addreplica. error msg:get leader failed'),
         (None, None, '127.1.1.1:6666', 'Fail to addreplica. error msg:tablet is not online'),
     )
     @ddt.unpack
@@ -126,8 +127,8 @@ class TestAddReplicaNs(TestCaseBase):
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-                                     ('table_partition', '"{}"'.format(self.leader), '"1-3"', 'true'),
-                                     ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'))
+                                     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+                                     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertTrue('Create table ok' in rs1)
