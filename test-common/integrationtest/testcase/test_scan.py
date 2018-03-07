@@ -43,9 +43,6 @@ class TestScan(TestCaseBase):
         self.assertTrue('Create table ok' in rs1)
         self.put(self.leader, self.tid, self.pid, 'testkey0', self.now() - 1000000000, 'testvalue0')
         infoLogger.info(self.scan(self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
-        self.assertTrue('testvalue0' in self.scan(
-            self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
-        time.sleep(61)
         self.assertFalse('testvalue0' in self.scan(
             self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
 

@@ -17,12 +17,22 @@ class TestAddReplicaNs(TestCaseBase):
         name = 'tname{}'.format(int(time.time() * 1000000 % 10000000000))
         m = utils.gen_table_metadata(
             '"{}"'.format(name), 144000, 2,
-            ('"{}"'.format(self.leader), '"1-3"', 'true'))
+            ('"{}"'.format(self.leader), '"0-2"', 'true'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertTrue('Create table ok' in rs)
 
         pid = 1
+        rs4 = self.showtable(self.ns_leader)
+        tid = rs4[name][0]
+        rs2 = self.put(self.leader,
+                       tid,
+                       pid,
+                       'testkey',
+                       self.now(),
+                       'testvalue0')
+        self.assertTrue('Put ok' in rs2)
+        time.sleep(1)
         rs3 = self.makesnapshot(self.ns_leader, name, pid, 'ns_client')
         self.assertTrue('MakeSnapshot ok' in rs3)
         time.sleep(2)
@@ -36,18 +46,18 @@ class TestAddReplicaNs(TestCaseBase):
         last_opstatus = self.showopstatus(self.ns_leader)[last_op_id]
         self.assertTrue('kAddReplicaOP', last_opstatus)
 
-        rs4 = self.showtable(self.ns_leader)
-        tid = rs4[name][0]
         rs2 = self.put(self.leader,
                        tid,
                        pid,
-                       'testkey0',
+                       'testkey',
                        self.now(),
-                       'testvalue0')
+                       'testvalue1')
         self.assertTrue('Put ok' in rs2)
-        time.sleep(20)
+        time.sleep(30)
         self.assertTrue(
-            'testvalue0' in self.scan(self.slave1, tid, pid, 'testkey0', self.now(), 1))
+            'testvalue0' in self.scan(self.slave1, tid, pid, 'testkey', self.now(), 1))
+        self.assertTrue(
+            'testvalue1' in self.scan(self.slave1, tid, pid, 'testkey', self.now(), 1))
 
 
 if __name__ == "__main__":
