@@ -85,8 +85,8 @@ class TestTtl(TestCaseBase):
                                           'amt': ('double', 1.1)}
                 self.put(self.leader, tid, 0, 'pk', i[1], '|{}|'.format(i[0]))
             time.sleep(1)
+            self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
             if ttl.find("latest") == -1:
-                self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
                 rs = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
                 infoLogger.info(rs)
                 for k, v in value_ts_scannable.items():
@@ -95,9 +95,8 @@ class TestTtl(TestCaseBase):
                     else:
                          self.assertFalse('|{}|'.format(k[0]) in rs)
             else:
-                multidimension_get_vk = {'key':'pk', 'idx_name':'card'}
                 for k, v in value_ts_scannable.items():
-                    rs = self.get(self.leader, tid, 0, multidimension_get_vk, k[1])
+                    rs = self.get(self.leader, tid, 0, 'pk', k[1])
                     infoLogger.info(rs)
                     if v is True:
                         self.assertTrue('|{}|'.format(k[0]) in rs)
@@ -130,8 +129,8 @@ class TestTtl(TestCaseBase):
         :param value_ts_scannable:
         :return:
         """
+        self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
         if ttl.find("latest") == -1:
-            self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
             rs1 = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
             infoLogger.info(rs1)
             for k, v in value_ts_scannable.items():
@@ -140,9 +139,8 @@ class TestTtl(TestCaseBase):
                 else:
                     self.assertFalse('|{}|'.format(k[0]) in rs1)
         else:
-            multidimension_get_vk = {'key':'pk', 'idx_name':'card'}
             for k, v in value_ts_scannable.items():
-                rs = self.get(self.leader, tid, 0, multidimension_get_vk, k[1])
+                rs = self.get(self.leader, tid, 0, 'pk', k[1])
                 infoLogger.info(rs)
                 if v is True:
                     self.assertTrue('|{}|'.format(k[0]) in rs)
@@ -174,9 +172,9 @@ class TestTtl(TestCaseBase):
             self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
         time.sleep(1)
 
-        multidimension_get_vk = {'key':'pk', 'idx_name':'card'}
+        self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
         for k, v in value_ts_scannable.items():
-            rs = self.get(self.leader, self.tid, self.pid, multidimension_get_vk, k[1])
+            rs = self.get(self.leader, self.tid, self.pid, 'pk', k[1])
             infoLogger.info(rs)
             if v is True:
                 self.assertTrue('|{}|'.format(k[0]) in rs)
@@ -191,7 +189,7 @@ class TestTtl(TestCaseBase):
             self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
         time.sleep(1)
         for k, v in value_ts_scannable2.items():
-            rs = self.get(self.leader, self.tid, self.pid, multidimension_get_vk, k[1])
+            rs = self.get(self.leader, self.tid, self.pid, 'pk', k[1])
             infoLogger.info(rs)
             if v is True:
                 self.assertTrue('|{}|'.format(k[0]) in rs)

@@ -163,16 +163,18 @@ class TestCaseBase(unittest.TestCase):
         :param endpoint:
         :param tid:
         :param pid:
-        :param vk: e.g. {'key': 'pk', 'idx_name': 'card'} or 'naysakey'
+        :param vk: e.g. {'card': 0001, 'merchant': 0002} or 'naysakey'
         :param ts:
         :return:
         """
-        if not isinstance(vk, dict):
+        if self.multidimension:
+            print(self.multidimension_scan_vk.keys()[0])
+            print(self.multidimension_scan_vk.values()[0])
+            return self.run_client(endpoint, 'sget {} {} {} {} {}'.format(
+                tid, pid, self.multidimension_scan_vk.values()[0], self.multidimension_scan_vk.keys()[0], ts))
+        else:
             return self.run_client(endpoint, 'get {} {} {} {}'.format(
                     tid, pid, vk, ts))
-        else:
-            return self.run_client(endpoint, 'sget {} {} {} {} {}'.format(
-                tid, pid, vk['key'], vk['idx_name'], ts))
 
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))
