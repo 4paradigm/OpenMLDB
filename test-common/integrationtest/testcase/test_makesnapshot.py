@@ -148,34 +148,19 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertTrue('Create table ok' in rs1)
 
-        self.put_large_datas(500, 20)
+        self.put_large_datas(1000, 8)
 
-        rs_list = []
 
-        def makesnapshot(endpoint):
-            rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(self.tid, self.pid))
-            rs_list.append(rs)
-
-        # 5个线程并发makesnapshot，最后只有1个线程是MakeSnapshot ok的
-        threads = []
-        for _ in range(0, 5):
-            threads.append(threading.Thread(
-                target=makesnapshot, args=(self.leader,)))
-
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        print rs_list
-        infoLogger.info(rs_list)
-        self.assertEqual(rs_list.count('MakeSnapshot ok'), 1)
+        rs = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
+        self.assertEqual('MakeSnapshot ok', rs)
+        rs = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
+        self.assertEqual('Fail to MakeSnapshot', rs)
 
         time.sleep(5)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '10000')
+        self.assertEqual(mf['offset'], '8000')
         self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '10000')
+        self.assertEqual(mf['count'], '8000')
 
 
     def test_makesnapshot_block_drop_table(self):
@@ -207,7 +192,7 @@ class TestMakeSnapshot(TestCaseBase):
         self.multidimension_vk = {'card': ('string:index', 'v' * 120),
                                   'merchant': ('string:index', 'v' * 120),
                                   'amt': ('double', 1.1)}
-        self.put_large_datas(200, 20)
+        self.put_large_datas(3000, 8)
 
         # 将table目录拷贝到新节点
         utils.exe_shell('cp -r {leaderpath}/db/{tid}_{pid} {slave1path}/db/'.format(

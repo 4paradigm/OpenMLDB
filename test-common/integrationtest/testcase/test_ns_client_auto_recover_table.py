@@ -152,7 +152,7 @@ class TestAutoRecoverTable(TestCaseBase):
         (1, 3, 0, 7, 10, 2, 12, 13, 0, 17),  # not match
         (1, 12, 2, 0, 6, 12, 13, 0, 18, 22),  # offset = manifest.offset
         (1, 11, 7, 10, 2, 0, 13, 0, 18),  # 12 offset > manifest.offset
-        (13, 1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 18),  # 13 offset > manifest.offset
+        (1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 18),  # 13 offset > manifest.offset
         (1, 2, 0, 6, 13, 0, 17, 21),  # offset < manifest.offset
         (1, 2, 0, 6, 12, 13, 0, 17),  # offset < manifest.offset
         (1, 2, 0, 6, 8, 13, 0, 17),
