@@ -724,24 +724,27 @@ class TestLoadTable(TestCaseBase):
         从节点loadtable，可以正确load到未过期的数据
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 1)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 6):
             self.put(self.leader,
                      self.tid,
                      self.pid,
                      'testkey',
-                     self.now() - (100000000000 * (i % 2) + 1),
+                     self.now() + 60000 * i,
                      'testvalue{}'.format(i))
-        rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 1, 8, 'false', self.slave1)
         self.assertTrue('Fail' in rs1)
-        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 1, 8, 'false', self.slave1)
         self.assertTrue('Create table ok' in rs0)
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertTrue('AddReplica ok' in rs2)
         time.sleep(1)
-        self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
-        self.assertFalse('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+        self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
+        self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
+        time.sleep(120)
+        self.assertFalse('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
+        self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
 
     @multi_dimension(True)
     def test_loadtable_and_addreplica_ttl_md(self):
@@ -750,26 +753,32 @@ class TestLoadTable(TestCaseBase):
         从节点createtable，可以正确同步到未过期的数据
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 1)
         self.assertTrue('Create table ok' in rs1)
         for i in range(0, 6):
             self.put(self.leader,
                      self.tid,
                      self.pid,
                      '',
-                     self.now() - (100000000000 * (i % 2) + 1),
+                     self.now() + 60000 * i,
                      'testvalue{}'.format(i), '1.1', 'testkey')
-        rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        time.sleep(1)    
+        rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 1, 8, 'false')
         self.assertTrue('Fail' in rs1)
-        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 1, 8, 'false')
         self.assertTrue('Create table ok' in rs0)
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertTrue('AddReplica ok' in rs2)
-        time.sleep(1)
+        time.sleep(2)
         self.assertTrue('testvalue0' in self.scan(
-            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
-        self.assertFalse('testvalue1' in self.scan(
-            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now(), 1))
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
+        self.assertTrue('testvalue1' in self.scan(
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
+        time.sleep(120)
+        self.assertFalse('testvalue0' in self.scan(
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
+        self.assertTrue('testvalue1' in self.scan(
+            self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
 
    
 if __name__ == "__main__":
