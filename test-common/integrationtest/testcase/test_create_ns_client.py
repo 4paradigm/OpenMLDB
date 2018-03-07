@@ -44,9 +44,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             name, ttl, seg_cnt,
-            ('"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('"{}"'.format(self.slave2), '"2-3"', 'false'))
+            ('"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
@@ -56,18 +56,18 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.data(
         (('0-9', 'true'), ('1-3', 'false'), 'Create table ok'),
         (('0-9', 'true'), ('0-9', 'false'), 'Create table ok'),
-        (('1-3', 'true'), ('2-9', 'false'), 'pid 4 has not leader'),
-        (('1-3', 'true'), ('0-2', 'false'), 'pid 0 has not leader'),
+        (('0-3', 'true'), ('2-9', 'false'), 'pid 4 has not leader'),
+        (('1-3', 'true'), ('0-2', 'false'), 'pid is not start with zero and consecutive'),
         (('-1-3', 'true'), ('0-2', 'false'), 'pid_group[-1-3] format error.'),
-        (('2', 'true'), ('2', 'false'), 'Create table ok'),
+        (('2', 'true'), ('2', 'false'), 'pid is not start with zero and consecutive'),
+        (('0', 'true'), ('0', 'false'), 'Create table ok'),
         (('-1', 'true'), ('-1', 'false'), 'pid_group[-1] format error.'),
-        (('1', 'true'), ('2', 'false'), 'pid 2 has not leader'),
-        (('3-1', 'true'), ('2', 'false'), 'pid 2 has not leader'),
-        (('3-1', 'true'), ('2', 'true'), 'Create table ok'),
-        (('1', 'true'), ('2', 'true'), 'Create table ok'),
-        (('1', 'true'), ('1', 'true'), 'pid 1 has two leader'),
-        (('1-3', 'true'), ('2-4', 'true'), 'pid 2 has two leader'),
-        (('', 'true'), ('2-4', 'true'), 'pid_group[] format error.'),
+        (('1', 'true'), ('2', 'false'), 'pid is not start with zero and consecutive'),
+        (('3-0', 'true'), ('2', 'false'), 'has not leader pid'),
+        (('3-1', 'true'), ('2', 'true'), 'pid is not start with zero and consecutive'),
+        (('0', 'true'), ('1', 'true'), 'Create table ok'),
+        (('0-3', 'true'), ('0-2', 'true'), 'pid 0 has two leader'),
+        (('', 'true'), ('2-4', 'false'), 'pid_group[] format error'),
         (('0', 'true'), ('1-1024', 'true'), 'Create table ok'),
         (('0', 'true'), (None, 'false'), 'pid_group[None] format error.'),
         ((None, 'true'), ('1-3', 'false'), 'pid_group[None] format error.'),
@@ -103,7 +103,7 @@ class TestCreateTableByNsClient(TestCaseBase):
 
 
     @ddt.data(
-        (('127.0.0.1:37770', '127.0.0.1:37770'), 'pid 1 leader and follower at same endpoint'),
+        (('127.0.0.1:37770', '127.0.0.1:37770'), 'pid 0 leader and follower at same endpoint'),
         (('127.0.0.1:37770', '0.0.0.0:37770'), 'Fail to create table'),
         (('127.0.0.1:37770', '127.0.0.1:47771'), 'Fail to create table'),
         (('', '127.0.0.1:37770'), 'Fail to create table'),
@@ -121,8 +121,8 @@ class TestCreateTableByNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"tname{}"'.format(int(time.time() * 1000000 % 10000000000)), 144000, 2,
-            ('"{}"'.format(ep[0]), '"1-3"', 'true'),
-            ('"{}"'.format(ep[1]), '"1-3"', 'false'))
+            ('"{}"'.format(ep[0]), '"0-2"', 'true'),
+            ('"{}"'.format(ep[1]), '"0-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
@@ -130,10 +130,10 @@ class TestCreateTableByNsClient(TestCaseBase):
 
 
     @ddt.data(
-        (('"127.0.0.1:37770"', '"1-3"', None), 'table meta file format error'),
-        (('"127.0.0.1:37770"', '"1-3"', 'false'), 'pid 1 has not leader'),
-        (('"127.0.0.1:37770"', '"1-3"', 'true'), 'Create table ok'),
-        (('"127.0.0.1:37770"', '"1-3"', '""'), 'table meta file format error'),
+        (('"127.0.0.1:37770"', '"0-2"', None), 'table meta file format error'),
+        (('"127.0.0.1:37770"', '"0-2"', 'false'), 'has not leader pid'),
+        (('"127.0.0.1:37770"', '"0-2"', 'true'), 'Create table ok'),
+        (('"127.0.0.1:37770"', '"0-2"', '""'), 'table meta file format error'),
     )
     @ddt.unpack
     def test_create_is_leader(self, table_partition, exp_msg):
