@@ -4,11 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 
 import rtidb.api.TabletServer;
 
 public class PartitionHandler {
+    private final static Logger logger = LoggerFactory.getLogger(PartitionHandler.class);
     private final static Random rand = new Random(System.currentTimeMillis());
     private TabletServer leader = null;
     private List<TabletServer> followers = new ArrayList<TabletServer>();
@@ -40,9 +44,11 @@ public class PartitionHandler {
         }
         switch(strategy) {
         case kReadLeader:
+            logger.debug("choose leader partition for reading");
             return leader;
         case kReadLocal:
             if (fastTablet != null) {
+                logger.debug("choose fast partition for reading");
                 return fastTablet;
             }else if(followers.size() > 0) {
                 int index = (int) ((rand.nextFloat() * 1000) % followers.size());
