@@ -17,7 +17,7 @@ class TestAddReplicaNs(TestCaseBase):
         name = 'tname{}'.format(int(time.time() * 1000000 % 10000000000))
         m = utils.gen_table_metadata(
             '"{}"'.format(name), 144000, 2,
-            ('"{}"'.format(self.leader), '"1-3"', 'true'))
+            ('"{}"'.format(self.leader), '"0-2"', 'true'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertTrue('Create table ok' in rs)
