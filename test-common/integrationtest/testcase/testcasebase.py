@@ -42,11 +42,11 @@ class TestCaseBase(unittest.TestCase):
         self.pid = random.randint(10, 100)
         self.clear_ns_table(self.ns_leader)
 
-    # def tearDown(self):
-    #     self.drop(self.leader, self.tid, self.pid)
-    #     self.drop(self.slave1, self.tid, self.pid)
-    #     self.drop(self.slave2, self.tid, self.pid)
-    #     self.clear_ns_table(self.ns_leader)
+    def tearDown(self):
+        self.drop(self.leader, self.tid, self.pid)
+        self.drop(self.slave1, self.tid, self.pid)
+        self.drop(self.slave2, self.tid, self.pid)
+        self.clear_ns_table(self.ns_leader)
 
     def now(self):
         return int(1000 * time.time())
