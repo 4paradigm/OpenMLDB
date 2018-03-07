@@ -51,6 +51,7 @@ public class PartitionHandler {
                 logger.debug("choose fast partition for reading");
                 return fastTablet;
             }else if(followers.size() > 0) {
+                logger.debug("rand choose follower partition for reading");
                 int index = (int) ((rand.nextFloat() * 1000) % followers.size());
                 return followers.get(index);
             }else {

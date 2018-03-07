@@ -20,7 +20,7 @@ import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 
-public class TableAsyncClientTest {
+public class TableAsyncClientForLocalityTest {
 
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
@@ -47,6 +47,7 @@ public class TableAsyncClientTest {
     
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
+        config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -63,6 +64,7 @@ public class TableAsyncClientTest {
     
     private String createSchemaTable() {
         String name = String.valueOf(id.incrementAndGet());
+        config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -88,14 +90,17 @@ public class TableAsyncClientTest {
             Assert.assertTrue(pf.get());
             pf = tableAsyncClient.put(name, "test2", 9527, "value1");
             Assert.assertTrue(pf.get());
+            Thread.sleep(200);
             GetFuture gf = tableAsyncClient.get(name, "test1");
+            Assert.assertNotNull(gf);
             String value = new String(gf.get().toByteArray());
             Assert.assertEquals(value, "value0");
             gf = tableAsyncClient.get(name, "test2");
             value = new String(gf.get().toByteArray());
             Assert.assertEquals(value, "value1");
         } catch (Exception e) {
-            Assert.assertTrue(false);
+            e.printStackTrace();
+            Assert.fail();
         }finally {
             nsc.dropTable(name);
         }
@@ -111,6 +116,7 @@ public class TableAsyncClientTest {
             Assert.assertTrue(pf.get());
             pf = tableAsyncClient.put(name, 9528, new Object[] {"card1", "mcc1", 9.2d});
             Assert.assertTrue(pf.get());
+            Thread.sleep(200);
             GetFuture gf = tableAsyncClient.get(name, "card0", 9527);
             Object[] row = gf.getRow();
             Assert.assertEquals(row[0], "card0");
@@ -139,6 +145,7 @@ public class TableAsyncClientTest {
             Assert.assertTrue(pf.get());
             pf = tableAsyncClient.put(name, "test1", 9529, "value2");
             Assert.assertTrue(pf.get());
+            Thread.sleep(200);
             ScanFuture sf = tableAsyncClient.scan(name, "test1", 9529, 1000);
             KvIterator it = sf.get();
             Assert.assertTrue(it.getCount() == 3);

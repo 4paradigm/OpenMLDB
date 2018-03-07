@@ -10,6 +10,7 @@ test -d recycle_bin0 && rm -rf recycle_bin0
 ../build/bin/rtidb --db_root_path=tablet0-binlogs \
                    --recycle_bin_root_path=recycle_bin0 \
                    --endpoint=127.0.0.1:9520 --role=tablet \
+                   --binlog_notify_on_put=true\
                    --zk_cluster=127.0.0.1:6181\
                    --zk_root_path=/onebox > tablet0.log 2>&1 &
 test -d tablet1-binlogs && rm -rf tablet1-binlogs
@@ -21,6 +22,7 @@ test -d recycle_bin1 && rm -rf recycle_bin1
                    --recycle_bin_root_path=recycle_bin1 \
                    --endpoint=127.0.0.1:9521 --role=tablet \
                    --zk_cluster=127.0.0.1:6181\
+                   --binlog_notify_on_put=true\
                    --zk_root_path=/onebox > tablet1.log 2>&1 &
 test -d tablet2-binlogs && rm -rf tablet2-binlogs
 test -d recycle_bin2 && rm -rf recycle_bin2
@@ -30,6 +32,7 @@ test -d recycle_bin2 && rm -rf recycle_bin2
 ../build/bin/rtidb --db_root_path=tablet2-binlogs \
                    --recycle_bin_root_path=recycle_bin2 \
                    --endpoint=127.0.0.1:9522 --role=tablet \
+                   --binlog_notify_on_put=true\
                    --zk_cluster=127.0.0.1:6181\
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
 
