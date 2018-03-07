@@ -15,6 +15,7 @@ public class TableHandler {
     private PartitionHandler[] partitions;
     private Map<String, Integer> indexes = new HashMap<String, Integer>();
     private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+    private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int index = 0;
@@ -30,6 +31,14 @@ public class TableHandler {
         
     }
     
+    public ReadStrategy getReadStrategy() {
+        return readStrategy;
+    }
+
+    public void setReadStrategy(ReadStrategy readStrategy) {
+        this.readStrategy = readStrategy;
+    }
+
     public TableHandler(List<ColumnDesc> schema) {
         int index = 0;
         for (ColumnDesc col : schema) {
@@ -69,4 +78,10 @@ public class TableHandler {
         return schema;
     }
 
+    public enum ReadStrategy {
+        kReadLocal,
+        kReadLeader
+    }
+    
+    
 }
