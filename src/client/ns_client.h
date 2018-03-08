@@ -55,6 +55,9 @@ public:
 
     bool OfflineEndpoint(const std::string& endpoint, std::string& msg);
 
+    bool Migrate(const std::string& src_endpoint, const std::string& name, const std::vector<uint32_t>& pid_vec, 
+                 const std::string& des_endpoint, std::string& msg);
+
     bool RecoverEndpoint(const std::string& endpoint, std::string& msg);
 
     bool ConnectZK(std::string& msg);

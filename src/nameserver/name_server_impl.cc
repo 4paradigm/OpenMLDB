@@ -1466,6 +1466,213 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
     return true;
 }
 
+void NameServerImpl::Migrate(RpcController* controller,
+       const MigrateRequest* request,
+       GeneralResponse* response,
+       Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    auto pos = tablets_.find(request->src_endpoint());
+    if (pos == tablets_.end() || pos->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        response->set_code(-1);
+        response->set_msg("src_endpoint is not exist or not healthy");
+        PDLOG(WARNING, "src_endpoint[%s] is not exist or not healthy", request->src_endpoint().c_str());
+        return;
+    }
+    pos = tablets_.find(request->des_endpoint());
+    if (pos == tablets_.end() || pos->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        response->set_code(-1);
+        response->set_msg("des_endpoint is not exist or not healthy");
+        PDLOG(WARNING, "des_endpoint[%s] is not exist or not healthy", request->des_endpoint().c_str());
+        return;
+    }
+    auto iter = table_info_.find(request->name());
+    if (iter == table_info_.end()) {
+        response->set_code(-1);
+        response->set_msg("table is not exist");
+        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    char error_msg[1024];
+    bool has_error = false;
+    for (int i = 0; i < request->pid_size(); i++) {
+        uint32_t pid = request->pid(i);
+        std::string leader_endpoint;
+        bool has_found_src_endpoint = false;
+        bool has_found_des_endpoint = false;
+        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+            if (table_info->table_partition(idx).pid() != pid) {
+                continue;
+            }
+            for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+                if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                        leader_endpoint = endpoint;
+                    } 
+                    if (request->src_endpoint() == endpoint) {
+                        has_found_src_endpoint = true;
+                    } else if (request->des_endpoint() == endpoint) {
+                        has_found_des_endpoint = true;
+                    } 
+                }
+            }
+            break;
+        }
+        if (leader_endpoint.empty()) {
+            sprintf(error_msg, "leader endpoint is empty. name[%s] pid[%u]", 
+                            request->name().c_str(), pid);
+            has_error = true;
+            break;
+        }
+        if (leader_endpoint == request->src_endpoint()) {
+            sprintf(error_msg, "cannot migrate leader. name[%s] pid[%u]",
+                            request->name().c_str(), pid);
+            has_error = true;
+            break;
+        }
+        auto it = tablets_.find(leader_endpoint);
+        if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            sprintf(error_msg, "leader[%s] is offline. name[%s] pid[%u]", 
+                                leader_endpoint.c_str(), request->name().c_str(), pid);
+            has_error = true;
+            break;
+        }
+        if (!has_found_src_endpoint) {
+            sprintf(error_msg, "src_endpoint[%s] has not partition[%u]. name[%s]", 
+                            request->src_endpoint().c_str(), pid, request->name().c_str());
+            has_error = true;
+            break;
+        }
+        if (has_found_des_endpoint) {
+            sprintf(error_msg, "partition[%u] is already in des_endpoint[%s]. name[%s]", 
+                                pid, request->des_endpoint().c_str(), request->name().c_str());
+            has_error = true;
+            break;
+        }
+    }
+    if (has_error) {
+        response->set_code(-1);
+        response->set_msg(error_msg);
+        PDLOG(WARNING, "%s", error_msg);
+        return;
+    }
+    for (int i = 0; i < request->pid_size(); i++) {
+        uint32_t pid = request->pid(i);
+        CreateMigrateOP(request->src_endpoint(), request->name(), pid, request->des_endpoint());
+    }    
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::string& name, 
+            uint32_t pid, const std::string& des_endpoint) {
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "get table info failed! name[%s]", name.c_str());
+        return -1;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    uint32_t tid = table_info->tid();
+    std::string leader_endpoint;
+	if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    auto it = tablets_.find(leader_endpoint);
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        PDLOG(WARNING, "leader[%s] is not online", leader_endpoint.c_str());
+        return -1;
+    }
+    std::shared_ptr<OPData> op_data;
+    std::string value;
+    //request->SerializeToString(&value);
+	if (CreateOPData(::rtidb::api::OPType::kMigrateOP, value, op_data) < 0) {
+        PDLOG(WARNING, "create migrate op data failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
+                		src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+        return -1;
+    }
+
+    std::shared_ptr<Task> task = CreatePauseSnapshotTask(leader_endpoint, op_index_, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, leader_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateSendSnapshotTask(leader_endpoint, op_index_, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid, des_endpoint.c_str());
+    if (!task) {
+        PDLOG(WARNING, "create sendsnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateLoadTableTask(des_endpoint, op_index_, ::rtidb::api::OPType::kMigrateOP, 
+                 name, tid, pid, table_info->ttl(), table_info->seg_cnt());
+    if (!task) {
+        PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateAddReplicaTask(leader_endpoint, op_index_, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid, des_endpoint.c_str());
+    if (!task) {
+        PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateRecoverSnapshotTask(leader_endpoint, op_index_, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateDelReplicaTask(leader_endpoint, op_index_, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid, src_endpoint);
+    if (!task) {
+        PDLOG(WARNING, "create delreplica task failed. tid[%u] pid[%u] leader[%s] follower[%s]", 
+                        tid, pid, leader_endpoint.c_str(), src_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateDropTableTask(src_endpoint, op_index_, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, src_endpoint.c_str());
+        return -1;
+    }
+    task = CreateUpdateTableInfoTask(src_endpoint, name, pid, des_endpoint, 
+                op_index_, ::rtidb::api::OPType::kMigrateOP);
+    if (!task) {
+        PDLOG(WARNING, "create migrate table info task failed. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, src_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+	if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add migrate op data failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
+                		src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+        return -1;
+    }
+    PDLOG(INFO, "add migrate op ok. op_id[%lu] src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
+                op_index_, src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+    return 0;
+}            
+
 void NameServerImpl::DelReplicaNS(RpcController* controller,
        const DelReplicaNSRequest* request,
        GeneralResponse* response,
@@ -2390,6 +2597,87 @@ std::shared_ptr<Task> NameServerImpl::CreateDropTableTask(const std::string& end
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->fun_ = boost::bind(&TabletClient::DropTable, it->second->client_, tid, pid, task->task_info_);
     return task;
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateUpdateTableInfoTask(const std::string& src_endpoint,
+                    const std::string& name, uint32_t pid, const std::string& des_endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type) {
+    std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kUpdateTableInfo);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->fun_ = boost::bind(&NameServerImpl::UpdateTableInfo, this, src_endpoint, name, pid, 
+            des_endpoint,task->task_info_);
+    return task;
+}
+
+void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std::string& name, uint32_t pid,
+                const std::string& des_endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        return;
+    }
+    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+        if (iter->second->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        int src_endpoint_index = -1;
+        int des_endpoint_index = -1;
+        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+            std::string endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
+            if (endpoint == src_endpoint) {
+                src_endpoint_index = meta_idx;
+            } else if (endpoint == des_endpoint) {
+                des_endpoint_index = meta_idx;
+            }
+        }
+        if (src_endpoint_index < 0) {
+            PDLOG(WARNING, "has not found src_endpoint[%s]. name[%s] pid[%u]", 
+                            src_endpoint.c_str(), name.c_str(), pid);
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
+        ::rtidb::nameserver::TablePartition* table_partition = 
+                    iter->second->mutable_table_partition(idx);
+        ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta_field = 
+                    table_partition->mutable_partition_meta();
+        if (des_endpoint_index < 0) {
+            // use src_endpoint's meta when the meta of des_endpoint is not exist
+            PDLOG(INFO, "des_endpoint meta is not exist, use src_endpoint's meta."
+                        "src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
+                        src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+            ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(src_endpoint_index);
+            partition_meta->set_endpoint(des_endpoint);
+            partition_meta->set_is_alive(true);
+            partition_meta->set_is_leader(false);
+        } else {
+            ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(des_endpoint_index);
+            partition_meta->set_is_alive(true);
+            partition_meta->set_is_leader(false);
+            if (src_endpoint_index != partition_meta_field->size() - 1) {
+                partition_meta_field->SwapElements(src_endpoint_index, partition_meta_field->size() - 1);
+            }
+            PDLOG(INFO, "remove partition[%u] in endpoint[%s]. name[%s]", 
+                        pid, src_endpoint.c_str(), name.c_str());
+            partition_meta_field->RemoveLast();
+        }
+        break;
+    }
+    std::string table_value;
+    iter->second->SerializeToString(&table_value);
+    if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+        return;         
+    }
+    PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
+                zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+    task_info->set_status(::rtidb::api::TaskStatus::kDone);
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateDelTableInfoTask(const std::string& name, uint32_t pid,
