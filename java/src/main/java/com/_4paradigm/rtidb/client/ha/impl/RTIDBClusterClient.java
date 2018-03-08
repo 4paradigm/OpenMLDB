@@ -99,7 +99,11 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     localIpAddr.add(i.getHostAddress().toLowerCase());
                 }
             }
-        } catch (SocketException e) {
+            // get local hostname
+            String hostname = InetAddress.getLocalHost().getHostName();
+            localIpAddr.add(hostname);
+            logger.info("add hostname {} to local ip set ", hostname);
+        } catch (Exception e) {
             logger.error("fail to get local ip address", e);
         }
     }
