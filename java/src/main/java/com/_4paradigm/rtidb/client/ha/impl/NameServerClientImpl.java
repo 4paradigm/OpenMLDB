@@ -11,9 +11,11 @@ import org.slf4j.LoggerFactory;
 
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.ns.NS.ChangeLeaderRequest;
 import com._4paradigm.rtidb.ns.NS.CreateTableRequest;
 import com._4paradigm.rtidb.ns.NS.DropTableRequest;
 import com._4paradigm.rtidb.ns.NS.GeneralResponse;
+import com._4paradigm.rtidb.ns.NS.RecoverEndpointRequest;
 import com._4paradigm.rtidb.ns.NS.ShowTableRequest;
 import com._4paradigm.rtidb.ns.NS.ShowTableResponse;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
@@ -119,6 +121,26 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             logger.error("fail to close zookeeper", e);
         }
         
+    }
+
+    @Override
+    public boolean changeLeader(String tname, int pid) {
+        ChangeLeaderRequest request = ChangeLeaderRequest.newBuilder().setName(tname).setPid(pid).build();
+        GeneralResponse response = ns.changeLeader(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean recoverEndpoint(String endpoint) {
+        RecoverEndpointRequest request = RecoverEndpointRequest.newBuilder().setEndpoint(endpoint).build();
+        GeneralResponse response = ns.recoverEndpoint(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        return false;
     }
 
 }

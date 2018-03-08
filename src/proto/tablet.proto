@@ -429,9 +429,7 @@ service TabletServer {
     rpc GetTermPair(GetTermPairRequest) returns(GetTermPairResponse);
     rpc GetManifest(GetManifestRequest) returns(GetManifestResponse);
     rpc DeleteBinlog(GeneralRequest) returns(GeneralResponse);
-
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
-
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
 }

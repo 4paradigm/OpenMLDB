@@ -18,4 +18,6 @@ public interface TabletClient {
 
     boolean dropTable(int tid, int pid);
     TableStatus getTableStatus(int tid, int pid);
+    boolean disConnectZK();
+    boolean connectZK();
 }

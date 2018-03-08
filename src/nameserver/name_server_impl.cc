@@ -42,6 +42,7 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     std::string zk_config_path = FLAGS_zk_root_path + "/config";
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
     zk_auto_recover_table_node_ = zk_config_path + "/auto_recover_table";
+    zk_table_changed_notify_node_ = zk_table_path + "/notify";
     running_.store(false, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     auto_recover_table_.store(FLAGS_auto_recover_table, std::memory_order_release);
@@ -99,6 +100,13 @@ bool NameServerImpl::Recover() {
     } else {
         op_index_ = std::stoull(value);
         PDLOG(INFO, "recover op_index[%u]", op_index_);
+    }
+    value.clear();
+    if (!zk_client_->GetNodeValue(zk_table_changed_notify_node_, value)) {
+        if (!zk_client_->CreateNode(zk_table_changed_notify_node_, "1")) {
+            PDLOG(WARNING, "create zk table changed notify node failed");
+            return false;
+        }
     }
     value.clear();
     if (!zk_client_->GetNodeValue(zk_auto_failover_node_, value)) {
@@ -1268,6 +1276,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     response->set_code(0);
     response->set_msg("ok");
+    NotifyTableChanged();
 }
 
 void NameServerImpl::AddReplicaNS(RpcController* controller,
@@ -2794,6 +2803,7 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
                     task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                     return;         
                 }
+                NotifyTableChanged();
                 task_info->set_status(::rtidb::api::TaskStatus::kDone);
                 PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -2903,7 +2913,6 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
     }
     PDLOG(INFO, "new leader is[%s]. name[%s] tid[%u] pid[%u] offset[%lu]", 
                 leader_endpoint.c_str(), name.c_str(), tid, pid, max_offset);
-
     std::shared_ptr<TabletInfo> tablet_ptr;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2980,10 +2989,27 @@ void NameServerImpl::ChangeLeader(const std::string& name, uint32_t tid, uint32_
         PDLOG(INFO, "change leader success. name[%s] pid[%u] new leader[%s]", 
                     name.c_str(), pid, leader_endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kDone);
+        // notify client to update table partition information
+        NotifyTableChanged();
         return;
     }
     PDLOG(WARNING, "partition[%u] is not exist. name[%s]", pid, name.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+}
+
+void NameServerImpl::NotifyTableChanged() {
+    std::string value;
+    bool ok = zk_client_->GetNodeValue(zk_table_changed_notify_node_, value);
+    if (!ok) {
+        PDLOG(WARNING, "get zk table changed notify node value failed");
+        return;
+    }
+    uint64_t counter = std::stoull(value) + 1;
+    ok = zk_client_->SetNodeValue(zk_table_changed_notify_node_, std::to_string(counter));
+    if (!ok) {
+        PDLOG(WARNING, "incr zk table changed notify node value failed");
+    }
+    PDLOG(INFO, "notify table changed ok, update counter from %s to %lu", value.c_str(), counter);
 }
 
 }
