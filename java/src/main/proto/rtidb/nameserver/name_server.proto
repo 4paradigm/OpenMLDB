@@ -131,6 +131,13 @@ message DelReplicaNSRequest {
     required DelReplicaData data = 1;
 }
 
+message MigrateRequest {
+    required string src_endpoint = 1;
+    required string name = 2;
+    repeated uint32 pid = 3;
+    required string des_endpoint = 4;
+}
+
 message OPStatus {
     required uint64 op_id = 1;
     required string op_type = 2;
@@ -164,6 +171,7 @@ service NameServer {
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
     rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
+    rpc Migrate(MigrateRequest) returns (GeneralResponse);
     rpc RecoverEndpoint(RecoverEndpointRequest) returns (GeneralResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
