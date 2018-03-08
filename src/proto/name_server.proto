@@ -1,9 +1,8 @@
 package rtidb.nameserver;
 
 option cc_generic_services = true;
-option java_generic_services = true;
-option java_package = "com._4paradigm.rtidb";
-option java_outer_classname = "NameServer";
+option java_package = "com._4paradigm.rtidb.ns";
+option java_outer_classname = "NS";
 
 message ColumnDesc {
     required string name = 1;

@@ -18,9 +18,9 @@ class TestShowTablet(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), 144000, 8,
-            ('"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('"{}"'.format(self.slave2), '"2-3"', 'false'))
+            ('"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertTrue('Create table ok' in rs)
@@ -41,9 +41,9 @@ class TestShowTablet(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), 144000, 8,
-            ('"{}"'.format(self.leader), '"1-3"', 'true'),
-            ('"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('"{}"'.format(self.slave2), '"2-3"', 'false'))
+            ('"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertTrue('Create table ok' in rs)

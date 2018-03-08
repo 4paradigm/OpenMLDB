@@ -157,6 +157,25 @@ class TestCaseBase(unittest.TestCase):
             return self.run_client(endpoint, 'sscan {} {} {} {} {}'.format(
                 tid, pid, ' '.join(value_key), ts_from, ts_to))
 
+    def get(self, endpoint, tid, pid, vk, ts):
+        """
+
+        :param endpoint:
+        :param tid:
+        :param pid:
+        :param vk: e.g. {'card': 0001, 'merchant': 0002} or 'naysakey'
+        :param ts:
+        :return:
+        """
+        if self.multidimension:
+            print(self.multidimension_scan_vk.keys()[0])
+            print(self.multidimension_scan_vk.values()[0])
+            return self.run_client(endpoint, 'sget {} {} {} {} {}'.format(
+                tid, pid, self.multidimension_scan_vk.values()[0], self.multidimension_scan_vk.keys()[0], ts))
+        else:
+            return self.run_client(endpoint, 'get {} {} {} {}'.format(
+                    tid, pid, vk, ts))
+
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))
 

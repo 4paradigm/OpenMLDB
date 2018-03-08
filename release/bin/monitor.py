@@ -46,7 +46,11 @@ def get_timestamp():
 
 if __name__ == "__main__":
     conf_map = get_conf()
-    url = "http://" + conf_map["endpoint"] + "/status"
+    endpoint = conf_map["endpoint"]
+    env_dist = os.environ
+    if "FLAGS_endpoint" in env_dist:
+        endpoint = env_dist["FLAGS_endpoint"]
+    url = "http://" + endpoint + "/status"
     log_file_name = conf_map["log_dir"] + "/monitor.log"
     if not os.path.exists(conf_map["log_dir"]):
         os.mkdir(conf_map["log_dir"])
