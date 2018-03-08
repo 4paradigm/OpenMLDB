@@ -16,7 +16,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         name = 't{}'.format(int(time.time() * 1000000 % 10000000000))
         metadata_path = '{}/metadata.txt'.format(self.testpath)
 
-        pid_group = '"{}-{}"'.format(self.pid, int(self.pid) + 2)
+        pid_group = '"{}-{}"'.format(0, 2)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), 144000, 8,
             ('"{}"'.format(self.leader), pid_group, 'true'),
