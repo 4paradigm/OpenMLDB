@@ -58,19 +58,26 @@ public class TableSyncClientImpl implements TableSyncClient {
         ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         int index = 0;
+        int count = 0;
         for (int i = 0; i < tableHandler.getSchema().size(); i++) {
             if (tableHandler.getSchema().get(i).isAddTsIndex()) {
                 if (row[i] == null) {
-                    throw new TabletException("index " + index + "column is empty");
+                    index ++;
+                    continue;
                 }
                 String value = row[i].toString();
                 if (value.isEmpty()) {
-                    throw new TabletException("index" + index + " column is empty");
+                    index ++;
+                    continue;
                 }
                 Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
                 dimList.add(dim);
-                index++;
+                index ++;
+                count ++;
             }
+        }
+        if (count == 0) {
+            throw new TabletException("no dimension in this row");
         }
         return put(tid, pid, null, time, dimList, buffer, tableHandler.getHandler(pid));
     }
@@ -255,14 +262,17 @@ public class TableSyncClientImpl implements TableSyncClient {
         ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
         Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
         int index = 0;
+        int count = 0;
         for (int i = 0; i < th.getSchema().size(); i++) {
             if (th.getSchema().get(i).isAddTsIndex()) {
                 if (row[i] == null) {
-                    throw new TabletException("index " + index + "column is empty");
+                    index ++;
+                    continue;
                 }
                 String value = row[i].toString();
                 if (value.isEmpty()) {
-                    throw new TabletException("index" + index + " column is empty");
+                    index ++;
+                    continue;
                 }
                 int pid = (int) (MurmurHash.hash64(value) % th.getPartitions().length);
                 if (pid < 0) {
@@ -275,8 +285,12 @@ public class TableSyncClientImpl implements TableSyncClient {
                     mapping.put(pid, dimList);
                 }
                 dimList.add(dim);
-                index++;
+                index ++;
+                count ++;
             }
+        }
+        if (count == 0) {
+            throw new TabletException("no dimension in this row");
         }
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
         boolean ret = true;
