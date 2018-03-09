@@ -286,6 +286,9 @@ private:
     int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
+    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
+                    bool is_leader, bool is_alive);
 
 private:
     std::mutex mu_;
