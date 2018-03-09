@@ -1,5 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
@@ -171,4 +173,38 @@ public class TableSyncClientForLocalityTest {
         }
     }
     
+    
+    @Test
+    public void testSchemaPutForMap() {
+        
+        String name = createSchemaTable();
+        try {
+            Map<String, Object> rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc0");
+            rowMap.put("amt", 9.15d);
+            boolean ok = tableSyncClient.put(name, 9527, rowMap);
+            Assert.assertTrue(ok);
+            rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card1");
+            rowMap.put("mcc", "mcc1");
+            rowMap.put("amt", 9.2d);
+            ok = tableSyncClient.put(name, 9528, rowMap);
+            Assert.assertTrue(ok);
+            Thread.sleep(200);
+            Object[] row = tableSyncClient.getRow(name, "card0", 9527);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 9.15d);
+            row = tableSyncClient.getRow(name, "card1", 9528);
+            Assert.assertEquals(row[0], "card1");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
 }

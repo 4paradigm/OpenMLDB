@@ -1,8 +1,10 @@
 package com._4paradigm.rtidb.client;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com.google.protobuf.ByteString;
 
 public interface TableSyncClient {
@@ -13,7 +15,8 @@ public interface TableSyncClient {
     boolean put(int tid, int pid, String key, long time, String value) throws TimeoutException, TabletException;
 
     boolean put(int tid, int pid, long time, Object[] row) throws TimeoutException, TabletException;
-
+    boolean put(int tid, int pid, long time, Map<String, Object> row) throws TimeoutException, TabletException;
+    List<ColumnDesc> getSchema(int tid) throws TabletException;
     ByteString get(int tid, int pid, String key) throws TimeoutException, TabletException;
 
     ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException;
@@ -31,8 +34,8 @@ public interface TableSyncClient {
     boolean put(String tname, String key, long time, String value) throws TimeoutException, TabletException;
 
     boolean put(String tname, long time, Object[] row) throws TimeoutException, TabletException;
-
-
+    boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException;
+    List<ColumnDesc> getSchema(String tname) throws TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
 
     ByteString get(String tname, String key, long time) throws TimeoutException, TabletException;

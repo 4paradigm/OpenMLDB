@@ -1,5 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
@@ -172,6 +174,40 @@ public class TableAsyncClientTest {
     }
     
     @Test
+    public void testSchemaPutForMap() {
+        
+        String name = createSchemaTable();
+        try {
+            Map<String, Object> rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc0");
+            rowMap.put("amt", 9.15d);
+            PutFuture pf = tableAsyncClient.put(name, 9527, rowMap);
+            Assert.assertTrue(pf.get());
+            rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card1");
+            rowMap.put("mcc", "mcc1");
+            rowMap.put("amt", 9.2d);
+            pf = tableAsyncClient.put(name, 9528, rowMap);
+            Assert.assertTrue(pf.get());
+            GetFuture gf = tableAsyncClient.get(name, "card0", 9527);
+            Object[] row = gf.getRow();
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 9.15d);
+            gf = tableAsyncClient.get(name, "card1", 9528);
+            row = gf.getRow();
+            Assert.assertEquals(row[0], "card1");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
     public void testNullDimension() {
         String name = createSchemaTable();
         try {

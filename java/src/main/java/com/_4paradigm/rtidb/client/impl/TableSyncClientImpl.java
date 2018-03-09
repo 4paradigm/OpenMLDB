@@ -15,6 +15,7 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.utils.MurmurHash;
@@ -343,6 +344,49 @@ public class TableSyncClientImpl implements TableSyncClient {
             return true;
         }
         return false;
+    }
+    
+    @Override
+    public boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        Object[] arrayRow = new Object[th.getSchema().size()];
+        for(int i = 0; i < th.getSchema().size(); i++) {
+            arrayRow[i] = row.get(th.getSchema().get(i).getName());
+        }
+        return put(tname, time, arrayRow);
+    }
+    
+    @Override
+    public List<ColumnDesc> getSchema(String tname) throws TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        return th.getSchema();
+    }
+    @Override
+    public boolean put(int tid, int pid, long time, Map<String, Object> row) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
+        Object[] arrayRow = new Object[th.getSchema().size()];
+        for(int i = 0; i < th.getSchema().size(); i++) {
+            arrayRow[i] = row.get(th.getSchema().get(i).getName());
+        }
+        return put(tid, pid, time, arrayRow);
+    }
+    
+    @Override
+    public List<ColumnDesc> getSchema(int tid) throws TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
+        return th.getSchema();
     }
 
     
