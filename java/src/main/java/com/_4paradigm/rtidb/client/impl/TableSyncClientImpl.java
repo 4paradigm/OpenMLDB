@@ -82,14 +82,14 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
-        return get(tid, pid, key, time, client.getHandler(tid).getHandler(pid));
+        return get(tid, pid, key, time, client.getHandler(tid));
     }
 
     @Override
     public Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
         long consumed = System.nanoTime();
-        ByteString response = get(tid, pid, key, time, th.getHandler(pid));
+        ByteString response = get(tid, pid, key, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
@@ -122,7 +122,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             pid = pid * -1;
         }
         long consumed = System.nanoTime();
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th.getHandler(pid));
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
@@ -146,17 +146,19 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th.getHandler(pid));
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th);
         return response;
     }
     
-    private ByteString get(int tid, int pid, String key, long time, PartitionHandler ph) throws TabletException {
+    private ByteString get(int tid, int pid, String key, long time, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
-        Tablet.GetResponse response = ph.getLeader().get(request);
+        Tablet.GetResponse response = ts.get(request);
         if (response != null && response.getCode() == 0) {
             return response.getValue();
         }
@@ -205,7 +207,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
-        TabletServer tabletServer = th.getHandler(pid).getLeader();
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
@@ -217,7 +220,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         Tablet.ScanRequest request = builder.build();
         Long consuemd = System.nanoTime();
-        Tablet.ScanResponse response = tabletServer.scan(request);
+        Tablet.ScanResponse response = ts.scan(request);
         Long network = System.nanoTime() - consuemd;
         if (response != null && response.getCode() == 0) {
             KvIterator it = new KvIterator(response.getPairs(), th.getSchema(), network);

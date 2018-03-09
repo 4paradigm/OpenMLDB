@@ -1,7 +1,11 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +44,7 @@ import rtidb.api.TabletServer;
 
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
+    private static Set<String> localIpAddr = new HashSet<String>();
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1);
     private ZooKeeper zookeeper;
     private volatile Map<String, TableHandler> name2tables = new HashMap<String, TableHandler>();
@@ -61,8 +66,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         options.setWriteTimeoutMillis(config.getWriteTimeout());
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
+        getLocalIpAddress();
         zookeeper = new ZooKeeper(config.getZkEndpoints(), (int) config.getZkSesstionTimeout(), this);
-
         int failedCountDown = 10;
         while (!zookeeper.getState().isConnected() && failedCountDown > 0) {
             try {
@@ -118,6 +123,27 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         }
     }
     
+    private void getLocalIpAddress() {
+        try {
+            Enumeration e = NetworkInterface.getNetworkInterfaces();
+            while(e.hasMoreElements()){
+                NetworkInterface n = (NetworkInterface) e.nextElement();
+                Enumeration ee = n.getInetAddresses();
+                while (ee.hasMoreElements()){
+                    InetAddress i = (InetAddress) ee.nextElement();
+                    logger.info("ip {} of local host binded ", i.getHostAddress());
+                    localIpAddr.add(i.getHostAddress().toLowerCase());
+                }
+            }
+            // get local hostname
+            String hostname = InetAddress.getLocalHost().getHostName();
+            localIpAddr.add(hostname);
+            logger.info("add hostname {} to local ip set ", hostname);
+        } catch (Exception e) {
+            logger.error("fail to get local ip address", e);
+        }
+    }
+
     private void tryWatch() {
         try {
             zookeeper.getData(config.getZkTableNotifyPath(), notifyWatcher, null);
@@ -168,6 +194,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
             for (TableInfo table : newTableList) {
                 TableHandler handler = new TableHandler(table);
+                if (config.getReadStrategies().containsKey(table.getName())) {
+                    handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
+                }
                 PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
                 for (TablePartition partition : table.getTablePartitionList()) {
                     PartitionHandler ph = partitionHandlerGroup[partition.getPid()];
@@ -189,10 +218,15 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         }
                         SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
                         client.updateEndpoint(endpoint, bcg);
+                        TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
                         if (pm.getIsLeader()) {
-                            ph.setLeader((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
+                            ph.setLeader(ts);
                         } else {
-                            ph.getFollowers().add((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
+                            ph.getFollowers().add(ts);
+                        }
+                        if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
+                            ph.setFastTablet(ts);
+                            logger.info("find fast tablet[{}] server for table {} local read", endpoint, table.getName());
                         }
                     }
                 }

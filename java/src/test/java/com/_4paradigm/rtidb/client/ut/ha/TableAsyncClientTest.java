@@ -11,6 +11,7 @@ import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TableAsyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
@@ -35,6 +36,7 @@ public class TableAsyncClientTest {
             config.setZkEndpoints(zkEndpoints);
             config.setZkNodeRootPath("/onebox/nodes");
             config.setZkTableRootPath("/onebox/table/table_data");
+            config.setZkTableNotifyPath("/onebox/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableAsyncClient = new TableAsyncClientImpl(client);

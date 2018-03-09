@@ -268,7 +268,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
         Long startTime = System.currentTimeMillis();
-        Future<Tablet.GetResponse> response = th.getHandler(pid).getLeader().get(request, getFakeCallback);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        Future<Tablet.GetResponse> response = ts.get(request, getFakeCallback);
         return GetFuture.wrappe(response, th, startTime, client.getConfig());
     }
     
@@ -277,7 +279,6 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
-        TabletServer tabletServer = th.getHandler(pid).getLeader();
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
@@ -289,7 +290,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         Tablet.ScanRequest request = builder.build();
         Long startTime = System.nanoTime();
-        Future<Tablet.ScanResponse> response = tabletServer.scan(request, scanFakeCallback);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
         return ScanFuture.wrappe(response, th, startTime);
     }
     

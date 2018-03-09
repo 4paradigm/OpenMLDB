@@ -8,6 +8,7 @@ import org.junit.Test;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
@@ -17,7 +18,7 @@ import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com.google.protobuf.ByteString;
 
-public class TableSyncClientTest {
+public class TableSyncClientForLocalityTest {
 
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
@@ -45,6 +46,7 @@ public class TableSyncClientTest {
     
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
+        config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -61,6 +63,7 @@ public class TableSyncClientTest {
     
     private String createSchemaTable() {
         String name = String.valueOf(id.incrementAndGet());
+        config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -86,6 +89,7 @@ public class TableSyncClientTest {
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, "test2", 9527, "value1");
             Assert.assertTrue(ok);
+            Thread.sleep(200);
             ByteString bs = tableSyncClient.get(name, "test1");
             String value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value0");
@@ -109,6 +113,7 @@ public class TableSyncClientTest {
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, 9528, new Object[] {"card1", "mcc1", 9.2d});
             Assert.assertTrue(ok);
+            Thread.sleep(200);
             Object[] row = tableSyncClient.getRow(name, "card0", 9527);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc0");
@@ -135,6 +140,7 @@ public class TableSyncClientTest {
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, "test1", 9529, "value2");
             Assert.assertTrue(ok);
+            Thread.sleep(200);
             KvIterator it = tableSyncClient.scan(name, "test1", 9529, 1000);
             Assert.assertTrue(it.getCount() == 3);
             Assert.assertTrue(it.valid());
