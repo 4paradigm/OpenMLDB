@@ -7,30 +7,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.PutFuture;
-import com._4paradigm.rtidb.client.ScanFuture;
-import com._4paradigm.rtidb.client.TableAsyncClient;
+import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com.google.protobuf.ByteString;
 
-public class TableAsyncClientTest {
+public class TableSyncClientForLocalityTest {
 
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
-    private static AtomicInteger id = new AtomicInteger(20000);
+    private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
-    private static TableAsyncClient tableAsyncClient = null;
+    private static TableSyncClient tableSyncClient = null;
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     static {
         try {
@@ -41,7 +39,7 @@ public class TableAsyncClientTest {
             config.setZkTableNotifyPath("/onebox/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
-            tableAsyncClient = new TableAsyncClientImpl(client);
+            tableSyncClient = new TableSyncClientImpl(client);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -50,6 +48,7 @@ public class TableAsyncClientTest {
     
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
+        config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -66,6 +65,7 @@ public class TableAsyncClientTest {
     
     private String createSchemaTable() {
         String name = String.valueOf(id.incrementAndGet());
+        config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -87,15 +87,16 @@ public class TableAsyncClientTest {
     public void testPut() {
         String name = createKvTable();
         try {
-            PutFuture pf = tableAsyncClient.put(name, "test1", 9527, "value0");
-            Assert.assertTrue(pf.get());
-            pf = tableAsyncClient.put(name, "test2", 9527, "value1");
-            Assert.assertTrue(pf.get());
-            GetFuture gf = tableAsyncClient.get(name, "test1");
-            String value = new String(gf.get().toByteArray());
+            boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test2", 9527, "value1");
+            Assert.assertTrue(ok);
+            Thread.sleep(200);
+            ByteString bs = tableSyncClient.get(name, "test1");
+            String value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value0");
-            gf = tableAsyncClient.get(name, "test2");
-            value = new String(gf.get().toByteArray());
+            bs = tableSyncClient.get(name, "test2");
+            value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value1");
         } catch (Exception e) {
             Assert.assertTrue(false);
@@ -110,17 +111,16 @@ public class TableAsyncClientTest {
         
         String name = createSchemaTable();
         try {
-            PutFuture pf = tableAsyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d});
-            Assert.assertTrue(pf.get());
-            pf = tableAsyncClient.put(name, 9528, new Object[] {"card1", "mcc1", 9.2d});
-            Assert.assertTrue(pf.get());
-            GetFuture gf = tableAsyncClient.get(name, "card0", 9527);
-            Object[] row = gf.getRow();
+            boolean ok = tableSyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 9528, new Object[] {"card1", "mcc1", 9.2d});
+            Assert.assertTrue(ok);
+            Thread.sleep(200);
+            Object[] row = tableSyncClient.getRow(name, "card0", 9527);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc0");
             Assert.assertEquals(row[2], 9.15d);
-            gf = tableAsyncClient.get(name, "card1", 9528);
-            row = gf.getRow();
+            row = tableSyncClient.getRow(name, "card1", 9528);
             Assert.assertEquals(row[0], "card1");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 9.2d);
@@ -136,14 +136,14 @@ public class TableAsyncClientTest {
     public void testScan() {
         String name = createKvTable();
         try {
-            PutFuture pf = tableAsyncClient.put(name, "test1", 9527, "value0");
-            Assert.assertTrue(pf.get());
-            pf = tableAsyncClient.put(name, "test1", 9528, "value1");
-            Assert.assertTrue(pf.get());
-            pf = tableAsyncClient.put(name, "test1", 9529, "value2");
-            Assert.assertTrue(pf.get());
-            ScanFuture sf = tableAsyncClient.scan(name, "test1", 9529, 1000);
-            KvIterator it = sf.get();
+            boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9528, "value1");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9529, "value2");
+            Assert.assertTrue(ok);
+            Thread.sleep(200);
+            KvIterator it = tableSyncClient.scan(name, "test1", 9529, 1000);
             Assert.assertTrue(it.getCount() == 3);
             Assert.assertTrue(it.valid());
             byte[] buffer = new byte[6];
@@ -173,6 +173,7 @@ public class TableAsyncClientTest {
         }
     }
     
+    
     @Test
     public void testSchemaPutForMap() {
         
@@ -182,21 +183,20 @@ public class TableAsyncClientTest {
             rowMap.put("card", "card0");
             rowMap.put("mcc", "mcc0");
             rowMap.put("amt", 9.15d);
-            PutFuture pf = tableAsyncClient.put(name, 9527, rowMap);
-            Assert.assertTrue(pf.get());
+            boolean ok = tableSyncClient.put(name, 9527, rowMap);
+            Assert.assertTrue(ok);
             rowMap = new HashMap<String, Object>();
             rowMap.put("card", "card1");
             rowMap.put("mcc", "mcc1");
             rowMap.put("amt", 9.2d);
-            pf = tableAsyncClient.put(name, 9528, rowMap);
-            Assert.assertTrue(pf.get());
-            GetFuture gf = tableAsyncClient.get(name, "card0", 9527);
-            Object[] row = gf.getRow();
+            ok = tableSyncClient.put(name, 9528, rowMap);
+            Assert.assertTrue(ok);
+            Thread.sleep(200);
+            Object[] row = tableSyncClient.getRow(name, "card0", 9527);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc0");
             Assert.assertEquals(row[2], 9.15d);
-            gf = tableAsyncClient.get(name, "card1", 9528);
-            row = gf.getRow();
+            row = tableSyncClient.getRow(name, "card1", 9528);
             Assert.assertEquals(row[0], "card1");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 9.2d);
@@ -207,52 +207,4 @@ public class TableAsyncClientTest {
             nsc.dropTable(name);
         }
     }
-
-    public void testNullDimension() {
-        String name = createSchemaTable();
-        try {
-            PutFuture pf = tableAsyncClient.put(name, 10, new Object[] { null, "1222", 1.0 });
-            Assert.assertTrue(pf.get());
-            ScanFuture sf = tableAsyncClient.scan(name, "1222", "mcc", 12, 9);
-            KvIterator it = sf.get();
-            Assert.assertEquals(it.getCount(), 1);
-            Assert.assertTrue(it.valid());
-            Object[] row = it.getDecodedValue();
-            Assert.assertEquals(null, row[0]);
-            Assert.assertEquals("1222", row[1]);
-            Assert.assertEquals(1.0, row[2]);
-        } catch (Exception e) {
-            Assert.fail();
-        }
-        
-        try {
-            PutFuture pf = tableAsyncClient.put(name, 10, new Object[] { "9527", null, 1.0 });
-            Assert.assertTrue(pf.get());
-            ScanFuture sf = tableAsyncClient.scan(name, "9527", "card", 12, 9);
-            KvIterator it = sf.get();
-            Assert.assertEquals(it.getCount(), 1);
-            Assert.assertTrue(it.valid());
-            Object[] row = it.getDecodedValue();
-            Assert.assertEquals("9527", row[0]);
-            Assert.assertEquals(null, row[1]);
-            Assert.assertEquals(1.0, row[2]);
-        } catch (Exception e) {
-            Assert.fail();
-        }
-        
-        try {
-            tableAsyncClient.put(name, 10, new Object[] { null, null, 1.0 });
-            Assert.fail();
-        } catch (Exception e) {
-            Assert.assertTrue(true);
-        }
-        
-        try {
-            tableAsyncClient.put(name, 10, new Object[] { "", "", 1.0 });
-            Assert.fail();
-        } catch (Exception e) {
-            Assert.assertTrue(true);
-        }
-    }
-    
 }

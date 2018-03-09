@@ -16,6 +16,7 @@ import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
@@ -48,19 +49,26 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         int index = 0;
+        int count = 0;
         for (int i = 0; i < tableHandler.getSchema().size(); i++) {
             if (tableHandler.getSchema().get(i).isAddTsIndex()) {
                 if (row[i] == null) {
-                    throw new TabletException("index " + index + "column is empty");
+                    index ++;
+                    continue;
                 }
                 String value = row[i].toString();
                 if (value.isEmpty()) {
-                    throw new TabletException("index" + index + " column is empty");
+                    index ++;
+                    continue;
                 }
                 Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
                 dimList.add(dim);
-                index++;
+                index ++;
+                count ++;
             }
+        }
+        if (count == 0) {
+            throw new TabletException("no dimension in this row");
         }
         return put(tid, pid, null, time, dimList, buffer, tableHandler.getHandler(pid));
     }
@@ -105,14 +113,17 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
         Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
         int index = 0;
+        int count = 0;
         for (int i = 0; i < th.getSchema().size(); i++) {
             if (th.getSchema().get(i).isAddTsIndex()) {
                 if (row[i] == null) {
-                    throw new TabletException("index " + index + "column is empty");
+                    index++;
+                    continue;
                 }
                 String value = row[i].toString();
                 if (value.isEmpty()) {
-                    throw new TabletException("index" + index + " column is empty");
+                    index++;
+                    continue;
                 }
                 int pid = (int) (MurmurHash.hash64(value) % th.getPartitions().length);
                 if (pid < 0) {
@@ -126,7 +137,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                 }
                 dimList.add(dim);
                 index++;
+                count++;
             }
+        }
+        if (count == 0) {
+            throw new TabletException("no dimension in this row for table name " + name);
         }
         List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
@@ -268,7 +283,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
         Long startTime = System.currentTimeMillis();
-        Future<Tablet.GetResponse> response = th.getHandler(pid).getLeader().get(request, getFakeCallback);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        Future<Tablet.GetResponse> response = ts.get(request, getFakeCallback);
         return GetFuture.wrappe(response, th, startTime, client.getConfig());
     }
     
@@ -277,7 +294,6 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
-        TabletServer tabletServer = th.getHandler(pid).getLeader();
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
@@ -289,7 +305,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         Tablet.ScanRequest request = builder.build();
         Long startTime = System.nanoTime();
-        Future<Tablet.ScanResponse> response = tabletServer.scan(request, scanFakeCallback);
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
         return ScanFuture.wrappe(response, th, startTime);
     }
     
@@ -329,6 +347,50 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
 
     };
+
+    @Override
+    public PutFuture put(String name, long time, Map<String, Object> row) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        Object[] arrayRow = new Object[th.getSchema().size()];
+        for(int i = 0; i < th.getSchema().size(); i++) {
+            arrayRow[i] = row.get(th.getSchema().get(i).getName());
+        }
+        return put(name, time, arrayRow);
+    }
+
+    @Override
+    public List<ColumnDesc> getSchema(String tname) throws TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        return th.getSchema();
+    }
+
+    @Override
+    public PutFuture put(int tid, int pid, long time, Map<String, Object> row) throws TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
+        Object[] arrayRow = new Object[th.getSchema().size()];
+        for(int i = 0; i < th.getSchema().size(); i++) {
+            arrayRow[i] = row.get(th.getSchema().get(i).getName());
+        }
+        return put(tid, pid, time, arrayRow);
+    }
+
+    @Override
+    public List<ColumnDesc> getSchema(int tid) throws TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
+        return th.getSchema();
+    }
 
    
    

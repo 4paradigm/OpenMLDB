@@ -136,6 +136,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void Migrate(RpcController* controller,
+            const MigrateRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     void RecoverEndpoint(RpcController* controller,
             const RecoverEndpointRequest* request,
             GeneralResponse* response,
@@ -242,6 +247,13 @@ private:
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
+    std::shared_ptr<Task> CreateUpdateTableInfoTask(const std::string& src_endpoint, 
+                    const std::string& name, uint32_t pid, const std::string& des_endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    void UpdateTableInfo(const std::string& src_endpoint, const std::string& name, uint32_t pid,
+                    const std::string& des_endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
     std::shared_ptr<Task> CreateUpdatePartitionStatusTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, bool is_leader, bool is_alive, 
                     uint64_t op_index, ::rtidb::api::OPType op_type);
@@ -264,6 +276,8 @@ private:
     void ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    int CreateMigrateOP(const std::string& src_endpoint, const std::string& name, uint32_t pid,
+                    const std::string& des_endpoint);
     void RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint);                    
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
@@ -272,6 +286,8 @@ private:
     int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
+
+    void NotifyTableChanged();
 
 private:
     std::mutex mu_;
@@ -286,6 +302,7 @@ private:
     std::string zk_table_data_path_;
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
+    std::string zk_table_changed_notify_node_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;

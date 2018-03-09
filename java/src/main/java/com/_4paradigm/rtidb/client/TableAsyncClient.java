@@ -1,8 +1,9 @@
 package com._4paradigm.rtidb.client;
 
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
 public interface TableAsyncClient {
     
     /**
@@ -32,7 +33,8 @@ public interface TableAsyncClient {
     PutFuture put(int tid, int pid, String key, long time, String value) throws TabletException;
 
     PutFuture put(int tid, int pid, long time, Object[] row) throws TabletException;
-
+    PutFuture put(int tid, int pid, long time, Map<String, Object> row) throws TabletException;
+    List<ColumnDesc> getSchema(int tid) throws TabletException;
     GetFuture get(int tid, int pid, String key) throws TabletException;
 
     GetFuture get(int tid, int pid, String key, long time) throws TabletException;
@@ -47,6 +49,8 @@ public interface TableAsyncClient {
 
     PutFuture put(String name, long time, Object[] row) throws TabletException;
 
+    PutFuture put(String name, long time, Map<String, Object> row) throws TabletException;
+    List<ColumnDesc> getSchema(String tname) throws TabletException;
     ScanFuture scan(String name, String key, String idxName, long st, long et) throws TabletException;
 
     ScanFuture scan(String name, String key, long st, long et) throws TabletException;

@@ -1,12 +1,20 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -36,13 +44,16 @@ import rtidb.api.TabletServer;
 
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
+    private static Set<String> localIpAddr = new HashSet<String>();
+    private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1);
     private ZooKeeper zookeeper;
     private volatile Map<String, TableHandler> name2tables = new HashMap<String, TableHandler>();
     private volatile Map<Integer, TableHandler> id2tables = new HashMap<Integer, TableHandler>();
     private RpcBaseClient baseClient;
     private NodeManager nodeManager;
     private RTIDBClientConfig config;
-
+    private Watcher notifyWatcher;
+    private AtomicBoolean watching = new AtomicBoolean(true);
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
@@ -55,8 +66,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         options.setWriteTimeoutMillis(config.getWriteTimeout());
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
+        getLocalIpAddress();
         zookeeper = new ZooKeeper(config.getZkEndpoints(), (int) config.getZkSesstionTimeout(), this);
-
         int failedCountDown = 10;
         while (!zookeeper.getState().isConnected() && failedCountDown > 0) {
             try {
@@ -70,8 +81,37 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         if (!zookeeper.getState().isConnected()) {
             throw new TabletException("fail to connect zookeeper " + config.getZkEndpoints());
         }
+        notifyWatcher = new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                try {
+                    refreshNodeList();
+                    refreshRouteTable();
+                } catch (Exception e) {
+                    logger.error("fail to handle zookeeper connected  event", e);
+                } finally {
+                    try {
+                        zookeeper.getData(config.getZkTableNotifyPath(), notifyWatcher, null);
+                        watching.set(true);
+                    } catch (Exception e) {
+                        logger.error("fail to add watch to notify node", e);
+                        watching.set(false);
+                    }
+                }
+            }
+            
+        };
         onZkConnected();
-
+        tryWatch();
+        clusterGuardThread.schedule(new Runnable() {
+            
+            @Override
+            public void run() {
+                checkWatchStatus();
+                
+            }
+        }, 1, TimeUnit.MINUTES);
+        
     }
 
     private void onZkConnected() {
@@ -82,7 +122,51 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             logger.error("fail to handle zookeeper connected  event", e);
         }
     }
+    
+    private void getLocalIpAddress() {
+        try {
+            Enumeration e = NetworkInterface.getNetworkInterfaces();
+            while(e.hasMoreElements()){
+                NetworkInterface n = (NetworkInterface) e.nextElement();
+                Enumeration ee = n.getInetAddresses();
+                while (ee.hasMoreElements()){
+                    InetAddress i = (InetAddress) ee.nextElement();
+                    logger.info("ip {} of local host binded ", i.getHostAddress());
+                    localIpAddr.add(i.getHostAddress().toLowerCase());
+                }
+            }
+            // get local hostname
+            String hostname = InetAddress.getLocalHost().getHostName();
+            localIpAddr.add(hostname);
+            logger.info("add hostname {} to local ip set ", hostname);
+        } catch (Exception e) {
+            logger.error("fail to get local ip address", e);
+        }
+    }
 
+    private void tryWatch() {
+        try {
+            zookeeper.getData(config.getZkTableNotifyPath(), notifyWatcher, null);
+            watching.set(true);
+        } catch (Exception e) {
+            logger.error("fail to add watch to notify node and will retry one minute later", e);
+            watching.set(false);
+        }
+    }
+
+    private void checkWatchStatus() {
+        if (!watching.get()) {
+            tryWatch();
+        }
+        clusterGuardThread.schedule(new Runnable() {
+            
+            @Override
+            public void run() {
+                checkWatchStatus();
+            }
+        }, 1, TimeUnit.MINUTES);
+    }
+    
     public void refreshRouteTable() {
         Map<String, TableHandler> oldTables = name2tables;
         Map<String, TableHandler> newTables = new HashMap<String, TableHandler>();
@@ -110,6 +194,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
             for (TableInfo table : newTableList) {
                 TableHandler handler = new TableHandler(table);
+                if (config.getReadStrategies().containsKey(table.getName())) {
+                    handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
+                }
                 PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
                 for (TablePartition partition : table.getTablePartitionList()) {
                     PartitionHandler ph = partitionHandlerGroup[partition.getPid()];
@@ -118,6 +205,10 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         partitionHandlerGroup[partition.getPid()] = ph;
                     }
                     for (PartitionMeta pm : partition.getPartitionMetaList()) {
+                        if (!pm.getIsAlive()) {
+                            logger.warn("table {} partition with endpoint {} is dead", table.getName(), pm.getEndpoint());
+                            continue;
+                        }
                         EndPoint endpoint = new EndPoint(pm.getEndpoint());
                         BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
                         if (bcg == null) {
@@ -127,10 +218,15 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         }
                         SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
                         client.updateEndpoint(endpoint, bcg);
+                        TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
                         if (pm.getIsLeader()) {
-                            ph.setLeader((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
+                            ph.setLeader(ts);
                         } else {
-                            ph.getFollowers().add((TabletServer) RpcProxy.getProxy(client, TabletServer.class));
+                            ph.getFollowers().add(ts);
+                        }
+                        if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
+                            ph.setFastTablet(ts);
+                            logger.info("find fast tablet[{}] server for table {} local read", endpoint, table.getName());
                         }
                     }
                 }
@@ -209,6 +305,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         if (baseClient != null) {
             baseClient.stop();
         }
+        clusterGuardThread.shutdown();
     }
 
     @Override

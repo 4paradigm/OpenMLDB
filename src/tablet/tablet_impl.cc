@@ -1242,7 +1242,7 @@ int TabletImpl::StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uin
         }
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() - cur_time;
-    if (limit_time > time_used) {
+    if (limit_time > time_used && len > FLAGS_stream_block_size / 2) {
         PDLOG(DEBUG, "sleep %lu us, limit_time %lu time_used %lu", limit_time - time_used, limit_time, time_used);
         std::this_thread::sleep_for(std::chrono::microseconds(limit_time - time_used));
     }

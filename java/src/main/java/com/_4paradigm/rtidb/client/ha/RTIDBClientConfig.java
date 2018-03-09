@@ -1,5 +1,10 @@
 package com._4paradigm.rtidb.client.ha;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
+
 public class RTIDBClientConfig {
 
     public enum Mode {
@@ -16,6 +21,7 @@ public class RTIDBClientConfig {
 	private int readTimeout = 10000;
 	private int maxCntCnnPerHost = 2;
 	private Mode mode;
+	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	public void disableMetrics() {
 	    enableMetrics = false;
 	}
@@ -106,6 +112,14 @@ public class RTIDBClientConfig {
 
     public void setZkTableNotifyPath(String zkTableNotifyPath) {
         this.zkTableNotifyPath = zkTableNotifyPath;
+    }
+
+    public Map<String, ReadStrategy> getReadStrategies() {
+        return readStrategies;
+    }
+
+    public void setReadStrategies(Map<String, ReadStrategy> readStrategies) {
+        this.readStrategies = readStrategies;
     }
 
     

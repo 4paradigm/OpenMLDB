@@ -1,5 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
@@ -33,6 +35,7 @@ public class TableSyncClientTest {
             config.setZkEndpoints(zkEndpoints);
             config.setZkNodeRootPath("/onebox/nodes");
             config.setZkTableRootPath("/onebox/table/table_data");
+            config.setZkTableNotifyPath("/onebox/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);
@@ -161,6 +164,87 @@ public class TableSyncClientTest {
             Assert.assertTrue(false);
         }finally {
             nsc.dropTable(name);
+        }
+    }
+    
+    @Test
+    public void testSchemaPutForMap() {
+        
+        String name = createSchemaTable();
+        try {
+            Map<String, Object> rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc0");
+            rowMap.put("amt", 9.15d);
+            boolean ok = tableSyncClient.put(name, 9527, rowMap);
+            Assert.assertTrue(ok);
+            rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card1");
+            rowMap.put("mcc", "mcc1");
+            rowMap.put("amt", 9.2d);
+            ok = tableSyncClient.put(name, 9528, rowMap);
+            Assert.assertTrue(ok);
+            Thread.sleep(200);
+            Object[] row = tableSyncClient.getRow(name, "card0", 9527);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 9.15d);
+            row = tableSyncClient.getRow(name, "card1", 9528);
+            Assert.assertEquals(row[0], "card1");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    public void testNullDimension() {
+        String name = createSchemaTable();
+        try {
+            boolean ok = tableSyncClient.put(name, 10, new Object[] { null, "1222", 1.0 });
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.scan(name, "1222", "mcc", 12, 9);
+            Assert.assertNotNull(it);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals(null, row[0]);
+            Assert.assertEquals("1222", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
+        try {
+            boolean ok = tableSyncClient.put(name, 10, new Object[] { "9527", null, 1.0 });
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.scan(name, "9527", "card", 12, 9);
+            Assert.assertNotNull(it);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals(null, row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
+        try {
+            tableSyncClient.put(name, 10, new Object[] { null, null, 1.0 });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        
+        try {
+            tableSyncClient.put(name, 10, new Object[] { "", "", 1.0 });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
         }
     }
     
