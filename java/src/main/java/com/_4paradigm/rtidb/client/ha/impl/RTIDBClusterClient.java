@@ -11,6 +11,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -41,12 +45,15 @@ import rtidb.api.TabletServer;
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
     private static Set<String> localIpAddr = new HashSet<String>();
+    private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1);
     private ZooKeeper zookeeper;
     private volatile Map<String, TableHandler> name2tables = new HashMap<String, TableHandler>();
     private volatile Map<Integer, TableHandler> id2tables = new HashMap<Integer, TableHandler>();
     private RpcBaseClient baseClient;
     private NodeManager nodeManager;
     private RTIDBClientConfig config;
+    private Watcher notifyWatcher;
+    private AtomicBoolean watching = new AtomicBoolean(true);
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
@@ -74,8 +81,37 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         if (!zookeeper.getState().isConnected()) {
             throw new TabletException("fail to connect zookeeper " + config.getZkEndpoints());
         }
+        notifyWatcher = new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                try {
+                    refreshNodeList();
+                    refreshRouteTable();
+                } catch (Exception e) {
+                    logger.error("fail to handle zookeeper connected  event", e);
+                } finally {
+                    try {
+                        zookeeper.getData(config.getZkTableNotifyPath(), notifyWatcher, null);
+                        watching.set(true);
+                    } catch (Exception e) {
+                        logger.error("fail to add watch to notify node", e);
+                        watching.set(false);
+                    }
+                }
+            }
+            
+        };
         onZkConnected();
-
+        tryWatch();
+        clusterGuardThread.schedule(new Runnable() {
+            
+            @Override
+            public void run() {
+                checkWatchStatus();
+                
+            }
+        }, 1, TimeUnit.MINUTES);
+        
     }
 
     private void onZkConnected() {
@@ -108,6 +144,29 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         }
     }
 
+    private void tryWatch() {
+        try {
+            zookeeper.getData(config.getZkTableNotifyPath(), notifyWatcher, null);
+            watching.set(true);
+        } catch (Exception e) {
+            logger.error("fail to add watch to notify node and will retry one minute later", e);
+            watching.set(false);
+        }
+    }
+
+    private void checkWatchStatus() {
+        if (!watching.get()) {
+            tryWatch();
+        }
+        clusterGuardThread.schedule(new Runnable() {
+            
+            @Override
+            public void run() {
+                checkWatchStatus();
+            }
+        }, 1, TimeUnit.MINUTES);
+    }
+    
     public void refreshRouteTable() {
         Map<String, TableHandler> oldTables = name2tables;
         Map<String, TableHandler> newTables = new HashMap<String, TableHandler>();
@@ -146,6 +205,10 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         partitionHandlerGroup[partition.getPid()] = ph;
                     }
                     for (PartitionMeta pm : partition.getPartitionMetaList()) {
+                        if (!pm.getIsAlive()) {
+                            logger.warn("table {} partition with endpoint {} is dead", table.getName(), pm.getEndpoint());
+                            continue;
+                        }
                         EndPoint endpoint = new EndPoint(pm.getEndpoint());
                         BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
                         if (bcg == null) {
@@ -242,6 +305,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         if (baseClient != null) {
             baseClient.stop();
         }
+        clusterGuardThread.shutdown();
     }
 
     @Override

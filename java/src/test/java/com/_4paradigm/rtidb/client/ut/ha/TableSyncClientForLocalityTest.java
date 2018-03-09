@@ -34,6 +34,7 @@ public class TableSyncClientForLocalityTest {
             config.setZkEndpoints(zkEndpoints);
             config.setZkNodeRootPath("/onebox/nodes");
             config.setZkTableRootPath("/onebox/table/table_data");
+            config.setZkTableNotifyPath("/onebox/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

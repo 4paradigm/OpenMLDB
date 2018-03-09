@@ -119,7 +119,25 @@ public class TabletClientImpl implements TabletClient {
         }
         return null;
     }
-    
-    
 
+    @Override
+    public boolean disConnectZK() {
+        Tablet.DisConnectZKRequest request = Tablet.DisConnectZKRequest.newBuilder().build();
+        Tablet.GeneralResponse response = client.getHandler(0).getHandler(0).getLeader().disConnectZK(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean connectZK() {
+        Tablet.ConnectZKRequest request = Tablet.ConnectZKRequest.newBuilder().build();
+        Tablet.GeneralResponse response = client.getHandler(0).getHandler(0).getLeader().connectZK(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        }
+        return false;
+    }
+    
 }

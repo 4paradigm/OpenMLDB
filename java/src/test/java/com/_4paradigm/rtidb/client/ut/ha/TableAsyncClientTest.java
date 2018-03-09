@@ -36,6 +36,7 @@ public class TableAsyncClientTest {
             config.setZkEndpoints(zkEndpoints);
             config.setZkNodeRootPath("/onebox/nodes");
             config.setZkTableRootPath("/onebox/table/table_data");
+            config.setZkTableNotifyPath("/onebox/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableAsyncClient = new TableAsyncClientImpl(client);
