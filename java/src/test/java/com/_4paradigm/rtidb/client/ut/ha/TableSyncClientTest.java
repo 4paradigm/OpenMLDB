@@ -200,5 +200,52 @@ public class TableSyncClientTest {
             nsc.dropTable(name);
         }
     }
+
+    public void testNullDimension() {
+        String name = createSchemaTable();
+        try {
+            boolean ok = tableSyncClient.put(name, 10, new Object[] { null, "1222", 1.0 });
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.scan(name, "1222", "mcc", 12, 9);
+            Assert.assertNotNull(it);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals(null, row[0]);
+            Assert.assertEquals("1222", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
+        try {
+            boolean ok = tableSyncClient.put(name, 10, new Object[] { "9527", null, 1.0 });
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.scan(name, "9527", "card", 12, 9);
+            Assert.assertNotNull(it);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals(null, row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
+        try {
+            tableSyncClient.put(name, 10, new Object[] { null, null, 1.0 });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        
+        try {
+            tableSyncClient.put(name, 10, new Object[] { "", "", 1.0 });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+    }
     
 }

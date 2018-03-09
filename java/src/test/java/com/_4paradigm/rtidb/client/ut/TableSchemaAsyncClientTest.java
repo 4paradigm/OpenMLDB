@@ -141,4 +141,52 @@ public class TableSchemaAsyncClientTest {
         
     }
 
+    @Test
+    public void testNullDimension() {
+        int tid = createTable();
+        try {
+            PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { null, "1222", 1.0 });
+            Assert.assertTrue(pf.get());
+            ScanFuture sf = tableClient.scan(tid, 0, "1222", "merchant", 12, 9);
+            KvIterator it = sf.get();
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals(null, row[0]);
+            Assert.assertEquals("1222", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
+        try {
+            PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { "9527", null, 1.0 });
+            Assert.assertTrue(pf.get());
+            ScanFuture sf = tableClient.scan(tid, 0, "9527", "card", 12, 9);
+            KvIterator it = sf.get();
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals(null, row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
+        try {
+            tableClient.put(tid, 0, 10, new Object[] { null, null, 1.0 });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        
+        try {
+            tableClient.put(tid, 0, 10, new Object[] { "", "", 1.0 });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        
+    }
 }

@@ -13,11 +13,10 @@ import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
-import com._4paradigm.rtidb.client.impl.GTableSchema;
-import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.client.schema.Table;
 import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 
 import io.brpc.client.EndPoint;
@@ -25,7 +24,8 @@ import io.brpc.client.EndPoint;
 public class TableSchemaClientTest {
 
     private final static AtomicInteger id = new AtomicInteger(5000);
-    private static TabletSyncClientImpl client = null;
+    private static TableSyncClientImpl client = null;
+    private static TabletClientImpl tabletClient = null;
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
@@ -36,7 +36,8 @@ public class TableSchemaClientTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        client = new TabletSyncClientImpl(snc);
+        client = new TableSyncClientImpl(snc);
+        tabletClient = new TabletClientImpl(snc);
     }
     @Test
     public void testEmptyTableNameCreate() {
@@ -52,7 +53,7 @@ public class TableSchemaClientTest {
         desc2.setName("card2");
         desc2.setType(ColumnType.kString);
         schema.add(desc2);
-        boolean ok = client.createTable("", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("", tid, 0, 0, 8, schema);
         Assert.assertFalse(ok);
     }
 
@@ -70,7 +71,7 @@ public class TableSchemaClientTest {
         desc2.setName("card2");
         desc2.setType(ColumnType.kString);
         schema.add(desc2);
-        boolean ok = client.createTable("latest ttl", tid, 0, 0, TTLType.kLatestTime, 8, schema);
+        boolean ok = tabletClient.createTable("latest ttl", tid, 0, 0, TTLType.kLatestTime, 8, schema);
         Assert.assertTrue(ok);
     }
 
@@ -88,7 +89,7 @@ public class TableSchemaClientTest {
         desc2.setName("card");
         desc2.setType(ColumnType.kString);
         schema.add(desc2);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertFalse(ok);
     }
 
@@ -106,7 +107,7 @@ public class TableSchemaClientTest {
         desc2.setName("card");
         desc2.setType(ColumnType.kString);
         schema.add(desc2);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertFalse(ok);
     }
 
@@ -124,7 +125,7 @@ public class TableSchemaClientTest {
         desc2.setName("card");
         desc2.setType(ColumnType.kString);
         schema.add(desc2);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertFalse(ok);
     }
 
@@ -142,7 +143,7 @@ public class TableSchemaClientTest {
         desc2.setName("card2");
         desc2.setType(ColumnType.kString);
         schema.add(desc2);
-        boolean ok = client.createTable("tj0", tid, 0, 2, TTLType.kLatestTime, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 2, TTLType.kLatestTime, 8, schema);
         Assert.assertTrue(ok);
     }
 
@@ -165,7 +166,7 @@ public class TableSchemaClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         TableHandler th = snc.getHandler(tid);
         Assert.assertTrue(th.getIndexes().size() == 2);
@@ -206,10 +207,10 @@ public class TableSchemaClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 }));
-        client.dropTable(tid, 0);
+        tabletClient.dropTable(tid, 0);
     }
 
     @Test
@@ -231,7 +232,7 @@ public class TableSchemaClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 }));
         Assert.assertTrue(client.put(tid, 0, 11, new Object[] { "9527", "1221", 2.0 }));
@@ -275,7 +276,7 @@ public class TableSchemaClientTest {
         Assert.assertEquals(1.0, row[2]);
         it.next();
         Assert.assertFalse(it.valid());
-        client.dropTable(tid, 0);
+        tabletClient.dropTable(tid, 0);
     }
 
     @Test
@@ -297,7 +298,7 @@ public class TableSchemaClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         String str128 = new String(new byte[128]);
         Assert.assertTrue(client.put(tid, 0, 10, new Object[] { "9527", str128, 2.0 }));
@@ -316,43 +317,9 @@ public class TableSchemaClientTest {
         } catch (Exception e) {
             Assert.assertFalse(false);
         }
-        client.dropTable(tid, 0);
+        tabletClient.dropTable(tid, 0);
     }
 
-    @Test
-    public void testLatestTTLScan() throws TimeoutException, TabletException {
-        int tid = id.incrementAndGet();
-        List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
-        ColumnDesc desc1 = new ColumnDesc();
-        desc1.setAddTsIndex(true);
-        desc1.setName("card");
-        desc1.setType(ColumnType.kString);
-        schema.add(desc1);
-        ColumnDesc desc2 = new ColumnDesc();
-        desc2.setAddTsIndex(true);
-        desc2.setName("merchant");
-        desc2.setType(ColumnType.kString);
-        schema.add(desc2);
-        ColumnDesc desc3 = new ColumnDesc();
-        desc3.setAddTsIndex(false);
-        desc3.setName("amt");
-        desc3.setType(ColumnType.kDouble);
-        schema.add(desc3);
-        boolean ok = client.createTable("tj0", tid, 0, 1, TTLType.kLatestTime, 8, schema);
-        Assert.assertTrue(ok);
-        String str128 = new String(new byte[128]);
-        Assert.assertTrue(client.put(tid, 0, 10, new Object[] { "9527", str128, 2.0 }));
-        Assert.assertTrue(client.put(tid, 0, 11, new Object[] { "9527", str128, 3.0 }));
-        // wait two minutes
-        try {
-            Thread.sleep(1000 * 120);
-        } catch (Exception e) {
-            Assert.assertTrue(false);
-        }
-        KvIterator it = client.scan(tid, 0, "9527", "card", 12l, 0l);
-        Assert.assertFalse(it != null);
-
-    }
 
     @Test
     public void testPutNullAndScan() throws TimeoutException, TabletException {
@@ -373,7 +340,7 @@ public class TableSchemaClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = client.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10l, new Object[] { "9527", null, 2.0d }));
         Assert.assertTrue(client.put(tid, 0, 1l, new Object[] { "9527", "test", null }));
@@ -416,7 +383,7 @@ public class TableSchemaClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = client.createTable("schema-get", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("schema-get", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10l, new Object[] { "9527", "merchant0", 2.0d }));
         // check no exist
@@ -456,7 +423,7 @@ public class TableSchemaClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = client.createTable("schema-get", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("schema-get", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10l, new Object[] { "a", "中文2", 2.0d }));
         Object[] row = client.getRow(tid, 0, "a", 0l);
@@ -464,5 +431,72 @@ public class TableSchemaClientTest {
         Assert.assertEquals("a", row[0]);
         Assert.assertEquals("中文2", row[1]);
         Assert.assertEquals(2.0d, row[2]);
+    }
+    
+    @Test
+    public void testNullDimension() {
+        int tid = id.incrementAndGet();
+        List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+        ColumnDesc desc1 = new ColumnDesc();
+        desc1.setAddTsIndex(true);
+        desc1.setName("card");
+        desc1.setType(ColumnType.kString);
+        schema.add(desc1);
+        ColumnDesc desc2 = new ColumnDesc();
+        desc2.setAddTsIndex(true);
+        desc2.setName("merchant");
+        desc2.setType(ColumnType.kString);
+        schema.add(desc2);
+        ColumnDesc desc3 = new ColumnDesc();
+        desc3.setAddTsIndex(false);
+        desc3.setName("amt");
+        desc3.setType(ColumnType.kFloat);
+        schema.add(desc3);
+        boolean ok = tabletClient.createTable("schemaxxxx", tid, 0, 0, 8, schema);
+        try {
+            ok = client.put(tid, 0, 10, new Object[] { null, "1222", 1.0f });
+            Assert.assertTrue(ok);
+            KvIterator it = client.scan(tid, 0, "1222", "merchant", 12, 9);
+            Assert.assertNotNull(it);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals(null, row[0]);
+            Assert.assertEquals("1222", row[1]);
+            Assert.assertEquals(1.0f, row[2]);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+        
+        try {
+            ok = client.put(tid, 0, 10, new Object[] { "9527", null, 1.0f });
+            Assert.assertTrue(ok);
+            KvIterator it = client.scan(tid, 0, "9527", "card", 12, 9);
+            Assert.assertNotNull(it);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals(null, row[1]);
+            Assert.assertEquals(1.0f, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        
+        try {
+            client.put(tid, 0, 10, new Object[] { null, null, 1.0f });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        
+        try {
+            client.put(tid, 0, 10, new Object[] { "", "", 1.0f });
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        
     }
 }
