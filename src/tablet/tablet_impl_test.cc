@@ -1152,7 +1152,7 @@ TEST_F(TabletImplTest, Snapshot) {
 
 TEST_F(TabletImplTest, GetTermPair) {
     uint32_t id = counter++;
-    FLAGS_zk_cluster = "127.0.0.1:12181";
+    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
     MockClosure closure;
     {
