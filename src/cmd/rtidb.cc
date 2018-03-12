@@ -1812,12 +1812,14 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "tablet") {
         StartTablet();
-    }else if (FLAGS_role == "client") {
+    } else if (FLAGS_role == "client") {
         StartClient();
-    }else if (FLAGS_role == "nameserver") {
+    } else if (FLAGS_role == "nameserver") {
         StartNameServer();
-    }else if (FLAGS_role == "ns_client") {
+    } else if (FLAGS_role == "ns_client") {
         StartNsClient();
+    } else {
+        std::cout << "Start failed! FLAGS_role must be tablet, client, nameserver or ns_client" << std::endl;
     }
     return 0;
 }
