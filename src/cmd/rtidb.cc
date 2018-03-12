@@ -73,7 +73,10 @@ void SetupLog() {
 void StartNameServer() {
     SetupLog();
     ::rtidb::nameserver::NameServerImpl* name_server = new ::rtidb::nameserver::NameServerImpl();
-    name_server->Init();
+    if (!name_server->Init()) {
+        PDLOG(WARNING, "Fail to init");
+        exit(1);
+    }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
