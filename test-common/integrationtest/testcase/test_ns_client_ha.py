@@ -48,7 +48,7 @@ class TestNameserverHa(TestCaseBase):
         infoLogger.info([x[1] for x in conf.ns_endpoints])
         nss = [x[1] for x in conf.ns_endpoints]
         self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
-        self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
+        self.node_path_dict[self.ns_leader] = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
         nss.remove(self.ns_leader)
         self.ns_slaver = nss[0]
         infoLogger.info("*"*88)
@@ -79,7 +79,7 @@ class TestNameserverHa(TestCaseBase):
             4: 'self.put_large_datas(500, 7)',
             5: 'self.put_data(self.leader)',
             6: 'self.makesnapshot(self.ns_leader, self.tname, self.pid, \'ns_client\', 0)',
-            7: 'self.start_client(self.ns_leader_path, "nameserver")',
+            7: 'self.start_client(self.ns_leader, "nameserver")',
             8: 'self.connectzk(self.ns_leader, "ns_client")',
             9: 'self.get_new_ns_leader()',
             10: 'None',
@@ -107,7 +107,6 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        infoLogger.info(self.showtable(self.ns_slaver))
         self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'],
                          self.showtable(self.ns_slaver).values()[0])
 

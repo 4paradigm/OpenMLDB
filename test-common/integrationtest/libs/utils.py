@@ -87,16 +87,3 @@ def gen_table_metadata_file(metadata, filepath):
         s += '}\n'
     write(s, filepath, 'w')
     infoLogger.info(read(filepath))
-
-
-def test_gen_table_metadata():
-    data = gen_table_metadata("naysa", "6", 3, 4,
-                      ('table_partition', '"172.27.1.1:1111"', '"1-3"', 'true'),
-                      ('table_partition','"172.27.1.1:2222"', '"1-2"', None),
-                      ('column_desc','"172.27.1.1:3333"', '"2-3"', 'false'))
-    infoLogger.info(data)
-    gen_table_metadata_file(data, ".")
-
-
-if __name__ == "__main__":
-    test_gen_table_metadata()

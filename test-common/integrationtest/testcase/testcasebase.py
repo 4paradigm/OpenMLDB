@@ -23,15 +23,19 @@ class TestCaseBase(unittest.TestCase):
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')
         cls.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(cls.testpath))
-        cls.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))
         cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
-        cls.leaderpath = cls.testpath + '/tablet1'
-        cls.slave1path = cls.testpath + '/tablet2'
-        cls.slave2path = cls.testpath + '/tablet3'
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
         cls.failfast = conf.failfast
+        cls.node_path_dict = {cls.leader:cls.testpath + '/tablet1',
+                              cls.slave1:cls.testpath + '/tablet2',
+                              cls.slave2:cls.testpath + '/tablet3',
+                              cls.ns_leader:utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))}
+        cls.leaderpath = cls.node_path_dict[cls.leader]
+        cls.slave1path = cls.node_path_dict[cls.slave1]
+        cls.slave2path = cls.node_path_dict[cls.slave2]
+        cls.ns_leader_path = cls.node_path_dict[cls.ns_leader]
 
     def setUp(self):
         infoLogger.info('*** TEST CASE NAME: ' + self._testMethodName)
@@ -43,15 +47,17 @@ class TestCaseBase(unittest.TestCase):
         self.clear_ns_table(self.ns_leader)
 
     def tearDown(self):
-        self.drop(self.leader, self.tid, self.pid)
-        self.drop(self.slave1, self.tid, self.pid)
-        self.drop(self.slave2, self.tid, self.pid)
+        for edp_tuple in conf.tb_endpoints:
+            self.start_client(edp_tuple[1])
+            self.connectzk(edp_tuple[1])
+            self.drop(edp_tuple[1], self.tid, self.pid)
         self.clear_ns_table(self.ns_leader)
 
     def now(self):
-        return int(1000 * time.time())
+        return int(time.time() * 1000000 / 1000)
 
-    def start_client(self, client_path, role='tablet'):
+    def start_client(self, client, role='tablet'):
+        client_path = self.node_path_dict[client]
         if role == 'tablet':
             conf = 'rtidb'
         elif role == 'nameserver':
@@ -61,9 +67,15 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{}/rtidb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
         infoLogger.info(cmd)
         args = shlex.split(cmd)
-        subprocess.Popen(args,stdout=open('{}/info.log'.format(client_path), 'w'),
-                         stderr=open('{}/warning.log'.format(client_path), 'w'))
-        time.sleep(3)
+        for _ in range(5):
+            rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(client.split(':')[1]))
+            if 'rtidb' not in rs:
+                time.sleep(2)
+                subprocess.Popen(args,stdout=open('{}/info.log'.format(client_path), 'w'),
+                                 stderr=open('{}/warning.log'.format(client_path), 'w'))
+            else:
+                return True
+        return False
 
     def stop_client(self, endpoint):
         cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
@@ -256,6 +268,9 @@ class TestCaseBase(unittest.TestCase):
     def disconnectzk(self, endpoint, role='client'):
         return self.run_client(endpoint, 'disconnectzk', role)
 
+    def migrate(self, endpoint, src, tname, pid_group, des):
+        return self.run_client(endpoint, 'migrate {} {} {} {}', src, tname, pid_group, des, 'ns_client')
+
     @staticmethod
     def parse_schema(rs):
         schema_dict = {}
@@ -376,9 +391,9 @@ class TestCaseBase(unittest.TestCase):
 
     def find_new_tb_leader(self, tname, tid, pid):
         line_count = utils.exe_shell('cat {}/info.log|wc -l'.format(self.ns_leader_path))
-        cmd = "grep -n {} {}/info.log -m 1".format(tname, self.ns_leader_path)
+        cmd = "grep -a -n {} {}/info.log -m 1".format(tname, self.ns_leader_path)
         op_start_line = utils.exe_shell(cmd + "|awk -F ':' '{print $1}'")
-        cmd1 = "tail -n {} {}/info.log|grep \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
+        cmd1 = "tail -n {} {}/info.log|grep -a \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
             int(line_count) - int(op_start_line),
             self.ns_leader_path, tname, tid, pid) + \
               "|awk -F 'new leader is\\\\[' '{print $2}'" \

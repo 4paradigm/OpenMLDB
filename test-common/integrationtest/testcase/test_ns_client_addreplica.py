@@ -42,6 +42,7 @@ class TestAddReplicaNs(TestCaseBase):
 
         rs4 = self.makesnapshot(self.ns_leader, name, 1, 'ns_client')
         self.assertTrue('MakeSnapshot ok' in rs4)
+        self.assertFalse('Put ok' not in self.put(self.leader, tid, 1, 'testkey0', self.now() + 9999, 'test0.5'))
         time.sleep(2)
         rs6 = self.addreplica(self.ns_leader, name, 1, 'ns_client', self.slave1)
         self.assertTrue('AddReplica ok' in rs6)
@@ -55,6 +56,7 @@ class TestAddReplicaNs(TestCaseBase):
         self.put(self.leader, tid, 1, 'testkey0', self.now() + 10000, 'testvalue1')
         self.showtable(self.ns_leader)
         self.assertTrue('testvalue0' in self.scan(self.slave1, tid, 1, 'testkey0', self.now() + 90000, 1))
+        self.assertTrue('test0.5' in self.scan(self.slave1, tid, 1, 'testkey0', self.now() + 90000, 1))
         self.assertTrue('testvalue1' in self.scan(self.slave1, tid, 1, 'testkey0', self.now() + 90000, 1))
 
 
@@ -92,7 +94,7 @@ class TestAddReplicaNs(TestCaseBase):
         添加一个offline的副本，添加失败
         :return:
         """
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"tname{}"'.format(int(time.time() * 1000000 % 10000000000))
         m = utils.gen_table_metadata(
@@ -109,7 +111,7 @@ class TestAddReplicaNs(TestCaseBase):
         infoLogger.info(self.showtablet(self.ns_leader))
         rs2 = self.addreplica(self.ns_leader, name, 1, 'ns_client', self.slave1)
         self.assertTrue('Fail to addreplica. error msg:tablet is not online' in rs2)
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
 
 
     @ddt.data(

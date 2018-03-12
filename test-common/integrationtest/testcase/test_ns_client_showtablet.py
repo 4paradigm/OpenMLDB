@@ -37,7 +37,7 @@ class TestShowTablet(TestCaseBase):
         :return:
         """
         self.confset(self.ns_leader, 'auto_failover', True)
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
@@ -58,7 +58,7 @@ class TestShowTablet(TestCaseBase):
         self.assertTrue(rs1[self.leader][0] == 'kTabletHealthy')
         self.assertTrue(rs1[self.slave1][0] == 'kTabletOffline')
         self.assertTrue(rs1[self.slave2][0] == 'kTabletHealthy')
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
         time.sleep(5)
         rs2 = self.showtablet(self.ns_leader)
         self.assertTrue(rs2[self.slave1][0] == 'kTabletHealthy')

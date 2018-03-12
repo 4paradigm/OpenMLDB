@@ -27,7 +27,8 @@ def load(cls):
 
 def load_all():
     testpath = os.getenv('testpath')
-    tests = commands.getstatusoutput('ls {}/testcase|grep -P "^test_ns_client_[a-z_]+.py$"'.format(testpath))[1].split('\n')
+    tests = commands.getstatusoutput('ls {}/testcase|grep -P "^test_[a-z_]+.py$"'.format(testpath))[1].split('\n')
+    # tests = commands.getstatusoutput('ls {}/testcase|egrep "_ha.py|_showtablet.py"|grep -v "pyc"'.format(testpath))[1].split('\n')
     test_suite = []
     for module in tests:
         mo = importlib.import_module('testcase.{}'.format(module[:-3]))

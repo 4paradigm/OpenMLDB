@@ -168,7 +168,7 @@ class TestSendSnapshot(TestCaseBase):
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 0)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.start_client(self.leaderpath)
+        self.assertEqual(self.start_client(self.leader), True)
 
 
     @ddt.data(
@@ -199,7 +199,7 @@ class TestSendSnapshot(TestCaseBase):
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
 
 
     def test_sendsnapshot_multi_to_one(self):
@@ -254,7 +254,7 @@ class TestSendSnapshot(TestCaseBase):
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 1024)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         tname = self.now()
         self.create(self.leader, tname, self.tid, self.pid, 144000, 2, "true")
         self.put_data(self.leader, self.tid, self.pid, 100)
@@ -271,10 +271,9 @@ class TestSendSnapshot(TestCaseBase):
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         self.assertEqual(check_manifest_sent1, False)  # files sending because of stream_bandwidth_limit
         self.assertEqual(check_manifest_sent, True)
-        time.sleep(2)
 
 
     def test_speed_without_limit(self):
@@ -285,7 +284,7 @@ class TestSendSnapshot(TestCaseBase):
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 0)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         tname = self.now()
         self.create(self.leader, tname, self.tid, self.pid, 144000, 2, "true")
         self.put_data(self.leader, self.tid, self.pid, 100)
@@ -299,7 +298,7 @@ class TestSendSnapshot(TestCaseBase):
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
 
 
 if __name__ == "__main__":

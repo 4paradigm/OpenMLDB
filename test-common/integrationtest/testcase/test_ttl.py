@@ -160,7 +160,7 @@ class TestTtl(TestCaseBase):
          {('v2', 200): True, ('v3', 100): False}),
     )
     @ddt.unpack
-    def test_ttl_put_after_ttl(self, ttl, value_ts_scannable, put_value_ts, value_ts_scannable2):
+    def test_ttl_put_after_ttl(self, ttl, value_ts_scannable, put_value_ts, value_ts_scannable2):  # RTIDB-181
         """
         ttl后put数据，再次ttl后数据正确
         :param ttl:

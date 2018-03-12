@@ -50,7 +50,7 @@ class TestAutoFailover(TestCaseBase):
         rs2 = self.showtablet(self.ns_leader)
         rs3 = self.showtable(self.ns_leader)
         if failover_reason == 'killed':
-            self.start_client(self.leaderpath)
+            self.start_client(self.leader)
         elif failover_reason == 'network_failure':
             self.connectzk(self.leader)
         self.assertEqual('kTabletOffline' in rs2[self.leader], True)
@@ -108,7 +108,7 @@ class TestAutoFailover(TestCaseBase):
         rs2 = self.showtablet(self.ns_leader)
         rs3 = self.showtable(self.ns_leader)
         if failover_reason == 'killed':
-            self.start_client(self.slave1path)
+            self.start_client(self.slave1)
         elif failover_reason == 'network_failure':
             self.connectzk(self.slave1)
         self.assertEqual('kTabletOffline' in rs2[self.slave1], True)
@@ -206,7 +206,7 @@ class TestAutoFailover(TestCaseBase):
         self.showtable(self.ns_leader)
         new_tb_leader1 = self.find_new_tb_leader(name, tid, pid)
 
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         time.sleep(8)
         self.recoverendpoint(self.ns_leader, self.leader)
         self.showtable(self.ns_leader)

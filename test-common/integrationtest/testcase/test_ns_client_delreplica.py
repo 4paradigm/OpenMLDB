@@ -135,7 +135,7 @@ class TestDelReplicaNs(TestCaseBase):
         建表时带副本，然后删掉副本，showtable时不会再出现删掉的副本
         :return:
         """
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
@@ -161,7 +161,7 @@ class TestDelReplicaNs(TestCaseBase):
         time.sleep(5)
 
         rs4 = self.showtable(self.ns_leader)
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
         self.assertTrue('Fail to delreplica. error msg:tablet is not online' in rs3)
         self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '8', '100', 'no'])
 

@@ -17,7 +17,7 @@ class TestChangeLeader(TestCaseBase):
         changeleader功能正常，主节点断网后，可以手工故障切换，切换成功后从节点可以同步数据
         :return:
         """
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
@@ -52,8 +52,8 @@ class TestChangeLeader(TestCaseBase):
         self.connectzk(self.leader)
 
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
         act1 = rs2[(name, tid, '0', self.slave1)]
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
@@ -77,14 +77,14 @@ class TestChangeLeader(TestCaseBase):
         changeleader功能正常，主节点挂掉后，可以手工故障切换，切换成功后从节点可以同步数据
         :return:
         """
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
             ('column_desc', '"k1"', '"string"', 'true'),
             ('column_desc', '"k2"', '"string"', 'false'),
             ('column_desc', '"k3"', '"string"', 'false')
@@ -109,11 +109,11 @@ class TestChangeLeader(TestCaseBase):
         self.changeleader(self.ns_leader, name, 0)
 
         rs2 = self.showtable(self.ns_leader)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
 
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
         act1 = rs2[(name, tid, '0', self.slave1)]
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
@@ -149,12 +149,12 @@ class TestChangeLeader(TestCaseBase):
         self.assertEqual('Create table ok' in rs1, True)
 
         rs2 = self.changeleader(self.ns_leader, name, 0)
-        self.assertEqual('failed to change leader. error msg: change leader failed' in rs2, True)
+        self.assertEqual('failed to change leader. error msg: leader is alive' in rs2, True)
 
 
     def test_changeleader_tname_notexist(self):
         """
-        changeleader传入不存在的表明，执行失败
+        changeleader传入不存在的表名，执行失败
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -168,7 +168,7 @@ class TestChangeLeader(TestCaseBase):
         self.assertEqual('Create table ok' in rs1, True)
 
         rs2 = self.changeleader(self.ns_leader, 'nullnullnull', 0)
-        self.assertEqual('failed to change leader. error msg: change leader failed' in rs2, True)
+        self.assertEqual('failed to change leader. error msg: table is not exist' in rs2, True)
 
 
 if __name__ == "__main__":

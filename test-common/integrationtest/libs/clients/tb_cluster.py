@@ -24,6 +24,7 @@ class TbCluster(object):
         for ep in endpoints:
             i += 1
             tb_path = test_path + '/tablet{}'.format(i)
+            exe_shell('export ')
             rtidb_flags = '{}/conf/rtidb.flags'.format(tb_path)
             exe_shell('mkdir -p {}/conf'.format(tb_path))
             exe_shell('cat {} | egrep -v "endpoint|log_level|gc_interval|db_root_path|log_dir|recycle_bin_root_path" > '
@@ -38,14 +39,22 @@ class TbCluster(object):
             exe_shell("echo '--stream_bandwidth_limit=0' >> {}".format(rtidb_flags))
             exe_shell("echo '--zk_root_path=/onebox' >> {}".format(rtidb_flags))
             exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(rtidb_flags))
+            exe_shell("echo '--gc_safe_offset=0' >> {}".format(rtidb_flags))
             exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(test_path, tb_path)
             infoLogger.info('start rtidb: {}'.format(cmd))
             args = shlex.split(cmd)
-            subprocess.Popen(args,stdout=open('{}/info.log'.format(tb_path), 'w'),
-                             stderr=open('{}/warning.log'.format(tb_path), 'w'))
-            time.sleep(3)
-
+            started = []
+            for _ in range(5):
+                rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
+                if 'rtidb' not in rs:
+                    time.sleep(2)
+                    subprocess.Popen(args,stdout=open('{}/info.log'.format(tb_path), 'w'),
+                                     stderr=open('{}/warning.log'.format(tb_path), 'w'))
+                else:
+                    started.append(True)
+                    break
+        return started
 
     def kill(self, *endpoints):
         infoLogger.info(endpoints)

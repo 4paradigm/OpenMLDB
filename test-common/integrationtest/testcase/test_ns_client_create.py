@@ -106,13 +106,19 @@ class TestCreateTableByNsClient(TestCaseBase):
         table_info = self.showtable(self.ns_leader)
         tid = table_info.keys()[0][1]
         pid = table_info.keys()[0][2]
+        ts = self.now() + 1000
         for _ in range(10):
-            self.put(self.leader, tid, pid, 'testkey0', 1444444444444, 'testvalue0')
-        self.assertTrue('testvalue0' in self.get(self.slave1, tid, pid, 'testkey0', 1444444444444))
+            self.put(self.leader, tid, pid, 'testkey0', ts, 'testvalue0')
+        self.assertTrue('testvalue0' in self.get(self.slave1, tid, pid, 'testkey0', ts))
         for _ in range(10):
             self.put(self.leader, tid, pid, 'testkey0', 1999999999999, 'testvalue1')
         time.sleep(1)
-        self.assertFalse('testvalue0' in self.get(self.slave1, tid, pid, 'testkey0', 1444444444444))
+        if ttl_type == '"kAbsoluteTime"':
+            time.sleep(61)
+        else:
+            pass
+        infoLogger.info(self.now())
+        self.assertFalse('testvalue0' in self.get(self.slave1, tid, pid, 'testkey0', ts))
 
 
     def test_create_name_repeat(self):
@@ -341,14 +347,15 @@ class TestCreateTableByNsClient(TestCaseBase):
         if exp_msg == 'Create table ok':
             rs1 = self.showtable(self.ns_leader)
             tid = rs1.keys()[0][1]
-            schema = self.showschema(self.slave1, tid, 2)
-            infoLogger.info(schema)
-            self.assertEqual(len(schema), len(column_descs))
-            for i in column_descs:
-                key = i[1][1:-1]
-                type = i[2][1:-1]
-                index = 'yes' if i[3] == 'true' else 'no'
-                self.assertEqual(schema[key], [type, index])
+            for edp in (self.leader, self.slave1, self.slave2):
+                schema = self.showschema(edp, tid, 2)
+                infoLogger.info(schema)
+                self.assertEqual(len(schema), len(column_descs))
+                for i in column_descs:
+                    key = i[1][1:-1]
+                    type = i[2][1:-1]
+                    index = 'yes' if i[3] == 'true' else 'no'
+                    self.assertEqual(schema[key], [type, index])
 
 
     @ddt.data(

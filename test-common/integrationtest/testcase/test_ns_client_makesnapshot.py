@@ -95,7 +95,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         changeleader后，可以makesnapshot，未changeleader的无法makesnapshot
         :return:
         """
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
@@ -122,7 +122,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         rs2 = self.showtable(self.ns_leader)
         rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
         rs4 = self.makesnapshot(self.ns_leader, name, 1, 'ns_client')
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
 
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])

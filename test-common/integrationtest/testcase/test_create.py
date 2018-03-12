@@ -39,7 +39,7 @@ class TestCreateTable(TestCaseBase):
                           card='string:index', merchant='string:index', amt='double:index')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
-        schema_d = self.parse_sechema(schema)
+        schema_d = self.parse_schema(schema)
         self.assertEqual(schema_d['card'], ['string', 'yes'])
         self.assertEqual(schema_d['merchant'], ['string', 'yes'])
         self.assertEqual(schema_d['amt'], ['double', 'yes'])
@@ -93,7 +93,7 @@ class TestCreateTable(TestCaseBase):
                           card='string', merchant='string')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
-        schema_d = self.parse_sechema(schema)
+        schema_d = self.parse_schema(schema)
         self.assertEqual(schema_d['card'], ['string', 'no'])
         self.assertEqual(schema_d['merchant'], ['string', 'no'])
 
@@ -119,7 +119,7 @@ class TestCreateTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', card='string:index')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
-        schema_d = self.parse_sechema(schema)
+        schema_d = self.parse_schema(schema)
         self.assertEqual(schema_d['card'], ['string', 'yes'])
 
 
@@ -145,6 +145,11 @@ class TestCreateTable(TestCaseBase):
             'screate t {} {} latest:10 2 true k1:string:index k2:string:index k3:string:index'.format(
             self.tid, self.pid))
         self.assertTrue('Create table ok' in rs1)
+        schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
+        schema_d = self.parse_schema(schema)
+        self.assertEqual(schema_d['k1'], ['string', 'yes'])
+        self.assertEqual(schema_d['k2'], ['string', 'yes'])
+        self.assertEqual(schema_d['k3'], ['string', 'yes'])
         rs2 = self.get_table_meta(self.leaderpath, self.tid, self.pid)
         infoLogger.info(rs2)
         self.assertEqual(rs2['ttl_type'], 'kLatestTime')

@@ -17,7 +17,7 @@ class TestOfflineEndpoint(TestCaseBase):
         offlineendpoint功能正常，主节点挂掉后，可以手工故障切换，切换后可put及同步数据
         :return:
         """
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(int(time.time() * 1000000 % 10000000000))
         m = utils.gen_table_metadata(
@@ -45,7 +45,7 @@ class TestOfflineEndpoint(TestCaseBase):
         self.offlineendpoint(self.ns_leader, self.leader)
 
         rs2 = self.showtable(self.ns_leader)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
 
         # showtable ok
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
@@ -102,7 +102,7 @@ class TestOfflineEndpoint(TestCaseBase):
         time.sleep(1)
 
         rs2 = self.showtable(self.ns_leader)
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
 
         # showtable ok
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])

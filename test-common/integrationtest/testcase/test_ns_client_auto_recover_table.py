@@ -46,7 +46,7 @@ class TestAutoRecoverTable(TestCaseBase):
         opid_x = opid_rs.split('\n')
         task_dict = {}
         for opid in opid_x:
-            cmd = "cat {}/info.log |grep \"op_id\[{}\]\"|grep task_type".format(self.ns_leader_path, opid) \
+            cmd = "cat {}/info.log |grep -a \"op_id\[{}\]\"|grep task_type".format(self.ns_leader_path, opid) \
                   + "|awk -F '\\\\[' '{print $4\"]\"$5\"]\"$6}'" \
                     "|awk -F '\\\\]' '{print $1\",\"$3\",\"$5}'"
             infoLogger.info(cmd)
@@ -124,8 +124,8 @@ class TestAutoRecoverTable(TestCaseBase):
             10: 'self.makesnapshot(self.leader, self.tid, self.pid)',
             11: 'self.makesnapshot(self.slave1, self.tid, self.pid), self.makesnapshot(self.slave2, self.tid, self.pid)',
             12: 'self.makesnapshot(self.ns_leader, self.tname, self.pid, \'ns_client\')',
-            13: 'self.start_client(self.leaderpath)',
-            14: 'self.start_client(self.slave1path)',
+            13: 'self.start_client(self.leader)',
+            14: 'self.start_client(self.slave1)',
             15: 'self.connectzk(self.leader)',
             16: 'self.connectzk(self.slave1)',
             17: 'self.assertEqual(self.get_latest_op()[1], "kReAddReplicaOP")',
@@ -136,6 +136,8 @@ class TestAutoRecoverTable(TestCaseBase):
             22: 'self.check_re_add_replica_no_send_op()',
             23: 'self.check_re_add_replica_with_drop_op()',
             24: 'self.check_re_add_replica_simplify_op()',
+            25: 'self.recoverendpoint(self.ns_leader, self.leader)',
+            26: 'self.confset(self.ns_leader, "auto_recover_table", "false")',
         }
 
 
@@ -158,9 +160,14 @@ class TestAutoRecoverTable(TestCaseBase):
         (1, 2, 0, 6, 8, 13, 0, 17),
         (1, 2, 0, 6, 10, 12, 13, 0, 17),
         (1, 2, 0, 6, 8, 12, 13, 0, 17),
+        (1, 2, 0, 6, 8, 12, 8, 13, 0, 17),  # 19 new leader makesnapshot and put data, ori leader recover
         (1, 5, 0, 16, 0, 20),
         (1, 4, 0, 14, 0, 17),
         (1, 12, 3, 7, 2, 0, 13, 0, 18),  # RTIDB-222
+        (1, 26, 3, 0, 6, 15, 25, 0, 20, 24),  # 23-26 recoverendpoint
+        (1, 26, 3, 0, 6, 8, 12, 15, 25, 0, 19, 23),
+        (1, 26, 12, 2, 0, 6, 12, 13, 25, 0, 18, 22),
+        (1, 26, 2, 0, 6, 13, 25, 0, 17, 21),
     )
     @ddt.unpack
     def test_auto_recover_table(self, *steps):
