@@ -22,7 +22,6 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
-DECLARE_int32(tablet_startup_wait_time);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
 
@@ -324,9 +323,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 if (auto_recover_table_.load(std::memory_order_acquire)) {
-                    // wait until the tablet serivce start ok
-                    thread_pool_.DelayTask(FLAGS_tablet_startup_wait_time, 
-                            boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
+                    thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
                 }
             }
         }

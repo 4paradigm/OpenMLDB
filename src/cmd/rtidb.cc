@@ -117,6 +117,10 @@ void StartTablet() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+    if (!tablet->RegisterZK()) {
+        PDLOG(WARNING, "Fail to register zk");
+        exit(1);
+    }
     PDLOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
             RTIDB_VERSION_MAJOR,
             RTIDB_VERSION_MINOR,
