@@ -731,7 +731,7 @@ class TestLoadTable(TestCaseBase):
                      self.tid,
                      self.pid,
                      'testkey',
-                     self.now() + 60000 * i,
+                     self.now() + 30000 * i + 2000,
                      'testvalue{}'.format(i))
         rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 1, 8, 'false', self.slave1)
         self.assertTrue('Fail' in rs1)
@@ -742,9 +742,11 @@ class TestLoadTable(TestCaseBase):
         time.sleep(1)
         self.assertTrue('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
         self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
-        time.sleep(120)
+        time.sleep(62)
+        infoLogger.info(self.now())
         self.assertFalse('testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
         self.assertTrue('testvalue1' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() + 60000*6, 1))
+
 
     @multi_dimension(True)
     def test_loadtable_and_addreplica_ttl_md(self):
@@ -760,7 +762,7 @@ class TestLoadTable(TestCaseBase):
                      self.tid,
                      self.pid,
                      '',
-                     self.now() + 60000 * i,
+                     self.now() + 30000 * i + 2000,
                      'testvalue{}'.format(i), '1.1', 'testkey')
         time.sleep(1)    
         rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 1, 8, 'false')
@@ -774,12 +776,12 @@ class TestLoadTable(TestCaseBase):
             self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
         self.assertTrue('testvalue1' in self.scan(
             self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
-        time.sleep(120)
+        time.sleep(62)
         self.assertFalse('testvalue0' in self.scan(
             self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
         self.assertTrue('testvalue1' in self.scan(
             self.slave1, self.tid, self.pid, {'card': 'testkey'}, self.now() + 60000*6, 1))
 
-   
+
 if __name__ == "__main__":
     load(TestLoadTable)

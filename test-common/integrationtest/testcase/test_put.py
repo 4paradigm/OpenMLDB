@@ -130,7 +130,7 @@ class TestPut(TestCaseBase):
             t.join()
         time.sleep(10)
 
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
         utils.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         rs4 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
@@ -175,7 +175,7 @@ class TestPut(TestCaseBase):
             t.join()
         time.sleep(10)
 
-        self.start_client(self.slave1path)
+        self.start_client(self.slave1)
         utils.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         rs4 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)

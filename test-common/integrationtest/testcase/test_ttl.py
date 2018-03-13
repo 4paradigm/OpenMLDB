@@ -150,13 +150,19 @@ class TestTtl(TestCaseBase):
 
 
     @ddt.data(
-        ('latest:1', {('v1', 10): False, ('v2', 20): True}, [('v3', 30)], {('v2', 10): False, ('v3', 30): True}),
-        ('latest:1', {('v1', 10): False, ('v2', 20): True}, [('v3', 10)], {('v2', 20): True, ('v3', 10): False}),
+        ('latest:10',
+         {('v1', 100): False, ('v2', 200): True},
+         [('v3', 300)],
+         {('v2', 100): False, ('v3', 300): True}),
+        ('latest:10',
+         {('v1', 100): False, ('v2', 200): True},
+         [('v3', 100)],
+         {('v2', 200): True, ('v3', 100): False}),
     )
     @ddt.unpack
-    def test_ttl_put_after_ttl(self, ttl, value_ts_scannable, put_value_ts, value_ts_scannable2):
+    def test_ttl_put_after_ttl(self, ttl, value_ts_scannable, put_value_ts, value_ts_scannable2):  # RTIDB-181
         """
-
+        ttl后put数据，再次ttl后数据正确
         :param ttl:
         :param value_ts_scannable:
         :param put_value_ts:
@@ -169,7 +175,8 @@ class TestTtl(TestCaseBase):
             self.multidimension_vk = {'card': ('string:index', 'pk'),
                                       'merchant': ('string:index', '|{}|'.format(i[0])),
                                       'amt': ('double', 1.1)}
-            self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
+            for ts in range(100):
+                self.put(self.leader, self.tid, self.pid, 'pk', i[1] - ts, '|{}|'.format(i[0]))
         time.sleep(1)
 
         self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
@@ -186,7 +193,8 @@ class TestTtl(TestCaseBase):
             self.multidimension_vk = {'card': ('string:index', 'pk'),
                                       'merchant': ('string:index', '|{}|'.format(i[0])),
                                       'amt': ('double', 1.1)}
-            self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
+            for ts in range(100):
+                self.put(self.leader, self.tid, self.pid, 'pk', i[1] - ts, '|{}|'.format(i[0]))
         time.sleep(1)
         for k, v in value_ts_scannable2.items():
             rs = self.get(self.leader, self.tid, self.pid, 'pk', k[1])

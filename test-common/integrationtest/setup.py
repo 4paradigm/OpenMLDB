@@ -6,18 +6,25 @@ from libs.clients.ns_cluster import NsCluster
 from libs.clients.tb_cluster import TbCluster
 
 
-nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
-tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints])
+if __name__ == '__main__':
+    import argparse
+    ap = argparse.ArgumentParser(description='setup test env')
+    ap.add_argument('-T', '--teardown', default=False, help='kill all nodes of test cluster')
+    args = ap.parse_args()
 
-nsc.stop_zk()
-nsc.kill(*nsc.endpoints)
-tbc.kill(*tbc.endpoints)
+    nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+    tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints])
 
-if len(sys.argv) > 1 and sys.argv[1] == 'teardown':
-    pass
-else:
+    nsc.stop_zk()
     nsc.clear_zk()
-    nsc.start_zk()
-    nsc.start(*nsc.endpoints)
-    tbc.start(tbc.endpoints)
-    nsc_leader = nsc.leader
+    nsc.kill(*nsc.endpoints)
+    nsc.clear_ns()
+    tbc.kill(*tbc.endpoints)
+    tbc.clear_db()
+
+    if not args.teardown or args.teardown.lower() == 'false':
+        nsc.start_zk()
+        nsc.start(*nsc.endpoints)
+        nsc.get_ns_leader()
+        tbc.start(tbc.endpoints)
+        nsc_leader = nsc.leader

@@ -119,7 +119,7 @@ public class SPutTest {
     }; }
 
   @Test(dataProvider = "putdata")
-  public void testPutIndex(boolean isIndex, ColumnType type, Object value, boolean putOk) {
+  public void testPutColumnType(boolean isIndex, ColumnType type, Object value, boolean putOk) {
     List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     ColumnDesc desc1 = new ColumnDesc();
     desc1.setAddTsIndex(true);

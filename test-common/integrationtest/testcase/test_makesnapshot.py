@@ -384,7 +384,7 @@ class TestMakeSnapshot(TestCaseBase):
 
         self.stop_client(self.leader)
         time.sleep(10)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         rs1 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertTrue('LoadTable ok' in rs1)
 
@@ -457,7 +457,7 @@ class TestMakeSnapshot(TestCaseBase):
             t.join()
 
         time.sleep(10)
-        self.start_client(self.leaderpath)
+        self.start_client(self.leader)
         rs2 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertTrue('LoadTable ok' in rs2)
 

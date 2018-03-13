@@ -12,6 +12,7 @@ sys.path.append(os.getenv('testpath'))
 from libs.logger import infoLogger
 import libs.conf as conf
 import libs.utils as utils
+from libs.clients.ns_cluster import NsCluster
 
 
 class TestCaseBase(unittest.TestCase):
@@ -22,15 +23,20 @@ class TestCaseBase(unittest.TestCase):
         cls.testpath = os.getenv('testpath')
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')
-        cls.ns_leader = utils.exe_shell('cat {}/ns_leader'.format(cls.testpath))
+        cls.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(cls.testpath))
         cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
-        cls.leaderpath = cls.testpath + '/tablet1'
-        cls.slave1path = cls.testpath + '/tablet2'
-        cls.slave2path = cls.testpath + '/tablet3'
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
         cls.failfast = conf.failfast
+        cls.node_path_dict = {cls.leader:cls.testpath + '/tablet1',
+                              cls.slave1:cls.testpath + '/tablet2',
+                              cls.slave2:cls.testpath + '/tablet3',
+                              cls.ns_leader:utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))}
+        cls.leaderpath = cls.node_path_dict[cls.leader]
+        cls.slave1path = cls.node_path_dict[cls.slave1]
+        cls.slave2path = cls.node_path_dict[cls.slave2]
+        cls.ns_leader_path = cls.node_path_dict[cls.ns_leader]
 
     def setUp(self):
         infoLogger.info('*** TEST CASE NAME: ' + self._testMethodName)
@@ -39,26 +45,56 @@ class TestCaseBase(unittest.TestCase):
         except Exception, e:
             self.tid = 1
         self.pid = random.randint(10, 100)
+        self.clear_ns_table(self.ns_leader)
 
-    def tearDown(self):
-        self.drop(self.leader, self.tid, self.pid)
-        self.drop(self.slave1, self.tid, self.pid)
-        self.drop(self.slave2, self.tid, self.pid)
+    # def tearDown(self):
+    #     self.clear_ns_table(self.ns_leader)
+    #     for edp_tuple in conf.tb_endpoints:
+    #         epd = edp_tuple[1]
+    #         self.start_client(epd)
+    #         self.drop(epd, self.tid, self.pid)
 
     def now(self):
-        return int(1000 * time.time())
+        return int(time.time() * 1000000 / 1000)
 
-    def start_client(self, client_path):
-        cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(self.testpath, client_path)
+    def start_client(self, client, role='tablet'):
+        client_path = self.node_path_dict[client]
+        if role == 'tablet':
+            conf = 'rtidb'
+        elif role == 'nameserver':
+            conf = 'nameserver'
+        else:
+            pass
+        cmd = '{}/rtidb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
         infoLogger.info(cmd)
         args = shlex.split(cmd)
-        p = subprocess.Popen(args, stdout=open('{}/log.log'.format(client_path), 'w'))
-        infoLogger.info(p)
-        time.sleep(3)
+        for _ in range(5):
+            rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(client.split(':')[1]))
+            if 'rtidb' not in rs:
+                time.sleep(2)
+                subprocess.Popen(args,stdout=open('{}/info.log'.format(client_path), 'w'),
+                                 stderr=open('{}/warning.log'.format(client_path), 'w'))
+            else:
+                return True
+        return False
 
     def stop_client(self, endpoint):
         cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
         utils.exe_shell(cmd)
+
+    def get_new_ns_leader(self):
+        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc.get_ns_leader()
+        infoLogger.info([x[1] for x in conf.ns_endpoints])
+        nss = [x[1] for x in conf.ns_endpoints]
+        self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+        self.node_path_dict[self.ns_leader] = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
+        nss.remove(self.ns_leader)
+        self.ns_slaver = nss[0]
+        infoLogger.info("*"*88)
+        infoLogger.info(self.ns_leader)
+        infoLogger.info(self.ns_slaver)
+        infoLogger.info("*"*88)
 
     def run_client(self, endpoint, cmd, role='client'):
         cmd = cmd.strip()
@@ -68,7 +104,8 @@ class TestCaseBase(unittest.TestCase):
 
     def get_table_status(self, endpoint, tid='', pid=''):
         rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
-        if tid == '':
+        infoLogger.info(rs)
+        if tid == '' or pid == '':
             return self.parse_table_status(rs)
         else:
             try:
@@ -88,7 +125,7 @@ class TestCaseBase(unittest.TestCase):
                     if 'tid' not in status_line_list:
                         table_status_dict[int(status_line_list[0]), int(status_line_list[1])] = status_line_list[2:]
                 except Exception, e:
-                    infoLogger.error(cmd)
+                    infoLogger.error(table_status_dict)
         return table_status_dict
 
     @staticmethod
@@ -117,6 +154,12 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, '{} {} {} {} {} {} {} {} {}'.format(
             cmd, tname, tid, pid, ttl, segment, isleader, ' '.join(slave_endpoints),
             ' '.join(['{}:{}'.format(k, v) for k, v in schema.items() if k != ''])))
+
+    def ns_create(self, endpoint, metadata_path):
+        return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
+
+    def ns_drop(self, endpoint, tname):
+        return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
 
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
@@ -179,9 +222,9 @@ class TestCaseBase(unittest.TestCase):
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))
 
-    def makesnapshot(self, endpoint, tid, pid, role='client'):
-        rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(tid, pid), role)
-        time.sleep(2)
+    def makesnapshot(self, endpoint, tid_or_tname, pid, role='client', wait=2):
+        rs = self.run_client(endpoint, 'makesnapshot {} {}'.format(tid_or_tname, pid), role)
+        time.sleep(wait)
         return rs
 
     def pausesnapshot(self, endpoint, tid, pid):
@@ -213,8 +256,38 @@ class TestCaseBase(unittest.TestCase):
     def changerole(self, endpoint, tid, pid, role):
         return self.run_client(endpoint, 'changerole {} {} {}'.format(tid, pid, role))
 
+    def sendsnapshot(self, endpoint, tid, pid, slave_endpoint):
+        return self.run_client(endpoint, 'sendsnapshot {} {} {}'.format(tid, pid, slave_endpoint))
+
+    def setexpire(self, endpoint, tid, pid, ttl):
+        return self.run_client(endpoint, 'setexpire {} {} {}'.format(tid, pid, ttl))
+
+    def confset(self, endpoint, conf, value):
+        return self.run_client(endpoint, 'confset {} {}'.format(conf, value), 'ns_client')
+
+    def confget(self, endpoint, conf):
+        return self.run_client(endpoint, 'confget {}'.format(conf), 'ns_client')
+
+    def offlineendpoint(self, endpoint, offline_endpoint):
+        return self.run_client(endpoint, 'offlineendpoint {}'.format(offline_endpoint), 'ns_client')
+
+    def recoverendpoint(self, endpoint, offline_endpoint):
+        return self.run_client(endpoint, 'recoverendpoint {}'.format(offline_endpoint), 'ns_client')
+
+    def changeleader(self, endpoint, tname, pid):
+        return self.run_client(endpoint, 'changeleader {} {}'.format(tname, pid), 'ns_client')
+
+    def connectzk(self, endpoint, role='client'):
+        return self.run_client(endpoint, 'connectzk', role)
+
+    def disconnectzk(self, endpoint, role='client'):
+        return self.run_client(endpoint, 'disconnectzk', role)
+
+    def migrate(self, endpoint, src, tname, pid_group, des):
+        return self.run_client(endpoint, 'migrate {} {} {} {}'.format(src, tname, pid_group, des), 'ns_client')
+
     @staticmethod
-    def parse_sechema(rs):
+    def parse_schema(rs):
         schema_dict = {}
         rs = rs.split('\n')
         for line in rs:
@@ -229,14 +302,11 @@ class TestCaseBase(unittest.TestCase):
         return schema_dict
 
     def showschema(self, endpoint, tid='', pid=''):
-        rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
-        if tid == '':
+        try:
+            rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
             return self.parse_schema(rs)
-        else:
-            try:
-                return self.parse_sechma(rs)[(tid, pid)]
-            except KeyError, e:
-                infoLogger.error('table {} is not exist!'.format(e))
+        except KeyError, e:
+            infoLogger.error('table {} is not exist!'.format(e))
 
     @staticmethod
     def parse_tablet(rs):
@@ -283,7 +353,7 @@ class TestCaseBase(unittest.TestCase):
                 line_list = line.split(' ')
                 schema_line_list = [i for i in line_list if i is not '']
                 try:
-                    tablet_dict[schema_line_list[0]] = schema_line_list[1:]
+                    tablet_dict[tuple(schema_line_list[0:4])] = schema_line_list[4:]
                 except Exception, e:
                     infoLogger.error(e)
         return tablet_dict
@@ -291,6 +361,26 @@ class TestCaseBase(unittest.TestCase):
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_table(rs)
+
+
+    @staticmethod
+    def get_table_meta(nodepath, tid, pid):
+        table_meta = {}
+        with open('{}/db/{}_{}/table_meta.txt'.format(nodepath, tid, pid)) as f:
+            for l in f:
+                k = l.split(":")[0]
+                v = l[:-1].split(":")[1].strip()
+                if k in table_meta:
+                    v += '|' + table_meta[k]
+                table_meta[k] = v
+        return table_meta
+
+    def clear_ns_table(self, endpoint):
+        table_dict = self.showtable(endpoint)
+        tname_tids = table_dict.keys()
+        tnames = set([i[0] for i in tname_tids])
+        for tname in tnames:
+            self.ns_drop(endpoint, tname)
 
     def cp_db(self, from_node, to_node, tid, pid):
         utils.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
@@ -313,3 +403,28 @@ class TestCaseBase(unittest.TestCase):
 
     def get_ns_leader(self):
         return utils.exe_shell('cat {}/ns_leader'.format(self.testpath))
+
+    def find_new_tb_leader(self, tname, tid, pid):
+        line_count = utils.exe_shell('cat {}/info.log|wc -l'.format(self.ns_leader_path))
+        cmd = "grep -a -n {} {}/info.log -m 1".format(tname, self.ns_leader_path)
+        op_start_line = utils.exe_shell(cmd + "|awk -F ':' '{print $1}'")
+        cmd1 = "tail -n {} {}/info.log|grep -a \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
+            int(line_count) - int(op_start_line),
+            self.ns_leader_path, tname, tid, pid) + \
+              "|awk -F 'new leader is\\\\[' '{print $2}'" \
+              "|awk -F '\\\\]. name\\\\[tname' '{print $1}'" \
+              "|tail -n 1"
+        new_leader = utils.exe_shell(cmd1)
+        self.new_tb_leader = new_leader
+        return new_leader
+
+    @staticmethod
+    def update_conf(nodepath, conf_item, conf_value, role='client'):
+        conf_file = ''
+        if role == 'client':
+            conf_file = 'rtidb.flags'
+        elif role == 'ns_client':
+            conf_file = 'nameserver.flags'
+        utils.exe_shell("sed -i '/{}/d' {}/conf/{}".format(conf_item, nodepath, conf_file))
+        if conf_value is not None:
+            utils.exe_shell("sed -i '1i--{}={}' {}/conf/{}".format(conf_item, conf_value, nodepath, conf_file))
