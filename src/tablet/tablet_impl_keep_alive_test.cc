@@ -68,7 +68,7 @@ public:
 
 TEST_F(TabletImplTest, KeepAlive) {
     FLAGS_endpoint="127.0.0.1:9527";
-    FLAGS_zk_cluster="127.0.0.1:12181";
+    FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb2";
     ZkClient zk_client(FLAGS_zk_cluster, 1000, "test1", FLAGS_zk_root_path);
     bool ok = zk_client.Init();
