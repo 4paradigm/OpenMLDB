@@ -21,6 +21,7 @@ gc_on_table_recover_count loadtable时每隔多少条执行一次过期键删除
 mem_release_rate 用来设置tcmalloc SetMemoryReleaseRate
 
 
+
 ## tablet配置
 
 db_root_path 配置binlog和snapshot的存放目录
@@ -76,6 +77,7 @@ binlog_delete_interval  删除binlog任务的时间间隔, 单位是ms
 binlog_match_logoffset_interval 同步从节点offset任务的时间间隔, 单位是ms
 
 binlog_name_length 配置binlog名字的长度
+
 
 
 ## nameserver配置
