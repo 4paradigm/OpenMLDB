@@ -440,6 +440,25 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::rtid
     std::cout << "recover endpoint ok" << std::endl;
 }    
 
+void HandleNSClientRecoverTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    try {
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        std::string msg;
+        bool ok = client->RecoverTable(parts[1], pid, parts[3], msg);
+        if (!ok) {
+            std::cout << "Fail to recover table. error msg:" << msg  << std::endl;
+            return;
+        }
+        std::cout << "recover table ok" << std::endl;
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+    } 
+}    
+
 void HandleNSClientConnectZK(const std::vector<std::string> parts, ::rtidb::client::NsClient* client) {
     std::string msg;
     bool ok = client->ConnectZK(msg);
@@ -1784,6 +1803,8 @@ void StartNsClient() {
             HandleNSClientMigrate(parts, &client);
         } else if (parts[0] == "recoverendpoint") {
             HandleNSClientRecoverEndpoint(parts, &client);
+        } else if (parts[0] == "recovertable") {
+            HandleNSClientRecoverTable(parts, &client);
         } else if (parts[0] == "connectzk") {
             HandleNSClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
