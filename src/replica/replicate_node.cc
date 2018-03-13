@@ -242,9 +242,12 @@ void ReplicateNode::Stop() {
         PDLOG(INFO, "sync thread for table #tid %u #pid %u has been stoped", tid_, pid_);
         return;
     }
-    int ok = bthread_stop(worker_);
+    int ok = bthread_join(worker_, NULL);
     if (ok != 0) {
-        PDLOG(WARNING, "fail to stop sync thread for table #tid %u #pid %u", tid_, pid_);
+        ok = bthread_stop(worker_);
+        PDLOG(WARNING, "fail to wait sync thread to stop for table #tid %u #pid %u, try force stop, ret code %d", tid_, pid_, ok);
+    }else {
+        PDLOG(INFO, "stop sync thread for table #tid %u #pid %u peacefully done ", tid_, pid_);
     }
 }
 

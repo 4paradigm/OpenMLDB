@@ -115,7 +115,7 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);
 }
 
-TEST_F(LogReplicatorTest, Init) {
+TEST_F(LogReplicatorTest,  Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
@@ -128,7 +128,7 @@ TEST_F(LogReplicatorTest, Init) {
     replicator.Stop();
 }
 
-TEST_F(LogReplicatorTest, BenchMark) {
+TEST_F(LogReplicatorTest,  BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
@@ -147,7 +147,7 @@ TEST_F(LogReplicatorTest, BenchMark) {
     replicator.Stop();
 }
 
-TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
+TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -241,6 +241,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         PDLOG(INFO, "start follower");
     }
     sleep(20);
+    leader.DelAllReplicateNode();
     leader.Stop();
     ASSERT_EQ(3, t8->GetRecordCnt());
     ASSERT_EQ(5, t8->GetRecordIdxCnt());
@@ -291,7 +292,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
 
 
 
-TEST_F(LogReplicatorTest, LeaderAndFollower) {
+TEST_F(LogReplicatorTest,  LeaderAndFollower) {
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -360,6 +361,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         PDLOG(INFO, "start follower");
     }
     sleep(20);
+    leader.DelAllReplicateNode();
     leader.Stop();
     ASSERT_EQ(4, t8->GetRecordCnt());
     ASSERT_EQ(4, t8->GetRecordIdxCnt());
