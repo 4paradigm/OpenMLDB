@@ -12,6 +12,7 @@ sys.path.append(os.getenv('testpath'))
 from libs.logger import infoLogger
 import libs.conf as conf
 import libs.utils as utils
+from libs.clients.ns_cluster import NsCluster
 
 
 class TestCaseBase(unittest.TestCase):
@@ -46,12 +47,12 @@ class TestCaseBase(unittest.TestCase):
         self.pid = random.randint(10, 100)
         self.clear_ns_table(self.ns_leader)
 
-    def tearDown(self):
-        for edp_tuple in conf.tb_endpoints:
-            self.start_client(edp_tuple[1])
-            self.connectzk(edp_tuple[1])
-            self.drop(edp_tuple[1], self.tid, self.pid)
-        self.clear_ns_table(self.ns_leader)
+    # def tearDown(self):
+    #     self.clear_ns_table(self.ns_leader)
+    #     for edp_tuple in conf.tb_endpoints:
+    #         epd = edp_tuple[1]
+    #         self.start_client(epd)
+    #         self.drop(epd, self.tid, self.pid)
 
     def now(self):
         return int(time.time() * 1000000 / 1000)
@@ -80,6 +81,20 @@ class TestCaseBase(unittest.TestCase):
     def stop_client(self, endpoint):
         cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
         utils.exe_shell(cmd)
+
+    def get_new_ns_leader(self):
+        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc.get_ns_leader()
+        infoLogger.info([x[1] for x in conf.ns_endpoints])
+        nss = [x[1] for x in conf.ns_endpoints]
+        self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+        self.node_path_dict[self.ns_leader] = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
+        nss.remove(self.ns_leader)
+        self.ns_slaver = nss[0]
+        infoLogger.info("*"*88)
+        infoLogger.info(self.ns_leader)
+        infoLogger.info(self.ns_slaver)
+        infoLogger.info("*"*88)
 
     def run_client(self, endpoint, cmd, role='client'):
         cmd = cmd.strip()
@@ -269,7 +284,7 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, 'disconnectzk', role)
 
     def migrate(self, endpoint, src, tname, pid_group, des):
-        return self.run_client(endpoint, 'migrate {} {} {} {}', src, tname, pid_group, des, 'ns_client')
+        return self.run_client(endpoint, 'migrate {} {} {} {}'.format(src, tname, pid_group, des), 'ns_client')
 
     @staticmethod
     def parse_schema(rs):
