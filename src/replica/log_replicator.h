@@ -143,6 +143,8 @@ private:
     std::mutex wmu_;
 
     std::shared_ptr<Table> table_;
+    uint64_t del_binlog_tid_;
+    uint64_t sync_disk_tid_;
 };
 
 } // end of replica
