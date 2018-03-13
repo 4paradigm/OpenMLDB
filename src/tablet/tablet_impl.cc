@@ -1483,6 +1483,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
     }
 
     if (replicator) {
+        replicator->DelAllReplicateNode();
         replicator->Stop();
         PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
     }
