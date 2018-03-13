@@ -1442,7 +1442,7 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             table->SetTableStat(::rtidb::storage::kNormal);
             replicator->SetOffset(latest_offset);
             replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
-            replicator->MatchLogOffset();
+            replicator->StartSyncing();
             table->SchedGc();
             if (table->GetTTL() > 0) {
                 gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
@@ -1575,7 +1575,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         return;
     }
     table->SetTableStat(::rtidb::storage::kNormal);
-    replicator->MatchLogOffset();
+    replicator->StartSyncing();
     PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
             pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
     if (ttl > 0) {
@@ -1783,12 +1783,14 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      table->GetReplicas(), 
                                                      ReplicatorRole::kLeaderNode, 
-                                                     table);
+                                                     table,
+                                                     &task_pool_);
     }else {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      std::vector<std::string>(), 
                                                      ReplicatorRole::kFollowerNode,
-                                                     table);
+                                                     table,
+                                                     &task_pool_);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u", table_meta->tid(), table_meta->pid());

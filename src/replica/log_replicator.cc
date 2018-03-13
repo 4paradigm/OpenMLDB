@@ -42,10 +42,11 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             std::shared_ptr<Table> table):path_(path), log_path_(),
+                             std::shared_ptr<Table> table,
+                             ThreadPool* tp):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
     endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),
-    running_(true), tp_(4), refs_(0), wmu_() {
+    running_(true), tp_(tp), refs_(0), wmu_() {
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
@@ -80,7 +81,7 @@ void LogReplicator::SyncToDisk() {
             PDLOG(INFO, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
         }
     }
-    tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
+    tp_->DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
 }
 
 bool LogReplicator::Init() {
@@ -94,7 +95,7 @@ bool LogReplicator::Init() {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>
-                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid(), term_, &log_offset_, &mu_, &cv_);
+                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid(), &term_, &log_offset_, &mu_, &cv_);
             if (replicate_node->Init() < 0) {
                 PDLOG(WARNING, "init replicate node %s error", it->c_str());
                 return false;
@@ -107,8 +108,21 @@ bool LogReplicator::Init() {
     if (!Recover()) {
         return false;
     }
-    tp_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
-    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+    tp_->DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
+    tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+    return true;
+}
+
+bool LogReplicator::StartSyncing() {
+    std::lock_guard<bthread::Mutex> lock(mu_);
+    std::vector<std::shared_ptr<ReplicateNode>>::iterator it = nodes_.begin();
+    for (; it !=  nodes_.end(); ++it) {
+        std::shared_ptr<ReplicateNode> node = *it;
+        int ok = node->Start();
+        if (ok != 0) {
+            return false;
+        }
+    }
     return true;
 }
 
@@ -228,7 +242,7 @@ void LogReplicator::DeleteBinlog() {
     }
     if (logs_->GetSize() <= 1) {
         PDLOG(DEBUG, "log part size is one or less, need not delete"); 
-        tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+        tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
     int min_log_index = snapshot_log_part_index_.load(std::memory_order_relaxed);
@@ -243,7 +257,7 @@ void LogReplicator::DeleteBinlog() {
     min_log_index -= 1;
     if (min_log_index < 0) {
         PDLOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
-        tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+        tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
     PDLOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
@@ -266,15 +280,15 @@ void LogReplicator::DeleteBinlog() {
         }
         delete tmp_node;
     }
-    tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
+    tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
 uint64_t LogReplicator::GetLeaderTerm() {
-    return term_;
+    return term_.load(std::memory_order_relaxed);
 }
 
 void LogReplicator::SetLeaderTerm(uint64_t term) {
-   term_ = term;
+    term_.store(term, std::memory_order_relaxed);
 }
 
 bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
@@ -294,18 +308,18 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
         ::rtidb::api::AppendEntriesResponse* response) {
     std::lock_guard<std::mutex> lock(wmu_);
-    if (!FLAGS_zk_cluster.empty() && request->term() < term_) {
+    if (!FLAGS_zk_cluster.empty() && request->term() < term_.load(std::memory_order_relaxed)) {
         PDLOG(WARNING, "leader id not match. request term  %lu, cur term %lu, tid %u, pid %u",
-                        request->term(), term_, request->tid(), request->pid());
+                        request->term(), term_.load(std::memory_order_relaxed), request->tid(), request->pid());
         return false;
     }
     uint64_t last_log_offset = GetOffset();
     if (request->pre_log_index() == 0 && request->entries_size() == 0) {
         response->set_log_offset(last_log_offset);
-        if (!FLAGS_zk_cluster.empty() && request->term() > term_) {
-            term_ = request->term();
+        if (!FLAGS_zk_cluster.empty() && request->term() > term_.load(std::memory_order_relaxed)) {
+            term_.store(request->term(), std::memory_order_relaxed);
             PDLOG(INFO, "get log_offset %lu and set term %lu. tid %u, pid %u", 
-                        last_log_offset, term_, request->tid(), request->pid());
+                        last_log_offset, term_.load(std::memory_order_relaxed), request->tid(), request->pid());
             return true;
         }
         PDLOG(INFO, "first sync log_index! log_offset[%lu] tid[%u] pid[%u]",
@@ -369,9 +383,13 @@ bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_ve
         }
         std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>(
                             endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
-                            term_, &log_offset_, &mu_, &cv_);
+                            &term_, &log_offset_, &mu_, &cv_);
         if (replicate_node->Init() < 0) {
             PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
+            return false;
+        }
+        if (replicate_node->Start() != 0) {
+            PDLOG(WARNING, "fail to start sync thread for table #tid %u, #pid %u", table_->GetId(), table_->GetPid());
             return false;
         }
         nodes_.push_back(replicate_node);
@@ -481,7 +499,6 @@ void LogReplicator::Notify() {
 void LogReplicator::Stop() {
     running_.store(false, std::memory_order_relaxed);
     // wait all task to shutdown
-    tp_.Stop(true);
     PDLOG(INFO, "stop replicator for path %s ok", path_.c_str());
 }
 

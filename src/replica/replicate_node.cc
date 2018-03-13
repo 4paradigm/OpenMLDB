@@ -40,7 +40,7 @@ ReplicateNode::ReplicateNode(const std::string& point,
                              LogParts* logs, 
                              const std::string& log_path, 
                              uint32_t tid, uint32_t pid,
-                             uint64_t term, std::atomic<uint64_t>* leader_log_offset,
+                             std::atomic<uint64_t>* term, std::atomic<uint64_t>* leader_log_offset,
                              bthread::Mutex* mu, bthread::ConditionVariable* cv): log_reader_(logs, log_path), cache_(),
     endpoint_(point), last_sync_offset_(0), log_matched_(false),
     tid_(tid), pid_(pid), term_(term), 
@@ -52,10 +52,17 @@ int ReplicateNode::Init() {
     int ok = rpc_client_.Init();
     if (ok != 0) {
         PDLOG(WARNING, "fail to open rpc client with errno %d", ok);
-        return ok;
+    }
+    return ok;
+}
+
+int ReplicateNode::Start() {
+    if (is_running_.load(std::memory_order_relaxed)) {
+        PDLOG(WARNING, "sync thread has been started for table #tid %u, #pid %u", tid_, pid_);
+        return 0;
     }
     is_running_.store(true, std::memory_order_relaxed); 
-    ok = bthread_start_background(&worker_, NULL, RunSyncTask, this);
+    int ok = bthread_start_background(&worker_, NULL, RunSyncTask, this);
     if (ok != 0) {
         PDLOG(WARNING, "fail to start bthread with errno %d", ok);
     }
@@ -124,7 +131,7 @@ int ReplicateNode::MatchLogOffsetFromNode() {
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
-    request.set_term(term_);
+    request.set_term(term_->load(std::memory_order_relaxed));
     request.set_pre_log_index(0);
     ::rtidb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
@@ -171,7 +178,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         request.set_pid(pid_);
         request.set_pre_log_index(last_sync_offset_);
         if (!FLAGS_zk_cluster.empty()) {
-            request.set_term(term_);
+            request.set_term(term_->load(std::memory_order_relaxed));
         }
         uint32_t batchSize = log_offset - last_sync_offset_;
         batchSize = std::min(batchSize, (uint32_t)FLAGS_binlog_sync_batch_size);

@@ -44,7 +44,8 @@ public:
                    const std::vector<std::string>& endpoints,
                    std::shared_ptr<Table> table): role_(role),
     path_(path), endpoints_(endpoints), 
-    replicator_(path_, endpoints_, role_, table) {
+    tp_(4),
+    replicator_(path_, endpoints_, role_, table, &tp_) {
     }
 
     ~MockTabletImpl() {
@@ -96,6 +97,7 @@ private:
     ReplicatorRole role_;
     std::string path_;
     std::vector<std::string> endpoints_;
+    ThreadPool tp_;
     LogReplicator replicator_;
 };
 
@@ -116,26 +118,28 @@ inline std::string GenRand() {
 }
 
 TEST_F(LogReplicatorTest,  Init) {
+    ThreadPool tp;
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &tp);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
     replicator.Stop();
 }
 
 TEST_F(LogReplicatorTest,  BenchMark) {
+    ThreadPool tp;
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &tp);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
@@ -148,6 +152,7 @@ TEST_F(LogReplicatorTest,  BenchMark) {
 }
 
 TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
+    ThreadPool tp;
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -175,7 +180,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:17527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &tp);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     // put the first row
@@ -293,6 +298,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
 
 
 TEST_F(LogReplicatorTest,  LeaderAndFollower) {
+    ThreadPool tp;
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -319,7 +325,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &tp);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
@@ -406,6 +412,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    int ok = RUN_ALL_TESTS();
+    return ok; 
 }
 

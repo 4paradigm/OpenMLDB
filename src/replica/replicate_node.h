@@ -31,9 +31,11 @@ public:
                   LogParts* logs, 
                   const std::string& log_path,
                   uint32_t tid, uint32_t pid,
-                  uint64_t term, std::atomic<uint64_t>* leader_log_offset,
+                  std::atomic<uint64_t>* term, std::atomic<uint64_t>* leader_log_offset,
                   bthread::Mutex* mu, bthread::ConditionVariable* cv);
     int Init();
+
+    int Start();
 
     // start match log offset, will block until the log matched
     void MatchLogOffset();
@@ -68,7 +70,7 @@ private:
     bool log_matched_;
     uint32_t tid_;
     uint32_t pid_;
-    uint64_t term_;
+    std::atomic<uint64_t>* term_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> rpc_client_;
     bthread_t worker_;
     std::atomic<uint64_t>* leader_log_offset_;

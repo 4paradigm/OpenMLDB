@@ -47,11 +47,14 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  std::shared_ptr<Table> table);
+                  std::shared_ptr<Table> table,
+                  ThreadPool* tp);
 
     ~LogReplicator();
 
     bool Init();
+
+    bool StartSyncing();
 
     // the slave node receives master log entries
     bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
@@ -83,6 +86,7 @@ public:
     // Sync Write Buffer to Disk
     void SyncToDisk();
     void SetOffset(uint64_t offset);
+
     uint64_t GetOffset();
 
     LogParts* GetLogPart();
@@ -119,7 +123,7 @@ private:
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
 
-    uint64_t term_;
+    std::atomic<uint64_t> term_;
     // sync mutex
     bthread::Mutex mu_;
     bthread::ConditionVariable cv_;
@@ -128,7 +132,7 @@ private:
     std::atomic<bool> running_;
 
     // background task pool
-    ThreadPool tp_;
+    ThreadPool* tp_;
 
     // reference cnt
     std::atomic<uint64_t> refs_;
