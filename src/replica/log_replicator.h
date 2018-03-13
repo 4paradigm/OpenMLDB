@@ -21,6 +21,8 @@
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/table.h"
+#include "bthread/bthread.h"
+#include "bthread/condition_variable.h"
 
 namespace rtidb {
 namespace replica {
@@ -119,9 +121,8 @@ private:
 
     uint64_t term_;
     // sync mutex
-    std::mutex mu_;
-    std::condition_variable cv_;
-    std::condition_variable coffee_cv_;
+    bthread::Mutex mu_;
+    bthread::ConditionVariable cv_;
 
     // for background task
     std::atomic<bool> running_;

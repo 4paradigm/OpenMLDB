@@ -44,7 +44,7 @@ LogReplicator::LogReplicator(const std::string& path,
                              const ReplicatorRole& role,
                              std::shared_ptr<Table> table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
-    endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),coffee_cv_(),
+    endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),
     running_(true), tp_(4), refs_(0), wmu_() {
     table_ = table;
     binlog_index_ = 0;
@@ -94,7 +94,7 @@ bool LogReplicator::Init() {
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>
-                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid());
+                    (*it, logs_, log_path_, table_->GetId(), table_->GetPid(), term_, &log_offset_, &mu_, &cv_);
             if (replicate_node->Init() < 0) {
                 PDLOG(WARNING, "init replicate node %s error", it->c_str());
                 return false;
@@ -233,7 +233,7 @@ void LogReplicator::DeleteBinlog() {
     }
     int min_log_index = snapshot_log_part_index_.load(std::memory_order_relaxed);
     {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<bthread::Mutex> lock(mu_);
         for (auto iter = nodes_.begin(); iter != nodes_.end(); ++iter) {
             if ((*iter)->GetLogIndex() < min_log_index) {
                 min_log_index = (*iter)->GetLogIndex();
@@ -246,7 +246,6 @@ void LogReplicator::DeleteBinlog() {
         tp_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
-
     PDLOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
                 min_log_index, binlog_index_.load(std::memory_order_relaxed));
     ::rtidb::base::Node<uint32_t, uint64_t>* node = NULL;
@@ -254,7 +253,6 @@ void LogReplicator::DeleteBinlog() {
         std::lock_guard<std::mutex> lock(wmu_);
         node = logs_->Split(min_log_index);
     }
-
     while (node) {
         ::rtidb::base::Node<uint32_t, uint64_t>* tmp_node = node;
         node = node->GetNextNoBarrier(0);
@@ -355,7 +353,7 @@ bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_ve
     if (endpoint_vec.empty()) {
         return true;
     }
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<bthread::Mutex> lock(mu_);
     if (role_ != kLeaderNode) {
         PDLOG(WARNING, "cur table is not leader, cannot add replicate");
         return false;
@@ -370,7 +368,8 @@ bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_ve
             }
         }
         std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>(
-                            endpoint, logs_, log_path_, table_->GetId(), table_->GetPid());
+                            endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
+                            term_, &log_offset_, &mu_, &cv_);
         if (replicate_node->Init() < 0) {
             PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
             return false;
@@ -380,39 +379,54 @@ bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_ve
         PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]",
                     endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
-    tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
     return true;
 }
 
 bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
-    std::lock_guard<std::mutex> lock(mu_);
-    if (role_ != kLeaderNode) {
-        PDLOG(WARNING, "cur table is not leader, cannot delete replicate");
-        return false;
-    }
-    std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
-    for (; it != nodes_.end(); ++it) {
-        if ((*it)->GetEndPoint().compare(endpoint) == 0) {
-            break;
+    std::shared_ptr<ReplicateNode> node;
+    {
+        std::lock_guard<bthread::Mutex> lock(mu_);
+        if (role_ != kLeaderNode) {
+            PDLOG(WARNING, "cur table is not leader, cannot delete replicate");
+            return false;
         }
+        std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
+        for (; it != nodes_.end(); ++it) {
+            if ((*it)->GetEndPoint().compare(endpoint) == 0) {
+                break;
+            }
+        }
+        if (it == nodes_.end()) {
+            PDLOG(WARNING, "replica endpoint[%s] does not exist", endpoint.c_str());
+            return false;
+        }
+        node = *it;
+        nodes_.erase(it);
+        endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
+        PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", 
+                    endpoint.c_str(), table_->GetId(), table_->GetPid());
+
     }
-    if (it == nodes_.end()) {
-        PDLOG(WARNING, "replica endpoint[%s] does not exist", endpoint.c_str());
-        return false;
+    if (node) {
+        node->Stop();
     }
-    nodes_.erase(it);
-    endpoints_.erase(std::remove(endpoints_.begin(), endpoints_.end(), endpoint), endpoints_.end());
-    PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]", 
-                endpoint.c_str(), table_->GetId(), table_->GetPid());
     return true;
 }
 
 bool LogReplicator::DelAllReplicateNode() {
-    std::lock_guard<std::mutex> lock(mu_);
-    PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]", 
-                nodes_.size(), table_->GetId(), table_->GetPid());
-    nodes_.clear();
-    endpoints_.clear();
+    std::vector<std::shared_ptr<ReplicateNode>> copied_nodes = nodes_;
+    {
+        std::lock_guard<bthread::Mutex> lock(mu_);
+        PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]", 
+                    nodes_.size(), table_->GetId(), table_->GetPid());
+        nodes_.clear();
+        endpoints_.clear();
+    }
+    std::vector<std::shared_ptr<ReplicateNode>>::iterator it = copied_nodes.begin();
+    for (; it !=  copied_nodes.end(); ++it) {
+        std::shared_ptr<ReplicateNode> node = *it;
+        node->Stop();
+    }
     return true;
 }
 
@@ -462,78 +476,6 @@ bool LogReplicator::RollWLogFile() {
 
 void LogReplicator::Notify() {
     cv_.notify_all();
-}
-
-
-void LogReplicator::MatchLogOffset() {
-    bool all_matched = true;
-    std::vector<std::shared_ptr<ReplicateNode>> vec;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (const auto& node : nodes_) {
-            if (node->IsLogMatched()) {
-                continue;
-            }
-            all_matched = false;
-            vec.push_back(node);
-        }
-    }
-    if (!all_matched) {
-        all_matched = true;
-        for (auto& node : vec) {
-            if (node->MatchLogOffsetFromNode(term_) < 0) {
-                all_matched = false;
-                continue;
-            }
-            if (node->GetLastSyncOffset() >= snapshot_last_offset_.load(std::memory_order_relaxed)) {
-                tp_.AddTask(boost::bind(&LogReplicator::ReplicateToNode, this, node->GetEndPoint()));
-            } else {
-                // the binlog of matched offset was deleted, need full sync
-                // TODO. full sync
-            }
-        }
-    }
-    if (!all_matched) {
-        // retry after 1 second
-        tp_.DelayTask(FLAGS_binlog_match_logoffset_interval, boost::bind(&LogReplicator::MatchLogOffset, this));
-    }
-}
-
-void LogReplicator::ReplicateToNode(const std::string& endpoint) {
-    uint32_t coffee_time = 0;
-    while (running_.load(std::memory_order_relaxed)) {
-        std::shared_ptr<ReplicateNode> node;
-        {
-            std::unique_lock<std::mutex> lock(mu_);
-            std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
-            for ( ; it != nodes_.end(); ++it) {
-                if ((*it)->GetEndPoint().compare(endpoint) == 0) {
-                    node = *it;
-                    break;
-                }
-            }
-            if (it == nodes_.end()) {
-                PDLOG(INFO, "replicate node[%s] has deleted. task exit!", endpoint.c_str());
-                return;
-            }
-            if (coffee_time > 0) {
-                coffee_cv_.wait_for(lock, std::chrono::milliseconds(coffee_time));
-                coffee_time = 0;
-            }
-        }
-        int ret = node->SyncData(log_offset_.load(std::memory_order_relaxed));
-        if (ret == 1) {
-            coffee_time = FLAGS_binlog_coffee_time;
-        }
-        std::unique_lock<std::mutex> lock(mu_);
-        while (node->GetLastSyncOffset() >= (log_offset_.load(std::memory_order_relaxed))) {
-            cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_binlog_sync_wait_time));
-            if (!running_.load(std::memory_order_relaxed)) {
-                PDLOG(INFO, "replicate log exist for path %s", path_.c_str());
-                return;
-            }
-        }
-    }
 }
 
 void LogReplicator::Stop() {

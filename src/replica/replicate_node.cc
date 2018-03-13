@@ -11,6 +11,9 @@
 #include <gflags/gflags.h>
 
 DECLARE_int32(binlog_sync_batch_size);
+DECLARE_int32(binlog_sync_wait_time);
+DECLARE_int32(binlog_coffee_time);
+DECLARE_int32(binlog_match_logoffset_interval);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(zk_cluster);
@@ -22,17 +25,80 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs, 
-        const std::string& log_path, uint32_t tid, uint32_t pid) : 
-        log_reader_(logs, log_path), endpoint_(point), tid_(tid), pid_(pid),
-        rpc_client_(point) {
-    log_matched_ = false;
+static void* RunSyncTask(void* args) {
+    if (args == NULL) {
+        PDLOG(WARNING, "input args is null");
+        return NULL;
+    }
+    ::rtidb::replica::ReplicateNode* rn = static_cast<::rtidb::replica::ReplicateNode*>(args);
+    rn->MatchLogOffset();
+    rn->SyncData();
+    return NULL;
+}
+
+ReplicateNode::ReplicateNode(const std::string& point, 
+                             LogParts* logs, 
+                             const std::string& log_path, 
+                             uint32_t tid, uint32_t pid,
+                             uint64_t term, std::atomic<uint64_t>* leader_log_offset,
+                             bthread::Mutex* mu, bthread::ConditionVariable* cv): log_reader_(logs, log_path), cache_(),
+    endpoint_(point), last_sync_offset_(0), log_matched_(false),
+    tid_(tid), pid_(pid), term_(term), 
+    rpc_client_(point), worker_(), leader_log_offset_(leader_log_offset),
+    is_running_(false), mu_(mu), cv_(cv){
 }
 
 int ReplicateNode::Init() {
-    return rpc_client_.Init();
+    int ok = rpc_client_.Init();
+    if (ok != 0) {
+        PDLOG(WARNING, "fail to open rpc client with errno %d", ok);
+        return ok;
+    }
+    is_running_.store(true, std::memory_order_relaxed); 
+    ok = bthread_start_background(&worker_, NULL, RunSyncTask, this);
+    if (ok != 0) {
+        PDLOG(WARNING, "fail to start bthread with errno %d", ok);
+    }
+    return ok;
 }
 
+void ReplicateNode::MatchLogOffset() {
+    while (is_running_.load(std::memory_order_relaxed)) {
+        int ok = MatchLogOffsetFromNode();
+        if (ok != 0) {
+            bthread_usleep(FLAGS_binlog_match_logoffset_interval * 1000); 
+        }else {
+            log_matched_ = true; 
+            return;
+        }
+    }
+}
+
+void ReplicateNode::SyncData() {
+    uint32_t coffee_time = 0;
+    while (is_running_.load(std::memory_order_relaxed)) {
+        if (coffee_time > 0) {
+            bthread_usleep(coffee_time * 1000);
+            coffee_time = 0;
+        }
+        {
+            std::unique_lock<bthread::Mutex> lock(*mu_);
+            // no new data append and wait
+            while (last_sync_offset_ >= leader_log_offset_->load(std::memory_order_relaxed)) {
+                cv_->wait_for(lock, FLAGS_binlog_sync_wait_time * 1000);
+                if (!is_running_.load(std::memory_order_relaxed)) {
+                    PDLOG(INFO, "replicate log to endpoint %s for table #tid %u #pid %u exist", endpoint_.c_str(), tid_, pid_);
+                    return;
+                }
+            }
+        }
+        int ret = SyncData(leader_log_offset_->load(std::memory_order_relaxed));
+        if (ret == 1) {
+            coffee_time = FLAGS_binlog_coffee_time;
+        }
+    }
+    PDLOG(INFO, "replicate log to endpoint %s for table #tid %u #pid %u exist", endpoint_.c_str(), tid_, pid_);
+}
 
 int ReplicateNode::GetLogIndex() {
     return log_reader_.GetLogIndex();
@@ -40,10 +106,6 @@ int ReplicateNode::GetLogIndex() {
 
 bool ReplicateNode::IsLogMatched() {
     return log_matched_;
-}
-
-void ReplicateNode::SetLogMatch(bool log_match) {
-    log_matched_ = log_match;
 }
 
 std::string ReplicateNode::GetEndPoint() {
@@ -58,12 +120,11 @@ void ReplicateNode::SetLastSyncOffset(uint64_t offset) {
     last_sync_offset_ = offset;
 }
 
-int ReplicateNode::MatchLogOffsetFromNode(uint64_t term) {
-    term_ = term;
+int ReplicateNode::MatchLogOffsetFromNode() {
     ::rtidb::api::AppendEntriesRequest request;
     request.set_tid(tid_);
     request.set_pid(pid_);
-    request.set_term(term);
+    request.set_term(term_);
     request.set_pre_log_index(0);
     ::rtidb::api::AppendEntriesResponse response;
     bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
@@ -80,7 +141,6 @@ int ReplicateNode::MatchLogOffsetFromNode(uint64_t term) {
                     endpoint_.c_str(), tid_, pid_);
     return -1;
 }
-
 
 int ReplicateNode::SyncData(uint64_t log_offset) {
     PDLOG(DEBUG, "node[%s] offset[%lu] log offset[%lu]", 
@@ -174,6 +234,18 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
         return 1;
     }
     return 0;
+}
+
+void ReplicateNode::Stop() {
+    is_running_.store(false, std::memory_order_relaxed);
+    if (bthread_stopped(worker_) == 1) {
+        PDLOG(INFO, "sync thread for table #tid %u #pid %u has been stoped", tid_, pid_);
+        return;
+    }
+    int ok = bthread_stop(worker_);
+    if (ok != 0) {
+        PDLOG(WARNING, "fail to stop sync thread for table #tid %u #pid %u", tid_, pid_);
+    }
 }
 
 }
