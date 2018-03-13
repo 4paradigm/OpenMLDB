@@ -22,8 +22,6 @@
 #include <chrono>
 
 DECLARE_int32(binlog_single_file_max_size);
-DECLARE_int32(binlog_sync_to_disk_interval);
-DECLARE_int32(binlog_delete_interval);
 DECLARE_int32(binlog_name_length);
 DECLARE_string(zk_cluster);
 
@@ -39,12 +37,10 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             std::shared_ptr<Table> table,
-                             ThreadPool* tp):path_(path), log_path_(),
+                             std::shared_ptr<Table> table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
     endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),
-    running_(true), tp_(tp), refs_(0), wmu_(), del_binlog_tid_(0),
-    sync_disk_tid_(0){
+    wmu_(){
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
@@ -79,7 +75,6 @@ void LogReplicator::SyncToDisk() {
             PDLOG(INFO, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
         }
     }
-    tp_->DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
 }
 
 bool LogReplicator::Init() {
@@ -106,8 +101,6 @@ bool LogReplicator::Init() {
     if (!Recover()) {
         return false;
     }
-    sync_disk_tid_ = tp_->DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
-    del_binlog_tid_ = tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
     return true;
 }
 
@@ -235,12 +228,8 @@ void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
 }
 
 void LogReplicator::DeleteBinlog() {
-    if (!running_.load(std::memory_order_relaxed)) {
-        return;
-    }
     if (logs_->GetSize() <= 1) {
         PDLOG(DEBUG, "log part size is one or less, need not delete"); 
-        del_binlog_tid_ = tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
     int min_log_index = snapshot_log_part_index_.load(std::memory_order_relaxed);
@@ -255,7 +244,6 @@ void LogReplicator::DeleteBinlog() {
     min_log_index -= 1;
     if (min_log_index < 0) {
         PDLOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
-        del_binlog_tid_ = tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
     PDLOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
@@ -278,7 +266,6 @@ void LogReplicator::DeleteBinlog() {
         }
         delete tmp_node;
     }
-    del_binlog_tid_ = tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
 uint64_t LogReplicator::GetLeaderTerm() {
@@ -492,14 +479,6 @@ bool LogReplicator::RollWLogFile() {
 
 void LogReplicator::Notify() {
     cv_.notify_all();
-}
-
-void LogReplicator::Stop() {
-    running_.store(false, std::memory_order_relaxed);
-    while (del_binlog_tid_ != 0 && !tp_->CancelTask(del_binlog_tid_)) {}
-    while (sync_disk_tid_ != 0 && !tp_->CancelTask(sync_disk_tid_)) {}
-    // wait all task to shutdown
-    PDLOG(INFO, "stop replicator for path %s ok", path_.c_str());
 }
 
 } // end of replica

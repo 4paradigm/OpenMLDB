@@ -251,6 +251,11 @@ private:
 
     int32_t CheckDimessionPut(const ::rtidb::api::PutRequest* request,
                               std::shared_ptr<Table>& table);
+    
+    // sync log data from page cache to disk 
+    void SchedSyncDisk(uint32_t tid, uint32_t pid);
+    // sched replicator to delete binlog
+    void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
 private:
     Tables tables_;

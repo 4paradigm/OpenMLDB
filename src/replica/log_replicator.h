@@ -47,8 +47,7 @@ public:
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role,
-                  std::shared_ptr<Table> table,
-                  ThreadPool* tp);
+                  std::shared_ptr<Table> table);
 
     ~LogReplicator();
 
@@ -67,8 +66,6 @@ public:
     void Notify();
     // recover logs meta
     bool Recover();
-
-    void Stop();
 
     bool RollWLogFile();
 
@@ -128,23 +125,11 @@ private:
     bthread::Mutex mu_;
     bthread::ConditionVariable cv_;
 
-    // for background task
-    std::atomic<bool> running_;
-
-    // background task pool
-    ThreadPool* tp_;
-
-    // reference cnt
-    std::atomic<uint64_t> refs_;
-
     std::atomic<int> snapshot_log_part_index_;
     std::atomic<uint64_t> snapshot_last_offset_;
 
     std::mutex wmu_;
-
     std::shared_ptr<Table> table_;
-    uint64_t del_binlog_tid_;
-    uint64_t sync_disk_tid_;
 };
 
 } // end of replica
