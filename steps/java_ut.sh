@@ -8,7 +8,7 @@ clear_debug() {
     ps -ef | grep rtidb | grep 9501 | awk '{print $2}' | while read line; do kill -9 $line; done
 }
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
-
+ulimit -c unlimited
 sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
 mkdir -p java/src/main/proto/rtidb/api
 mkdir -p java/src/main/proto/rtidb/nameserver

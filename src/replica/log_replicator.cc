@@ -22,10 +22,7 @@
 #include <chrono>
 
 DECLARE_int32(binlog_single_file_max_size);
-DECLARE_int32(binlog_coffee_time);
-DECLARE_int32(binlog_sync_wait_time);
 DECLARE_int32(binlog_sync_to_disk_interval);
-DECLARE_int32(binlog_match_logoffset_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_int32(binlog_name_length);
 DECLARE_string(zk_cluster);
