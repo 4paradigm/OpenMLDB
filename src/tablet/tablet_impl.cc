@@ -145,6 +145,16 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
     keep_alive_pool_.Stop(true);
+    std::lock_guard<std::mutex> lock(mu_);
+    Replicators::iterator it = replicators_.begin();
+    for (; it != replicators_.end(); ++it) {
+        std::map<uint32_t, std::shared_ptr<LogReplicator> >::iterator iit = it->second.begin();
+        for (; iit != it->second.end(); ++iit) {
+            std::shared_ptr<LogReplicator> replicator = iit->second;
+            replicator->DelAllReplicateNode();
+            replicator->Stop();
+        }
+    }
 }
 
 bool TabletImpl::Init() {
@@ -1401,7 +1411,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         if (table_meta.seg_cnt() > 0) {
             seg_cnt = table_meta.seg_cnt();
         }
-        PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
+        PDLOG(INFO, "start to recover table with id %u pid %u name %s seg_cnt %d idx_cnt %u schema_size %u ttl %llu", tid, 
                    pid, name.c_str(), seg_cnt, table_meta.dimensions_size(), table_meta.schema().size(), ttl);
         task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this, tid, pid, task_ptr));
         response->set_code(0);
