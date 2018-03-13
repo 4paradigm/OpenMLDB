@@ -1,7 +1,6 @@
 # RTIDB配置说明文档
 
 ## 通用配置
-
 endpoint 指定节点的ip和port, 示例 127.0.0.0:9991
 
 zk_cluster 指定连接zookeeper集群的地址, 如果zookeeper是多节点用逗号分开, 示例 172.27.2.51:6330,172.27.2.52:6331
@@ -23,7 +22,6 @@ mem_release_rate 用来设置tcmalloc SetMemoryReleaseRate
 
 
 ## tablet配置
-
 db_root_path 配置binlog和snapshot的存放目录
 
 recycle_bin_root_path 配置droptable回收站的目录
@@ -81,7 +79,6 @@ binlog_name_length 配置binlog名字的长度
 
 
 ## nameserver配置
-
 name_server_task_pool_size 配置nameserver任务线程池的大小
 
 name_server_task_wait_time nameserver任务执行框架中任务队列为空时的休眠时间, 单位是ms.
