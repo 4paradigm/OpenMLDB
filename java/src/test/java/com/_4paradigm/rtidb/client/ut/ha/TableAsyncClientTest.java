@@ -255,4 +255,28 @@ public class TableAsyncClientTest {
         }
     }
     
+    public void testScanDuplicateRecord() {
+        config.setRemoveDuplicateByTime(true);
+        String name = createSchemaTable();
+        try {
+            PutFuture pf = tableAsyncClient.put(name, 10, new Object[] { "card0", "1222", 1.0 });
+            Assert.assertTrue(pf.get());
+            pf = tableAsyncClient.put(name, 10, new Object[] { "card0", "1223", 2.0 });
+            Assert.assertTrue(pf.get());
+            ScanFuture sf = tableAsyncClient.scan(name, "card0", "card", 12, 9);
+            KvIterator it = sf.get();
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals("1223", row[1]);
+            Assert.assertEquals(2.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        } finally {
+            config.setRemoveDuplicateByTime(false);
+        }
+       
+    }
+    
 }
