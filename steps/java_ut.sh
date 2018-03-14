@@ -19,6 +19,7 @@ clear_debug
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
 cd thirdsrc/zookeeper-3.4.10
 test -d ut_zookeeper && rm -rf ut_zookeeper
+netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
 ./bin/zkServer.sh start && cd $ROOT_DIR
 
 ./build/bin/rtidb --db_root_path=/tmp/$RANDOM --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9501 --role=tablet &
@@ -33,4 +34,4 @@ mvn clean test -Dtest=com._4paradigm.rtidb.client.ut.*Test,com._4paradigm.rtidb.
 clear_debug
 cd $ROOT_DIR
 cd onebox && sh stop_all.sh && cd $ROOT_DIR
-cd thirdsrc/zookeeper-3.4.10/bin && ./zkServer.sh stop
+cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
