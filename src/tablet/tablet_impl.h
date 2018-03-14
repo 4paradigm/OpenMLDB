@@ -66,6 +66,8 @@ public:
 
     bool Init();
 
+    bool RegisterZK();
+
     void Put(RpcController* controller,
              const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response,

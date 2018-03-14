@@ -73,7 +73,10 @@ void SetupLog() {
 void StartNameServer() {
     SetupLog();
     ::rtidb::nameserver::NameServerImpl* name_server = new ::rtidb::nameserver::NameServerImpl();
-    name_server->Init();
+    if (!name_server->Init()) {
+        PDLOG(WARNING, "Fail to init");
+        exit(1);
+    }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
@@ -115,6 +118,10 @@ void StartTablet() {
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
     if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
         PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    if (!tablet->RegisterZK()) {
+        PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
     PDLOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
