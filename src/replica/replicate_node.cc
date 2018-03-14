@@ -53,6 +53,7 @@ int ReplicateNode::Init() {
     if (ok != 0) {
         PDLOG(WARNING, "fail to open rpc client with errno %d", ok);
     }
+    PDLOG(INFO, "open rpc client for endpoint %s done", endpoint_.c_str());
     return ok;
 }
 
@@ -65,6 +66,8 @@ int ReplicateNode::Start() {
     int ok = bthread_start_background(&worker_, NULL, RunSyncTask, this);
     if (ok != 0) {
         PDLOG(WARNING, "fail to start bthread with errno %d", ok);
+    }else {
+        PDLOG(INFO, "start sync thread for table #tid %u, #pid %u done", tid_, pid_);
     }
     return ok;
 }

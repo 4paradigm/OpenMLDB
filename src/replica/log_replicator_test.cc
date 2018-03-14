@@ -44,12 +44,10 @@ public:
                    const std::vector<std::string>& endpoints,
                    std::shared_ptr<Table> table): role_(role),
     path_(path), endpoints_(endpoints), 
-    tp_(4),
-    replicator_(path_, endpoints_, role_, table, &tp_) {
+    replicator_(path_, endpoints_, role_, table) {
     }
 
     ~MockTabletImpl() {
-        replicator_.Stop();
     }
     bool Init() {
         //table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
@@ -97,7 +95,6 @@ private:
     ReplicatorRole role_;
     std::string path_;
     std::vector<std::string> endpoints_;
-    ThreadPool tp_;
     LogReplicator replicator_;
 };
 
@@ -118,28 +115,25 @@ inline std::string GenRand() {
 }
 
 TEST_F(LogReplicatorTest,  Init) {
-    ThreadPool tp;
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &tp);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
-    replicator.Stop();
 }
 
 TEST_F(LogReplicatorTest,  BenchMark) {
-    ThreadPool tp;
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
     std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &tp);
+    LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
@@ -148,11 +142,9 @@ TEST_F(LogReplicatorTest,  BenchMark) {
     entry.set_ts(9527);
     ok = replicator.AppendEntry(entry);
     ASSERT_TRUE(ok);
-    replicator.Stop();
 }
 
 TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
-    ThreadPool tp;
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -180,7 +172,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:17527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &tp);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     // put the first row
@@ -247,7 +239,6 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     }
     sleep(20);
     leader.DelAllReplicateNode();
-    leader.Stop();
     ASSERT_EQ(3, t8->GetRecordCnt());
     ASSERT_EQ(5, t8->GetRecordIdxCnt());
     {
@@ -298,7 +289,6 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
 
 
 TEST_F(LogReplicatorTest,  LeaderAndFollower) {
-    ThreadPool tp;
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -325,7 +315,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     std::vector<std::string> endpoints;
     endpoints.push_back("127.0.0.1:18527");
     std::string folder = "/tmp/" + GenRand() + "/";
-    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &tp);
+    LogReplicator leader(folder, g_endpoints, kLeaderNode, t7);
     bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
@@ -368,7 +358,6 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     }
     sleep(20);
     leader.DelAllReplicateNode();
-    leader.Stop();
     ASSERT_EQ(4, t8->GetRecordCnt());
     ASSERT_EQ(4, t8->GetRecordIdxCnt());
     {

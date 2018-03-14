@@ -21,7 +21,6 @@ cd thirdsrc/zookeeper-3.4.10
 test -d ut_zookeeper && rm -rf ut_zookeeper
 netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9
 ./bin/zkServer.sh start && cd $ROOT_DIR
-
 ./build/bin/rtidb --db_root_path=/tmp/$RANDOM --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9501 --role=tablet &
 
 sleep 2

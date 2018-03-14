@@ -22,8 +22,6 @@
 #include <chrono>
 
 DECLARE_int32(binlog_single_file_max_size);
-DECLARE_int32(binlog_sync_to_disk_interval);
-DECLARE_int32(binlog_delete_interval);
 DECLARE_int32(binlog_name_length);
 DECLARE_string(zk_cluster);
 
@@ -39,11 +37,10 @@ const static ::rtidb::base::DefaultComparator scmp;
 LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
-                             std::shared_ptr<Table> table,
-                             ThreadPool* tp):path_(path), log_path_(),
+                             std::shared_ptr<Table> table):path_(path), log_path_(),
     log_offset_(0), logs_(NULL), wh_(NULL), role_(role), 
     endpoints_(endpoints), nodes_(), term_(0), mu_(), cv_(),
-    running_(true), tp_(tp), refs_(0), wmu_() {
+    wmu_(){
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
@@ -51,6 +48,7 @@ LogReplicator::LogReplicator(const std::string& path,
 }
 
 LogReplicator::~LogReplicator() {
+    DelAllReplicateNode();
     if (logs_ != NULL) {
         logs_->Clear();
     }
@@ -78,7 +76,6 @@ void LogReplicator::SyncToDisk() {
             PDLOG(INFO, "sync to disk for path %s consumed %lld ms", path_.c_str(), consumed / 1000);
         }
     }
-    tp_->DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
 }
 
 bool LogReplicator::Init() {
@@ -105,8 +102,6 @@ bool LogReplicator::Init() {
     if (!Recover()) {
         return false;
     }
-    tp_->DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&LogReplicator::SyncToDisk, this));
-    tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
     return true;
 }
 
@@ -234,12 +229,8 @@ void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
 }
 
 void LogReplicator::DeleteBinlog() {
-    if (!running_.load(std::memory_order_relaxed)) {
-        return;
-    }
     if (logs_->GetSize() <= 1) {
         PDLOG(DEBUG, "log part size is one or less, need not delete"); 
-        tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
     int min_log_index = snapshot_log_part_index_.load(std::memory_order_relaxed);
@@ -254,7 +245,6 @@ void LogReplicator::DeleteBinlog() {
     min_log_index -= 1;
     if (min_log_index < 0) {
         PDLOG(DEBUG, "min_log_index is[%d], need not delete!", min_log_index);
-        tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
         return;
     }
     PDLOG(DEBUG, "min_log_index[%d] cur binlog_index[%u]", 
@@ -277,7 +267,6 @@ void LogReplicator::DeleteBinlog() {
         }
         delete tmp_node;
     }
-    tp_->DelayTask(FLAGS_binlog_delete_interval, boost::bind(&LogReplicator::DeleteBinlog, this));
 }
 
 uint64_t LogReplicator::GetLeaderTerm() {
@@ -432,6 +421,9 @@ bool LogReplicator::DelAllReplicateNode() {
     std::vector<std::shared_ptr<ReplicateNode>> copied_nodes = nodes_;
     {
         std::lock_guard<bthread::Mutex> lock(mu_);
+        if (nodes_.size() <= 0) {
+            return true;
+        }
         PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]", 
                     nodes_.size(), table_->GetId(), table_->GetPid());
         nodes_.clear();
@@ -439,6 +431,7 @@ bool LogReplicator::DelAllReplicateNode() {
     }
     std::vector<std::shared_ptr<ReplicateNode>>::iterator it = copied_nodes.begin();
     for (; it !=  copied_nodes.end(); ++it) {
+        PDLOG(DEBUG, "stop replicator node");
         std::shared_ptr<ReplicateNode> node = *it;
         node->Stop();
     }
@@ -491,12 +484,6 @@ bool LogReplicator::RollWLogFile() {
 
 void LogReplicator::Notify() {
     cv_.notify_all();
-}
-
-void LogReplicator::Stop() {
-    running_.store(false, std::memory_order_relaxed);
-    // wait all task to shutdown
-    PDLOG(INFO, "stop replicator for path %s ok", path_.c_str());
 }
 
 } // end of replica
