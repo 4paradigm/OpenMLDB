@@ -3,6 +3,7 @@
 # ut.sh
 #
 WORK_DIR=`pwd`
+ulimit -c unlimited
 test -d reports && rm -rf reports
 mkdir -p reports
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf

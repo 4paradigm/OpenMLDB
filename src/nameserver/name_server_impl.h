@@ -146,6 +146,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void RecoverTable(RpcController* controller,
+            const RecoverTableRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     void ConnectZK(RpcController* controller,
             const ConnectZKRequest* request,
             GeneralResponse* response,

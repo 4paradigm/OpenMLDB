@@ -60,6 +60,8 @@ public:
 
     bool RecoverEndpoint(const std::string& endpoint, std::string& msg);
 
+    bool RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);
+
     bool ConnectZK(std::string& msg);
 
     bool DisConnectZK(std::string& msg);
