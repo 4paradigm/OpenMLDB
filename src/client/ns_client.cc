@@ -243,6 +243,22 @@ bool NsClient::RecoverEndpoint(const std::string& endpoint, std::string& msg) {
     return false;
 }    
 
+bool NsClient::RecoverTable(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, std::string& msg) {
+    ::rtidb::nameserver::RecoverTableRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_name(name);
+    request.set_pid(pid);
+    request.set_endpoint(endpoint);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RecoverTable,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}    
+
 bool NsClient::ConnectZK(std::string& msg) {
     ::rtidb::nameserver::ConnectZKRequest request;
     ::rtidb::nameserver::GeneralResponse response;

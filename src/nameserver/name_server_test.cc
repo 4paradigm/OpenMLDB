@@ -91,6 +91,8 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+    ok = tablet->RegisterZK();
+    ASSERT_TRUE(ok);
 
     sleep(2);
     
@@ -193,7 +195,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ret = name_server_client.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
     ASSERT_STREQ(conf_map[key].c_str(), "true");
-}    
+}
 
 TEST_F(NameServerImplTest, CreateTable) {
     FLAGS_zk_cluster="127.0.0.1:6181";
@@ -233,6 +235,8 @@ TEST_F(NameServerImplTest, CreateTable) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+    ok = tablet->RegisterZK();
+    ASSERT_TRUE(ok);
 
     sleep(2);
     
@@ -306,6 +310,8 @@ TEST_F(NameServerImplTest, Offline) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+    ok = tablet->RegisterZK();
+    ASSERT_TRUE(ok);
 
     FLAGS_endpoint="127.0.0.1:9534";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
@@ -324,6 +330,8 @@ TEST_F(NameServerImplTest, Offline) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+    ok = tablet2->RegisterZK();
+    ASSERT_TRUE(ok);
 
     sleep(2);
     CreateTableRequest request;

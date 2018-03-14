@@ -49,6 +49,8 @@ enum OPType {
     kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
     kUpdateTableAliveOP = 10;
     kMigrateOP = 11;
+    kReLoadTableOP = 12;
+    kUpdatePartitionStatusOP = 13;
 }
 
 enum TaskType {

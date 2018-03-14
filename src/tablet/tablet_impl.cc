@@ -157,13 +157,6 @@ bool TabletImpl::Init() {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s", FLAGS_zk_cluster.c_str());
             return false;
         }
-        ok = zk_client_->Register();
-        if (!ok) {
-            PDLOG(WARNING, "fail to register tablet with endpoint %s", FLAGS_endpoint.c_str());
-            return false;
-        }
-        PDLOG(INFO, "tablet with endpoint %s register to zk cluster %s ok", FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
-        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
     }else {
         PDLOG(INFO, "zk cluster disabled");
     }
@@ -181,6 +174,18 @@ bool TabletImpl::Init() {
     MallocExtension* tcmalloc = MallocExtension::instance();
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
 #endif 
+    return true;
+}
+
+bool TabletImpl::RegisterZK() {
+    if (!FLAGS_zk_cluster.empty()) {
+        if (!zk_client_->Register()) {
+            PDLOG(WARNING, "fail to register tablet with endpoint %s", FLAGS_endpoint.c_str());
+            return false;
+        }
+        PDLOG(INFO, "tablet with endpoint %s register to zk cluster %s ok", FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
+        keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
+    }
     return true;
 }
 
@@ -1242,7 +1247,7 @@ int TabletImpl::StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uin
         }
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() - cur_time;
-    if (limit_time > time_used && len > FLAGS_stream_block_size / 2) {
+    if (limit_time > time_used && len > (uint64_t)FLAGS_stream_block_size / 2) {
         PDLOG(DEBUG, "sleep %lu us, limit_time %lu time_used %lu", limit_time - time_used, limit_time, time_used);
         std::this_thread::sleep_for(std::chrono::microseconds(limit_time - time_used));
     }
