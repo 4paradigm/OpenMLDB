@@ -1,3 +1,4 @@
+sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
 testpath=$(cd "$(dirname "$0")"; pwd)
 projectpath=${testpath}/..
 sh ${projectpath}/test-common/integrationtest/setup.sh
