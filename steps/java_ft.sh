@@ -1,3 +1,4 @@
+ROOT_DIR=`pwd`
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
 sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
 testpath=$(cd "$(dirname "$0")"; pwd)
