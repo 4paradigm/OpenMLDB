@@ -20,12 +20,21 @@ public class RTIDBClientConfig {
 	private int writeTimeout = 10000;
 	private int readTimeout = 10000;
 	private int maxCntCnnPerHost = 2;
+	private int maxRetryCnt = 1;
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	public void disableMetrics() {
 	    enableMetrics = false;
 	}
 	
+    public int getMaxRetryCnt() {
+        return maxRetryCnt;
+    }
+
+    public void setMaxRetryCnt(int maxRetryCnt) {
+        this.maxRetryCnt = maxRetryCnt;
+    }
+
     public Mode getMode() {
         return mode;
     }
