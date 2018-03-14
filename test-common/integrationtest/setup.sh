@@ -23,6 +23,8 @@ echo export nsconfpath=${nsconfpath} >> ${testenvpath}
 echo export reportpath=${reportpath} >> ${testenvpath}
 echo export zkpath=${zkpath} >> ${testenvpath}
 
+mkdir ${testpath}/logs
+
 # setup xmlrunner
 if [ -d "${testpath}/xmlrunner" ]
 then
