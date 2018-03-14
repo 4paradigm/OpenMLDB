@@ -56,7 +56,7 @@ class NsCluster(object):
             ns_path = self.ns_edp_path[ep]
             nameserver_flags = '{}/conf/nameserver.flags'.format(ns_path)
             exe_shell('mkdir -p {}/conf'.format(ns_path))
-            exe_shell('> {}'.format(nameserver_flags))
+            exe_shell('touch {}'.format(nameserver_flags))
             exe_shell("echo '--log_level={}' >> {}".format(conf.rtidb_log_info, nameserver_flags))
             exe_shell("echo '--endpoint='{} >> {}".format(ep, nameserver_flags))
             exe_shell("echo '--role=nameserver' >> {}".format(nameserver_flags))
