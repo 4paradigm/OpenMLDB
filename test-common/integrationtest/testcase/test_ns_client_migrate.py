@@ -77,8 +77,8 @@ class TestNameserverMigrate(TestCaseBase):
         rs2 = self.migrate(self.ns_leader, self.slave2, tname, '0-2', self.slave1)
         self.start_client(self.slave1)
         time.sleep(10)
-        self.assertEqual('' in rs1, True)
-        self.assertEqual('' in rs2, True)
+        self.assertEqual('src_endpoint is not exist or not healthy' in rs1, True)
+        self.assertEqual('des_endpoint is not exist or not healthy' in rs2, True)
 
     @ddt.data(
         (get_base_attr('slave1'), time.time(), '4-6', get_base_attr('slave1'),
@@ -103,6 +103,8 @@ class TestNameserverMigrate(TestCaseBase):
          'is already in des_endpoint'),
         (get_base_attr('slave1'), time.time(), '6-4', get_base_attr('slave2'),
          'has not valid pid'),
+        (get_base_attr('slave1'), time.time(), '8,9', get_base_attr('slave2'),
+         'has not partition[9]'),
     )
     @ddt.unpack
     def test_ns_client_migrate_args_invalid(self, src, tname, pid_group, des, exp_msg):
