@@ -102,6 +102,9 @@ class TestMakeSnapshotNsClient(TestCaseBase):
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-2"', 'false'),
+            ('column_desc', '"merchant"', '"string"', 'true'),
+            ('column_desc', '"amt"', '"double"', 'false'),
+            ('column_desc', '"card"', '"string"', 'true'),
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
@@ -125,14 +128,14 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.start_client(self.leader)
 
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
         self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '2', '144000', 'yes'])
         self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '2', '144000', 'yes'])
 
         self.assertEqual('MakeSnapshot ok' in rs3, True)
-        self.assertEqual('Fail to makesnapshot. error msg:leader is not online' in rs4, True)
+        self.assertEqual('Fail to makesnapshot. error msg:get leader failed' in rs4, True)
         mf = self.get_manifest(self.slave1path, tid, 0)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])

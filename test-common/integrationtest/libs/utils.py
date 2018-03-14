@@ -3,6 +3,7 @@ import conf as conf
 from logger import infoLogger
 import commands
 import copy
+import os
 
 
 def exe_shell(cmd):

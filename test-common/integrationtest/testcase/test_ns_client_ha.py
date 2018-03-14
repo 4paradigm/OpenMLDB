@@ -42,21 +42,6 @@ class TestNameserverHa(TestCaseBase):
             self.put(self.leader, self.tid, self.pid, 'testkey0', self.now() + 90000, 'testvalue0')
 
 
-    def get_new_ns_leader(self):
-        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
-        nsc.get_ns_leader()
-        infoLogger.info([x[1] for x in conf.ns_endpoints])
-        nss = [x[1] for x in conf.ns_endpoints]
-        self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
-        self.node_path_dict[self.ns_leader] = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
-        nss.remove(self.ns_leader)
-        self.ns_slaver = nss[0]
-        infoLogger.info("*"*88)
-        infoLogger.info(self.ns_leader)
-        infoLogger.info(self.ns_slaver)
-        infoLogger.info("*"*88)
-
-
     def get_latest_op(self):
         rs = self.showopstatus(self.ns_leader)
         latest_ley = max(rs.keys())

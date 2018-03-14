@@ -16,7 +16,7 @@ class TestShowSchema(TestCaseBase):
                           card='string:index', merchant='string:index', amt='double:index')
         self.assertTrue('Create table ok' in rs1)
         schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
-        schema_d = self.parse_sechema(schema)
+        schema_d = self.parse_schema(schema)
         self.assertEqual(schema_d['card'], ['string', 'yes'])
         self.assertEqual(schema_d['merchant'], ['string', 'yes'])
         self.assertEqual(schema_d['amt'], ['double', 'yes'])

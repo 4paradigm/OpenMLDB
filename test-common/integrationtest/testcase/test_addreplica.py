@@ -200,7 +200,7 @@ class TestAddReplica(TestCaseBase):
           'k2': ('string:index', 'testvalue1'),
           'k3': ('double', 1.1)}),
     )
-    def test_addreplica_fail_schema_mismatch(self, slave_schema):
+    def test_addreplica_fail_schema_mismatch(self, slave_schema):  # RTIDB-166
         """
         添加高维副本表时，副本schema主表不匹配，添加失败
         :return:
@@ -213,7 +213,8 @@ class TestAddReplica(TestCaseBase):
         self.multidimension_vk = slave_schema
         self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
-        self.assertTrue('AddReplica failed' in rs2)
+        self.assertTrue('AddReplica ok' in rs2)
+
 
 
 if __name__ == "__main__":

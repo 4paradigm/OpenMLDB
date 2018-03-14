@@ -24,6 +24,7 @@ class TestCaseBase(unittest.TestCase):
         cls.rtidb_path = os.getenv('rtidbpath')
         cls.conf_path = os.getenv('confpath')
         cls.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(cls.testpath))
+        cls.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))
         cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
@@ -32,14 +33,13 @@ class TestCaseBase(unittest.TestCase):
         cls.node_path_dict = {cls.leader:cls.testpath + '/tablet1',
                               cls.slave1:cls.testpath + '/tablet2',
                               cls.slave2:cls.testpath + '/tablet3',
-                              cls.ns_leader:utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))}
+                              cls.ns_leader:cls.ns_leader_path}
         cls.leaderpath = cls.node_path_dict[cls.leader]
         cls.slave1path = cls.node_path_dict[cls.slave1]
         cls.slave2path = cls.node_path_dict[cls.slave2]
-        cls.ns_leader_path = cls.node_path_dict[cls.ns_leader]
 
     def setUp(self):
-        infoLogger.info('*** TEST CASE NAME: ' + self._testMethodName)
+        infoLogger.info('\n\n\n\n*** TEST CASE NAME: ' + self._testMethodName)
         try:
             self.tid = int(utils.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
         except Exception, e:
@@ -47,12 +47,12 @@ class TestCaseBase(unittest.TestCase):
         self.pid = random.randint(10, 100)
         self.clear_ns_table(self.ns_leader)
 
-    # def tearDown(self):
-    #     self.clear_ns_table(self.ns_leader)
-    #     for edp_tuple in conf.tb_endpoints:
-    #         epd = edp_tuple[1]
-    #         self.start_client(epd)
-    #         self.drop(epd, self.tid, self.pid)
+    def tearDown(self):
+        self.clear_ns_table(self.ns_leader)
+        for edp_tuple in conf.tb_endpoints:
+            epd = edp_tuple[1]
+            self.start_client(epd)
+            self.drop(epd, self.tid, self.pid)
 
     def now(self):
         return int(time.time() * 1000000 / 1000)
@@ -88,13 +88,14 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info([x[1] for x in conf.ns_endpoints])
         nss = [x[1] for x in conf.ns_endpoints]
         self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+        self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
         self.node_path_dict[self.ns_leader] = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
         nss.remove(self.ns_leader)
         self.ns_slaver = nss[0]
-        infoLogger.info("*"*88)
-        infoLogger.info(self.ns_leader)
-        infoLogger.info(self.ns_slaver)
-        infoLogger.info("*"*88)
+        infoLogger.info("*" * 88)
+        infoLogger.info("ns_leader: " + self.ns_leader)
+        infoLogger.info("ns_slaver: " + self.ns_slaver)
+        infoLogger.info("*" * 88)
 
     def run_client(self, endpoint, cmd, role='client'):
         cmd = cmd.strip()
@@ -385,6 +386,7 @@ class TestCaseBase(unittest.TestCase):
     def cp_db(self, from_node, to_node, tid, pid):
         utils.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
             from_node=from_node, tid=tid, pid=pid, to_node=to_node))
+
 
     def put_large_datas(self, data_count, thread_count, data='testvalue' * 200):
         count = data_count

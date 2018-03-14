@@ -7,13 +7,14 @@ from libs.logger import infoLogger
 from libs.deco import multi_dimension
 import libs.ddt as ddt
 
+
+def get_base_attr(attr):
+    TestCaseBase.setUpClass()
+    return TestCaseBase.__getattribute__(TestCaseBase, attr)
+
+
 @ddt.ddt
 class TestAddReplicaNs(TestCaseBase):
-
-    def get_base_attr(attr):
-        TestCaseBase.setUpClass()
-        return TestCaseBase.__getattribute__(TestCaseBase, attr)
-
 
     @multi_dimension(False)
     def test_addreplica_scenario(self):

@@ -53,6 +53,7 @@ class TestAutoFailover(TestCaseBase):
             self.start_client(self.leader)
         elif failover_reason == 'network_failure':
             self.connectzk(self.leader)
+        time.sleep(10)
         self.assertEqual('kTabletOffline' in rs2[self.leader], True)
 
         # leader to offline
@@ -62,13 +63,13 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '3', self.leader)], ['leader', '2', '144000', 'no'])
 
         # slave to leader
-        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['leader', '2', '144000', 'yes'])
-        act1 = rs3[(name, tid, '1', self.slave1)]
-        act2 = rs3[(name, tid, '1', self.slave2)]
+        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['leader', '2', '144000', 'yes'])
+        act1 = rs3[(name, tid, '2', self.slave1)]
+        act2 = rs3[(name, tid, '2', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
-        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '3', self.slave2)], ['leader', '2', '144000', 'yes'])
 
 
     @ddt.data(

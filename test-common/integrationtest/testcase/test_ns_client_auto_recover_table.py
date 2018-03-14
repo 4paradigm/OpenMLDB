@@ -8,6 +8,7 @@ from libs.logger import infoLogger
 from libs.deco import multi_dimension
 import libs.ddt as ddt
 
+
 @ddt.ddt
 class TestAutoRecoverTable(TestCaseBase):
 
@@ -138,6 +139,9 @@ class TestAutoRecoverTable(TestCaseBase):
             24: 'self.check_re_add_replica_simplify_op()',
             25: 'self.recoverendpoint(self.ns_leader, self.leader)',
             26: 'self.confset(self.ns_leader, "auto_recover_table", "false")',
+            27: 'self.confset(self.ns_leader, "auto_recover_table", "true")',
+            28: 'self.stop_client(self.ns_leader)',
+            29: 'self.start_client(self.ns_leader, "nameserver")',
         }
 
 
@@ -164,13 +168,15 @@ class TestAutoRecoverTable(TestCaseBase):
         (1, 5, 0, 16, 0, 20),
         (1, 4, 0, 14, 0, 17),
         (1, 12, 3, 7, 2, 0, 13, 0, 18),  # RTIDB-222
-        (1, 26, 3, 0, 6, 15, 25, 0, 20, 24),  # 23-26 recoverendpoint
-        (1, 26, 3, 0, 6, 8, 12, 15, 25, 0, 19, 23),
-        (1, 26, 12, 2, 0, 6, 12, 13, 25, 0, 18, 22),
-        (1, 26, 2, 0, 6, 13, 25, 0, 17, 21),
+        (1, 26, 3, 0, 6, 15, 25, 0, 20, 24, 27),  # 23-26 recoverendpoint
+        (1, 26, 3, 0, 6, 8, 12, 15, 25, 0, 19, 23, 27),
+        (1, 26, 12, 2, 0, 6, 12, 13, 25, 0, 18, 22, 27),
+        (1, 26, 2, 0, 6, 13, 25, 0, 17, 21, 27),
+        # (1, 3, 0, 6, 15, 28, 0, 29, 0),  # recover when ns killed: RTIDB-243
     )
     @ddt.unpack
     def test_auto_recover_table(self, *steps):
+        self.get_new_ns_leader()
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
@@ -188,9 +194,7 @@ class TestAutoRecoverTable(TestCaseBase):
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
 
 
-    @ddt.data(
-        (1, 9, 15)
-    )
+    @ddt.data((1, 9, 15))
     @ddt.unpack
     def test_deadlock_bug(self, *steps):
         steps_dict = self.get_steps_dict()
@@ -198,6 +202,47 @@ class TestAutoRecoverTable(TestCaseBase):
             eval(steps_dict[i])
         rs = self.showtable(self.ns_leader)
         self.assertEqual(self.tname in rs.keys()[0], True)
+
+
+    @ddt.data(
+        (2, 0, 13, 0),
+        (3, 0, 15, 0),
+    )
+    @ddt.unpack
+    def test_no_replica_bug(self, *steps):  # RTIDB-221
+        """
+        没有副本的分片，挂掉后再恢复，会恢复为主节点
+        :param steps:
+        :return:
+        """
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        self.confset(self.ns_leader, 'auto_recover_table', 'true')
+        self.tname = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata(
+            '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
+            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"2-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertEqual('Create table ok' in rs, True)
+        table_info = self.showtable(self.ns_leader)
+        self.tid = int(table_info.keys()[0][1])
+        self.pid = 1
+        for _ in range(10):
+            self.put(self.leader, self.tid, self.pid, 'testkey0', self.now() + 90000, 'testvalue0')
+
+        steps_dict = self.get_steps_dict()
+        for i in steps:
+            eval(steps_dict[i])
+        rs = self.showtable(self.ns_leader)
+        infoLogger.info(rs)
+        self.assertEqual(rs[(self.tname, str(self.tid), str(self.pid), self.leader)],
+                         ['leader', '8', '144000', 'yes'])
 
 
 if __name__ == "__main__":
