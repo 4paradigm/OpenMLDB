@@ -30,7 +30,7 @@ class NsCluster(object):
         exe_shell("echo syncLimit=5 >> {}".format(zoo_cfg))
         exe_shell("echo dataDir={}/data >> {}".format(self.zk_path, zoo_cfg))
         exe_shell("echo clientPort={} >> {}".format(port, zoo_cfg))
-        exe_shell("echo server.1=172.27.128.35:2888:2890 >> {}".format(zoo_cfg))
+        # exe_shell("echo server.1=127.0.0.1:2888:2890 >> {}".format(zoo_cfg))
         # exe_shell("echo server.2=172.27.2.252:2888:2890 >> {}".format(zoo_cfg))
         # exe_shell("echo server.3=172.27.128.37:2888:2890 >> {}".format(zoo_cfg))
         exe_shell("sh {}/bin/zkServer.sh start".format(self.zk_path))
