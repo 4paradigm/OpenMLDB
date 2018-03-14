@@ -48,6 +48,7 @@ LogReplicator::LogReplicator(const std::string& path,
 }
 
 LogReplicator::~LogReplicator() {
+    DelAllReplicateNode();
     if (logs_ != NULL) {
         logs_->Clear();
     }
@@ -420,6 +421,9 @@ bool LogReplicator::DelAllReplicateNode() {
     std::vector<std::shared_ptr<ReplicateNode>> copied_nodes = nodes_;
     {
         std::lock_guard<bthread::Mutex> lock(mu_);
+        if (nodes_.size() <= 0) {
+            return true;
+        }
         PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]", 
                     nodes_.size(), table_->GetId(), table_->GetPid());
         nodes_.clear();
@@ -427,6 +431,7 @@ bool LogReplicator::DelAllReplicateNode() {
     }
     std::vector<std::shared_ptr<ReplicateNode>>::iterator it = copied_nodes.begin();
     for (; it !=  copied_nodes.end(); ++it) {
+        PDLOG(DEBUG, "stop replicator node");
         std::shared_ptr<ReplicateNode> node = *it;
         node->Stop();
     }

@@ -146,15 +146,6 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size){}
 
 TabletImpl::~TabletImpl() {
-    std::lock_guard<std::mutex> lock(mu_);
-    Replicators::iterator it = replicators_.begin();
-    for (; it != replicators_.end(); ++it) {
-        std::map<uint32_t, std::shared_ptr<LogReplicator> >::iterator iit = it->second.begin();
-        for (; iit != it->second.end(); ++iit) {
-            std::shared_ptr<LogReplicator> replicator = iit->second;
-            replicator->DelAllReplicateNode();
-        }
-    }
     task_pool_.Stop(true);
     keep_alive_pool_.Stop(true);
     gc_pool_.Stop(true);
