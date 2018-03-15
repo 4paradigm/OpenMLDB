@@ -49,8 +49,8 @@ class TbCluster(object):
                 rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
                 if 'rtidb' not in rs:
                     time.sleep(2)
-                    subprocess.Popen(args,stdout=open('{}/info.log'.format(tb_path), 'w'),
-                                     stderr=open('{}/warning.log'.format(tb_path), 'w'))
+                    subprocess.Popen(args,stdout=open('{}/info.log'.format(tb_path), 'a'),
+                                     stderr=open('{}/warning.log'.format(tb_path), 'a'))
                 else:
                     started.append(True)
                     break
