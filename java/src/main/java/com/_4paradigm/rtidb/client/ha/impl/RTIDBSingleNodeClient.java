@@ -45,6 +45,7 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
         options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
         options.setReadTimeoutMillis(config.getReadTimeout());
         options.setWriteTimeoutMillis(config.getWriteTimeout());
+        options.setMaxTryTimes(config.getMaxRetryCnt());
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
         Set<EndPoint> nodes = new HashSet<EndPoint>();
