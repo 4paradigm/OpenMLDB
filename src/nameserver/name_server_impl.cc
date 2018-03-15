@@ -198,34 +198,39 @@ bool NameServerImpl::RecoverOPTask() {
             return false;
         }
         std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
-        op_data->start_time_ = ::baidu::common::timer::now_time();
-        op_data->task_status_ = ::rtidb::api::kDoing;
         if (!op_data->op_info_.ParseFromString(value)) {
             PDLOG(WARNING, "parse op info failed! value[%s]", value.c_str());
             return false;
         }
-
-        switch (op_data->op_info_.op_type()) {
-            case ::rtidb::api::OPType::kMakeSnapshotOP:
-                if (!RecoverMakeSnapshot(op_data)) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+        if (op_data->op_info_.task_status() != ::rtidb::api::TaskStatus::kDone) {
+            switch (op_data->op_info_.op_type()) {
+                case ::rtidb::api::OPType::kMakeSnapshotOP:
+                    if (!RecoverMakeSnapshot(op_data)) {
+                        PDLOG(WARNING, "recover op[%s] failed", 
+                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                        return false;
+                    }
+                    break;
+                case ::rtidb::api::OPType::kAddReplicaOP:
+                    if (!RecoverAddReplica(op_data)) {
+                        PDLOG(WARNING, "recover op[%s] failed", 
+                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                        return false;
+                    }
+                    break;
+                case ::rtidb::api::OPType::kChangeLeaderOP:
+                    if (!RecoverChangeLeader(op_data)) {
+                        PDLOG(WARNING, "recover op[%s] failed", 
+                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                        return false;
+                    }
+                    break;
+                default:
+                    PDLOG(WARNING, "unsupport recover op[%s]!", 
+                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
                     return false;
-                }
-                break;
-            case ::rtidb::api::OPType::kAddReplicaOP:
-                if (!RecoverAddReplica(op_data)) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                    return false;
-                }
-                break;
-            default:
-                PDLOG(WARNING, "unsupport recover op[%s]!", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                return false;
+            }
         }
-
         uint64_t cur_op_id = std::stoull(op_id);;
         task_map_.insert(std::make_pair(cur_op_id, op_data));
         PDLOG(INFO, "recover op[%s] success. op_id[%lu]", 
@@ -271,19 +276,50 @@ bool NameServerImpl::RecoverMakeSnapshot(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
 
-    SkipDoneTask(op_data->op_info_.task_index(), op_data->task_list_);
+    SkipDoneTask(op_data);
     return true;
 }
 
-void NameServerImpl::SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list) {
-    for (uint32_t idx = 0; idx < task_index; idx++) {
-        std::shared_ptr<Task> task = task_list.front();
-        PDLOG(INFO, "task has done, remove from task_list. op_id[%lu] op_type[%s] task_type[%s]",
-                        task->task_info_->op_id(),
-                        ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
-                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-        task_list.pop_front();
+bool NameServerImpl::SkipDoneTask(std::shared_ptr<OPData> op_data) {
+    uint64_t op_id = op_data->op_info_.op_id();
+    std::string op_type = ::rtidb::api::OPType_Name(op_data->op_info_.op_type());
+    uint32_t task_index = op_data->op_info_.task_index();
+    if (op_data->task_list_.empty()) {
+        PDLOG(WARNING, "skip task failed, task_list is empty. op_id[%lu] op_type[%s]", 
+                        op_id, op_type.c_str());
+        return false;
     }
+    if (task_index > op_data->task_list_.size() -1) {
+        PDLOG(WARNING, "skip task failed. op_id[%lu] op_type[%s] task_index[%u]", 
+                        op_id, op_type.c_str(), task_index);
+        return false;
+    }
+    for (uint32_t idx = 0; idx < task_index; idx++) {
+        std::shared_ptr<Task> task = op_data->task_list_.front();
+        op_data->task_list_.pop_front();
+    }
+    if (!op_data->task_list_.empty()) {
+        std::shared_ptr<Task> task = op_data->task_list_.front();
+        PDLOG(INFO, "cur task[%s]. op_id[%lu] op_type[%s]",
+                    ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                    op_id, op_type.c_str());
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+            task->task_info_->set_status(::rtidb::api::TaskStatus::kFailed);
+            return true;
+        }
+        switch (task->task_info_->task_type()) {
+            case ::rtidb::api::TaskType::kSelectLeader:
+            case ::rtidb::api::TaskType::kUpdateLeaderInfo:
+            case ::rtidb::api::TaskType::kUpdatePartitionStatus:
+            case ::rtidb::api::TaskType::kUpdateTableAlive:
+            case ::rtidb::api::TaskType::kUpdateTableInfo:
+                task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+                break;
+            default:
+                task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
+        }
+    }
+    return true;
 }
 
 void NameServerImpl::UpdateTabletsLocked(const std::vector<std::string>& endpoints) {
@@ -567,17 +603,13 @@ int NameServerImpl::DeleteTask() {
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
-            if (iter->second->task_status_ == ::rtidb::api::kDoing) {
+            if (iter->second->op_info_.task_status() == ::rtidb::api::kDoing) {
                 if (iter->second->task_list_.empty()) {
                     done_task_vec.push_back(iter->first);
                 } else {
                     std::shared_ptr<Task> task = iter->second->task_list_.front();
                     if (task->task_info_->status() == ::rtidb::api::kFailed) {
                         done_task_vec.push_back(iter->first);
-                        iter->second->task_status_ = ::rtidb::api::kFailed;
-                        PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
-                                        ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(),
-                                        iter->first);
                     }
                 }
             }
@@ -604,20 +636,41 @@ int NameServerImpl::DeleteTask() {
     }
     if (!has_failed) {
         for (auto op_id : done_task_vec) {
-            std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
-            if (zk_client_->DeleteNode(node)) {
-                PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
+            std::shared_ptr<OPData> op_data;
+            {
                 std::lock_guard<std::mutex> lock(mu_);
                 auto pos = task_map_.find(op_id);
-                if (pos != task_map_.end()) {
-                    pos->second->end_time_ = ::baidu::common::timer::now_time();
-                    if (pos->second->task_status_ == ::rtidb::api::kDoing) {
-                        pos->second->task_status_ = ::rtidb::api::kDone;
-                        pos->second->task_list_.clear();
-                    }
+                if (pos == task_map_.end()) {
+                    PDLOG(WARNING, "has not found op[%lu] in task_map", op_id); 
+                    continue;
+                }
+                op_data = pos->second;
+            }
+            std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
+            if (!op_data->task_list_.empty() && 
+                    op_data->task_list_.front()->task_info_->status() == ::rtidb::api::kFailed) {
+                op_data->op_info_.set_task_status(::rtidb::api::kFailed);
+                op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
+                PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_id);
+                std::string value;
+                op_data->op_info_.SerializeToString(&value);
+                if (!zk_client_->SetNodeValue(node, value)) {
+                    PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]",
+                                node.c_str(), value.c_str());
                 }
             } else {
-                PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
+                if (zk_client_->DeleteNode(node)) {
+                    PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
+                    op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
+                    if (op_data->op_info_.task_status() == ::rtidb::api::kDoing) {
+                        op_data->op_info_.set_task_status(::rtidb::api::kDone);
+                        op_data->task_list_.clear();
+                    }
+                } else {
+                    PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
+                }
             }
         }
     }
@@ -637,7 +690,7 @@ void NameServerImpl::ProcessTask() {
             
             for (auto iter = task_map_.begin(); iter != task_map_.end(); iter++) {
                 if (iter->second->task_list_.empty() || 
-                        iter->second->task_status_ == ::rtidb::api::kFailed) {
+                        iter->second->op_info_.task_status() == ::rtidb::api::kFailed) {
                     continue;
                 }
                 std::shared_ptr<Task> task = iter->second->task_list_.front();
@@ -1145,20 +1198,15 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         OPStatus* op_status = response->add_op_status();
         op_status->set_op_id(kv.first);
         op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+        op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
         if (kv.second->task_list_.empty()) {
-            op_status->set_status("Done");
             op_status->set_task_type("-");
         } else { 
             std::shared_ptr<Task> task = kv.second->task_list_.front();
             op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
-            if (task->task_info_->status() == ::rtidb::api::kFailed) {
-                op_status->set_status("Failed");
-            } else {
-                op_status->set_status("Doing");
-            }
         }
-        op_status->set_start_time(kv.second->start_time_);
-        op_status->set_end_time(kv.second->end_time_);
+        op_status->set_start_time(kv.second->op_info_.start_time());
+        op_status->set_end_time(kv.second->op_info_.end_time());
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -1558,7 +1606,7 @@ bool NameServerImpl::RecoverAddReplica(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
 
-    SkipDoneTask(op_data->op_info_.task_index(), op_data->task_list_);
+    SkipDoneTask(op_data);
     return true;
 }
 
@@ -1811,12 +1859,12 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
     }
     op_index_++;
     op_data = std::make_shared<OPData>();
-    op_data->start_time_ = ::baidu::common::timer::now_time();
+    op_data->op_info_.set_start_time(::baidu::common::timer::now_time());
     op_data->op_info_.set_op_id(op_index_);
     op_data->op_info_.set_op_type(op_type);
     op_data->op_info_.set_task_index(0);
     op_data->op_info_.set_data(value);
-    op_data->task_status_ = ::rtidb::api::kDoing;
+    op_data->op_info_.set_task_status(::rtidb::api::kDoing);
     return 0;
 }
 
@@ -1991,6 +2039,63 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
     PDLOG(INFO, "add changeleader op. op_id[%lu] table[%s] pid[%u]", 
                 op_index_, name.c_str(), pid);
     return 0;
+}
+
+bool NameServerImpl::RecoverChangeLeader(std::shared_ptr<OPData> op_data) {
+    if (!op_data->op_info_.IsInitialized()) {
+        PDLOG(WARNING, "op_info is not init!");
+        return false;
+    }
+    if (op_data->op_info_.op_type() != ::rtidb::api::OPType::kChangeLeaderOP) {
+        PDLOG(WARNING, "op_type[%s] is not match", 
+                    ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+        return false;
+    }
+    ::rtidb::api::ChangeLeaderData change_leader_data;
+    if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
+        return false;
+    }
+    std::string name = change_leader_data.name();
+    uint32_t tid = change_leader_data.tid();
+    uint32_t pid = change_leader_data.pid();
+    std::vector<std::string> follower_endpoint;
+    for (int idx = 0; idx < change_leader_data.follower_size(); idx++) {
+        follower_endpoint.push_back(change_leader_data.follower(idx));
+    }
+    std::shared_ptr<Task> task = CreateSelectLeaderTask(
+                op_index_, ::rtidb::api::OPType::kChangeLeaderOP, 
+                name, tid, pid, follower_endpoint);
+    if (!task) {
+        PDLOG(WARNING, "create selectleader task failed. table[%s] pid[%u]", 
+                        name.c_str(), pid);
+        return false;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateChangeLeaderTask(op_index_, ::rtidb::api::OPType::kChangeLeaderOP, name, pid);
+    if (!task) {
+        PDLOG(WARNING, "create changeleader task failed. table[%s] pid[%u]", 
+                        name.c_str(), pid);
+        return false;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateUpdateLeaderInfoTask(op_index_, ::rtidb::api::OPType::kChangeLeaderOP, name, pid);
+    if (!task) {
+        PDLOG(WARNING, "create updateleaderinfo task failed. table[%s] pid[%u]", 
+                        name.c_str(), pid);
+        return false;
+    }
+    op_data->task_list_.push_back(task);
+    if (!SkipDoneTask(op_data)) {
+        PDLOG(WARNING, "SkipDoneTask task failed. op_id[%lu] task_index[%u] name[%s] pid[%u]", 
+                         op_data->op_info_.op_id(), op_data->op_info_.task_index(),
+                         name.c_str(), pid);
+        return false;
+    }
+    PDLOG(INFO, "recover ChangeLeader op ok. op_id[%lu] task_index[%u] name[%s] pid[%u]",
+                 op_data->op_info_.op_id(), op_data->op_info_.task_index(),
+                 name.c_str(), pid);
+    return true;
 }
 
 void NameServerImpl::OnLocked() {

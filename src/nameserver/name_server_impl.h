@@ -54,12 +54,8 @@ struct Task {
 };
 
 struct OPData {
-    OPData() : start_time_(0), end_time_(0) {}
     ::rtidb::api::OPInfo op_info_;
-    ::rtidb::api::TaskStatus task_status_;
     std::list<std::shared_ptr<Task>> task_list_;
-    uint64_t start_time_;
-    uint64_t end_time_;
 };
 
 class NameServerImpl : public NameServer {
@@ -190,7 +186,9 @@ private:
 
     bool RecoverAddReplica(std::shared_ptr<OPData> op_data);
 
-    void SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list);
+    bool RecoverChangeLeader(std::shared_ptr<OPData> op_data);
+
+    bool SkipDoneTask(std::shared_ptr<OPData> op_data);
 
     // Get the lock
     void OnLocked();
