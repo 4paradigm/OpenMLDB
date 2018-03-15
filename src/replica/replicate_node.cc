@@ -246,15 +246,20 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
 }
 
 void ReplicateNode::Stop() {
+
     is_running_.store(false, std::memory_order_relaxed);
+    if (worker_ == 0) {
+        return;
+    }
+
     if (bthread_stopped(worker_) == 1) {
         PDLOG(INFO, "sync thread for table #tid %u #pid %u has been stoped", tid_, pid_);
         return;
     }
-    int ok = bthread_stop(worker_);
-    if (ok != 0) {
-        PDLOG(WARNING, "fail to wait sync thread to stop for table #tid %u #pid %u, ret code %d", tid_, pid_, ok);
-    }
+
+    bthread_stop(worker_);
+    bthread_join(worker_, NULL);
+    worker_ = 0;
 }
 
 }
