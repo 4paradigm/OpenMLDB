@@ -49,7 +49,7 @@ class TbCluster(object):
                 rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
                 if 'rtidb' not in rs:
                     time.sleep(2)
-                    subprocess.Popen(args,stdout=open('{}/info{}.log'.format(tb_path, time.time()), 'w'),
+                    subprocess.Popen(args,stdout=open('{}/info.log'.format(tb_path), 'w'),
                                      stderr=open('{}/warning.log'.format(tb_path), 'w'))
                 else:
                     started.append(True)
@@ -63,7 +63,7 @@ class TbCluster(object):
             infoLogger.info(ep)
             port += ep.split(':')[1] + ' '
         infoLogger.info(port)
-        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep \"(LISTEN)\"|awk '{print $2}'|xargs kill;done"
+        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep \"(LISTEN)\"|awk '{print $2}'|xargs kill -9;done"
         exe_shell(cmd)
 
 

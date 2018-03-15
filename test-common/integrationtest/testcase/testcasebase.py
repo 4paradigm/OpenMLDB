@@ -72,14 +72,14 @@ class TestCaseBase(unittest.TestCase):
             rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(client.split(':')[1]))
             if 'rtidb' not in rs:
                 time.sleep(2)
-                subprocess.Popen(args,stdout=open('{}/info{}.log'.format(client_path, time.time()), 'w'),
+                subprocess.Popen(args, stdout=open('{}/info.log'.format(client_path), 'w'),
                                  stderr=open('{}/warning.log'.format(client_path), 'w'))
             else:
                 return True
         return False
 
     def stop_client(self, endpoint):
-        cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
+        cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill -9"
         utils.exe_shell(cmd)
 
     def get_new_ns_leader(self):

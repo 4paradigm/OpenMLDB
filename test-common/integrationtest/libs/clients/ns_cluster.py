@@ -68,6 +68,7 @@ class NsCluster(object):
             exe_shell("echo '--name_server_task_pool_size=10' >> {}".format(nameserver_flags))
             exe_shell("echo '--tablet_startup_wait_time=3000' >> {}".format(nameserver_flags))
             exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(nameserver_flags))
+            exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}'.format(self.test_path, nameserver_flags)
             infoLogger.info('start rtidb: {}'.format(cmd))
             args = shlex.split(cmd)
@@ -76,7 +77,7 @@ class NsCluster(object):
                 rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
                 if 'rtidb' not in rs:
                     time.sleep(2)
-                    subprocess.Popen(args,stdout=open('{}/info{}.log'.format(ns_path, time.time()), 'w'),
+                    subprocess.Popen(args,stdout=open('{}/info.log'.format(ns_path), 'w'),
                                      stderr=open('{}/warning.log'.format(ns_path), 'w'))
                 else:
                     started.append(True)
@@ -109,7 +110,7 @@ class NsCluster(object):
             infoLogger.info(ep)
             port += ep.split(':')[1] + ' '
         infoLogger.info(port)
-        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill;done"
+        cmd = "for i in {};".format(port) + " do lsof -i:${i}|grep -v 'PID'|awk '{print $2}'|xargs kill -9;done"
         exe_shell(cmd)
         time.sleep(1)
 
