@@ -21,18 +21,28 @@ public class RTIDBClientConfig {
 	private int readTimeout = 10000;
 	private int maxCntCnnPerHost = 2;
 	private boolean removeDuplicateByTime = false;
+	private int maxRetryCnt = 1;
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
+
 	public void disableMetrics() {
 	    enableMetrics = false;
 	}
-	
+
     public boolean isRemoveDuplicateByTime() {
         return removeDuplicateByTime;
     }
 
     public void setRemoveDuplicateByTime(boolean removeDuplicateByTime) {
         this.removeDuplicateByTime = removeDuplicateByTime;
+    }
+
+    public int getMaxRetryCnt() {
+        return maxRetryCnt;
+    }
+
+    public void setMaxRetryCnt(int maxRetryCnt) {
+        this.maxRetryCnt = maxRetryCnt;
     }
 
     public Mode getMode() {
