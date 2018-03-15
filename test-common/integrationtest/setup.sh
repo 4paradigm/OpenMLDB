@@ -24,7 +24,7 @@ echo export reportpath=${reportpath} >> ${testenvpath}
 echo export zkpath=${zkpath} >> ${testenvpath}
 
 mkdir ${testlogpath}
-cp ${rtidbpath} ${testpath}
+cp -f ${rtidbpath} ${testpath}
 
 # setup xmlrunner
 if [ -d "${testpath}/xmlrunner" ]

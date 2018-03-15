@@ -76,7 +76,7 @@ class NsCluster(object):
                 rs = exe_shell('lsof -i:{}|grep -v "PID"'.format(ep.split(':')[1]))
                 if 'rtidb' not in rs:
                     time.sleep(2)
-                    subprocess.Popen(args,stdout=open('{}/info.log'.format(ns_path), 'w'),
+                    subprocess.Popen(args,stdout=open('{}/info{}.log'.format(ns_path, time.time()), 'w'),
                                      stderr=open('{}/warning.log'.format(ns_path), 'w'))
                 else:
                     started.append(True)

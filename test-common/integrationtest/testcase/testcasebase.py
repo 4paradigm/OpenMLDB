@@ -72,7 +72,7 @@ class TestCaseBase(unittest.TestCase):
             rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(client.split(':')[1]))
             if 'rtidb' not in rs:
                 time.sleep(2)
-                subprocess.Popen(args,stdout=open('{}/info.log'.format(client_path), 'w'),
+                subprocess.Popen(args,stdout=open('{}/info{}.log'.format(client_path, time.time()), 'w'),
                                  stderr=open('{}/warning.log'.format(client_path), 'w'))
             else:
                 return True
