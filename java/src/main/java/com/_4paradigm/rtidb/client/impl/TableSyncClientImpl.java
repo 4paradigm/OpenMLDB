@@ -226,6 +226,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
+        if (client.getConfig().isRemoveDuplicateByTime()) {
+            builder.setEnableRemoveDuplicatedRecord(true);
+        }
         Tablet.ScanRequest request = builder.build();
         Long consuemd = System.nanoTime();
         Tablet.ScanResponse response = ts.scan(request);

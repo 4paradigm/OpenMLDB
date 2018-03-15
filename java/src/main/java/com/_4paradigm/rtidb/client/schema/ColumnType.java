@@ -66,6 +66,10 @@ public enum ColumnType {
 	        return kInt64;
 	    }else if ("float".equals(val)) {
 	        return kFloat;
+	    }else if ("uint32".equals(val)) {
+	        return kUInt32;
+	    }else if ("uint64".equals(val)) {
+	        return kUInt64;
 	    }
 	    return null;
 	}

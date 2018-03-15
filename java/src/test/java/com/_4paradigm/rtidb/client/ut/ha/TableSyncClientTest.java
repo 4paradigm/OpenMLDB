@@ -8,6 +8,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.PutFuture;
+import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
@@ -246,6 +248,30 @@ public class TableSyncClientTest {
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
+    }
+    
+    
+    public void testScanDuplicateRecord() {
+        config.setRemoveDuplicateByTime(true);
+        String name = createSchemaTable();
+        try {
+            boolean ok = tableSyncClient.put(name, 10, new Object[] { "card0", "1222", 1.0 });
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 10, new Object[] { "card0", "1223", 2.0 });
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.scan(name, "card0", "card", 12, 9);
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals("1223", row[1]);
+            Assert.assertEquals(2.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        } finally {
+            config.setRemoveDuplicateByTime(false);
+        }
+       
     }
     
 }
