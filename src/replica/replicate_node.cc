@@ -78,7 +78,6 @@ void ReplicateNode::MatchLogOffset() {
         if (ok != 0) {
             bthread_usleep(FLAGS_binlog_match_logoffset_interval * 1000); 
         }else {
-            log_matched_ = true; 
             return;
         }
     }
