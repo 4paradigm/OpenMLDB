@@ -41,7 +41,7 @@ enum OPType {
     kMakeSnapshotOP = 1;
     kAddReplicaOP = 2;
     kDelReplicaOP = 3;
-    kSelectLeaderOP = 4;
+    kChangeLeaderOP = 4;
     kOfflineReplicaOP = 5;
     kReAddReplicaOP = 6; 
     kReAddReplicaNoSendOP = 7;     // need not send snapshot
@@ -68,6 +68,8 @@ enum TaskType {
     kDropTable = 12;
     kUpdateTableAlive = 13;
     kUpdateTableInfo = 14;
+    kSelectLeader = 15;
+    kUpdateLeaderInfo = 16;
 }
 
 enum TaskStatus {
@@ -384,10 +386,20 @@ message GetManifestRequest {
     optional uint32 pid = 2;
 }
 
-message GetManifestResponse{ 
+message GetManifestResponse { 
     optional int32 code = 1;
     optional string msg = 2;
     optional Manifest manifest = 3;
+}
+
+message ChangeLeaderData {
+    optional string name = 1;
+    optional uint32 tid = 2;
+    optional uint32 pid = 3;
+    optional uint64 term = 4;
+    optional uint64 offset = 5;
+    optional string leader = 6;
+    repeated string follower = 7;
 }
 
 message ConnectZKRequest {}
