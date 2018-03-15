@@ -81,6 +81,8 @@ TEST_F(TabletImplTest, KeepAlive) {
     TabletImpl tablet;
     ok = tablet.Init();
     ASSERT_TRUE(ok);
+    ok = tablet.RegisterZK();
+    ASSERT_TRUE(ok);
     sleep(5);
     ASSERT_TRUE(call_invoked);
 }
