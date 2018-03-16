@@ -109,27 +109,27 @@ bool NameServerImpl::Recover() {
     }
     value.clear();
     if (!zk_client_->GetNodeValue(zk_auto_failover_node_, value)) {
-        auto_failover_.load(std::memory_order_acquire) ? value = "1" : value = "0";
+        auto_failover_.load(std::memory_order_acquire) ? value = "true" : value = "false";
         if (!zk_client_->CreateNode(zk_auto_failover_node_, value)) {
             PDLOG(WARNING, "create auto failover node failed!");
             return false;
         }
         PDLOG(INFO, "set zk_auto_failover_node[%s]", value.c_str());
     } else {
-        value == "1" ? auto_failover_.store(true, std::memory_order_release) :
+        value == "true" ? auto_failover_.store(true, std::memory_order_release) :
                        auto_failover_.store(false, std::memory_order_release);
         PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
     }
     value.clear();
     if (!zk_client_->GetNodeValue(zk_auto_recover_table_node_, value)) {
-        auto_recover_table_.load(std::memory_order_acquire) ? value = "1" : value = "0";
+        auto_recover_table_.load(std::memory_order_acquire) ? value = "true" : value = "false";
         if (!zk_client_->CreateNode(zk_auto_recover_table_node_, value)) {
             PDLOG(WARNING, "create auto recover table node failed!");
             return false;
         }
         PDLOG(INFO, "set zk_auto_recover_table_node[%s]", value.c_str());
     } else {
-        value == "1" ? auto_recover_table_.store(true, std::memory_order_release) :
+        value == "true" ? auto_recover_table_.store(true, std::memory_order_release) :
                        auto_recover_table_.store(false, std::memory_order_release);
         PDLOG(INFO, "get zk_auto_recover_table_node[%s]", value.c_str());
 
@@ -845,29 +845,37 @@ void NameServerImpl::ConfSet(RpcController* controller,
         PDLOG(WARNING, "key[%s] value[%s]", key.c_str(), value.c_str());
         return;
     }
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+    if (value != "true" && value != "false") {
+        response->set_code(-1);
+        response->set_msg("invalid value");
+        PDLOG(WARNING, "invalid value[%s]", request->conf().value().c_str());
+        return;
+    }
     if (key == "auto_failover") {
-        if (strcasecmp(value.c_str(), "true") == 0) {
-            auto_failover_.store(true, std::memory_order_release);
-        } else if (strcasecmp(value.c_str(), "false") == 0) {
-            auto_failover_.store(false, std::memory_order_release);
-        } else {
+        if (!zk_client_->SetNodeValue(zk_auto_failover_node_, value)) {
+            PDLOG(WARNING, "set auto_failover_node failed!");
             response->set_code(-1);
-            response->set_msg("invalid value");
-            PDLOG(WARNING, "invalid value[%s]", value.c_str());
+            response->set_msg("set auto_failover_node failed");
             return;
+        }
+        if (value == "true") {
+            auto_failover_.store(true, std::memory_order_release);
+        } else {
+            auto_failover_.store(false, std::memory_order_release);
         }
     } else if (key == "auto_recover_table") {
-        if (strcasecmp(value.c_str(), "true") == 0) {
-            auto_recover_table_.store(true, std::memory_order_release);
-        } else if (strcasecmp(value.c_str(), "false") == 0) {
-            auto_recover_table_.store(false, std::memory_order_release);
-        } else {
+        if (!zk_client_->SetNodeValue(zk_auto_recover_table_node_, value)) {
+            PDLOG(WARNING, "set auto_recover_table_node failed!");
             response->set_code(-1);
-            response->set_msg("invalid value");
-            PDLOG(WARNING, "invalid value[%s]", value.c_str());
+            response->set_msg("set auto_recover_table_node failed");
             return;
         }
-
+        if (value == "true") {
+            auto_recover_table_.store(true, std::memory_order_release);
+        } else {
+            auto_recover_table_.store(false, std::memory_order_release);
+        }
     } else {
         response->set_code(-1);
         response->set_msg("unsupport set this key");
