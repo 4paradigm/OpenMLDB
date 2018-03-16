@@ -303,6 +303,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
+        if (client.getConfig().isRemoveDuplicateByTime()) {
+            builder.setEnableRemoveDuplicatedRecord(true);
+        }
         Tablet.ScanRequest request = builder.build();
         Long startTime = System.nanoTime();
         PartitionHandler ph = th.getHandler(pid);

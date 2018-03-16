@@ -48,7 +48,6 @@ public:
     }
 
     ~MockTabletImpl() {
-        replicator_.Stop();
     }
     bool Init() {
         //table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
@@ -115,7 +114,7 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);
 }
 
-TEST_F(LogReplicatorTest, Init) {
+TEST_F(LogReplicatorTest,  Init) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
@@ -125,10 +124,9 @@ TEST_F(LogReplicatorTest, Init) {
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
     ASSERT_TRUE(ok);
-    replicator.Stop();
 }
 
-TEST_F(LogReplicatorTest, BenchMark) {
+TEST_F(LogReplicatorTest,  BenchMark) {
     std::vector<std::string> endpoints;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
@@ -144,10 +142,9 @@ TEST_F(LogReplicatorTest, BenchMark) {
     entry.set_ts(9527);
     ok = replicator.AppendEntry(entry);
     ASSERT_TRUE(ok);
-    replicator.Stop();
 }
 
-TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
+TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -241,7 +238,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         PDLOG(INFO, "start follower");
     }
     sleep(20);
-    leader.Stop();
+    leader.DelAllReplicateNode();
     ASSERT_EQ(3, t8->GetRecordCnt());
     ASSERT_EQ(5, t8->GetRecordIdxCnt());
     {
@@ -291,7 +288,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
 
 
 
-TEST_F(LogReplicatorTest, LeaderAndFollower) {
+TEST_F(LogReplicatorTest,  LeaderAndFollower) {
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
@@ -360,7 +357,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         PDLOG(INFO, "start follower");
     }
     sleep(20);
-    leader.Stop();
+    leader.DelAllReplicateNode();
     ASSERT_EQ(4, t8->GetRecordCnt());
     ASSERT_EQ(4, t8->GetRecordIdxCnt());
     {
@@ -404,6 +401,7 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    int ok = RUN_ALL_TESTS();
+    return ok; 
 }
 
