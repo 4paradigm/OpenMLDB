@@ -159,13 +159,16 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_EQ(0, response.code());
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_FALSE(ok);
+    delete nameserver;
+    delete tablet;
 }
 
 TEST_F(NameServerImplTest, ConfigGetAndSet) {
     FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
-    FLAGS_endpoint = "127.0.0.1:9631";
+    std::string endpoint = "27.0.0.1:9631";
+    FLAGS_endpoint = endpoint;
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
@@ -180,14 +183,30 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::rtidb::client::NsClient name_server_client(FLAGS_endpoint);
+    
+    std::string endpoint1 = "127.0.0.1:9632";
+    FLAGS_endpoint = endpoint1;
+    NameServerImpl* nameserver1 = new NameServerImpl();
+    ok = nameserver1->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options1;
+	brpc::Server server1;
+	if (server1.AddService(nameserver1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ::rtidb::client::NsClient name_server_client(endpoint);
     name_server_client.Init();
     std::string key = "auto_failover";
     std::string msg;
     std::map<std::string, std::string> conf_map;
     bool ret = name_server_client.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
-    printf("value %s\n", conf_map[key].c_str());
     ASSERT_STREQ(conf_map[key].c_str(), "false");
     ret = name_server_client.ConfSet(key, "true", msg);
     ASSERT_TRUE(ret);
@@ -195,6 +214,15 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ret = name_server_client.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
     ASSERT_STREQ(conf_map[key].c_str(), "true");
+    ret = name_server_client.DisConnectZK(msg);
+    sleep(5);
+    ::rtidb::client::NsClient name_server_client1(endpoint1);
+    name_server_client1.Init();
+    ret = name_server_client1.ConfGet(key, conf_map, msg);
+    ASSERT_TRUE(ret);
+    ASSERT_STREQ(conf_map[key].c_str(), "true");
+    delete nameserver;
+    delete nameserver1;
 }
 
 TEST_F(NameServerImplTest, CreateTable) {
@@ -269,6 +297,8 @@ TEST_F(NameServerImplTest, CreateTable) {
             &request, &response, 12, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
+    delete nameserver;
+    delete tablet;
 }    
 
 TEST_F(NameServerImplTest, Offline) {
@@ -383,6 +413,9 @@ TEST_F(NameServerImplTest, Offline) {
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
+    delete nameserver;
+    delete tablet;
+    delete tablet2;
 }
 
 }
