@@ -25,9 +25,11 @@ def load(cls):
     runner.run(suite)
 
 
-def load_all():
+def load_all(regex='.'):
     testpath = os.getenv('testpath')
-    tests = commands.getstatusoutput('ls {}/testcase|grep -P "^test_[a-z_]+.py$"'.format(testpath))[1].split('\n')
+    tests = commands.getstatusoutput('ls {}/testcase|grep -P "^test_[a-z_]+.py$"'
+                                     '|grep -P "{}"'.format(testpath, regex))[1].split('\n')
+    print tests
     test_suite = []
     for module in tests:
         mo = importlib.import_module('testcase.{}'.format(module[:-3]))

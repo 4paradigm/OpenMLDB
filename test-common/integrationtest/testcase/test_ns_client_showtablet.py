@@ -14,7 +14,7 @@ class TestShowTablet(TestCaseBase):
         健康的节点，状态为kTabletHealthy
         :return:
         """
-        name = 't{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 8,

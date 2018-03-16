@@ -19,6 +19,7 @@ class TestConfSetGet(TestCaseBase):
         ('true', 'FalsE', 'set auto_failover ok','false'),
         ('true', '0', 'failed to set auto_failover. error msg: invalid value', 'true'),
         ('true', 'FAlsee', 'failed to set auto_failover. error msg: invalid value', 'true'),
+        ('true', 'true', 'set auto_failover ok','true'),
     )
     @ddt.unpack
     def test_auto_failover_confset(self, pre_set, set_value, msg, get_value):
@@ -41,6 +42,7 @@ class TestConfSetGet(TestCaseBase):
         ('true', 'FalsE', 'set auto_recover_table ok','false'),
         ('true', '0', 'failed to set auto_recover_table. error msg: invalid value', 'true'),
         ('true', 'FAlsee', 'failed to set auto_recover_table. error msg: invalid value', 'true'),
+        ('true', 'true', 'set auto_recover_table ok','true'),
     )
     @ddt.unpack
     def test_auto_recover_table_confset(self, pre_set, set_value, msg, get_value):

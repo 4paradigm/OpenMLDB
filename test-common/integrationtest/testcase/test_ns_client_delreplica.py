@@ -25,7 +25,7 @@ class TestDelReplicaNs(TestCaseBase):
         rs1 = self.showopstatus(self.ns_leader)
         old_last_op_id = max(rs1.keys()) if rs1 != {} else 1
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 'tname{}'.format(time.time())
         if conf.multidimension is False:
             m = utils.gen_table_metadata(
                 '"{}"'.format(name), None, 144000, 2,

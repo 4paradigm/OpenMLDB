@@ -173,7 +173,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(int(time.time() * 1000000 % 10000000000))
+        name = '"tname{}"'.format(time.time())
         table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
         table_partition2 = ('table_partition', '"{}"'.format(self.slave1), pid_group2[0], pid_group2[1])
         m = utils.gen_table_metadata(name, None, 144000, 2, table_partition1, table_partition2)
@@ -218,7 +218,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(int(time.time() * 1000000 % 10000000000))
+        name = '"tname{}"'.format(time.time())
         m = utils.gen_table_metadata(
             name, None, 144000, 2,
             ('table_partition', ep[0], '"0-2"', 'true'),
@@ -259,7 +259,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(int(time.time() * 1000000 % 10000000000))
+        name = '"tname{}"'.format(time.time())
         m = utils.gen_table_metadata(
             name, None, 144000, 2,
             *table_partition)

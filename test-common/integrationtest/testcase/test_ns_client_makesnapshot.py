@@ -16,7 +16,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         """
         self.clear_ns_table(self.ns_leader)
         old_last_op_id = max(self.showopstatus(self.ns_leader).keys()) if self.showopstatus(self.ns_leader) != {} else 1
-        name = 't{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
 
         pid_group = '"0-2"'
@@ -55,7 +55,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         :return:
         """
-        name = 't{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 8,
@@ -75,7 +75,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         :return:
         """
-        name = 't{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 8,

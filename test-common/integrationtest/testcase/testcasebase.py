@@ -39,7 +39,7 @@ class TestCaseBase(unittest.TestCase):
         cls.slave2path = cls.node_path_dict[cls.slave2]
 
     def setUp(self):
-        infoLogger.info('\n\n\n\n*** TEST CASE NAME: ' + self._testMethodName)
+        infoLogger.info('\n' * 5 + '*** TEST CASE NAME: ' + self._testMethodName)
         try:
             self.tid = int(utils.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
         except Exception, e:

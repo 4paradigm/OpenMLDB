@@ -19,7 +19,7 @@ class TestOfflineEndpoint(TestCaseBase):
         """
         self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
@@ -78,7 +78,7 @@ class TestOfflineEndpoint(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),

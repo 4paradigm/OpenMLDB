@@ -25,7 +25,7 @@ class TestAddReplicaNs(TestCaseBase):
         rs = self.showopstatus(self.ns_leader)
         old_last_op_id = max(rs.keys()) if rs != {} else 1
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(int(time.time() * 1000000 % 10000000000))
+        name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
@@ -97,7 +97,7 @@ class TestAddReplicaNs(TestCaseBase):
         """
         self.start_client(self.slave1)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(int(time.time() * 1000000 % 10000000000))
+        name = '"tname{}"'.format(time.time())
         m = utils.gen_table_metadata(
             name, None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
