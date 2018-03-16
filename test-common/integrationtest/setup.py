@@ -19,9 +19,9 @@ if __name__ == '__main__':
     nsc.clear_zk()
     nsc.kill(*nsc.endpoints)
     tbc.kill(*tbc.endpoints)
-    tbc.clear_db()
 
     if not args.teardown or args.teardown.lower() == 'false':
+        tbc.clear_db()
         nsc.clear_ns()
         nsc.start_zk()
         nsc.start(*nsc.endpoints)
