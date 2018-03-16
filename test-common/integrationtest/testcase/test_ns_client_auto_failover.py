@@ -134,7 +134,7 @@ class TestAutoFailover(TestCaseBase):
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"2"', 'false'),
             ('column_desc', '"k1"', '"string"', 'true'),
         )
         utils.gen_table_metadata_file(m, metadata_path)
@@ -148,21 +148,29 @@ class TestAutoFailover(TestCaseBase):
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
 
         self.connectzk(self.leader)  # flashbreak
+        self.showtable(self.ns_leader)
         time.sleep(10)
+        rs2 = self.showtable(self.ns_leader)
         self.connectzk(self.slave1)  # flashbreak
+        self.showtable(self.ns_leader)
         time.sleep(10)
-
-        rs2 = self.showtablet(self.ns_leader)
         rs3 = self.showtable(self.ns_leader)
-        self.assertEqual('kTabletHealthy' in rs2[self.leader], True)
-        self.assertEqual('kTabletHealthy' in rs2[self.slave1], True)
+        rs4 = self.showtablet(self.ns_leader)
+        self.assertEqual('kTabletHealthy' in rs4[self.leader], True)
+        self.assertEqual('kTabletHealthy' in rs4[self.slave1], True)
+
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
 
         self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['leader', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
 
 

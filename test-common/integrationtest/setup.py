@@ -21,8 +21,8 @@ if __name__ == '__main__':
     tbc.kill(*tbc.endpoints)
 
     if not args.teardown or args.teardown.lower() == 'false':
-        tbc.clear_db()
-        nsc.clear_ns()
+        # tbc.clear_db()
+        # nsc.clear_ns()
         nsc.start_zk()
         nsc.start(*nsc.endpoints)
         nsc.get_ns_leader()

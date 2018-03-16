@@ -72,6 +72,10 @@ class TestNameserverHa(TestCaseBase):
             13: 'self.assertEqual("15", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
             14: 'self.assertEqual("drop ok", self.ns_drop(self.ns_leader, self.tname))',
             15: 'self.assertFalse(self.showtable(self.ns_leader) is {})',
+            16: 'self.confset(self.ns_leader, "auto_failover", "false")',
+            17: 'self.confset(self.ns_leader, "auto_recover_table", "false")',
+            18: 'self.assertEqual("false" in self.confget(self.ns_leader, "auto_failover"), True)',
+            19: 'self.assertEqual("false" in self.confget(self.ns_leader, "auto_recover_table"), True)',
         }
 
 
@@ -85,6 +89,7 @@ class TestNameserverHa(TestCaseBase):
         (9,1,3,0,8,9,14,15,-1),  # ns_leader断网，可以drop表
         (9,1,2,0,7,9,1,15,-1),  # ns_leader挂掉，可以create并put
         (9,1,3,0,8,9,1,15,-1),  # ns_leader断网，可以create并put
+        (9,1,16,17,2,0,7,9,18,19),  # ns_leader confset之后挂掉，新ns_leader在confget时新的conf  # RTIDB-197
     )
     @ddt.unpack
     def test_ns_ha(self, *steps):
