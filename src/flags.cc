@@ -13,7 +13,7 @@ DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,i
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep alive check");
 DEFINE_int32(get_task_status_interval, 5000, "config the interval of get task status");
-DEFINE_int32(name_server_task_pool_size, 3, "config the size of name server task pool");
+DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
 DEFINE_bool(auto_recover_table, false, "enable or disable auto recover table");

@@ -51,6 +51,7 @@ enum OPType {
     kMigrateOP = 11;
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
+    kRecoverTableOP = 14;
 }
 
 enum TaskType {
@@ -70,6 +71,7 @@ enum TaskType {
     kUpdateTableInfo = 14;
     kSelectLeader = 15;
     kUpdateLeaderInfo = 16;
+    kRecoverTable = 17;
 }
 
 enum TaskStatus {
@@ -403,6 +405,12 @@ message ChangeLeaderData {
     optional uint64 offset = 5;
     optional string leader = 6;
     repeated string follower = 7;
+}
+
+message EndPointPartitionData {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional string endpoint = 3;
 }
 
 message ConnectZKRequest {}

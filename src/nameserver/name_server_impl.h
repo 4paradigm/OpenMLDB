@@ -278,10 +278,14 @@ private:
 	std::shared_ptr<Task> CreateDropTableTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
 
+	std::shared_ptr<Task> CreateRecoverTableTask(uint64_t op_index, ::rtidb::api::OPType op_type, 
+                    const std::string& name, uint32_t pid, const std::string& endpoint);
+
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data);
     int AddOPData(const std::shared_ptr<OPData>& op_data);
     int CreateDelReplicaOP(const DelReplicaData& del_replica_data, ::rtidb::api::OPType op_type);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
+    int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
@@ -289,7 +293,8 @@ private:
     void UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> task_info);                
     int CreateMigrateOP(const std::string& src_endpoint, const std::string& name, uint32_t pid,
                     const std::string& des_endpoint);
-    void RecoverTable(const std::string& name, uint32_t pid, const std::string& endpoint);                    
+    void RecoverEndpointTable(const std::string& name, uint32_t pid, const std::string& endpoint,
+                    std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
     int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
