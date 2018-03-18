@@ -82,14 +82,14 @@ class TestNameserverHa(TestCaseBase):
 
 
     @ddt.data(
-        (9,1,3,8,5,5,5,5,5,-1,2,7,0,9,13,14),  # ns_leader断网，可以继续put及同步数据
-        (9,1,2,7,5,5,5,5,5,0,9,13,14),  # ns_leader挂掉，可以继续put及同步数据
-        (9,1,4,6,3,0,8,12,2,7,0,9),  # ns_leader断网，可以makesnapshot成功
-        (9,1,4,6,2,0,7,12,9),  # ns_leader挂掉，可以makesnapshot成功
-        (9,1,2,0,7,9,14,15,-1),  # ns_leader挂掉，可以drop表
-        (9,1,3,0,8,2,7,0,9,14,15,-1),  # ns_leader断网，可以drop表
-        (9,1,2,0,7,9,1,15,-1),  # ns_leader挂掉，可以create并put
-        (9,1,3,0,8,2,7,0,9,1,15,-1),  # ns_leader断网，可以create并put
+        # (9,1,3,8,5,5,5,5,5,-1,2,7,0,9,13,14),  # ns_leader断网，可以继续put及同步数据
+        # (9,1,2,7,5,5,5,5,5,0,9,13,14),  # ns_leader挂掉，可以继续put及同步数据
+        # (9,1,4,6,3,0,8,12,2,7,0,9),  # ns_leader断网，可以makesnapshot成功
+        # (9,1,4,6,2,0,7,12,9),  # ns_leader挂掉，可以makesnapshot成功
+        # (9,1,2,0,7,9,14,15,-1),  # ns_leader挂掉，可以drop表
+        # (9,1,3,0,8,2,7,0,9,14,15,-1),  # ns_leader断网，可以drop表
+        # (9,1,2,0,7,9,1,15,-1),  # ns_leader挂掉，可以create并put
+        # (9,1,3,0,8,2,7,0,9,1,15,-1),  # ns_leader断网，可以create并put
     )
     @ddt.unpack
     def test_ns_ha(self, *steps):
@@ -102,10 +102,12 @@ class TestNameserverHa(TestCaseBase):
 
     @ddt.data(
         (9,20,-1,8,0,2,7,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
-        (9,20,-1,2,7,0,9),
+        (9,20,-1,2,7,0,9),  # 唯一一个ns_leader重启后，可以正确判断节点状态
+        (9,3,8,0,9),  # 唯一一个ns_leader断网重启后，可以正确判断节点状态
+        (9,2,7,0,9),  # 唯一一个ns_leader重启后，可以正确判断节点状态
     )
     @ddt.unpack
-    def test_ns_unique_leader_ha(self, *steps):
+    def test_ns_after_failover(self, *steps):
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))

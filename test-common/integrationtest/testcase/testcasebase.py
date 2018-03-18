@@ -46,7 +46,7 @@ class TestCaseBase(unittest.TestCase):
             self.tid = int(utils.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
         except Exception, e:
             self.tid = 1
-        self.pid = random.randint(10, 100)
+        self.pid = random.randint(1, 1000)
         self.clear_ns_table(self.ns_leader)
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
