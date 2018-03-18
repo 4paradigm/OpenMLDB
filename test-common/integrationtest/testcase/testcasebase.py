@@ -40,19 +40,29 @@ class TestCaseBase(unittest.TestCase):
 
     def setUp(self):
         infoLogger.info('\n' * 5 + '*** TEST CASE NAME: ' + self._testMethodName)
+        self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+        self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
         try:
             self.tid = int(utils.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
         except Exception, e:
             self.tid = 1
         self.pid = random.randint(10, 100)
         self.clear_ns_table(self.ns_leader)
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        self.confset(self.ns_leader, 'auto_recover_table', 'true')
 
     def tearDown(self):
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        self.confset(self.ns_leader, 'auto_recover_table', 'true')
         self.clear_ns_table(self.ns_leader)
         for edp_tuple in conf.tb_endpoints:
-            epd = edp_tuple[1]
-            self.start_client(epd)
-            self.drop(epd, self.tid, self.pid)
+            edp = edp_tuple[1]
+            rs = self.start_client(edp)
+            if rs[1]:
+                time.sleep(10)
+                self.recoverendpoint(self.ns_leader, edp)
+                time.sleep(3)
+        self.drop(edp, self.tid, self.pid)
 
     def now(self):
         return int(time.time() * 1000000 / 1000)
@@ -68,18 +78,20 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{}/rtidb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
         infoLogger.info(cmd)
         args = shlex.split(cmd)
-        for _ in range(5):
+        need_start = False
+        for _ in range(10):
             rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(client.split(':')[1]))
             if 'rtidb' not in rs:
-                time.sleep(2)
+                need_start = True
+                time.sleep(1)
                 subprocess.Popen(args, stdout=open('{}/info.log'.format(client_path), 'a'),
                                  stderr=open('{}/warning.log'.format(client_path), 'a'))
             else:
-                return True
-        return False
+                return True, need_start
+        return False, need_start
 
     def stop_client(self, endpoint):
-        cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill -9"
+        cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
         utils.exe_shell(cmd)
 
     def get_new_ns_leader(self):

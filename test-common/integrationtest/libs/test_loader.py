@@ -25,10 +25,11 @@ def load(cls):
     runner.run(suite)
 
 
-def load_all(regex='.'):
+def load_all(pipe=''):
     testpath = os.getenv('testpath')
-    tests = commands.getstatusoutput('ls {}/testcase|grep -P "^test_[a-z_]+.py$"'
-                                     '|grep -P "{}"'.format(testpath, regex))[1].split('\n')
+    cmd = 'ls {}/testcase|grep "^test_.*py$"{}'.format(testpath, pipe)
+    print '\n'*10, cmd
+    tests = commands.getstatusoutput(cmd)[1].split('\n')
     print tests
     test_suite = []
     for module in tests:

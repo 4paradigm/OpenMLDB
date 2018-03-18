@@ -168,7 +168,7 @@ class TestSendSnapshot(TestCaseBase):
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 0)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.assertEqual(self.start_client(self.leader), True)
+        self.assertEqual(self.start_client(self.leader)[0], True)
 
 
     @ddt.data(
@@ -297,8 +297,9 @@ class TestSendSnapshot(TestCaseBase):
         # Teardown
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
         self.stop_client(self.leader)
-        time.sleep(5)
+        time.sleep(1)
         self.start_client(self.leader)
+        time.sleep(10)
 
 
 if __name__ == "__main__":

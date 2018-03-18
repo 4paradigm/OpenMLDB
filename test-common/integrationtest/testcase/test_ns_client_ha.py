@@ -76,20 +76,20 @@ class TestNameserverHa(TestCaseBase):
             17: 'self.confset(self.ns_leader, "auto_recover_table", "false")',
             18: 'self.assertEqual("false" in self.confget(self.ns_leader, "auto_failover"), True)',
             19: 'self.assertEqual("false" in self.confget(self.ns_leader, "auto_recover_table"), True)',
+            20: 'self.stop_client(self.ns_slaver)',
+            21: 'self.start_client(self.ns_slaver)',
         }
 
 
     @ddt.data(
-        (9,8,9),  # RTIDB-223
-        (9,1,3,8,5,5,5,5,5,-1,9,13,14),  # ns_leader断网，可以继续put及同步数据
-        (9,1,2,7,5,5,5,5,5,-1,9,13,14),  # ns_leader挂掉，可以继续put及同步数据
-        (9,1,4,6,3,0,8,12,9),  # ns_leader断网，可以makesnapshot成功
+        (9,1,3,8,5,5,5,5,5,-1,2,7,0,9,13,14),  # ns_leader断网，可以继续put及同步数据
+        (9,1,2,7,5,5,5,5,5,0,9,13,14),  # ns_leader挂掉，可以继续put及同步数据
+        (9,1,4,6,3,0,8,12,2,7,0,9),  # ns_leader断网，可以makesnapshot成功
         (9,1,4,6,2,0,7,12,9),  # ns_leader挂掉，可以makesnapshot成功
         (9,1,2,0,7,9,14,15,-1),  # ns_leader挂掉，可以drop表
-        (9,1,3,0,8,9,14,15,-1),  # ns_leader断网，可以drop表
+        (9,1,3,0,8,2,7,0,9,14,15,-1),  # ns_leader断网，可以drop表
         (9,1,2,0,7,9,1,15,-1),  # ns_leader挂掉，可以create并put
-        (9,1,3,0,8,9,1,15,-1),  # ns_leader断网，可以create并put
-        (9,1,16,17,2,0,7,9,18,19),  # ns_leader confset之后挂掉，新ns_leader在confget时新的conf  # RTIDB-197
+        (9,1,3,0,8,2,7,0,9,1,15,-1),  # ns_leader断网，可以create并put
     )
     @ddt.unpack
     def test_ns_ha(self, *steps):
@@ -97,8 +97,64 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'],
-                         self.showtable(self.ns_slaver).values()[0])
+        rs = self.showtable(self.ns_slaver).values()
+        self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
+
+    @ddt.data(
+        (9,20,-1,8,0,2,7,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
+        (9,20,-1,2,7,0,9),
+    )
+    @ddt.unpack
+    def test_ns_unique_leader_ha(self, *steps):
+        steps_dict = self.get_steps_dict()
+        for i in steps:
+            infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
+            eval(steps_dict[i])
+        self.stop_client(self.leader)
+        time.sleep(5)
+        rs = self.showtablet(self.ns_leader)
+        self.start_client(self.leader)
+        time.sleep(10)
+        self.assertTrue(rs[self.leader][0] == 'kTabletOffline')
+
+    @ddt.data(
+        (9,1,16,17,2,0,7,9),  # ns_leader confset之后挂掉，新ns_leader在confget时新的conf  # RTIDB-197
+    )
+    @ddt.unpack
+    def test_ns_slaver_conf_sync(self, *steps):
+        steps_dict = self.get_steps_dict()
+        for i in steps:
+            infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
+            eval(steps_dict[i])
+        rs = self.showtable(self.ns_slaver).values()
+        rs1 = self.confget(self.ns_leader, "auto_failover")
+        rs2 = self.confget(self.ns_leader, "auto_recover_table")
+        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc.kill(*nsc.endpoints)
+        nsc.start(*nsc.endpoints)
+        nsc.get_ns_leader()
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        self.confset(self.ns_leader, 'auto_recover_table', 'true')
+        self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
+        self.assertEqual('false' in rs1, True)
+        self.assertEqual('false' in rs2, True)
+
+    @ddt.data(
+        (9,8,0,9),  # ns 闪断，RTIDB-223
+    )
+    @ddt.unpack
+    def test_ns_flashbreak(self, *steps):
+        steps_dict = self.get_steps_dict()
+        for i in steps:
+            infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
+            eval(steps_dict[i])
+        rs = self.showtable(self.ns_slaver).values()
+        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc.kill(*nsc.endpoints)
+        nsc.start(*nsc.endpoints)
+        time.sleep(3)
+        nsc.get_ns_leader()
+        self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
 
 
 if __name__ == "__main__":

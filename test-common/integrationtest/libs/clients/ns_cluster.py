@@ -101,6 +101,7 @@ class NsCluster(object):
         self.ns_leader = ns_leader
         exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
         exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
+        return ns_leader
 
 
     def kill(self, *endpoints):

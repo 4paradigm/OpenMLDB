@@ -70,7 +70,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         if exp_msg == 'Create table ok':
             table_info = self.showtable(self.ns_leader)
             tid = table_info.keys()[0][1]
-            pid = table_info.keys()[0][2]
+            pid = 1
             self.put(self.leader, tid, pid, 'testkey0', self.now() + 100, 'testvalue0')
             time.sleep(0.5)
             self.assertTrue(
@@ -105,7 +105,7 @@ class TestCreateTableByNsClient(TestCaseBase):
 
         table_info = self.showtable(self.ns_leader)
         tid = table_info.keys()[0][1]
-        pid = table_info.keys()[0][2]
+        pid = 1
         ts = self.now() + 1000
         for _ in range(10):
             self.put(self.leader, tid, pid, 'testkey0', ts, 'testvalue0')

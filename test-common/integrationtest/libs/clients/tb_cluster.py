@@ -40,6 +40,8 @@ class TbCluster(object):
             exe_shell("echo '--zk_root_path=/onebox' >> {}".format(rtidb_flags))
             exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(rtidb_flags))
             exe_shell("echo '--gc_safe_offset=0' >> {}".format(rtidb_flags))
+            exe_shell("echo '--binlog_sync_to_disk_interval=10' >> {}".format(rtidb_flags))
+            exe_shell("echo '--binlog_sync_wait_time=10' >> {}".format(rtidb_flags))
             exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}/conf/rtidb.flags'.format(test_path, tb_path)
             infoLogger.info('start rtidb: {}'.format(cmd))

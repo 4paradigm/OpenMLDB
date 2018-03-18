@@ -3,5 +3,7 @@
 ulimit -c unlimited
 if [ -f "test-common/integrationtest/setup.sh" ]
 then
+    export casefilter=$2
     sh test-common/integrationtest/runall.sh $1 $2
+    unset casefilter
 fi

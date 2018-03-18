@@ -73,6 +73,8 @@ class TestNameserverMigrate(TestCaseBase):
         self.createtable_put(tname, 1)
         self.stop_client(self.slave1)
         time.sleep(10)
+        self.showtablet(self.ns_leader)
+        self.showtable(self.ns_leader)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, '4-6', self.slave2)
         rs2 = self.migrate(self.ns_leader, self.slave2, tname, '0-2', self.slave1)
         self.start_client(self.slave1)

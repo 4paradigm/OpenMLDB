@@ -95,7 +95,6 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         changeleader后，可以makesnapshot，未changeleader的无法makesnapshot
         :return:
         """
-        self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
@@ -140,6 +139,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
         self.assertEqual(mf['count'], '1')
+        time.sleep(10)
 
 
 if __name__ == "__main__":

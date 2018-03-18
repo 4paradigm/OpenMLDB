@@ -107,7 +107,7 @@ class TestAddReplicaNs(TestCaseBase):
         self.assertTrue('Create table ok' in rs)
 
         self.stop_client(self.slave1)
-        time.sleep(5)
+        time.sleep(10)
 
         infoLogger.info(self.showtablet(self.ns_leader))
         rs2 = self.addreplica(self.ns_leader, name, 1, 'ns_client', self.slave1)
