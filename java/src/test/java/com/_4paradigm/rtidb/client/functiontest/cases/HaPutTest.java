@@ -42,6 +42,7 @@ public class HaPutTest {
       config.setZkEndpoints(zkEndpoints);
       config.setZkNodeRootPath("/onebox/nodes");
       config.setZkTableRootPath("/onebox/table/table_data");
+      config.setZkTableNotifyPath("/onebox/table/notify");
       client = new RTIDBClusterClient(config);
       client.init();
       tableSyncClient = new TableSyncClientImpl(client);
@@ -61,6 +62,7 @@ public class HaPutTest {
 
   private String createKvTable() {
     String name = String.valueOf(id.incrementAndGet());
+//    String name = "tname";
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
     TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -117,6 +119,7 @@ public class HaPutTest {
       Assert.assertTrue(ok == putOk);
       Assert.assertEquals(new String(bs.toByteArray()), value);
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.assertTrue(false);
     } finally {
       nsc.dropTable(name);
@@ -137,16 +140,18 @@ public class HaPutTest {
 
   @Test(dataProvider = "putdataByte")
   public void testPutByteValue(byte[] value, boolean putOk) {
-    String name = createKvTable();
+//    String name = createKvTable();
+    String name = "tname";
     try {
       boolean ok = tableSyncClient.put(name, "test1", System.currentTimeMillis() + 9999, value);
+//      boolean ok = tableSyncClient.put(name, "test1", System.currentTimeMillis() + 9999L, new Object[]{"1","1","1","1"});
       ByteString bs = tableSyncClient.get(name, "test1");
       Assert.assertTrue(ok == putOk);
       Assert.assertEquals(bs.toByteArray(), value);
     } catch (Exception e) {
       Assert.assertTrue(false);
     } finally {
-      nsc.dropTable(name);
+//      nsc.dropTable(name);
     }
   }
 
