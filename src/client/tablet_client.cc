@@ -25,10 +25,6 @@ int TabletClient::Init() {
     return client_.Init();
 }
 
-int TabletClient::Reconnect() {
-    return client_.Reconnect();
-}
-
 std::string TabletClient::GetEndpoint() {
     return endpoint_;
 }

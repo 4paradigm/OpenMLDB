@@ -312,15 +312,17 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tablets_.insert(std::make_pair(*it, tablet));
             PDLOG(INFO, "add tablet client. endpoint[%s]", it->c_str());
         } else {
-            //TODO wangtaize notify if state changes
-            ::rtidb::api::TabletState old = tit->second->state_;
-            tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
-            if (old != ::rtidb::api::TabletState::kTabletHealthy) {
-                if (tit->second->client_->Reconnect() < 0) {
-                    PDLOG(WARNING, "tablet client reconnect error. endpoint[%s]", it->c_str());
+            if (tit->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
+                tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
+                tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it);
+                if (tablet->client_->Init() != 0) {
+                    PDLOG(WARNING, "tablet client init error. endpoint[%s]", it->c_str());
                     continue;
                 }
-                tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+                PDLOG(INFO, "tablet client init success. endpoint[%s]", it->c_str());
+                tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+                tit->second = tablet;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 if (auto_recover_table_.load(std::memory_order_acquire)) {
                     thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));

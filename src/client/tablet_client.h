@@ -27,8 +27,6 @@ public:
 
     int Init();
 
-    int Reconnect();
-
     std::string GetEndpoint();
 
     bool CreateTable(const std::string& name,

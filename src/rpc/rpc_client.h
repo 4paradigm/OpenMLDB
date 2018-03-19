@@ -23,7 +23,6 @@
 #include <mutex.h>
 #include <thread_pool.h>
 #include "logging.h"
-#include <atomic>
 
 using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
@@ -47,22 +46,7 @@ public:
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
             return -1;
         }
-        stub_.store(new T(channel_), std::memory_order_relaxed);
-        return 0;
-    }
-
-    int Reconnect() {
-        brpc::Channel* old_channel = channel_;
-        T* old_stub_ptr = stub_.load(std::memory_order_relaxed);
-        brpc::Channel* new_channel = new brpc::Channel();
-        brpc::ChannelOptions options;
-        if (new_channel->Init(endpoint_.c_str(), "", &options) != 0) {
-            return -1;
-        }
-        stub_.store(new T(new_channel), std::memory_order_release);
-        channel_ = new_channel;
-        delete old_channel;
-        delete old_stub_ptr;
+        stub_ = new T(channel_);
         return 0;
     }
 
@@ -80,11 +64,11 @@ public:
         if (retry_times > 0) {
             cntl.set_max_retry(retry_times);
         }
-        if (stub_.load(std::memory_order_relaxed) == NULL) {
+        if (stub_ == NULL) {
             PDLOG(WARNING, "stub is null. client must be init before send request");
             return false;
         }
-        (stub_.load(std::memory_order_relaxed)->*func)(&cntl, request, response, NULL);
+        (stub_->*func)(&cntl, request, response, NULL);
         if (!cntl.Failed()) {
             return true;
         }
@@ -95,7 +79,7 @@ public:
 private:
     std::string endpoint_;
     uint64_t log_id_;
-    std::atomic<T*> stub_;
+    T* stub_;
     brpc::Channel* channel_;
 };
 
