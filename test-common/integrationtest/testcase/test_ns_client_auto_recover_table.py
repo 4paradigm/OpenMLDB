@@ -12,7 +12,7 @@ import libs.ddt as ddt
 @ddt.ddt
 class TestAutoRecoverTable(TestCaseBase):
 
-    def confset_createtable_put(self):
+    def confset_createtable_put(self, data_count):
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
         self.tname = 'tname{}'.format(time.time())
@@ -31,8 +31,7 @@ class TestAutoRecoverTable(TestCaseBase):
         table_info = self.showtable(self.ns_leader)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
-        for _ in range(10):
-            self.put(self.leader, self.tid, self.pid, 'testkey0', self.now() + 90000, 'testvalue0')
+        self.put_large_datas(data_count, 7)
 
 
     def get_latest_op(self):
@@ -113,7 +112,7 @@ class TestAutoRecoverTable(TestCaseBase):
     def get_steps_dict():
         return {
             0: 'time.sleep(10)',
-            1: 'self.confset_createtable_put()',
+            1: 'self.confset_createtable_put(1)',
             2: 'self.stop_client(self.leader)',
             3: 'self.disconnectzk(self.leader)',
             4: 'self.stop_client(self.slave1)',
@@ -142,6 +141,9 @@ class TestAutoRecoverTable(TestCaseBase):
             27: 'self.confset(self.ns_leader, "auto_recover_table", "true")',
             28: 'self.stop_client(self.ns_leader)',
             29: 'self.start_client(self.ns_leader, "nameserver")',
+            30: 'self.get_new_ns_leader()',
+            31: 'self.get_table_status(self.leader)',
+            32: 'self.makesnapshot(self.ns_leader, self.tname, self.pid, "ns_client")',
         }
 
 
@@ -172,7 +174,6 @@ class TestAutoRecoverTable(TestCaseBase):
         (1, 26, 3, 0, 6, 8, 12, 15, 25, 0, 19, 23, 27),
         (1, 26, 12, 2, 0, 6, 12, 13, 25, 0, 18, 22, 27),
         (1, 26, 2, 0, 6, 13, 25, 0, 17, 21, 27),
-        # (1, 3, 0, 6, 15, 28, 0, 29, 0),  # recover when ns killed: RTIDB-243
     )
     @ddt.unpack
     def test_auto_recover_table(self, *steps):
@@ -184,6 +185,53 @@ class TestAutoRecoverTable(TestCaseBase):
         rs = self.showtable(self.ns_leader)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-1] for k, v in rs.items()]
+
+        self.assertEqual(role_x.count('leader'), 4)
+        self.assertEqual(role_x.count('follower'), 6)
+        self.assertEqual(is_alive_x.count('yes'), 10)
+        self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
+                         self.get_table_status(self.slave1, self.tid, self.pid)[0])
+        self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
+                         self.get_table_status(self.slave2, self.tid, self.pid)[0])
+
+
+    @ddt.data(
+        (3, 0, 6, 32, 7, 15, 28, 0, 29, 0, 30),  # recover when ns killed: RTIDB-243
+    )
+    @ddt.unpack
+    def test_auto_recover_table_ns_killed(self, *steps):
+        """
+        ns_leader挂掉，可以sendsnapshot成功，可以故障恢复成功
+        :param steps:
+        :return:
+        """
+        self.update_conf(self.slave1path, 'stream_block_size', 1)
+        self.update_conf(self.slave1path, 'stream_bandwidth_limit', 1)
+        self.update_conf(self.slave2path, 'stream_block_size', 1)
+        self.update_conf(self.slave2path, 'stream_bandwidth_limit', 1)
+        self.stop_client(self.slave1)
+        self.stop_client(self.slave2)
+        time.sleep(5)
+        self.start_client(self.slave1)
+        self.start_client(self.slave2)
+
+        self.confset_createtable_put(50)
+        steps_dict = self.get_steps_dict()
+        for i in steps:
+            infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
+            eval(steps_dict[i])
+        rs = self.showtable(self.ns_leader)
+        role_x = [v[0] for k, v in rs.items()]
+        is_alive_x = [v[-1] for k, v in rs.items()]
+        self.get_table_status(self.leader)
+
+        self.update_conf(self.slave1path, 'stream_bandwidth_limit', 0)
+        self.update_conf(self.slave2path, 'stream_bandwidth_limit', 0)
+        self.stop_client(self.slave1)
+        self.stop_client(self.slave2)
+        time.sleep(5)
+        self.start_client(self.slave1)
+        self.start_client(self.slave2)
 
         self.assertEqual(role_x.count('leader'), 4)
         self.assertEqual(role_x.count('follower'), 6)

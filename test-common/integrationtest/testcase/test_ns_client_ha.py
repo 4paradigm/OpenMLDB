@@ -8,6 +8,7 @@ from libs.logger import infoLogger
 from libs.deco import multi_dimension
 import libs.ddt as ddt
 from libs.clients.ns_cluster import NsCluster
+from libs.clients.tb_cluster import TbCluster
 import libs.conf as conf
 
 
@@ -80,7 +81,6 @@ class TestNameserverHa(TestCaseBase):
             21: 'self.start_client(self.ns_slaver)',
         }
 
-
     @ddt.data(
         (9,1,3,8,5,5,5,5,5,-1,2,7,0,9,13,14),  # ns_leader断网，可以继续put及同步数据
         (9,1,2,7,5,5,5,5,5,0,9,13,14),  # ns_leader挂掉，可以继续put及同步数据
@@ -126,25 +126,41 @@ class TestNameserverHa(TestCaseBase):
     )
     @ddt.unpack
     def test_ns_after_failover(self, *steps):
+        """
+        ns故障切换后，新主可以判断节点状态
+        :param steps:
+        :return:
+        """
+        self.confset_createtable_put()
+        rs1 = self.showtable(self.ns_leader)
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
+        rs2 = self.showtable(self.ns_leader)
         self.stop_client(self.leader)
-        time.sleep(5)
-        rs = self.showtablet(self.ns_leader)
+        time.sleep(10)
+        rs3 = self.showtablet(self.ns_leader)
+        rs4 = self.showtable(self.ns_leader)
         self.start_client(self.leader)
         self.stop_client(self.ns_leader)
         self.start_client(self.ns_leader, 'nameserver')
         time.sleep(10)
         self.get_new_ns_leader()
-        self.assertTrue(rs[self.leader][0] == 'kTabletOffline')
+        self.assertEqual(rs1, rs2)
+        self.assertEqual(rs3[self.leader][0], 'kTabletOffline')
+        self.assertEqual([v[-1] for k, v in rs4.items() if k[-1] == self.leader], ['no'] * 4)
 
     @ddt.data(
         (9,1,16,17,2,0,7,9),  # ns_leader confset之后挂掉，新ns_leader在confget时新的conf  # RTIDB-197
     )
     @ddt.unpack
     def test_ns_slaver_conf_sync(self, *steps):
+        """
+        ns_leader confset之后挂掉，新ns_leader在confget时新的conf
+        :param steps:
+        :return:
+        """
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
@@ -167,6 +183,11 @@ class TestNameserverHa(TestCaseBase):
     )
     @ddt.unpack
     def test_ns_flashbreak(self, *steps):
+        """
+        ns闪断
+        :param steps:
+        :return:
+        """
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
@@ -178,6 +199,24 @@ class TestNameserverHa(TestCaseBase):
         time.sleep(3)
         nsc.get_ns_leader()
         self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
+
+
+    def test_ha_cluster(self):
+        """
+        zk没挂，集群机房挂掉，重启后可正常加载table信息
+        :return:
+        """
+        self.confset_createtable_put()
+        rs1 = self.showtable(self.ns_leader)
+        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints])
+        nsc.kill(*nsc.endpoints)
+        tbc.kill(*tbc.endpoints)
+        nsc.start(*nsc.endpoints)
+        tbc.start(tbc.endpoints)
+        self.get_new_ns_leader()
+        rs2 = self.showtable(self.ns_leader)
+        self.assertEqual(rs1, rs2)
 
 
 if __name__ == "__main__":
