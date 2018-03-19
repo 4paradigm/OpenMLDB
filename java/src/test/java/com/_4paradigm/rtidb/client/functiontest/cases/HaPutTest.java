@@ -29,7 +29,6 @@ public class HaPutTest {
 
   private static String zkEndpoints = "127.0.0.1:22181";
   private static String leaderPath  = "/onebox/leader";
-  private static AtomicInteger id = new AtomicInteger(10000);
   private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static RTIDBClusterClient client = null;
@@ -61,8 +60,7 @@ public class HaPutTest {
   }
 
   private String createKvTable() {
-    String name = String.valueOf(id.incrementAndGet());
-//    String name = "tname";
+    String name = String.valueOf(System.currentTimeMillis());
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
     TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -140,18 +138,16 @@ public class HaPutTest {
 
   @Test(dataProvider = "putdataByte")
   public void testPutByteValue(byte[] value, boolean putOk) {
-//    String name = createKvTable();
-    String name = "tname";
+    String name = createKvTable();
     try {
       boolean ok = tableSyncClient.put(name, "test1", System.currentTimeMillis() + 9999, value);
-//      boolean ok = tableSyncClient.put(name, "test1", System.currentTimeMillis() + 9999L, new Object[]{"1","1","1","1"});
       ByteString bs = tableSyncClient.get(name, "test1");
       Assert.assertTrue(ok == putOk);
       Assert.assertEquals(bs.toByteArray(), value);
     } catch (Exception e) {
       Assert.assertTrue(false);
     } finally {
-//      nsc.dropTable(name);
+      nsc.dropTable(name);
     }
   }
 
@@ -160,50 +156,51 @@ public class HaPutTest {
   public Object[][] putGetScanSchema() {
     return new Object[][] {
         {true, "string", "1111", true, "string", "1111", true},
-//        {true, "string", " ", true, "string", "1111", true},
-//        {true, "string", "、*&……%￥测试", true, "string", "、*&……%￥测试", true},
-//        {true, "string", "", true, "string", "1111", true},
-//        {true, "string", null, true, "string", "1111", true},
-//        {true, "string", "", true, "string", "", false},
-//        {true, "string", "", false, "string", "1111", false},
-//        {true, "string", "1111", false, "string", "", true},
-//        {true, "string", genLongString(128), true, "string", "1111", true},
-//        {true, "string", genLongString(129), true, "string", "1111", false},
-//        {true, "string", "1111", true, "float", 10.0f, true},
-//        {true, "string", "1111", true, "float", 10.01f, true},
-//        {true, "string", "1111", true, "float", -1e-1f, true},
-//        {true, "string", "1111", true, "float", 1e-10f, true},
-//        {true, "string", "1111", true, "float", "aaa", true},
-//        {true, "string", "1111", true, "float", null, true},
-//        {true, "string", "", true, "float", null, false},
-//        {true, "float", null, false, "string", "1111", false},
+        {true, "string", " ", true, "string", "1111", true},
+        {true, "string", "、*&……%￥测试", true, "string", "、*&……%￥测试", true},
+        {true, "string", "", true, "string", "1111", true},
+        {true, "string", null, true, "string", "1111", true},
+        {true, "string", "", true, "string", "", false},
+        {true, "string", "", false, "string", "1111", false},
+        {true, "string", "1111", false, "string", "", true},
+        {true, "string", genLongString(128), true, "string", "1111", true},
+        {true, "string", genLongString(129), true, "string", "1111", false},
+        {true, "string", "1111", true, "float", 10.0f, true},
+        {true, "string", "1111", true, "float", 10.01f, true},
+        {true, "string", "1111", true, "float", -1e-1f, true},
+        {true, "string", "1111", true, "float", 1e-10f, true},
+        {true, "string", "1111", true, "float", "aaa", false},
+        {true, "string", "1111", true, "float", null, true},
+        {true, "string", "", true, "float", null, false},
+        {true, "float", null, false, "string", "1111", false},
         {true, "string", "1111", true, "int32", 2147483647, true},
-//        {true, "string", "1111", true, "int32", 2147483648L, false},
-//        {true, "string", "1111", true, "int32", 1.1, false},
-//        {true, "string", "1111", true, "int32", 1e+5, false},
-//        {true, "string", "1111", true, "int32", "aaa", false},
-//        {true, "string", "1111", true, "int32", null, true},
-//        {true, "string", "1111", false, "int32", 2147483647, true},
-//        {true, "string", "1111", false, "int32", 2147483648L, false},
-//        {true, "string", "1111", false, "int32", 1.1, false},
-//        {true, "string", "1111", false, "int32", 1e+5, false},
-//        {true, "string", "1111", false, "int32", "aaa", false},
-//        {true, "string", "1111", false, "int32", null, true},
-//        {true, "int32", null, false, "string", "1111", false},
-//        {true, "string", "1111", true, "int64", -9223372036854775808L, true},
-//        {true, "string", "1111", true, "int64", "aaa", true},
-//        {true, "string", "1111", true, "int64", null, true},
-//        {true, "string", "1111", false, "int64", null, true},
-//        {true, "int64", null, false, "string", "1111", false},
-//        {true, "string", null, true, "int64", null, false},
-//        {true, "string", "1111", true, "double", -1e-1d, true},
-//        {true, "string", "1111", true, "double", -1e-10d, true},
-//        {true, "string", "1111", true, "double", "aaa", false},
-//        {true, "double", null, false, "string", "1111", false},
-//        {true, "string", "", true, "double", null, false},
-//        {true, "string", "1111", true, "double", null, true},
-//        {true, "string", "1111", false, "double", null, true},
-        {true, "string", "1111", true, "uint32", 1, false},
+        {true, "string", "1111", true, "int32", 2147483648L, false},
+        {true, "string", "1111", true, "int32", 1.1, false},
+        {true, "string", "1111", true, "int32", 1e+5, false},
+        {true, "string", "1111", true, "int32", "aaa", false},
+        {true, "string", "1111", true, "int32", null, true},
+        {true, "string", "1111", false, "int32", 2147483647, true},
+        {true, "string", "1111", false, "int32", 2147483648L, false},
+        {true, "string", "1111", false, "int32", 1.1, false},
+        {true, "string", "1111", false, "int32", 1e+5, false},
+        {true, "string", "1111", false, "int32", "aaa", false},
+        {true, "string", "1111", false, "int32", null, true},
+        {true, "int32", null, false, "string", "1111", false},
+        {true, "string", "1111", true, "int64", -9223372036854775808L, true},
+        {true, "string", "1111", true, "int64", "aaa", false},
+        {true, "string", "1111", true, "int64", null, true},
+        {true, "string", "1111", false, "int64", null, true},
+        {true, "int64", null, false, "string", "1111", false},
+        {true, "string", null, true, "int64", null, false},
+        {true, "string", "1111", true, "double", -1e-1d, true},
+        {true, "string", "1111", true, "double", -1e-10d, true},
+        {true, "string", "1111", true, "double", "aaa", false},
+        {true, "double", null, false, "string", "1111", false},
+        {true, "string", "", true, "double", null, false},
+        {true, "string", "1111", true, "double", null, true},
+        {true, "string", "1111", false, "double", null, true},
+
+//        {true, "string", "1111", true, "uint32", 1, false},
 //        {true, "string", "1111", true, "uint32", null, false},
 //        {true, "string", "1111", false, "uint32", 1, false},
 //        {true, "string", "1111", false, "uint32", null, true},
@@ -213,11 +210,16 @@ public class HaPutTest {
   public void testSchemaPutValue(Boolean isIndex1, String type1, Object value1,
                                  Boolean isIndex2, String type2, Object value2, Boolean putOk) {
     Boolean ok = null;
+    Boolean okT1 = null;
+    Boolean okT2 = null;
     String name = createSchemaTable(isIndex1, type1, isIndex2, type2);
     try {
       ok = tableSyncClient.put(name, 1555555555555L, new Object[]{value1, value2, "value3"});
-      tableSyncClient.put(name, 1555555555555L, new Object[]{"t1", value2, "value3"});
-      tableSyncClient.put(name, 1555555555555L, new Object[]{"t2", value2, "value3"});
+      okT1 = tableSyncClient.put(name, 1555555555555L, new Object[]{"t1", value2, "value3"});
+      okT2 = tableSyncClient.put(name, 1555555555555L, new Object[]{"t2", value2, "value3"});
+      Assert.assertTrue(ok);
+      Assert.assertTrue(okT1);
+      Assert.assertTrue(okT2);
       if (putOk == true) {
         Object[] row = tableSyncClient.getRow(name, value1.toString(), 1555555555555L);
         Assert.assertEquals(row[0], value1);
@@ -226,6 +228,7 @@ public class HaPutTest {
 
         KvIterator it = tableSyncClient.scan(name, value1.toString(), "card", 1999999999999L, 1L);
         Assert.assertTrue(it.valid());
+        Assert.assertTrue(it.getCount() == 1);
         Object[] rowScan = it.getDecodedValue();
         Assert.assertEquals(rowScan[0], value1);
         Assert.assertEquals(rowScan[1], value2);
@@ -255,7 +258,7 @@ public class HaPutTest {
       e.printStackTrace();
     } finally {
       System.out.println(ok);
-//      nsc.dropTable(name);
+      nsc.dropTable(name);
       Assert.assertEquals(ok, putOk);
     }
   }
