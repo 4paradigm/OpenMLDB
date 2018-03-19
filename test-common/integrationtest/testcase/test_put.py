@@ -112,7 +112,7 @@ class TestPut(TestCaseBase):
                          self.tid,
                          self.pid,
                          'testkey',
-                         self.now() - 1,
+                         self.now() + 10000 + i,
                          'testvalue{}'.format(i))
 
         def stop_client(endpoint):
@@ -137,6 +137,10 @@ class TestPut(TestCaseBase):
         self.assertTrue('LoadTable ok' in rs4)
         time.sleep(1)
         self.assertTrue('testvalue19' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+        self.put(self.leader, self.tid, self.pid, 'testkey', self.now() + 10000, 'testvalue20')
+        time.sleep(1)
+        rs5 = self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() * 2, 1)
+        self.assertTrue('testvalue20' in rs5)
 
 
     @multi_dimension(True)
