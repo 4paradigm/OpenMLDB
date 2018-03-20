@@ -130,10 +130,9 @@ bool NsClient::DelReplica(const std::string& name, uint32_t pid,
             const std::string& endpoint, std::string& msg) {
     ::rtidb::nameserver::DelReplicaNSRequest request;
     ::rtidb::nameserver::GeneralResponse response;
-    ::rtidb::nameserver::DelReplicaData* data = request.mutable_data();
-    data->set_name(name);
-    data->set_pid(pid);
-    data->set_endpoint(endpoint);
+    request.set_name(name);
+    request.set_pid(pid);
+    request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DelReplicaNS,
             &request, &response, 12, 1);
     msg = response.msg();
