@@ -202,104 +202,106 @@ bool NameServerImpl::RecoverOPTask() {
             PDLOG(WARNING, "parse op info failed! value[%s]", value.c_str());
             continue;
         }
-        if (op_data->op_info_.task_status() != ::rtidb::api::TaskStatus::kDone) {
-            switch (op_data->op_info_.op_type()) {
-                case ::rtidb::api::OPType::kMakeSnapshotOP:
-                    if (CreateMakeSnapshotOPTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kAddReplicaOP:
-                    if (CreateAddReplicaOPTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kChangeLeaderOP:
-                    if (CreateChangeLeaderOPTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kMigrateOP:
-                    if (CreateMigrateTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kRecoverTableOP:
-                    if (CreateRecoverTableOPTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kOfflineReplicaOP:
-                    if (CreateOfflineReplicaTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kReAddReplicaOP:
-                    if (CreateReAddReplicaTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kReAddReplicaNoSendOP:
-                    if (CreateReAddReplicaNoSendTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kReAddReplicaWithDropOP:
-                    if (CreateReAddReplicaWithDropTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kReAddReplicaSimplifyOP:
-                    if (CreateReAddReplicaSimplifyTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kUpdateTableAliveOP:
-                    if (CreateUpdateTableAliveOPTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kReLoadTableOP:
-                    if (CreateReLoadTableTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                case ::rtidb::api::OPType::kUpdatePartitionStatusOP:
-                    if (CreateUpdatePartitionStatusOPTask(op_data) < 0) {
-                        PDLOG(WARNING, "recover op[%s] failed", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
-                        continue;
-                    }
-                    break;
-                default:
-                    PDLOG(WARNING, "unsupport recover op[%s]!", 
-                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kDone) {
+            PDLOG(DEBUG, "op status is kDone. op_id[%lu]", op_data->op_info_.op_id());
+            continue;
+        }
+        switch (op_data->op_info_.op_type()) {
+            case ::rtidb::api::OPType::kMakeSnapshotOP:
+                if (CreateMakeSnapshotOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
                     continue;
-            }
+                }
+                break;
+            case ::rtidb::api::OPType::kAddReplicaOP:
+                if (CreateAddReplicaOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kChangeLeaderOP:
+                if (CreateChangeLeaderOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kMigrateOP:
+                if (CreateMigrateTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kRecoverTableOP:
+                if (CreateRecoverTableOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kOfflineReplicaOP:
+                if (CreateOfflineReplicaTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kReAddReplicaOP:
+                if (CreateReAddReplicaTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kReAddReplicaNoSendOP:
+                if (CreateReAddReplicaNoSendTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kReAddReplicaWithDropOP:
+                if (CreateReAddReplicaWithDropTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kReAddReplicaSimplifyOP:
+                if (CreateReAddReplicaSimplifyTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kUpdateTableAliveOP:
+                if (CreateUpdateTableAliveOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kReLoadTableOP:
+                if (CreateReLoadTableTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kUpdatePartitionStatusOP:
+                if (CreateUpdatePartitionStatusOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    continue;
+                }
+                break;
+            default:
+                PDLOG(WARNING, "unsupport recover op[%s]!", 
+                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                continue;
         }
         if (!SkipDoneTask(op_data)) {
             PDLOG(WARNING, "SkipDoneTask task failed. op_id[%lu] task_index[%u]", 
@@ -771,7 +773,7 @@ void NameServerImpl::ConnectZK(RpcController* controller,
         GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-	if (zk_client_->Reconnect()) {
+    if (zk_client_->Reconnect()) {
         response->set_code(0);
         response->set_msg("ok");
         PDLOG(INFO, "connect zk ok");
@@ -787,7 +789,7 @@ void NameServerImpl::DisConnectZK(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     zk_client_->CloseZK();
-	OnLostLock();
+    OnLostLock();
     response->set_code(0);
     response->set_msg("ok");
     PDLOG(INFO, "disconnect zk ok");
@@ -1333,30 +1335,30 @@ void NameServerImpl::DropTable(RpcController* controller,
 int NameServerImpl::ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
                     std::vector<::rtidb::base::ColumnDesc>& columns) {
     for (int idx = 0; idx < table_info->column_desc_size(); idx++) {
-		::rtidb::base::ColType type;
-		std::string raw_type = table_info->column_desc(idx).type();
-		if (raw_type == "int32") {
-			type = ::rtidb::base::ColType::kInt32;
-		} else if (raw_type == "int64") {
-			type = ::rtidb::base::ColType::kInt64;
-		} else if (raw_type == "uint32") {
-			type = ::rtidb::base::ColType::kUInt32;
-		} else if (raw_type == "uint64") {
-			type = ::rtidb::base::ColType::kUInt64;
-		} else if (raw_type == "float") {
-			type = ::rtidb::base::ColType::kFloat;
-		} else if (raw_type == "double") {
-			type = ::rtidb::base::ColType::kDouble;
-		} else if (raw_type == "string") {
-			type = ::rtidb::base::ColType::kString;
-		} else {
-        	PDLOG(WARNING, "invalid type[%s]", table_info->column_desc(idx).type().c_str());
-			return -1;
-		}
-		::rtidb::base::ColumnDesc column_desc;
-		column_desc.type = type;
-		column_desc.name = table_info->column_desc(idx).name();
-		column_desc.add_ts_idx = table_info->column_desc(idx).add_ts_idx();
+        ::rtidb::base::ColType type;
+        std::string raw_type = table_info->column_desc(idx).type();
+        if (raw_type == "int32") {
+            type = ::rtidb::base::ColType::kInt32;
+        } else if (raw_type == "int64") {
+            type = ::rtidb::base::ColType::kInt64;
+        } else if (raw_type == "uint32") {
+            type = ::rtidb::base::ColType::kUInt32;
+        } else if (raw_type == "uint64") {
+            type = ::rtidb::base::ColType::kUInt64;
+        } else if (raw_type == "float") {
+            type = ::rtidb::base::ColType::kFloat;
+        } else if (raw_type == "double") {
+            type = ::rtidb::base::ColType::kDouble;
+        } else if (raw_type == "string") {
+            type = ::rtidb::base::ColType::kString;
+        } else {
+            PDLOG(WARNING, "invalid type[%s]", table_info->column_desc(idx).type().c_str());
+            return -1;
+        }
+        ::rtidb::base::ColumnDesc column_desc;
+        column_desc.type = type;
+        column_desc.name = table_info->column_desc(idx).name();
+        column_desc.add_ts_idx = table_info->column_desc(idx).add_ts_idx();
         columns.push_back(column_desc);
     }
     return 0;
@@ -1678,19 +1680,19 @@ int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::
     migrate_info.set_des_endpoint(des_endpoint);
     std::string value;
     migrate_info.SerializeToString(&value);
-	if (CreateOPData(::rtidb::api::OPType::kMigrateOP, value, op_data) < 0) {
+    if (CreateOPData(::rtidb::api::OPType::kMigrateOP, value, op_data) < 0) {
         PDLOG(WARNING, "create migrate op data failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
-                		src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+                        src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
         return -1;
     }
     if (CreateMigrateTask(op_data) < 0) {
         PDLOG(WARNING, "create migrate op task failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
-                		src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+                        src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
         return -1;
     }
-	if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data) < 0) {
         PDLOG(WARNING, "add migrate op data failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
-                		src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+                        src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
         return -1;
     }
     PDLOG(INFO, "add migrate op ok. op_id[%lu] src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
@@ -1716,7 +1718,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
     uint32_t tid = table_info->tid();
     std::string leader_endpoint;
-	if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+    if (GetLeader(table_info, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
@@ -2012,7 +2014,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
         return 0;
     }
     std::shared_ptr<OPData> op_data;
-    ::rtidb::api::ChangeLeaderData change_leader_data;
+    ChangeLeaderData change_leader_data;
     change_leader_data.set_name(name);
     change_leader_data.set_tid(tid);
     change_leader_data.set_pid(pid);
@@ -2041,7 +2043,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
 }
 
 int NameServerImpl::CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data) {
-    ::rtidb::api::ChangeLeaderData change_leader_data;
+    ChangeLeaderData change_leader_data;
     if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
         return -1;
@@ -2127,7 +2129,7 @@ int NameServerImpl::CreateRecoverTableOP(const std::string& name, uint32_t pid, 
     }
     PDLOG(INFO, "create RecoverTable op ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
@@ -2150,7 +2152,7 @@ int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create RecoverTable task ok. name[%s] pid[%u] endpoint[%s]",
                  name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateRecoverTableTask(uint64_t op_index, ::rtidb::api::OPType op_type,
@@ -2227,21 +2229,21 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         }
     }
     if ((has_follower && !leader_tablet_ptr) || !tablet_ptr) {
-		PDLOG(WARNING, "not has tablet. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-						name.c_str(), tid, pid, endpoint.c_str());
+        PDLOG(WARNING, "not has tablet. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                        name.c_str(), tid, pid, endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-		return;
+        return;
     }
-	bool has_table = false;
+    bool has_table = false;
     bool is_leader = false;
-	uint64_t term = 0;
-	uint64_t offset = 0;
-	if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
-		PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-						name.c_str(), tid, pid, endpoint.c_str());
+    uint64_t term = 0;
+    uint64_t offset = 0;
+    if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
+        PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                        name.c_str(), tid, pid, endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-		return;
-	}
+        return;
+    }
     if (!has_follower) {
         std::lock_guard<std::mutex> lock(mu_);
         if (has_table) {
@@ -2259,7 +2261,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
-		PDLOG(INFO, "change to follower. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+        PDLOG(INFO, "change to follower. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                     name.c_str(), tid, pid, endpoint.c_str());
     }
     if (!has_table) {
@@ -2272,13 +2274,13 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         PDLOG(INFO, "delete binlog ok. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                             name.c_str(), tid, pid, endpoint.c_str());
     }
-	int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
-	if (ret_code < 0) {
-		PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-						name.c_str(), tid, pid, endpoint.c_str());
+    int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
+    if (ret_code < 0) {
+        PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                        name.c_str(), tid, pid, endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-		return;
-	}
+        return;
+    }
     ::rtidb::api::Manifest manifest;
     if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u]", 
@@ -2287,19 +2289,19 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-	if (has_table) {
-		if (ret_code == 0 && offset >= manifest.offset()) {
-			CreateReAddReplicaSimplifyOP(name, pid, endpoint);
-		} else {
-			CreateReAddReplicaWithDropOP(name, pid, endpoint);
-		}
-	} else {
-		if (ret_code == 0 && offset >= manifest.offset()) {
-		    CreateReAddReplicaNoSendOP(name, pid, endpoint);
-		} else {
-			CreateReAddReplicaOP(name, pid, endpoint);
-		}
-	}
+    if (has_table) {
+        if (ret_code == 0 && offset >= manifest.offset()) {
+            CreateReAddReplicaSimplifyOP(name, pid, endpoint);
+        } else {
+            CreateReAddReplicaWithDropOP(name, pid, endpoint);
+        }
+    } else {
+        if (ret_code == 0 && offset >= manifest.offset()) {
+            CreateReAddReplicaNoSendOP(name, pid, endpoint);
+        } else {
+            CreateReAddReplicaOP(name, pid, endpoint);
+        }
+    }
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     PDLOG(INFO, "recover table task run success. name[%s] tid[%u] pid[%u]", 
                 name.c_str(), tid, pid);
@@ -2337,7 +2339,7 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
     }
     PDLOG(INFO, "create readdreplica op ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
@@ -2409,7 +2411,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create readdreplica op task ok. name[%s] pid[%u] endpoint[%s]", 
                  name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, 
@@ -2438,7 +2440,7 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
     }
     PDLOG(INFO, "create readdreplica with drop op ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]", 
                  op_data->op_info_.op_id(), name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_data) { 
@@ -2521,7 +2523,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create ReAddReplicaWithDrop task ok. name[%s] pid[%u] endpoint[%s]", 
                 name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, 
@@ -2739,7 +2741,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
     }
     PDLOG(INFO, "create readdreplica simplify op ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]", 
                 op_data->op_info_.op_id(), name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 
 }
 
@@ -2786,8 +2788,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create readdreplica simplify task ok. name[%s] pid[%u] endpoint[%s]", 
                  name.c_str(), pid, endpoint.c_str());
-	return 0;
-
+    return 0;
 }
 
 int NameServerImpl::CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
@@ -2815,7 +2816,7 @@ int NameServerImpl::CreateReLoadTableOP(const std::string& name, uint32_t pid, c
     }
     PDLOG(INFO, "create ReLoadTableOP op ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
@@ -2858,7 +2859,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create ReLoadTable task ok. name[%s] pid[%u] endpoint[%s]", 
                 name.c_str(), pid, endpoint.c_str());
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, 
@@ -2896,7 +2897,7 @@ int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, uint3
     PDLOG(INFO, "create UpdatePartitionStatusOP op ok."
                  "op_id[%lu] name[%s] pid[%u] endpoint[%s] is_leader[%d] is_alive[%d]", 
                  op_index_, name.c_str(), pid, endpoint.c_str(), is_leader, is_alive);
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data) { 
@@ -2926,7 +2927,7 @@ int NameServerImpl::CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op
     PDLOG(INFO, "create UpdatePartitionStatusOP task ok."
                  "name[%s] pid[%u] endpoint[%s] is_leader[%d] is_alive[%d]", 
                  name.c_str(), pid, endpoint.c_str(), is_leader, is_alive);
-	return 0;
+    return 0;
 }
 
 int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset) {
@@ -2934,8 +2935,8 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
         PDLOG(INFO, "has not table, offset is zero. name[%s] pid[%u]", name.c_str(), pid);
         return 1;
     }
-	std::map<uint64_t, uint64_t> term_map;
-	{
+    std::map<uint64_t, uint64_t> term_map;
+    {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(name);
         if (iter == table_info_.end()) {
@@ -2947,36 +2948,36 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
                 continue;
             }
             for (int term_idx = 0; term_idx < iter->second->table_partition(idx).term_offset_size(); term_idx++) {
-				term_map.insert(std::make_pair(iter->second->table_partition(idx).term_offset(term_idx).term(),
-							iter->second->table_partition(idx).term_offset(term_idx).offset()));
-			}
-			break;
-		}
-	}
-	auto iter = term_map.find(term);
-	if (iter == term_map.end()) {
+                term_map.insert(std::make_pair(iter->second->table_partition(idx).term_offset(term_idx).term(),
+                            iter->second->table_partition(idx).term_offset(term_idx).offset()));
+            }
+            break;
+        }
+    }
+    auto iter = term_map.find(term);
+    if (iter == term_map.end()) {
         PDLOG(WARNING, "not found term[%lu] in table_info. name[%s] pid[%u]", 
-						term, name.c_str(), pid);
-		return -1;
-	} else if (iter->second > offset) {
+                        term, name.c_str(), pid);
+        return -1;
+    } else if (iter->second > offset) {
         PDLOG(INFO, "offset is not matched. name[%s] pid[%u] term[%lu] term start offset[%lu] cur offset[%lu]", 
-						name.c_str(), pid, term, iter->second, offset);
-		return 1;
-	}
-	iter++;
-	if (iter == term_map.end()) {
+                        name.c_str(), pid, term, iter->second, offset);
+        return 1;
+    }
+    iter++;
+    if (iter == term_map.end()) {
         PDLOG(INFO, "cur term[%lu] is the last one. name[%s] pid[%u]", 
-						term, name.c_str(), pid);
-		return 0;
-	}
-	if (iter->second <= offset) {
+                        term, name.c_str(), pid);
+        return 0;
+    }
+    if (iter->second <= offset) {
         PDLOG(INFO, "term[%lu] offset not matched. name[%s] pid[%u] offset[%lu]", 
-						term, name.c_str(), pid, offset);
-		return 1;
-	}
-	PDLOG(INFO, "term[%lu] offset has matched. name[%s] pid[%u] offset[%lu]", 
-					term, name.c_str(), pid, offset);
-	return 0;
+                        term, name.c_str(), pid, offset);
+        return 1;
+    }
+    PDLOG(INFO, "term[%lu] offset has matched. name[%s] pid[%u] offset[%lu]", 
+                    term, name.c_str(), pid, offset);
+    return 0;
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& endpoint,
@@ -3487,7 +3488,7 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
         }
         op_data = pos->second;
     }
-    ::rtidb::api::ChangeLeaderData change_leader_data;
+    ChangeLeaderData change_leader_data;
     if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
@@ -3516,7 +3517,7 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
         }
         op_data = pos->second;
     }
-    ::rtidb::api::ChangeLeaderData change_leader_data;
+    ChangeLeaderData change_leader_data;
     if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
@@ -3566,7 +3567,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
         }
         op_data = pos->second;
     }
-    ::rtidb::api::ChangeLeaderData change_leader_data;
+    ChangeLeaderData change_leader_data;
     if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
         PDLOG(WARNING, "parse request failed. data[%s]", op_data->op_info_.data().c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
