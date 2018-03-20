@@ -13,7 +13,6 @@
 #include <strings.h>
 #include "base/strings.h"
 #include <chrono>
-#include <thread>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);

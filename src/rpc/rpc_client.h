@@ -68,10 +68,10 @@ template <class T>
 class RpcClient {
 public:
     RpcClient(const std::string& endpoint) : endpoint_(endpoint), use_sleep_policy_(false),
-            log_id_(0), stub_(NULL), channel_() {
+            log_id_(0), stub_(NULL), channel_(NULL) {
     }
     RpcClient(const std::string& endpoint, bool use_sleep_policy) : endpoint_(endpoint), 
-            use_sleep_policy_(use_sleep_policy), log_id_(0), stub_(NULL), channel_() {
+            use_sleep_policy_(use_sleep_policy), log_id_(0), stub_(NULL), channel_(NULL) {
     }
     ~RpcClient() {
         delete channel_;
