@@ -13,7 +13,7 @@ DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,i
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep alive check");
 DEFINE_int32(get_task_status_interval, 5000, "config the interval of get task status");
-DEFINE_int32(name_server_task_pool_size, 3, "config the size of name server task pool");
+DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
 DEFINE_bool(auto_recover_table, false, "enable or disable auto recover table");
@@ -49,7 +49,8 @@ DEFINE_int32(put_concurrency_limit, 8, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 8, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
-DEFINE_int32(request_timeout_ms, 500, "request timeout");
+DEFINE_int32(request_timeout_ms, 5000, "request timeout");
+DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_int32(stream_wait_time_ms, 5, "the wait time when send too fast");
 DEFINE_int32(stream_close_wait_time_ms, 1000, "the wait time before close stream");
