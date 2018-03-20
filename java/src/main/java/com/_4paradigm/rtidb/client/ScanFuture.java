@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.impl.DefaultKvIterator;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 
@@ -62,11 +63,11 @@ public class ScanFuture implements Future<KvIterator> {
         }
 
         if (response.getCode() == 0) {
-            KvIterator kit = null;
+            DefaultKvIterator kit = null;
             if (t != null) {
-                kit = new KvIterator(response.getPairs(), t.getSchema(), network);
+                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
             }else {
-                kit = new KvIterator(response.getPairs(), network);
+                kit = new DefaultKvIterator(response.getPairs(), network);
             }
             kit.setCount(response.getCount());
             return kit;
@@ -87,11 +88,11 @@ public class ScanFuture implements Future<KvIterator> {
             throw new ExecutionException("Connection error", null);
         }
         if (response.getCode() == 0) {
-            KvIterator kit = null;
+            DefaultKvIterator kit = null;
             if (t != null) {
-                kit = new KvIterator(response.getPairs(), t.getSchema(), network);
+                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
             }else {
-                kit = new KvIterator(response.getPairs(), network);
+                kit = new DefaultKvIterator(response.getPairs(), network);
             }
             kit.setCount(response.getCount());
             return kit;
