@@ -187,7 +187,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         Tablet.ScanResponse response = tabletServer.scan(request);
         Long network = System.nanoTime() - consuemd;
         if (response != null && response.getCode() == 0) {
-            KvIterator it = new KvIterator(response.getPairs(), th.getSchema(), network);
+            DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
             it.setCount(response.getCount());
             return it;
         }
