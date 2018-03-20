@@ -23,6 +23,8 @@ class TabletClient {
 public:
     TabletClient(const std::string& endpoint);
 
+    TabletClient(const std::string& endpoint, bool use_sleep_policy);
+
     ~TabletClient();
 
     int Init();

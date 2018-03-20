@@ -13,6 +13,7 @@
 #include <strings.h>
 #include "base/strings.h"
 #include <chrono>
+#include <thread>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -303,7 +304,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         if (tit == tablets_.end()) {
             std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
             tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
-            tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it);
+            tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it, true);
             if (tablet->client_->Init() != 0) {
                 PDLOG(WARNING, "tablet client init error. endpoint[%s]", it->c_str());
                 continue;
@@ -313,16 +314,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             PDLOG(INFO, "add tablet client. endpoint[%s]", it->c_str());
         } else {
             if (tit->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
-                tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
-                tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it);
-                if (tablet->client_->Init() != 0) {
-                    PDLOG(WARNING, "tablet client init error. endpoint[%s]", it->c_str());
-                    continue;
-                }
-                PDLOG(INFO, "tablet client init success. endpoint[%s]", it->c_str());
-                tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
-                tit->second = tablet;
+                tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 if (auto_recover_table_.load(std::memory_order_acquire)) {
                     thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));

@@ -18,22 +18,60 @@
 #define RTIDB_RPC_CLIENT_H
 
 #include <brpc/channel.h>
+#include <brpc/retry_policy.h>
+#include <brpc/controller.h>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 #include <mutex.h>
 #include <thread_pool.h>
 #include "logging.h"
+#include <thread>
+#include <gflags/gflags.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
 using ::baidu::common::WARNING;
 
+DECLARE_int32(request_sleep_time);
+
 namespace rtidb {
+
+class SleepRetryPolicy : public brpc::RetryPolicy {
+public:
+    bool DoRetry(const brpc::Controller* controller) const {
+        const int error_code = controller->ErrorCode();
+        if (!error_code) {
+            return false;
+        }
+        if (EHOSTDOWN == error_code) {
+            PDLOG(WARNING, "error_code is EHOSTDOWN, sleep [%lu] ms", FLAGS_request_sleep_time);
+            std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_request_sleep_time));
+            return true;
+        }
+        return (brpc::EFAILEDSOCKET == error_code
+                || brpc::EEOF == error_code
+                || brpc::ELOGOFF == error_code
+                || ETIMEDOUT == error_code // This is not timeout of RPC.
+                || brpc::ELIMIT == error_code
+                || ENOENT == error_code
+                || EPIPE == error_code
+                || ECONNREFUSED == error_code
+                || ECONNRESET == error_code
+                || ENODATA == error_code
+                || brpc::EOVERCROWDED == error_code);
+    }    
+};
+
+static SleepRetryPolicy sleep_retry_policy;
  
 template <class T>
 class RpcClient {
 public:
-    RpcClient(const std::string& endpoint) : endpoint_(endpoint), log_id_(0), stub_(NULL), channel_() {
+    RpcClient(const std::string& endpoint) : endpoint_(endpoint), use_sleep_policy_(false),
+            log_id_(0), stub_(NULL), channel_() {
+    }
+    RpcClient(const std::string& endpoint, bool use_sleep_policy) : endpoint_(endpoint), 
+            use_sleep_policy_(use_sleep_policy), log_id_(0), stub_(NULL), channel_() {
     }
     ~RpcClient() {
         delete channel_;
@@ -43,6 +81,9 @@ public:
     int Init() {
         channel_ = new brpc::Channel();
         brpc::ChannelOptions options;
+        if (use_sleep_policy_) {
+            options.retry_policy = &sleep_retry_policy;
+        }
         if (channel_->Init(endpoint_.c_str(), "", &options) != 0) {
             return -1;
         }
@@ -78,6 +119,7 @@ public:
   
 private:
     std::string endpoint_;
+    bool use_sleep_policy_;
     uint64_t log_id_;
     T* stub_;
     brpc::Channel* channel_;

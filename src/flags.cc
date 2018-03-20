@@ -50,6 +50,7 @@ DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 8, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
 DEFINE_int32(request_timeout_ms, 500, "request timeout");
+DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_int32(stream_wait_time_ms, 5, "the wait time when send too fast");
 DEFINE_int32(stream_close_wait_time_ms, 1000, "the wait time before close stream");
