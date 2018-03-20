@@ -209,92 +209,105 @@ bool NameServerImpl::RecoverOPTask() {
         switch (op_data->op_info_.op_type()) {
             case ::rtidb::api::OPType::kMakeSnapshotOP:
                 if (CreateMakeSnapshotOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kAddReplicaOP:
                 if (CreateAddReplicaOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kChangeLeaderOP:
                 if (CreateChangeLeaderOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kMigrateOP:
                 if (CreateMigrateTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kRecoverTableOP:
                 if (CreateRecoverTableOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kOfflineReplicaOP:
                 if (CreateOfflineReplicaTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kReAddReplicaOP:
                 if (CreateReAddReplicaTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kReAddReplicaNoSendOP:
                 if (CreateReAddReplicaNoSendTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kReAddReplicaWithDropOP:
                 if (CreateReAddReplicaWithDropTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kReAddReplicaSimplifyOP:
                 if (CreateReAddReplicaSimplifyTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kUpdateTableAliveOP:
                 if (CreateUpdateTableAliveOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kReLoadTableOP:
                 if (CreateReLoadTableTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
             case ::rtidb::api::OPType::kUpdatePartitionStatusOP:
                 if (CreateUpdatePartitionStatusOPTask(op_data) < 0) {
-                    PDLOG(WARNING, "recover op[%s] failed", 
-                        ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
                     continue;
                 }
                 break;
