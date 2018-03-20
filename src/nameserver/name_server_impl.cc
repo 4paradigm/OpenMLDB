@@ -1573,7 +1573,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create AddReplicaOP task ok. tid[%u] pid[%u] endpoint[%s]", 
-                    tid, pid, request.endpoint());
+                    tid, pid, request.endpoint().c_str());
     return 0;
 }
 
