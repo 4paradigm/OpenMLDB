@@ -19,6 +19,14 @@ gc_on_table_recover_count  loadtable时每隔多少条执行一次过期键删�
 
 mem_release_rate  用来设置tcmalloc SetMemoryReleaseRate
 
+**thread_pool_size**  配置brpc内部占用线程数
+
+**request_timeout_ms**  请求的超时时间, 单位是ms
+
+request_sleep_time  请求失败时的等待时间
+
+request_max_retry  请求失败时的最大重试次数
+
 
 
 ## tablet配置
@@ -31,12 +39,6 @@ mem_release_rate  用来设置tcmalloc SetMemoryReleaseRate
 **put_concurrency_limit**  配置put的最大并发数
 
 **get_concurrency_limit**  配置get的最大并发数
-
-**request_timeout_ms**  请求的超时时间, 单位是ms
-
-request_max_retry  请求失败时的最大重试次数
-
-**thread_pool_size**  配置brpc内部占用线程数
 
 stream_wait_time_ms  streaming发送数据失败时的等待时间, 单位是ms
 
@@ -64,7 +66,7 @@ binlog_sync_batch_size  主从同步时一次同步的最大记录条数
 
 binlog_enable_crc  配置binlog是否要开启crc校验
 
-binlog_coffee_time  主从同步出错时的等待时间, 单位是ms
+binlog_coffee_time  没有读出最新数据的等待待时间, 单位是ms
 
 binlog_sync_wait_time  主从同步时没有数据同步的等待时间, 单位是ms
 

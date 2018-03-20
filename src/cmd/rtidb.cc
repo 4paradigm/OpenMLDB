@@ -40,6 +40,8 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(endpoint);
+DECLARE_string(zk_cluster);
+DECLARE_string(zk_root_path);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
@@ -1764,9 +1766,33 @@ void StartClient() {
 }
 
 void StartNsClient() {
-    
-    ::rtidb::client::NsClient client(FLAGS_endpoint);
-    client.Init();
+    std::string endpoint;
+    if (!FLAGS_zk_cluster.empty()) {
+        ZkClient zk_client(FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
+        if (!zk_client.Init()) {
+            std::cout << "zk client init failed" << std::endl;
+            return;
+        }
+        std::string node_path = FLAGS_zk_root_path + "/leader";
+        std::vector<std::string> children;
+        if (!zk_client.GetChildren(node_path, children) || children.empty()) {
+            std::cout << "get children failed" << std::endl;
+            return;
+        }
+        std::string leader_path = node_path + "/" + children[0];
+        if (!zk_client.GetNodeValue(leader_path, endpoint)) {
+            std::cout << "get leader failed" << std::endl;
+            return;
+        }
+    } else {
+        endpoint = FLAGS_endpoint;
+    }
+    std::cout << "ns leader: " << endpoint << std::endl;
+    ::rtidb::client::NsClient client(endpoint);
+    if (client.Init() < 0) {
+        std::cout << "client init failed" << std::endl;
+        return;
+    }
     while (true) {
         std::cout << ">";
         std::string buffer;
