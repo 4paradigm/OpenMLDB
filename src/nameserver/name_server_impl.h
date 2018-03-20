@@ -182,11 +182,31 @@ private:
 
     bool RecoverOPTask();
 
-    bool RecoverMakeSnapshot(std::shared_ptr<OPData> op_data);
+    int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
-    bool RecoverAddReplica(std::shared_ptr<OPData> op_data);
+    int CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data);
 
-    bool RecoverChangeLeader(std::shared_ptr<OPData> op_data);
+    int CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateMigrateTask(std::shared_ptr<OPData> op_data);
+
+    int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_data);
+
+    int CreateUpdateTableAliveOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReLoadTableTask(std::shared_ptr<OPData> op_data);
+
+    int CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data);
 
     bool SkipDoneTask(std::shared_ptr<OPData> op_data);
 
@@ -283,7 +303,8 @@ private:
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data);
     int AddOPData(const std::shared_ptr<OPData>& op_data);
-    int CreateDelReplicaOP(const DelReplicaData& del_replica_data, ::rtidb::api::OPType op_type);
+    int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint,
+                     ::rtidb::api::OPType op_type);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
     int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
