@@ -1789,8 +1789,8 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create migrate op task ok. op_id[%lu] src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
-                op_index, src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
+    PDLOG(INFO, "create migrate op task ok. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
+                 src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
     return 0;
 }            
 
@@ -1973,8 +1973,8 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create OfflineReplica task ok. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
-                op_index, name.c_str(), pid, endpoint.c_str());
+    PDLOG(INFO, "create OfflineReplica task ok. table[%s] pid[%u] endpoint[%s]", 
+                 name.c_str(), pid, endpoint.c_str());
     return 0;
 }
 
@@ -2078,9 +2078,7 @@ int NameServerImpl::CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create ChangeLeader op task ok. op_id[%lu] task_index[%u] name[%s] pid[%u]",
-                 op_data->op_info_.op_id(), op_data->op_info_.task_index(),
-                 name.c_str(), pid);
+    PDLOG(INFO, "create ChangeLeader op task ok. name[%s] pid[%u]", name.c_str(), pid);
     return 0;
 }
 
@@ -2150,8 +2148,7 @@ int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create RecoverTable task ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]",
-                 op_data->op_info_.op_id(), op_data->op_info_.task_index(),
+    PDLOG(INFO, "create RecoverTable task ok. name[%s] pid[%u] endpoint[%s]",
                  name.c_str(), pid, endpoint.c_str());
 	return 0;
 }
@@ -2410,8 +2407,8 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create readdreplica op task ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]", 
-                op_index, name.c_str(), pid, endpoint.c_str());
+    PDLOG(INFO, "create readdreplica op task ok. name[%s] pid[%u] endpoint[%s]", 
+                 name.c_str(), pid, endpoint.c_str());
 	return 0;
 }
 
@@ -2623,8 +2620,8 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
         return -1;
     }
     op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create readdreplica no send task ok. op_id[%lu] name[%s] pid[%u] endpoint[%s]", 
-                op_index, name.c_str(), pid, endpoint.c_str());
+    PDLOG(INFO, "create readdreplica no send task ok. name[%s] pid[%u] endpoint[%s]", 
+                 name.c_str(), pid, endpoint.c_str());
     return 0;
 }
 
