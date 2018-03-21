@@ -1784,10 +1784,10 @@ void StartNsClient() {
             std::cout << "get leader failed" << std::endl;
             return;
         }
+        std::cout << "ns leader: " << endpoint << std::endl;
     } else {
         endpoint = FLAGS_endpoint;
     }
-    std::cout << "ns leader: " << endpoint << std::endl;
     ::rtidb::client::NsClient client(endpoint);
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
