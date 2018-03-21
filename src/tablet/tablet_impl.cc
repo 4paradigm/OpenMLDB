@@ -53,6 +53,7 @@ DECLARE_int32(stream_wait_time_ms);
 DECLARE_int32(stream_close_wait_time_ms);
 DECLARE_int32(stream_block_size);
 DECLARE_int32(stream_bandwidth_limit);
+DECLARE_int32(send_file_max_try);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -1162,73 +1163,96 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 		return -1;
 	}
 	::rtidb::api::TabletServer_Stub stub(&channel);
-	brpc::Controller cntl;
-	brpc::StreamId stream;
-    cntl.set_timeout_ms(FLAGS_request_timeout_ms);
-    cntl.set_max_retry(FLAGS_request_max_retry);
-	if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
-		PDLOG(WARNING, "create stream failed. endpoint %s", endpoint.c_str());
-		return -1;
-	}
-
     std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (file_name != "table_meta.txt") {
         full_path += "snapshot/";
     }
 	full_path += file_name;
-    PDLOG(INFO, "send file %s to %s", full_path.c_str(), endpoint.c_str());
-	FILE* file = fopen(full_path.c_str(), "rb");
-	if (file == NULL) {
-        PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+    uint64_t file_size = 0;
+    if (::rtidb::base::GetSize(full_path, file_size) < 0) {
+        PDLOG(WARNING, "get size failed. file[%s]", full_path.c_str());
         return -1;
     }
-
-	::rtidb::api::CreateStreamRequest request;
-	::rtidb::api::GeneralResponse response;
-	request.set_tid(tid);
-	request.set_pid(pid);
-	request.set_file_name(file_name);
-	stub.CreateStream(&cntl, &request, &response, NULL);
-	if (cntl.Failed()) {
-		PDLOG(WARNING, "connect stream failed. %s ", cntl.ErrorText().c_str());
-        fclose(file);
-		return -1;
-	}
-	char buffer[FLAGS_stream_block_size];
-    // compute the used time(microseconds) that send a block by limit bandwidth. 
-    // limit_time = (FLAGS_stream_block_size / FLAGS_stream_bandwidth_limit) * 1000 * 1000 
-    uint64_t limit_time = 0;
-    if (FLAGS_stream_bandwidth_limit > 0) {
-        limit_time = ((uint64_t)FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
-    }    
-	int ret = 0;
-	while (true) {
-		size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
-        if (len < (uint32_t)FLAGS_stream_block_size) {
-            if (feof(file)) {
-				if (len > 0) {
-                    ret = StreamWrite(stream, buffer, len, limit_time);
-				}
-				break;
+    PDLOG(INFO, "send file %s to %s. size[%lu]", full_path.c_str(), endpoint.c_str(), file_size);
+    int try_times = FLAGS_send_file_max_try;   
+    do {
+        try_times--;
+        brpc::Controller cntl;
+        brpc::StreamId stream;
+        cntl.set_timeout_ms(FLAGS_request_timeout_ms);
+        cntl.set_max_retry(FLAGS_request_max_retry);
+        if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
+            PDLOG(WARNING, "create stream failed. endpoint %s", endpoint.c_str());
+            continue;
+        }
+        FILE* file = fopen(full_path.c_str(), "rb");
+        if (file == NULL) {
+            PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+            return -1;
+        }
+        ::rtidb::api::CreateStreamRequest request;
+        ::rtidb::api::GeneralResponse response;
+        request.set_tid(tid);
+        request.set_pid(pid);
+        request.set_file_name(file_name);
+        stub.CreateStream(&cntl, &request, &response, NULL);
+        if (cntl.Failed()) {
+            PDLOG(WARNING, "connect stream failed. %s ", cntl.ErrorText().c_str());
+            fclose(file);
+            continue;
+        }
+        char buffer[FLAGS_stream_block_size];
+        // compute the used time(microseconds) that send a block by limit bandwidth. 
+        // limit_time = (FLAGS_stream_block_size / FLAGS_stream_bandwidth_limit) * 1000 * 1000 
+        uint64_t limit_time = 0;
+        if (FLAGS_stream_bandwidth_limit > 0) {
+            limit_time = ((uint64_t)FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
+        }    
+        int ret = 0;
+        while (true) {
+            size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
+            if (len < (uint32_t)FLAGS_stream_block_size) {
+                if (feof(file)) {
+                    if (len > 0) {
+                        ret = StreamWrite(stream, buffer, len, limit_time);
+                    }
+                    break;
+                }
+                PDLOG(WARNING, "read file %s error. error message: %s", file_name.c_str(), strerror(errno));
+                ret = -1;
+                break;
             }
-        	PDLOG(WARNING, "read file %s error. error message: %s", file_name.c_str(), strerror(errno));
-			ret = -1;
-			break;
+            if (StreamWrite(stream, buffer, len, limit_time) < 0) {
+                PDLOG(WARNING, "stream write failed. tid %u pid %u file %s", tid, pid, file_name.c_str());
+                ret = -1;
+                break;
+            }
         }
-        if (StreamWrite(stream, buffer, len, limit_time) < 0) {
-            PDLOG(WARNING, "stream write failed. tid %u pid %u file %s", tid, pid, file_name.c_str());
-            ret = -1;
-            break;
+        fclose(file);
+        brpc::StreamClose(stream);
+        if (ret == -1) {
+            continue;
         }
-	}
-    // sleep a moment to make sure the receiver has received all data
-    std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_stream_close_wait_time_ms));
-	fclose(file);
-	brpc::StreamClose(stream);
-	if (ret == 0) {
-    	PDLOG(INFO, "send file %s success", file_name.c_str());
-	}
-	return ret;
+        // sleep a moment to make sure the receiver has received all data
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_stream_close_wait_time_ms));
+        // check file
+        ::rtidb::api::CheckFileRequest check_request;
+        check_request.set_tid(tid);
+        check_request.set_pid(pid);
+        check_request.set_file(file_name);
+        check_request.set_size(file_size);
+        stub.CheckFile(&cntl, &check_request, &response, NULL);
+        if (cntl.Failed()) {
+            PDLOG(WARNING, "check file request failed. error msg: %s", cntl.ErrorText().c_str());
+            continue;
+        }
+        if (response.code() == 0) {
+            PDLOG(INFO, "send file %s success", file_name.c_str());
+            return 0;
+        }
+        PDLOG(WARNING, "check file failed");
+    } while (try_times > 0);
+	return -1;
 }
 
 int TabletImpl::StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time) {
@@ -1681,6 +1705,37 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
 	response->set_code(0);
 	response->set_msg("ok");
 }        
+
+void TabletImpl::CheckFile(RpcController* controller,
+            const ::rtidb::api::CheckFileRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::string file_name = request->file();
+    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    if (file_name != "table_meta.txt") {
+        full_path += "snapshot/";
+    }
+	full_path += file_name;
+    uint64_t size = 0;
+    if (::rtidb::base::GetSize(full_path, size) < 0) {
+        response->set_code(-1);
+        response->set_msg("get size failed");
+        PDLOG(WARNING, "get size failed. file[%s]", full_path.c_str());
+        return;
+    }
+    if (size != request->size()) {
+        response->set_code(-1);
+        response->set_msg("check size failed");
+        PDLOG(WARNING, "check size failed. file[%s] cur_size[%lu] expect_size[%lu]", 
+                        full_path.c_str(), size, request->size());
+        return;
+    }
+	response->set_code(0);
+	response->set_msg("ok");
+}
 
 void TabletImpl::GetManifest(RpcController* controller,
             const ::rtidb::api::GetManifestRequest* request,

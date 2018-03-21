@@ -128,6 +128,24 @@ inline static int GetFileName(const std::string& path, std::vector<std::string>&
     return 0;
 }
 
+inline static int GetSize(const std::string& file_path, uint64_t& size) {
+    if (file_path.empty()) {
+        PDLOG(WARNING, "input path is empty");
+        return -1;
+    }
+    struct stat stat_buf;
+    if (lstat(file_path.c_str(), &stat_buf) < 0) {
+        PDLOG(WARNING, "stat path %s failed err[%d: %s]",
+                       file_path.c_str(), errno, strerror(errno));
+    }
+    if (S_ISREG(stat_buf.st_mode)) {
+        size = stat_buf.st_size;
+        return 0;
+    }
+    PDLOG(WARNING, "[%s] is not a regular file", file_path.c_str());
+    return -1;
+}    
+
 }
 }
 
