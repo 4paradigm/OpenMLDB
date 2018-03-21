@@ -1149,25 +1149,12 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 }            
 
 int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid,
-			const std::string& file_name) {
-	brpc::Channel channel;
-	brpc::ChannelOptions options;
-    SleepRetryPolicy sleep_retry_policy;
-    options.retry_policy = &sleep_retry_policy;
-	options.protocol = brpc::PROTOCOL_BAIDU_STD;
-	options.timeout_ms = FLAGS_request_timeout_ms;
-    options.connect_timeout_ms = FLAGS_request_timeout_ms;
-	options.max_retry = FLAGS_request_max_retry;
-	if (channel.Init(endpoint.c_str(), NULL) != 0) {
-		PDLOG(WARNING, "init channel failed. %s ", endpoint.c_str());
-		return -1;
-	}
-	::rtidb::api::TabletServer_Stub stub(&channel);
+            const std::string& file_name) {
     std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (file_name != "table_meta.txt") {
         full_path += "snapshot/";
     }
-	full_path += file_name;
+    full_path += file_name;
     uint64_t file_size = 0;
     if (::rtidb::base::GetSize(full_path, file_size) < 0) {
         PDLOG(WARNING, "get size failed. file[%s]", full_path.c_str());
@@ -1177,6 +1164,19 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
     int try_times = FLAGS_send_file_max_try;   
     do {
         try_times--;
+        brpc::Channel channel;
+        brpc::ChannelOptions options;
+        SleepRetryPolicy sleep_retry_policy;
+        options.retry_policy = &sleep_retry_policy;
+        options.protocol = brpc::PROTOCOL_BAIDU_STD;
+        options.timeout_ms = FLAGS_request_timeout_ms;
+        options.connect_timeout_ms = FLAGS_request_timeout_ms;
+        options.max_retry = FLAGS_request_max_retry;
+        if (channel.Init(endpoint.c_str(), NULL) != 0) {
+            PDLOG(WARNING, "init channel failed. %s ", endpoint.c_str());
+            continue;
+        }
+        ::rtidb::api::TabletServer_Stub stub(&channel);
         brpc::Controller cntl;
         brpc::StreamId stream;
         cntl.set_timeout_ms(FLAGS_request_timeout_ms);
@@ -1233,7 +1233,6 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         if (ret == -1) {
             continue;
         }
-        // sleep a moment to make sure the receiver has received all data
         std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_stream_close_wait_time_ms));
         // check file
         ::rtidb::api::CheckFileRequest check_request;
@@ -1241,7 +1240,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         check_request.set_pid(pid);
         check_request.set_file(file_name);
         check_request.set_size(file_size);
-        stub.CheckFile(&cntl, &check_request, &response, NULL);
+        brpc::Controller cntl1;
+        stub.CheckFile(&cntl1, &check_request, &response, NULL);
         if (cntl.Failed()) {
             PDLOG(WARNING, "check file request failed. error msg: %s", cntl.ErrorText().c_str());
             continue;
@@ -1252,7 +1252,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         }
         PDLOG(WARNING, "check file failed");
     } while (try_times > 0);
-	return -1;
+    return -1;
 }
 
 int TabletImpl::StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time) {
