@@ -1151,8 +1151,11 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 			const std::string& file_name) {
 	brpc::Channel channel;
 	brpc::ChannelOptions options;
+    SleepRetryPolicy sleep_retry_policy;
+    options.retry_policy = &sleep_retry_policy;
 	options.protocol = brpc::PROTOCOL_BAIDU_STD;
 	options.timeout_ms = FLAGS_request_timeout_ms;
+    options.connect_timeout_ms = FLAGS_request_timeout_ms;
 	options.max_retry = FLAGS_request_max_retry;
 	if (channel.Init(endpoint.c_str(), NULL) != 0) {
 		PDLOG(WARNING, "init channel failed. %s ", endpoint.c_str());
@@ -1161,6 +1164,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 	::rtidb::api::TabletServer_Stub stub(&channel);
 	brpc::Controller cntl;
 	brpc::StreamId stream;
+    cntl.set_timeout_ms(FLAGS_request_timeout_ms);
+    cntl.set_max_retry(FLAGS_request_max_retry);
 	if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
 		PDLOG(WARNING, "create stream failed. endpoint %s", endpoint.c_str());
 		return -1;
