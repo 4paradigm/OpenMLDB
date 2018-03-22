@@ -1483,13 +1483,17 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
     std::string value;
     request->SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kAddReplicaOP, value, op_data) < 0) {
-        PDLOG(WARNING, "create AddReplicaOP data error. table[%s] pid[%u]",
+        PDLOG(WARNING, "create AddReplicaOP data failed. table[%s] pid[%u]",
                         request->name().c_str(), request->pid());
+        response->set_code(-1);
+        response->set_msg("create AddReplicaOP data failed");
         return;
     }
     if (CreateAddReplicaOPTask(op_data) < 0) {
         PDLOG(WARNING, "create AddReplicaOP task failed. table[%s] pid[%u] endpoint[%s]",
                         request->name().c_str(), request->pid(), request->endpoint().c_str());
+        response->set_code(-1);
+        response->set_msg("create AddReplicaOP task failed");
         return;
     }
     if (AddOPData(op_data) < 0) {
