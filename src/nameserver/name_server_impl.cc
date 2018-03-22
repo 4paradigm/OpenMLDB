@@ -810,6 +810,87 @@ void NameServerImpl::DisConnectZK(RpcController* controller,
     PDLOG(INFO, "disconnect zk ok");
 }
 
+void NameServerImpl::GetTablePartition(RpcController* controller,
+        const GetTablePartitionRequest* request,
+        GetTablePartitionResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::string name = request->name();
+    uint32_t pid = request->pid();
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        response->set_code(-1);
+        response->set_msg("table is not exist");
+        return;
+    }
+    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+        if (iter->second->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        ::rtidb::nameserver::TablePartition* table_partition = response->mutable_table_partition();
+        table_partition->CopyFrom(iter->second->table_partition(idx));
+        break;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::SetTablePartition(RpcController* controller,
+        const SetTablePartitionRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::string name = request->name();
+    uint32_t pid = request->table_partition().pid();
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        response->set_code(-1);
+        response->set_msg("table is not exist");
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> cur_table_info(iter->second->New());
+    cur_table_info->CopyFrom(*(iter->second));
+    for (int idx = 0; idx < cur_table_info->table_partition_size(); idx++) {
+        if (cur_table_info->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        ::rtidb::nameserver::TablePartition* table_partition =
+                cur_table_info->mutable_table_partition(idx);
+        table_partition->Clear();        
+        table_partition->CopyFrom(request->table_partition());
+        std::string table_value;
+        iter->second->SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            response->set_code(-1);
+            response->set_msg("set zk failed");
+            return;
+        }
+        NotifyTableChanged();
+        iter->second = cur_table_info;
+        break;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
 void NameServerImpl::MakeSnapshotNS(RpcController* controller,
         const MakeSnapshotNSRequest* request,
         GeneralResponse* response,
