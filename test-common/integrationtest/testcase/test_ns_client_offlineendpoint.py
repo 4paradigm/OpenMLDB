@@ -118,8 +118,8 @@ class TestOfflineEndpoint(TestCaseBase):
 
 
     @ddt.data(
-        (conf.tb_endpoints[0][1], 'failed to offline endpoint. error msg: endpoint is healthy'),
-        ('127.0.0.1:80', 'failed to offline endpoint. error msg: endpoint is not exist'),
+        (conf.tb_endpoints[0][1], 'failed to offline endpoint'),
+        ('127.0.0.1:80', 'failed to offline endpoint'),
     )
     @ddt.unpack
     def test_offlineendpoint_failed(self, endpoint, exp_msg):

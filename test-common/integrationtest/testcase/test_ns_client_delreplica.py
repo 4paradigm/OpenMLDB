@@ -101,10 +101,10 @@ class TestDelReplicaNs(TestCaseBase):
 
 
     @ddt.data(
-        ('notexsit', None, None, 'Fail to delreplica. error msg:table is not  exist!'),
-        (None, 10, None, 'Fail to delreplica. error msg:create op failed'),
-        (None, None, get_base_attr('leader'), 'Fail to delreplica. error msg:create op failed'),
-        (None, None, '127.1.1.1:6666', 'Fail to delreplica. error msg:tablet is not online'),
+        ('notexsit', None, None, 'Fail to delreplica'),
+        (None, 10, None, 'Fail to delreplica'),
+        (None, None, get_base_attr('leader'), 'Fail to delreplica'),
+        (None, None, '127.1.1.1:6666', 'Fail to delreplica'),
     )
     @ddt.unpack
     def test_delreplica_args_invalid(self, tname, pid, endpoint, exp_msg):
@@ -162,7 +162,7 @@ class TestDelReplicaNs(TestCaseBase):
 
         rs4 = self.showtable(self.ns_leader)
         self.start_client(self.slave1)
-        self.assertTrue('Fail to delreplica. error msg:tablet is not online' in rs3)
+        self.assertTrue('Fail to delreplica' in rs3)
         self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '8', '100', 'no'])
 
 

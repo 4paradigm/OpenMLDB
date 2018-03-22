@@ -111,15 +111,15 @@ class TestAddReplicaNs(TestCaseBase):
 
         infoLogger.info(self.showtablet(self.ns_leader))
         rs2 = self.addreplica(self.ns_leader, name, 1, 'ns_client', self.slave1)
-        self.assertTrue('Fail to addreplica. error msg:tablet is not online' in rs2)
+        self.assertTrue('Fail to addreplica' in rs2)
         self.start_client(self.slave1)
 
 
     @ddt.data(
         (None, None, get_base_attr('slave1'), 'AddReplica ok'),  # 需要log中看是fail的
-        ('notexsit', None, None, 'Fail to addreplica. error msg:table is not  exist!'),
-        (None, 10, None, 'Fail to addreplica. error msg:get leader failed'),
-        (None, None, '127.1.1.1:6666', 'Fail to addreplica. error msg:tablet is not online'),
+        ('notexsit', None, None, 'Fail to addreplica'),
+        (None, 10, None, 'Fail to addreplica'),
+        (None, None, '127.1.1.1:6666', 'Fail to addreplica'),
     )
     @ddt.unpack
     def test_addreplica_args_invalid(self, tname, pid, endpoint, exp_msg):

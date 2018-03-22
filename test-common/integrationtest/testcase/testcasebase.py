@@ -55,10 +55,12 @@ class TestCaseBase(unittest.TestCase):
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
         self.clear_ns_table(self.ns_leader)
+        rs = self.showtablet(self.ns_leader)
         for edp_tuple in conf.tb_endpoints:
             edp = edp_tuple[1]
-            rs = self.start_client(edp)
-            if rs[1]:
+            if rs[edp][0] != 'kTabletHealthy':
+                self.stop_client(edp)
+                self.start_client(edp)
                 time.sleep(10)
                 self.recoverendpoint(self.ns_leader, edp)
                 time.sleep(3)

@@ -149,7 +149,7 @@ class TestChangeLeader(TestCaseBase):
         self.assertEqual('Create table ok' in rs1, True)
 
         rs2 = self.changeleader(self.ns_leader, name, 0)
-        self.assertEqual('failed to change leader. error msg: leader is alive' in rs2, True)
+        self.assertEqual('failed to change leader' in rs2, True)
 
 
     def test_changeleader_tname_notexist(self):
@@ -168,7 +168,7 @@ class TestChangeLeader(TestCaseBase):
         self.assertEqual('Create table ok' in rs1, True)
 
         rs2 = self.changeleader(self.ns_leader, 'nullnullnull', 0)
-        self.assertEqual('failed to change leader. error msg: table is not exist' in rs2, True)
+        self.assertEqual('failed to change leader' in rs2, True)
 
 
 if __name__ == "__main__":

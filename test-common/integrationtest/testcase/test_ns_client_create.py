@@ -207,7 +207,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         (('"127.0.0.1:37770"', '"127.0.0.1"'), 'Fail to create table'),
         (('"127.0.0.1:37770"', '"abc"'), 'Fail to create table'),
         ((None, '"127.0.0.1:37770"'), 'missing required fields: table_partition[0].endpoint'),
-        (('"000"', '"127.0.0.1:37770"'), 'Fail to create table. error msg: create table failed'),
+        (('"000"', '"127.0.0.1:37770"'), 'Fail to create table'),
     )
     @ddt.unpack
     def test_create_endpoint(self, ep, exp_msg):

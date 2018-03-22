@@ -67,7 +67,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertTrue('Create table ok' in rs)
 
         rs3 = self.makesnapshot(self.ns_leader, name + 'aaa', 2, 'ns_client')
-        self.assertTrue('Fail to makesnapshot. error msg:get table info failed' in rs3)
+        self.assertTrue('Fail to makesnapshot' in rs3)
 
 
     def test_makesnapshot_pid_notexist(self):
@@ -87,7 +87,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertTrue('Create table ok' in rs)
 
         rs3 = self.makesnapshot(self.ns_leader, name, 4, 'ns_client')
-        self.assertTrue('Fail to makesnapshot. error msg:get leader failed' in rs3)
+        self.assertTrue('Fail to makesnapshot' in rs3)
 
 
     def test_changeleader_and_makesnapshot(self):
@@ -125,7 +125,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
         rs4 = self.makesnapshot(self.ns_leader, name, 1, 'ns_client')
         self.start_client(self.leader)
-
+        time.sleep(10)
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
@@ -134,12 +134,11 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '2', '144000', 'yes'])
 
         self.assertEqual('MakeSnapshot ok' in rs3, True)
-        self.assertEqual('Fail to makesnapshot. error msg:get leader failed' in rs4, True)
+        self.assertEqual('Fail to makesnapshot' in rs4, True)
         mf = self.get_manifest(self.slave1path, tid, 0)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
         self.assertEqual(mf['count'], '1')
-        time.sleep(10)
 
 
 if __name__ == "__main__":
