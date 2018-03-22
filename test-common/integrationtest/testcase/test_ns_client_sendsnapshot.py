@@ -246,11 +246,12 @@ class TestSendSnapshot(TestCaseBase):
             self.check_manifest(self.leaderpath, t, pid, str(t), self.get_sdb_name(t, pid), str(t))
 
 
+    """
     def test_speed_limit(self):  # RTIDB-227
-        """
+        ""
         限速测试，stream_bandwidth_limit = 1024, 10k左右文件会在8s-12s之间发送成功
         :return:
-        """
+        ""
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 1024)
         self.stop_client(self.leader)
         time.sleep(5)
@@ -274,6 +275,7 @@ class TestSendSnapshot(TestCaseBase):
         self.start_client(self.leader)
         self.assertEqual(check_manifest_sent1, False)  # files sending because of stream_bandwidth_limit
         self.assertEqual(check_manifest_sent, True)
+    """
 
 
     def test_speed_without_limit(self):

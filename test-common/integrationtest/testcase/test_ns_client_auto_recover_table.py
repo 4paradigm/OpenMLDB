@@ -203,17 +203,17 @@ class TestAutoRecoverTable(TestCaseBase):
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
 
-
+    """
     @ddt.data(
         (3, 0, 6, 32, 7, 15, 28, 0, 29, 0, 30),  # recover when ns killed: RTIDB-243
     )
     @ddt.unpack
     def test_auto_recover_table_ns_killed(self, *steps):
-        """
+        ""
         ns_leader挂掉，可以sendsnapshot成功，可以故障恢复成功
         :param steps:
         :return:
-        """
+        ""
         self.update_conf(self.slave1path, 'stream_block_size', 1)
         self.update_conf(self.slave1path, 'stream_bandwidth_limit', 1)
         self.update_conf(self.slave2path, 'stream_block_size', 1)
@@ -249,7 +249,7 @@ class TestAutoRecoverTable(TestCaseBase):
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
-
+    """
 
     @ddt.data((1, 9, 15))
     @ddt.unpack

@@ -122,12 +122,12 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '2', '144000', 'yes'])
 
-
+    """
     def test_auto_failover_slave_network_flashbreak(self):
-        """
+        ""
         auto_failover=true：连续两次主节点闪断，故障切换成功
         :return:
-        """
+        ""
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
@@ -172,7 +172,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
-
+    """
 
     def test_select_leader(self):
         """
