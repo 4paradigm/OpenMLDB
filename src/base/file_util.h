@@ -137,6 +137,7 @@ inline static int GetSize(const std::string& file_path, uint64_t& size) {
     if (lstat(file_path.c_str(), &stat_buf) < 0) {
         PDLOG(WARNING, "stat path %s failed err[%d: %s]",
                        file_path.c_str(), errno, strerror(errno));
+        return -1;
     }
     if (S_ISREG(stat_buf.st_mode)) {
         size = stat_buf.st_size;

@@ -2267,6 +2267,9 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
             CreateReLoadTableOP(name, pid, endpoint);
         }
         task_info->set_status(::rtidb::api::TaskStatus::kDone);
+        PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                    task_info->op_id(), 
+                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
         return;
     }
     if (has_table && is_leader) {
@@ -2320,6 +2323,9 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     PDLOG(INFO, "recover table task run success. name[%s] tid[%u] pid[%u]", 
                 name.c_str(), tid, pid);
+    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                task_info->op_id(), 
+                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
 int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
@@ -3132,6 +3138,9 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                task_info->op_id(), 
+                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateDelReplicaTask(const std::string& endpoint,
@@ -3245,6 +3254,9 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                task_info->op_id(), 
+                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateDelTableInfoTask(const std::string& name, uint32_t pid,
@@ -3321,6 +3333,9 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
                 PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
                 task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                            task_info->op_id(), 
+                            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
                 break;
             }
         }
@@ -3365,6 +3380,9 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
                 task_info->set_status(::rtidb::api::TaskStatus::kDone);
                 PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+                PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                            task_info->op_id(), 
+                            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
                 return;
             }
         }
@@ -3411,6 +3429,9 @@ void NameServerImpl::UpdateTableAlive(const std::string& name, const std::string
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                     zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                task_info->op_id(), 
+                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateSelectLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
@@ -3518,6 +3539,9 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
     PDLOG(INFO, "new leader is[%s]. name[%s] tid[%u] pid[%u] offset[%lu]", 
                 leader_endpoint.c_str(), name.c_str(), tid, pid, max_offset);
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                task_info->op_id(), 
+                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
  }            
 
 void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
@@ -3568,6 +3592,9 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
                 change_leader_data.name().c_str(), change_leader_data.tid(), 
                 change_leader_data.pid(), leader_endpoint.c_str(), cur_term);
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                task_info->op_id(), 
+                ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
 void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
@@ -3643,6 +3670,9 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
                     name.c_str(), pid, leader_endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kDone);
         // notify client to update table partition information
+        PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+                    task_info->op_id(), 
+                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
         NotifyTableChanged();
         return;
     }

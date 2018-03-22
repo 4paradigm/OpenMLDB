@@ -1208,7 +1208,10 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         if (FLAGS_stream_bandwidth_limit > 0) {
             limit_time = ((uint64_t)FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
         }    
+        uint64_t block_num = file_size / (uint64_t)FLAGS_stream_block_size + 1;
+        uint64_t report_block_num = block_num / 100;
         int ret = 0;
+        uint64_t block_count = 0;
         while (true) {
             size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
             if (len < (uint32_t)FLAGS_stream_block_size) {
@@ -1227,6 +1230,11 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
                 ret = -1;
                 break;
             }
+            block_count++;
+            if (report_block_num == 0 || block_count % report_block_num == 0) {
+                PDLOG(INFO, "send block num[%lu] total block num[%lu]. tid %u pid %u file %s", 
+                            block_count, block_num, tid, pid, file_name.c_str());
+            }
         }
         fclose(file);
         brpc::StreamClose(stream);
@@ -1242,8 +1250,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         check_request.set_size(file_size);
         brpc::Controller cntl1;
         stub.CheckFile(&cntl1, &check_request, &response, NULL);
-        if (cntl.Failed()) {
-            PDLOG(WARNING, "check file request failed. error msg: %s", cntl.ErrorText().c_str());
+        if (cntl1.Failed()) {
+            PDLOG(WARNING, "check file request failed. error msg: %s", cntl1.ErrorText().c_str());
             continue;
         }
         if (response.code() == 0) {
