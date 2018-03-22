@@ -155,11 +155,11 @@ public class HaPutTest {
   @DataProvider(name = "putdataSchema")
   public Object[][] putGetScanSchema() {
     return new Object[][] {
-        {true, "string", "1111", true, "string", "1111", true},
+        {true, "string", "1111", true, "string", "3", true},
         {true, "string", " ", true, "string", "1111", true},
         {true, "string", "、*&……%￥测试", true, "string", "、*&……%￥测试", true},
-        {true, "string", "", true, "string", "1111", true},
-        {true, "string", null, true, "string", "1111", true},
+        {true, "string", "1111", true, "string", "", true},
+        {true, "string", "1111", true, "string", null, true},
         {true, "string", "", true, "string", "", false},
         {true, "string", "", false, "string", "1111", false},
         {true, "string", "1111", false, "string", "", true},
@@ -199,11 +199,6 @@ public class HaPutTest {
         {true, "string", "", true, "double", null, false},
         {true, "string", "1111", true, "double", null, true},
         {true, "string", "1111", false, "double", null, true},
-
-//        {true, "string", "1111", true, "uint32", 1, false},
-//        {true, "string", "1111", true, "uint32", null, false},
-//        {true, "string", "1111", false, "uint32", 1, false},
-//        {true, "string", "1111", false, "uint32", null, true},
     }; }
 
   @Test(dataProvider = "putdataSchema")
@@ -215,15 +210,17 @@ public class HaPutTest {
     String name = createSchemaTable(isIndex1, type1, isIndex2, type2);
     try {
       ok = tableSyncClient.put(name, 1555555555555L, new Object[]{value1, value2, "value3"});
-      okT1 = tableSyncClient.put(name, 1555555555555L, new Object[]{"t1", value2, "value3"});
-      okT2 = tableSyncClient.put(name, 1555555555555L, new Object[]{"t2", value2, "value3"});
+      okT1 = tableSyncClient.put(name, 1666666666666L, new Object[]{"t1", value2, "amt2"});
+      okT2 = tableSyncClient.put(name, 1777777777777L, new Object[]{"t2", value2, "amt3"});
       Assert.assertTrue(ok);
       Assert.assertTrue(okT1);
       Assert.assertTrue(okT2);
       if (putOk == true) {
         Object[] row = tableSyncClient.getRow(name, value1.toString(), 1555555555555L);
         Assert.assertEquals(row[0], value1);
-        Assert.assertEquals(row[1], value2);
+        if (value2 != null && value2.equals("")) {
+          value2 = null;
+        }
         Assert.assertEquals(row[2], "value3");
 
         KvIterator it = tableSyncClient.scan(name, value1.toString(), "card", 1999999999999L, 1L);
@@ -238,19 +235,33 @@ public class HaPutTest {
         TableHandler tbHandler = client.getHandler(name);
         int tid = tbHandler.getTableInfo().getTid();
         int pid1 = (int) (MurmurHash.hash64(value1.toString()) % tbHandler.getPartitions().length);
+        System.out.println("pid1 = " + pid1);
+        int pid1Col2 = -1;
+
         it = tableSyncClient.scan(tid, pid1, value1.toString(), "card", 1999999999999L, 1L);
         rowScan = it.getDecodedValue();
         Assert.assertEquals(rowScan[0], value1);
+        if (isIndex2 == true && value2 == "3") {
+          pid1Col2 = (int) (MurmurHash.hash64(value2.toString()) % tbHandler.getPartitions().length);
+          System.out.println("pid1Col2 = " + pid1Col2);
+          it = tableSyncClient.scan(tid, pid1Col2, value2.toString(), "mcc",1666666666665L, 1L);
+          rowScan = it.getDecodedValue();
+          Assert.assertEquals(rowScan[0], value1);
+          Assert.assertEquals(rowScan[1], value2);
+        }
 
         int pid2 = (int) (MurmurHash.hash64("t1") % tbHandler.getPartitions().length);
+        System.out.println("pid2 = " + pid2);
         it = tableSyncClient.scan(tid, pid2, "t1", "card", 1999999999999L, 1L);
         rowScan = it.getDecodedValue();
         Assert.assertEquals(rowScan[0], "t1");
 
         int pid3 = (int) (MurmurHash.hash64("t2") % tbHandler.getPartitions().length) * -1;
+        System.out.println("pid3 = " + pid3);
         it = tableSyncClient.scan(tid, pid3, "t2", "card", 1999999999999L, 1L);
         rowScan = it.getDecodedValue();
         Assert.assertEquals(rowScan[0], "t2");
+
         Assert.assertFalse(pid1 == pid2 && pid1 == pid3 && pid2 == pid3);
       }
     } catch (Exception e) {

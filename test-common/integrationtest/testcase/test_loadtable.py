@@ -101,7 +101,7 @@ class TestLoadTable(TestCaseBase):
 
     def test_loadtable_failed_after_drop(self):
         """
-        drop表后可以重新loadtable
+        drop表后不可以重新loadtable
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
@@ -118,6 +118,7 @@ class TestLoadTable(TestCaseBase):
 
         rs3 = self.drop(self.leader, self.tid, self.pid)
         self.assertTrue('Drop table ok' in rs3)
+        time.sleep(1)
         rs4 = self.loadtable(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertFalse('Fail' not in rs4)
 
