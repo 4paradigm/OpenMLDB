@@ -3236,6 +3236,7 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    NotifyTableChanged();
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateDelReplicaTask(const std::string& endpoint,
@@ -3349,6 +3350,7 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    NotifyTableChanged();
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateDelTableInfoTask(const std::string& name, uint32_t pid,
@@ -3425,6 +3427,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
                 PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
                 task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                NotifyTableChanged();
                 break;
             }
         }
@@ -3513,6 +3516,7 @@ void NameServerImpl::UpdateTableAlive(const std::string& name, const std::string
         return;         
     }
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    NotifyTableChanged();
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                     zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
 }
