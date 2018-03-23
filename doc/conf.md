@@ -89,3 +89,5 @@ name_server_task_pool_size  配置nameserver任务线程池的大小
 
 name_server_task_wait_time  nameserver任务执行框架中任务队列为空时的休眠时间, 单位是ms.
 
+max_op_num  配置nameserver内存中保存op的最大数
+
