@@ -107,7 +107,7 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(10)
 
         self.changeleader(self.ns_leader, name, 0)
-
+        time.sleep(1)
         rs2 = self.showtable(self.ns_leader)
         self.start_client(self.leader)
 

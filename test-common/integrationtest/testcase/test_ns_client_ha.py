@@ -152,18 +152,18 @@ class TestNameserverHa(TestCaseBase):
         self.assertEqual(rs1, rs2)
         self.assertEqual(rs3[self.leader][0], 'kTabletOffline')
         self.assertEqual([v[-1] for k, v in rs4.items() if k[-1] == self.leader], ['no'] * 4)
-
+    """
 
     @ddt.data(
         (9,1,16,17,2,0,7,9),  # ns_leader confset之后挂掉，新ns_leader在confget时新的conf  # RTIDB-197
     )
     @ddt.unpack
     def test_ns_slaver_conf_sync(self, *steps):
-        ""
+        """"
         ns_leader confset之后挂掉，新ns_leader在confget时新的conf
         :param steps:
         :return:
-        ""
+        """
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
@@ -174,14 +174,15 @@ class TestNameserverHa(TestCaseBase):
         nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
         nsc.start(*nsc.endpoints)
-        nsc.get_ns_leader()
+        # time.sleep(5)
+        self.get_new_ns_leader()
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
         self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
         self.assertEqual('false' in rs1, True)
         self.assertEqual('false' in rs2, True)
 
-
+    """
     @ddt.data(
         (9,8,0,9),  # ns 闪断，RTIDB-223
     )
