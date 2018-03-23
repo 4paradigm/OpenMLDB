@@ -52,6 +52,8 @@ stream_block_size  streaming一次发送数据块的最大值, 单位是byte
 
 make_snapshot_check_interval  检查make snapshot的时间间隔, 单位是ms
 
+send_file_max_try  发送文件失败时的最大重试次数
+
 task_pool_size  tablet线程池的大小
 
 **scan_max_bytes_size**  一次scan数据的最大值, 单位是byte
