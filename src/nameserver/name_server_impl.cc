@@ -22,6 +22,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
+DECLARE_int32(max_op_num);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
 
@@ -1955,6 +1956,28 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
         return -1;
     }
     task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+    while (task_map_.size() > (uint32_t)FLAGS_max_op_num) {
+        auto iter = task_map_.begin();
+        while (iter != task_map_.end() && 
+                iter->second->op_info_.task_status() == ::rtidb::api::TaskStatus::kDoing) {
+            iter++;
+        }
+        if (iter == task_map_.end()) {
+            break;
+        }
+        if (iter->second->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+            std::string node = zk_op_data_path_ + "/" + std::to_string(iter->second->op_info_.op_id());
+            if (zk_client_->DeleteNode(node)) {
+                PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
+                iter->second->task_list_.clear();
+            } else {
+                PDLOG(WARNING, "delete zk op_node failed. op_id[%lu] node[%s]", 
+                                iter->second->op_info_.op_id(), node.c_str()); 
+                break;
+            }
+        }
+        task_map_.erase(iter);
+    }
     cv_.notify_one();
     return 0;
 }
