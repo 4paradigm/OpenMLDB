@@ -2,13 +2,26 @@
 from testcasebase import TestCaseBase
 from libs.test_loader import load
 import libs.ddt as ddt
+import random
 import time
 from libs.logger import infoLogger
+import libs.utils as utils
 from libs.deco import multi_dimension
 
 
 @ddt.ddt
 class TestTtl(TestCaseBase):
+
+    def setUp(self):
+        infoLogger.info('\n' * 5 + 'TEST CASE NAME: ' + self._testMethodName + self._testMethodDoc)
+        self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+        self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
+        self.tid = random.randint(1, 1000)
+        self.pid = random.randint(1, 1000)
+        self.clear_ns_table(self.ns_leader)
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        self.confset(self.ns_leader, 'auto_recover_table', 'true')
+        infoLogger.info('\n\n' + '|' * 50 + ' SETUP FINISHED ' + '|' * 50 + '\n')
 
     @multi_dimension(False)
     @ddt.data(
@@ -28,7 +41,7 @@ class TestTtl(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
         infoLogger.info(rs1)
-        self.assertTrue(exp_msg in rs1)
+        self.assertIn(exp_msg, rs1)
 
 
     @multi_dimension(True)
@@ -49,12 +62,12 @@ class TestTtl(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
         infoLogger.info(rs1)
-        self.assertTrue(exp_msg in rs1)
+        self.assertIn(exp_msg, rs1)
 
 
     def test_ttl_latest_1_ready_test(self):
         """
-
+        READYTEST：为test_ttl_latest_2做测前准备，提前将数据put好
         :return:
         """
         ddt = (
@@ -91,17 +104,17 @@ class TestTtl(TestCaseBase):
                 infoLogger.info(rs)
                 for k, v in value_ts_scannable.items():
                     if v is True:
-                        self.assertTrue('|{}|'.format(k[0]) in rs)
+                        self.assertIn('|{}|'.format(k[0]), rs)
                     else:
-                         self.assertFalse('|{}|'.format(k[0]) in rs)
+                         self.assertNotIn('|{}|'.format(k[0]), rs)
             else:
                 for k, v in value_ts_scannable.items():
                     rs = self.get(self.leader, tid, 0, 'pk', k[1])
                     infoLogger.info(rs)
                     if v is True:
-                        self.assertTrue('|{}|'.format(k[0]) in rs)
+                        self.assertIn('|{}|'.format(k[0]), rs)
                     else:
-                         self.assertFalse('|{}|'.format(k[0]) in rs)
+                         self.assertNotIn('|{}|'.format(k[0]), rs)
         #time.sleep(61)
 
 
@@ -135,17 +148,17 @@ class TestTtl(TestCaseBase):
             infoLogger.info(rs1)
             for k, v in value_ts_scannable.items():
                 if v is True:
-                    self.assertTrue('|{}|'.format(k[0]) in rs1)
+                    self.assertIn('|{}|'.format(k[0]), rs1)
                 else:
-                    self.assertFalse('|{}|'.format(k[0]) in rs1)
+                    self.assertNotIn('|{}|'.format(k[0]), rs1)
         else:
             for k, v in value_ts_scannable.items():
                 rs = self.get(self.leader, tid, 0, 'pk', k[1])
                 infoLogger.info(rs)
                 if v is True:
-                    self.assertTrue('|{}|'.format(k[0]) in rs)
+                    self.assertIn('|{}|'.format(k[0]), rs)
                 else:
-                     self.assertFalse('|{}|'.format(k[0]) in rs)
+                     self.assertNotIn('|{}|'.format(k[0]), rs)
         self.drop(self.leader, tid, 0)
 
 
@@ -184,9 +197,9 @@ class TestTtl(TestCaseBase):
             rs = self.get(self.leader, self.tid, self.pid, 'pk', k[1])
             infoLogger.info(rs)
             if v is True:
-                self.assertTrue('|{}|'.format(k[0]) in rs)
+                self.assertIn('|{}|'.format(k[0]), rs)
             else:
-                self.assertFalse('|{}|'.format(k[0]) in rs)
+                self.assertNotIn('|{}|'.format(k[0]), rs)
         # put again after the last gc
         for i in put_value_ts:
             # for multidimension test
@@ -200,9 +213,9 @@ class TestTtl(TestCaseBase):
             rs = self.get(self.leader, self.tid, self.pid, 'pk', k[1])
             infoLogger.info(rs)
             if v is True:
-                self.assertTrue('|{}|'.format(k[0]) in rs)
+                self.assertIn('|{}|'.format(k[0]), rs)
             else:
-                self.assertFalse('|{}|'.format(k[0]) in rs)
+                self.assertNotIn('|{}|'.format(k[0]), rs)
 
 
 

@@ -30,7 +30,7 @@ class TestNameserverHa(TestCaseBase):
             ('column_desc', '"k3"', '"string"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs, True)
+        self.assertTrue('Create table ok', rs)
 
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
                                   'k2': ('string', 'testvalue1'),
@@ -71,12 +71,12 @@ class TestNameserverHa(TestCaseBase):
             10: 'None',
             12: 'self.assertEqual(self.get_manifest(self.leaderpath, self.tid, self.pid)["offset"], "3510")',
             13: 'self.assertEqual("15", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
-            14: 'self.assertEqual("drop ok", self.ns_drop(self.ns_leader, self.tname))',
+            14: 'self.assertIn("drop ok", self.ns_drop(self.ns_leader, self.tname))',
             15: 'self.assertFalse(self.showtable(self.ns_leader) is {})',
             16: 'self.confset(self.ns_leader, "auto_failover", "false")',
             17: 'self.confset(self.ns_leader, "auto_recover_table", "false")',
-            18: 'self.assertEqual("false" in self.confget(self.ns_leader, "auto_failover"), True)',
-            19: 'self.assertEqual("false" in self.confget(self.ns_leader, "auto_recover_table"), True)',
+            18: 'self.assertIn("false", self.confget(self.ns_leader, "auto_failover"))',
+            19: 'self.assertIn("false", self.confget(self.ns_leader, "auto_recover_table"))',
             20: 'self.stop_client(self.ns_slaver)',
             21: 'self.start_client(self.ns_slaver)',
         }
@@ -93,20 +93,31 @@ class TestNameserverHa(TestCaseBase):
     )
     @ddt.unpack
     def test_ns_ha(self, *steps):
+        """
+        ns节点故障切换测试
+        :param steps:
+        :return:
+        """
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_slaver).values()
-        self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
+        rs = self.showtable(self.ns_slaver)
+        self.assertIn('nameserver is not leader', rs)
 
-    """
+
+    @TestCaseBase.skip('FIXME')
     @ddt.data(
         (9,20,-1,8,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
         (9,20,-1,2,7,0,9),  # 唯一一个ns_leader重启后，可以正确判断节点状态
     )
     @ddt.unpack
     def test_ns_unique_leader(self, *steps):
+        """
+        唯一一个ns节点故障恢复
+        :param steps:
+        :return:
+        """
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
@@ -118,9 +129,10 @@ class TestNameserverHa(TestCaseBase):
         self.start_client(self.ns_slaver)
         time.sleep(10)
         self.get_new_ns_leader()
-        self.assertTrue(rs[self.leader][0] == 'kTabletOffline')
+        self.assertEqual(rs[self.leader][0], 'kTabletOffline')
 
 
+    @TestCaseBase.skip('FIXME')
     @ddt.data(
         (9,3,8,0,9),  # ns_leader断网重启后，新的ns_leader可以正确判断节点状态
         (9,2,7,0,9),  # ns_leader重启后，新的ns_leader可以正确判断节点状态
@@ -128,11 +140,11 @@ class TestNameserverHa(TestCaseBase):
     )
     @ddt.unpack
     def test_ns_after_failover(self, *steps):
-        ""
+        """
         ns故障切换后，新主可以判断节点状态
         :param steps:
         :return:
-        ""
+        """
         self.confset_createtable_put()
         rs1 = self.showtable(self.ns_leader)
         steps_dict = self.get_steps_dict()
@@ -152,14 +164,14 @@ class TestNameserverHa(TestCaseBase):
         self.assertEqual(rs1, rs2)
         self.assertEqual(rs3[self.leader][0], 'kTabletOffline')
         self.assertEqual([v[-1] for k, v in rs4.items() if k[-1] == self.leader], ['no'] * 4)
-    """
+
 
     @ddt.data(
         (9,1,16,17,2,0,7,9),  # ns_leader confset之后挂掉，新ns_leader在confget时新的conf  # RTIDB-197
     )
     @ddt.unpack
     def test_ns_slaver_conf_sync(self, *steps):
-        """"
+        """
         ns_leader confset之后挂掉，新ns_leader在confget时新的conf
         :param steps:
         :return:
@@ -168,7 +180,7 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_slaver).values()
+        rs = self.showtable(self.ns_slaver)
         rs1 = self.confget(self.ns_leader, "auto_failover")
         rs2 = self.confget(self.ns_leader, "auto_recover_table")
         nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
@@ -178,33 +190,34 @@ class TestNameserverHa(TestCaseBase):
         self.get_new_ns_leader()
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
-        self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
-        self.assertEqual('false' in rs1, True)
-        self.assertEqual('false' in rs2, True)
+        self.assertIn('nameserver is not leader', rs)
+        self.assertIn('false', rs1)
+        self.assertIn('false', rs2)
 
-    """
+
+    @TestCaseBase.skip('FIXME')
     @ddt.data(
         (9,8,0,9),  # ns 闪断，RTIDB-223
     )
     @ddt.unpack
     def test_ns_flashbreak(self, *steps):
-        ""
+        """
         ns闪断
         :param steps:
         :return:
-        ""
+        """
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_slaver).values()
+        rs = self.showtable(self.ns_slaver)
         nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
         nsc.start(*nsc.endpoints)
         time.sleep(3)
         nsc.get_ns_leader()
-        self.assertEqual(['msg:', 'nameserver', 'is', 'not', 'leader'], rs[0])
-    """
+        self.assertIn('nameserver is not leader', rs)
+
 
     def test_ha_cluster(self):
         """

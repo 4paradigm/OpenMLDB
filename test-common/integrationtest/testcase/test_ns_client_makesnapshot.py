@@ -27,7 +27,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), pid_group, 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertTrue('Create table ok' in rs)
+        self.assertIn('Create table ok', rs)
 
         table_info = self.showtable(self.ns_leader)
         tid = table_info.keys()[0][1]
@@ -36,7 +36,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.put(self.leader, tid, pid, 'testkey0', self.now(), 'testvalue0')
 
         rs3 = self.makesnapshot(self.ns_leader, name, pid, 'ns_client')
-        self.assertTrue('MakeSnapshot ok' in rs3)
+        self.assertIn('MakeSnapshot ok', rs3)
         time.sleep(2)
 
         mf = self.get_manifest(self.leaderpath, tid, pid)
@@ -46,7 +46,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         last_op_id = max(self.showopstatus(self.ns_leader).keys())
         self.assertFalse(old_last_op_id == last_op_id)
         last_opstatus = self.showopstatus(self.ns_leader)[last_op_id]
-        self.assertTrue('kAddReplicaOP', last_opstatus)
+        self.assertIn('kAddReplicaOP', last_opstatus)
         self.clear_ns_table(self.ns_leader)
 
 
@@ -64,10 +64,10 @@ class TestMakeSnapshotNsClient(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), '"0-3"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertTrue('Create table ok' in rs)
+        self.assertIn('Create table ok', rs)
 
         rs3 = self.makesnapshot(self.ns_leader, name + 'aaa', 2, 'ns_client')
-        self.assertTrue('Fail to makesnapshot' in rs3)
+        self.assertIn('Fail to makesnapshot', rs3)
 
 
     def test_makesnapshot_pid_notexist(self):
@@ -84,10 +84,10 @@ class TestMakeSnapshotNsClient(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), '"0-3"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertTrue('Create table ok' in rs)
+        self.assertIn('Create table ok', rs)
 
         rs3 = self.makesnapshot(self.ns_leader, name, 4, 'ns_client')
-        self.assertTrue('Fail to makesnapshot' in rs3)
+        self.assertIn('Fail to makesnapshot', rs3)
 
 
     def test_changeleader_and_makesnapshot(self):
@@ -107,7 +107,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs0)
+        self.assertIn('Create table ok', rs0)
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -133,8 +133,8 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '2', '144000', 'yes'])
 
-        self.assertEqual('MakeSnapshot ok' in rs3, True)
-        self.assertEqual('Fail to makesnapshot' in rs4, True)
+        self.assertIn('MakeSnapshot ok', rs3)
+        self.assertIn('Fail to makesnapshot', rs4)
         mf = self.get_manifest(self.slave1path, tid, 0)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])

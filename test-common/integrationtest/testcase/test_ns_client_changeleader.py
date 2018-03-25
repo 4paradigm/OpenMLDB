@@ -31,7 +31,7 @@ class TestChangeLeader(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs0)
+        self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
                                   'k2': ('string', 'testvalue0'),
                                   'k3': ('string', 'testvalue0')}
@@ -63,13 +63,13 @@ class TestChangeLeader(TestCaseBase):
         leader_new = self.slave1 if 'leader' in act1 else self.slave2
         follower = self.slave1 if 'follower' in act1 else self.slave2
         rs2 = self.put(self.leader, tid, 1, 'testkey0', self.now(), 'testvalue0')
-        self.assertTrue('Put ok' in rs2)
+        self.assertIn('Put ok', rs2)
         rs3 = self.put(self.slave1, tid, 1, 'testkey0', self.now(), 'testvalue0')
-        self.assertTrue('Put failed' in rs3)
+        self.assertIn('Put failed', rs3)
         rs4 = self.put(leader_new, tid, 0, 'testkey0', self.now(), 'testvalue0')
-        self.assertTrue('Put ok' in rs4)
+        self.assertIn('Put ok', rs4)
         time.sleep(1)
-        self.assertTrue('testvalue0' in self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
+        self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
 
 
     def test_changeleader_master_killed(self):
@@ -91,7 +91,7 @@ class TestChangeLeader(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs0)
+        self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
                                   'k2': ('string', 'testvalue0'),
                                   'k3': ('string', 'testvalue0')}
@@ -110,7 +110,7 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(1)
         rs2 = self.showtable(self.ns_leader)
         self.start_client(self.leader)
-
+        time.sleep(3)
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
@@ -125,11 +125,13 @@ class TestChangeLeader(TestCaseBase):
         rs2 = self.put(self.leader, tid, 1, 'testkey0', self.now(), 'testvalue0')
         rs3 = self.put(self.slave1, tid, 1, 'testkey0', self.now(), 'testvalue0')
         rs4 = self.put(leader_new, tid, 0, 'testkey0', self.now(), 'testvalue0')
-        self.assertTrue('Fail to get table schema' in rs2 or 'Put failed' in rs2)
-        self.assertTrue('Put failed' in rs3)
-        self.assertTrue('Put ok' in rs4)
+        self.assertFalse('Put ok' in rs2)
+        self.assertFalse('Put ok' in rs3)
+        self.assertIn('Put ok', rs4)
         time.sleep(1)
-        self.assertTrue('testvalue0' in self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
+        self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
+        self.recoverendpoint(self.ns_leader, self.leader)
+        time.sleep(3)
 
 
     def test_changeleader_master_alive(self):
@@ -146,10 +148,10 @@ class TestChangeLeader(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs1, True)
+        self.assertIn('Create table ok', rs1)
 
         rs2 = self.changeleader(self.ns_leader, name, 0)
-        self.assertEqual('failed to change leader' in rs2, True)
+        self.assertIn('failed to change leader', rs2)
 
 
     def test_changeleader_tname_notexist(self):
@@ -165,10 +167,10 @@ class TestChangeLeader(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs1, True)
+        self.assertIn('Create table ok', rs1)
 
         rs2 = self.changeleader(self.ns_leader, 'nullnullnull', 0)
-        self.assertEqual('failed to change leader' in rs2, True)
+        self.assertIn('failed to change leader', rs2)
 
 
 if __name__ == "__main__":

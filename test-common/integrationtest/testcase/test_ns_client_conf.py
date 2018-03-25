@@ -29,9 +29,9 @@ class TestConfSetGet(TestCaseBase):
         """
         self.confset(self.ns_leader, 'auto_failover', pre_set)
         rs = self.confset(self.ns_leader, 'auto_failover', set_value)
-        self.assertEqual(msg in rs, True)
+        self.assertIn(msg, rs)
         rs1 = self.confget(self.ns_leader, 'auto_failover')
-        self.assertEqual(get_value in rs1, True)
+        self.assertIn(get_value, rs1)
 
 
     @ddt.data(
@@ -52,9 +52,9 @@ class TestConfSetGet(TestCaseBase):
         """
         self.confset(self.ns_leader, 'auto_recover_table', pre_set)
         rs = self.confset(self.ns_leader, 'auto_recover_table', set_value)
-        self.assertEqual(msg in rs, True)
+        self.assertIn(msg, rs)
         rs1 = self.confget(self.ns_leader, 'auto_recover_table')
-        self.assertEqual(get_value in rs1, True)
+        self.assertIn(get_value, rs1)
 
 
 if __name__ == "__main__":

@@ -13,9 +13,13 @@ from libs.logger import infoLogger
 import libs.conf as conf
 import libs.utils as utils
 from libs.clients.ns_cluster import NsCluster
+import traceback
 
 
 class TestCaseBase(unittest.TestCase):
+    @staticmethod
+    def skip(msg):
+        return unittest.skip(msg)
 
     @classmethod
     def setUpClass(cls):
@@ -38,39 +42,55 @@ class TestCaseBase(unittest.TestCase):
         cls.slave1path = cls.node_path_dict[cls.slave1]
         cls.slave2path = cls.node_path_dict[cls.slave2]
 
-    def setUp(self):
-        infoLogger.info('\n' * 5 + '*** TEST CASE NAME: ' + self._testMethodName)
-        self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
-        self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
-        try:
-            self.tid = int(utils.exe_shell("ls " + self.leaderpath + "/db/|awk -F '_' '{print $1}'|sort -n|tail -1")) + 1
-        except Exception, e:
-            self.tid = 1
-        self.pid = random.randint(1, 1000)
-        self.clear_ns_table(self.ns_leader)
-        self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'true')
-
-    def tearDown(self):
-        self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'true')
-        self.clear_ns_table(self.ns_leader)
-        rs = self.showtablet(self.ns_leader)
+    @classmethod
+    def tearDownClass(cls):
         for edp_tuple in conf.tb_endpoints:
             edp = edp_tuple[1]
-            if rs[edp][0] != 'kTabletHealthy':
-                self.stop_client(edp)
-                self.start_client(edp)
-                time.sleep(10)
-                self.recoverendpoint(self.ns_leader, edp)
-                time.sleep(3)
-        self.drop(edp, self.tid, self.pid)
+            utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict[edp]))
+
+    def setUp(self):
+        infoLogger.info('\n' * 5 + 'TEST CASE NAME: ' + self._testMethodName + self._testMethodDoc)
+        try:
+            self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+            self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
+            self.tid = random.randint(1, 1000)
+            self.pid = random.randint(1, 1000)
+            self.clear_ns_table(self.ns_leader)
+            for edp_tuple in conf.tb_endpoints:
+                edp = edp_tuple[1]
+                self.clear_tb_table(edp)
+            self.confset(self.ns_leader, 'auto_failover', 'true')
+            self.confset(self.ns_leader, 'auto_recover_table', 'true')
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        infoLogger.info('\n\n' + '|' * 50 + ' SETUP FINISHED ' + '|' * 50 + '\n')
+
+    def tearDown(self):
+        infoLogger.info('\n\n' + '|' * 50 + ' TEARDOWN STARTED ' + '|' * 50 + '\n')
+        try:
+            self.confset(self.ns_leader, 'auto_failover', 'true')
+            self.confset(self.ns_leader, 'auto_recover_table', 'true')
+            self.clear_ns_table(self.ns_leader)
+            rs = self.showtablet(self.ns_leader)
+            for edp_tuple in conf.tb_endpoints:
+                edp = edp_tuple[1]
+                if rs[edp][0] != 'kTabletHealthy':
+                    infoLogger.info("Endpoint offline !!!! " * 10 + edp)
+                    self.stop_client(edp)
+                    time.sleep(1)
+                    self.start_client(edp)
+                    time.sleep(10)
+                    self.recoverendpoint(self.ns_leader, edp)
+                    time.sleep(3)
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n')
 
     def now(self):
         return int(time.time() * 1000000 / 1000)
 
-    def start_client(self, client, role='tablet'):
-        client_path = self.node_path_dict[client]
+    def start_client(self, endpoint, role='tablet'):
+        client_path = self.node_path_dict[endpoint]
         if role == 'tablet':
             conf = 'rtidb'
         elif role == 'nameserver':
@@ -82,7 +102,7 @@ class TestCaseBase(unittest.TestCase):
         args = shlex.split(cmd)
         need_start = False
         for _ in range(10):
-            rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(client.split(':')[1]))
+            rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
             if 'rtidb' not in rs:
                 need_start = True
                 time.sleep(1)
@@ -93,8 +113,14 @@ class TestCaseBase(unittest.TestCase):
         return False, need_start
 
     def stop_client(self, endpoint):
-        cmd = "lsof -i:{}".format(endpoint.split(':')[1]) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
+        port = endpoint.split(':')[1]
+        cmd = "lsof -i:{}".format(port) + "|grep '(LISTEN)'|awk '{print $2}'|xargs kill"
         utils.exe_shell(cmd)
+        rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(port))
+        if 'CLOSE_WAIT' in rs:
+            infoLogger.error('Kill failed because of CLOSE_WAIT !!!!!!!!!!!!!!!!')
+            cmd = "lsof -i:{}".format(port) + "|grep '(CLOSE_WAIT)'|awk '{print $2}'|xargs kill -9"
+            utils.exe_shell(cmd)
 
     def get_new_ns_leader(self):
         nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
@@ -115,33 +141,7 @@ class TestCaseBase(unittest.TestCase):
         cmd = cmd.strip()
         rs = utils.exe_shell('{} --endpoint={} --role={} --interactive=false --cmd="{}"'.format(
             self.rtidb_path, endpoint, role, cmd))
-        return rs.replace(self.welcome, '').replace('>', '')
-
-    def get_table_status(self, endpoint, tid='', pid=''):
-        rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
-        infoLogger.info(rs)
-        if tid == '' or pid == '':
-            return self.parse_table_status(rs)
-        else:
-            try:
-                return self.parse_table_status(rs)[(tid, pid)]
-            except KeyError, e:
-                infoLogger.error('table {} is not exist!'.format(e))
-
-    @staticmethod
-    def parse_table_status(rs):
-        table_status_dict = {}
-        rs = rs.split('\n')
-        for line in rs:
-            if not "Welcome" in line and not '------' in line and not '>' in line:
-                line_list = line.split(' ')
-                status_line_list = [i for i in line_list if i is not '']
-                try:
-                    if 'tid' not in status_line_list:
-                        table_status_dict[int(status_line_list[0]), int(status_line_list[1])] = status_line_list[2:]
-                except Exception, e:
-                    infoLogger.error(table_status_dict)
-        return table_status_dict
+        return rs.replace(self.welcome, '').replace('>' ,'')
 
     @staticmethod
     def get_manifest(nodepath, tid, pid):
@@ -302,80 +302,74 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, 'migrate {} {} {} {}'.format(src, tname, pid_group, des), 'ns_client')
 
     @staticmethod
-    def parse_schema(rs):
-        schema_dict = {}
-        rs = rs.split('\n')
-        for line in rs:
-            if not "Welcome" in line and not '------' in line and not '>' in line:
-                line_list = line.split(' ')
-                schema_line_list = [i for i in line_list if i is not '']
+    def parse_tb(rs, splitor, key_cols_index, value_cols_index):
+        """
+        parse table format response msg
+        :param rs:
+        :param splitor:
+        :param key_cols_index:
+        :param value_cols_index:
+        :return:
+        """
+        table_dict = {}
+        rs_tb = rs.split('\n')
+        real_conent_flag = False
+        for line in rs_tb:
+            if '------' in line:
+                real_conent_flag = True
+                continue
+            if real_conent_flag:
+                elements = line.split(splitor)
+                elements = [x for x in elements if x != '']
                 try:
-                    if '#' not in schema_line_list:
-                        schema_dict[schema_line_list[1]] = schema_line_list[2:]
-                except Exception, e:
+                    k = [elements[x] for x in key_cols_index]
+                    v = [elements[x] for x in value_cols_index]
+                    if len(key_cols_index) <= 1:
+                        key = k[0]
+                    else:
+                        key = tuple(k)
+                    table_dict[key] = v
+                except Exception as e:
+                    traceback.print_exc(file=sys.stdout)
                     infoLogger.error(e)
-        return schema_dict
+        if real_conent_flag is False:
+            return rs
+        return table_dict
+
+    def get_table_status(self, endpoint, tid='', pid=''):
+        try:
+            rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
+            tablestatus = self.parse_tb(rs, ' ', [0, 1], [2, 3, 4, 5, 6, 7, 8])
+            tableststus_d = {(int(k[0]), int(k[1])) : v for k, v in tablestatus.items()}
+            if tid != '':
+                return tableststus_d[(int(tid), int(pid))]
+            else:
+                return tableststus_d
+        except KeyError, e:
+            traceback.print_exc(file=sys.stdout)
+            infoLogger.error('table {} is not exist!'.format(e))
 
     def showschema(self, endpoint, tid='', pid=''):
         try:
             rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
-            return self.parse_schema(rs)
+            return self.parse_tb(rs, ' ', [1], [2, 3])
         except KeyError, e:
+            traceback.print_exc(file=sys.stdout)
             infoLogger.error('table {} is not exist!'.format(e))
-
-    @staticmethod
-    def parse_tablet(rs):
-        tablet_dict = {}
-        rs = rs.split('\n')
-        for line in rs:
-            if not "endpoint" in line and not '------' in line and not '>' in line:
-                line_list = line.split(' ')
-                schema_line_list = [i for i in line_list if i is not '']
-                try:
-                    tablet_dict[schema_line_list[0]] = schema_line_list[1:]
-                except Exception, e:
-                    infoLogger.error(e)
-        return tablet_dict
 
     def showtablet(self, endpoint):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
-        return self.parse_tablet(rs)
-
-    @staticmethod
-    def parse_opstatus(rs):
-        tablet_dict = {}
-        rs = rs.split('\n')
-        for line in rs:
-            if not "op_id" in line and not '------' in line and not '>' in line:
-                line_list = line.split(' ')
-                schema_line_list = [i for i in line_list if i is not '']
-                try:
-                    tablet_dict[int(schema_line_list[0])] = schema_line_list[1:]
-                except Exception, e:
-                    infoLogger.error(e)
-        return tablet_dict
+        return self.parse_tb(rs, ' ', [0], [1, 2])
 
     def showopstatus(self, endpoint):
         rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
-        return self.parse_opstatus(rs)
-
-    @staticmethod
-    def parse_table(rs):
-        tablet_dict = {}
-        rs = rs.split('\n')
-        for line in rs:
-            if not "endpoint" in line and not '------' in line and not '>' in line:
-                line_list = line.split(' ')
-                schema_line_list = [i for i in line_list if i is not '']
-                try:
-                    tablet_dict[tuple(schema_line_list[0:4])] = schema_line_list[4:]
-                except Exception, e:
-                    infoLogger.error(e)
-        return tablet_dict
+        tablestatus = self.parse_tb(rs, ' ', [0], [1, 2, 6])
+        tablestatus_d = {(int(k)) : v for k, v in tablestatus.items()}
+        return tablestatus_d
 
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
-        return self.parse_table(rs)
+        return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
 
 
     @staticmethod
@@ -390,17 +384,27 @@ class TestCaseBase(unittest.TestCase):
                 table_meta[k] = v
         return table_meta
 
+    def clear_tb_table(self, endpoint):
+        table_dict = self.get_table_status(endpoint)
+        if isinstance(table_dict, dict):
+            for tid_pid in table_dict:
+                self.drop(endpoint, tid_pid[0], tid_pid[1])
+        else:
+            infoLogger.info('gettablestatus empty.')
+
     def clear_ns_table(self, endpoint):
         table_dict = self.showtable(endpoint)
-        tname_tids = table_dict.keys()
-        tnames = set([i[0] for i in tname_tids])
-        for tname in tnames:
-            self.ns_drop(endpoint, tname)
+        if isinstance(table_dict, dict):
+            tname_tids = table_dict.keys()
+            tnames = set([i[0] for i in tname_tids])
+            for tname in tnames:
+                self.ns_drop(endpoint, tname)
+        else:
+            infoLogger.info('showtable empty.')
 
     def cp_db(self, from_node, to_node, tid, pid):
         utils.exe_shell('cp -r {from_node}/db/{tid}_{pid} {to_node}/db/'.format(
             from_node=from_node, tid=tid, pid=pid, to_node=to_node))
-
 
     def put_large_datas(self, data_count, thread_count, data='testvalue' * 200):
         count = data_count

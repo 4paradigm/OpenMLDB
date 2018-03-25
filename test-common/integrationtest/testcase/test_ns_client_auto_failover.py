@@ -33,7 +33,7 @@ class TestAutoFailover(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs0, True)
+        self.assertIn('Create table ok', rs0)
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -54,7 +54,7 @@ class TestAutoFailover(TestCaseBase):
         elif failover_reason == 'network_failure':
             self.connectzk(self.leader)
         time.sleep(10)
-        self.assertEqual('kTabletOffline' in rs2[self.leader], True)
+        self.assertIn('kTabletOffline', rs2[self.leader])
 
         # leader to offline
         self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])  # RTIDB-203
@@ -92,7 +92,7 @@ class TestAutoFailover(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs0, True)
+        self.assertIn('Create table ok', rs0)
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -112,7 +112,7 @@ class TestAutoFailover(TestCaseBase):
             self.start_client(self.slave1)
         elif failover_reason == 'network_failure':
             self.connectzk(self.slave1)
-        self.assertEqual('kTabletOffline' in rs2[self.slave1], True)
+        self.assertIn('kTabletOffline', rs2[self.slave1])
 
         self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
@@ -122,12 +122,12 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '2', '144000', 'yes'])
 
-    """
+    @TestCaseBase.skip('FIXME')
     def test_auto_failover_slave_network_flashbreak(self):
-        ""
+        """
         auto_failover=true：连续两次主节点闪断，故障切换成功
         :return:
-        ""
+        """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
@@ -139,7 +139,7 @@ class TestAutoFailover(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs0)
+        self.assertIn('Create table ok', rs0)
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -156,8 +156,8 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(10)
         rs3 = self.showtable(self.ns_leader)
         rs4 = self.showtablet(self.ns_leader)
-        self.assertEqual('kTabletHealthy' in rs4[self.leader], True)
-        self.assertEqual('kTabletHealthy' in rs4[self.slave1], True)
+        self.assertIn('kTabletHealthy', rs4[self.leader])
+        self.assertIn('kTabletHealthy', rs4[self.slave1])
 
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
@@ -172,7 +172,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
-    """
+
 
     def test_select_leader(self):
         """
@@ -195,7 +195,7 @@ class TestAutoFailover(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs1, True)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.showtable(self.ns_leader)
         tid = rs2.keys()[0][1]
         pid = 0
@@ -207,7 +207,7 @@ class TestAutoFailover(TestCaseBase):
 
         self.changerole(self.slave1, tid, pid, 'leader')
         rs3 = self.put(self.slave1, tid, pid, "testkey0", self.now() + 9999, "testvalue0")
-        self.assertEqual("ok" in rs3, True)
+        self.assertIn("ok", rs3)
         self.changerole(self.slave1, tid, pid, 'follower')
 
         self.stop_client(self.leader)
@@ -222,7 +222,7 @@ class TestAutoFailover(TestCaseBase):
 
         self.changerole(self.slave2, tid, pid, 'leader')
         rs4 = self.put(self.slave2, tid, pid, "testkey0", self.now() + 9999, "testvalue0")
-        self.assertEqual("ok" in rs4, True)
+        self.assertIn("ok", rs4)
         self.changerole(self.slave2, tid, pid, 'follower')
 
         self.disconnectzk(new_tb_leader1)
@@ -243,7 +243,7 @@ class TestAutoFailover(TestCaseBase):
         self.multidimension_vk = collections.OrderedDict(sorted(d.items(), key = lambda t:t[0]))
         self.multidimension_scan_vk = {'k1': 'ccard1'}
         rs5 = self.put(new_tb_leader2, tid, pid, "testkey1", self.now() + 9999, "ccard1")
-        self.assertEqual("ok" in rs5, True)
+        self.assertIn("ok", rs5)
         self.assertTrue(
             'ccard1' in self.scan(self.leader, tid, pid, 'testkey1', self.now() + 9999, 1))
 

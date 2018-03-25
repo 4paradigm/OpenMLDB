@@ -65,7 +65,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue(exp_msg in rs)
+        self.assertIn(exp_msg, rs)
 
         if exp_msg == 'Create table ok':
             table_info = self.showtable(self.ns_leader)
@@ -73,8 +73,8 @@ class TestCreateTableByNsClient(TestCaseBase):
             pid = 1
             self.put(self.leader, tid, pid, 'testkey0', self.now() + 100, 'testvalue0')
             time.sleep(0.5)
-            self.assertTrue(
-                'testvalue0' in self.scan(self.slave1, tid, pid, 'testkey0', self.now(), 1))
+            self.assertIn(
+                'testvalue0', self.scan(self.slave1, tid, pid, 'testkey0', self.now(), 1))
 
 
     @multi_dimension(False)
@@ -101,7 +101,7 @@ class TestCreateTableByNsClient(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs)
+        self.assertIn('Create table ok', rs)
 
         table_info = self.showtable(self.ns_leader)
         tid = table_info.keys()[0][1]
@@ -109,7 +109,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ts = self.now() + 1000
         for _ in range(10):
             self.put(self.leader, tid, pid, 'testkey0', ts, 'testvalue0')
-        self.assertTrue('testvalue0' in self.get(self.slave1, tid, pid, 'testkey0', ts))
+        self.assertIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', ts))
         for _ in range(10):
             self.put(self.leader, tid, pid, 'testkey0', 1999999999999, 'testvalue1')
         time.sleep(1)
@@ -118,7 +118,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         else:
             pass
         infoLogger.info(self.now())
-        self.assertFalse('testvalue0' in self.get(self.slave1, tid, pid, 'testkey0', ts))
+        self.assertIn('Get failed', self.get(self.slave1, tid, pid, 'testkey0', ts))
+        self.assertNotIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', 0))
+        self.assertIn('testvalue1', self.get(self.slave1, tid, pid, 'testkey0', 0))
 
 
     def test_create_name_repeat(self):
@@ -134,9 +136,9 @@ class TestCreateTableByNsClient(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertTrue('Fail to create table' in rs2)
+        self.assertIn('Fail to create table', rs2)
 
 
     @ddt.data(
@@ -180,7 +182,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
-        self.assertTrue(exp_msg in rs)
+        self.assertIn(exp_msg, rs)
         self.showtable(self.ns_leader)
         if exp_msg == 'Create table ok':
             for x in [(self.leader, pid_group1), (self.slave1, pid_group2)]:
@@ -190,10 +192,14 @@ class TestCreateTableByNsClient(TestCaseBase):
                 pids = [tpid[1] for tpid in table_status.keys() if tpid[0] == tids[-1]]
                 pid_group_start = int(x[1][0].split('-')[0][1:]) if '-' in x[1][0] else int(x[1][0][1:-1])
                 pid_group_end = int(x[1][0].split('-')[1][:-1]) if '-' in x[1][0] else int(x[1][0][1:-1])
+                infoLogger.info("*"*88)
+                infoLogger.info(tids)
+                infoLogger.info(table_status.keys())
+                infoLogger.info(pids)
                 for pid in range(pid_group_start, pid_group_end):
-                    self.assertTrue(pid in pids)
+                    self.assertIn(pid, pids)
             rs1 = self.ns_drop(self.ns_leader, name[1:-1])
-            self.assertEqual('drop ok' in rs1, True)
+            self.assertIn('drop ok', rs1)
 
 
     @ddt.data(
@@ -226,7 +232,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
-        self.assertTrue(exp_msg in rs)
+        self.assertIn(exp_msg, rs)
         self.run_client(self.ns_leader, 'drop {}'.format(name), 'ns_client')
 
 
@@ -266,7 +272,7 @@ class TestCreateTableByNsClient(TestCaseBase):
 
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertEqual(exp_msg in rs, True)
+        self.assertIn(exp_msg, rs)
         if exp_msg == 'Create table ok':
             rs = self.showtable(self.ns_leader)
             for k, v in rs.items():
@@ -343,7 +349,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
-        self.assertTrue(exp_msg in rs)
+        self.assertIn(exp_msg, rs)
         if exp_msg == 'Create table ok':
             rs1 = self.showtable(self.ns_leader)
             tid = rs1.keys()[0][1]
@@ -405,7 +411,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
-        self.assertTrue(exp_msg in rs)
+        self.assertIn(exp_msg, rs)
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
         infoLogger.info(rs1)

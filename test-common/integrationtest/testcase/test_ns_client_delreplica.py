@@ -40,7 +40,7 @@ class TestDelReplicaNs(TestCaseBase):
             )
         utils.gen_table_metadata_file(m, metadata_path)
         rs2 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs2)
+        self.assertIn('Create table ok', rs2)
 
         rs3 = self.showtable(self.ns_leader)
         tid = rs3.keys()[0][1]
@@ -51,30 +51,30 @@ class TestDelReplicaNs(TestCaseBase):
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue0'), 'amt': ('double', 1.1)}
         rs4 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 10000, 'testvalue0')
-        self.assertTrue('Put ok' in rs4)
+        self.assertIn('Put ok', rs4)
 
         # makesnapshot
         rs5 = self.makesnapshot(self.ns_leader, name, pid, 'ns_client')
-        self.assertTrue('MakeSnapshot ok' in rs5)
+        self.assertIn('MakeSnapshot ok', rs5)
         time.sleep(2)
         self.showtablet(self.ns_leader)
 
         # addreplica by ns_client and put
         rs6 = self.addreplica(self.ns_leader, name, pid, 'ns_client', self.slave1)
-        self.assertTrue('AddReplica ok' in rs6)
+        self.assertIn('AddReplica ok', rs6)
         last_op_id = max(self.showopstatus(self.ns_leader).keys())
         self.assertTrue(old_last_op_id != last_op_id)
         last_opstatus = self.showopstatus(self.ns_leader)[last_op_id]
-        self.assertTrue('kAddReplicaOP', last_opstatus)
+        self.assertIn('kAddReplicaOP', last_opstatus)
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue1'), 'amt': ('double', 1.1)}
         rs7 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 90000, 'testvalue1')
-        self.assertTrue('Put ok' in rs7)
+        self.assertIn('Put ok', rs7)
         time.sleep(5)
 
         # delreplica by ns_client and put
         rs8 = self.delreplica(self.ns_leader, name, pid, 'ns_client', self.slave1)
-        self.assertTrue('DelReplica ok' in rs8)
+        self.assertIn('DelReplica ok', rs8)
         time.sleep(3)
         rs13 = self.showtable(self.ns_leader)
         edps = [x[3] for x in rs13]
@@ -82,22 +82,22 @@ class TestDelReplicaNs(TestCaseBase):
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue2'), 'amt': ('double', 1.1)}
         rs9 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 90000, 'testvalue2')
-        self.assertTrue('Put ok' in rs9)
+        self.assertIn('Put ok', rs9)
 
         # put after re-addreplica by client
         rs10 = self.addreplica(self.leader, tid, pid, 'client', self.slave1)
-        self.assertTrue('AddReplica ok' in rs10)
+        self.assertIn('AddReplica ok', rs10)
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue3'), 'amt': ('double', 1.1)}
         rs11 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 90000, 'testvalue3')
-        self.assertTrue('Put ok' in rs11)
+        self.assertIn('Put ok', rs11)
         time.sleep(5)
 
         rs12 = self.scan(self.slave1, tid, pid, 'testkey0', self.now() + 90000, 1)
-        self.assertEqual('testvalue0' in rs12, True)
-        self.assertEqual('testvalue1' in rs12, True)
-        self.assertEqual('testvalue2' in rs12, True)
-        self.assertEqual('testvalue3' in rs12, True)
+        self.assertIn('testvalue0', rs12)
+        self.assertIn('testvalue1', rs12)
+        self.assertIn('testvalue2', rs12)
+        self.assertIn('testvalue3', rs12)
 
 
     @ddt.data(
@@ -120,17 +120,17 @@ class TestDelReplicaNs(TestCaseBase):
                                      ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
 
         table_name = name if tname is None else tname
         tpid = 0 if pid is None else pid
         tendpoint = self.slave1 if endpoint is None else endpoint
         self.showtable(self.ns_leader)
         rs3 = self.delreplica(self.ns_leader, table_name, tpid, 'ns_client', tendpoint)
-        self.assertTrue(exp_msg in rs3)
+        self.assertIn(exp_msg, rs3)
 
 
-    def test_delreplica_not_alive(self):
+    def test_delreplica_not_alive(self):  # RTIDB-201
         """
         建表时带副本，然后删掉副本，showtable时不会再出现删掉的副本
         :return:
@@ -147,7 +147,7 @@ class TestDelReplicaNs(TestCaseBase):
                                      ('column_desc', '"card"', '"string"', 'true'),)
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
 
         rs2 = self.showtable(self.ns_leader)
         tid = rs2.keys()[0][1]
@@ -156,13 +156,12 @@ class TestDelReplicaNs(TestCaseBase):
         time.sleep(10)
 
         self.showtable(self.ns_leader)
-
         rs3 = self.delreplica(self.ns_leader, name, 0, 'ns_client', self.slave1)
         time.sleep(5)
-
         rs4 = self.showtable(self.ns_leader)
         self.start_client(self.slave1)
-        self.assertTrue('Fail to delreplica' in rs3)
+        time.sleep(10)
+        self.assertIn('Fail to delreplica', rs3)
         self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '8', '100', 'no'])
 
 

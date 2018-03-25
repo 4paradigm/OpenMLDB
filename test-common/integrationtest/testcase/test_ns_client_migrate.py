@@ -32,7 +32,7 @@ class TestNameserverMigrate(TestCaseBase):
             ('column_desc', '"k3"', '"string"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs, True)
+        self.assertIn('Create table ok', rs)
         table_info = self.showtable(self.ns_leader)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 4
@@ -59,10 +59,10 @@ class TestNameserverMigrate(TestCaseBase):
         time.sleep(2)
         rs3 = self.showtable(self.ns_leader)
         rs4 = self.get_table_status(self.slave2, self.tid, self.pid)
-        self.assertEqual('partition migrate ok' in rs2, True)
+        self.assertIn('partition migrate ok', rs2)
         for i in pid_range:
-            self.assertEqual((tname, str(self.tid), str(i), self.slave1) in rs3, False)
-            self.assertEqual((tname, str(self.tid), str(i), self.slave2) in rs3, True)
+            self.assertNotIn((tname, str(self.tid), str(i), self.slave1), rs3)
+            self.assertIn((tname, str(self.tid), str(i), self.slave2), rs3)
         self.assertEqual(rs1[0], rs4[0])
 
     def test_ns_client_migrate_endpoint_offline(self):
@@ -79,8 +79,8 @@ class TestNameserverMigrate(TestCaseBase):
         rs2 = self.migrate(self.ns_leader, self.slave2, tname, '0-2', self.slave1)
         self.start_client(self.slave1)
         time.sleep(10)
-        self.assertEqual('src_endpoint is not exist or not healthy' in rs1, True)
-        self.assertEqual('des_endpoint is not exist or not healthy' in rs2, True)
+        self.assertIn('src_endpoint is not exist or not healthy', rs1)
+        self.assertIn('des_endpoint is not exist or not healthy', rs2)
 
     @ddt.data(
         (get_base_attr('slave1'), time.time(), '4-6', get_base_attr('slave1'),
@@ -124,9 +124,11 @@ class TestNameserverMigrate(TestCaseBase):
             rs2 = self.migrate(self.ns_leader, src, tname, pid_group, des)
         else:
             rs2 = self.migrate(self.ns_leader, src, 'table_not_exists_', pid_group, des)
-        self.assertEqual(exp_msg in rs2, True)
+        self.assertIn(exp_msg, rs2)
 
-    def test_ns_client_migrate_failover_and_recover(self):
+
+    @TestCaseBase.skip('FIXME')
+    def test_ns_client_migrate_failover_and_recover(self):  # RTIDB-252
         """
         迁移时发生故障切换，故障切换成功，迁移失败
         原leader故障恢复成follower之后，可以被迁移成功
@@ -150,14 +152,15 @@ class TestNameserverMigrate(TestCaseBase):
         time.sleep(2)
         rs4 = self.showtable(self.ns_leader)
         rs5 = self.get_table_status(self.slave2, self.tid, self.pid)  # get offset slave2
+        self.showopstatus(self.ns_leader)
 
-        self.assertEqual('partition migrate ok' in rs1, True)
-        self.assertEqual('partition migrate ok' in rs3, True)
+        self.assertIn('partition migrate ok', rs1)
+        self.assertIn('partition migrate ok', rs3)
         for i in range(4, 7):
-            self.assertEqual((tname, str(self.tid), str(i), self.slave1) in rs2, True)
-            self.assertEqual((tname, str(self.tid), str(i), self.slave2) in rs2, False)
-            self.assertEqual((tname, str(self.tid), str(i), self.leader) in rs4, False)
-            self.assertEqual((tname, str(self.tid), str(i), self.slave2) in rs4, True)
+            self.assertIn((tname, str(self.tid), str(i), self.slave1), rs2)
+            self.assertNotIn((tname, str(self.tid), str(i), self.slave2), rs2)
+            self.assertNotIn((tname, str(self.tid), str(i), self.leader), rs4)
+            self.assertIn((tname, str(self.tid), str(i), self.slave2), rs4)
         self.assertEqual(rs0[0], rs5[0])
         self.assertEqual(rs0[0], rs6[0])
 
@@ -179,10 +182,10 @@ class TestNameserverMigrate(TestCaseBase):
         time.sleep(10)
         self.showtable(self.ns_leader)
         self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.assertEqual('partition migrate ok' in rs1, True)
+        self.assertIn('partition migrate ok', rs1)
         for i in range(4, 7):
-            self.assertEqual((tname, str(self.tid), str(i), self.slave1) in rs2, True)
-            self.assertEqual((tname, str(self.tid), str(i), self.slave2) in rs2, False)
+            self.assertIn((tname, str(self.tid), str(i), self.slave1), rs2)
+            self.assertNotIn((tname, str(self.tid), str(i), self.slave2), rs2)
 
 
 if __name__ == "__main__":

@@ -23,12 +23,12 @@ class TestShowTablet(TestCaseBase):
             ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertTrue('Create table ok' in rs)
+        self.assertIn('Create table ok', rs)
         rs1 = self.showtablet(self.ns_leader)
         infoLogger.info(rs1)
-        self.assertTrue(rs1[self.leader][0] == 'kTabletHealthy')
-        self.assertTrue(rs1[self.slave1][0] == 'kTabletHealthy')
-        self.assertTrue(rs1[self.slave2][0] == 'kTabletHealthy')
+        self.assertEqual(rs1[self.leader][0], 'kTabletHealthy')
+        self.assertEqual(rs1[self.slave1][0], 'kTabletHealthy')
+        self.assertEqual(rs1[self.slave2][0], 'kTabletHealthy')
 
 
     def test_showtablet_offline(self):
@@ -50,18 +50,18 @@ class TestShowTablet(TestCaseBase):
             ('column_desc', '"k3"', '"int32"', 'true'),)
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
-        self.assertTrue('Create table ok' in rs)
+        self.assertIn('Create table ok', rs)
         self.stop_client(self.slave1)
         time.sleep(10)
         rs1 = self.showtablet(self.ns_leader)
         infoLogger.info(rs1)
-        self.assertTrue(rs1[self.leader][0] == 'kTabletHealthy')
-        self.assertTrue(rs1[self.slave1][0] == 'kTabletOffline')
-        self.assertTrue(rs1[self.slave2][0] == 'kTabletHealthy')
+        self.assertEqual(rs1[self.leader][0], 'kTabletHealthy')
+        self.assertEqual(rs1[self.slave1][0], 'kTabletOffline')
+        self.assertEqual(rs1[self.slave2][0], 'kTabletHealthy')
         self.start_client(self.slave1)
         time.sleep(5)
         rs2 = self.showtablet(self.ns_leader)
-        self.assertTrue(rs2[self.slave1][0] == 'kTabletHealthy')
+        self.assertEqual(rs2[self.slave1][0], 'kTabletHealthy')
 
 
 if __name__ == "__main__":

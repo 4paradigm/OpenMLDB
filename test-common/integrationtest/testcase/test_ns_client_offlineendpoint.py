@@ -31,7 +31,7 @@ class TestOfflineEndpoint(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs0)
+        self.assertIn('Create table ok', rs0)
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -66,13 +66,13 @@ class TestOfflineEndpoint(TestCaseBase):
         leader_new = self.slave1 if 'leader' in act1 else self.slave2
         follower = self.slave1 if 'follower' in act1 else self.slave2
         rs2 = self.put(self.slave1, tid, 1, '', self.now(), 'pk1' ,'v2', 'v3')
-        self.assertTrue('Put ok' in rs2)
+        self.assertIn('Put ok', rs2)
         rs3 = self.put(self.slave2, tid, 3, '', self.now(), 'pk1' ,'v2', 'v3')
-        self.assertTrue('Put ok' in rs3)
+        self.assertIn('Put ok', rs3)
         rs4 = self.put(leader_new, tid, 2, '', self.now(), 'pk1' ,'v2', 'v3')
-        self.assertTrue('Put ok' in rs4)
+        self.assertIn('Put ok', rs4)
         time.sleep(1)
-        self.assertTrue('v2' in self.scan(follower, tid, 2, {'k1': 'pk1'}, self.now(), 1))
+        self.assertIn('v2', self.scan(follower, tid, 2, {'k1': 'pk1'}, self.now(), 1))
 
 
     def test_offlineendpoint_slave_killed(self):
@@ -90,7 +90,7 @@ class TestOfflineEndpoint(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertTrue('Create table ok' in rs0)
+        self.assertIn('Create table ok', rs0)
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -136,10 +136,10 @@ class TestOfflineEndpoint(TestCaseBase):
         )
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs1, True)
+        self.assertIn('Create table ok', rs1)
 
         rs2 = self.offlineendpoint(self.ns_leader, endpoint)
-        self.assertEqual(exp_msg in rs2, True)
+        self.assertIn(exp_msg, rs2)
 
 
 if __name__ == "__main__":

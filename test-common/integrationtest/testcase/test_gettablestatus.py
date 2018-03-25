@@ -15,10 +15,11 @@ class TestGetTableStatus(TestCaseBase):
         """
         self.create(self.leader, 't', self.tid, self.pid)
         rs = self.create(self.leader, 't', self.tid, self.pid + 1)
-        self.assertTrue('ok' in rs)
+        self.assertIn('ok', rs)
         table_status = self.get_table_status(self.leader)
         self.assertTrue(len(table_status) > 1)
-        self.assertEqual(table_status[(self.tid, self.pid)][:6], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[(self.tid, self.pid)][:6],
+                         ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_gettablestatus_tid_pid(self):
@@ -27,9 +28,10 @@ class TestGetTableStatus(TestCaseBase):
         :return:
         """
         rs = self.create(self.leader, 't', self.tid, self.pid)
-        self.assertTrue('ok' in rs)
+        self.assertIn('ok', rs)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
-        self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
+        self.assertEqual(table_status[:6],
+                         ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
 
     def test_gettablestatus_making_snapshot(self):
@@ -38,15 +40,15 @@ class TestGetTableStatus(TestCaseBase):
         :return:
         """
         rs = self.create(self.leader, 't', self.tid, self.pid)
-        self.assertTrue('ok' in rs)
+        self.assertIn('ok', rs)
 
         self.put_large_datas(1000, 10)
 
         rs2 = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
-        self.assertTrue('MakeSnapshot ok' in rs2)
+        self.assertIn('MakeSnapshot ok', rs2)
 
         table_status = self.get_table_status(self.leader)
-        self.assertEqual('kMakingSnapshot' in table_status[(self.tid, self.pid)], True)
+        self.assertIn('kMakingSnapshot', table_status[(self.tid, self.pid)], True)
 
 
     def test_gettablestatus_memused_valuesize(self):
@@ -58,7 +60,7 @@ class TestGetTableStatus(TestCaseBase):
                                   'merchant': ('string:index', 'pk1'),
                                   'amt': ('string', 'a' * 100)}
         rs = self.create(self.leader, 't', self.tid, self.pid)
-        self.assertTrue('ok' in rs)
+        self.assertIn('ok', rs)
         self.put_large_datas(1, 1, 'a' * 100)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         memused = float(table_status[6])
@@ -67,7 +69,7 @@ class TestGetTableStatus(TestCaseBase):
 
         self.pid = self.pid + 1
         rs = self.create(self.leader, 't', self.tid, self.pid)
-        self.assertTrue('ok' in rs)
+        self.assertIn('ok', rs)
         self.multidimension_vk = {'card': ('string:index', 'pk0'),
                                   'merchant': ('string:index', 'pk1'),
                                   'amt': ('string', 'a' * 128)}
@@ -89,14 +91,14 @@ class TestGetTableStatus(TestCaseBase):
                                   'merchant': ('string:index', 'pk1'),
                                   'amt': ('string', 'a' * 100)}
         rs = self.create(self.leader, 't', self.tid, self.pid)
-        self.assertTrue('ok' in rs)
+        self.assertIn('ok', rs)
         self.put_large_datas(10, 1)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         memused = float(table_status[6])
 
         self.pid = self.pid + 1
         rs = self.create(self.leader, 't', self.tid, self.pid)
-        self.assertTrue('ok' in rs)
+        self.assertIn('ok', rs)
         self.put_large_datas(20, 1)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         memused2 = float(table_status[6])

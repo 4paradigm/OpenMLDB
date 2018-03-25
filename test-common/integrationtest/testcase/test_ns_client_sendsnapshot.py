@@ -13,8 +13,8 @@ class TestSendSnapshot(TestCaseBase):
 
     def put_data(self, endpoint, tid, pid, count):
         for _ in range(count):
-            rs = self.put(endpoint, tid, pid, "testkey0", self.now() + 9999, "testvalue0")
-            self.assertEqual("ok" in rs, True)
+            rs = self.put(endpoint, tid, pid, "testkey0", self.now() + 9999, "testvalue0testvalue0")
+            self.assertIn("ok", rs)
 
 
     def sendsnapshot_concurrently(self, from_endpoint, tid, pid, *target_endpoints):
@@ -138,13 +138,13 @@ class TestSendSnapshot(TestCaseBase):
             7: '',
             8: '',
             9: '',
-            10: 'self.assertTrue("SendSnapshot ok" in self.sendsnapshot(self.leader, self.tid, self.pid, "0.0.0.0:80"))',
-            11: 'self.assertTrue("Fail to SendSnapshot" in self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))',
-            12: 'self.assertTrue("MakeSnapshot ok" in self.makesnapshot(self.leader, self.tid, self.pid))',
-            13: 'self.assertTrue("PauseSnapshot ok" in self.pausesnapshot(self.leader, self.tid, self.pid))',
-            14: 'self.assertTrue("RecoverSnapshot ok" in self.recoversnapshot(self.leader, self.tid, self.pid))',
-            15: 'self.assertTrue("SendSnapshot ok" in self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))',
-            16: 'self.assertTrue("LoadTable ok" in self.loadtable(self.slave1, self.tname, self.tid, self.pid))',
+            10: 'self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, self.tid, self.pid, "0.0.0.0:80"))',
+            11: 'self.assertIn("Fail to SendSnapshot", self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))',
+            12: 'self.assertIn("MakeSnapshot ok", self.makesnapshot(self.leader, self.tid, self.pid))',
+            13: 'self.assertIn("PauseSnapshot ok", self.pausesnapshot(self.leader, self.tid, self.pid))',
+            14: 'self.assertIn("RecoverSnapshot ok", self.recoversnapshot(self.leader, self.tid, self.pid))',
+            15: 'self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))',
+            16: 'self.assertIn("LoadTable ok", self.loadtable(self.slave1, self.tname, self.tid, self.pid))',
             17: 'self.check_manifest(self.slave1path, self.tid, self.pid, "100", self.sdb_name, "50")',
             18: 'self.check_manifest(self.slave1path, self.tid, self.pid, "200", self.sdb_name, "100")',
             19: 'self.assertEqual("50", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
@@ -162,13 +162,13 @@ class TestSendSnapshot(TestCaseBase):
 
     def test_sendsnapshot_normal_0(self):
         """
-        test_sendsnapshot_normal执行之前不限速并重启
+        测试前准备：test_sendsnapshot_normal执行之前改成不限速并重启
         :return:
         """
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 0)
         self.stop_client(self.leader)
         time.sleep(5)
-        self.assertEqual(self.start_client(self.leader)[0], True)
+        self.assertTrue(self.start_client(self.leader)[0])
 
 
     @ddt.data(
@@ -184,6 +184,11 @@ class TestSendSnapshot(TestCaseBase):
     )
     @ddt.unpack
     def test_sendsnapshot_normal(self, *steps):
+        """
+        各种情况下sendsnapshot功能检查
+        :param steps:
+        :return:
+        """
         self.tname = str(self.now())
         steps_dict = self.get_steps_dict()
         for i in steps:
@@ -193,7 +198,7 @@ class TestSendSnapshot(TestCaseBase):
 
     def test_sendsnapshot_normal_z(self):
         """
-        test_sendsnapshot_normal执行之后还原配置并重启
+        测试完成后：test_sendsnapshot_normal执行之后还原配置并重启
         :return:
         """
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
@@ -246,39 +251,43 @@ class TestSendSnapshot(TestCaseBase):
             self.check_manifest(self.leaderpath, t, pid, str(t), self.get_sdb_name(t, pid), str(t))
 
 
-    """
-    def test_speed_limit(self):  # RTIDB-227
-        ""
+    @TestCaseBase.skip('FIXME')
+    def test_sendsnapshot_speed_limit(self):  # RTIDB-227
+        """
         限速测试，stream_bandwidth_limit = 1024, 10k左右文件会在8s-12s之间发送成功
         :return:
-        ""
+        """
+        self.update_conf(self.leaderpath, 'stream_block_size', 4 * 1024 * 1024)
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 1024)
         self.stop_client(self.leader)
         time.sleep(5)
         self.start_client(self.leader)
         tname = self.now()
         self.create(self.leader, tname, self.tid, self.pid, 144000, 2, "true")
-        self.put_data(self.leader, self.tid, self.pid, 100)
-        self.assertTrue("MakeSnapshot ok" in self.makesnapshot(self.leader, self.tid, self.pid))
-        self.assertTrue("PauseSnapshot ok" in self.pausesnapshot(self.leader, self.tid, self.pid))
-        self.assertTrue("SendSnapshot ok" in self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))
-        time.sleep(8)
+        self.put_data(self.leader, self.tid, self.pid, 120)
+        self.assertIn("MakeSnapshot ok", self.makesnapshot(self.leader, self.tid, self.pid))
+        self.assertIn("PauseSnapshot ok", self.pausesnapshot(self.leader, self.tid, self.pid))
+        self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))
+        time.sleep(1)
+        check_manifest_sent0 = self.check_manifest(
+            self.slave1path, self.tid, self.pid, '100', self.get_sdb_name(self.tid, self.pid), '100')
+        time.sleep(7)
         check_manifest_sent1 = self.check_manifest(
             self.slave1path, self.tid, self.pid, '100', self.get_sdb_name(self.tid, self.pid), '100')
         time.sleep(4)
-        check_manifest_sent = self.check_manifest(self.slave1path, self.tid, self.pid,
-                            '100', self.get_sdb_name(self.tid, self.pid), '100')
+        check_manifest_sent = self.check_manifest(
+            self.slave1path, self.tid, self.pid, '100', self.get_sdb_name(self.tid, self.pid), '100')
         # Teardown
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
         self.stop_client(self.leader)
         time.sleep(5)
         self.start_client(self.leader)
-        self.assertEqual(check_manifest_sent1, False)  # files sending because of stream_bandwidth_limit
-        self.assertEqual(check_manifest_sent, True)
-    """
+        self.assertFalse(check_manifest_sent0)  # files sending because of stream_bandwidth_limit
+        self.assertFalse(check_manifest_sent1)  # files sending because of stream_bandwidth_limit
+        self.assertTrue(check_manifest_sent)
 
 
-    def test_speed_without_limit(self):
+    def test_sendsnapshot_speed_without_limit(self):
         """
         限速测试，stream_bandwidth_limit = 0，10k左右文件会立即发送成功
         :return:
@@ -290,9 +299,9 @@ class TestSendSnapshot(TestCaseBase):
         tname = self.now()
         self.create(self.leader, tname, self.tid, self.pid, 144000, 2, "true")
         self.put_data(self.leader, self.tid, self.pid, 100)
-        self.assertTrue("MakeSnapshot ok" in self.makesnapshot(self.leader, self.tid, self.pid))
-        self.assertTrue("PauseSnapshot ok" in self.pausesnapshot(self.leader, self.tid, self.pid))
-        self.assertTrue("SendSnapshot ok" in self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))
+        self.assertIn("MakeSnapshot ok", self.makesnapshot(self.leader, self.tid, self.pid))
+        self.assertIn("PauseSnapshot ok", self.pausesnapshot(self.leader, self.tid, self.pid))
+        self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))
         time.sleep(1)
         self.check_manifest(self.slave1path, self.tid, self.pid,
                             '100', self.get_sdb_name(self.tid, self.pid), '100')

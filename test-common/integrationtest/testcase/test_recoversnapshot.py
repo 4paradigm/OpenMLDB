@@ -11,13 +11,13 @@ class TestRecoverSnapshot(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, '')
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.pausesnapshot(self.leader, self.tid, self.pid)
-        self.assertTrue('PauseSnapshot ok' in rs2)
+        self.assertIn('PauseSnapshot ok', rs2)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kSnapshotPaused', 'true', '144000min', '0s'])
         rs3 = self.recoversnapshot(self.leader, self.tid, self.pid)
-        self.assertTrue('RecoverSnapshot ok' in rs3)
+        self.assertIn('RecoverSnapshot ok', rs3)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 

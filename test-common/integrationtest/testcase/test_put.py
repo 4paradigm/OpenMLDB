@@ -19,14 +19,14 @@ class TestPut(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2)
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.put(self.leader,
                        self.tid,
                        self.pid,
                        'testkey0',
                        self.now(),
                        'testvalue0')
-        self.assertTrue('Put ok' in rs2)
+        self.assertIn('Put ok', rs2)
         time.sleep(1)
         self.assertTrue(
             'testvalue0' in self.scan(self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
@@ -39,19 +39,19 @@ class TestPut(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
-        self.assertTrue('Create table ok' in rs2)
+        self.assertIn('Create table ok', rs2)
         rs2 = self.put(self.leader,
                        self.tid,
                        self.pid,
                        'testkey0',
                        self.now(),
                        'testvalue0')
-        self.assertTrue('Put ok' in rs2)
+        self.assertIn('Put ok', rs2)
         time.sleep(1)
-        self.assertTrue(
-            'testvalue0' in self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
+        self.assertIn(
+            'testvalue0', self.scan(self.slave1, self.tid, self.pid, 'testkey0', self.now(), 1))
 
 
     @multi_dimension(True)
@@ -61,21 +61,21 @@ class TestPut(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true')
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false')
-        self.assertTrue('Create table ok' in rs2)
+        self.assertIn('Create table ok', rs2)
         rs3 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
-        self.assertTrue('AddReplica ok' in rs3)
+        self.assertIn('AddReplica ok', rs3)
         rs4 = self.put(self.leader,
                        self.tid,
                        self.pid,
                        '',
                        self.now(),
                        'testvalue0', '1.1', 'testkey0')
-        self.assertTrue('Put ok' in rs4)
+        self.assertIn('Put ok', rs4)
         time.sleep(1)
-        self.assertTrue(
-            'testvalue0' in self.scan(self.slave1, self.tid, self.pid, {'card': 'testkey0'}, self.now(), 1))
+        self.assertIn(
+            'testvalue0', self.scan(self.slave1, self.tid, self.pid, {'card': 'testkey0'}, self.now(), 1))
 
 
     def test_put_slave_cannot_put(self):
@@ -84,14 +84,14 @@ class TestPut(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false', self.leader)
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.put(self.leader,
                        self.tid,
                        self.pid,
                        'testkey0',
                        self.now(),
                        'testvalue0')
-        self.assertTrue('Put failed' in rs2)
+        self.assertIn('Put failed', rs2)
 
 
     @multi_dimension(False)
@@ -102,9 +102,9 @@ class TestPut(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true', self.slave1)
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
-        self.assertTrue('Create table ok' in rs2)
+        self.assertIn('Create table ok', rs2)
 
         def put(count):
             for i in range(0, count):
@@ -134,13 +134,13 @@ class TestPut(TestCaseBase):
         utils.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         rs4 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
-        self.assertTrue('LoadTable ok' in rs4)
+        self.assertIn('LoadTable ok', rs4)
         time.sleep(1)
-        self.assertTrue('testvalue19' in self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
+        self.assertIn('testvalue19', self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now(), 1))
         self.put(self.leader, self.tid, self.pid, 'testkey', self.now() + 10000, 'testvalue20')
         time.sleep(1)
         rs5 = self.scan(self.slave1, self.tid, self.pid, 'testkey', self.now() * 2, 1)
-        self.assertTrue('testvalue20' in rs5)
+        self.assertIn('testvalue20', rs5)
 
 
     @multi_dimension(True)
@@ -151,9 +151,9 @@ class TestPut(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
-        self.assertTrue('Create table ok' in rs2)
+        self.assertIn('Create table ok', rs2)
 
         def put(count):
             for i in range(0, count):
@@ -183,9 +183,9 @@ class TestPut(TestCaseBase):
         utils.exe_shell('rm -rf {}/db/{}_{}/binlog'.format(self.slave1path, self.tid, self.pid))
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         rs4 = self.loadtable(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
-        self.assertTrue('LoadTable ok' in rs4)
+        self.assertIn('LoadTable ok', rs4)
         time.sleep(1)
-        self.assertTrue('testvalue19' in self.scan(self.slave1, self.tid, self.pid, {'card':'testkey'}, self.now(), 1))
+        self.assertIn('testvalue19', self.scan(self.slave1, self.tid, self.pid, {'card':'testkey'}, self.now(), 1))
 
 
     @multi_dimension(True)
@@ -206,7 +206,7 @@ class TestPut(TestCaseBase):
         """
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
-        self.assertTrue(rsp_msg in rs1)
+        self.assertIn(rsp_msg, rs1)
 
 
     @multi_dimension(True)
@@ -236,10 +236,10 @@ class TestPut(TestCaseBase):
         """
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
-        self.assertTrue(rsp_msg in rs1)
+        self.assertIn(rsp_msg, rs1)
         if scan_kv != {}:
             rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
-            self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
+            self.assertIn(' ' + str(scan_value) + ' ', rs2)
 
 
     @multi_dimension(True)
@@ -267,11 +267,11 @@ class TestPut(TestCaseBase):
         """
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
-        self.assertTrue(rsp_msg in rs1)
+        self.assertIn(rsp_msg, rs1)
         if scan_kv != {}:
             rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
             infoLogger.info(rs2)
-            self.assertTrue(' ' + str(scan_value) + ' ' in rs2)
+            self.assertIn(' ' + str(scan_value) + ' ', rs2)
 
 
     @multi_dimension(True)
@@ -294,11 +294,11 @@ class TestPut(TestCaseBase):
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         infoLogger.info(rs1)
-        self.assertTrue(rsp_msg in rs1)
+        self.assertIn(rsp_msg, rs1)
         infoLogger.info(self.scan(
             self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
         if scan_kv != {}:
-            self.assertTrue(' ' + str(scan_value) + ' ' in self.scan(
+            self.assertIn(' ' + str(scan_value) + ' ', self.scan(
                 self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
 
 
@@ -320,10 +320,10 @@ class TestPut(TestCaseBase):
         """
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         rs1 = self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
-        self.assertTrue(rsp_msg in rs1)
+        self.assertIn(rsp_msg, rs1)
         rs2 = self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1)
         infoLogger.info(rs2)
-        self.assertTrue(' ' + scan_value + ' ' in rs2)
+        self.assertIn(' ' + scan_value + ' ', rs2)
 
 
 if __name__ == "__main__":

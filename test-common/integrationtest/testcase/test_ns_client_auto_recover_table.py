@@ -27,7 +27,7 @@ class TestAutoRecoverTable(TestCaseBase):
             ('column_desc', '"k3"', '"string"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs, True)
+        self.assertIn('Create table ok', rs)
         table_info = self.showtable(self.ns_leader)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
@@ -44,13 +44,13 @@ class TestAutoRecoverTable(TestCaseBase):
 
     def get_latest_opid_by_tname_pid(self, tname, pid):
         latest_opid = self.get_opid_by_tname_pid(tname, pid)[-1]
-        self.latest_opid = latest_opid
-        return latest_opid
+        self.latest_opid = int(latest_opid)
+        return self.latest_opid
 
 
     def get_op_by_opid(self, op_id):
         rs = self.showopstatus(self.ns_leader)
-        return rs[int(op_id)][0]
+        return rs[op_id][0]
 
 
     def get_task_dict_by_opid(self, opid):
@@ -70,7 +70,7 @@ class TestAutoRecoverTable(TestCaseBase):
 
     def put_data(self, endpoint):
         rs = self.put(endpoint, self.tid, self.pid, "testkey0", self.now() + 1000, "testvalue0")
-        self.assertEqual("ok" in rs, True)
+        self.assertIn("ok", rs)
 
 
     def check_tasks(self, op_id, *args):
@@ -159,7 +159,7 @@ class TestAutoRecoverTable(TestCaseBase):
     @ddt.data(
         (1, 3, 0, 6, 15, 0, 33, 20, 24),  # offset = manifest.offset
         (1, 3, 0, 6, 12, 15, 0, 33, 20),  # offset = manifest.offset
-        (1, 3, 0, 6, 8, 15, 0, 33, 20),  # offset = manifest.offset
+        (1, 3, 0, 6, 8, 15, 0, 33, 20),  # offset = manifest.offset  RTIDB-210
         (1, 3, 0, 6, 8, 12, 15, 0, 33, 19, 23),  # offset < manifest.offset
         (1, 12, 3, 0, 12, 15, 0, 33, 20),  # offset = manifest.offset
         (1, 11, 7, 10, 3, 0, 15, 0, 33, 20),  # offset > manifest.offset
@@ -177,7 +177,7 @@ class TestAutoRecoverTable(TestCaseBase):
         (1, 2, 0, 6, 8, 12, 13, 0, 33, 17),
         (1, 2, 0, 6, 8, 12, 8, 13, 0, 33, 17),  # 19 new leader makesnapshot and put data, ori leader recover
         (1, 5, 0, 16, 0, 33, 20),
-        (1, 4, 0, 14, 0, 33, 17),
+        (1, 4, 0, 14, 0, 33, 17),  # RTIDB-213
         (1, 12, 3, 7, 2, 0, 13, 0, 33, 18),  # RTIDB-222
         (1, 26, 3, 0, 6, 15, 25, 0, 33, 20, 24, 27),  # 23-26 recoverendpoint
         (1, 26, 3, 0, 6, 8, 12, 15, 25, 0, 33, 19, 23, 27),
@@ -186,6 +186,11 @@ class TestAutoRecoverTable(TestCaseBase):
     )
     @ddt.unpack
     def test_auto_recover_table(self, *steps):
+        """
+        tablet故障恢复流程测试
+        :param steps:
+        :return:
+        """
         self.get_new_ns_leader()
         steps_dict = self.get_steps_dict()
         for i in steps:
@@ -194,7 +199,7 @@ class TestAutoRecoverTable(TestCaseBase):
         rs = self.showtable(self.ns_leader)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-1] for k, v in rs.items()]
-
+        print self.showopstatus(self.ns_leader)
         self.assertEqual(role_x.count('leader'), 4)
         self.assertEqual(role_x.count('follower'), 6)
         self.assertEqual(is_alive_x.count('yes'), 10)
@@ -203,17 +208,18 @@ class TestAutoRecoverTable(TestCaseBase):
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
 
-    """
+
+    @TestCaseBase.skip('FIXME')
     @ddt.data(
         (3, 0, 6, 32, 7, 15, 28, 0, 29, 0, 30),  # recover when ns killed: RTIDB-243
     )
     @ddt.unpack
     def test_auto_recover_table_ns_killed(self, *steps):
-        ""
+        """
         ns_leader挂掉，可以sendsnapshot成功，可以故障恢复成功
         :param steps:
         :return:
-        ""
+        """
         self.update_conf(self.slave1path, 'stream_block_size', 1)
         self.update_conf(self.slave1path, 'stream_bandwidth_limit', 1)
         self.update_conf(self.slave2path, 'stream_block_size', 1)
@@ -249,16 +255,22 @@ class TestAutoRecoverTable(TestCaseBase):
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
-    """
+
 
     @ddt.data((1, 9, 15))
     @ddt.unpack
-    def test_deadlock_bug(self, *steps):
+    def test_ns_deadlock_bug(self, *steps):  # RTIDB-216
+        """
+        主节点网络闪断后发生死锁bug验证
+        :param steps:
+        :return:
+        """
         steps_dict = self.get_steps_dict()
         for i in steps:
             eval(steps_dict[i])
         rs = self.showtable(self.ns_leader)
-        self.assertEqual(self.tname in rs.keys()[0], True)
+        self.assertIn(self.tname, rs.keys()[0])
+        time.sleep(10)
 
 
     @ddt.data(
@@ -286,7 +298,7 @@ class TestAutoRecoverTable(TestCaseBase):
             ('column_desc', '"k3"', '"string"', 'false'))
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertEqual('Create table ok' in rs, True)
+        self.assertIn('Create table ok', rs)
         table_info = self.showtable(self.ns_leader)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 1
