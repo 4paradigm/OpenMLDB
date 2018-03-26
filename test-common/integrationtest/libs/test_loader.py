@@ -25,9 +25,12 @@ def load(cls):
     runner.run(suite)
 
 
-def load_all():
+def load_all(pipe=''):
     testpath = os.getenv('testpath')
-    tests = commands.getstatusoutput('ls {}/testcase|egrep -v "frame|pyc|init"'.format(testpath))[1].split('\n')
+    cmd = 'ls {}/testcase|grep "^test_.*py$"{}'.format(testpath, pipe)
+    print '\n'*10, cmd
+    tests = commands.getstatusoutput(cmd)[1].split('\n')
+    print tests
     test_suite = []
     for module in tests:
         mo = importlib.import_module('testcase.{}'.format(module[:-3]))
@@ -37,4 +40,4 @@ def load_all():
         else:
             test_class = test_classes[0]
         test_suite.append(unittest.TestLoader().loadTestsFromTestCase(eval('mo.' + test_class)))
-        return test_suite
+    return test_suite

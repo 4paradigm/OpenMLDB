@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+import conf as conf
 from logger import infoLogger
 import commands
 import copy
+import os
 
 
 def exe_shell(cmd):
@@ -9,14 +11,6 @@ def exe_shell(cmd):
     retcode, output = commands.getstatusoutput(cmd)
     infoLogger.debug(output)
     return output
-
-
-def read(file_name):
-    strs = ""
-    l = self.doRead(file_name)
-    for s in l:
-        strs = strs + s
-    return strs
 
 
 def do_read(file_name):
@@ -36,6 +30,14 @@ def do_read(file_name):
         except:
             infoLogger.error(traceback.print_exc())
     return l
+
+
+def read(file_name):
+    strs = ""
+    l = do_read(file_name)
+    for s in l:
+        strs = strs + s
+    return strs
 
 
 def write(strs, file_name, patt):
@@ -58,32 +60,20 @@ def write(strs, file_name, patt):
     return rst
 
 
-def gen_table_metadata(name, ttl, seg_cnt, *table_partitions):
+def gen_table_metadata(name, ttl_type, ttl, seg_cnt, *table_partitions):
     metadata = []
-    basic_info_schema = ('name', 'ttl', 'seg_cnt')
-    basic_info = zip(basic_info_schema, (name, ttl, seg_cnt))
-    metadata.append(basic_info)
-    tp_schema = ['endpoint', 'pid_group', 'is_leader']
-    for tp in table_partitions:
-        if tp is not None:
-            tp_schema_tmp = copy.copy(tp_schema)
-            if tp[0] is None:
-                tp_schema_tmp.remove(tp_schema_tmp[0])
-            if tp[1] is None:
-                tp_schema_tmp.remove(tp_schema_tmp[1])
-            if tp[2] is None:
-                tp_schema_tmp.remove(tp_schema_tmp[2])
-            metadata.append(zip(tp_schema_tmp, tp))
-        else:
-            metadata.append({})
-    if name is None:
-        metadata[0].remove(metadata[0][0])
-    elif ttl is None:
-        metadata[0].remove(metadata[0][1])
-    elif seg_cnt is None:
-        metadata[0].remove(metadata[0][2])
-    # infoLogger.info(metadata)
-    # print metadata
+    basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt')
+    basic_info = zip(basic_info_schema, (name, ttl_type, ttl, seg_cnt))
+    metadata.append([(i[0], i[1]) for i in basic_info if i[1] is not None])
+    if table_partitions[0] is not None:
+        for tp in table_partitions:
+            ele_schema = conf.table_meta_ele[tp[0]]
+            if tp is not None:
+                ele_info = zip(ele_schema, tp[1:])
+                infoLogger.info(ele_info)
+                metadata.append((tp[0], [(i[0], i[1]) for i in ele_info if i[1] is not None]))
+            else:
+                metadata.append({})
     return metadata
 
 
@@ -92,9 +82,9 @@ def gen_table_metadata_file(metadata, filepath):
     for basic in metadata[0]:
         s += '{}:{}\n'.format(basic[0], basic[1])
     for tp in metadata[1:]:
-        s += 'table_partition {\n'
-        for i in tp:
+        s += tp[0] + ' {\n'
+        for i in tp[1]:
             s += '{}:{}\n'.format(i[0], i[1])
         s += '}\n'
-    # infoLogger.info(s)
     write(s, filepath, 'w')
+    infoLogger.info(read(filepath))

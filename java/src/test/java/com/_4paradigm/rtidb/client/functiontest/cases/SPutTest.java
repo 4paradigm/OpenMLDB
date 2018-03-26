@@ -114,12 +114,14 @@ public class SPutTest {
         {false, ColumnType.kDouble, -1e-1d, true},
         {false, ColumnType.kDouble, -1e-10d, true},
         {false, ColumnType.kDouble, null, true},
-        {false, ColumnType.kUInt32, 1, false},
+        {false, ColumnType.kUInt32, 1, true},
+        {false, ColumnType.kUInt32, 0, true},
+        {false, ColumnType.kUInt32, -1, false},
         {false, ColumnType.kUInt32, null, true},
     }; }
 
   @Test(dataProvider = "putdata")
-  public void testPutIndex(boolean isIndex, ColumnType type, Object value, boolean putOk) {
+  public void testPutColumnType(boolean isIndex, ColumnType type, Object value, boolean putOk) {
     List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     ColumnDesc desc1 = new ColumnDesc();
     desc1.setAddTsIndex(true);
@@ -178,6 +180,7 @@ public class SPutTest {
       Assert.fail();
     }
   }
+
 
   @DataProvider(name = "schema")
   public Object[][] schema() {
