@@ -75,6 +75,7 @@ class TestChangeLeader(TestCaseBase):
     def test_changeleader_master_killed(self):
         """
         changeleader功能正常，主节点挂掉后，可以手工故障切换，切换成功后从节点可以同步数据
+        原主节点启动后可以手工recoversnapshot成功
         :return:
         """
         self.start_client(self.leader)
@@ -131,7 +132,12 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(1)
         self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
         self.recoverendpoint(self.ns_leader, self.leader)
-        time.sleep(3)
+        time.sleep(10)
+
+        rs5 = self.showtable(self.ns_leader)
+        self.assertEqual(rs5[(name, tid, '0', self.leader)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs5[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs5[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
 
 
     def test_changeleader_master_alive(self):

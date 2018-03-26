@@ -3,7 +3,9 @@
 ulimit -c unlimited
 if [ -f "test-common/integrationtest/setup.sh" ]
 then
-    export casefilter=$2
-    sh test-common/integrationtest/runall.sh $1 $2
-    unset casefilter
+    export runlist=$2
+    export norunlist=$3
+    sh test-common/integrationtest/runall.sh $1 $2 $3
+    unset runlist
+    unset norunlist
 fi
