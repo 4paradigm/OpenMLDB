@@ -134,11 +134,6 @@ class TestChangeLeader(TestCaseBase):
         self.recoverendpoint(self.ns_leader, self.leader)
         time.sleep(10)
 
-        rs5 = self.showtable(self.ns_leader)
-        self.assertEqual(rs5[(name, tid, '0', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs5[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs5[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
-
 
     def test_changeleader_master_alive(self):
         """

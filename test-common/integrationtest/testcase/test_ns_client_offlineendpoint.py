@@ -45,10 +45,10 @@ class TestOfflineEndpoint(TestCaseBase):
         self.offlineendpoint(self.ns_leader, self.leader)
 
         rs2 = self.showtable(self.ns_leader)
-        self.start_client(self.leader)
-        time.sleep(10)
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
+        self.start_client(self.leader)
+        time.sleep(10)
 
         # showtable ok
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
@@ -105,8 +105,6 @@ class TestOfflineEndpoint(TestCaseBase):
         time.sleep(1)
 
         rs2 = self.showtable(self.ns_leader)
-        self.start_client(self.slave1)
-
         # showtable ok
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
