@@ -71,27 +71,27 @@ class TestAutoRecoverTable(TestCaseBase):
 
     @ddt.data(
         (1, 3, 0, 6, 15, 0, 33, 20, 24),  # offset = manifest.offset
-        # (1, 3, 0, 6, 12, 15, 0, 33, 20),  # offset = manifest.offset
-        # (1, 3, 0, 6, 8, 15, 0, 33, 20),  # offset = manifest.offset  RTIDB-210
+        (1, 3, 0, 6, 12, 15, 0, 33, 20),  # offset = manifest.offset
+        (1, 3, 0, 6, 8, 15, 0, 33, 20),  # offset = manifest.offset  RTIDB-210
         (1, 3, 0, 6, 8, 12, 15, 0, 33, 19, 23),  # offset < manifest.offset
-        # (1, 12, 3, 0, 12, 15, 0, 33, 20),  # offset = manifest.offset
-        # (1, 11, 7, 10, 3, 0, 15, 0, 33, 20),  # offset > manifest.offset
-        # (1, 3, 0, 6, 7, 15, 0, 33, 19),  # not match
-        # (1, 3, 0, 6, 7, 12, 15, 0, 33, 19),  # not match
-        # (1, 3, 0, 6, 7, 8, 15, 0, 33, 19),  # not match
-        # (1, 3, 0, 7, 10, 2, 12, 13, 0, 33, 17),  # not match
+        (1, 12, 3, 0, 12, 15, 0, 33, 20),  # offset = manifest.offset
+        (1, 11, 7, 10, 3, 0, 15, 0, 33, 20),  # offset > manifest.offset
+        (1, 3, 0, 6, 7, 15, 0, 33, 19),  # not match
+        (1, 3, 0, 6, 7, 12, 15, 0, 33, 19),  # not match
+        (1, 3, 0, 6, 7, 8, 15, 0, 33, 19),  # not match
+        (1, 3, 0, 7, 10, 2, 12, 13, 0, 33, 17),  # not match
         (1, 12, 2, 0, 6, 12, 13, 0, 33, 18, 22),  # offset = manifest.offset
-        # (1, 11, 7, 10, 2, 0, 13, 0, 33, 18),  # 12 offset > manifest.offset
-        # (1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 33, 18),  # 13 offset > manifest.offset
+        (1, 11, 7, 10, 2, 0, 13, 0, 33, 18),  # 12 offset > manifest.offset
+        (1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 33, 18),  # 13 offset > manifest.offset
         (1, 2, 0, 6, 13, 0, 33, 17, 21),  # offset < manifest.offset
-        # (1, 2, 0, 6, 12, 13, 0, 33, 17),  # offset < manifest.offset
-        # (1, 2, 0, 6, 8, 13, 0, 33, 17),
-        # (1, 2, 0, 6, 10, 12, 13, 0, 33, 17),
-        # (1, 2, 0, 6, 8, 12, 13, 0, 33, 17),
-        # (1, 2, 0, 6, 8, 12, 8, 13, 0, 33, 17),  # 19 new leader makesnapshot and put data, ori leader recover
-        # (1, 5, 0, 16, 0, 33, 20),
-        # (1, 4, 0, 14, 0, 33, 17),  # RTIDB-213
-        # (1, 12, 3, 7, 2, 0, 13, 0, 33, 18),  # RTIDB-222
+        (1, 2, 0, 6, 12, 13, 0, 33, 17),  # offset < manifest.offset
+        (1, 2, 0, 6, 8, 13, 0, 33, 17),
+        (1, 2, 0, 6, 10, 12, 13, 0, 33, 17),
+        (1, 2, 0, 6, 8, 12, 13, 0, 33, 17),
+        (1, 2, 0, 6, 8, 12, 8, 13, 0, 33, 17),  # 19 new leader makesnapshot and put data, ori leader recover
+        (1, 5, 0, 16, 0, 33, 20),
+        (1, 4, 0, 14, 0, 33, 17),  # RTIDB-213
+        (1, 12, 3, 7, 2, 0, 13, 0, 33, 18),  # RTIDB-222
     )
     @ddt.unpack
     def test_auto_recover_table(self, *steps):

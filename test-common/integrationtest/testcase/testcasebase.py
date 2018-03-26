@@ -469,10 +469,11 @@ class TestCaseBase(unittest.TestCase):
         rs = self.showopstatus(self.ns_leader)
         return rs[op_id][0]
 
-    def get_task_dict_by_opid(self, opid):
+    def get_task_dict_by_opid(self, tname, opid):
         time.sleep(1)
         task_dict = collections.OrderedDict()
-        cmd = "cat {}/info.log |grep -a \"op_id\[{}\]\"|grep task_type".format(self.ns_leader_path, opid) \
+        cmd = "cat {}/info.log |grep -A 10000 '{}'|grep -a \"op_id\[{}\]\"|grep task_type".format(
+            self.ns_leader_path, tname, opid) \
               + "|awk -F '\\\\[' '{print $4\"]\"$5\"]\"$6}'" \
                 "|awk -F '\\\\]' '{print $1\",\"$3\",\"$5}'"
         infoLogger.info(cmd)
@@ -484,7 +485,7 @@ class TestCaseBase(unittest.TestCase):
         self.task_dict = task_dict
 
     def check_tasks(self, op_id, exp_task_list):
-        self.get_task_dict_by_opid(op_id)
+        self.get_task_dict_by_opid(self.tname, op_id)
         tasks = [k[1] for k, v in self.task_dict.items() if k[0] == int(op_id) and v == 'kDone']
         infoLogger.info(self.task_dict)
         infoLogger.info(op_id)
