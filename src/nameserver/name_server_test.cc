@@ -63,8 +63,8 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
-	brpc::Server server;
-	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server;
+    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -82,8 +82,8 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     sleep(2);
 
     brpc::ServerOptions options1;
-	brpc::Server server1;
-	if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server1;
+    if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -136,7 +136,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ok = zk_client.GetNodeValue(table_index_node, value);
     ASSERT_TRUE(ok);
     std::string snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
-	std::vector<std::string> vec;
+    std::vector<std::string> vec;
     int cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
     ASSERT_EQ(2, vec.size());
@@ -174,8 +174,8 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
-	brpc::Server server;
-	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server;
+    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -191,8 +191,8 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options1;
-	brpc::Server server1;
-	if (server1.AddService(nameserver1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server1;
+    if (server1.AddService(nameserver1, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -235,8 +235,8 @@ TEST_F(NameServerImplTest, CreateTable) {
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
-	brpc::Server server;
-	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server;
+    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -254,8 +254,8 @@ TEST_F(NameServerImplTest, CreateTable) {
     sleep(2);
 
     brpc::ServerOptions options1;
-	brpc::Server server1;
-	if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server1;
+    if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -311,8 +311,8 @@ TEST_F(NameServerImplTest, Offline) {
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
-	brpc::Server server;
-	if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server;
+    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -331,8 +331,8 @@ TEST_F(NameServerImplTest, Offline) {
     sleep(2);
 
     brpc::ServerOptions options1;
-	brpc::Server server1;
-	if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server1;
+    if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -351,8 +351,8 @@ TEST_F(NameServerImplTest, Offline) {
     sleep(2);
 
     brpc::ServerOptions options2;
-	brpc::Server server2;
-	if (server2.AddService(tablet2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+    brpc::Server server2;
+    if (server2.AddService(tablet2, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
@@ -416,6 +416,114 @@ TEST_F(NameServerImplTest, Offline) {
     delete nameserver;
     delete tablet;
     delete tablet2;
+}
+
+TEST_F(NameServerImplTest, SetTablePartition) {
+    FLAGS_zk_cluster="127.0.0.1:6181";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
+
+    FLAGS_endpoint = "127.0.0.1:9632";
+    NameServerImpl* nameserver = new NameServerImpl();
+    bool ok = nameserver->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options;
+    brpc::Server server;
+    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(FLAGS_endpoint);
+    name_server_client.Init();
+
+    FLAGS_endpoint="127.0.0.1:9531";
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    ok = tablet->Init();
+    ASSERT_TRUE(ok);
+    sleep(2);
+
+    brpc::ServerOptions options1;
+    brpc::Server server1;
+    if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    ok = tablet->RegisterZK();
+    ASSERT_TRUE(ok);
+
+    sleep(2);
+    
+    CreateTableRequest request;
+    GeneralResponse response;
+    TableInfo *table_info = request.mutable_table_info();
+    std::string name = "test" + GenRand();
+    table_info->set_name(name);
+    TablePartition* partion = table_info->add_table_partition();
+    partion->set_pid(1);
+    PartitionMeta* meta = partion->add_partition_meta();
+    meta->set_endpoint("127.0.0.1:9531");
+    meta->set_is_leader(true);
+    TablePartition* partion1 = table_info->add_table_partition();
+    partion1->set_pid(2);
+    PartitionMeta* meta1 = partion1->add_partition_meta();
+    meta1->set_endpoint("127.0.0.1:9531");
+    meta1->set_is_leader(true);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+            &request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(-1, response.code());
+
+    TablePartition* partion2 = table_info->add_table_partition();
+    partion2->set_pid(0);
+    PartitionMeta* meta2 = partion2->add_partition_meta();
+    meta2->set_endpoint("127.0.0.1:9531");
+    meta2->set_is_leader(true);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
+            &request, &response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+
+    ::rtidb::nameserver::GetTablePartitionRequest get_request;
+    ::rtidb::nameserver::GetTablePartitionResponse get_response;
+    get_request.set_name(name);
+    get_request.set_pid(0);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::GetTablePartition,
+            &get_request, &get_response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, get_response.code());
+    ::rtidb::nameserver::TablePartition table_partition;
+    table_partition.CopyFrom(get_response.table_partition());
+    ASSERT_EQ(1, table_partition.partition_meta_size());
+    ASSERT_TRUE(table_partition.partition_meta(0).is_leader());
+
+    ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition.mutable_partition_meta(0);
+    partition_meta->set_is_leader(false);
+    ::rtidb::nameserver::SetTablePartitionRequest set_request;
+    ::rtidb::nameserver::GeneralResponse set_response;
+    set_request.set_name(name);
+    ::rtidb::nameserver::TablePartition* cur_table_partition = set_request.mutable_table_partition();
+    cur_table_partition->CopyFrom(table_partition);
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::SetTablePartition,
+            &set_request, &set_response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, set_response.code());
+
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::GetTablePartition,
+            &get_request, &get_response, 12, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, get_response.code());
+    ASSERT_FALSE(get_response.table_partition().partition_meta(0).is_leader());
+
+    delete nameserver;
+    delete tablet;
 }
 
 }
