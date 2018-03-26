@@ -622,47 +622,31 @@ int NameServerImpl::UpdateTaskStatus() {
 }
 
 int NameServerImpl::UpdateZKTaskStatus() {
-    std::vector<uint64_t> done_vec;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (const auto& kv : task_map_) {
-            if (kv.second->task_list_.empty()) {
-                continue;
-            }
-            std::shared_ptr<Task> task = kv.second->task_list_.front();
-            if (task->task_info_->status() == ::rtidb::api::kDone) {
-                done_vec.push_back(kv.first);
-            }
-        }
-    }
-    for (auto op_id : done_vec) {
-        std::shared_ptr<OPData> op_data;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto pos = task_map_.find(op_id);
-            if (pos == task_map_.end()) {
-                PDLOG(WARNING, "cannot find op[%lu] in task_map", op_id);
-                continue;
-            }
-            op_data = pos->second;
-        }
-        uint32_t cur_task_index = op_data->op_info_.task_index();
-        op_data->op_info_.set_task_index(cur_task_index + 1);
-        std::string value;
-        op_data->op_info_.SerializeToString(&value);
-        std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
-        if (zk_client_->SetNodeValue(node, value)) {
-            PDLOG(DEBUG, "set zk status value success. node[%s] value[%s]",
-                        node.c_str(), value.c_str());
-            op_data->task_list_.pop_front();
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& kv : task_map_) {
+        if (kv.second->task_list_.empty()) {
             continue;
         }
-        // revert task index
-        op_data->op_info_.set_task_index(cur_task_index);
-        PDLOG(WARNING, "set zk status value failed! node[%s] op_id[%lu] op_type[%s] task_index[%u]", 
-                      node.c_str(), op_id, 
-                      ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
-                      op_data->op_info_.task_index()); 
+        std::shared_ptr<Task> task = kv.second->task_list_.front();
+        if (task->task_info_->status() == ::rtidb::api::kDone) {
+            uint32_t cur_task_index = kv.second->op_info_.task_index();
+            kv.second->op_info_.set_task_index(cur_task_index + 1);
+            std::string value;
+            kv.second->op_info_.SerializeToString(&value);
+            std::string node = zk_op_data_path_ + "/" + std::to_string(kv.second->op_info_.op_id());
+            if (zk_client_->SetNodeValue(node, value)) {
+                PDLOG(DEBUG, "set zk status value success. node[%s] value[%s]",
+                            node.c_str(), value.c_str());
+                kv.second->task_list_.pop_front();
+                continue;
+            }
+            // revert task index
+            kv.second->op_info_.set_task_index(cur_task_index);
+            PDLOG(WARNING, "set zk status value failed! node[%s] op_id[%lu] op_type[%s] task_index[%u]", 
+                          node.c_str(), kv.second->op_info_.op_id(), 
+                          ::rtidb::api::OPType_Name(kv.second->op_info_.op_type()).c_str(),
+                          kv.second->op_info_.task_index()); 
+        }
     }
     return 0;
 }
