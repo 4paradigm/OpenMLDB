@@ -1426,6 +1426,7 @@ void NameServerImpl::DropTable(RpcController* controller,
     table_info_.erase(request->name());
     response->set_code(code);
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
+    NotifyTableChanged();
 }
 
 int NameServerImpl::ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
