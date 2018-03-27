@@ -1,0 +1,10 @@
+# common conf 
+--endpoint=0.0.0.0:6527
+--role=nameserver
+--zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
+--zk_root_path=/trybox
+--log_dir=./logs
+--log_file_count=24
+--log_file_size=1024
+--log_level=info
+
