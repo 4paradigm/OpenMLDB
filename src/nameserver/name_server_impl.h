@@ -348,9 +348,9 @@ private:
     std::string zk_op_index_node_;
     std::string zk_op_data_path_;
     uint64_t op_index_;
-    uint64_t doing_op_num_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
+    std::map<uint64_t, std::shared_ptr<OPData>> done_map_;
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
     std::atomic<bool> auto_recover_table_;

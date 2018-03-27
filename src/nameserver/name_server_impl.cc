@@ -45,7 +45,6 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     running_.store(false, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     auto_recover_table_.store(FLAGS_auto_recover_table, std::memory_order_release);
-    doing_op_num_ = 0;
 }
 
 NameServerImpl::~NameServerImpl() {
@@ -323,7 +322,11 @@ bool NameServerImpl::RecoverOPTask() {
                             op_data->op_info_.op_id(), op_data->op_info_.task_index());
             continue;
         }
-        task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+            done_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        } else {
+            task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        }
         PDLOG(INFO, "recover op[%s] success. op_id[%lu]", 
                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
     }
@@ -401,7 +404,6 @@ bool NameServerImpl::SkipDoneTask(std::shared_ptr<OPData> op_data) {
                 task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
         }
     }
-    doing_op_num_++;
     return true;
 }
 
@@ -704,7 +706,6 @@ int NameServerImpl::DeleteTask() {
             if (!op_data->task_list_.empty() && 
                     op_data->task_list_.front()->task_info_->status() == ::rtidb::api::kFailed) {
                 op_data->op_info_.set_task_status(::rtidb::api::kFailed);
-                doing_op_num_--;
                 op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
                 PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
@@ -715,6 +716,8 @@ int NameServerImpl::DeleteTask() {
                     PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]",
                                 node.c_str(), value.c_str());
                 }
+                done_map_.insert(std::make_pair(op_id, op_data));
+                task_map_.erase(pos);
             } else {
                 if (zk_client_->DeleteNode(node)) {
                     PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
@@ -722,8 +725,9 @@ int NameServerImpl::DeleteTask() {
                     if (op_data->op_info_.task_status() == ::rtidb::api::kDoing) {
                         op_data->op_info_.set_task_status(::rtidb::api::kDone);
                         op_data->task_list_.clear();
-                        doing_op_num_--;
                     }
+                    done_map_.insert(std::make_pair(op_id, op_data));
+                    task_map_.erase(pos);
                 } else {
                     PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
                 }
@@ -737,7 +741,7 @@ void NameServerImpl::ProcessTask() {
     while (running_.load(std::memory_order_acquire)) {
         {
             std::unique_lock<std::mutex> lock(mu_);
-            while (doing_op_num_ == 0) {
+            while (task_map_.empty()) {
                 cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
                 if (!running_.load(std::memory_order_acquire)) {
                     return;
@@ -1226,19 +1230,27 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& kv : task_map_) {
-        OPStatus* op_status = response->add_op_status();
-        op_status->set_op_id(kv.first);
-        op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
-        op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
-        if (kv.second->task_list_.empty()) {
-            op_status->set_task_type("-");
-        } else { 
-            std::shared_ptr<Task> task = kv.second->task_list_.front();
-            op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
+    for (int idx = 0; idx < 2; idx++) {
+        std::map<uint64_t, std::shared_ptr<OPData>>* cur_map_ptr;
+        if (idx == 0) {
+            cur_map_ptr = &done_map_;
+        } else {
+            cur_map_ptr = &task_map_;
         }
-        op_status->set_start_time(kv.second->op_info_.start_time());
-        op_status->set_end_time(kv.second->op_info_.end_time());
+        for (const auto& kv : *cur_map_ptr) {
+            OPStatus* op_status = response->add_op_status();
+            op_status->set_op_id(kv.first);
+            op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+            op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
+            if (kv.second->task_list_.empty()) {
+                op_status->set_task_type("-");
+            } else { 
+                std::shared_ptr<Task> task = kv.second->task_list_.front();
+                op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
+            }
+            op_status->set_start_time(kv.second->op_info_.start_time());
+            op_status->set_end_time(kv.second->op_info_.end_time());
+        }
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -1864,7 +1876,6 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
         return -1;
     }
     task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
-    doing_op_num_++;
     cv_.notify_one();
     return 0;
 }

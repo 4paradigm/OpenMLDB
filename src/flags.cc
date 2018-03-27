@@ -24,6 +24,7 @@ DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_int32(task_pool_size, 4, "the size of tablet task thread pool");
+DEFINE_int32(io_pool_size, 4, "the size of tablet io task thread pool");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
