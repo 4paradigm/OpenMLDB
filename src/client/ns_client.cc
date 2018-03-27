@@ -282,6 +282,38 @@ bool NsClient::DisConnectZK(std::string& msg) {
     return false;
 }            
 
+bool NsClient::SetTablePartition(const std::string& name,
+            const ::rtidb::nameserver::TablePartition& table_partition, std::string& msg) {
+    ::rtidb::nameserver::SetTablePartitionRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_name(name);
+    ::rtidb::nameserver::TablePartition* cur_table_partition = request.mutable_table_partition();
+    cur_table_partition->CopyFrom(table_partition);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SetTablePartition,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}            
+
+bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
+            ::rtidb::nameserver::TablePartition& table_partition, std::string& msg) {
+    ::rtidb::nameserver::GetTablePartitionRequest request;
+    ::rtidb::nameserver::GetTablePartitionResponse response;
+    request.set_name(name);
+    request.set_pid(pid);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::GetTablePartition,
+            &request, &response, 12, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        table_partition.CopyFrom(response.table_partition());
+        return true;
+    }
+    return false;
+}            
+
 }
 }
 
