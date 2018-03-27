@@ -399,6 +399,9 @@ bool NameServerImpl::SkipDoneTask(std::shared_ptr<OPData> op_data) {
             default:
                 task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
         }
+        doing_op_num_++;
+    } else {
+        op_data->op_info_.set_task_status(::rtidb::api::TaskStatus::kDone);
     }
     return true;
 }
@@ -689,21 +692,20 @@ int NameServerImpl::DeleteTask() {
         PDLOG(DEBUG, "tablet[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
     }
     if (!has_failed) {
+        std::lock_guard<std::mutex> lock(mu_);
         for (auto op_id : done_task_vec) {
             std::shared_ptr<OPData> op_data;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                auto pos = task_map_.find(op_id);
-                if (pos == task_map_.end()) {
-                    PDLOG(WARNING, "has not found op[%lu] in task_map", op_id); 
-                    continue;
-                }
-                op_data = pos->second;
+            auto pos = task_map_.find(op_id);
+            if (pos == task_map_.end()) {
+                PDLOG(WARNING, "has not found op[%lu] in task_map", op_id); 
+                continue;
             }
+            op_data = pos->second;
             std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
             if (!op_data->task_list_.empty() && 
                     op_data->task_list_.front()->task_info_->status() == ::rtidb::api::kFailed) {
                 op_data->op_info_.set_task_status(::rtidb::api::kFailed);
+                doing_op_num_--;
                 op_data->op_info_.set_end_time(::baidu::common::timer::now_time());
                 PDLOG(WARNING, "set op[%s] status failed. op_id[%lu]",
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
@@ -721,6 +723,7 @@ int NameServerImpl::DeleteTask() {
                     if (op_data->op_info_.task_status() == ::rtidb::api::kDoing) {
                         op_data->op_info_.set_task_status(::rtidb::api::kDone);
                         op_data->task_list_.clear();
+                        doing_op_num_--;
                     }
                 } else {
                     PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
@@ -735,7 +738,7 @@ void NameServerImpl::ProcessTask() {
     while (running_.load(std::memory_order_acquire)) {
         {
             std::unique_lock<std::mutex> lock(mu_);
-            while (task_map_.empty()) {
+            while (doing_op_num_ == 0) {
                 cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
                 if (!running_.load(std::memory_order_acquire)) {
                     return;
@@ -1862,6 +1865,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
         return -1;
     }
     task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+    doing_op_num_++;
     cv_.notify_one();
     return 0;
 }

@@ -1542,6 +1542,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }        
+        PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
         return 0;
     }
 
@@ -1551,7 +1552,8 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
     if (task_ptr) {
 		std::lock_guard<std::mutex> lock(mu_);
 	    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-    }        
+    }
+    PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
     return 0;
 }
 
@@ -1914,6 +1916,7 @@ void TabletImpl::DropTable(RpcController* controller,
 	}
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
+    PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
