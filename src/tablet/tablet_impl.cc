@@ -43,6 +43,7 @@ DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
+DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_string(recycle_bin_root_path);
@@ -144,7 +145,8 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
-    keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size){}
+    keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
+    io_pool_(FLAGS_io_pool_size){}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -1493,8 +1495,8 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             if (table->GetTTL() > 0) {
                 gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
             }
-            task_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
-            task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+            io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+            io_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
@@ -1626,8 +1628,8 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     table->SetTableStat(::rtidb::storage::kNormal);
     replicator->StartSyncing();
-    task_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
-    task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+    io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+    io_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
             pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
     if (ttl > 0) {
@@ -2155,7 +2157,7 @@ void TabletImpl::SchedSyncDisk(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (replicator) {
         replicator->SyncToDisk();
-        task_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+        io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
     }
 }
 
@@ -2163,7 +2165,7 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (replicator) {
         replicator->DeleteBinlog();
-        task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+        io_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     }
 }
 
