@@ -338,6 +338,7 @@ private:
                     bool is_leader, bool is_alive);
 
     void NotifyTableChanged();
+    void DeleteDoneOP();
 
 private:
     std::mutex mu_;

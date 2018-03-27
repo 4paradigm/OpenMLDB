@@ -1312,6 +1312,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
+    DeleteDoneOP();
     for (int idx = 0; idx < 2; idx++) {
         std::map<uint64_t, std::shared_ptr<OPData>>* cur_map_ptr;
         if (idx == 0) {
@@ -1958,13 +1959,19 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
         return -1;
     }
     task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
-    while (task_map_.size() > (uint32_t)FLAGS_max_op_num) {
-        auto iter = task_map_.begin();
-        while (iter != task_map_.end() && 
+    DeleteDoneOP();
+    cv_.notify_one();
+    return 0;
+}
+
+void NameServerImpl::DeleteDoneOP() {
+    while (done_map_.size() > (uint32_t)FLAGS_max_op_num) {
+        auto iter = done_map_.begin();
+        while (iter != done_map_.end() && 
                 iter->second->op_info_.task_status() == ::rtidb::api::TaskStatus::kDoing) {
             iter++;
         }
-        if (iter == task_map_.end()) {
+        if (iter == done_map_.end()) {
             break;
         }
         if (iter->second->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
@@ -1978,10 +1985,8 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
                 break;
             }
         }
-        task_map_.erase(iter);
+        done_map_.erase(iter);
     }
-    cv_.notify_one();
-    return 0;
 }
 
 int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint, 
