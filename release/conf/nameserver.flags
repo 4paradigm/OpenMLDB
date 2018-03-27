@@ -8,7 +8,6 @@
 --log_file_size=1024
 --log_level=info
 
-
 --auto_failover=false
 --auto_recover_table=false
 
