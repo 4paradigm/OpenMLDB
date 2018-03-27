@@ -399,10 +399,8 @@ bool NameServerImpl::SkipDoneTask(std::shared_ptr<OPData> op_data) {
             default:
                 task->task_info_->set_status(::rtidb::api::TaskStatus::kDoing);
         }
-        doing_op_num_++;
-    } else {
-        op_data->op_info_.set_task_status(::rtidb::api::TaskStatus::kDone);
     }
+    doing_op_num_++;
     return true;
 }
 
