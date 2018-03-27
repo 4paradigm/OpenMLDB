@@ -90,27 +90,21 @@ def gen_table_metadata_file(metadata, filepath):
     infoLogger.info(read(filepath))
 
 
-def diff_list(list1, list2):
-    l1 = copy.deepcopy(list1)
-    l2 = copy.deepcopy(list2)
+def same_list(l1, l2):
+    l2 = copy.deepcopy(l2)
     if len(l1) != len(l2):
         return False
     for i in l1:
-        try:
+        if i in l2:
             l2.remove(i)
-        except Exception as e:
-            pass
     return l2 == []
 
 
-def in_list(list1, list2):
-    l1 = copy.deepcopy(list1)
-    l2 = copy.deepcopy(list2)
+def in_list(l1, l2):
+    l1 = copy.deepcopy(l1)
     if len(l1) > len(l2):
         return False
     for i in l2:
-        try:
+        if i in l1:
             l1.remove(i)
-        except Exception as e:
-            pass
     return l1 == []
