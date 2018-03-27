@@ -15,13 +15,16 @@
 --log_level=info
 
 # binlog conf
---binlog_coffee_time=1000
---binlog_match_logoffset_interval=1000
+#--binlog_coffee_time=1000
+#--binlog_match_logoffset_interval=1000
 --binlog_notify_on_put=true
 --binlog_single_file_max_size=2048
---binlog_sync_batch_size=32
+#--binlog_sync_batch_size=32
 --binlog_sync_to_disk_interval=5000
---binlog_sync_wait_time=100
+#--binlog_sync_wait_time=100
+#--binlog_name_length=8
+#--binlog_delete_interval=60000
+#--binlog_enable_crc=false
 
 --db_root_path=./db
 --recycle_bin_root_path=./recycle
@@ -34,7 +37,16 @@
 # garbage collection conf
 # 60m
 --gc_interval=30
---gc_pool_size=2
+#--gc_pool_size=2
 # 1m
---gc_safe_offset=1
+#--gc_safe_offset=1
 
+# send file conf
+--send_file_max_try=3
+--stream_wait_time_ms=5
+#--stream_close_wait_time_ms=1000
+--stream_block_size=1024 * 1024
+#--stream_bandwidth_limit=1204 * 1024
+#--request_max_retry=3
+#--request_timeout_ms=5000
+#--request_sleep_time=1000
