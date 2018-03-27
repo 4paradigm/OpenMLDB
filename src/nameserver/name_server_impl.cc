@@ -45,6 +45,7 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     running_.store(false, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     auto_recover_table_.store(FLAGS_auto_recover_table, std::memory_order_release);
+    doing_op_num_ = 0;
 }
 
 NameServerImpl::~NameServerImpl() {
