@@ -338,6 +338,7 @@ private:
                     bool is_leader, bool is_alive);
 
     void NotifyTableChanged();
+    void DeleteDoneOP();
 
 private:
     std::mutex mu_;
@@ -360,6 +361,7 @@ private:
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
+    std::map<uint64_t, std::shared_ptr<OPData>> done_map_;
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
     std::atomic<bool> auto_recover_table_;

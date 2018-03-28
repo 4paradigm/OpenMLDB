@@ -12,7 +12,7 @@ DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or 
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep alive check");
-DEFINE_int32(get_task_status_interval, 5000, "config the interval of get task status");
+DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
 DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
@@ -24,7 +24,8 @@ DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
-DEFINE_int32(task_pool_size, 4, "the size of tablet task thread pool");
+DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
+DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
