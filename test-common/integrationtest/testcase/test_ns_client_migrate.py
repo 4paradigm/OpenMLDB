@@ -127,7 +127,7 @@ class TestNameserverMigrate(TestCaseBase):
         self.assertIn(exp_msg, rs2)
 
 
-    @TestCaseBase.skip('FIXME')
+    #@TestCaseBase.skip('FIXME')
     def test_ns_client_migrate_failover_and_recover(self):  # RTIDB-252
         """
         迁移时发生故障切换，故障切换成功，迁移失败
