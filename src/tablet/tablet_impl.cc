@@ -1189,8 +1189,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         ::rtidb::api::TabletServer_Stub stub(&channel);
         brpc::Controller cntl;
         brpc::StreamId stream;
-        //cntl.set_timeout_ms(FLAGS_request_timeout_ms);
-        //cntl.set_max_retry(FLAGS_request_max_retry);
+        cntl.set_timeout_ms(FLAGS_request_timeout_ms);
+        cntl.set_max_retry(FLAGS_request_max_retry);
         if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
             PDLOG(WARNING, "create stream failed. endpoint[%s] tid[%u] pid[%u]", 
                             endpoint.c_str(), tid, pid);
