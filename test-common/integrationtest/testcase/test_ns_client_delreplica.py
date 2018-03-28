@@ -11,10 +11,7 @@ import libs.conf as conf
 @ddt.ddt
 class TestDelReplicaNs(TestCaseBase):
 
-    def get_base_attr(attr):
-        TestCaseBase.setUpClass()
-        return TestCaseBase.__getattribute__(TestCaseBase, attr)
-
+    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
 
     def test_delreplica_scenario(self):
         """
@@ -103,7 +100,7 @@ class TestDelReplicaNs(TestCaseBase):
     @ddt.data(
         ('notexsit', None, None, 'Fail to delreplica'),
         (None, 10, None, 'Fail to delreplica'),
-        (None, None, get_base_attr('leader'), 'Fail to delreplica'),
+        (None, None, leader, 'Fail to delreplica'),
         (None, None, '127.1.1.1:6666', 'Fail to delreplica'),
     )
     @ddt.unpack

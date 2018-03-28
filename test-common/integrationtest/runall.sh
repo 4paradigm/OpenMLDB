@@ -3,9 +3,6 @@ projectpath=${testpath}/../..
 
 # get rtidb ver
 rtidbver=`echo \`grep "RTIDB_VERSION" ${projectpath}/CMakeLists.txt|awk '{print $2}'|awk -F ')' '{print $1}'\`|sed 's/\ /\./g'`
-#if [ $3 ];then
-#    rtidbver=$3
-#fi
 echo "RTIDB_VERSION is ${rtidbver}"
 
 # setup test env
@@ -21,8 +18,7 @@ if [ $1 = 1 ]; then
 else
     sed -i 's/multidimension\ =\ true/multidimension\ =\ false/g' ${testconfpath}
 fi
-echo ${casefilter}
-python ${testpath}/runall.py -F="${casefilter}"
+python ${testpath}/runall.py -R="${runlist}" -N="${norunlist}"
 
 # teardown kill services
 python ${testpath}/setup.py -T=true

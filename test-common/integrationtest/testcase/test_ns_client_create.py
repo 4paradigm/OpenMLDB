@@ -9,13 +9,10 @@ import libs.utils as utils
 from libs.logger import infoLogger
 
 
-def get_base_attr(attr):
-    TestCaseBase.setUpClass()
-    return TestCaseBase.__getattribute__(TestCaseBase, attr)
-
-
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
+
+    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
 
     @multi_dimension(False)
     @ddt.data(
@@ -49,7 +46,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.unpack
     def test_create_name_ttltype_ttl_seg(self, name, ttl_type, ttl, seg_cnt, exp_msg):
         """
-
+        name，ttp type，ttl和seg的参数检查
         :param ttl_type:
         :param name:
         :param seg_cnt:
@@ -125,7 +122,7 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     def test_create_name_repeat(self):
         """
-
+        表名重复，创建失败
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -156,7 +153,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         (('"0"', 'true'), ('"0"', 'true'), 'pid 0 has two leader'),
         (('"0-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
         (('""', 'true'), ('"2-4"', 'true'), 'pid_group[] format error.'),
-        # (('"0"', 'true'), ('"1-10240"', 'true'), 'Create table ok'),  # RTIDB-238
+        # (('"0-10240"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
         (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
         ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
         (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),
@@ -168,7 +165,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.unpack
     def test_create_pid_group(self, pid_group1, pid_group2, exp_msg):
         """
-
+        pid_group参数测试
         :param pid_group1:
         :param pid_group2:
         :param exp_msg:
@@ -218,7 +215,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.unpack
     def test_create_endpoint(self, ep, exp_msg):
         """
-
+        endpoint参数测试
         :param ep:
         :param exp_msg:
         :return:
@@ -238,18 +235,18 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @ddt.data(
         ('table meta file format error',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', None)),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', None)),
 
         ('has not leader pid',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', 'false'),
-         ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-3"', 'false')),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', 'false'),
+         ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
 
         ('Create table ok',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', 'true'),
-         ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-3"', 'false')),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', 'true'),
+         ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
 
         ('table meta file format error',
-         ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-3"', '""')),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', '""')),
 
         ('has not table_partition in table meta file', None),  # RTIDB-193
 
@@ -259,7 +256,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.unpack
     def test_create_is_leader(self, exp_msg, *table_partition):
         """
-
+        is_leader参数测试
         :param table_partition:
         :param exp_msg:
         :return:
@@ -334,7 +331,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.unpack
     def test_create_column_desc(self, exp_msg, *column_descs):
         """
-
+        column_desc参数测试
         :param exp_msg:
         :param column_descs:
         :return:
@@ -366,9 +363,9 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @ddt.data(
         ('Create table ok',
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),
+        ('table_partition', '"{}"'.format(leader), '"0-2"', 'true'),
+        ('table_partition', '"{}"'.format(slave1), '"0-1"', 'false'),
+        ('table_partition', '"{}"'.format(slave2), '"1-2"', 'false'),
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"double"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),),
@@ -377,32 +374,32 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"double"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),),
+        ('table_partition', '"{}"'.format(leader), '"0-2"', 'true'),
+        ('table_partition', '"{}"'.format(slave1), '"0-1"', 'false'),
+        ('table_partition', '"{}"'.format(slave2), '"1-2"', 'false'),),
 
         ('Create table ok',
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
+        ('table_partition', '"{}"'.format(leader), '"0-2"', 'true'),
         ('column_desc', '"k1"', '"string"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
+        ('table_partition', '"{}"'.format(slave1), '"0-1"', 'false'),
         ('column_desc', '"k2"', '"double"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),
+        ('table_partition', '"{}"'.format(slave2), '"1-2"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),),
 
         ('Create table ok',
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"double"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('leader')), '"0-2"', 'true'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave1')), '"0-1"', 'false'),
-        ('table_partition', '"{}"'.format(get_base_attr('slave2')), '"1-2"', 'false'),
+        ('table_partition', '"{}"'.format(leader), '"0-2"', 'true'),
+        ('table_partition', '"{}"'.format(slave1), '"0-1"', 'false'),
+        ('table_partition', '"{}"'.format(slave2), '"1-2"', 'false'),
         ('column_desc', '"k3"', '"int32"', 'true'),),
     )
     @ddt.unpack
     def test_create_partition_column_order(self, exp_msg, *eles):
         """
-
+        table_partition和column_desc的前后顺序测试，无论顺序如何，都会拼成完整的schema
         :param exp_msg:
-        :param column_descs:
+        :param eles:
         :return:
         """
         tname = 'tname{}'.format(time.time())

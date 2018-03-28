@@ -8,6 +8,7 @@ import sys
 import threading
 import shlex
 import subprocess
+import collections
 sys.path.append(os.getenv('testpath'))
 from libs.logger import infoLogger
 import libs.conf as conf
@@ -23,6 +24,7 @@ class TestCaseBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        infoLogger.info('\n' + '|' * 50 + ' TEST {} STARTED '.format(cls) + '|' * 50 + '\n')
         cls.welcome = 'Welcome to rtidb with version {}\n'.format(os.getenv('rtidbver'))
         cls.testpath = os.getenv('testpath')
         cls.rtidb_path = os.getenv('rtidbpath')
@@ -34,10 +36,10 @@ class TestCaseBase(unittest.TestCase):
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
         cls.failfast = conf.failfast
-        cls.node_path_dict = {cls.leader:cls.testpath + '/tablet1',
-                              cls.slave1:cls.testpath + '/tablet2',
-                              cls.slave2:cls.testpath + '/tablet3',
-                              cls.ns_leader:cls.ns_leader_path}
+        cls.node_path_dict = {cls.leader: cls.testpath + '/tablet1',
+                              cls.slave1: cls.testpath + '/tablet2',
+                              cls.slave2: cls.testpath + '/tablet3',
+                              cls.ns_leader: cls.ns_leader_path}
         cls.leaderpath = cls.node_path_dict[cls.leader]
         cls.slave1path = cls.node_path_dict[cls.slave1]
         cls.slave2path = cls.node_path_dict[cls.slave2]
@@ -47,9 +49,11 @@ class TestCaseBase(unittest.TestCase):
         for edp_tuple in conf.tb_endpoints:
             edp = edp_tuple[1]
             utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict[edp]))
+        infoLogger.info('\n' + '=' * 50 + ' TEST {} FINISHED '.format(cls) + '=' * 50 + '\n' * 5)
 
     def setUp(self):
-        infoLogger.info('\n' * 5 + 'TEST CASE NAME: ' + self._testMethodName + self._testMethodDoc)
+        infoLogger.info('\nTEST CASE NAME: {} {} {}'.format(
+            self, self._testMethodDoc, '\n' + '|' * 50 + ' SETUP STARTED ' + '|' * 50 + '\n'))
         try:
             self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
@@ -63,7 +67,7 @@ class TestCaseBase(unittest.TestCase):
             self.confset(self.ns_leader, 'auto_recover_table', 'true')
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
-        infoLogger.info('\n\n' + '|' * 50 + ' SETUP FINISHED ' + '|' * 50 + '\n')
+        infoLogger.info('\n\n' + '=' * 50 + ' SETUP FINISHED ' + '=' * 50 + '\n')
 
     def tearDown(self):
         infoLogger.info('\n\n' + '|' * 50 + ' TEARDOWN STARTED ' + '|' * 50 + '\n')
@@ -84,7 +88,7 @@ class TestCaseBase(unittest.TestCase):
                     time.sleep(3)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
-        infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n')
+        infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n' * 5)
 
     def now(self):
         return int(time.time() * 1000000 / 1000)
@@ -141,7 +145,7 @@ class TestCaseBase(unittest.TestCase):
         cmd = cmd.strip()
         rs = utils.exe_shell('{} --endpoint={} --role={} --interactive=false --cmd="{}"'.format(
             self.rtidb_path, endpoint, role, cmd))
-        return rs.replace(self.welcome, '').replace('>' ,'')
+        return rs.replace(self.welcome, '').replace('>', '')
 
     @staticmethod
     def get_manifest(nodepath, tid, pid):
@@ -187,7 +191,7 @@ class TestCaseBase(unittest.TestCase):
                 return self.run_client(endpoint, 'put {} {} {} {} {}'.format(
                     tid, pid, key, ts, values[0]))
         return self.run_client(endpoint, 'sput {} {} {} {}'.format(
-                tid, pid, ts, ' '.join(values)))
+            tid, pid, ts, ' '.join(values)))
 
     def scan(self, endpoint, tid, pid, vk, ts_from, ts_to):
         """
@@ -232,7 +236,7 @@ class TestCaseBase(unittest.TestCase):
                 tid, pid, self.multidimension_scan_vk.values()[0], self.multidimension_scan_vk.keys()[0], ts))
         else:
             return self.run_client(endpoint, 'get {} {} {} {}'.format(
-                    tid, pid, vk, ts))
+                tid, pid, vk, ts))
 
     def drop(self, endpoint, tid, pid):
         return self.run_client(endpoint, 'drop {} {}'.format(tid, pid))
@@ -340,7 +344,7 @@ class TestCaseBase(unittest.TestCase):
         try:
             rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
             tablestatus = self.parse_tb(rs, ' ', [0, 1], [2, 3, 4, 5, 6, 7, 8])
-            tableststus_d = {(int(k[0]), int(k[1])) : v for k, v in tablestatus.items()}
+            tableststus_d = {(int(k[0]), int(k[1])): v for k, v in tablestatus.items()}
             if tid != '':
                 return tableststus_d[(int(tid), int(pid))]
             else:
@@ -364,13 +368,12 @@ class TestCaseBase(unittest.TestCase):
     def showopstatus(self, endpoint):
         rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
         tablestatus = self.parse_tb(rs, ' ', [0], [1, 2, 6])
-        tablestatus_d = {(int(k)) : v for k, v in tablestatus.items()}
+        tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
 
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
-
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
@@ -412,6 +415,7 @@ class TestCaseBase(unittest.TestCase):
         def put():
             for i in range(0, count):
                 self.put(self.leader, self.tid, self.pid, 'testkey', self.now() - i, data)
+
         threads = []
         for _ in range(0, thread_count):
             threads.append(threading.Thread(
@@ -431,9 +435,9 @@ class TestCaseBase(unittest.TestCase):
         cmd1 = "tail -n {} {}/info.log|grep -a \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
             int(line_count) - int(op_start_line),
             self.ns_leader_path, tname, tid, pid) + \
-              "|awk -F 'new leader is\\\\[' '{print $2}'" \
-              "|awk -F '\\\\]. name\\\\[tname' '{print $1}'" \
-              "|tail -n 1"
+               "|awk -F 'new leader is\\\\[' '{print $2}'" \
+               "|awk -F '\\\\]. name\\\\[tname' '{print $1}'" \
+               "|tail -n 1"
         new_leader = utils.exe_shell(cmd1)
         self.new_tb_leader = new_leader
         return new_leader
@@ -448,3 +452,63 @@ class TestCaseBase(unittest.TestCase):
         utils.exe_shell("sed -i '/{}/d' {}/conf/{}".format(conf_item, nodepath, conf_file))
         if conf_value is not None:
             utils.exe_shell("sed -i '1i--{}={}' {}/conf/{}".format(conf_item, conf_value, nodepath, conf_file))
+
+    def get_opid_by_tname_pid(self, tname, pid):
+        opid_rs = utils.exe_shell("grep -a {} {}/info.log|grep op_id|grep \"name\[\"|grep \"pid\[{}\]\""
+                                  "|sed 's/\(.*\)op_id\[\(.*\)\] name\(.*\)/\\2/g'".format(
+            tname, self.ns_leader_path, pid))
+        opid_x = opid_rs.split('\n')
+        return opid_x
+
+    def get_latest_opid_by_tname_pid(self, tname, pid):
+        latest_opid = self.get_opid_by_tname_pid(tname, pid)[-1]
+        self.latest_opid = int(latest_opid)
+        return self.latest_opid
+
+    def get_op_by_opid(self, op_id):
+        rs = self.showopstatus(self.ns_leader)
+        return rs[op_id][0]
+
+    def get_task_dict_by_opid(self, tname, opid):
+        time.sleep(1)
+        task_dict = collections.OrderedDict()
+        cmd = "cat {}/info.log |grep -A 10000 '{}'|grep -a \"op_id\[{}\]\"|grep task_type".format(
+            self.ns_leader_path, tname, opid) \
+              + "|awk -F '\\\\[' '{print $4\"]\"$5\"]\"$6}'" \
+                "|awk -F '\\\\]' '{print $1\",\"$3\",\"$5}'"
+        infoLogger.info(cmd)
+        rs = utils.exe_shell(cmd).split('\n')
+        infoLogger.info(rs)
+        for x in rs:
+            x = x.split(',')
+            task_dict[(int(x[1]), x[2])] = x[0]
+        self.task_dict = task_dict
+
+    def check_tasks(self, op_id, exp_task_list):
+        self.get_task_dict_by_opid(self.tname, op_id)
+        tasks = [k[1] for k, v in self.task_dict.items() if k[0] == int(op_id) and v == 'kDone']
+        infoLogger.info(self.task_dict)
+        infoLogger.info(op_id)
+        infoLogger.info([k[1] for k, v in self.task_dict.items()])
+        infoLogger.info(tasks)
+        infoLogger.info(exp_task_list)
+        self.assertEqual(exp_task_list, tasks)
+
+    def check_re_add_replica_op(self, op_id):
+        self.check_tasks(op_id,
+                         ['kPauseSnapshot', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
+                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+
+    def check_re_add_replica_no_send_op(self, op_id):
+        self.check_tasks(op_id,
+                         ['kPauseSnapshot', 'kLoadTable', 'kAddReplica',
+                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+
+    def check_re_add_replica_with_drop_op(self, op_id):
+        self.check_tasks(op_id,
+                         ['kPauseSnapshot', 'kDropTable', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
+                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+
+    def check_re_add_replica_simplify_op(self, op_id):
+        self.check_tasks(op_id,
+                         ['kAddReplica', 'kUpdatePartitionStatus'])
