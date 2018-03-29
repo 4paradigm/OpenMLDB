@@ -70,8 +70,8 @@ class TestAutoRecoverTable(TestCaseBase):
 
 
     @ddt.data(
-        # (1, 3, 6, 15, 0, 33, 20, 24),  # failover not finish and start recover
-        # (1, 2, 6, 13, 0, 33, 17, 21),  # failover not finish and start recover
+        # (1, 3, 6, 15, 0, 33, 20, 24),  # failover not finish and start recover  RTIDB-259
+        # (1, 2, 6, 13, 0, 33, 17, 21),  # failover not finish and start recover  RTIDB-259
         (1, 3, 0, 6, 15, 0, 33, 20, 24),  # offset = manifest.offset
         (1, 3, 0, 6, 12, 15, 0, 33, 20),  # offset = manifest.offset
         (1, 3, 0, 6, 8, 15, 0, 33, 20),  # offset = manifest.offset  RTIDB-210
