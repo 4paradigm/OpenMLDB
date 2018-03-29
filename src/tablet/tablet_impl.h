@@ -273,6 +273,7 @@ private:
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
+    ThreadPool io_pool_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
 };

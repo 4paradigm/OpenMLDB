@@ -43,6 +43,7 @@ DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
 DECLARE_bool(binlog_notify_on_put);
 DECLARE_int32(task_pool_size);
+DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_string(recycle_bin_root_path);
@@ -54,6 +55,7 @@ DECLARE_int32(stream_close_wait_time_ms);
 DECLARE_int32(stream_block_size);
 DECLARE_int32(stream_bandwidth_limit);
 DECLARE_int32(send_file_max_try);
+DECLARE_int32(retry_send_file_wait_time_ms);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -136,6 +138,10 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
     }
 	full_path += file_name_;
     std::string tmp_file_path = full_path + ".tmp";
+    if (::rtidb::base::IsExists(full_path)) {
+        std::string backup_file = full_path + "." + ::rtidb::base::GetNowTime();
+        rename(full_path.c_str(), backup_file.c_str());
+    }
     rename(tmp_file_path.c_str(), full_path.c_str());
     PDLOG(INFO, "file %s received. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
     brpc::StreamClose(id);
@@ -144,7 +150,8 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
-    keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size){}
+    keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
+    io_pool_(FLAGS_io_pool_size){}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -1104,7 +1111,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
     do {
 		// send table_meta file
 		if (SendFile(endpoint, tid, pid, "table_meta.txt") < 0) {
-			PDLOG(WARNING, "send table_meta.txt failed");
+			PDLOG(WARNING, "send table_meta.txt failed. tid[%u] pid[%u]", tid, pid);
 			break;
 		}
     	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
@@ -1117,19 +1124,19 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 		}
 		// send manifest file
 		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
-			PDLOG(WARNING, "send MANIFEST failed");
+			PDLOG(WARNING, "send MANIFEST failed. tid[%u] pid[%u]", tid, pid);
 			break;
 		}
 		google::protobuf::io::FileInputStream fileInput(fd);
 		fileInput.SetCloseOnDelete(true);
 		::rtidb::api::Manifest manifest;
 		if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-			PDLOG(WARNING, "parse manifest failed");
+			PDLOG(WARNING, "parse manifest failed. tid[%u] pid[%u]", tid, pid);
 			break;
 		}
 		// send snapshot file
 		if (SendFile(endpoint, tid, pid, manifest.name()) < 0) {
-			PDLOG(WARNING, "send snapshot failed");
+			PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
 			break;
 		}
         has_error = false;
@@ -1163,6 +1170,10 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
     PDLOG(INFO, "send file %s to %s. size[%lu]", full_path.c_str(), endpoint.c_str(), file_size);
     int try_times = FLAGS_send_file_max_try;   
     do {
+        if (try_times < FLAGS_send_file_max_try) {
+            std::this_thread::sleep_for(std::chrono::milliseconds((FLAGS_send_file_max_try - try_times) * 
+                    FLAGS_retry_send_file_wait_time_ms));
+        }
         try_times--;
         brpc::Channel channel;
         brpc::ChannelOptions options;
@@ -1172,8 +1183,9 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         options.timeout_ms = FLAGS_request_timeout_ms;
         options.connect_timeout_ms = FLAGS_request_timeout_ms;
         options.max_retry = FLAGS_request_max_retry;
-        if (channel.Init(endpoint.c_str(), NULL) != 0) {
-            PDLOG(WARNING, "init channel failed. %s ", endpoint.c_str());
+        if (channel.Init(endpoint.c_str(), "", &options) != 0) {
+            PDLOG(WARNING, "init channel failed. endpoint[%s] tid[%u] pid[%u]", 
+                            endpoint.c_str(), tid, pid);
             continue;
         }
         ::rtidb::api::TabletServer_Stub stub(&channel);
@@ -1182,7 +1194,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         cntl.set_timeout_ms(FLAGS_request_timeout_ms);
         cntl.set_max_retry(FLAGS_request_max_retry);
         if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
-            PDLOG(WARNING, "create stream failed. endpoint %s", endpoint.c_str());
+            PDLOG(WARNING, "create stream failed. endpoint[%s] tid[%u] pid[%u]", 
+                            endpoint.c_str(), tid, pid);
             continue;
         }
         FILE* file = fopen(full_path.c_str(), "rb");
@@ -1197,7 +1210,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         request.set_file_name(file_name);
         stub.CreateStream(&cntl, &request, &response, NULL);
         if (cntl.Failed()) {
-            PDLOG(WARNING, "connect stream failed. %s ", cntl.ErrorText().c_str());
+            PDLOG(WARNING, "connect stream failed. tid[%u] pid[%u] error msg: %s", 
+                            tid, pid, cntl.ErrorText().c_str());
             fclose(file);
             continue;
         }
@@ -1232,7 +1246,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
             }
             block_count++;
             if (report_block_num == 0 || block_count % report_block_num == 0) {
-                PDLOG(INFO, "send block num[%lu] total block num[%lu]. tid %u pid %u file %s", 
+                PDLOG(INFO, "send block num[%lu] total block num[%lu]. tid[%u] pid[%u] file[%s]", 
                             block_count, block_num, tid, pid, file_name.c_str());
             }
         }
@@ -1251,14 +1265,15 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         brpc::Controller cntl1;
         stub.CheckFile(&cntl1, &check_request, &response, NULL);
         if (cntl1.Failed()) {
-            PDLOG(WARNING, "check file request failed. error msg: %s", cntl1.ErrorText().c_str());
+            PDLOG(WARNING, "check file[%s] request failed. tid[%u] pid[%u] error msg: %s", 
+                            file_name.c_str(), tid, pid, cntl1.ErrorText().c_str());
             continue;
         }
         if (response.code() == 0) {
-            PDLOG(INFO, "send file %s success", file_name.c_str());
+            PDLOG(INFO, "send file[%s] success. tid[%u] pid[%u]", file_name.c_str(), tid, pid);
             return 0;
         }
-        PDLOG(WARNING, "check file failed");
+        PDLOG(WARNING, "check file[%s] failed. tid[%u] pid[%u]", file_name.c_str(), tid, pid);
     } while (try_times > 0);
     return -1;
 }
@@ -1493,8 +1508,8 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             if (table->GetTTL() > 0) {
                 gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
             }
-            task_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
-            task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+            io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+            io_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
             if (task_ptr) {
                 std::lock_guard<std::mutex> lock(mu_);
@@ -1542,6 +1557,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }        
+        PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
         return 0;
     }
 
@@ -1551,7 +1567,8 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
     if (task_ptr) {
 		std::lock_guard<std::mutex> lock(mu_);
 	    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-    }        
+    }
+    PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
     return 0;
 }
 
@@ -1624,8 +1641,8 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     table->SetTableStat(::rtidb::storage::kNormal);
     replicator->StartSyncing();
-    task_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
-    task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+    io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+    io_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
             pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
     if (ttl > 0) {
@@ -1914,6 +1931,7 @@ void TabletImpl::DropTable(RpcController* controller,
 	}
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
+    PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
@@ -2157,7 +2175,7 @@ void TabletImpl::SchedSyncDisk(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (replicator) {
         replicator->SyncToDisk();
-        task_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+        io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
     }
 }
 
@@ -2165,7 +2183,7 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (replicator) {
         replicator->DeleteBinlog();
-        task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+        io_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     }
 }
 
