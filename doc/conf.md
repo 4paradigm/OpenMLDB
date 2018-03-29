@@ -1,7 +1,7 @@
 # RTIDB配置说明文档
 
 ## 通用配置
-**endpoint**  指定节点的ip和port, 示例 127.0.0.0:9991
+**endpoint**  指定节点的ip和port, 示例172.27.128.31:9991(注:endpoint不能用0.0.0.0和127.0.0.1)
 
 **zk_cluster**  指定连接zookeeper集群的地址, 如果zookeeper是多节点用逗号分开, 示例 172.27.2.51:6330,172.27.2.52:6331
 
@@ -57,6 +57,8 @@ send_file_max_try  发送文件失败时的最大重试次数
 retry_send_file_wait_time_ms  发送文件失败时重试等待时间. 等待时间 = retry_send_file_wait_time_ms * 重试次数
 
 task_pool_size  tablet线程池的大小
+
+io_pool_size  执行io任务的线程池大小
 
 **scan_max_bytes_size**  一次scan数据的最大值, 单位是byte
 
