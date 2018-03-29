@@ -92,7 +92,7 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std
     ::rtidb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
     table_info_r->CopyFrom(table_info);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 120, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -105,7 +105,7 @@ bool NsClient::DropTable(const std::string& name, std::string& msg) {
     request.set_name(name);
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
-            &request, &response, 120, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
