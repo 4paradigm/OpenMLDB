@@ -8,9 +8,7 @@
 #include "client/ns_client.h"
 #include "base/strings.h"
 
-DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
-
 namespace rtidb {
 namespace client {
 
@@ -24,7 +22,7 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     ::rtidb::nameserver::ShowTabletRequest request;
     ::rtidb::nameserver::ShowTabletResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTablet,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
@@ -48,7 +46,7 @@ bool NsClient::ShowTable(const std::string& name,
     }
     ::rtidb::nameserver::ShowTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.table_info_size(); i++) {
@@ -67,7 +65,7 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, std::string& 
     request.set_pid(pid);
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -78,7 +76,7 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, std::string& 
 bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, std::string& msg) {
     ::rtidb::nameserver::ShowOPStatusRequest request;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowOPStatus,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -92,7 +90,7 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std
     ::rtidb::nameserver::TableInfo* table_info_r = request.mutable_table_info();
     table_info_r->CopyFrom(table_info);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -105,7 +103,7 @@ bool NsClient::DropTable(const std::string& name, std::string& msg) {
     request.set_name(name);
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -121,7 +119,7 @@ bool NsClient::AddReplica(const std::string& name, uint32_t pid,
     request.set_pid(pid);
     request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaNS,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -137,7 +135,7 @@ bool NsClient::DelReplica(const std::string& name, uint32_t pid,
     request.set_pid(pid);
     request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DelReplicaNS,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -152,7 +150,7 @@ bool NsClient::ConfSet(const std::string& key, const std::string& value, std::st
     conf->set_key(key);
     conf->set_value(value);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfSet,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -166,7 +164,7 @@ bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string
     ::rtidb::nameserver::ConfGetRequest request;
     ::rtidb::nameserver::ConfGetResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfGet,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int idx = 0; idx < response.conf_size(); idx++) {
@@ -192,7 +190,7 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& 
     request.set_name(name);
     request.set_pid(pid);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ChangeLeader,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -205,7 +203,7 @@ bool NsClient::OfflineEndpoint(const std::string& endpoint, std::string& msg) {
     ::rtidb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::OfflineEndpoint,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -224,7 +222,7 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
         request.add_pid(pid);       
     }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::Migrate,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -237,7 +235,7 @@ bool NsClient::RecoverEndpoint(const std::string& endpoint, std::string& msg) {
     ::rtidb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RecoverEndpoint,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -253,7 +251,7 @@ bool NsClient::RecoverTable(const std::string& name, uint32_t pid,
     request.set_pid(pid);
     request.set_endpoint(endpoint);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RecoverTable,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -265,7 +263,7 @@ bool NsClient::ConnectZK(std::string& msg) {
     ::rtidb::nameserver::ConnectZKRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConnectZK,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -277,7 +275,7 @@ bool NsClient::DisConnectZK(std::string& msg) {
     ::rtidb::nameserver::DisConnectZKRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DisConnectZK,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -293,7 +291,7 @@ bool NsClient::SetTablePartition(const std::string& name,
     ::rtidb::nameserver::TablePartition* cur_table_partition = request.mutable_table_partition();
     cur_table_partition->CopyFrom(table_partition);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SetTablePartition,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;
@@ -308,7 +306,7 @@ bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
     request.set_name(name);
     request.set_pid(pid);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::GetTablePartition,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         table_partition.CopyFrom(response.table_partition());

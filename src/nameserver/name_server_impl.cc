@@ -1531,12 +1531,14 @@ void NameServerImpl::CreateTable(RpcController* controller,
     std::string table_value;
     table_info->SerializeToString(&table_value);
     if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
-        PDLOG(WARNING, "create table node[%s/%s] failed! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+        PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
+                        zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
         response->set_code(-1);
         response->set_msg("create table node failed");
         return;
     }
-    PDLOG(DEBUG, "create table node[%s/%s] success! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+    PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
+                  zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
     {
         std::lock_guard<std::mutex> lock(mu_);
         table_info_.insert(std::make_pair(table_info->name(), table_info));
