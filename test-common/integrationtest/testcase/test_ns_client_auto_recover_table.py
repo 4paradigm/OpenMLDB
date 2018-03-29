@@ -19,9 +19,9 @@ class TestAutoRecoverTable(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
-            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-30"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-30"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"2-30"', 'false'),
             ('column_desc', '"k1"', '"string"', 'true'),
             ('column_desc', '"k2"', '"string"', 'false'),
             ('column_desc', '"k3"', '"string"', 'false'))
@@ -70,6 +70,8 @@ class TestAutoRecoverTable(TestCaseBase):
 
 
     @ddt.data(
+        # (1, 3, 6, 15, 0, 33, 20, 24),  # failover not finish and start recover  RTIDB-259
+        # (1, 2, 6, 13, 0, 33, 17, 21),  # failover not finish and start recover  RTIDB-259
         (1, 3, 0, 6, 15, 0, 33, 20, 24),  # offset = manifest.offset
         (1, 3, 0, 6, 12, 15, 0, 33, 20),  # offset = manifest.offset
         (1, 3, 0, 6, 8, 15, 0, 33, 20),  # offset = manifest.offset  RTIDB-210
@@ -109,9 +111,9 @@ class TestAutoRecoverTable(TestCaseBase):
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-1] for k, v in rs.items()]
         print self.showopstatus(self.ns_leader)
-        self.assertEqual(role_x.count('leader'), 4)
-        self.assertEqual(role_x.count('follower'), 6)
-        self.assertEqual(is_alive_x.count('yes'), 10)
+        self.assertEqual(role_x.count('leader'), 31)
+        self.assertEqual(role_x.count('follower'), 60)
+        self.assertEqual(is_alive_x.count('yes'), 91)
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
