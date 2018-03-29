@@ -54,6 +54,8 @@ make_snapshot_check_interval  检查make snapshot的时间间隔, 单位是ms
 
 send_file_max_try  发送文件失败时的最大重试次数
 
+retry_send_file_wait_time_ms  发送文件失败时重试等待时间. 等待时间 = retry_send_file_wait_time_ms * 重试次数
+
 task_pool_size  tablet线程池的大小
 
 **scan_max_bytes_size**  一次scan数据的最大值, 单位是byte
@@ -90,4 +92,6 @@ binlog_name_length  配置binlog名字的长度
 name_server_task_pool_size  配置nameserver任务线程池的大小
 
 name_server_task_wait_time  nameserver任务执行框架中任务队列为空时的休眠时间, 单位是ms.
+
+max_op_num  配置nameserver内存中保存op的最大数
 

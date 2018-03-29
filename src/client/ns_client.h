@@ -65,6 +65,12 @@ public:
     bool ConnectZK(std::string& msg);
 
     bool DisConnectZK(std::string& msg);
+
+    bool SetTablePartition(const std::string& name,
+                const ::rtidb::nameserver::TablePartition& table_partition, std::string& msg);
+
+    bool GetTablePartition(const std::string& name, uint32_t pid,
+                ::rtidb::nameserver::TablePartition& table_partition, std::string& msg);
 	
 private:
     std::string endpoint_;

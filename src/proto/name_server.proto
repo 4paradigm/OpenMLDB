@@ -180,6 +180,22 @@ message OPStatus {
     required string task_type = 6;
 }
 
+message GetTablePartitionRequest {
+    optional string name = 1;
+    optional uint32 pid = 2;
+}
+
+message GetTablePartitionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional TablePartition table_partition = 3;
+}
+
+message SetTablePartitionRequest {
+    optional string name = 1;
+    optional TablePartition table_partition = 2;
+}
+
 message ShowOPStatusRequest{}
 
 message ConnectZKRequest {}
@@ -209,4 +225,6 @@ service NameServer {
     rpc RecoverEndpoint(RecoverEndpointRequest) returns (GeneralResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+    rpc SetTablePartition(SetTablePartitionRequest) returns (GeneralResponse);
+    rpc GetTablePartition(GetTablePartitionRequest) returns (GetTablePartitionResponse);
 }

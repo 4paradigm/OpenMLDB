@@ -10,13 +10,10 @@ import libs.ddt as ddt
 import libs.conf as conf
 
 
-def get_base_attr(attr):
-    TestCaseBase.setUpClass()
-    return TestCaseBase.__getattribute__(TestCaseBase, attr)
-
-
 @ddt.ddt
 class TestNameserverMigrate(TestCaseBase):
+
+    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
 
     def createtable_put(self, tname, data_count):
         self.confset(self.ns_leader, 'auto_failover', 'true')
@@ -83,29 +80,29 @@ class TestNameserverMigrate(TestCaseBase):
         self.assertIn('des_endpoint is not exist or not healthy', rs2)
 
     @ddt.data(
-        (get_base_attr('slave1'), time.time(), '4-6', get_base_attr('slave1'),
+        (slave1, time.time(), '4-6', slave1,
          'src_endpoint is same as des_endpoint'),
-        (get_base_attr('leader'), time.time(), '4-6', get_base_attr('slave1'),
+        (leader, time.time(), '4-6', slave1,
          'cannot migrate leader'),
-        ('src_notexists', time.time(), '4-6', get_base_attr('slave1'),
+        ('src_notexists', time.time(), '4-6', slave1,
          'src_endpoint is not exist or not healthy'),
-        (get_base_attr('slave1'), time.time(), '4-6', 'des_notexists',
+        (slave1, time.time(), '4-6', 'des_notexists',
          'des_endpoint is not exist or not healthy'),
-        (get_base_attr('slave1'), 'table_not_exists', '4-6', get_base_attr('slave2'),
+        (slave1, 'table_not_exists', '4-6', slave2,
          'table is not exist'),
-        (get_base_attr('slave1'), time.time(), '20', get_base_attr('slave2'),
+        (slave1, time.time(), '20', slave2,
          'leader endpoint is empty'),
-        (get_base_attr('slave1'), time.time(), 'pid', get_base_attr('slave2'),
+        (slave1, time.time(), 'pid', slave2,
          'format error'),
-        (get_base_attr('slave1'), time.time(), '', get_base_attr('slave2'),
+        (slave1, time.time(), '', slave2,
          'Bad format.'),
-        (get_base_attr('slave1'), time.time(), '8-9', get_base_attr('slave2'),
+        (slave1, time.time(), '8-9', slave2,
          'failed to migrate partition'),
-        (get_base_attr('slave1'), time.time(), '3-4', get_base_attr('slave2'),
+        (slave1, time.time(), '3-4', slave2,
          'is already in des_endpoint'),
-        (get_base_attr('slave1'), time.time(), '6-4', get_base_attr('slave2'),
+        (slave1, time.time(), '6-4', slave2,
          'has not valid pid'),
-        (get_base_attr('slave1'), time.time(), '8,9', get_base_attr('slave2'),
+        (slave1, time.time(), '8,9', slave2,
          'has not partition[9]'),
     )
     @ddt.unpack
@@ -127,7 +124,7 @@ class TestNameserverMigrate(TestCaseBase):
         self.assertIn(exp_msg, rs2)
 
 
-    @TestCaseBase.skip('FIXME')
+    #@TestCaseBase.skip('FIXME')
     def test_ns_client_migrate_failover_and_recover(self):  # RTIDB-252
         """
         迁移时发生故障切换，故障切换成功，迁移失败

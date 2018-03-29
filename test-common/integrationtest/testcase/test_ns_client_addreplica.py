@@ -6,15 +6,13 @@ import libs.utils as utils
 from libs.logger import infoLogger
 from libs.deco import multi_dimension
 import libs.ddt as ddt
-
-
-def get_base_attr(attr):
-    TestCaseBase.setUpClass()
-    return TestCaseBase.__getattribute__(TestCaseBase, attr)
+import libs.conf as conf
 
 
 @ddt.ddt
 class TestAddReplicaNs(TestCaseBase):
+
+    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
 
     @multi_dimension(False)
     def test_addreplica_scenario(self):  # RTIDB-250
@@ -116,7 +114,7 @@ class TestAddReplicaNs(TestCaseBase):
 
 
     @ddt.data(
-        (None, None, get_base_attr('slave1'), 'AddReplica ok'),  # 需要log中看是fail的
+        (None, None, slave1, 'AddReplica ok'),  # 需要log中看是fail的
         ('notexsit', None, None, 'Fail to addreplica'),
         (None, 10, None, 'Fail to addreplica'),
         (None, None, '127.1.1.1:6666', 'Fail to addreplica'),

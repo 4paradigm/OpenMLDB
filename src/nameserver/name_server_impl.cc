@@ -22,6 +22,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
+DECLARE_int32(max_op_num);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
 
@@ -322,7 +323,11 @@ bool NameServerImpl::RecoverOPTask() {
                             op_data->op_info_.op_id(), op_data->op_info_.task_index());
             continue;
         }
-        task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+            done_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        } else {
+            task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+        }
         PDLOG(INFO, "recover op[%s] success. op_id[%lu]", 
                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
     }
@@ -689,17 +694,15 @@ int NameServerImpl::DeleteTask() {
         PDLOG(DEBUG, "tablet[%s] delete op success", (*iter)->GetEndpoint().c_str()); 
     }
     if (!has_failed) {
+        std::lock_guard<std::mutex> lock(mu_);
         for (auto op_id : done_task_vec) {
             std::shared_ptr<OPData> op_data;
-            {
-                std::lock_guard<std::mutex> lock(mu_);
-                auto pos = task_map_.find(op_id);
-                if (pos == task_map_.end()) {
-                    PDLOG(WARNING, "has not found op[%lu] in task_map", op_id); 
-                    continue;
-                }
-                op_data = pos->second;
+            auto pos = task_map_.find(op_id);
+            if (pos == task_map_.end()) {
+                PDLOG(WARNING, "has not found op[%lu] in task_map", op_id); 
+                continue;
             }
+            op_data = pos->second;
             std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
             if (!op_data->task_list_.empty() && 
                     op_data->task_list_.front()->task_info_->status() == ::rtidb::api::kFailed) {
@@ -714,6 +717,8 @@ int NameServerImpl::DeleteTask() {
                     PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]",
                                 node.c_str(), value.c_str());
                 }
+                done_map_.insert(std::make_pair(op_id, op_data));
+                task_map_.erase(pos);
             } else {
                 if (zk_client_->DeleteNode(node)) {
                     PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
@@ -722,6 +727,8 @@ int NameServerImpl::DeleteTask() {
                         op_data->op_info_.set_task_status(::rtidb::api::kDone);
                         op_data->task_list_.clear();
                     }
+                    done_map_.insert(std::make_pair(op_id, op_data));
+                    task_map_.erase(pos);
                 } else {
                     PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
                 }
@@ -792,6 +799,87 @@ void NameServerImpl::DisConnectZK(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
     PDLOG(INFO, "disconnect zk ok");
+}
+
+void NameServerImpl::GetTablePartition(RpcController* controller,
+        const GetTablePartitionRequest* request,
+        GetTablePartitionResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::string name = request->name();
+    uint32_t pid = request->pid();
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        response->set_code(-1);
+        response->set_msg("table is not exist");
+        return;
+    }
+    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+        if (iter->second->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        ::rtidb::nameserver::TablePartition* table_partition = response->mutable_table_partition();
+        table_partition->CopyFrom(iter->second->table_partition(idx));
+        break;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::SetTablePartition(RpcController* controller,
+        const SetTablePartitionRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::string name = request->name();
+    uint32_t pid = request->table_partition().pid();
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        response->set_code(-1);
+        response->set_msg("table is not exist");
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> cur_table_info(iter->second->New());
+    cur_table_info->CopyFrom(*(iter->second));
+    for (int idx = 0; idx < cur_table_info->table_partition_size(); idx++) {
+        if (cur_table_info->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        ::rtidb::nameserver::TablePartition* table_partition =
+                cur_table_info->mutable_table_partition(idx);
+        table_partition->Clear();        
+        table_partition->CopyFrom(request->table_partition());
+        std::string table_value;
+        iter->second->SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            response->set_code(-1);
+            response->set_msg("set zk failed");
+            return;
+        }
+        NotifyTableChanged();
+        iter->second = cur_table_info;
+        break;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 void NameServerImpl::MakeSnapshotNS(RpcController* controller,
@@ -1224,19 +1312,28 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& kv : task_map_) {
-        OPStatus* op_status = response->add_op_status();
-        op_status->set_op_id(kv.first);
-        op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
-        op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
-        if (kv.second->task_list_.empty()) {
-            op_status->set_task_type("-");
-        } else { 
-            std::shared_ptr<Task> task = kv.second->task_list_.front();
-            op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
+    DeleteDoneOP();
+    for (int idx = 0; idx < 2; idx++) {
+        std::map<uint64_t, std::shared_ptr<OPData>>* cur_map_ptr;
+        if (idx == 0) {
+            cur_map_ptr = &done_map_;
+        } else {
+            cur_map_ptr = &task_map_;
         }
-        op_status->set_start_time(kv.second->op_info_.start_time());
-        op_status->set_end_time(kv.second->op_info_.end_time());
+        for (const auto& kv : *cur_map_ptr) {
+            OPStatus* op_status = response->add_op_status();
+            op_status->set_op_id(kv.first);
+            op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+            op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
+            if (kv.second->task_list_.empty()) {
+                op_status->set_task_type("-");
+            } else { 
+                std::shared_ptr<Task> task = kv.second->task_list_.front();
+                op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
+            }
+            op_status->set_start_time(kv.second->op_info_.start_time());
+            op_status->set_end_time(kv.second->op_info_.end_time());
+        }
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -1329,6 +1426,7 @@ void NameServerImpl::DropTable(RpcController* controller,
     table_info_.erase(request->name());
     response->set_code(code);
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
+    NotifyTableChanged();
 }
 
 int NameServerImpl::ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
@@ -1862,8 +1960,34 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data) {
         return -1;
     }
     task_map_.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
+    DeleteDoneOP();
     cv_.notify_one();
     return 0;
+}
+
+void NameServerImpl::DeleteDoneOP() {
+    while (done_map_.size() > (uint32_t)FLAGS_max_op_num) {
+        auto iter = done_map_.begin();
+        while (iter != done_map_.end() && 
+                iter->second->op_info_.task_status() == ::rtidb::api::TaskStatus::kDoing) {
+            iter++;
+        }
+        if (iter == done_map_.end()) {
+            break;
+        }
+        if (iter->second->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+            std::string node = zk_op_data_path_ + "/" + std::to_string(iter->second->op_info_.op_id());
+            if (zk_client_->DeleteNode(node)) {
+                PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
+                iter->second->task_list_.clear();
+            } else {
+                PDLOG(WARNING, "delete zk op_node failed. op_id[%lu] node[%s]", 
+                                iter->second->op_info_.op_id(), node.c_str()); 
+                break;
+            }
+        }
+        done_map_.erase(iter);
+    }
 }
 
 int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint, 
@@ -3126,6 +3250,7 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    NotifyTableChanged();
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
                 task_info->op_id(), 
                 ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
@@ -3242,6 +3367,7 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    NotifyTableChanged();
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
                 task_info->op_id(), 
                 ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
@@ -3321,6 +3447,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
                 PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
                 task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                NotifyTableChanged();
                 PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
                             task_info->op_id(), 
                             ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
@@ -3415,6 +3542,7 @@ void NameServerImpl::UpdateTableAlive(const std::string& name, const std::string
         return;         
     }
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    NotifyTableChanged();
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                     zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 

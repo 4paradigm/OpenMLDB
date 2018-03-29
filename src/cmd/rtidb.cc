@@ -736,6 +736,98 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     std::cout << "Create table ok" << std::endl;
 }
 
+void HandleNSClientSetTablePartition(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string name = parts[1];
+    int fd = open(parts[2].c_str(), O_RDONLY);
+    if (fd < 0) {
+        std::cout << "can not open file " << parts[2] << std::endl;
+        return;
+    }
+    ::rtidb::nameserver::TablePartition table_partition;
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    if (!google::protobuf::TextFormat::Parse(&fileInput, &table_partition)) {
+        std::cout << "table partition file format error" << std::endl;
+        return;
+    }
+    std::set<std::string> leader_set;
+    std::set<std::string> follower_set;
+    for (int idx = 0; idx < table_partition.partition_meta_size(); idx++) {
+        std::string endpoint = table_partition.partition_meta(idx).endpoint();
+        if (table_partition.partition_meta(idx).is_leader()) {
+            if (leader_set.find(endpoint) != leader_set.end()) {
+                std::cout << "has same leader " << endpoint<< std::endl;
+                return;
+            }
+            leader_set.insert(endpoint);
+        } else {
+            if (follower_set.find(endpoint) != follower_set.end()) {
+                std::cout << "has same follower" << endpoint<< std::endl;
+                return;
+            }
+            follower_set.insert(endpoint);
+        }
+    }
+    if (leader_set.empty()) {
+        std::cout << "has no leader" << std::endl;
+        return;
+    }
+
+    std::string msg;
+    if (!client->SetTablePartition(name, table_partition, msg)) {
+        std::cout << "Fail to set table partition. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "set table partition ok" << std::endl;
+}
+
+void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string name = parts[1];
+    uint32_t pid = 0;
+    try {
+        pid = boost::lexical_cast<uint32_t>(parts[2]);
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        return;
+    } 
+    ::rtidb::nameserver::TablePartition table_partition;
+    std::string msg;
+    if (!client->GetTablePartition(name, pid, table_partition, msg)) {
+        std::cout << "Fail to get table partition. error msg: " << msg << std::endl;
+        return;
+    }
+	std::string value;
+	google::protobuf::TextFormat::PrintToString(table_partition, &value);
+	std::string file_name = name + "_" + parts[2] + ".txt";
+    FILE* fd_write = fopen(file_name.c_str(), "w");
+    if (fd_write == NULL) {
+        PDLOG(WARNING, "fail to open file %s", file_name.c_str());
+		std::cout << "fail to open file" << file_name << std::endl;
+        return;
+    }
+    bool io_error = false;
+    if (fputs(value.c_str(), fd_write) == EOF) {
+        std::cout << "write error" << std::endl;
+        io_error = true;
+    }
+    if (!io_error && ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
+        std::cout << "flush error" << std::endl;
+        io_error = true;
+    }
+    fclose(fd_write);
+	if (!io_error) {
+		std::cout << "get table partition ok" << std::endl;
+	}
+}
+
 void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("op_id");
@@ -1842,6 +1934,10 @@ void StartNsClient() {
             HandleNSClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
             HandleNSClientDisConnectZK(parts, &client);
+        } else if (parts[0] == "gettablepartition") {
+            HandleNSClientGetTablePartition(parts, &client);
+        } else if (parts[0] == "settablepartition") {
+            HandleNSClientSetTablePartition(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

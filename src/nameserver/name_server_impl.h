@@ -157,6 +157,16 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void SetTablePartition(RpcController* controller,
+            const SetTablePartitionRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void GetTablePartition(RpcController* controller,
+            const GetTablePartitionRequest* request,
+            GetTablePartitionResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
@@ -328,6 +338,7 @@ private:
                     bool is_leader, bool is_alive);
 
     void NotifyTableChanged();
+    void DeleteDoneOP();
 
 private:
     std::mutex mu_;
@@ -350,6 +361,7 @@ private:
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
+    std::map<uint64_t, std::shared_ptr<OPData>> done_map_;
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
     std::atomic<bool> auto_recover_table_;
