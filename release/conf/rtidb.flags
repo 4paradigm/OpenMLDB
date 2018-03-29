@@ -30,6 +30,9 @@
 #--binlog_delete_interval=60000
 #--binlog_enable_crc=false
 
+#--io_pool_size=2
+#--task_pool_size=8
+
 --db_root_path=./db
 --recycle_bin_root_path=./recycle
 
@@ -54,3 +57,4 @@
 #--request_max_retry=3
 #--request_timeout_ms=5000
 #--request_sleep_time=1000
+#--retry_send_file_wait_time_ms=3000
