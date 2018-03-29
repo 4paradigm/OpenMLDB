@@ -2,8 +2,12 @@
 --endpoint=0.0.0.0:9527
 --role=tablet
 
+# if tablet run as cluster mode zk_cluster and zk_root_path should be set
+#--zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
+#--zk_root_path=/rtidb_cluster
+
 # concurrency conf
---thread_pool_size=16
+--thread_pool_size=20
 --scan_concurrency_limit=8
 --put_concurrency_limit=8
 --get_concurrency_limit=8
@@ -45,8 +49,8 @@
 --send_file_max_try=3
 --stream_wait_time_ms=5
 #--stream_close_wait_time_ms=1000
---stream_block_size=1024 * 1024
-#--stream_bandwidth_limit=1204 * 1024
+--stream_block_size=1048576
+--stream_bandwidth_limit=1048576
 #--request_max_retry=3
 #--request_timeout_ms=5000
 #--request_sleep_time=1000
