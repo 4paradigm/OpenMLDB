@@ -52,8 +52,8 @@ ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
         session_timeout_(session_timeout), endpoint_(endpoint), zk_root_path_(zk_root_path),
         nodes_root_path_(zk_root_path_ + "/nodes"), nodes_watch_callbacks_(), mu_(), cv_(),
         zk_(NULL),
-        nodes_watching_(false), data_(), connected_(false), children_callbacks_(),
-        session_term_(0) {
+        nodes_watching_(false), data_(), connected_(false), registed_(false),
+        children_callbacks_(), session_term_(0) {
     data_.count = 0;
     data_.data = NULL;
 }
@@ -116,6 +116,7 @@ bool ZkClient::Register() {
                          ZOO_EPHEMERAL, NULL, 0);
     if (ret == ZOK) {
         PDLOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
+        registed_.store(true, std::memory_order_relaxed);
         return true;
     }
     PDLOG(WARNING, "fail to register self with endpoint %s, err from zk %d", endpoint_.c_str(), ret);
@@ -125,6 +126,7 @@ bool ZkClient::Register() {
 bool ZkClient::CloseZK() {
     std::lock_guard<std::mutex> lock(mu_);
     connected_ = false;
+    registed_.store(false, std::memory_order_relaxed);
     if (zk_) {
         zookeeper_close(zk_);
         zk_ = NULL;
@@ -350,6 +352,7 @@ bool ZkClient::Reconnect() {
     if (zk_ != NULL) {
         zookeeper_close(zk_);
     }
+    registed_.store(false, std::memory_order_relaxed);
     zk_ = zookeeper_init(hosts_.c_str(),
                          LogEventWrapper, 
                          session_timeout_, 0, (void *)this, 0);
