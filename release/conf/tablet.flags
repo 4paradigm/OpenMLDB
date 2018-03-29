@@ -1,5 +1,6 @@
-# common conf 
---endpoint=0.0.0.0:9527
+# tablet.conf 
+#endpoint不能用0.0.0.0和127.0.0.1
+--endpoint=172.27.128.33:9527
 --role=tablet
 
 # if tablet run as cluster mode zk_cluster and zk_root_path should be set
@@ -7,6 +8,7 @@
 #--zk_root_path=/rtidb_cluster
 
 # concurrency conf
+# thread_pool_size建议和cpu核数一致
 --thread_pool_size=20
 --scan_concurrency_limit=8
 --put_concurrency_limit=8
