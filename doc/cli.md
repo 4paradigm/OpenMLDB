@@ -1,41 +1,72 @@
 # rtidb cli使用说明
 
+## tablet客户端命令
+loadtable  创建表并加载sdb和binlog的数据
+drop  删除表
+gettablestatus  获取表的信息
 
-## 创建多副本表
+<a href="#create">create</a> 创建单维表
+<a href="#put">put</a>
+<a href="#get">get</a>
+<a href="#scan">scan</a>
 
-### 从tablet client创建表
+<a href="#screate">screate</a> 创建多维表
+<a href="#sput">sput</a>
+<a href="#sget">sget</a>
+<a href="#sscan">sscan</a>
+<a href="#showschema">showschema</a> 查看指定多维表的schema
 
-假设集群有一下节点
-* leader
-* follower1
-* follower2
+addreplica  添加副本
+delreplica  删除副本
 
-```
-# 在slave1 上创建表信息
-./rtidb --endpoint=slave1 --role=client
->create t1 1 1 0 8 false slave1 slave2
+makesnapshot  生成snapshot
+pausesnapshot  暂停makesnapshot功能
+recoversnapshot  恢复makesnapshot功能
+sendsnapshot  给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件
 
-# 在slave2 上创建表信息
-./rtidb --endpoint=slave2 --role=client
->create t1 1 1 0 8 false slave1 slave2
+changerole  切换leader或者follower
+setexpire  设置是否要开启过期删除
 
-# 在leader 上创建表信息
-./rtidb --endpoint=leader --role=client
->create t1 1 1 0 8 true slave1 slave2
+exit  退出当前会话
 
-```
+## nameserver客户端命令
 
-### 创建时序表命令
+showtablet  获取所有tablet的健康状态信息
+showopstatus  获取所有操作信息
 
-创建命名格式
+create  创建表
+drop  删除表
+showtable  获取表信息
+showschema  获取多维表的schema信息
 
-create table_name tid pid ttl segment_cnt
+confget 获取当前conf信息
+confset 重新设置conf
+
+makesnapshot
+addreplica
+delreplica
+changeleader
+offlineendpoint
+recoverendpoint
+recovertable
+
+migrate  分片迁移
+
+gettablepartition  获取nameserver某个table partition的信息并下载到当前目录下
+**settablepartition命令慎用**
+settablepartition  用指定的文件覆盖nameserver中某个table partition的信息
+
+create  创建单维表<a id="create"/>
+命名格式
+create table_name tid pid ttl segment_cnt is_leader(optional) follower1 follower2 ...
 * create 为创建命令
 * table_name 为要创建表名称
 * tid 指定table 的id
 * pid 指定table 的分片id
-* ttl 指定过期时间， 单位为分钟
-* segment_cnt 为表的segement 个数，建议为8~1024
+* ttl 指定过期时间,默认过期类型为AbsoluteTime. 如果过期类型设置LatestTime,格式为latest:保留条数(ex: latest:10, 保留最近10条)
+* segment_cnt 为表的segement 个数, 建议为8~1024
+* is_leader
+
 例子
 ```
 > create t1 1 0 144000 8
