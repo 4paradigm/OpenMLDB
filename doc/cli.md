@@ -5,7 +5,7 @@ loadtable  创建表并加载sdb和binlog的数据
 drop  删除表
 gettablestatus  获取表的信息
 
-<a href="#create">create</a> 创建单维表
+[create](#create) 创建单维表
 <a href="#put">put</a>
 <a href="#get">get</a>
 <a href="#scan">scan</a>
@@ -56,7 +56,7 @@ gettablepartition  获取nameserver某个table partition的信息并下载到当
 **settablepartition命令慎用**
 settablepartition  用指定的文件覆盖nameserver中某个table partition的信息
 
-create  创建单维表<a id="create"/>
+<span id="create">create</span>  创建单维表
 命名格式
 create table_name tid pid ttl segment_cnt is_leader(optional) follower1 follower2 ...
 * create 为创建命令
