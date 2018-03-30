@@ -49,11 +49,10 @@ recovertable
 migrate  分片迁移
 
 gettablepartition  获取nameserver某个table partition的信息并下载到当前目录下  
-**settablepartition命令慎用**  
 settablepartition  用指定的文件覆盖nameserver中某个table partition的信息  
 
 
- ## 命令用法
+## tablet命令用法
 create  创建单维表  
 命名格式: create table_name tid pid ttl segment_cnt is_leader(optional) follower1 follower2 ...  
 * table_name 为要创建表名称
@@ -81,14 +80,14 @@ put 插入数据
 * ts 指定插入时的timestamp.
 * value 对应的value
 
-get 获取指定key的数据
+get 获取指定key的数据  
 命令格式: get tid pid pk ts
 * tid 指定table的id
 * pid 指定table的分片id
 * pk 指定查询的key
 * ts 指定查询的timestamp. 如果ts设置为0, 返回最新的一条数据
 
-scan 获取指定key在一个时间区间里的数据
+scan 获取指定key在一个时间区间里的数据  
 命令格式: scan tid pid pk starttime endtime
 * tid 指定table的id
 * pid 指定table的分片id
@@ -147,11 +146,11 @@ sscan 多维scan
 * start_time 指定查询的起始时间
 * end_time 指定查询时的结束时间
 
-showschema 查看指定多维表的schema
+showschema 查看指定多维表的schema  
 命令格式: showschema tid pid
 
 ```
-#创建一个带schema 的leader表
+创建一个带schema的leader表
 >screate tx 1 0 0 8 true card:string:index merchant:string:index amt:double
 Create table ok
 >showschema 1 0
@@ -179,9 +178,70 @@ Put ok
   merchant1  2   card0  merchant1  110.09999999999999
 ```
 
-### cluster开启时从ns_client创建表
+loadtable 创建表并加载sdb和binlog的数据  
+命令格式: loadtable table_name tid pid ttl segment_cnt 
+* table_name 为要创建表名称
+* tid 指定table的id
+* pid 指定table的分片id
+* ttl 指定过期时间. 过期类型从table_meta文件中载入
+* segment_cnt 为表的segement 个数. 建议为8~1024
 
-首先准备如下格式的表元数据文件
+drop 删除表  
+命令格式: drop tid pid
+
+gettablestatus 获取表的状态
+命令格式: gettablestatus tid(optional) pid(optional)  
+如果没有指定tid和pid就返回所有表的信息, 如果指定了tid和pid就返回该分片的信息
+```
+>gettablestatus
+  tid  pid  offset  mode          state         enable_expire  ttl        ttl_offset  memused
+-----------------------------------------------------------------------------------------------
+  1    0    2       kTableLeader  kTableNormal  false          0min       0s          913.000
+  10   0    3       kTableLeader  kTableNormal  false          144000min  0s          391.000
+  10   1    2       kTableLeader  kTableNormal  true           144000min  0s          337.000
+  10   2    0       kTableLeader  kTableNormal  true           144000min  0s          0.000
+  10   3    0       kTableLeader  kTableNormal  true           144000min  0s          0.000
+  10   4    0       kTableLeader  kTableNormal  true           144000min  0s          0.000
+>gettablestatus 1 0
+  tid  pid  offset  mode          state         enable_expire  ttl   ttl_offset  memused
+------------------------------------------------------------------------------------------
+  1    0    2       kTableLeader  kTableNormal  false          0min  0s          913.000
+```
+
+addreplica 添加副本(在leader所在的tablet上运行)  
+命令格式: addreplica tid pid endpoint
+* tid 指定table的id
+* pid 指定table的分片id
+* endpoint 指定要添加的endpoint
+delreplica 删除副本  
+命令格式: delreplica tid pid endpoint  
+
+makesnapshot 生成snapshot  
+命令格式: makesnapshot tid pid  
+pausesnapshot 暂停makesnapshot功能  
+命令格式: pausesnapshot tid pid  
+recoversnapshot 恢复makesnapshot功能  
+命令格式: recoversnapshot tid pid  
+sendsnapshot 给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件. 注: 发送前必须pausesnapshot, 发送完再运行recoversnapshot
+命令格式: sendsnapshot tid pid endpoint
+
+changerole 切换leader或者follower  
+命令格式: changerole tid pid role  
+* tid 指定table的id
+* pid 指定table的分片id
+* role 只能是leader或者follower
+setexpire 设置是否要开启过期删除  
+命令格式: set_expire tid pid is_expire  
+* tid 指定table的id
+* pid 指定table的分片id
+* is_expire 指定是否要开启过期删除. 如果开启的话设置为true, 否则设置为false
+
+
+## nameserver命令用法
+
+create 创建表  
+命令格式: create table_meta_path  
+首先准备如下格式的表元数据文件  
 ```
 name : "test1"
 ttl: 144000
@@ -238,46 +298,60 @@ column_desc {
   add_ts_idx : false
 }
 ```
-column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构
-
-然后再nameserver的client上运行如下命令
-
+column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构  
 ```
-1 启动client
-./rtidb --endpoint=ip:port --role=ns_client
-如 ./rtidb --endpoint=127.0.0.1:7561 --role=ns_client
-
-2 创建表
->create table_meta_path
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令
 >create ./table_meta.txt
 ```
+drop 删除表  
+命令格式: drop table_name  
+showtable 列出表的分布和状态信息  
+命令格式: showtable table_name(optional)  
+注: table_name可选的, 如果不指定name就返回所有表的信息
+showshema 获取多维表的schema信息  
+命令格式: showschema table_name
 
-### cluster开启时从ns_client新增分片副本
+makesnapshot 做snapshot  
+命令格式: makesnapshot table_name pid  
+addreplica 添加副本  
+命令格式: addreplica name pid endpoint  
+delreplica 删除副本  
+命令格式: delreplica name pid endpoint  
 
+offlineendpoint  auto_failover关闭时指定endpoint做failover  
+命令格式: offlineendpoint endpoint  
+recoverendpoint  auto_recover_table关闭时指定endpoint加入到集群中  
+命令格式: recoverendpoint endpoint  
+changeleader 对某个表的分片执行重新选主操作  
+命令格式: changeleader table_name pid  
+recovertable 恢复某个节点上的分片  
+命令格式: recovertable table_name pid endpoint  
+
+migrate 分片迁移  
+命令格式: migrate src_endpoint table_name partition des_endpoint  
 ```
-1 makesnapshot 如果主节点下面已经有snapshot文件可以跳过这步
-cmd makesnapshot table_name pid
-> makesnapshot test1 1
-
-2 新增分片
-cmd addreplica 表名 分片id 新副本所在节点的ip:port
-新增副本时主节点下面必须有snapshot, 如果没有的话先运行makesnapshot
->addreplica table_name pid endpoint
-
+将172.27.2.52:9991节点中table1的1到10分片迁移到172.27.2.52:9992里
+>migrate 172.27.2.52:9991 table1 1-10 172.27.2.52:9992
 ```
 
-### cluster开启时从ns_client删除表
+gettablepartition 获取nameserver某个table partition的信息并下载到当前目录下  
+命令格式: gettablepartition table_name pid  
+settablepartition 用指定的文件覆盖nameserver中某个table partition的信息  
+命令格式: settablepartition partition_file_path  
 
+showtablet 获取所有tablet的健康状态信息  
+命令格式: showtablet  
+showopstatus 获取所有操作信息  
+命令格式: showopstatus
 ```
-> drop tablename
-```
-
-### cluster开启时从ns_client获取表的信息
-
-```
-列出所有表的信息
-> showtable
-列出test1表的信息
-> showtable test1
+>showtablet
+  endpoint        state           age
+------------------------------------------
+  127.0.0.1:9520  kTabletHealthy  3.000h
+  127.0.0.1:9521  kTabletHealthy  3.000h
+  127.0.0.1:9522  kTabletHealthy  3.000h
+>showopstatus
+  op_id  op_type              status  start_time      execute_time  end_time        cur_task
+----------------------------------------------------------------------------------------------
+  2      kUpdateTableAliveOP  kDone   20180330175434  0s            20180330175434  -
 ```
