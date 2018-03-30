@@ -12,6 +12,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
+import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 
 public class ClusterSyncScanTable {
 
@@ -49,6 +50,7 @@ public class ClusterSyncScanTable {
                 it.next();
             }
             cluster.close();
+            
         } catch (TabletException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
