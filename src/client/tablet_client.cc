@@ -10,12 +10,19 @@
 #include "timer.h"
 #include <iostream>
 
+DECLARE_int32(request_max_retry);
+DECLARE_int32(request_timeout_ms);
+
 namespace rtidb {
 namespace client {
 
 const uint32_t KEEP_LATEST_MAX_NUM = 1000;
 
-TabletClient::TabletClient(const std::string& endpoint):endpoint_(endpoint), client_(endpoint){
+TabletClient::TabletClient(const std::string& endpoint):endpoint_(endpoint), client_(endpoint) {
+}
+
+TabletClient::TabletClient(const std::string& endpoint, bool use_sleep_policy):endpoint_(endpoint), 
+        client_(endpoint, use_sleep_policy) {
 }
 
 TabletClient::~TabletClient() {
@@ -34,7 +41,8 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint64_t ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
-                     bool leader) {
+                     bool leader, const std::vector<std::string>& endpoints,
+                     uint64_t term) {
     std::string schema;
     ::rtidb::base::SchemaCodec codec;
     bool codec_ok = codec.Encode(columns, schema);
@@ -61,12 +69,16 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_ttl_type(type);
     if (leader) {
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_term(term);
+        for (size_t i = 0; i < endpoints.size(); i++) {
+            table_meta->add_replicas(endpoints[i]);
+        }
     } else {
         table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
     }
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -101,7 +113,7 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_ttl_type(type);
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -176,7 +188,7 @@ bool TabletClient::MakeSnapshot(uint32_t tid, uint32_t pid,
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::MakeSnapshot,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -190,7 +202,7 @@ bool TabletClient::FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term, uint
     request.set_term(term);
     ::rtidb::api::AppendEntriesResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         offset = response.log_offset();
         return true;
@@ -208,7 +220,7 @@ bool TabletClient::PauseSnapshot(uint32_t tid, uint32_t pid,
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::PauseSnapshot,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -225,7 +237,7 @@ bool TabletClient::RecoverSnapshot(uint32_t tid, uint32_t pid,
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::RecoverSnapshot,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -243,7 +255,7 @@ bool TabletClient::SendSnapshot(uint32_t tid, uint32_t pid, const std::string& e
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SendSnapshot,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -280,7 +292,7 @@ bool TabletClient::LoadTable(const std::string& name,
     }
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::LoadTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -308,7 +320,7 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
     }
     ::rtidb::api::ChangeRoleResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::ChangeRole,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -333,10 +345,44 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
         request.add_op_id(op_id);
     }
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DeleteOPTask,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
         return false;
     }
+    return true;
+}
+
+bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, 
+            bool& has_table, bool& is_leader) {
+    ::rtidb::api::GetTermPairRequest request;
+    ::rtidb::api::GetTermPairResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTermPair,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    has_table = response.has_table();
+    term = response.term();
+    offset = response.offset();
+    if (has_table) {
+        is_leader = response.is_leader();
+    }
+    return true;
+}
+
+bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest) {
+    ::rtidb::api::GetManifestRequest request;
+    ::rtidb::api::GetManifestResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetManifest,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ret || response.code() != 0) {
+        return false;
+    }
+    manifest.CopyFrom(response.manifest());
     return true;
 }
 
@@ -480,13 +526,16 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
 
 
 
-bool TabletClient::DropTable(uint32_t id, uint32_t pid) {
+bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo> task_info) {
     ::rtidb::api::DropTableRequest request;
     request.set_tid(id);
     request.set_pid(pid);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
     ::rtidb::api::DropTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -504,7 +553,7 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& end
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::AddReplica,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -522,7 +571,7 @@ bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& end
         request.mutable_task_info()->CopyFrom(*task_info);
     }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DelReplica,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -573,7 +622,8 @@ bool TabletClient::Get(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
              uint64_t time,
-             std::string& value) {
+             std::string& value,
+             uint64_t& ts) {
     ::rtidb::api::GetRequest request;
     ::rtidb::api::GetResponse response;
     request.set_tid(tid);
@@ -585,12 +635,69 @@ bool TabletClient::Get(uint32_t tid,
     if (!ok || response.code()  != 0) {
         return false;
     }
+    ts = response.ts();
     value.assign(response.value());
+    return true;
+}
+
+bool TabletClient::Get(uint32_t tid, 
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t time,
+             const std::string& idx_name,
+             std::string& value,
+             uint64_t& ts) {
+    ::rtidb::api::GetRequest request;
+    ::rtidb::api::GetResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    request.set_ts(time);
+    request.set_idx_name(idx_name);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    ts = response.ts();
+    value.assign(response.value());
+    return true;
+}
+
+bool TabletClient::ConnectZK() {
+    ::rtidb::api::ConnectZKRequest request;
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::ConnectZK,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DisConnectZK() {
+    ::rtidb::api::DisConnectZKRequest request;
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DisConnectZK,
+            &request, &response, 12, 1);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
+    ::rtidb::api::GeneralRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DeleteBinlog,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
     return true;
 }
 
 }
 }
-
-
-

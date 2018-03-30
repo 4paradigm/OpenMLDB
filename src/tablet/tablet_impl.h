@@ -66,6 +66,8 @@ public:
 
     bool Init();
 
+    bool RegisterZK();
+
     void Put(RpcController* controller,
              const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response,
@@ -176,6 +178,36 @@ public:
             ::rtidb::api::HttpResponse* response,
             Closure* done);
 
+    void GetTermPair(RpcController* controller,
+            const ::rtidb::api::GetTermPairRequest* request,
+            ::rtidb::api::GetTermPairResponse* response,
+            Closure* done);
+
+    void GetManifest(RpcController* controller,
+            const ::rtidb::api::GetManifestRequest* request,
+            ::rtidb::api::GetManifestResponse* response,
+            Closure* done);
+
+    void ConnectZK(RpcController* controller,
+            const ::rtidb::api::ConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void DisConnectZK(RpcController* controller,
+            const ::rtidb::api::DisConnectZKRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void DeleteBinlog(RpcController* controller,
+            const ::rtidb::api::GeneralRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
+    void CheckFile(RpcController* controller,
+            const ::rtidb::api::CheckFileRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
 private:
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
@@ -210,7 +242,9 @@ private:
 
     void CheckZkClient();
 
-    int32_t DeleteTableInternal(uint32_t tid, uint32_t pid);
+    int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+
+    int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
 
@@ -224,6 +258,11 @@ private:
 
     int32_t CheckDimessionPut(const ::rtidb::api::PutRequest* request,
                               std::shared_ptr<Table>& table);
+    
+    // sync log data from page cache to disk 
+    void SchedSyncDisk(uint32_t tid, uint32_t pid);
+    // sched replicator to delete binlog
+    void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
 private:
     Tables tables_;
@@ -234,6 +273,7 @@ private:
     ZkClient* zk_client_;
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
+    ThreadPool io_pool_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
 };

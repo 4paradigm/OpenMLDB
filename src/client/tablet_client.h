@@ -23,6 +23,8 @@ class TabletClient {
 public:
     TabletClient(const std::string& endpoint);
 
+    TabletClient(const std::string& endpoint, bool use_sleep_policy);
+
     ~TabletClient();
 
     int Init();
@@ -42,7 +44,8 @@ public:
                      uint64_t ttl, uint32_t seg_cnt,
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
-                     bool leader);
+                     bool leader, const std::vector<std::string>& endpoints,
+                     uint64_t term = 0);
 
     bool Put(uint32_t tid,
              uint32_t pid,
@@ -67,7 +70,16 @@ public:
              uint32_t pid,
              const std::string& pk,
              uint64_t time,
-             std::string& value);
+             std::string& value,
+             uint64_t& ts);
+
+    bool Get(uint32_t tid, 
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t time,
+             const std::string& idx_name,
+             std::string& value,
+             uint64_t& ts);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
@@ -92,7 +104,8 @@ public:
     bool GetTableSchema(uint32_t tid, uint32_t pid, 
                         std::string& schema);
 
-    bool DropTable(uint32_t id, uint32_t pid);
+    bool DropTable(uint32_t id, uint32_t pid,
+                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
     bool AddReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
@@ -123,9 +136,15 @@ public:
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
                     const std::vector<std::string>& endpoints, uint64_t term = 0);
 
+    bool DeleteBinlog(uint32_t tid, uint32_t pid);
+
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
+
+    bool GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader);
+
+    bool GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest);
 
     int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     int GetTableStatus(uint32_t tid, uint32_t pid,
@@ -135,6 +154,8 @@ public:
     
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
+    bool ConnectZK();
+    bool DisConnectZK();
     
     void ShowTp();
 

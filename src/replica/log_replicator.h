@@ -21,6 +21,8 @@
 #include "proto/tablet.pb.h"
 #include "replica/replicate_node.h"
 #include "storage/table.h"
+#include "bthread/bthread.h"
+#include "bthread/condition_variable.h"
 
 namespace rtidb {
 namespace replica {
@@ -51,6 +53,8 @@ public:
 
     bool Init();
 
+    bool StartSyncing();
+
     // the slave node receives master log entries
     bool AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,
                        ::rtidb::api::AppendEntriesResponse* response);
@@ -62,8 +66,6 @@ public:
     void Notify();
     // recover logs meta
     bool Recover();
-
-    void Stop();
 
     bool RollWLogFile();
 
@@ -81,6 +83,7 @@ public:
     // Sync Write Buffer to Disk
     void SyncToDisk();
     void SetOffset(uint64_t offset);
+
     uint64_t GetOffset();
 
     LogParts* GetLogPart();
@@ -97,10 +100,12 @@ public:
 
     bool ParseBinlogIndex(const std::string& path, uint32_t& index);
 
+    bool DelAllReplicateNode();
+
 private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 
-    void ApplyEntryToTable(const LogEntry& entry);
+    bool ApplyEntryToTable(const LogEntry& entry);
 
 private:
     // the replicator root data path
@@ -115,26 +120,15 @@ private:
     std::vector<std::string> endpoints_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
 
-    uint64_t term_;
+    std::atomic<uint64_t> term_;
     // sync mutex
-    std::mutex mu_;
-    std::condition_variable cv_;
-    std::condition_variable coffee_cv_;
-
-    // for background task
-    std::atomic<bool> running_;
-
-    // background task pool
-    ThreadPool tp_;
-
-    // reference cnt
-    std::atomic<uint64_t> refs_;
+    bthread::Mutex mu_;
+    bthread::ConditionVariable cv_;
 
     std::atomic<int> snapshot_log_part_index_;
     std::atomic<uint64_t> snapshot_last_offset_;
 
     std::mutex wmu_;
-
     std::shared_ptr<Table> table_;
 };
 

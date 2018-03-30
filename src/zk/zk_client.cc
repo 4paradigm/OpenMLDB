@@ -49,16 +49,19 @@ void NodeWatcher(zhandle_t* zh, int type, int state,
 
 ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
         const std::string& endpoint, const std::string& zk_root_path):hosts_(hosts),
-    session_timeout_(session_timeout), endpoint_(endpoint), zk_root_path_(zk_root_path),
-    nodes_root_path_(zk_root_path_ + "/nodes"), nodes_watch_callbacks_(), mu_(), cv_(),
-    zk_(NULL),
-    nodes_watching_(false), data_(), connected_(false), children_callbacks_() {
-        data_.count = 0;
-        data_.data = NULL;
-    }
+        session_timeout_(session_timeout), endpoint_(endpoint), zk_root_path_(zk_root_path),
+        nodes_root_path_(zk_root_path_ + "/nodes"), nodes_watch_callbacks_(), mu_(), cv_(),
+        zk_(NULL),
+        nodes_watching_(false), data_(), connected_(false), registed_(false),
+        children_callbacks_(), session_term_(0) {
+    data_.count = 0;
+    data_.data = NULL;
+}
 
 ZkClient::~ZkClient() {
-    zookeeper_close(zk_);
+    if (zk_) {
+        zookeeper_close(zk_);
+    }
 }
 
 bool ZkClient::Init() {
@@ -72,6 +75,7 @@ bool ZkClient::Init() {
         PDLOG(WARNING, "fail to init zk handler with hosts %s, session_timeout %d", hosts_.c_str(), session_timeout_);
         return false;
     }
+    session_term_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 
@@ -82,11 +86,15 @@ void ZkClient::HandleNodesChanged(int type, int state) {
         if (!ok) {
             return;
         }
-        std::lock_guard<std::mutex> lock(mu_);
+        std::vector<NodesChangedCallback> watch_callbacks_vec;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            watch_callbacks_vec = nodes_watch_callbacks_;
+        }
         PDLOG(INFO, "handle node changed event with type %d, and state %d, endpoints size %d, callback size %d", 
-                type, state, endpoints.size(), nodes_watch_callbacks_.size());
-        std::vector<NodesChangedCallback>::iterator it = nodes_watch_callbacks_.begin();
-        for (; it != nodes_watch_callbacks_.end(); ++it) {
+                type, state, endpoints.size(), watch_callbacks_vec.size());
+        std::vector<NodesChangedCallback>::iterator it = watch_callbacks_vec.begin();
+        for (; it != watch_callbacks_vec.end(); ++it) {
             (*it)(endpoints);
         }
     }
@@ -108,10 +116,22 @@ bool ZkClient::Register() {
                          ZOO_EPHEMERAL, NULL, 0);
     if (ret == ZOK) {
         PDLOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
+        registed_.store(true, std::memory_order_relaxed);
         return true;
     }
     PDLOG(WARNING, "fail to register self with endpoint %s, err from zk %d", endpoint_.c_str(), ret);
     return false;
+}
+
+bool ZkClient::CloseZK() {
+    std::lock_guard<std::mutex> lock(mu_);
+    connected_ = false;
+    registed_.store(false, std::memory_order_relaxed);
+    if (zk_) {
+        zookeeper_close(zk_);
+        zk_ = NULL;
+    }
+    return true;
 }
 
 bool ZkClient::CreateNode(const std::string& node,
@@ -332,6 +352,7 @@ bool ZkClient::Reconnect() {
     if (zk_ != NULL) {
         zookeeper_close(zk_);
     }
+    registed_.store(false, std::memory_order_relaxed);
     zk_ = zookeeper_init(hosts_.c_str(),
                          LogEventWrapper, 
                          session_timeout_, 0, (void *)this, 0);
@@ -340,6 +361,7 @@ bool ZkClient::Reconnect() {
     if (zk_ == NULL || !connected_) {
         return false;
     }
+    session_term_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 

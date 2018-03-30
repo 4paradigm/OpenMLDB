@@ -1,14 +1,30 @@
 package rtidb.nameserver;
 
 option cc_generic_services = true;
-option java_generic_services = true;
-option java_package = "com._4paradigm.rtidb";
-option java_outer_classname = "NameServer";
+option java_package = "com._4paradigm.rtidb.ns";
+option java_outer_classname = "NS";
 
-message TablePartition {
+message ColumnDesc {
+    required string name = 1;
+    required string type = 2;
+    required bool add_ts_idx = 3;
+}
+
+message PartitionMeta {
     required string endpoint = 1;
     required bool is_leader = 2;
-    required uint32 pid = 3;
+    optional bool is_alive = 3 [default = true];
+}
+
+message TermPair {
+    required uint64 term = 1;
+    required uint64 offset = 2;
+}
+
+message TablePartition {
+    required uint32 pid = 1;
+    repeated PartitionMeta partition_meta = 2;
+    repeated TermPair term_offset = 3;
 }
 
 message TableInfo {
@@ -17,6 +33,8 @@ message TableInfo {
 	optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
 	optional uint32 tid = 5;
+    repeated ColumnDesc column_desc = 6;
+    optional string ttl_type = 7 [default = "kAbsoluteTime"];
 }
 
 message CreateTableRequest {
@@ -42,10 +60,46 @@ message MakeSnapshotNSRequest {
     required uint32 pid = 2;
 }
 
+message AddReplicaData {
+	required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
 message AddReplicaNSRequest {
 	required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
+}
+
+message Pair {
+	required string key = 1;
+    required string value = 2;
+}
+
+message ConfSetRequest {
+	required Pair conf = 1;
+}
+
+message ConfGetRequest {}
+
+message ConfGetResponse {
+	required int32 code = 1;
+	optional string msg = 2;
+    repeated Pair conf = 3;
+}
+
+message ChangeLeaderRequest {
+	required string name = 1;
+    required uint32 pid = 2;
+}
+
+message OfflineEndpointRequest {
+	required string endpoint = 1;
+}
+
+message RecoverEndpointRequest {
+	required string endpoint = 1;
 }
 
 message GeneralResponse {
@@ -67,14 +121,54 @@ message ShowTabletResponse {
     optional string msg = 3;
 }
 
-message DelReplicaData {
+message RecoverTableRequest {
     required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
 }
 
 message DelReplicaNSRequest {
-    required DelReplicaData data = 1;
+    required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+}
+
+message MigrateRequest {
+    required string src_endpoint = 1;
+    required string name = 2;
+    repeated uint32 pid = 3;
+    required string des_endpoint = 4;
+}
+
+message MigrateInfo {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional string src_endpoint = 3;
+    optional string des_endpoint = 4;
+}
+
+message EndPointPartitionData {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional string endpoint = 3;
+}
+
+message TableStatusData {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional string endpoint = 3;
+    optional bool is_leader = 4;
+    optional bool is_alive = 5;
+}
+
+message ChangeLeaderData {
+    optional string name = 1;
+    optional uint32 tid = 2;
+    optional uint32 pid = 3;
+    optional uint64 term = 4;
+    optional uint64 offset = 5;
+    optional string leader = 6;
+    repeated string follower = 7;
 }
 
 message OPStatus {
@@ -86,7 +180,26 @@ message OPStatus {
     required string task_type = 6;
 }
 
+message GetTablePartitionRequest {
+    optional string name = 1;
+    optional uint32 pid = 2;
+}
+
+message GetTablePartitionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional TablePartition table_partition = 3;
+}
+
+message SetTablePartitionRequest {
+    optional string name = 1;
+    optional TablePartition table_partition = 2;
+}
+
 message ShowOPStatusRequest{}
+
+message ConnectZKRequest {}
+message DisConnectZKRequest {}
 
 message ShowOPStatusResponse {
     optional int32 code = 1;
@@ -103,4 +216,15 @@ service NameServer {
     rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
     rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
+    rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
+    rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
+    rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
+    rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
+    rpc Migrate(MigrateRequest) returns (GeneralResponse);
+    rpc RecoverTable(RecoverTableRequest) returns (GeneralResponse);
+    rpc RecoverEndpoint(RecoverEndpointRequest) returns (GeneralResponse);
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+    rpc SetTablePartition(SetTablePartitionRequest) returns (GeneralResponse);
+    rpc GetTablePartition(GetTablePartitionRequest) returns (GetTablePartitionResponse);
 }
