@@ -2,4 +2,4 @@
 #
 # boot.sh
 
-./bin/rtidb --flagfile=./conf/rtidb.flags
+./bin/rtidb --flagfile=./conf/tablet.flags

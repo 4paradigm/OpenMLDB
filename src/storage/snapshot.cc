@@ -241,7 +241,7 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 
 	std::string buffer;
 	::rtidb::api::LogEntry entry;
-	uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+	uint64_t expire_time = table->GetExpireTime();
     bool has_error = false;
 	while (true) {
 		::rtidb::base::Slice record;
@@ -261,7 +261,7 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 			break;
 		}
 		// delete timeout key
-		if (table->IsExpired(entry, cur_time)) {
+		if (entry.ts() < expire_time) {
 			expired_key_num++;
 			continue;
 		}
@@ -329,7 +329,8 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
-	uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    uint64_t last_term = 0;
+    uint64_t expire_time = table->GetExpireTime();
     while (!has_error) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -351,7 +352,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                 break;
             }
             cur_offset = entry.log_index();
-            if (table->IsExpired(entry, cur_time)) {
+            if (entry.ts() < expire_time) {
                 expired_key_num++;
                 continue;
             }
@@ -365,6 +366,9 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             write_count++;
             if ((write_count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
                 PDLOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
+            }
+            if (entry.has_term()) {
+                last_term = entry.term();
             }
         } else if (status.IsEof()) {
             continue;
@@ -388,7 +392,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
         ret = -1;
     } else {
         if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
-            if (RecordOffset(snapshot_name, write_count, cur_offset) == 0) {
+            if (RecordOffset(snapshot_name, write_count, cur_offset, last_term) == 0) {
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
                     PDLOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str()); 
@@ -431,7 +435,7 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     return 0;
 }
 
-int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset) {
+int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
     PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
                 offset, snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
@@ -441,6 +445,7 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
     manifest.set_offset(offset);
     manifest.set_name(snapshot_name);
     manifest.set_count(key_count);
+    manifest.set_term(term);
     manifest_info.clear();
     google::protobuf::TextFormat::PrintToString(manifest, &manifest_info);
     FILE* fd_write = fopen(tmp_file.c_str(), "w");

@@ -2,13 +2,26 @@
 from testcasebase import TestCaseBase
 from libs.test_loader import load
 import libs.ddt as ddt
+import random
 import time
 from libs.logger import infoLogger
+import libs.utils as utils
 from libs.deco import multi_dimension
 
 
 @ddt.ddt
 class TestTtl(TestCaseBase):
+
+    def setUp(self):
+        infoLogger.info('\n' * 5 + 'TEST CASE NAME: ' + self._testMethodName + self._testMethodDoc)
+        self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
+        self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
+        self.tid = random.randint(1, 1000)
+        self.pid = random.randint(1, 1000)
+        self.clear_ns_table(self.ns_leader)
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        self.confset(self.ns_leader, 'auto_recover_table', 'true')
+        infoLogger.info('\n\n' + '|' * 50 + ' SETUP FINISHED ' + '|' * 50 + '\n')
 
     @multi_dimension(False)
     @ddt.data(
@@ -28,7 +41,7 @@ class TestTtl(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
         infoLogger.info(rs1)
-        self.assertTrue(exp_msg in rs1)
+        self.assertIn(exp_msg, rs1)
 
 
     @multi_dimension(True)
@@ -49,12 +62,12 @@ class TestTtl(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, ttl, 2, 'true')
         infoLogger.info(rs1)
-        self.assertTrue(exp_msg in rs1)
+        self.assertIn(exp_msg, rs1)
 
 
     def test_ttl_latest_1_ready_test(self):
         """
-
+        READYTEST：为test_ttl_latest_2做测前准备，提前将数据put好
         :return:
         """
         ddt = (
@@ -86,11 +99,23 @@ class TestTtl(TestCaseBase):
                 self.put(self.leader, tid, 0, 'pk', i[1], '|{}|'.format(i[0]))
             time.sleep(1)
             self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
-            rs = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
-            infoLogger.info(rs)
-            for i in value_ts_scannable.keys():
-                self.assertTrue('|{}|'.format(i[0]) in rs)
-        time.sleep(61)
+            if ttl.find("latest") == -1:
+                rs = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
+                infoLogger.info(rs)
+                for k, v in value_ts_scannable.items():
+                    if v is True:
+                        self.assertIn('|{}|'.format(k[0]), rs)
+                    else:
+                         self.assertNotIn('|{}|'.format(k[0]), rs)
+            else:
+                for k, v in value_ts_scannable.items():
+                    rs = self.get(self.leader, tid, 0, 'pk', k[1])
+                    infoLogger.info(rs)
+                    if v is True:
+                        self.assertIn('|{}|'.format(k[0]), rs)
+                    else:
+                         self.assertNotIn('|{}|'.format(k[0]), rs)
+        #time.sleep(61)
 
 
     @ddt.data(
@@ -118,24 +143,39 @@ class TestTtl(TestCaseBase):
         :return:
         """
         self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
-        rs1 = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
-        infoLogger.info(rs1)
-        for k, v in value_ts_scannable.items():
-            if v is True:
-                self.assertTrue('|{}|'.format(k[0]) in rs1)
-            else:
-                self.assertFalse('|{}|'.format(k[0]) in rs1)
+        if ttl.find("latest") == -1:
+            rs1 = self.scan(self.leader, tid, 0, 'pk', self.now(), 1)
+            infoLogger.info(rs1)
+            for k, v in value_ts_scannable.items():
+                if v is True:
+                    self.assertIn('|{}|'.format(k[0]), rs1)
+                else:
+                    self.assertNotIn('|{}|'.format(k[0]), rs1)
+        else:
+            for k, v in value_ts_scannable.items():
+                rs = self.get(self.leader, tid, 0, 'pk', k[1])
+                infoLogger.info(rs)
+                if v is True:
+                    self.assertIn('|{}|'.format(k[0]), rs)
+                else:
+                     self.assertNotIn('|{}|'.format(k[0]), rs)
         self.drop(self.leader, tid, 0)
 
 
     @ddt.data(
-        ('latest:1', {('v1', 10): False, ('v2', 20): True}, [('v3', 30)], {('v2', 10): False, ('v3', 30): True}),
-        ('latest:1', {('v1', 10): False, ('v2', 20): True}, [('v3', 10)], {('v2', 20): True, ('v3', 10): False}),
+        ('latest:10',
+         {('v1', 100): False, ('v2', 200): True},
+         [('v3', 300)],
+         {('v2', 100): False, ('v3', 300): True}),
+        ('latest:10',
+         {('v1', 100): False, ('v2', 200): True},
+         [('v3', 100)],
+         {('v2', 200): True, ('v3', 100): False}),
     )
     @ddt.unpack
-    def test_ttl_put_after_ttl(self, ttl, value_ts_scannable, put_value_ts, value_ts_scannable2):
+    def test_ttl_put_after_ttl(self, ttl, value_ts_scannable, put_value_ts, value_ts_scannable2):  # RTIDB-181
         """
-
+        ttl后put数据，再次ttl后数据正确
         :param ttl:
         :param value_ts_scannable:
         :param put_value_ts:
@@ -148,44 +188,35 @@ class TestTtl(TestCaseBase):
             self.multidimension_vk = {'card': ('string:index', 'pk'),
                                       'merchant': ('string:index', '|{}|'.format(i[0])),
                                       'amt': ('double', 1.1)}
-            self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
+            for ts in range(100):
+                self.put(self.leader, self.tid, self.pid, 'pk', i[1] - ts, '|{}|'.format(i[0]))
         time.sleep(1)
 
         self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
-        rs = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
-        infoLogger.info(rs)
-        for i in value_ts_scannable.keys():
-            self.assertTrue('|{}|'.format(i[0]) in rs)
-        time.sleep(61)
-        rs1 = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
-        infoLogger.info(rs1)
         for k, v in value_ts_scannable.items():
+            rs = self.get(self.leader, self.tid, self.pid, 'pk', k[1])
+            infoLogger.info(rs)
             if v is True:
-                self.assertTrue('|{}|'.format(k[0]) in rs1)
+                self.assertIn('|{}|'.format(k[0]), rs)
             else:
-                self.assertFalse('|{}|'.format(k[0]) in rs1)
+                self.assertNotIn('|{}|'.format(k[0]), rs)
         # put again after the last gc
         for i in put_value_ts:
             # for multidimension test
             self.multidimension_vk = {'card': ('string:index', 'pk'),
                                       'merchant': ('string:index', '|{}|'.format(i[0])),
                                       'amt': ('double', 1.1)}
-            self.put(self.leader, self.tid, self.pid, 'pk', i[1], '|{}|'.format(i[0]))
+            for ts in range(100):
+                self.put(self.leader, self.tid, self.pid, 'pk', i[1] - ts, '|{}|'.format(i[0]))
         time.sleep(1)
-
-        self.multidimension_scan_vk = {'card': 'pk'}  # for multidimension
-        rs = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
-        infoLogger.info(rs)
-        for i in value_ts_scannable2.keys():
-            self.assertTrue('|{}|'.format(i[0]) in rs)
-        time.sleep(61)
-        rs1 = self.scan(self.leader, self.tid, self.pid, 'pk', self.now(), 1)
-        infoLogger.info(rs1)
         for k, v in value_ts_scannable2.items():
+            rs = self.get(self.leader, self.tid, self.pid, 'pk', k[1])
+            infoLogger.info(rs)
             if v is True:
-                self.assertTrue('|{}|'.format(k[0]) in rs1)
+                self.assertIn('|{}|'.format(k[0]), rs)
             else:
-                self.assertFalse('|{}|'.format(k[0]) in rs1)
+                self.assertNotIn('|{}|'.format(k[0]), rs)
+
 
 
 if __name__ == "__main__":

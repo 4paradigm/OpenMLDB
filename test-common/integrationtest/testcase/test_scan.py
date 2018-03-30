@@ -30,8 +30,8 @@ class TestScan(TestCaseBase):
         self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{k: v[0] for k, v in kv.items()})
         self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         infoLogger.info(self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
-        self.assertTrue(
-            str(scan_value) in self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
+        self.assertIn(
+            str(scan_value), self.scan(self.leader, self.tid, self.pid, scan_kv, self.now(), 1))
 
 
     def test_sscan_ttl(self):
@@ -40,12 +40,9 @@ class TestScan(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 1, 2)
-        self.assertTrue('Create table ok' in rs1)
+        self.assertIn('Create table ok', rs1)
         self.put(self.leader, self.tid, self.pid, 'testkey0', self.now() - 1000000000, 'testvalue0')
         infoLogger.info(self.scan(self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
-        self.assertTrue('testvalue0' in self.scan(
-            self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
-        time.sleep(61)
         self.assertFalse('testvalue0' in self.scan(
             self.leader, self.tid, self.pid, 'testkey0', self.now(), 1))
 
@@ -61,7 +58,7 @@ class TestScan(TestCaseBase):
         self.put(self.leader, self.tid, self.pid, '', self.now(), *[str(v[1]) for v in kv.values()])
         rs1 = self.run_client(self.leader, 'scan {} {} {} {} {}'.format(self.tid, self.pid, 'card0', self.now(), 1))
         infoLogger.info(rs1)
-        self.assertTrue('card0' in rs1)
+        self.assertIn('card0', rs1)
 
 
 if __name__ == "__main__":

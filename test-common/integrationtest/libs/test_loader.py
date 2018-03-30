@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.append(os.getenv('testpath'))
 import libs.conf as conf
+from libs.logger import infoLogger
 
 
 def load(cls):
@@ -19,15 +20,18 @@ def load(cls):
             for tc in suite_cases:
                 tc_name = tc._testMethodName
                 if tc_name.startswith(test_name):
-                    print tc_name
+                    infoLogger.info(tc_name)
                     suite.addTest(cls(tc_name))
     runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'), failfast=conf.failfast)
     runner.run(suite)
 
 
-def load_all():
+def load_all(runlist='', norunlist='^$'):
     testpath = os.getenv('testpath')
-    tests = commands.getstatusoutput('ls {}/testcase|egrep -v "frame|pyc|init"'.format(testpath))[1].split('\n')
+    cmd = 'ls {}/testcase|grep "^test_.*py$"|egrep "{}"|egrep -v "{}"'.format(testpath, runlist, norunlist)
+    infoLogger.info(cmd)
+    tests = commands.getstatusoutput(cmd)[1].split('\n')
+    infoLogger.info(tests)
     test_suite = []
     for module in tests:
         mo = importlib.import_module('testcase.{}'.format(module[:-3]))
@@ -37,4 +41,6 @@ def load_all():
         else:
             test_class = test_classes[0]
         test_suite.append(unittest.TestLoader().loadTestsFromTestCase(eval('mo.' + test_class)))
-        return test_suite
+    for t in test_suite:
+        infoLogger.info(t)
+    return test_suite

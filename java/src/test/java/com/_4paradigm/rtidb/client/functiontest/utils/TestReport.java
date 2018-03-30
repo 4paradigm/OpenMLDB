@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client.utils;
+package com._4paradigm.rtidb.client.functiontest.utils;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;

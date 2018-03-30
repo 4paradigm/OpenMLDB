@@ -110,14 +110,14 @@ TEST_F(TableTest, IsExpired) {
     ::rtidb::api::LogEntry entry;
     uint64_t ts_time = now_time; 
     entry.set_ts(ts_time);
-    ASSERT_FALSE(table->IsExpired(entry, now_time));
+    ASSERT_FALSE(entry.ts() < table->GetExpireTime());
     
     // ttl_offset_ is 60 * 1000
     ts_time = now_time - 4 * 60 * 1000; 
     entry.set_ts(ts_time);
-    ASSERT_TRUE(table->IsExpired(entry, now_time));
+    ASSERT_TRUE(entry.ts() < table->GetExpireTime());
     delete table;
-}   
+}
 
 TEST_F(TableTest, Iterator) {
     std::map<std::string, uint32_t> mapping;
@@ -221,6 +221,44 @@ TEST_F(TableTest, SchedGcHead) {
     ASSERT_EQ(1, table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
+}
+
+TEST_F(TableTest, SchedGcHead1) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    uint64_t keep_cnt = 500;
+    Table* table = new Table("tx_log", 1, 1, 8 , mapping, keep_cnt);
+    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    table->Init();
+	uint64_t ts = 0;
+    for (int i = 0; i < 10; i++) {
+        int count = 5000;
+        while (count) {
+            ts++;
+            table->Put("test", ts, "test1", 5);
+            count--;
+        }
+        table->SchedGc();
+        Ticket ticket;
+        Table::Iterator* it = table->NewIterator("test", ticket);
+
+        it->Seek(ts + 1);
+        ASSERT_TRUE(it->Valid());
+        it->Seek(ts);
+        ASSERT_TRUE(it->Valid());
+        it->Seek(ts - keep_cnt / 2);
+        ASSERT_TRUE(it->Valid());
+        it->Seek(ts - keep_cnt / 4);
+        ASSERT_TRUE(it->Valid());
+        it->Seek(ts - keep_cnt + 1);
+        ASSERT_TRUE(it->Valid());
+        it->Seek(ts - keep_cnt);
+        ASSERT_FALSE(it->Valid());
+        it->Seek(ts - keep_cnt - 1);
+        ASSERT_FALSE(it->Valid());
+        delete it;
+    }
+    table->SchedGc();
 }
 
 TEST_F(TableTest, SchedGc) {
@@ -331,7 +369,7 @@ TEST_F(TableTest, TableUnref) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     return RUN_ALL_TESTS();
 }
 

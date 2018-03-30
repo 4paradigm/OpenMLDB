@@ -6,9 +6,17 @@ message TablePartition {
     required bool is_leader = 3;
 }
 
+message ColumnDesc {
+    required string name = 1;
+    required string type = 2;
+    required bool add_ts_idx = 3;
+}
+
 message TableInfo {
     required string name = 1;
     required uint64 ttl = 2;
     required uint32 seg_cnt = 3;
     repeated TablePartition table_partition = 4;
+	repeated ColumnDesc column_desc = 5;
+    optional string ttl_type = 6 [default = "kAbsoluteTime"];
 }

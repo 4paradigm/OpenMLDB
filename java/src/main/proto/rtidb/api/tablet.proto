@@ -2,7 +2,8 @@ syntax="proto2";
 package rtidb.api;
 
 option cc_generic_services = true;
-option java_package = "rtidb.api";
+option java_generic_services = true;
+option java_package = "com._4paradigm.rtidb.tablet";
 option java_outer_classname = "Tablet";
 
 enum TableMode {
@@ -39,6 +40,15 @@ enum TTLType {
 enum OPType {
     kMakeSnapshotOP = 1;
     kAddReplicaOP = 2;
+    kDelReplicaOP = 3;
+    kSelectLeaderOP = 4;
+    kOfflineReplicaOP = 5;
+    kReAddReplicaOP = 6; 
+    kReAddReplicaNoSendOP = 7;     // need not send snapshot
+    kReAddReplicaWithDropOP = 8;   // should droptable before loadtable
+    kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
+    kUpdateTableAliveOP = 10;
+    kMigrateOP = 11;
 }
 
 enum TaskType {
@@ -47,9 +57,15 @@ enum TaskType {
     kRecoverSnapshot = 3;
     kSendSnapshot = 4;
     kLoadTable = 5;
-    kChangeFollower = 6;
-    kAddReplica = 7;
-    kAddTableInfo = 8;
+    kAddReplica = 6;
+    kAddTableInfo = 7;
+    kDelReplica = 8;
+    kDelTableInfo = 9;
+    kChangeLeader = 10;
+    kUpdatePartitionStatus = 11;
+    kDropTable = 12;
+    kUpdateTableAlive = 13;
+    kUpdateTableInfo = 14;
 }
 
 enum TaskStatus {
@@ -77,6 +93,7 @@ message Manifest {
     optional uint64 offset = 1;
     optional string name = 2;
     optional uint64 count = 3;
+    optional uint64 term = 4;
 }
 
 message Dimension {
@@ -191,7 +208,7 @@ message TableMeta {
 	optional TableMode mode = 8;
     optional bool wal = 9 [default = true];
     // term for change role
-    optional uint64 term = 10;
+    optional uint64 term = 10 [default = 0];
     optional bytes schema = 11;
     repeated string dimensions = 12;
 }
@@ -213,6 +230,7 @@ message LoadTableRequest {
 message DropTableRequest {
 	optional int32 tid = 1;
 	optional int32 pid = 2;
+    optional TaskInfo task_info = 3;
 }
 
 message DropTableResponse {
@@ -258,7 +276,6 @@ message LogEntry {
 message AppendEntriesRequest {
     optional uint64 pre_log_index = 2;
     repeated LogEntry entries = 4;
-    optional uint64 leader_endpoint = 5;
     optional uint32 tid = 6;
     optional uint32 pid = 7;
     optional uint64 term = 8;
@@ -272,11 +289,11 @@ message AppendEntriesResponse {
 }
 
 message ChangeRoleRequest {
-    optional uint32 tid = 6;
-    optional uint32 pid = 7;
-    optional uint64 term = 1;
-    optional TableMode mode = 2;
-    repeated string replicas = 3;
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint64 term = 3;
+    optional TableMode mode = 4;
+    repeated string replicas = 5;
 }
 
 message SendSnapshotRequest {
@@ -295,7 +312,6 @@ message CreateStreamRequest {
 message ChangeRoleResponse {
     optional int32 code = 1;
     optional string msg = 2;
-    optional uint64 term = 3;
 }
 
 // Get all table status information on tablet
@@ -336,6 +352,7 @@ message GetRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional uint64 ts = 4 [default = 0];
+    optional string idx_name = 5;
 }
 
 message GetResponse {
@@ -345,6 +362,34 @@ message GetResponse {
     optional uint64 ts = 4;
     optional bytes value = 5;
 }
+
+message GetTermPairRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message GetTermPairResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 term = 3;
+    optional uint64 offset = 4;
+    optional bool has_table = 5;
+    optional bool is_leader = 6;
+}
+
+message GetManifestRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message GetManifestResponse{ 
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional Manifest manifest = 3;
+}
+
+message ConnectZKRequest {}
+message DisConnectZKRequest {}
 
 message HttpRequest { }
 message HttpResponse { }
@@ -378,8 +423,13 @@ service TabletServer {
     rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
     rpc SetTTLClock(SetTTLClockRequest) returns(GeneralResponse);
 
+    // name server interface
     rpc GetTaskStatus(TaskStatusRequest) returns(TaskStatusResponse);
     rpc DeleteOPTask(DeleteTaskRequest) returns(GeneralResponse);
-
+    rpc GetTermPair(GetTermPairRequest) returns(GetTermPairResponse);
+    rpc GetManifest(GetManifestRequest) returns(GetManifestResponse);
+    rpc DeleteBinlog(GeneralRequest) returns(GeneralResponse);
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
 }

@@ -54,12 +54,8 @@ struct Task {
 };
 
 struct OPData {
-    OPData() : start_time_(0), end_time_(0) {}
     ::rtidb::api::OPInfo op_info_;
-    ::rtidb::api::TaskStatus task_status_;
     std::list<std::shared_ptr<Task>> task_list_;
-    uint64_t start_time_;
-    uint64_t end_time_;
 };
 
 class NameServerImpl : public NameServer {
@@ -116,8 +112,63 @@ public:
             ShowOPStatusResponse* response,
             Closure* done);
 
+    void ConfSet(RpcController* controller,
+            const ConfSetRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void ConfGet(RpcController* controller,
+            const ConfGetRequest* request,
+            ConfGetResponse* response,
+            Closure* done);
+
+    void ChangeLeader(RpcController* controller,
+            const ChangeLeaderRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void OfflineEndpoint(RpcController* controller,
+            const OfflineEndpointRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void Migrate(RpcController* controller,
+            const MigrateRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void RecoverEndpoint(RpcController* controller,
+            const RecoverEndpointRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void RecoverTable(RpcController* controller,
+            const RecoverTableRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void ConnectZK(RpcController* controller,
+            const ConnectZKRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void DisConnectZK(RpcController* controller,
+            const DisConnectZKRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void SetTablePartition(RpcController* controller,
+            const SetTablePartitionRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void GetTablePartition(RpcController* controller,
+            const GetTablePartitionRequest* request,
+            GetTablePartitionResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-            bool is_leader,
+            bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map);
 
     void CheckZkClient();
@@ -141,11 +192,33 @@ private:
 
     bool RecoverOPTask();
 
-    bool RecoverMakeSnapshot(std::shared_ptr<OPData> op_data);
+    int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
-    bool RecoverAddReplica(std::shared_ptr<OPData> op_data);
+    int CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data);
 
-    void SkipDoneTask(uint32_t task_index, std::list<std::shared_ptr<Task>>& task_list);
+    int CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateMigrateTask(std::shared_ptr<OPData> op_data);
+
+    int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_data);
+
+    int CreateUpdateTableAliveOPTask(std::shared_ptr<OPData> op_data);
+
+    int CreateReLoadTableTask(std::shared_ptr<OPData> op_data);
+
+    int CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data);
+
+    bool SkipDoneTask(std::shared_ptr<OPData> op_data);
 
     // Get the lock
     void OnLocked();
@@ -157,10 +230,21 @@ private:
 
     void OnTabletOffline(const std::string& endpoint);
 
+    void OnTabletOnline(const std::string& endpoint);
+
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
     void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
+    int ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+                    std::vector<::rtidb::base::ColumnDesc>& columns);                
+
+    void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
+                    bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
+    void UpdateTableAlive(const std::string& name, const std::string& endpoint, 
+                    bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
@@ -196,15 +280,65 @@ private:
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, uint64_t op_index, ::rtidb::api::OPType op_type);
 
-    std::shared_ptr<Task> CreateChangeLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
-                    const std::string& name, uint32_t tid, uint32_t pid, 
+    std::shared_ptr<Task> CreateUpdateTableInfoTask(const std::string& src_endpoint, 
+                    const std::string& name, uint32_t pid, const std::string& des_endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    void UpdateTableInfo(const std::string& src_endpoint, const std::string& name, uint32_t pid,
+                    const std::string& des_endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
+    std::shared_ptr<Task> CreateUpdatePartitionStatusTask(const std::string& name, uint32_t pid,
+                    const std::string& endpoint, bool is_leader, bool is_alive, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    std::shared_ptr<Task> CreateUpdateTableAliveTask(const std::string& name, 
+                    const std::string& endpoint, bool is_alive, 
+                    uint64_t op_index, ::rtidb::api::OPType op_type);
+
+    std::shared_ptr<Task> CreateSelectLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
+                    const std::string& name, uint32_t tid, uint32_t pid,
                     std::vector<std::string>& follower_endpoint);
 
-    int CreateDelReplicaOP(const DelReplicaData& del_replica_data);
+    std::shared_ptr<Task> CreateChangeLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
+                    const std::string& name, uint32_t pid);
+
+    std::shared_ptr<Task> CreateUpdateLeaderInfoTask(uint64_t op_index, ::rtidb::api::OPType op_type,
+                    const std::string& name, uint32_t pid);
+
+	std::shared_ptr<Task> CreateDropTableTask(const std::string& endpoint,
+                    uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
+
+	std::shared_ptr<Task> CreateRecoverTableTask(uint64_t op_index, ::rtidb::api::OPType op_type, 
+                    const std::string& name, uint32_t pid, const std::string& endpoint);
+
+    int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data);
+    int AddOPData(const std::shared_ptr<OPData>& op_data);
+    int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint,
+                     ::rtidb::api::OPType op_type);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
-    void ChangeLeader(const std::string& name, uint32_t tid, uint32_t pid, 
+    int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    void ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_info);                
+    void UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> task_info);                
+    int CreateMigrateOP(const std::string& src_endpoint, const std::string& name, uint32_t pid,
+                    const std::string& des_endpoint);
+    void RecoverEndpointTable(const std::string& name, uint32_t pid, const std::string& endpoint,
+                    std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
+    int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
+    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
+    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
+                    bool is_leader, bool is_alive);
+
+    void NotifyTableChanged();
+    void DeleteDoneOP();
 
 private:
     std::mutex mu_;
@@ -217,6 +351,9 @@ private:
     std::string zk_table_index_node_;
     std::string zk_term_node_;
     std::string zk_table_data_path_;
+    std::string zk_auto_failover_node_;
+    std::string zk_auto_recover_table_node_;
+    std::string zk_table_changed_notify_node_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;
@@ -224,7 +361,10 @@ private:
     uint64_t op_index_;
     std::atomic<bool> running_;
     std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
+    std::map<uint64_t, std::shared_ptr<OPData>> done_map_;
     std::condition_variable cv_;
+    std::atomic<bool> auto_failover_;
+    std::atomic<bool> auto_recover_table_;
 };
 
 }

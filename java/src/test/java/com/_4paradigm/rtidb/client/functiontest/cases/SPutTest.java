@@ -2,36 +2,45 @@ package com._4paradigm.rtidb.client.functiontest.cases;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.testng.annotations.Test;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
+import org.testng.annotations.Test;
 
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
+import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.client.schema.Table;
-import com._4paradigm.rtidb.client.TabletSyncClient;
-import com._4paradigm.rtidb.client.TabletClientBuilder;
-import com._4paradigm.rtidb.client.KvIterator;
-import io.brpc.client.RpcClient;
+
+import io.brpc.client.EndPoint;
 
 
-@Listeners({ com._4paradigm.rtidb.client.utils.TestReport.class })
+@Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class SPutTest {
 
-  private final static AtomicInteger id = new AtomicInteger(1000);
+  private final static AtomicInteger id = new AtomicInteger(100);
   private static int tid = 0;
-  private static RpcClient rpcClient = null;
   private static TabletSyncClient client = null;
+  private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
+  private static RTIDBClientConfig config = new RTIDBClientConfig();
+  private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
   static {
-    rpcClient = TabletClientBuilder.buildRpcClient("127.0.0.1", 37770, 100000, 3);
-    client = TabletClientBuilder.buildSyncClient(rpcClient);
+      try {
+          snc.init();
+      } catch (Exception e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+      }
+      client = new TabletSyncClientImpl(snc);
   }
+
 
   public static String genLongString(int len) {
     String str = "";
@@ -106,11 +115,13 @@ public class SPutTest {
         {false, ColumnType.kDouble, -1e-10d, true},
         {false, ColumnType.kDouble, null, true},
         {false, ColumnType.kUInt32, 1, false},
+        {false, ColumnType.kUInt32, 0, false},
+        {false, ColumnType.kUInt32, -1, false},
         {false, ColumnType.kUInt32, null, true},
     }; }
 
   @Test(dataProvider = "putdata")
-  public void testPutIndex(boolean isIndex, ColumnType type, Object value, boolean putOk) {
+  public void testPutColumnType(boolean isIndex, ColumnType type, Object value, boolean putOk) {
     List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     ColumnDesc desc1 = new ColumnDesc();
     desc1.setAddTsIndex(true);
@@ -133,7 +144,7 @@ public class SPutTest {
 
     Boolean putok = null;
     try {
-        putok = client.put(tid, 0, 10, new Object[]{"9527", value});
+        putok = client.put(tid, 0, System.currentTimeMillis(), new Object[]{"9527", value});
     } catch (Exception e) {
       putok = false;
       System.out.println("!!!!!" + e.getMessage());
@@ -169,6 +180,7 @@ public class SPutTest {
       Assert.fail();
     }
   }
+
 
   @DataProvider(name = "schema")
   public Object[][] schema() {

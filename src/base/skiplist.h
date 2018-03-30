@@ -201,7 +201,7 @@ public:
             }
             for (uint8_t i = 1; i < node->Height(); i++) {
                 Node<K, V>* next = node->GetNext(i);
-                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) >= 0) {
+                if (next != NULL && compare_(pos_node->GetKey(), next->GetKey()) <= 0) {
                     node->SetNext(i, NULL);
                 }
             }
