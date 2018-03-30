@@ -23,7 +23,7 @@ sendsnapshot  给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb�
 changerole  切换leader或者follower  
 setexpire  设置是否要开启过期删除  
 
-exit  退出当前会话
+exit  退出当前会话  
 
 ## nameserver客户端命令
 
@@ -46,7 +46,7 @@ offlineendpoint
 recoverendpoint  
 recovertable  
 
-migrate  分片迁移
+migrate  分片迁移  
 
 gettablepartition  获取nameserver某个table partition的信息并下载到当前目录下  
 settablepartition  用指定的文件覆盖nameserver中某个table partition的信息  
@@ -138,7 +138,7 @@ sget 多维get
 * ts 查询时的ts(如果为0返回最新的数据)
 
 sscan 多维scan  
-命令格式: sscan tid pid key key_name start_time end_time
+命令格式: sscan tid pid key key_name start_time end_time  
 * tid 指定table的id
 * pid 指定table的分片id
 * key 指定查询的key
@@ -147,7 +147,7 @@ sscan 多维scan
 * end_time 指定查询时的结束时间
 
 showschema 查看指定多维表的schema  
-命令格式: showschema tid pid
+命令格式: showschema tid pid  
 
 ```
 创建一个带schema的leader表
@@ -187,11 +187,11 @@ loadtable 创建表并加载sdb和binlog的数据
 * segment_cnt 为表的segement 个数. 建议为8~1024
 
 drop 删除表  
-命令格式: drop tid pid
+命令格式: drop tid pid  
 
-gettablestatus 获取表的状态
+gettablestatus 获取表的状态  
 命令格式: gettablestatus tid(optional) pid(optional)  
-如果没有指定tid和pid就返回所有表的信息, 如果指定了tid和pid就返回该分片的信息
+如果没有指定tid和pid就返回所有表的信息, 如果指定了tid和pid就返回该分片的信息  
 ```
 >gettablestatus
   tid  pid  offset  mode          state         enable_expire  ttl        ttl_offset  memused
@@ -212,7 +212,7 @@ addreplica 添加副本(在leader所在的tablet上运行)
 命令格式: addreplica tid pid endpoint
 * tid 指定table的id
 * pid 指定table的分片id
-* endpoint 指定要添加的endpoint
+* endpoint 指定要添加的endpoint  
 delreplica 删除副本  
 命令格式: delreplica tid pid endpoint  
 
@@ -222,8 +222,8 @@ pausesnapshot 暂停makesnapshot功能
 命令格式: pausesnapshot tid pid  
 recoversnapshot 恢复makesnapshot功能  
 命令格式: recoversnapshot tid pid  
-sendsnapshot 给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件. 注: 发送前必须pausesnapshot, 发送完再运行recoversnapshot
-命令格式: sendsnapshot tid pid endpoint
+sendsnapshot 给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件. 注: 发送前必须pausesnapshot, 发送完再运行recoversnapshot  
+命令格式: sendsnapshot tid pid endpoint  
 
 changerole 切换leader或者follower  
 命令格式: changerole tid pid role  
@@ -307,9 +307,9 @@ drop 删除表
 命令格式: drop table_name  
 showtable 列出表的分布和状态信息  
 命令格式: showtable table_name(optional)  
-注: table_name可选的, 如果不指定name就返回所有表的信息
+注: table_name可选的, 如果不指定name就返回所有表的信息  
 showshema 获取多维表的schema信息  
-命令格式: showschema table_name
+命令格式: showschema table_name  
 
 makesnapshot 做snapshot  
 命令格式: makesnapshot table_name pid  
