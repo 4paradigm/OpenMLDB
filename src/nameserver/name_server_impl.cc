@@ -957,11 +957,6 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                     endpoint_map[pid].swap(endpoint_vec);
                 }
                 std::lock_guard<std::mutex> lock(mu_);
-                if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 1))) {
-                    PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u]", 
-                                    table_info->name().c_str(), pid);
-                    return -1;
-                }
                 term_++;
                 term = term_;
                 ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
@@ -1523,23 +1518,34 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "create table failed. tid[%u]", table_index_);
         return;
     }
-
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_))) {
+            PDLOG(WARNING, "update term failed. table name[%s]", 
+                            table_info->name().c_str());
+            response->set_code(-1);
+            response->set_msg("update term failed");
+            return;
+        }
+    }    
     std::string table_value;
     table_info->SerializeToString(&table_value);
     if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
-        PDLOG(WARNING, "create table node[%s/%s] failed! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+        PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
+                        zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
         response->set_code(-1);
         response->set_msg("create table node failed");
         return;
     }
-    PDLOG(DEBUG, "create table node[%s/%s] success! value[%s]", zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+    PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
+                  zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
     {
         std::lock_guard<std::mutex> lock(mu_);
         table_info_.insert(std::make_pair(table_info->name(), table_info));
+        NotifyTableChanged();
     }
     response->set_code(0);
     response->set_msg("ok");
-    NotifyTableChanged();
 }
 
 void NameServerImpl::AddReplicaNS(RpcController* controller,

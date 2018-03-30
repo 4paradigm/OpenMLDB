@@ -2146,6 +2146,11 @@ void TabletImpl::CheckZkClient() {
         if (zk_client_->Reconnect() && zk_client_->Register()) {
             PDLOG(INFO, "reconnect zk ok"); 
         }
+    } else if (!zk_client_->IsRegisted()) {
+        PDLOG(WARNING, "registe zk"); 
+        if (zk_client_->Register()) {
+            PDLOG(INFO, "registe zk ok"); 
+        }
     }
     keep_alive_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&TabletImpl::CheckZkClient, this));
 }
