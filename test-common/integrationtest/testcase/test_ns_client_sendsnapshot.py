@@ -12,8 +12,9 @@ import threading
 class TestSendSnapshot(TestCaseBase):
 
     def put_data(self, endpoint, tid, pid, count):
-        for _ in range(count):
-            rs = self.put(endpoint, tid, pid, "testkey0", self.now() + 9999, "testvalue0testvalue0")
+        for _ in range(int(count)):
+            rs = self.put(endpoint, tid, pid, "testkey0", self.now() + 9999,
+                          "testvalue0testvalue0testvalue0testvalue00testvalue0testvalue0")
             self.assertIn("ok", rs)
 
 
@@ -110,6 +111,7 @@ class TestSendSnapshot(TestCaseBase):
     def check_manifest(self, endpoint, tid, pid, offset, name, count):
         try:
             mf = self.get_manifest(endpoint, tid, pid)
+            infoLogger.info(mf)
             self.assertEqual(mf['offset'], offset)
             self.assertEqual(mf['name'], name)
             self.assertEqual(mf['count'], count)
@@ -251,33 +253,39 @@ class TestSendSnapshot(TestCaseBase):
             self.check_manifest(self.leaderpath, t, pid, str(t), self.get_sdb_name(t, pid), str(t))
 
 
-    @TestCaseBase.skip('FIXME')
+    # @TestCaseBase.skip('FIXME')
     def test_sendsnapshot_speed_limit(self):  # RTIDB-227
         """
         限速测试，stream_bandwidth_limit = 1024, 10k左右文件会在8s-12s之间发送成功
         :return:
         """
-        self.update_conf(self.leaderpath, 'stream_block_size', 4 * 1024 * 1024)
+        offset = str(120)
+        self.update_conf(self.leaderpath, 'stream_block_size', 32)
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', 1024)
         self.stop_client(self.leader)
         time.sleep(5)
         self.start_client(self.leader)
         tname = self.now()
         self.create(self.leader, tname, self.tid, self.pid, 144000, 2, "true")
-        self.put_data(self.leader, self.tid, self.pid, 120)
+        self.put_data(self.leader, self.tid, self.pid, offset)
         self.assertIn("MakeSnapshot ok", self.makesnapshot(self.leader, self.tid, self.pid))
         self.assertIn("PauseSnapshot ok", self.pausesnapshot(self.leader, self.tid, self.pid))
         self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))
         time.sleep(1)
         check_manifest_sent0 = self.check_manifest(
-            self.slave1path, self.tid, self.pid, '100', self.get_sdb_name(self.tid, self.pid), '100')
+            self.slave1path, self.tid, self.pid, offset, self.get_sdb_name(self.tid, self.pid), offset) \
+                               and self.get_sdb_name(self.tid, self.pid).endswith('sdb')
         time.sleep(7)
         check_manifest_sent1 = self.check_manifest(
-            self.slave1path, self.tid, self.pid, '100', self.get_sdb_name(self.tid, self.pid), '100')
+            self.slave1path, self.tid, self.pid, offset, self.get_sdb_name(self.tid, self.pid), offset) \
+                               and self.get_sdb_name(self.tid, self.pid).endswith('sdb')
         time.sleep(4)
+        infoLogger.info(self.get_sdb_name(self.tid, self.pid).endswith('sdb'))
         check_manifest_sent = self.check_manifest(
-            self.slave1path, self.tid, self.pid, '100', self.get_sdb_name(self.tid, self.pid), '100')
+            self.slave1path, self.tid, self.pid, offset, self.get_sdb_name(self.tid, self.pid), offset) \
+                              and self.get_sdb_name(self.tid, self.pid).endswith('sdb')
         # Teardown
+        self.update_conf(self.leaderpath, 'stream_block_size', None)
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
         self.stop_client(self.leader)
         time.sleep(5)
