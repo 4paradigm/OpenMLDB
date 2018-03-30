@@ -22,6 +22,7 @@ class TestCaseBase(unittest.TestCase):
     def skip(msg):
         return unittest.skip(msg)
 
+
     @classmethod
     def setUpClass(cls):
         infoLogger.info('\n' + '|' * 50 + ' TEST {} STARTED '.format(cls) + '|' * 50 + '\n')
@@ -49,6 +50,7 @@ class TestCaseBase(unittest.TestCase):
         for edp_tuple in conf.tb_endpoints:
             edp = edp_tuple[1]
             utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict[edp]))
+            utils.exe_shell('rm -rf {}/db/*'.format(cls.node_path_dict[edp]))
         infoLogger.info('\n' + '=' * 50 + ' TEST {} FINISHED '.format(cls) + '=' * 50 + '\n' * 5)
 
     def setUp(self):
