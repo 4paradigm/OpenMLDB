@@ -1,80 +1,156 @@
 # rtidb cli使用说明
 
+## tablet客户端命令
+create 创建单维表  
+put get scan  
 
-## 创建多副本表
+screate 创建多维表  
+sput sget sscan  
+showschema 查看指定多维表的schema  
 
-### 从tablet client创建表
+loadtable  创建表并加载sdb和binlog的数据  
+drop  删除表  
+gettablestatus  获取表的信息  
 
-假设集群有一下节点
-* leader
-* follower1
-* follower2
+addreplica  添加副本  
+delreplica  删除副本  
 
-```
-# 在slave1 上创建表信息
-./rtidb --endpoint=slave1 --role=client
->create t1 1 1 0 8 false slave1 slave2
+makesnapshot  生成snapshot  
+pausesnapshot  暂停makesnapshot功能  
+recoversnapshot  恢复makesnapshot功能  
+sendsnapshot  给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件  
 
-# 在slave2 上创建表信息
-./rtidb --endpoint=slave2 --role=client
->create t1 1 1 0 8 false slave1 slave2
+changerole  切换leader或者follower  
+setexpire  设置是否要开启过期删除  
 
-# 在leader 上创建表信息
-./rtidb --endpoint=leader --role=client
->create t1 1 1 0 8 true slave1 slave2
+exit  退出当前会话  
 
-```
+## nameserver客户端命令
 
-### 创建时序表命令
+showtablet  获取所有tablet的健康状态信息  
+showopstatus  获取所有操作信息  
 
-创建命名格式
+create  创建表  
+drop  删除表  
+showtable  获取表信息  
+showschema  获取多维表的schema信息  
 
-create table_name tid pid ttl segment_cnt
-* create 为创建命令
+confget 获取当前conf信息  
+confset 重新设置conf  
+
+makesnapshot  
+addreplica  
+delreplica  
+changeleader  
+offlineendpoint  
+recoverendpoint  
+recovertable  
+
+migrate  分片迁移  
+
+gettablepartition  获取nameserver某个table partition的信息并下载到当前目录下  
+settablepartition  用指定的文件覆盖nameserver中某个table partition的信息  
+
+
+## tablet命令用法
+create  创建单维表  
+命名格式: create table_name tid pid ttl segment_cnt is_leader(optional) follower1 follower2 ...  
 * table_name 为要创建表名称
-* tid 指定table 的id
-* pid 指定table 的分片id
-* ttl 指定过期时间， 单位为分钟
-* segment_cnt 为表的segement 个数，建议为8~1024
-例子
+* tid 指定table的id
+* pid 指定table的分片id
+* ttl 指定过期时间,默认过期类型为AbsoluteTime. 如果过期类型设置LatestTime,格式为latest:保留条数(ex: latest:10, 保留最近10条)
+* segment_cnt 为表的segement 个数, 建议为8~1024
+* is_leader 指定是否为leader. 默认为leader
+* follower 指定follower
+
 ```
+创建一个leader表
 > create t1 1 0 144000 8
+创建一个leader表, 指定follwer为172.27.128.31:9991, 172.27.128.31:9992
+> create t1 1 0 144000 8 false 172.27.128.31:9991 172.27.128.31:9992
+创建一个follower表, 过期类型设为保留最近10条
+> create t1 1 0 latest:10 8 false
 ```
 
-### 创建多版本kv表
+put 插入数据  
+命令格式: put tid pid pk ts value  
+* tid 指定table的id
+* pid 指定table的分片id
+* pk 要插入的key
+* ts 指定插入时的timestamp.
+* value 对应的value
 
-创建命名格式
-create table_name tid pid latest:count segment_cnt
-* create 为创建命令
+get 获取指定key的数据  
+命令格式: get tid pid pk ts
+* tid 指定table的id
+* pid 指定table的分片id
+* pk 指定查询的key
+* ts 指定查询的timestamp. 如果ts设置为0, 返回最新的一条数据
+
+scan 获取指定key在一个时间区间里的数据  
+命令格式: scan tid pid pk starttime endtime
+* tid 指定table的id
+* pid 指定table的分片id
+* pk 指定查询的key
+* starttime 指定查询时的起始时间
+* endtime 指定查询区间的结束时间
+
+```
+> put 1 0 test1 1522390533000 value1
+Put ok
+> put 1 0 test1 1522390534000 value2
+Put ok
+> put 1 0 test2 1522390534000 value3
+Put ok
+> get 1 0 test1 1522390534000
+value :value2
+> scan 1 0 test1 1522390534000 1522390532000
+#   Time    Data
+1   1522390534000   value2
+2   1522390533000   value1
+```
+
+screate 创建多维表  
+命令格式: screate table_name tid pid ttl segment_cnt is_leader index1 index2 ...
 * table_name 为要创建表名称
 * tid 指定table 的id
 * pid 指定table 的分片id
-* latest:count 指定保留几条记录，例如latest:1 代表保留最新的一条记录
+* ttl 指定过期时间,默认过期类型为AbsoluteTime. 如果过期类型设置LatestTime,格式为latest:保留条数(ex: latest:10, 保留最近10条)
 * segment_cnt 为表的segement 个数，建议为8~1024
-例子
-```
-create t1 1 0 latest:2 8
-```
+* is_leader 指定是否为leader. 默认为leader
+* index 指定维度信息. 格式为: name:type(:index), 如card:string:index
 
-## tablet schema相关操作
+sput 多维put  
+命令格式: sput tid pid ts key1 key2 value
+* tid 指定table的id
+* pid 指定table的分片id
+* ts 指定插入时的timestamp
+* key1 指定插入时维度1的key
+* key2 指定插入时维度2的key
+* value 对应的value
 
-### 创建一个带schema的leader表保留最新两条记录配置
+sget 多维get  
+命令格式: sget tid pid key key_name ts
+* tid 指定table的id
+* pid 指定table的分片id
+* key 指定查询的key
+* idx_name 指定key的维度
+* ts 查询时的ts(如果为0返回最新的数据)
+
+sscan 多维scan  
+命令格式: sscan tid pid key key_name start_time end_time  
+* tid 指定table的id
+* pid 指定table的分片id
+* key 指定查询的key
+* idx_name 指定key的维度
+* start_time 指定查询的起始时间
+* end_time 指定查询时的结束时间
+
+showschema 查看指定多维表的schema  
+命令格式: showschema tid pid  
 
 ```
->screate tx 1 0 latest:2 8 true card:string:index merchant:string:index amt:double
-```
-
-### 创建一个带schema的follower表保留最新两条记录配置
-
-```
->screate tx 1 0 latest:2 8 false card:string:index merchant:string:index amt:double
-```
-
-### 相关操作示例
-
-```
-Welcome to rtidb with version 1.1.0
-#创建一个带schema 的leader表
+创建一个带schema的leader表
 >screate tx 1 0 0 8 true card:string:index merchant:string:index amt:double
 Create table ok
 >showschema 1 0
@@ -88,27 +164,84 @@ Put ok
 >sput 1 0 2 card0 merchant1 110.1
 Put ok
 >sscan 1 0 card0 card 3 0
-
-
   pk     ts  card   merchant   amt
 ---------------------------------------------------
   card0  2   card0  merchant1  110.09999999999999
   card0  1   card0  merchant0  1.1000000000000001
 >sscan 1 0 merchant0 merchant 2 0
-
   pk         ts  card   merchant   amt
 -------------------------------------------------------
   merchant0  1   card0  merchant0  1.1000000000000001
 >sscan 1 0 merchant1 merchant 2 0
-
   pk         ts  card   merchant   amt
 -------------------------------------------------------
   merchant1  2   card0  merchant1  110.09999999999999
 ```
 
-### cluster开启时从ns_client创建表
+loadtable 创建表并加载sdb和binlog的数据  
+命令格式: loadtable table_name tid pid ttl segment_cnt 
+* table_name 为要创建表名称
+* tid 指定table的id
+* pid 指定table的分片id
+* ttl 指定过期时间. 过期类型从table_meta文件中载入
+* segment_cnt 为表的segement 个数. 建议为8~1024
 
-首先准备如下格式的表元数据文件
+drop 删除表  
+命令格式: drop tid pid  
+
+gettablestatus 获取表的状态  
+命令格式: gettablestatus tid(optional) pid(optional)  
+如果没有指定tid和pid就返回所有表的信息, 如果指定了tid和pid就返回该分片的信息  
+```
+>gettablestatus
+  tid  pid  offset  mode          state         enable_expire  ttl        ttl_offset  memused
+-----------------------------------------------------------------------------------------------
+  1    0    2       kTableLeader  kTableNormal  false          0min       0s          913.000
+  10   0    3       kTableLeader  kTableNormal  false          144000min  0s          391.000
+  10   1    2       kTableLeader  kTableNormal  true           144000min  0s          337.000
+  10   2    0       kTableLeader  kTableNormal  true           144000min  0s          0.000
+  10   3    0       kTableLeader  kTableNormal  true           144000min  0s          0.000
+  10   4    0       kTableLeader  kTableNormal  true           144000min  0s          0.000
+>gettablestatus 1 0
+  tid  pid  offset  mode          state         enable_expire  ttl   ttl_offset  memused
+------------------------------------------------------------------------------------------
+  1    0    2       kTableLeader  kTableNormal  false          0min  0s          913.000
+```
+
+addreplica 添加副本(在leader所在的tablet上运行)  
+命令格式: addreplica tid pid endpoint
+* tid 指定table的id
+* pid 指定table的分片id
+* endpoint 指定要添加的endpoint  
+delreplica 删除副本  
+命令格式: delreplica tid pid endpoint  
+
+makesnapshot 生成snapshot  
+命令格式: makesnapshot tid pid  
+pausesnapshot 暂停makesnapshot功能  
+命令格式: pausesnapshot tid pid  
+recoversnapshot 恢复makesnapshot功能  
+命令格式: recoversnapshot tid pid  
+sendsnapshot 给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件. 注: 发送前必须pausesnapshot, 发送完再运行recoversnapshot  
+命令格式: sendsnapshot tid pid endpoint  
+
+changerole 切换leader或者follower  
+命令格式: changerole tid pid role  
+* tid 指定table的id
+* pid 指定table的分片id
+* role 只能是leader或者follower
+setexpire 设置是否要开启过期删除  
+命令格式: set_expire tid pid is_expire  
+* tid 指定table的id
+* pid 指定table的分片id
+* is_expire 指定是否要开启过期删除. 如果开启的话设置为true, 否则设置为false
+
+
+## nameserver命令用法
+
+create 创建表  
+命令格式: create table_meta_path  
+首先准备如下格式的表元数据文件  
 ```
 name : "test1"
 ttl: 144000
@@ -165,46 +298,60 @@ column_desc {
   add_ts_idx : false
 }
 ```
-column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构
-
-然后再nameserver的client上运行如下命令
-
+column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构  
 ```
-1 启动client
-./rtidb --endpoint=ip:port --role=ns_client
-如 ./rtidb --endpoint=127.0.0.1:7561 --role=ns_client
-
-2 创建表
->create table_meta_path
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令
 >create ./table_meta.txt
 ```
+drop 删除表  
+命令格式: drop table_name  
+showtable 列出表的分布和状态信息  
+命令格式: showtable table_name(optional)  
+注: table_name可选的, 如果不指定name就返回所有表的信息  
+showshema 获取多维表的schema信息  
+命令格式: showschema table_name  
 
-### cluster开启时从ns_client新增分片副本
+makesnapshot 做snapshot  
+命令格式: makesnapshot table_name pid  
+addreplica 添加副本  
+命令格式: addreplica name pid endpoint  
+delreplica 删除副本  
+命令格式: delreplica name pid endpoint  
 
+offlineendpoint  auto_failover关闭时指定endpoint做failover  
+命令格式: offlineendpoint endpoint  
+recoverendpoint  auto_recover_table关闭时指定endpoint加入到集群中  
+命令格式: recoverendpoint endpoint  
+changeleader 对某个表的分片执行重新选主操作  
+命令格式: changeleader table_name pid  
+recovertable 恢复某个节点上的分片  
+命令格式: recovertable table_name pid endpoint  
+
+migrate 分片迁移  
+命令格式: migrate src_endpoint table_name partition des_endpoint  
 ```
-1 makesnapshot 如果主节点下面已经有snapshot文件可以跳过这步
-cmd makesnapshot table_name pid
-> makesnapshot test1 1
-
-2 新增分片
-cmd addreplica 表名 分片id 新副本所在节点的ip:port
-新增副本时主节点下面必须有snapshot, 如果没有的话先运行makesnapshot
->addreplica table_name pid endpoint
-
+将172.27.2.52:9991节点中table1的1到10分片迁移到172.27.2.52:9992里
+>migrate 172.27.2.52:9991 table1 1-10 172.27.2.52:9992
 ```
 
-### cluster开启时从ns_client删除表
+gettablepartition 获取nameserver某个table partition的信息并下载到当前目录下  
+命令格式: gettablepartition table_name pid  
+settablepartition 用指定的文件覆盖nameserver中某个table partition的信息  
+命令格式: settablepartition partition_file_path  
 
+showtablet 获取所有tablet的健康状态信息  
+命令格式: showtablet  
+showopstatus 获取所有操作信息  
+命令格式: showopstatus
 ```
-> drop tablename
-```
-
-### cluster开启时从ns_client获取表的信息
-
-```
-列出所有表的信息
-> showtable
-列出test1表的信息
-> showtable test1
+>showtablet
+  endpoint        state           age
+------------------------------------------
+  127.0.0.1:9520  kTabletHealthy  3.000h
+  127.0.0.1:9521  kTabletHealthy  3.000h
+  127.0.0.1:9522  kTabletHealthy  3.000h
+>showopstatus
+  op_id  op_type              status  start_time      execute_time  end_time        cur_task
+----------------------------------------------------------------------------------------------
+  2      kUpdateTableAliveOP  kDone   20180330175434  0s            20180330175434  -
 ```
