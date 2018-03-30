@@ -114,8 +114,8 @@ public class SPutTest {
         {false, ColumnType.kDouble, -1e-1d, true},
         {false, ColumnType.kDouble, -1e-10d, true},
         {false, ColumnType.kDouble, null, true},
-        {false, ColumnType.kUInt32, 1, true},
-        {false, ColumnType.kUInt32, 0, true},
+        {false, ColumnType.kUInt32, 1, false},
+        {false, ColumnType.kUInt32, 0, false},
         {false, ColumnType.kUInt32, -1, false},
         {false, ColumnType.kUInt32, null, true},
     }; }
