@@ -1,3 +1,61 @@
+# Java SDK 文档
+
+## sdk maven版本
+
+sdk目前发布到公司的仓库
+
+```
+    <dependency>
+		<groupId>com._4paradigm</groupId>
+		<artifactId>rtidb-client</artifactId>
+		<version>1.3.0-SNAPSHOT</version>
+    </dependency>
+```
+
+## 单机版本sdk使用说明
+
+```
+package example;
+
+import com._4paradigm.rtidb.client.TableSyncClient;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
+import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
+
+import io.brpc.client.EndPoint;
+
+public class SingleNodeSyncPutToTable {
+
+    
+    public static void main(String[] args) {
+        TableSyncClient tableClient = null;        
+        EndPoint endpoint = new EndPoint("172.27.128.32:9527");
+        RTIDBClientConfig config = new RTIDBClientConfig();
+        RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
+        try {
+            snc.init();
+            tableClient = new TableSyncClientImpl(snc);
+            boolean ok = tableClient.put(5, 0, 9527, new Object[] {"card0", "merchant0", 9.1d});
+            if (ok) {
+                System.out.println("put ok");
+            }else {
+                System.out.println("put failed");
+            }
+            //释放资源
+            snc.close();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+    }
+}
+
+```
+
+## 集群模式sdk使用
+
+```
 package example;
 
 import java.io.IOException;
@@ -5,7 +63,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
@@ -14,7 +71,7 @@ import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 
-public class ClusterSyncScanTable {
+public class ClusterSyncPutToTable {
 
     private static String zookeeper = "172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181";
     private static String rootPath = "/trybox";
@@ -43,14 +100,17 @@ public class ClusterSyncScanTable {
             cluster.init();
             //创建 同步调用接口
             TableSyncClient tableSyncClient = new TableSyncClientImpl(cluster);
-            KvIterator it = tableSyncClient.scan("trans_log", "card0", "card", 1000, 0);
-            while (it.valid()) {
-                Object[] row = it.getDecodedValue();
-                System.out.println("time:" +it.getKey()+",card:" + row[0]+ ",mcc:"+row[1]+",amt:"+row[2]);
-                it.next();
+            
+            Map<String, Object> row = new HashMap<String, Object>();
+            row.put("card", "card0");
+            row.put("mcc", "mcc0");
+            row.put("amt", 1.1d);
+            // 往table trans_log写一条数据
+            boolean ok = tableSyncClient.put("trans_log", 1000, row);
+            if (ok) {
+                System.out.println("write ok");
             }
             cluster.close();
-            
         } catch (TabletException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -62,4 +122,7 @@ public class ClusterSyncScanTable {
             e.printStackTrace();
         }
     }
+
 }
+
+```

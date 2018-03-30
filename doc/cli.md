@@ -61,13 +61,13 @@ create t1 1 0 latest:2 8
 ### 创建一个带schema的leader表保留最新两条记录配置
 
 ```
->screate tx 1 0 latest:2 true card:string:index merchant:string:index amt:double
+>screate tx 1 0 latest:2 8 true card:string:index merchant:string:index amt:double
 ```
 
 ### 创建一个带schema的follower表保留最新两条记录配置
 
 ```
->screate tx 1 0 latest:2 false card:string:index merchant:string:index amt:double
+>screate tx 1 0 latest:2 8 false card:string:index merchant:string:index amt:double
 ```
 
 ### 相关操作示例
