@@ -12,7 +12,7 @@ import libs.ddt as ddt
 @ddt.ddt
 class TestAutoRecoverTable(TestCaseBase):
 
-    def confset_createtable_put(self, data_count):
+    def confset_createtable_put(self, data_count, data_thread=2):
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
         self.tname = 'tname{}'.format(time.time())
@@ -31,7 +31,7 @@ class TestAutoRecoverTable(TestCaseBase):
         table_info = self.showtable(self.ns_leader)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
-        self.put_large_datas(data_count, 7)
+        self.put_large_datas(data_count, data_thread)
 
     def put_data(self, endpoint):
         rs = self.put(endpoint, self.tid, self.pid, "testkey0", self.now() + 1000, "testvalue0")
@@ -141,7 +141,7 @@ class TestAutoRecoverTable(TestCaseBase):
         self.start_client(self.slave1)
         self.start_client(self.slave2)
 
-        self.confset_createtable_put(50)
+        self.confset_createtable_put(50, 7)
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
