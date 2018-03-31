@@ -7,6 +7,7 @@ from libs.test_loader import load
 import libs.ddt as ddt
 import libs.utils as utils
 from libs.logger import infoLogger
+import collections
 
 
 @ddt.ddt
@@ -14,7 +15,6 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
 
-    @multi_dimension(False)
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
          'Create table ok'),
@@ -59,10 +59,20 @@ class TestCreateTableByNsClient(TestCaseBase):
             name, ttl_type, ttl, seg_cnt,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"double"', 'false'),
+            ('column_desc', '"k3"', '"int32"', 'true'),
+        )
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn(exp_msg, rs)
+
+        d = {'k1': ('string:index', 'testvalue0'),
+             'k2': ('double:index', 1.111),
+             'k3': ('int32:index', -20)}
+        self.multidimension_vk = collections.OrderedDict(sorted(d.items(), key = lambda t:t[0]))
+        self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
         if exp_msg == 'Create table ok':
             table_info = self.showtable(self.ns_leader)
