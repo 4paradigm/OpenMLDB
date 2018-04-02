@@ -1414,42 +1414,35 @@ void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
 }
 
 void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 6) {
-        std::cout << "Bad create format, input like create <name> <tid> <pid> <ttl> <seg_cnt>" << std::endl;
+    if (parts.size() < 8) {
+        std::cout << "Bad create format, input like screate <name> <tid> <pid> <ttl> <seg_cnt> <is_leader> <schema>" << std::endl;
         return;
     }
     try {
         int64_t ttl = 0;
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
-        if (parts.size() > 4) {
-            std::vector<std::string> vec;
-            ::rtidb::base::SplitString(parts[4], ":", &vec);
-            if (vec.size() > 1 && vec[0] == "latest") {
-                type = ::rtidb::api::TTLType::kLatestTime;
-            }
-            if (vec.size() > 1 && vec[0] != "latest" ) {
-                std::cout << "invalid ttl type " << std::endl;
-                return;
-            }
-            ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
+        std::vector<std::string> vec;
+        ::rtidb::base::SplitString(parts[4], ":", &vec);
+        if (vec.size() > 1 && vec[0] == "latest") {
+            type = ::rtidb::api::TTLType::kLatestTime;
         }
+        if (vec.size() > 1 && vec[0] != "latest" ) {
+            std::cout << "invalid ttl type " << std::endl;
+            return;
+        }
+        ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         if (ttl < 0) {
             std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
             return;
         }
-        uint32_t seg_cnt = 16;
-        if (parts.size() > 5) {
-            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
-        }
+        uint32_t seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
         bool leader = true;
-        if (parts.size() > 6) {
-            if (parts[6].compare("false") != 0 && parts[6].compare("true") != 0) {
-                std::cout << "create failed! is_leader parameter should be true or false" << std::endl;
-                return;
-            }
-            if (parts[6].compare("false") == 0) {
-                leader = false;
-            }
+        if (parts[6].compare("false") != 0 && parts[6].compare("true") != 0) {
+            std::cout << "create failed! is_leader parameter should be true or false" << std::endl;
+            return;
+        }
+        if (parts[6].compare("false") == 0) {
+            leader = false;
         }
         std::vector<::rtidb::base::ColumnDesc> columns;
         // check duplicate column
