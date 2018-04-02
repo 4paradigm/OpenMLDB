@@ -1442,17 +1442,25 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
             seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
         }
         bool leader = true;
-        if (parts.size() > 6 && parts[6].compare("false") == 0) {
-            leader = false;
+        if (parts.size() > 6) {
+            if (parts[6].compare("false") != 0 && parts[6].compare("true") != 0) {
+                std::cout << "create failed! is_leader parameter should be true or false" << std::endl;
+                return;
+            }
+            if (parts[6].compare("false") == 0) {
+                leader = false;
+            }
         }
         std::vector<::rtidb::base::ColumnDesc> columns;
         // check duplicate column
         std::set<std::string> used_column_names;
+        bool has_index = false;
         for (uint32_t i = 7; i < parts.size(); i++) {
             std::vector<std::string> kv;
             ::rtidb::base::SplitString(parts[i], ":", &kv);
             if (kv.size() < 2) {
-                continue;
+                std::cout << "create failed! schema format is illegal" << std::endl;
+                return;
             }
             if (used_column_names.find(kv[0]) != used_column_names.end()) {
                 std::cout << "Duplicated column " << kv[0] << std::endl;
@@ -1462,30 +1470,36 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
             bool add_ts_idx = false;
             if (kv.size() > 2 && kv[2] == "index") {
                 add_ts_idx = true;
+                has_index = true;
             }
             ::rtidb::base::ColType type;
             if (kv[1] == "int32") {
                 type = ::rtidb::base::ColType::kInt32;
-            }else if (kv[1] == "int64") {
+            } else if (kv[1] == "int64") {
                 type = ::rtidb::base::ColType::kInt64;
-            }else if (kv[1] == "uint32") {
+            } else if (kv[1] == "uint32") {
                 type = ::rtidb::base::ColType::kUInt32;
-            }else if (kv[1] == "uint64") {
+            } else if (kv[1] == "uint64") {
                 type = ::rtidb::base::ColType::kUInt64;
-            }else if (kv[1] == "float") {
+            } else if (kv[1] == "float") {
                 type = ::rtidb::base::ColType::kFloat;
-            }else if (kv[1] == "double") {
+            } else if (kv[1] == "double") {
                 type = ::rtidb::base::ColType::kDouble;
-            }else if (kv[1] == "string") {
+            } else if (kv[1] == "string") {
                 type = ::rtidb::base::ColType::kString;
-            }else {
-                continue;
+            } else {
+                std::cout << "create failed! undefined type " << kv[1] << std::endl;
+                return;
             }
             ::rtidb::base::ColumnDesc desc;
             desc.add_ts_idx = add_ts_idx;
             desc.type = type;
             desc.name = kv[0];
             columns.push_back(desc);
+        }
+        if (!has_index) {
+            std::cout << "create failed! schema has no index" << std::endl;
+            return;
         }
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
