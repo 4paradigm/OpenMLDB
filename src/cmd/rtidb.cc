@@ -1509,10 +1509,15 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
         return;
     }
     std::string schema;
-    bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
-                                    boost::lexical_cast<uint32_t>(parts[2]), schema);
-    if(!ok || schema.empty()) {
-        std::cout << "No schema for table" << std::endl;
+    try {
+        bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
+                                        boost::lexical_cast<uint32_t>(parts[2]), schema);
+        if(!ok || schema.empty()) {
+            std::cout << "No schema for table" << std::endl;
+            return;
+        }
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args" << std::endl;
         return;
     }
     std::vector<::rtidb::base::ColumnDesc> raw;
