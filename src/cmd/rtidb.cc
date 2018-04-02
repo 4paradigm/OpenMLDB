@@ -1712,17 +1712,25 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
             bool codec_ok = false;
             if (raw[i - 4].type == ::rtidb::base::ColType::kInt32) {
                 codec_ok = codec.Append(boost::lexical_cast<int32_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kInt64) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kInt64) {
                 codec_ok = codec.Append(boost::lexical_cast<int64_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt32) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt32) {
+                if (boost::algorithm::starts_with(parts[i], "-")) {
+                    std::cout << "put error! " << parts[i] << " is not uint32" << std::endl;
+                    return;
+                }
                 codec_ok = codec.Append(boost::lexical_cast<uint32_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt64) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt64) {
+                if (boost::algorithm::starts_with(parts[i], "-")) {
+                    std::cout << "put error! " << parts[i] << " is not uint64" << std::endl;
+                    return;
+                }
                 codec_ok = codec.Append(boost::lexical_cast<uint64_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kFloat) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kFloat) {
                 codec_ok = codec.Append(boost::lexical_cast<float>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kDouble) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kDouble) {
                 codec_ok = codec.Append(boost::lexical_cast<double>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kString) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kString) {
                 codec_ok = codec.Append(parts[i]);
             }
             if (!codec_ok) {
