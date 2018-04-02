@@ -10,7 +10,7 @@ sh ${testpath}/setup.sh ${rtidbver}
 source ${testpath}/env.conf
 
 # start all servers
-python ${testpath}/setup.py
+python ${testpath}/setup.py -C=true
 
 # run integration test
 if [ $1 = 1 ]; then

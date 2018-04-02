@@ -12,16 +12,16 @@ import libs.ddt as ddt
 @ddt.ddt
 class TestAutoRecoverTable(TestCaseBase):
 
-    def confset_createtable_put(self, data_count):
+    def confset_createtable_put(self, data_count, data_thread=2):
         self.confset(self.ns_leader, 'auto_failover', 'true')
         self.confset(self.ns_leader, 'auto_recover_table', 'true')
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
-            ('table_partition', '"{}"'.format(self.leader), '"0-30"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-30"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"2-30"', 'false'),
+            ('table_partition', '"{}"'.format(self.leader), '"0-9"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-9"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"2-9"', 'false'),
             ('column_desc', '"k1"', '"string"', 'true'),
             ('column_desc', '"k2"', '"string"', 'false'),
             ('column_desc', '"k3"', '"string"', 'false'))
@@ -31,7 +31,7 @@ class TestAutoRecoverTable(TestCaseBase):
         table_info = self.showtable(self.ns_leader)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
-        self.put_large_datas(data_count, 7)
+        self.put_large_datas(data_count, data_thread)
 
     def put_data(self, endpoint):
         rs = self.put(endpoint, self.tid, self.pid, "testkey0", self.now() + 1000, "testvalue0")
@@ -111,9 +111,9 @@ class TestAutoRecoverTable(TestCaseBase):
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-1] for k, v in rs.items()]
         print self.showopstatus(self.ns_leader)
-        self.assertEqual(role_x.count('leader'), 31)
-        self.assertEqual(role_x.count('follower'), 60)
-        self.assertEqual(is_alive_x.count('yes'), 91)
+        self.assertEqual(role_x.count('leader'), 10)
+        self.assertEqual(role_x.count('follower'), 18)
+        self.assertEqual(is_alive_x.count('yes'), 28)
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
@@ -141,7 +141,7 @@ class TestAutoRecoverTable(TestCaseBase):
         self.start_client(self.slave1)
         self.start_client(self.slave2)
 
-        self.confset_createtable_put(50)
+        self.confset_createtable_put(50, 7)
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
@@ -159,9 +159,9 @@ class TestAutoRecoverTable(TestCaseBase):
         self.start_client(self.slave1)
         self.start_client(self.slave2)
 
-        self.assertEqual(role_x.count('leader'), 4)
-        self.assertEqual(role_x.count('follower'), 6)
-        self.assertEqual(is_alive_x.count('yes'), 10)
+        self.assertEqual(role_x.count('leader'), 10)
+        self.assertEqual(role_x.count('follower'), 18)
+        self.assertEqual(is_alive_x.count('yes'), 28)
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
