@@ -23,9 +23,9 @@ class TestAddReplica(TestCaseBase):
                  'k1',
                  self.now() - 1,
                  'v1')
-        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs2)
-        rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false', self.slave2)
+        rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs3)
         rs4 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertIn('AddReplica ok', rs4)
@@ -62,9 +62,9 @@ class TestAddReplica(TestCaseBase):
                  '',
                  self.now() - 1,
                  'v1','1.1','k1')
-        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs2)
-        rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false', self.slave2)
+        rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs3)
         rs4 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertIn('AddReplica ok', rs4)
@@ -87,6 +87,7 @@ class TestAddReplica(TestCaseBase):
         self.assertIn('v2', self.scan(self.slave2, self.tid, self.pid, {'card':'k2'}, self.now(), 1))
 
 
+    @multi_dimension(False)
     def test_addreplica_change_to_normal(self):
         """
         主节点addreplica之后，状态变回normal
@@ -94,7 +95,7 @@ class TestAddReplica(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertIn('Create table ok', rs1)
-        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs2)
         rs3 = self.pausesnapshot(self.slave1, self.tid, self.pid)
         self.assertIn('PauseSnapshot ok', rs3)
@@ -157,8 +158,8 @@ class TestAddReplica(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertIn('Create table ok', rs1)
-        self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
-        self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false', self.slave2)
+        self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false')
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertIn('AddReplica ok', rs2)
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave2)
@@ -211,7 +212,7 @@ class TestAddReplica(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertIn('Create table ok', rs1)
         self.multidimension_vk = slave_schema
-        self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertIn('AddReplica ok', rs2)
 
