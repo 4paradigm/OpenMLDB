@@ -87,7 +87,6 @@ class TestAddReplica(TestCaseBase):
         self.assertIn('v2', self.scan(self.slave2, self.tid, self.pid, {'card':'k2'}, self.now(), 1))
 
 
-    @multi_dimension(False)
     def test_addreplica_change_to_normal(self):
         """
         主节点addreplica之后，状态变回normal
