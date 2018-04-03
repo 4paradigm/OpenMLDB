@@ -125,6 +125,11 @@ class TestSendSnapshot(TestCaseBase):
                              '|grep "connect stream failed"'.format(self.leaderpath, self.tid, self.pid))
         self.assertTrue(rs)
 
+    def assert_init_fail_by_log(self):
+        rs = utils.exe_shell('cat {}/info.log |grep "tid\[{}\] pid\[{}\]"'
+                             '|grep "init channel failed."'.format(self.leaderpath, self.tid, self.pid))
+        self.assertTrue(rs)
+
 
     @staticmethod
     def get_steps_dict():
@@ -132,14 +137,14 @@ class TestSendSnapshot(TestCaseBase):
             -1: 'time.sleep(5)',
             0: 'self.create(self.slave1, self.tname, self.tid, self.pid, 144000, 2, "false")',
             1: 'self.create(self.leader, self.tname, self.tid, self.pid, 144000, 2, "true")',
-            2: 'self.put_data(self.leader, self.tid, self.pid, 50)',
+            2: 'self.put_data(self.leader, self.tid, self.pid, 100)',
             3: 'self.get_table_meta_tname()',
             4: 'self.get_sdb_name(self.tid, self.pid)',
             5: 'self.changerole(self.leader, self.tid, self.pid, "follower")',
             6: '',
             7: '',
             8: '',
-            9: '',
+            9: 'self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, self.tid, self.pid, "111.222.333.444:80"))',
             10: 'self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, self.tid, self.pid, "0.0.0.0:80"))',
             11: 'self.assertIn("Fail to SendSnapshot", self.sendsnapshot(self.leader, self.tid, self.pid, self.slave1))',
             12: 'self.assertIn("MakeSnapshot ok", self.makesnapshot(self.leader, self.tid, self.pid))',
@@ -158,6 +163,7 @@ class TestSendSnapshot(TestCaseBase):
             24: 'self.assertEqual(len(filter(lambda x:"SendSnapshot ok" in x,'
                 'self.sendsnapshot_concurrently(self.leader, self.tid, self.pid,'
                 'self.slave1, self.slave1, self.slave1, self.slave1, self.slave1))), 1)',
+            25: 'self.assert_init_fail_by_log()',
             100: 'None'
         }
 
@@ -181,6 +187,7 @@ class TestSendSnapshot(TestCaseBase):
         (1, 2, 5, 12, 13, 11),  # 目标从表不能执行sendsnapshot命令
         (1, 0, 2, 12, 13, 0, 15, 21),  # 目标从表存在时，主表sendsnapshot失败
         (1, 2, 12, 13, 15, 10, 21),  # 主表sendsnapshot给不存在的目标endpoint，失败
+        (1, 2, 12, 13, 15, 9, 25),  # 主表sendsnapshot给不存在的目标endpoint，失败
         (1, 2, 12, 13, 23, -1, 3, 4, 17, 22),  # 并发sendsnapshot给两个从节点，成功
         (1, 2, 12, 13, 24, -1, 3, 4, 17),  # 同一个snapshot，并发sendsnapshot给同一个从节点，只有1个成功
     )
