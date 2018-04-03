@@ -154,8 +154,8 @@ class TestSendSnapshot(TestCaseBase):
             16: 'self.assertIn("LoadTable ok", self.loadtable(self.slave1, self.tname, self.tid, self.pid))',
             17: 'self.check_manifest(self.slave1path, self.tid, self.pid, "100", self.sdb_name, "50")',
             18: 'self.check_manifest(self.slave1path, self.tid, self.pid, "200", self.sdb_name, "100")',
-            19: 'self.assertEqual("50", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
-            20: 'self.assertEqual("100", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
+            19: 'self.assertEqual("100", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
+            20: 'self.assertEqual("200", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
             21: 'self.assert_send_fail_by_log()',
             22: 'self.check_manifest(self.slave2path, self.tid, self.pid, "100", self.sdb_name, "100")',
             23: 'self.assertEqual(len(filter(lambda x:"SendSnapshot ok" in x,'
