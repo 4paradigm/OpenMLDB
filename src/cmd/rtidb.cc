@@ -34,6 +34,7 @@
 #include "tprinter.h"
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <thread>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -949,6 +950,59 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "put argument error!" << std::endl;
     }
+}
+
+void BenPut(uint32_t tid, const std::set<uint32_t>* pid_set, ::rtidb::client::TabletClient* client, uint32_t num) {
+    uint64_t base = 100000000;
+    std::string value(128, 'a');
+    while (1) {
+        for (uint32_t i = 0; i < num; i++) {
+            uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
+            std::string key = std::to_string(base + i);
+            for (auto pid : *pid_set) {
+                client->Put(tid, pid, key, ts, value);
+            }
+        }
+    }
+}
+
+void HandleNSClientBenPut(std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::string name = parts[1];
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(name, tables, msg);
+    if (!ret || tables.empty()) {
+        std::cout << "failed to showtable. error msg: " << msg << std::endl;
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    std::map<std::string, std::set<uint32_t>> tablet_partition;
+    for (int idx = 0; idx < tables[0].table_partition_size(); idx++) {
+        for (int inner_idx = 0; inner_idx < tables[0].table_partition(idx).partition_meta_size(); inner_idx++) {
+            ::rtidb::nameserver::PartitionMeta partition_meta = 
+                        tables[0].table_partition(idx).partition_meta(inner_idx);
+            if (partition_meta.is_alive() && partition_meta.is_leader()) {
+                if (tablet_partition.find(partition_meta.endpoint()) == tablet_partition.end()) {
+                    tablet_partition.insert(std::make_pair(partition_meta.endpoint(), std::set<uint32_t>()));
+                }
+                tablet_partition[partition_meta.endpoint()].insert(tables[0].table_partition(idx).pid());
+            }
+        }
+    }
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_client_map;
+    for (const auto& kv : tablet_partition) {
+        tablet_client_map.insert(std::make_pair(kv.first, std::make_shared<::rtidb::client::TabletClient>(kv.first)));
+        if (tablet_client_map[kv.first]->Init() != 0) {
+            std::cout << "failed to init tablet client. endpoint is " << kv.first << std::endl;
+            return;
+        }
+    }
+    std::vector<std::thread> threads;
+    uint32_t num = ::boost::lexical_cast<uint32_t>(parts[2]);
+    for (const auto& kv : tablet_client_map) {
+        threads.push_back(std::thread(BenPut, tid, &tablet_partition[kv.first], kv.second.get(), num));
+    }
+    for (auto& th : threads) th.join();
 }
 
 // the input format like create name tid pid ttl leader endpoints 
@@ -1958,6 +2012,8 @@ void StartNsClient() {
             HandleNSClientGetTablePartition(parts, &client);
         } else if (parts[0] == "settablepartition") {
             HandleNSClientSetTablePartition(parts, &client);
+        } else if (parts[0] == "benput") {
+            HandleNSClientBenPut(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

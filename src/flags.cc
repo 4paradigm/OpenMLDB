@@ -61,12 +61,10 @@ DEFINE_int32(stream_close_wait_time_ms, 1000, "the wait time before close stream
 DEFINE_int32(stream_block_size, 4 * 1024 * 1024, "config the write/read block size in streaming");
 DEFINE_int32(stream_bandwidth_limit, 1 * 1204 * 1024, "the limit bandwidth. Byte/Second");
 
-
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
 
-// metric configuration
-
-DEFINE_uint32(metric_max_record_cnt, 2000, "limit the max record cnt to read");
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
+
+DEFINE_bool(enable_show_tp, false, "enable show tp");
