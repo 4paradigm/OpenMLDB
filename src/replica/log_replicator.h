@@ -72,9 +72,9 @@ public:
     void DeleteBinlog();
 
     // add replication
-    bool AddReplicateNode(const std::vector<std::string>& endpoint_vec);
+    int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
 
-    bool DelReplicateNode(const std::string& endpoint);
+    int DelReplicateNode(const std::string& endpoint);
 
     void MatchLogOffset();
 

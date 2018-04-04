@@ -651,20 +651,25 @@ void TabletImpl::AddReplica(RpcController* controller,
         }
         std::vector<std::string> vec;
         vec.push_back(request->endpoint());
-        bool ok = replicator->AddReplicateNode(vec);
-        if (ok) {
-            if (task_ptr) {
-	            std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            }
+        int ret = replicator->AddReplicateNode(vec);
+        if (ret == 0) {
             response->set_code(0);
             response->set_msg("ok");
-            return;
-        } else {
+        } else if (ret < 0) {
             response->set_code(-3);
             PDLOG(WARNING, "fail to add endpoint for table %u pid %u", request->tid(), request->pid());
             response->set_msg("fail to add endpoint");
+            break;
+        } else {
+            response->set_code(-4);
+            response->set_msg("replica endpoint is exist");
+            PDLOG(WARNING, "fail to add endpoint for table %u pid %u", request->tid(), request->pid());
         }
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        }
+        return;
     } while(0);
     if (task_ptr) {
 	    std::lock_guard<std::mutex> lock(mu_);
@@ -701,20 +706,25 @@ void TabletImpl::DelReplica(RpcController* controller,
             PDLOG(WARNING,"no replicator for table %u, pid %u", request->tid(), request->pid());
             break;
         }
-        bool ok = replicator->DelReplicateNode(request->endpoint());
-        if (ok) {
+        int ret = replicator->DelReplicateNode(request->endpoint());
+        if (ret == 0) {
             response->set_code(0);
             response->set_msg("ok");
-            if (task_ptr) {
-	            std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            }
-            return;
-        } else {
+        } else if (ret < 0) {
             response->set_code(-3);
+            PDLOG(WARNING, "replicator role is not leader. table %u pid %u", request->tid(), request->pid());
+            response->set_msg("replicator role is not leader");
+            break;
+        } else {
+            response->set_code(-4);
             PDLOG(WARNING, "fail to del endpoint for table %u pid %u", request->tid(), request->pid());
             response->set_msg("fail to del endpoint");
-        }  
+        }
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        }
+        return;
     } while (0);
     if (task_ptr) {
 	    std::lock_guard<std::mutex> lock(mu_);
@@ -1317,9 +1327,9 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kPauseSnapshot, task_ptr) < 0) {
-			response->set_code(-1);
-			response->set_msg("add task failed");
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kPauseSnapshot, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
             return;
         }
     }    
@@ -1332,16 +1342,20 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
             response->set_msg("table not exist");
             break;
         }
-		if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-			PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
-					table->GetTableStat(), request->tid(), request->pid());
-			response->set_code(-1);
-			response->set_msg("table status is not kNormal");
-			break;
-		}
-        table->SetTableStat(::rtidb::storage::kSnapshotPaused);
-        PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-                   table->GetTableStat(), request->tid(), request->pid());
+        if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
+            PDLOG(INFO, "table status is kSnapshotPaused, need not pause. tid[%u] pid[%u]", 
+                        request->tid(), request->pid());
+        } else if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
+                            table->GetTableStat(), request->tid(), request->pid());
+            response->set_code(-1);
+            response->set_msg("table status is not kNormal");
+            break;
+        } else {
+            table->SetTableStat(::rtidb::storage::kSnapshotPaused);
+            PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+                       table->GetTableStat(), request->tid(), request->pid());
+        }           
         if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }
@@ -1350,8 +1364,8 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         return;
     } while(0);
     if (task_ptr) {
-    	task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-	}
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+    }
 }
 
 void TabletImpl::RecoverSnapshot(RpcController* controller,
@@ -1377,20 +1391,25 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
-            if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
+            if (table->GetTableStat() == rtidb::storage::kNormal) {
+                PDLOG(INFO, "table status is already kNormal, need not recover. tid[%u] pid[%u]", 
+                            request->tid(), request->pid());
+
+            } else if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
                 PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
                         table->GetTableStat(), request->tid(), request->pid());
                 response->set_code(-1);
                 response->set_msg("table status is not kSnapshotPaused");
                 break;
+            } else {
+                table->SetTableStat(::rtidb::storage::kNormal);
+                PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+                           table->GetTableStat(), request->tid(), request->pid());
             }
-            table->SetTableStat(::rtidb::storage::kNormal);
             if (task_ptr) {       
 			    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
             }
         }
-        PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-                   table->GetTableStat(), request->tid(), request->pid());
         response->set_code(0);
         response->set_msg("ok");
         return;
