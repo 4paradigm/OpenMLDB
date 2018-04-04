@@ -10,7 +10,7 @@ class TestRecoverSnapshot(TestCaseBase):
         暂停snapshot后可以恢复snapshot
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, '')
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8)
         self.assertIn('Create table ok', rs1)
         rs2 = self.pausesnapshot(self.leader, self.tid, self.pid)
         self.assertIn('PauseSnapshot ok', rs2)
