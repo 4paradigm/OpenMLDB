@@ -83,7 +83,7 @@ class TestPut(TestCaseBase):
         slave不允许put
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false', self.leader)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs1)
         rs2 = self.put(self.leader,
                        self.tid,
@@ -192,11 +192,9 @@ class TestPut(TestCaseBase):
     @ddt.data(
         ({'card': ('string:index', 'str1'), 'card2': ('int32:index', 3), 'amt': ('double', 1.1)}, 'Put ok'),
         ({'card': ('string:index', 'card0')}, 'Put ok'),
-        ({'card': ('string', 'card0')}, 'Put ok'),
         ({'card': ('string:index', 'str1'), 'card2': ('int32:index', 3), 'amt': ('double', '')},
          'Input value mismatch schema'),
         ({'card': ('string:index', 'str1'), 'card2': ('int32', 3), 'amt': ('double', 1.1)}, 'Put ok'),
-        ({'card': ('string', 'str1'), 'card2': ('int32', 3), 'amt': ('double', 1.1)}, 'Put ok'),
     )
     @ddt.unpack
     def test_sput_index(self, kv, rsp_msg):
