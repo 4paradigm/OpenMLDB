@@ -1712,6 +1712,13 @@ void TabletImpl::GetTermPair(RpcController* controller,
             response->set_offset(0);
 			return;
 		}
+        std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
+        if (!::rtidb::base::IsExists(snapshot_file)) {
+            PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
+            response->set_term(0);
+            response->set_offset(0);
+            return;
+        }
         response->set_term(manifest.term());
         response->set_offset(manifest.offset());
 		return;
