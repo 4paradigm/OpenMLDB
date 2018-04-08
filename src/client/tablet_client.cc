@@ -617,7 +617,6 @@ bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
 
 void TabletClient::ShowTp() {
     if (!FLAGS_enable_show_tp) {
-        std::cout << "show_tp is disabled" << std::endl;
         return;
     }
     std::sort(percentile_.begin(), percentile_.end());
