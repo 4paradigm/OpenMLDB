@@ -47,7 +47,6 @@ DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(scan_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DECLARE_bool(enable_show_tp);
 DEFINE_string(role, "tablet | nameserver | client | ns_client", "Set the rtidb role for start");
 DEFINE_string(cmd, "", "Set the command");
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -940,7 +939,8 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
         }
         std::string value(128, 'a');
         uint64_t base = 100000000;
-        std::default_random_engine engine(time(nullptr));
+        std::random_device rd;
+        std::default_random_engine engine(rd());
         std::uniform_int_distribution<> dis(1, key_num);
         while(true) {
             for (uint32_t i = 0; i < times; i++) {
@@ -948,9 +948,7 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
                 uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
                 client->Put(tid, pid, key, ts, value);
             }
-            if (FLAGS_enable_show_tp) {
-                client->ShowTp();
-            }
+            client->ShowTp();
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "put argument error!" << std::endl;
