@@ -1132,11 +1132,6 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             has_error = false;
 			break;
 		}
-		// send manifest file
-		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
-			PDLOG(WARNING, "send MANIFEST failed. tid[%u] pid[%u]", tid, pid);
-			break;
-		}
 		google::protobuf::io::FileInputStream fileInput(fd);
 		fileInput.SetCloseOnDelete(true);
 		::rtidb::api::Manifest manifest;
@@ -1147,6 +1142,11 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 		// send snapshot file
 		if (SendFile(endpoint, tid, pid, manifest.name()) < 0) {
 			PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
+			break;
+		}
+		// send manifest file
+		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
+			PDLOG(WARNING, "send MANIFEST failed. tid[%u] pid[%u]", tid, pid);
 			break;
 		}
         has_error = false;
