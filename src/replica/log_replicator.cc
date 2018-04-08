@@ -349,14 +349,14 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
     return true;
 }
 
-bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec) {
+int LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_vec) {
     if (endpoint_vec.empty()) {
-        return true;
+        return 1;
     }
     std::lock_guard<bthread::Mutex> lock(mu_);
     if (role_ != kLeaderNode) {
         PDLOG(WARNING, "cur table is not leader, cannot add replicate");
-        return false;
+        return -1;
     }
     for (const auto& endpoint : endpoint_vec) {
         std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
@@ -364,7 +364,7 @@ bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_ve
             std::string ep = (*it)->GetEndPoint();
             if (ep.compare(endpoint) == 0) {
                 PDLOG(WARNING, "replica endpoint %s does exist", ep.c_str());
-                return false;
+                return 1;
             }
         }
         std::shared_ptr<ReplicateNode> replicate_node = std::make_shared<ReplicateNode>(
@@ -372,27 +372,27 @@ bool LogReplicator::AddReplicateNode(const std::vector<std::string>& endpoint_ve
                             &term_, &log_offset_, &mu_, &cv_);
         if (replicate_node->Init() < 0) {
             PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
-            return false;
+            return -1;
         }
         if (replicate_node->Start() != 0) {
             PDLOG(WARNING, "fail to start sync thread for table #tid %u, #pid %u", table_->GetId(), table_->GetPid());
-            return false;
+            return -1;
         }
         nodes_.push_back(replicate_node);
         endpoints_.push_back(endpoint);
         PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]",
                     endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
-    return true;
+    return 0;
 }
 
-bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
+int LogReplicator::DelReplicateNode(const std::string& endpoint) {
     std::shared_ptr<ReplicateNode> node;
     {
         std::lock_guard<bthread::Mutex> lock(mu_);
         if (role_ != kLeaderNode) {
             PDLOG(WARNING, "cur table is not leader, cannot delete replicate");
-            return false;
+            return -1;
         }
         std::vector<std::shared_ptr<ReplicateNode> >::iterator it = nodes_.begin();
         for (; it != nodes_.end(); ++it) {
@@ -402,7 +402,7 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
         }
         if (it == nodes_.end()) {
             PDLOG(WARNING, "replica endpoint[%s] does not exist", endpoint.c_str());
-            return false;
+            return 1;
         }
         node = *it;
         nodes_.erase(it);
@@ -414,7 +414,7 @@ bool LogReplicator::DelReplicateNode(const std::string& endpoint) {
     if (node) {
         node->Stop();
     }
-    return true;
+    return 0;
 }
 
 bool LogReplicator::DelAllReplicateNode() {
