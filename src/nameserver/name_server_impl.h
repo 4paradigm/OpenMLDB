@@ -311,7 +311,8 @@ private:
 	std::shared_ptr<Task> CreateRecoverTableTask(uint64_t op_index, ::rtidb::api::OPType op_type, 
                     const std::string& name, uint32_t pid, const std::string& endpoint);
 
-    int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data);
+    int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
+                    const std::string& name, uint32_t pid);
     int AddOPData(const std::shared_ptr<OPData>& op_data);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint,
                      ::rtidb::api::OPType op_type);
@@ -365,6 +366,8 @@ private:
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
     std::atomic<bool> auto_recover_table_;
+    std::map<std::string, std::list<uint64_t>> ordered_op_map_;
+    std::set<::rtidb::api::OPType> ordered_op_type_;
 };
 
 }
