@@ -1126,31 +1126,35 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 		}
     	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
 									std::to_string(pid) + "/snapshot/MANIFEST";
-		int fd = open(manifest_file.c_str(), O_RDONLY);
-		if (fd < 0) {
-			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
-            has_error = false;
-			break;
-		}
-		// send manifest file
-		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
-			PDLOG(WARNING, "send MANIFEST failed. tid[%u] pid[%u]", tid, pid);
-			break;
-		}
-		google::protobuf::io::FileInputStream fileInput(fd);
-		fileInput.SetCloseOnDelete(true);
-		::rtidb::api::Manifest manifest;
-		if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-			PDLOG(WARNING, "parse manifest failed. tid[%u] pid[%u]", tid, pid);
-			break;
-		}
-		// send snapshot file
-		if (SendFile(endpoint, tid, pid, manifest.name()) < 0) {
-			PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
-			break;
-		}
+        std::string snapshot_file;
+        {
+            int fd = open(manifest_file.c_str(), O_RDONLY);
+            if (fd < 0) {
+                PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+                has_error = false;
+                break;
+            }
+            google::protobuf::io::FileInputStream fileInput(fd);
+            fileInput.SetCloseOnDelete(true);
+            ::rtidb::api::Manifest manifest;
+            if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+                PDLOG(WARNING, "parse manifest failed. tid[%u] pid[%u]", tid, pid);
+                break;
+            }
+            snapshot_file = manifest.name();
+        }
+        // send snapshot file
+        if (SendFile(endpoint, tid, pid, snapshot_file) < 0) {
+            PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
+            break;
+        }
+        // send manifest file
+        if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
+            PDLOG(WARNING, "send MANIFEST failed. tid[%u] pid[%u]", tid, pid);
+            break;
+        }
         has_error = false;
-		PDLOG(INFO, "send snapshot success. endpoint %s tid %u pid %u", endpoint.c_str(), tid, pid);
+        PDLOG(INFO, "send snapshot success. endpoint %s tid %u pid %u", endpoint.c_str(), tid, pid);
     } while(0);
 	std::lock_guard<std::mutex> lock(mu_);
 	if (task) {
@@ -1183,6 +1187,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         if (try_times < FLAGS_send_file_max_try) {
             std::this_thread::sleep_for(std::chrono::milliseconds((FLAGS_send_file_max_try - try_times) * 
                     FLAGS_retry_send_file_wait_time_ms));
+            PDLOG(INFO, "retry to send file %s to %s. total size[%lu]", full_path.c_str(), endpoint.c_str(), file_size);
         }
         try_times--;
         brpc::Channel channel;
@@ -1708,6 +1713,13 @@ void TabletImpl::GetTermPair(RpcController* controller,
             response->set_offset(0);
 			return;
 		}
+        std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
+        if (!::rtidb::base::IsExists(snapshot_file)) {
+            PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
+            response->set_term(0);
+            response->set_offset(0);
+            return;
+        }
         response->set_term(manifest.term());
         response->set_offset(manifest.offset());
 		return;

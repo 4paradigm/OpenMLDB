@@ -34,6 +34,7 @@
 #include "tprinter.h"
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <random>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -925,24 +926,27 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
 }
 
 void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    uint32_t size = 400;
     try {
-        if (parts.size() >= 3) {
-            size = boost::lexical_cast<uint32_t>(parts[2]);
-        }
-        uint32_t times = 10000;
+        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        uint64_t key_num = 100000;
         if (parts.size() >= 4) {
-            times = ::boost::lexical_cast<uint32_t>(parts[3]);
+            key_num = ::boost::lexical_cast<uint32_t>(parts[3]);
         }
-        char val[size];
-        for (uint32_t i = 0; i < size; i++) {
-            val[i] ='0';
+        uint32_t times = 100000;
+        if (parts.size() >= 5) {
+            times = ::boost::lexical_cast<uint32_t>(parts[4]);
         }
-        std::string sval(val);
-        for (uint32_t i = 0 ; i < times; i++) {
-            std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-            for (uint32_t j = 0; j < 1000; j++) {
-                client->Put(1, 1, key, j, sval);
+        std::string value(128, 'a');
+        uint64_t base = 100000000;
+        std::random_device rd;
+        std::default_random_engine engine(rd());
+        std::uniform_int_distribution<> dis(1, key_num);
+        while(true) {
+            for (uint32_t i = 0; i < times; i++) {
+                std::string key = std::to_string(base + dis(engine));
+                uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
+                client->Put(tid, pid, key, ts, value);
             }
             client->ShowTp();
         }
