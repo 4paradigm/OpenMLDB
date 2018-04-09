@@ -1212,6 +1212,21 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(1, pair_response.offset());
+
+    std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+    int fd = open(manifest_file.c_str(), O_RDONLY);
+    ASSERT_GT(fd, 0);
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    ::rtidb::api::Manifest manifest;
+    google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+    unlink(snapshot_file.c_str());
+    tablet.GetTermPair(NULL, &pair_request, &pair_response,
+            &closure);
+    ASSERT_EQ(0, pair_response.code());
+    ASSERT_FALSE(pair_response.has_table());
+    ASSERT_EQ(0, pair_response.offset());
 }
 
 
