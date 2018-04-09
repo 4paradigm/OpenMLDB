@@ -314,8 +314,8 @@ private:
                     const std::string& name, uint32_t pid, const std::string& endpoint);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
-                    const std::string& name, uint32_t pid);
-    int AddOPData(const std::shared_ptr<OPData>& op_data, uint64_t parent_id = INVALID_PARENT_ID);
+                    const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
+    int AddOPData(const std::shared_ptr<OPData>& op_data);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint,
                      ::rtidb::api::OPType op_type);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
