@@ -1183,6 +1183,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         if (try_times < FLAGS_send_file_max_try) {
             std::this_thread::sleep_for(std::chrono::milliseconds((FLAGS_send_file_max_try - try_times) * 
                     FLAGS_retry_send_file_wait_time_ms));
+            PDLOG(INFO, "retry to send file %s to %s. total size[%lu]", full_path.c_str(), endpoint.c_str(), file_size);
         }
         try_times--;
         brpc::Channel channel;
