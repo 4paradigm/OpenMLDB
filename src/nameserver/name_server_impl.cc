@@ -47,6 +47,8 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
     auto_recover_table_.store(FLAGS_auto_recover_table, std::memory_order_release);
     ordered_op_type_.insert(::rtidb::api::OPType::kRecoverTableOP);
+    ordered_op_type_.insert(::rtidb::api::OPType::kUpdatePartitionStatusOP);
+    ordered_op_type_.insert(::rtidb::api::OPType::kOfflineReplicaOP);
     ordered_op_type_.insert(::rtidb::api::OPType::kReLoadTableOP);
     ordered_op_type_.insert(::rtidb::api::OPType::kChangeLeaderOP);
     ordered_op_type_.insert(::rtidb::api::OPType::kReAddReplicaOP);
