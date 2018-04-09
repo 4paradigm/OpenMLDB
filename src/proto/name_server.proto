@@ -141,10 +141,8 @@ message MigrateRequest {
 }
 
 message MigrateInfo {
-    optional string name = 1;
-    optional uint32 pid = 2;
-    optional string src_endpoint = 3;
-    optional string des_endpoint = 4;
+    optional string src_endpoint = 1;
+    optional string des_endpoint = 2;
 }
 
 message EndpointStatusData {

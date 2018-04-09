@@ -1828,8 +1828,6 @@ int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::
             uint32_t pid, const std::string& des_endpoint) {
     std::shared_ptr<OPData> op_data;
     MigrateInfo migrate_info;
-    migrate_info.set_name(name);
-    migrate_info.set_pid(pid);
     migrate_info.set_src_endpoint(src_endpoint);
     migrate_info.set_des_endpoint(des_endpoint);
     std::string value;
@@ -1860,8 +1858,8 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         PDLOG(WARNING, "parse migrate_info failed. data[%s]", op_data->op_info_.data().c_str());
         return -1;
     }
-    std::string name = migrate_info.name();
-    uint32_t pid = migrate_info.pid();
+    std::string name = op_data->op_info_.name();
+    uint32_t pid = op_data->op_info_.pid();
     std::string src_endpoint = migrate_info.src_endpoint();
     std::string des_endpoint = migrate_info.des_endpoint();
     auto iter = table_info_.find(name);

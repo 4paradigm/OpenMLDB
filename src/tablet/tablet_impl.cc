@@ -1255,7 +1255,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
                 break;
             }
             if (StreamWrite(stream, buffer, len, limit_time) < 0) {
-                PDLOG(WARNING, "stream write failed. tid %u pid %u file %s", tid, pid, file_name.c_str());
+                PDLOG(WARNING, "stream write failed. tid[%u] pid[%u] file %s", tid, pid, file_name.c_str());
                 ret = -1;
                 break;
             }
