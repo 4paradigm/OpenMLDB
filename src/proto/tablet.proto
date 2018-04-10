@@ -96,6 +96,9 @@ message OPInfo {
     optional TaskStatus task_status = 5;
     optional uint64 start_time = 6 [default = 0];
     optional uint64 end_time = 7 [default = 0];
+    optional string name = 8;
+    optional uint32 pid = 9;
+    optional uint64 parent_id = 10;
 }
 
 message Manifest {

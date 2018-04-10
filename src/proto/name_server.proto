@@ -141,24 +141,14 @@ message MigrateRequest {
 }
 
 message MigrateInfo {
-    optional string name = 1;
-    optional uint32 pid = 2;
-    optional string src_endpoint = 3;
-    optional string des_endpoint = 4;
+    optional string src_endpoint = 1;
+    optional string des_endpoint = 2;
 }
 
-message EndPointPartitionData {
-    optional string name = 1;
-    optional uint32 pid = 2;
-    optional string endpoint = 3;
-}
-
-message TableStatusData {
-    optional string name = 1;
-    optional uint32 pid = 2;
-    optional string endpoint = 3;
-    optional bool is_leader = 4;
-    optional bool is_alive = 5;
+message EndpointStatusData {
+    optional string endpoint = 1;
+    optional bool is_leader = 2;
+    optional bool is_alive = 3;
 }
 
 message ChangeLeaderData {
