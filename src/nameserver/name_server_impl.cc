@@ -459,6 +459,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         } else {
             if (tit->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
+                tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 if (auto_recover_table_.load(std::memory_order_acquire)) {
                     thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
@@ -834,7 +835,7 @@ void NameServerImpl::ConnectZK(RpcController* controller,
     }
     response->set_code(-1);
     response->set_msg("reconnect failed");
-}        
+} 
 
 void NameServerImpl::DisConnectZK(RpcController* controller,
         const DisConnectZKRequest* request,

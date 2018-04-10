@@ -134,7 +134,7 @@ class TestNameserverHa(TestCaseBase):
     @ddt.data(
         (9,3,8,0,9),  # ns_leader断网重启后，新的ns_leader可以正确判断节点状态
         (9,2,7,0,9),  # ns_leader重启后，新的ns_leader可以正确判断节点状态
-        (9,8,0,9,2,7,0,9),  # ns_leader断网后，新的ns_leader重启，切回原leader后可以正确判断节点状态
+        (9,3,8,0,9,2,7,0,9),  # ns_leader断网后，新的ns_leader重启，切回原leader后可以正确判断节点状态
     )
     @ddt.unpack
     def test_ns_after_failover(self, *steps):
@@ -193,9 +193,9 @@ class TestNameserverHa(TestCaseBase):
         self.assertIn('false', rs2)
 
 
-    @TestCaseBase.skip('FIXME')
+    #@TestCaseBase.skip('FIXME')
     @ddt.data(
-        (9,8,0,9),  # ns 闪断，RTIDB-223
+        (9,3,8,0,9),  # ns 闪断，RTIDB-223
     )
     @ddt.unpack
     def test_ns_flashbreak(self, *steps):
