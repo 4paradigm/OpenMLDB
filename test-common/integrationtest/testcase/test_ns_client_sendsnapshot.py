@@ -260,7 +260,6 @@ class TestSendSnapshot(TestCaseBase):
             self.check_manifest(self.leaderpath, t, pid, str(t), self.get_sdb_name(t, pid), str(t))
 
 
-    # @TestCaseBase.skip('FIXME')
     def test_sendsnapshot_speed_limit(self):  # RTIDB-227
         """
         限速测试，stream_bandwidth_limit = 1024, 10k左右文件会在8s-12s之间发送成功
