@@ -106,7 +106,6 @@ class TestNameserverHa(TestCaseBase):
         self.assertIn('nameserver is not leader', rs)
 
 
-    @TestCaseBase.skip('FIXME')
     @ddt.data(
         (9,20,-1,8,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
         (9,20,-1,2,7,0,9),  # 唯一一个ns_leader重启后，可以正确判断节点状态
@@ -132,7 +131,6 @@ class TestNameserverHa(TestCaseBase):
         self.assertEqual(rs[self.leader][0], 'kTabletOffline')
 
 
-    @TestCaseBase.skip('FIXME')
     @ddt.data(
         (9,3,8,0,9),  # ns_leader断网重启后，新的ns_leader可以正确判断节点状态
         (9,2,7,0,9),  # ns_leader重启后，新的ns_leader可以正确判断节点状态

@@ -588,6 +588,7 @@ void NameServerImpl::CheckZkClient() {
         OnLostLock();
         PDLOG(WARNING, "reconnect zk");
         if (zk_client_->Reconnect()) {
+            zk_client_->WatchNodes();
             PDLOG(INFO, "reconnect zk ok");
         }
     }
@@ -825,6 +826,7 @@ void NameServerImpl::ConnectZK(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (zk_client_->Reconnect()) {
+        zk_client_->WatchNodes();
         response->set_code(0);
         response->set_msg("ok");
         PDLOG(INFO, "connect zk ok");
