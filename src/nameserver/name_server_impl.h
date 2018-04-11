@@ -18,6 +18,7 @@
 #include <brpc/server.h>
 #include <mutex>
 #include <condition_variable>
+#include "base/random.h"
 
 namespace rtidb {
 namespace nameserver {
@@ -370,6 +371,7 @@ private:
     std::atomic<bool> auto_recover_table_;
     std::map<std::string, std::list<uint64_t>> ordered_op_map_;
     std::set<::rtidb::api::OPType> ordered_op_type_;
+    ::rtidb::base::Random rand_;
 };
 
 }
