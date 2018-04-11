@@ -482,6 +482,10 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         if (!auto_failover_.load(std::memory_order_acquire)) {
@@ -520,6 +524,10 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
 }
 
 void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
@@ -781,6 +789,7 @@ void NameServerImpl::ProcessTask() {
             while (task_map_.empty()) {
                 cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
                 if (!running_.load(std::memory_order_acquire)) {
+                    PDLOG(WARNING, "cur nameserver is not leader");
                     return;
                 }
             }
