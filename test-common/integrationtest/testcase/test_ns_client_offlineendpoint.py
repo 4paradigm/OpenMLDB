@@ -40,9 +40,10 @@ class TestOfflineEndpoint(TestCaseBase):
         self.confset(self.ns_leader, 'auto_recover_table', 'false')
 
         self.stop_client(self.leader)
-        time.sleep(10)
+        time.sleep(5)
 
         self.offlineendpoint(self.ns_leader, self.leader)
+        time.sleep(10)
 
         rs2 = self.showtable(self.ns_leader)
         self.confset(self.ns_leader, 'auto_failover', 'true')
@@ -99,10 +100,10 @@ class TestOfflineEndpoint(TestCaseBase):
         self.confset(self.ns_leader, 'auto_recover_table', 'false')
 
         self.stop_client(self.slave1)
-        time.sleep(10)
+        time.sleep(5)
 
         self.offlineendpoint(self.ns_leader, self.slave1)
-        time.sleep(1)
+        time.sleep(10)
 
         rs2 = self.showtable(self.ns_leader)
         # showtable ok
