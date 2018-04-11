@@ -107,7 +107,7 @@ class TestNameserverHa(TestCaseBase):
 
 
     @ddt.data(
-        (9,20,-1,8,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
+        (9,20,-1,3,8,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
         (9,20,-1,2,7,0,9),  # 唯一一个ns_leader重启后，可以正确判断节点状态
     )
     @ddt.unpack
