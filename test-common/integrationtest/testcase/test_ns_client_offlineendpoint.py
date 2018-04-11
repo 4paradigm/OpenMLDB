@@ -40,7 +40,7 @@ class TestOfflineEndpoint(TestCaseBase):
         self.confset(self.ns_leader, 'auto_recover_table', 'false')
 
         self.stop_client(self.leader)
-        time.sleep(5)
+        time.sleep(10)
 
         self.offlineendpoint(self.ns_leader, self.leader)
         time.sleep(10)
