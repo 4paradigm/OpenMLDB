@@ -13,6 +13,7 @@
 #include <strings.h>
 #include "base/strings.h"
 #include <chrono>
+#include <random>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -3608,6 +3609,9 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
     // select the max offset endpoint as leader
     uint64_t max_offset = 0;    
     std::string leader_endpoint;
+    std::random_device rd;
+    std::default_random_engine engine(rd());
+    std::uniform_int_distribution<> dis(1, follower_endpoint.size() > 1? follower_endpoint.size() : 2);
     for (const auto& endpoint : follower_endpoint) {
         std::shared_ptr<TabletInfo> tablet_ptr;
         {
@@ -3629,9 +3633,12 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
             return;
         }
-        if (offset >= max_offset) {
+        if (offset > max_offset || leader_endpoint.empty()) {
             leader_endpoint = endpoint;
             max_offset = offset;
+        } else if (offset == max_offset && dis(engine) == 1) {
+            // select leader random from the endpoint of equal offset
+            leader_endpoint = endpoint;
         }
     }
     std::shared_ptr<OPData> op_data;
