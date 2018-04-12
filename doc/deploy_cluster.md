@@ -49,13 +49,13 @@ server.3=172.27.128.33:2888:3888
 
 * 在配置或者环境变量中指定endpoint, zk_cluster和zk_root_path
 * 如果要开启自动failover和自动恢复, 设置auto_failover和auto_recover_table为true
-* 启动nameserver: sh bin/start_ns.sh &
+* 启动nameserver: cd ./bin && sh start_ns.sh
 
 
 ## 部署tablet
 
 * 在配置或者环境变量中指定endpoint, zk_cluster和zk_root_path. (注: zk_cluster和zk_root_path要与nameserver配置的一样)
-* 启动tablet: sh bin/start.sh &
+* 启动tablet: cd ./bin && sh start.sh
 * 启动日志监控程序: sh boot_monitor.sh &
 
 
