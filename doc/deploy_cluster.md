@@ -3,6 +3,9 @@
 ## 部署zookeeper
 
 * 修改zk目录中conf/zoo.cfg的ip和clientPort
+* 在配置的dataDir路径里创建myid文件  
+  如果本实例对应的是serve1, dataDir配置的为datadir, 运行echo 1 > datadir/myid  
+  同理如果是对应的是server2, 则运行echo 2 > datadir/myid  
 * 启动zk ./bin/zkServer.sh start
 
 ### sample 配置
