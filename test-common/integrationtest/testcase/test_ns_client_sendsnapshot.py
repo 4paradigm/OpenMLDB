@@ -121,8 +121,8 @@ class TestSendSnapshot(TestCaseBase):
 
 
     def assert_send_fail_by_log(self):
-        rs = utils.exe_shell('cat {}/info.log |grep -A 1 "{}_{}/table_meta.txt"|grep -A 1 send'
-                             '|grep "connect stream failed"'.format(self.leaderpath, self.tid, self.pid))
+        rs = utils.exe_shell('cat {}/info.log | grep "connect stream failed. '
+                              'tid\[{}\] pid\[{}\] error msg: \[E111\]"'.format(self.leaderpath, self.tid, self.pid, self.tid, self.pid))
         self.assertTrue(rs)
 
     def assert_init_fail_by_log(self):
