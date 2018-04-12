@@ -168,6 +168,8 @@ message OPStatus {
     required uint64 start_time = 4;
     required uint64 end_time = 5;
     required string task_type = 6;
+    optional string name = 7;
+    optional uint32 pid = 8;
 }
 
 message GetTablePartitionRequest {

@@ -1377,6 +1377,8 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
             OPStatus* op_status = response->add_op_status();
             op_status->set_op_id(kv.first);
             op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+            op_status->set_name(kv.second->op_info_.name());
+            op_status->set_pid(kv.second->op_info_.pid());
             op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
             if (kv.second->task_list_.empty()) {
                 op_status->set_task_type("-");

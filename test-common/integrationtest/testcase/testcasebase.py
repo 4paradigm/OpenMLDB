@@ -376,7 +376,7 @@ class TestCaseBase(unittest.TestCase):
 
     def showopstatus(self, endpoint):
         rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
-        tablestatus = self.parse_tb(rs, ' ', [0], [1, 2, 6])
+        tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
         tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
 

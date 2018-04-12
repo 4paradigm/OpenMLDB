@@ -833,6 +833,8 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     std::vector<std::string> row;
     row.push_back("op_id");
     row.push_back("op_type");
+    row.push_back("name");
+    row.push_back("pid");
     row.push_back("status");
     row.push_back("start_time");
     row.push_back("execute_time");
@@ -851,6 +853,13 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         std::vector<std::string> row;
         row.push_back(std::to_string(response.op_status(idx).op_id()));
         row.push_back(response.op_status(idx).op_type());
+        if (response.op_status(idx).has_name() && response.op_status(idx).has_pid()) {
+            row.push_back(response.op_status(idx).name());
+            row.push_back(std::to_string(response.op_status(idx).pid()));
+        } else {
+            row.push_back("-");
+            row.push_back("-");
+        }
         row.push_back(response.op_status(idx).status());
         time_t rawtime = (time_t)response.op_status(idx).start_time();
         tm* timeinfo = localtime(&rawtime);
