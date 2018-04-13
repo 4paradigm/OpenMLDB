@@ -31,7 +31,8 @@ namespace nameserver {
 
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
     table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
-    task_thread_pool_(FLAGS_name_server_task_pool_size), cv_() {
+    task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(),
+    rand_(0xdeadbeef) {
     std::string zk_table_path = FLAGS_zk_root_path + "/table";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
@@ -3643,9 +3644,14 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
             return;
         }
-        if (offset >= max_offset) {
+        PDLOG(INFO, "FollowOfNoOne ok. term[%lu] offset[%lu] name[%s] tid[%u] pid[%u] endpoint[%s]", 
+                     cur_term, offset, name.c_str(), tid, pid, endpoint.c_str());
+        if (offset > max_offset || leader_endpoint.empty()) {
             leader_endpoint = endpoint;
             max_offset = offset;
+        } else if (offset == max_offset && rand_.Next() % follower_endpoint.size() == 1) {
+            // select leader random from the endpoint of equal offset
+            leader_endpoint = endpoint;
         }
     }
     std::shared_ptr<OPData> op_data;
