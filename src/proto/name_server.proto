@@ -188,7 +188,10 @@ message SetTablePartitionRequest {
     optional TablePartition table_partition = 2;
 }
 
-message ShowOPStatusRequest{}
+message ShowOPStatusRequest{
+    optional string name = 1;
+    optional uint32 pid = 2;
+}
 
 message ConnectZKRequest {}
 message DisConnectZKRequest {}

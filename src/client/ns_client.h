@@ -18,6 +18,8 @@
 namespace rtidb {
 namespace client {
 
+const uint32_t INVALID_PID = UINT32_MAX;
+
 struct TabletInfo {
     std::string endpoint;
     std::string state;
@@ -37,7 +39,8 @@ public:
 
     bool MakeSnapshot(const std::string& name, uint32_t pid, std::string& msg);
 
-    bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, std::string& msg);
+    bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, 
+                const std::string& name, uint32_t pid, std::string& msg);
 
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg);
 

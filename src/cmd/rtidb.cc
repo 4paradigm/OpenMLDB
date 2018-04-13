@@ -844,7 +844,20 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     tp.AddRow(row);
     ::rtidb::nameserver::ShowOPStatusResponse response;
     std::string msg;
-    bool ok = client->ShowOPStatus(response, msg);
+    std::string name;
+    uint32_t pid = ::rtidb::client::INVALID_PID;
+    if (parts.size() > 1) {
+        name = parts[1];
+    }
+    if (parts.size() > 2) {
+        try {
+            pid = boost::lexical_cast<uint32_t>(parts[2]);
+        } catch(std::exception const& e) {
+            std::cout << "Invalid args pid should be uint32_t" << std::endl;
+            return;
+        }
+    }
+    bool ok = client->ShowOPStatus(response, name, pid, msg);
     if (!ok) {
         std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
         return;

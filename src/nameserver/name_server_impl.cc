@@ -1375,6 +1375,12 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
             cur_map_ptr = &task_map_;
         }
         for (const auto& kv : *cur_map_ptr) {
+            if (request->has_name() && kv.second->op_info_.name() != request->name()) {
+                continue;
+            }
+            if (request->has_pid() && kv.second->op_info_.pid() != request->pid()) {
+                continue;
+            }
             OPStatus* op_status = response->add_op_status();
             op_status->set_op_id(kv.first);
             op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
