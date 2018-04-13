@@ -106,9 +106,8 @@ class TestNameserverHa(TestCaseBase):
         self.assertIn('nameserver is not leader', rs)
 
 
-    @TestCaseBase.skip('FIXME')
     @ddt.data(
-        (9,20,-1,8,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
+        (9,20,-1,3,8,0,9),  # 唯一一个ns_leader闪断后，可以正确判断节点状态  # RTIDB-246
         (9,20,-1,2,7,0,9),  # 唯一一个ns_leader重启后，可以正确判断节点状态
     )
     @ddt.unpack
@@ -123,7 +122,7 @@ class TestNameserverHa(TestCaseBase):
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
         self.stop_client(self.leader)
-        time.sleep(5)
+        time.sleep(10)
         rs = self.showtablet(self.ns_leader)
         self.start_client(self.leader)
         self.start_client(self.ns_slaver)
@@ -132,11 +131,10 @@ class TestNameserverHa(TestCaseBase):
         self.assertEqual(rs[self.leader][0], 'kTabletOffline')
 
 
-    @TestCaseBase.skip('FIXME')
     @ddt.data(
         (9,3,8,0,9),  # ns_leader断网重启后，新的ns_leader可以正确判断节点状态
         (9,2,7,0,9),  # ns_leader重启后，新的ns_leader可以正确判断节点状态
-        (9,8,0,9,2,7,0,9),  # ns_leader断网后，新的ns_leader重启，切回原leader后可以正确判断节点状态
+        (9,3,8,0,9,2,7,0,9),  # ns_leader断网后，新的ns_leader重启，切回原leader后可以正确判断节点状态
     )
     @ddt.unpack
     def test_ns_after_failover(self, *steps):
@@ -195,9 +193,9 @@ class TestNameserverHa(TestCaseBase):
         self.assertIn('false', rs2)
 
 
-    @TestCaseBase.skip('FIXME')
+    #@TestCaseBase.skip('FIXME')
     @ddt.data(
-        (9,8,0,9),  # ns 闪断，RTIDB-223
+        (9,3,8,0,9),  # ns 闪断，RTIDB-223
     )
     @ddt.unpack
     def test_ns_flashbreak(self, *steps):

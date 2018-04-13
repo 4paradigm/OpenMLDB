@@ -833,6 +833,8 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     std::vector<std::string> row;
     row.push_back("op_id");
     row.push_back("op_type");
+    row.push_back("name");
+    row.push_back("pid");
     row.push_back("status");
     row.push_back("start_time");
     row.push_back("execute_time");
@@ -842,7 +844,20 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     tp.AddRow(row);
     ::rtidb::nameserver::ShowOPStatusResponse response;
     std::string msg;
-    bool ok = client->ShowOPStatus(response, msg);
+    std::string name;
+    uint32_t pid = ::rtidb::client::INVALID_PID;
+    if (parts.size() > 1) {
+        name = parts[1];
+    }
+    if (parts.size() > 2) {
+        try {
+            pid = boost::lexical_cast<uint32_t>(parts[2]);
+        } catch(std::exception const& e) {
+            std::cout << "Invalid args pid should be uint32_t" << std::endl;
+            return;
+        }
+    }
+    bool ok = client->ShowOPStatus(response, name, pid, msg);
     if (!ok) {
         std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
         return;
@@ -851,6 +866,13 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         std::vector<std::string> row;
         row.push_back(std::to_string(response.op_status(idx).op_id()));
         row.push_back(response.op_status(idx).op_type());
+        if (response.op_status(idx).has_name() && response.op_status(idx).has_pid()) {
+            row.push_back(response.op_status(idx).name());
+            row.push_back(std::to_string(response.op_status(idx).pid()));
+        } else {
+            row.push_back("-");
+            row.push_back("-");
+        }
         row.push_back(response.op_status(idx).status());
         time_t rawtime = (time_t)response.op_status(idx).start_time();
         tm* timeinfo = localtime(&rawtime);

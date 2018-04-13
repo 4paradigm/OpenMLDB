@@ -121,8 +121,8 @@ class TestSendSnapshot(TestCaseBase):
 
 
     def assert_send_fail_by_log(self):
-        rs = utils.exe_shell('cat {}/info.log |grep -A 1 "{}_{}/table_meta.txt"|grep -A 1 send'
-                             '|grep "connect stream failed"'.format(self.leaderpath, self.tid, self.pid))
+        rs = utils.exe_shell('cat {}/info.log | grep "connect stream failed. '
+                              'tid\[{}\] pid\[{}\]"'.format(self.leaderpath, self.tid, self.pid, self.tid, self.pid))
         self.assertTrue(rs)
 
     def assert_init_fail_by_log(self):
@@ -134,6 +134,7 @@ class TestSendSnapshot(TestCaseBase):
     @staticmethod
     def get_steps_dict():
         return {
+            -2: 'time.sleep(1)',
             -1: 'time.sleep(5)',
             0: 'self.create(self.slave1, self.tname, self.tid, self.pid, 144000, 2, "false")',
             1: 'self.create(self.leader, self.tname, self.tid, self.pid, 144000, 2, "true")',
@@ -185,9 +186,9 @@ class TestSendSnapshot(TestCaseBase):
         (1, 2, 11),  # 主表没有生成snapshot，不可以sendsnapshot给目标节点
         (1, 2, 12, 11),  # 主表没有pausesnapshot，不可以sendsnapshot给目标节点
         (1, 2, 5, 12, 13, 11),  # 目标从表不能执行sendsnapshot命令
-        (1, 0, 2, 12, 13, 0, 15, 21),  # 目标从表存在时，主表sendsnapshot失败
-        (1, 2, 12, 13, 15, 10, 21),  # 主表sendsnapshot给不存在的目标endpoint，失败
-        (1, 2, 12, 13, 15, 9, 25),  # 主表sendsnapshot给不存在的目标endpoint，失败
+        (1, 0, 2, 12, 13, 0, 15, -2, 21),  # 目标从表存在时，主表sendsnapshot失败
+        (1, 2, 12, 13, 15, 10, -2, 21),  # 主表sendsnapshot给不存在的目标endpoint，失败
+        (1, 2, 12, 13, 15, 9, -2, 25),  # 主表sendsnapshot给不存在的目标endpoint，失败
         (1, 2, 12, 13, 23, -1, 3, 4, 17, 22),  # 并发sendsnapshot给两个从节点，成功
         (1, 2, 12, 13, 24, -1, 3, 4, 17),  # 同一个snapshot，并发sendsnapshot给同一个从节点，只有1个成功
     )
@@ -260,7 +261,6 @@ class TestSendSnapshot(TestCaseBase):
             self.check_manifest(self.leaderpath, t, pid, str(t), self.get_sdb_name(t, pid), str(t))
 
 
-    # @TestCaseBase.skip('FIXME')
     def test_sendsnapshot_speed_limit(self):  # RTIDB-227
         """
         限速测试，stream_bandwidth_limit = 1024, 10k左右文件会在8s-12s之间发送成功

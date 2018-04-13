@@ -460,6 +460,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         } else {
             if (tit->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
+                tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 if (auto_recover_table_.load(std::memory_order_acquire)) {
                     thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
@@ -482,6 +483,10 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
 }
 
 void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         if (!auto_failover_.load(std::memory_order_acquire)) {
@@ -520,6 +525,10 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
 }
 
 void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
+    if (!running_.load(std::memory_order_acquire)) {
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
@@ -589,6 +598,7 @@ void NameServerImpl::CheckZkClient() {
         OnLostLock();
         PDLOG(WARNING, "reconnect zk");
         if (zk_client_->Reconnect()) {
+            zk_client_->WatchNodes();
             PDLOG(INFO, "reconnect zk ok");
         }
     }
@@ -780,6 +790,7 @@ void NameServerImpl::ProcessTask() {
             while (task_map_.empty()) {
                 cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
                 if (!running_.load(std::memory_order_acquire)) {
+                    PDLOG(WARNING, "cur nameserver is not leader");
                     return;
                 }
             }
@@ -826,6 +837,7 @@ void NameServerImpl::ConnectZK(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (zk_client_->Reconnect()) {
+        zk_client_->WatchNodes();
         response->set_code(0);
         response->set_msg("ok");
         PDLOG(INFO, "connect zk ok");
@@ -833,7 +845,7 @@ void NameServerImpl::ConnectZK(RpcController* controller,
     }
     response->set_code(-1);
     response->set_msg("reconnect failed");
-}        
+} 
 
 void NameServerImpl::DisConnectZK(RpcController* controller,
         const DisConnectZKRequest* request,
@@ -1363,9 +1375,17 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
             cur_map_ptr = &task_map_;
         }
         for (const auto& kv : *cur_map_ptr) {
+            if (request->has_name() && kv.second->op_info_.name() != request->name()) {
+                continue;
+            }
+            if (request->has_pid() && kv.second->op_info_.pid() != request->pid()) {
+                continue;
+            }
             OPStatus* op_status = response->add_op_status();
             op_status->set_op_id(kv.first);
             op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+            op_status->set_name(kv.second->op_info_.name());
+            op_status->set_pid(kv.second->op_info_.pid());
             op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
             if (kv.second->task_list_.empty()) {
                 op_status->set_task_type("-");

@@ -122,7 +122,6 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '2', '144000', 'yes'])
 
-    @TestCaseBase.skip('FIXME')
     def test_auto_failover_slave_network_flashbreak(self):
         """
         auto_failover=true：连续两次主节点闪断，故障切换成功
