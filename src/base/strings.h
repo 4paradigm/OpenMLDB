@@ -144,11 +144,11 @@ static inline std::string HumanReadableTime(uint64_t age) {
     for (uint32_t i = 0; i < 4; i++) {
         uint64_t v = value / TIME_OFFSET[i];
         if (v == 0) {
-            return NumToString(value) + TIME_LABEL[i];
+            return std::to_string(value) + TIME_LABEL[i];
         }
         value = v;
     }
-    return NumToString(value) + TIME_LABEL[3];
+    return std::to_string(value) + TIME_LABEL[4];
 }
 
 static inline bool IsNumber(const std::string& str) {
