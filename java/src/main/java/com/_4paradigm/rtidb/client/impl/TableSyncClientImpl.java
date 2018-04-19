@@ -96,13 +96,19 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
-        long consumed = System.nanoTime();
+        long consumed = 0l;
+        if (client.getConfig().isMetricsEnabled()) {
+            consumed = System.nanoTime();
+        }
         ByteString response = get(tid, pid, key, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
-        long network = System.nanoTime() - consumed;
-        consumed = System.nanoTime();
+        long network = 0;
+        if (client.getConfig().isMetricsEnabled()) {
+            network = System.nanoTime() - consumed;
+            consumed = System.nanoTime();
+        }
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         if (client.getConfig().isMetricsEnabled()) {
             long decode = System.nanoTime() - consumed;
@@ -129,13 +135,19 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        long consumed = System.nanoTime();
+        long consumed = 0l;
+        if (client.getConfig().isMetricsEnabled()) {
+            consumed = System.nanoTime();
+        }
         ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
-        long network = System.nanoTime() - consumed;
-        consumed = System.nanoTime();
+        long network = 0l;
+        if (client.getConfig().isMetricsEnabled()) {
+            network = System.nanoTime() - consumed;
+            consumed = System.nanoTime();
+        }
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         if (client.getConfig().isMetricsEnabled()) {
             long decode = System.nanoTime() - consumed;
@@ -230,10 +242,16 @@ public class TableSyncClientImpl implements TableSyncClient {
             builder.setEnableRemoveDuplicatedRecord(true);
         }
         Tablet.ScanRequest request = builder.build();
-        Long consuemd = System.nanoTime();
+        long consuemd = 0l;
+        if (client.getConfig().isMetricsEnabled()) {
+            consuemd = System.nanoTime();
+        }
         Tablet.ScanResponse response = ts.scan(request);
-        Long network = System.nanoTime() - consuemd;
         if (response != null && response.getCode() == 0) {
+            Long network = null;
+            if (client.getConfig().isMetricsEnabled()) {
+                network = System.nanoTime() - consuemd;
+            }
             DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
             it.setCount(response.getCount());
             return it;
@@ -319,7 +337,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
-        Long consumed = System.nanoTime();
+        long consumed = 0l;
+        if (client.getConfig().isMetricsEnabled()) {
+            consumed = System.nanoTime();
+        }
         TabletServer tablet = ph.getLeader();
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         if (ds != null) {
@@ -336,8 +357,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         row.rewind();
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
         Tablet.PutRequest request = builder.build();
-        Long encode = System.nanoTime() - consumed;
-        consumed = System.nanoTime();
+        long encode = 0l;
+        if (client.getConfig().isMetricsEnabled()) {
+            encode = System.nanoTime() - consumed;
+            consumed = System.nanoTime();
+        }
         Tablet.PutResponse response = tablet.put(request);
         if (client.getConfig().isMetricsEnabled()) {
             Long network = System.nanoTime() - consumed;

@@ -61,6 +61,9 @@ public class TabletMetrics {
     }
 
     private void addMetrics(int index, Long metrics) {
+        if (metrics == null) {
+            return;
+        }
         latencies[index].addLast(metrics);
         if (latencies[index].size() > maxLength) {
             try {
