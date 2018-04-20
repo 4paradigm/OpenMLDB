@@ -1210,10 +1210,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
         return;
     } else if (iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(-1);
-        response->set_msg("endpoint is healthy");
         PDLOG(WARNING, "endpoint[%s] is healthy", endpoint.c_str());
-        return;
     }
     for (const auto& kv : table_info_) {
         std::set<uint32_t> leader_pid;
@@ -1229,10 +1226,12 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
                     }
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                         response->set_code(-1);
-                        response->set_msg("endpoint is alive");
-                        PDLOG(WARNING, "endpoint[%s] is alive. name[%s] pid[%u]", 
-                                        endpoint.c_str(), kv.first.c_str(), 
-                                        kv.second->table_partition(idx).pid());
+                        std::string err_msg = "partition " + std::to_string(kv.second->table_partition(idx).pid()) + 
+                                        " is alive";
+                        response->set_msg(err_msg);
+                        PDLOG(WARNING, "partition[%u] is alive. name[%s] endpoint[%s]", 
+                                        kv.second->table_partition(idx).pid(),
+                                        kv.first.c_str(), endpoint.c_str());
                         return;
                     }
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
@@ -3549,6 +3548,7 @@ void NameServerImpl::UpdateTableAlive(const std::string& name, const std::string
     }
     ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>* table_partition = 
                 iter->second->mutable_table_partition();
+    bool has_update = false;            
     for (int idx = 0; idx < table_partition->size(); idx++) {
         ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta>* partition_meta = 
                 table_partition->Mutable(idx)->mutable_partition_meta();;
@@ -3556,21 +3556,24 @@ void NameServerImpl::UpdateTableAlive(const std::string& name, const std::string
             ::rtidb::nameserver::PartitionMeta* cur_partition_meta = partition_meta->Mutable(meta_idx);
             if (cur_partition_meta->endpoint() == endpoint) {
                 cur_partition_meta->set_is_alive(is_alive);
+                has_update = true;
             }
         }
     }
-    std::string table_value;
-    iter->second->SerializeToString(&table_value);
-    if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+    if (has_update) {
+        std::string table_value;
+        iter->second->SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;         
+        }
+        NotifyTableChanged();
+        PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                         zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-        return;         
-    }
+    }            
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
-    NotifyTableChanged();
-    PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
-                    zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
                 task_info->op_id(), 
                 ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
