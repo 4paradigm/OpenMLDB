@@ -804,6 +804,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
             status->set_ttl(table->GetTTL());
+            status->set_ttl_type(table->GetTTLType());
             status->set_time_offset(table->GetTimeOffset());
             status->set_is_expire(table->GetExpireStatus());
             status->set_name(table->GetName());
