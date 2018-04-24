@@ -153,15 +153,15 @@ bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
 }
 
 bool LogReplicator::ReWriteBinlog(const std::string& full_path) {
-    FILE* fd = fopen(full_path.c_str(), "rb+");
+    FILE* fd = fopen(full_path.c_str(), "rb");
     if (fd == NULL) {
         PDLOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
         return false;
     }
     std::string tmp_file_path = full_path + ".tmp";
-    FILE* fd_w = fopen(tmp_file_path.c_str(), "ab+");
+    FILE* fd_w = fopen(tmp_file_path.c_str(), "wb");
     if (fd_w == NULL) {
-        PDLOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
+        PDLOG(WARNING, "fail to open file %s", tmp_file_path.c_str());
         fclose(fd);
         return false;
     }
@@ -190,7 +190,7 @@ bool LogReplicator::ReWriteBinlog(const std::string& full_path) {
 			break;
 		}
     }
-	wh_->EndLog();
+	wh->EndLog();
 	delete wh;
 	if (has_error) {
 		return false;
@@ -211,7 +211,7 @@ bool LogReplicator::Recover() {
         return true;
     }
     std::sort(logs.begin(), logs.end());
-    if (ReWriteBinlog(logs[logs.size() - 1])) {
+    if (!ReWriteBinlog(logs[logs.size() - 1])) {
         PDLOG(WARNING, "rewrite binlog failed. file[%s] tid[%u] pid[%u]", 
                         logs[logs.size() - 1].c_str(), table_->GetId(), table_->GetPid());
         return false;
