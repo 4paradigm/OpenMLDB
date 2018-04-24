@@ -193,6 +193,7 @@ bool LogReplicator::ReWriteBinlog(const std::string& full_path) {
 	wh->EndLog();
 	delete wh;
 	if (has_error) {
+        unlink(tmp_file_path.c_str());
 		return false;
 	}
 	rename(tmp_file_path.c_str(), full_path.c_str());
