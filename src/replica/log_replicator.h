@@ -67,6 +67,8 @@ public:
     // recover logs meta
     bool Recover();
 
+    bool ReWriteBinlog(const std::string& full_path);
+
     bool RollWLogFile();
 
     void DeleteBinlog();
