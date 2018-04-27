@@ -28,8 +28,6 @@ class Status;
 
 namespace log {
 
-const uint64_t INVALID_OFFSET = UINT64_MAX;
-
 class Reader {
 public:
     // Interface for reporting errors.
