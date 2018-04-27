@@ -152,55 +152,6 @@ bool LogReplicator::ParseBinlogIndex(const std::string& path, uint32_t& index) {
     return true;
 }
 
-bool LogReplicator::ReWriteBinlog(const std::string& full_path) {
-    FILE* fd = fopen(full_path.c_str(), "rb");
-    if (fd == NULL) {
-        PDLOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
-        return false;
-    }
-    std::string tmp_file_path = full_path + ".tmp";
-    FILE* fd_w = fopen(tmp_file_path.c_str(), "wb");
-    if (fd_w == NULL) {
-        PDLOG(WARNING, "fail to open file %s", tmp_file_path.c_str());
-        fclose(fd);
-        return false;
-    }
-    WriteHandle* wh = new WriteHandle(tmp_file_path, fd_w);
-    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(full_path, fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
-	bool has_error = false;
-    std::string buffer;
-    while (true) {
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
-		if (status.IsWaitRecord() || status.IsEof()) {
-			break;
-		}
-		if (!status.ok()) {
-			PDLOG(WARNING, "fail to read record. file[%s] error[%s]", 
-							full_path.c_str(), status.ToString().c_str());
-			has_error = true;
-			break;
-		}
-		::rtidb::base::Status status_w = wh->Write(record);
-		if (!status_w.ok()) {
-			PDLOG(WARNING, "fail to write record. file[%s] error[%s]", 
-							tmp_file_path.c_str(), status.ToString().c_str());
-			has_error = true;
-			break;
-		}
-    }
-	wh->EndLog();
-	delete wh;
-	if (has_error) {
-        unlink(tmp_file_path.c_str());
-		return false;
-	}
-	rename(tmp_file_path.c_str(), full_path.c_str());
-	PDLOG(INFO, "rewrite binlog ok. file[%s]", full_path.c_str());
-    return true;
-}
-
 bool LogReplicator::Recover() {
     std::vector<std::string> logs;
     int ret = ::rtidb::base::GetFileName(log_path_, logs);
@@ -212,11 +163,6 @@ bool LogReplicator::Recover() {
         return true;
     }
     std::sort(logs.begin(), logs.end());
-    if (!ReWriteBinlog(logs[logs.size() - 1])) {
-        PDLOG(WARNING, "rewrite binlog failed. file[%s] tid[%u] pid[%u]", 
-                        logs[logs.size() - 1].c_str(), table_->GetId(), table_->GetPid());
-        return false;
-    }
     std::string buffer;
     LogEntry entry;
     for (uint32_t i = 0; i < logs.size(); i++) {

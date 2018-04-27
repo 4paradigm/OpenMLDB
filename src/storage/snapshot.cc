@@ -28,6 +28,7 @@ using ::baidu::common::WARNING;
 
 DECLARE_string(db_root_path);
 DECLARE_uint64(gc_on_table_recover_count);
+DECLARE_int32(binlog_name_length);
 
 namespace rtidb {
 namespace storage {
@@ -86,6 +87,8 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
     uint64_t succ_cnt = 0;
     uint64_t failed_cnt = 0;
     uint64_t consumed = ::baidu::common::timer::now_time();
+    int last_log_index = log_reader.GetLogIndex();
+    bool reach_end_log = true;
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -94,11 +97,15 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
             consumed = ::baidu::common::timer::now_time() - consumed;
             PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                        tid_, pid_, succ_cnt, failed_cnt, consumed);
+            reach_end_log = false;
             break;
         }
-
         if (status.IsEof()) {
-            continue;
+            if (log_reader.GetLogIndex() != last_log_index) {
+                last_log_index = log_reader.GetLogIndex();
+                continue;
+            }
+            break;
         }
 
         if (!status.ok()) {
@@ -142,6 +149,25 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         }
     }
     latest_offset = cur_offset;
+    if (!reach_end_log) {
+        int log_index = log_reader.GetLogIndex();
+        uint64_t pos = log_reader.GetLastRecordOffset();
+		PDLOG(DEBUG, "last record offset[%lu] tid[%u] pid[%u]", pos, tid_, pid_);
+        std::string full_path = log_path_ + "/" +
+                            ::rtidb::base::FormatToString(log_index, FLAGS_binlog_name_length) + ".log";
+        FILE* fd = fopen(full_path.c_str(), "rb+");
+		if (fd == NULL) {
+			PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+			return false;
+		}
+		if (fseek(fd, pos, SEEK_SET) != 0) {
+			PDLOG(WARNING, "fail to seek. file[%s] pos[%lu]", full_path.c_str(), pos);
+			return false;
+		}
+		WriteHandle wh(full_path, fd);
+		wh.EndLog();
+	    PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
+    }
     return true;
 }
 

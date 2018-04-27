@@ -348,6 +348,10 @@ int LogReader::GetLogIndex() {
     return log_part_index_;
 }
 
+uint64_t LogReader::GetLastRecordOffset() {
+    return reader_->LastRecordOffset();
+}
+
 ::rtidb::base::Status LogReader::ReadNextRecord(
         ::rtidb::base::Slice* record, std::string* buffer) {
     // first read record 

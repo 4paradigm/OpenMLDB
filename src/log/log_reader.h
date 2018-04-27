@@ -28,6 +28,8 @@ class Status;
 
 namespace log {
 
+const uint64_t INVALID_OFFSET = UINT64_MAX;
+
 class Reader {
 public:
     // Interface for reporting errors.
@@ -132,6 +134,7 @@ public:
     int OpenSeqFile(const std::string& path);
     void GoBackToLastBlock();
     int GetLogIndex();
+    uint64_t GetLastRecordOffset();
     void SetOffset(uint64_t start_offset);
     LogReader(const LogReader&) = delete;
     LogReader& operator= (const LogReader&) = delete;
