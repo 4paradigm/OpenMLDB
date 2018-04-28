@@ -55,10 +55,10 @@ struct WriteHandle {
     FILE* fd_;
     WritableFile* wf_;
     Writer* lw_;
-    WriteHandle(const std::string& fname, FILE* fd):fd_(fd),
+    WriteHandle(const std::string& fname, FILE* fd, uint64_t dest_length = 0):fd_(fd),
     wf_(NULL), lw_(NULL) {
         wf_ = ::rtidb::log::NewWritableFile(fname, fd);
-        lw_ = new Writer(wf_);
+        lw_ = new Writer(wf_, dest_length);
     }
 
     ::rtidb::base::Status Write(const ::rtidb::base::Slice& slice) {

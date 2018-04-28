@@ -168,7 +168,7 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
             PDLOG(WARNING, "fail to seek. file[%s] pos[%lu]", full_path.c_str(), pos);
             return false;
         }
-        WriteHandle wh(full_path, fd);
+        WriteHandle wh(full_path, fd, pos);
         wh.EndLog();
         PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
     }
