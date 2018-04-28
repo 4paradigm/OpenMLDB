@@ -602,7 +602,13 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 
     ::rtidb::nameserver::TableInfo ns_table_info;
     ns_table_info.set_name(table_info.name());
-    if (table_info.ttl_type() != "kAbsoluteTime" && table_info.ttl_type() != "kLatestTime") {
+    std::string ttl_type = table_info.ttl_type();
+    std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
+    if (ttl_type == "kabsolutetime") {
+        ns_table_info.set_ttl_type("kAbsoluteTime");
+    } else if (ttl_type == "klatesttime") {
+        ns_table_info.set_ttl_type("kLatestTime");
+    } else {
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
         return;
     }
@@ -610,7 +616,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         printf("has not table_partition in table meta file\n");
         return;
     }
-    ns_table_info.set_ttl_type(table_info.ttl_type());
     ns_table_info.set_ttl(table_info.ttl());
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
     std::map<uint32_t, std::string> leader_map;
@@ -706,7 +711,9 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     std::set<std::string> name_set;
     bool has_index = false;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
-        if (type_set.find(table_info.column_desc(idx).type()) == type_set.end()) {
+        std::string cur_type = table_info.column_desc(idx).type();
+        std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
+        if (type_set.find(cur_type) == type_set.end()) {
             printf("type %s is invalid\n", table_info.column_desc(idx).type().c_str());
             return;
         }
@@ -721,7 +728,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         name_set.insert(table_info.column_desc(idx).name());
         ::rtidb::nameserver::ColumnDesc* column_desc = ns_table_info.add_column_desc();
         column_desc->set_name(table_info.column_desc(idx).name());
-        column_desc->set_type(table_info.column_desc(idx).type());
+        column_desc->set_type(cur_type);
         column_desc->set_add_ts_idx(table_info.column_desc(idx).add_ts_idx());
     }
     if (!has_index && table_info.column_desc_size() > 0) {
@@ -1159,7 +1166,11 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     } else {
         row.push_back("false");
     }
-    row.push_back(std::to_string(table_status.ttl()) + "min");
+    if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+        row.push_back(std::to_string(table_status.ttl()));
+    } else {
+        row.push_back(std::to_string(table_status.ttl()) + "min");
+    }
     row.push_back(std::to_string(table_status.time_offset()) + "s");
     row.push_back(::rtidb::base::HumanReadableString(table_status.record_byte_size() + table_status.record_idx_byte_size()));
     tp.AddRow(row);

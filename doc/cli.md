@@ -299,6 +299,7 @@ column_desc {
 }
 ```
 column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构  
+type字段标识当前列的数据类型. 支持的数据类型有int32, uint32, int64, uint64, float, double, string  
 ```
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令
 >create ./table_meta.txt
