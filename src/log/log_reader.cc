@@ -43,6 +43,7 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       backing_store_(new char[kBlockSize]),
       buffer_(),
       last_record_offset_(0),
+      last_record_end_offset_(0),
       end_of_buffer_offset_(0),
       last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
@@ -128,6 +129,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         scratch->clear();
         *record = fragment;
         last_record_offset_ = prospective_record_offset;
+        last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
         if (offset) {
             last_end_of_buffer_offset_ = offset;
         }    
@@ -177,6 +179,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
           last_record_offset_ = prospective_record_offset;
+          last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
           if (offset) {
             last_end_of_buffer_offset_ = offset;
           }
@@ -218,6 +221,10 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
 uint64_t Reader::LastRecordOffset() {
   return last_record_offset_;
+}
+
+uint64_t Reader::LastRecordEndOffset() {
+  return last_record_end_offset_;
 }
 
 void Reader::ReportCorruption(uint64_t bytes, const char* reason) {
@@ -348,8 +355,12 @@ int LogReader::GetLogIndex() {
     return log_part_index_;
 }
 
-uint64_t LogReader::GetLastRecordOffset() {
-    return reader_->LastRecordOffset();
+uint64_t LogReader::GetLastRecordEndOffset() {
+    if (reader_ == NULL) {
+        PDLOG(WARNING, "reader is NULL");
+        return 0;
+    }
+    return reader_->LastRecordEndOffset();
 }
 
 ::rtidb::base::Status LogReader::ReadNextRecord(

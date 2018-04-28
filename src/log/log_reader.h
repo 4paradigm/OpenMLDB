@@ -68,6 +68,8 @@ public:
     // Undefined before the first call to ReadRecord.
     uint64_t LastRecordOffset();
 
+    uint64_t LastRecordEndOffset();
+
     void GoBackToLastBlock();
 
 private:
@@ -79,6 +81,8 @@ private:
 
     // Offset of the last record returned by ReadRecord.
     uint64_t last_record_offset_;
+    // End offset of the last record returned by ReadRecord.
+    uint64_t last_record_end_offset_;
     // Offset of the first location past the end of buffer_.
     uint64_t end_of_buffer_offset_;
     uint64_t last_end_of_buffer_offset_;
@@ -132,7 +136,7 @@ public:
     int OpenSeqFile(const std::string& path);
     void GoBackToLastBlock();
     int GetLogIndex();
-    uint64_t GetLastRecordOffset();
+    uint64_t GetLastRecordEndOffset();
     void SetOffset(uint64_t start_offset);
     LogReader(const LogReader&) = delete;
     LogReader& operator= (const LogReader&) = delete;

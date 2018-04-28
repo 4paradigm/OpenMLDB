@@ -151,22 +151,26 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
     latest_offset = cur_offset;
     if (!reach_end_log) {
         int log_index = log_reader.GetLogIndex();
-        uint64_t pos = log_reader.GetLastRecordOffset();
-		PDLOG(DEBUG, "last record offset[%lu] tid[%u] pid[%u]", pos, tid_, pid_);
+        if (log_index < 0) {
+            PDLOG(INFO, "no binglog available. tid[%u] pid[%u]", tid_, pid_);
+            return true;
+        }
+        uint64_t pos = log_reader.GetLastRecordEndOffset();
+        PDLOG(DEBUG, "last record end offset[%lu] tid[%u] pid[%u]", pos, tid_, pid_);
         std::string full_path = log_path_ + "/" +
                             ::rtidb::base::FormatToString(log_index, FLAGS_binlog_name_length) + ".log";
         FILE* fd = fopen(full_path.c_str(), "rb+");
-		if (fd == NULL) {
-			PDLOG(WARNING, "fail to open file %s", full_path.c_str());
-			return false;
-		}
-		if (fseek(fd, pos, SEEK_SET) != 0) {
-			PDLOG(WARNING, "fail to seek. file[%s] pos[%lu]", full_path.c_str(), pos);
-			return false;
-		}
-		WriteHandle wh(full_path, fd);
-		wh.EndLog();
-	    PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
+        if (fd == NULL) {
+            PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+            return false;
+        }
+        if (fseek(fd, pos, SEEK_SET) != 0) {
+            PDLOG(WARNING, "fail to seek. file[%s] pos[%lu]", full_path.c_str(), pos);
+            return false;
+        }
+        WriteHandle wh(full_path, fd);
+        wh.EndLog();
+        PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
     }
     return true;
 }
