@@ -26,6 +26,7 @@
 #include "base/kv_iterator.h"
 #include "base/schema_codec.h"
 #include "base/flat_array.h"
+#include "base/file_util.h"
 #include "timer.h"
 #include "version.h"
 #include "proto/tablet.pb.h"
@@ -64,6 +65,7 @@ void SetupLog() {
         ::baidu::common::SetLogLevel(INFO);
     }
     if (!FLAGS_log_dir.empty()) {
+        ::rtidb::base::Mkdir(FLAGS_log_dir);
         std::string info_file = FLAGS_log_dir + "/rtidb.info.log";
         std::string warning_file = FLAGS_log_dir + "/rtidb.warning.log";
         ::baidu::common::SetLogFile(info_file.c_str());
