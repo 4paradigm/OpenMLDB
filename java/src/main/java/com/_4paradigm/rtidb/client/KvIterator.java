@@ -19,7 +19,7 @@ public interface KvIterator {
     
     Object[] getDecodedValue() throws TabletException;
     
-    boolean getDecodedValue(Object[] row, int start, int length) throws TabletException;
+    void getDecodedValue(Object[] row, int start, int length) throws TabletException;
 
     void next(); 
 }

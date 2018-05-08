@@ -103,17 +103,11 @@ public class DefaultKvIterator implements KvIterator {
     }
     
     public Object[] getDecodedValue() throws TabletException {
-        long delta = 0l;
-        if (config != null && config.isMetricsEnabled()) {
-    	    delta = System.nanoTime();
-        }
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row = RowCodec.decode(slice, schema);
-        if (config != null && config.isMetricsEnabled()) {
-            decode += System.nanoTime() - delta;
-        }
+        Object[] row = new Object[schema.size()];
+        getDecodedValue(row, 0, row.length);
         return row;
     }
 
@@ -143,8 +137,17 @@ public class DefaultKvIterator implements KvIterator {
     }
 
     @Override
-    public boolean getDecodedValue(Object[] row, int start, int length) throws TabletException {
-        // TODO Auto-generated method stub
-        return false;
+    public void getDecodedValue(Object[] row, int start, int length) throws TabletException {
+        long delta = 0l;
+        if (config != null && config.isMetricsEnabled()) {
+            delta = System.nanoTime();
+        }
+        if (schema == null) {
+            throw new TabletException("get decoded value is not supported");
+        }
+        RowCodec.decode(slice, schema, row, start, length);
+        if (config != null && config.isMetricsEnabled()) {
+            decode += System.nanoTime() - delta;
+        }
     }
 }
