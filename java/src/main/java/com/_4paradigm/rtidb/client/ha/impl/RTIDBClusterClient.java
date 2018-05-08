@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,7 +45,13 @@ import rtidb.api.TabletServer;
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
     private static Set<String> localIpAddr = new HashSet<String>();
-    private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1);
+    private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
+        public Thread newThread(Runnable r) {
+            Thread t = Executors.defaultThreadFactory().newThread(r);
+            t.setDaemon(true);
+            return t;
+        }
+    });
     private ZooKeeper zookeeper;
     private volatile Map<String, TableHandler> name2tables = new HashMap<String, TableHandler>();
     private volatile Map<Integer, TableHandler> id2tables = new HashMap<Integer, TableHandler>();

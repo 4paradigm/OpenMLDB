@@ -49,6 +49,39 @@ public class RowCodecTest {
 	}
 	
 	@Test
+	public void testDecodeWithArray() {
+	    List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+        ColumnDesc col1 = new ColumnDesc();
+        col1.setAddTsIndex(true);
+        col1.setName("card");
+        col1.setType(ColumnType.kString);
+        schema.add(col1);
+        
+        ColumnDesc col2 = new ColumnDesc();
+        col2.setAddTsIndex(true);
+        col2.setName("merchant");
+        col2.setType(ColumnType.kString);
+        schema.add(col2);
+        
+        ColumnDesc col3 = new ColumnDesc();
+        col3.setAddTsIndex(false);
+        col3.setName("amt");
+        col3.setType(ColumnType.kDouble);
+        schema.add(col3);
+        try {
+            ByteBuffer buffer = RowCodec.encode(new Object[] {"9527", "1234", 1.0}, schema);
+            buffer.rewind();
+            Object[] row = new Object[10];
+            RowCodec.decode(buffer, schema, row, 7, 3);
+            Assert.assertEquals("9527", row[7]);
+            Assert.assertEquals("1234", row[8]);
+            Assert.assertEquals(1.0, row[9]);
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
+        }
+	}
+	
+	@Test
 	public void testCodecPerf() {
 		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
 		ColumnDesc col1 = new ColumnDesc();

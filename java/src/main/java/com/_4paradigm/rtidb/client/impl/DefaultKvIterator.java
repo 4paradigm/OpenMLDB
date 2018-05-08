@@ -141,4 +141,10 @@ public class DefaultKvIterator implements KvIterator {
             decode += System.nanoTime() - delta;
         }
     }
+
+    @Override
+    public boolean getDecodedValue(Object[] row, int start, int length) throws TabletException {
+        // TODO Auto-generated method stub
+        return false;
+    }
 }
