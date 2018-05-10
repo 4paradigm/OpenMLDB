@@ -7,7 +7,7 @@
 
 #include <gflags/gflags.h>
 // cluster config
-DEFINE_string(endpoint, "127.0.0.1:9527", "config the ip and port that rtidb serves for");
+DEFINE_string(endpoint, "", "config the ip and port that rtidb serves for");
 DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
