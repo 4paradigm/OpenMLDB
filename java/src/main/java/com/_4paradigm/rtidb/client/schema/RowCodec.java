@@ -60,20 +60,24 @@ public class RowCodec {
         }
         return buffer;
     }
-
-    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
+    
+    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, Object[] row, int start, int length)  throws TabletException{
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
-        int length = buffer.get() & 0xFF;
-        Object[] row = new Object[length];
-        int index = 0;
-        while (buffer.position() < buffer.limit() && index < row.length) {
+        int colLength = buffer.get() & 0xFF;
+        if (colLength > length) {
+            colLength = length;
+        }
+        int index = start;
+        int count = 0;
+        while (buffer.position() < buffer.limit() && count < colLength) {
             byte type = buffer.get();
             int size = buffer.get() & 0xFF;
             if (size == 0) {
                 row[index] = null;
                 index++;
+                count++;
                 continue;
             }
             ColumnType ctype = ColumnType.valueOf((int) type);
@@ -100,7 +104,13 @@ public class RowCodec {
                 throw new TabletException(ctype.toString() + " is not support on jvm platform");
             }
             index++;
+            count++;
         }
+    }
+    
+    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
+        Object[] row = new Object[schema.size()];
+        decode(buffer, schema, row, 0, row.length);
         return row;
     }
 

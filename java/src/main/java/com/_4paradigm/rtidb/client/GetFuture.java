@@ -62,13 +62,8 @@ public class GetFuture implements Future<ByteString>{
 			throw new TabletException("no schema for table " + t);
 		}
 		ByteString raw = get(timeout, unit);
-		long network = System.nanoTime() - startTime;
-		long decode = System.nanoTime();
-		Object[] row = RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema());
-		if (config != null && config.isMetricsEnabled()) {
-		    decode = System.nanoTime() - decode;
-		    TabletMetrics.getInstance().addGet(decode, network);
-		}
+		Object[] row = new Object[t.getSchema().size()];
+		decode(raw, row, 0, row.length);
 		return row;
 	}
 	
@@ -76,18 +71,30 @@ public class GetFuture implements Future<ByteString>{
 	    if (t == null || t.getSchema().isEmpty()) {
             throw new TabletException("no schema for table " + t);
         }
+	    Object[] row = new Object[t.getSchema().size()];
+	    getRow(row, 0, row.length);
+	    return row;
+	}
+	
+	public void getRow(Object[] row, int start, int length) throws TabletException, InterruptedException, ExecutionException {
+	    if (t == null || t.getSchema().isEmpty()) {
+            throw new TabletException("no schema for table " + t);
+        }
         ByteString raw = get();
         if (raw == null) {
-            return new Object[t.getSchema().size()];
+            return ;
         }
-        long network = System.nanoTime() - startTime;
+        decode(raw, row, start, length);
+	}
+	
+	private void decode(ByteString raw, Object[] row, int start, int length) throws TabletException {
+	    long network = System.nanoTime() - startTime;
         long decode = System.nanoTime();
-        Object[] row = RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema());
+	    RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema(), row, start, length);
         if (config != null && config.isMetricsEnabled()) {
             decode = System.nanoTime() - decode;
             TabletMetrics.getInstance().addGet(decode, network);
         }
-        return row;
 	}
 	
 	@Override
