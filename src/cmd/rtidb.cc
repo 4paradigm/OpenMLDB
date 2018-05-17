@@ -103,7 +103,68 @@ void StartNameServer() {
     server.RunUntilAskedToQuit();
 }
 
+int THPIsEnabled() {
+#ifdef __linux__
+    char buf[1024];
+    FILE *fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled","r");
+    if (!fp) {
+        return 0;
+    }
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    if (strstr(buf,"[never]") == NULL) {
+        return 1;
+    }
+    fp = fopen("/sys/kernel/mm/transparent_hugepage/defrag","r");
+    if (!fp) return 0;
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    return (strstr(buf,"[never]") == NULL) ? 1 : 0;
+# else
+    return 0;
+#endif
+}
+
+int SwapIsEnabled() {
+#ifdef __linux__
+    char buf[1024];
+    FILE *fp = fopen("/proc/swaps","r");
+    if (!fp) {
+        return 0;
+    }
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    // if the swap is disabled, there is only one line in /proc/swaps.
+    // Filename     Type        Size    Used    Priority
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    return 1;
+# else
+    return 0;
+#endif
+}
+
 void StartTablet() {
+    if (THPIsEnabled()) {
+        PDLOG(WARNING, "THP is enabled in your kernel. This will create latency and memory usage issues with RTIDB."
+                       "To fix this issue run the command 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' and "
+                       "'echo never > /sys/kernel/mm/transparent_hugepage/defrag' as root");
+    }
+    if (SwapIsEnabled()) {
+        PDLOG(WARNING, "Swap is enabled in your kernel. This will create latency and memory usage issues with RTIDB."
+                       "To fix this issue run the command 'swapoff -a' as root");
+    }
     SetupLog();
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
