@@ -126,7 +126,7 @@ int THPIsEnabled() {
     }
     fclose(fp);
     return (strstr(buf,"[never]") == NULL) ? 1 : 0;
-# else
+#else
     return 0;
 #endif
 }
@@ -150,7 +150,7 @@ int SwapIsEnabled() {
     }
     fclose(fp);
     return 1;
-# else
+#else
     return 0;
 #endif
 }
