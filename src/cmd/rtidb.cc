@@ -1893,7 +1893,10 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
 }
 
 void StartClient() {
-    //::baidu::common::SetLogLevel(DEBUG);
+    if (FLAGS_endpoint.empty()) {
+        std::cout << "Start failed! not set endpoint" << std::endl;
+        return;
+    }
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
         << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
@@ -1974,7 +1977,6 @@ void StartClient() {
             return;
         }
     }
-
 }
 
 void StartNsClient() {
@@ -1997,8 +1999,11 @@ void StartNsClient() {
             return;
         }
         std::cout << "ns leader: " << endpoint << std::endl;
-    } else {
+    } else if (!FLAGS_endpoint.empty()) {
         endpoint = FLAGS_endpoint;
+    } else {
+        std::cout << "Start failed! not set endpoint or zk_cluster" << std::endl;
+        return;
     }
     ::rtidb::client::NsClient client(endpoint);
     if (client.Init() < 0) {
@@ -2068,7 +2073,6 @@ void StartNsClient() {
             return;
         }
     }
-
 }
 
 int main(int argc, char* argv[]) {
