@@ -121,14 +121,16 @@ message ShowTabletResponse {
     optional string msg = 3;
 }
 
-message DelReplicaData {
+message RecoverTableRequest {
     required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
 }
 
 message DelReplicaNSRequest {
-    required DelReplicaData data = 1;
+    required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
 }
 
 message MigrateRequest {
@@ -138,6 +140,27 @@ message MigrateRequest {
     required string des_endpoint = 4;
 }
 
+message MigrateInfo {
+    optional string src_endpoint = 1;
+    optional string des_endpoint = 2;
+}
+
+message EndpointStatusData {
+    optional string endpoint = 1;
+    optional bool is_leader = 2;
+    optional bool is_alive = 3;
+}
+
+message ChangeLeaderData {
+    optional string name = 1;
+    optional uint32 tid = 2;
+    optional uint32 pid = 3;
+    optional uint64 term = 4;
+    optional uint64 offset = 5;
+    optional string leader = 6;
+    repeated string follower = 7;
+}
+
 message OPStatus {
     required uint64 op_id = 1;
     required string op_type = 2;
@@ -145,9 +168,30 @@ message OPStatus {
     required uint64 start_time = 4;
     required uint64 end_time = 5;
     required string task_type = 6;
+    optional string name = 7;
+    optional uint32 pid = 8;
 }
 
-message ShowOPStatusRequest{}
+message GetTablePartitionRequest {
+    optional string name = 1;
+    optional uint32 pid = 2;
+}
+
+message GetTablePartitionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional TablePartition table_partition = 3;
+}
+
+message SetTablePartitionRequest {
+    optional string name = 1;
+    optional TablePartition table_partition = 2;
+}
+
+message ShowOPStatusRequest{
+    optional string name = 1;
+    optional uint32 pid = 2;
+}
 
 message ConnectZKRequest {}
 message DisConnectZKRequest {}
@@ -172,7 +216,10 @@ service NameServer {
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
     rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
     rpc Migrate(MigrateRequest) returns (GeneralResponse);
+    rpc RecoverTable(RecoverTableRequest) returns (GeneralResponse);
     rpc RecoverEndpoint(RecoverEndpointRequest) returns (GeneralResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+    rpc SetTablePartition(SetTablePartitionRequest) returns (GeneralResponse);
+    rpc GetTablePartition(GetTablePartitionRequest) returns (GetTablePartitionResponse);
 }

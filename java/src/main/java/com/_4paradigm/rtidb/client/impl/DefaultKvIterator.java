@@ -74,7 +74,9 @@ public class DefaultKvIterator implements KvIterator {
         this.totalSize = this.bs.size();
         next();
         this.schema = schema;
-        this.network = network;
+        if (network != null) {
+            this.network = network;
+        }
     }
 
     public List<ColumnDesc> getSchema() {
@@ -85,8 +87,8 @@ public class DefaultKvIterator implements KvIterator {
         if (offset <= totalSize) {
             return true;
         }
-        if (config!=null && config.isMetricsEnabled()) {
-        	    TabletMetrics.getInstance().addScan(decode, network);
+        if (config != null && config.isMetricsEnabled()) {
+            TabletMetrics.getInstance().addScan(decode, network);
         }
         return false;
     }
@@ -101,17 +103,19 @@ public class DefaultKvIterator implements KvIterator {
     }
     
     public Object[] getDecodedValue() throws TabletException {
-        	Long delta = System.nanoTime();
-        	if (schema == null) {
-        		throw new TabletException("get decoded value is not supported");
-        	}
-        	Object[] row = RowCodec.decode(slice, schema);
-        	decode += System.nanoTime() - delta;
-        	return row;
+        if (schema == null) {
+            throw new TabletException("get decoded value is not supported");
+        }
+        Object[] row = new Object[schema.size()];
+        getDecodedValue(row, 0, row.length);
+        return row;
     }
 
     public void next() {
-    	    Long delta = System.nanoTime();
+        long delta = 0l;
+        if (config != null && config.isMetricsEnabled()) {
+    	    delta = System.nanoTime();
+        }
         if (offset + 4 > totalSize) {
             offset += 4;
             return;
@@ -127,6 +131,23 @@ public class DefaultKvIterator implements KvIterator {
         }
         offset += (4 + size);
         slice.limit(offset);
-        decode += System.nanoTime() - delta;
+        if (config != null && config.isMetricsEnabled()) {
+            decode += System.nanoTime() - delta;
+        }
+    }
+
+    @Override
+    public void getDecodedValue(Object[] row, int start, int length) throws TabletException {
+        long delta = 0l;
+        if (config != null && config.isMetricsEnabled()) {
+            delta = System.nanoTime();
+        }
+        if (schema == null) {
+            throw new TabletException("get decoded value is not supported");
+        }
+        RowCodec.decode(slice, schema, row, start, length);
+        if (config != null && config.isMetricsEnabled()) {
+            decode += System.nanoTime() - delta;
+        }
     }
 }

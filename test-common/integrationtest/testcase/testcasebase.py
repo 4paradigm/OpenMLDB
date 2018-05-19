@@ -32,18 +32,25 @@ class TestCaseBase(unittest.TestCase):
         cls.conf_path = os.getenv('confpath')
         cls.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(cls.testpath))
         cls.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))
+        cls.ns_slaver = [i[1] for i in conf.ns_endpoints if i[1] != cls.ns_leader][0]
         cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
         cls.failfast = conf.failfast
+        cls.ns_path_dict = {conf.ns_endpoints[0][1]: cls.testpath + '/ns1',
+                            conf.ns_endpoints[1][1]: cls.testpath + '/ns2'}
         cls.node_path_dict = {cls.leader: cls.testpath + '/tablet1',
                               cls.slave1: cls.testpath + '/tablet2',
                               cls.slave2: cls.testpath + '/tablet3',
-                              cls.ns_leader: cls.ns_leader_path}
+                              cls.ns_leader: cls.ns_path_dict[cls.ns_leader],
+                              cls.ns_slaver: cls.ns_path_dict[cls.ns_slaver]}
         cls.leaderpath = cls.node_path_dict[cls.leader]
         cls.slave1path = cls.node_path_dict[cls.slave1]
         cls.slave2path = cls.node_path_dict[cls.slave2]
+        infoLogger.info('*'*88)
+        infoLogger.info([i[1] for i in conf.ns_endpoints]) 
+        infoLogger.info(cls.ns_slaver)
 
     @classmethod
     def tearDownClass(cls):
@@ -369,7 +376,7 @@ class TestCaseBase(unittest.TestCase):
 
     def showopstatus(self, endpoint):
         rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
-        tablestatus = self.parse_tb(rs, ' ', [0], [1, 2, 6])
+        tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
         tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
 
@@ -474,7 +481,7 @@ class TestCaseBase(unittest.TestCase):
     def get_task_dict_by_opid(self, tname, opid):
         time.sleep(1)
         task_dict = collections.OrderedDict()
-        cmd = "cat {}/info.log |grep -A 10000 '{}'|grep -a \"op_id\[{}\]\"|grep task_type".format(
+        cmd = "cat {}/info.log |grep -a -A 10000 '{}'|grep -a \"op_id\[{}\]\"|grep task_type".format(
             self.ns_leader_path, tname, opid) \
               + "|awk -F '\\\\[' '{print $4\"]\"$5\"]\"$6}'" \
                 "|awk -F '\\\\]' '{print $1\",\"$3\",\"$5}'"

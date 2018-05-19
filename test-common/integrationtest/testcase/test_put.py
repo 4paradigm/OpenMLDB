@@ -83,7 +83,7 @@ class TestPut(TestCaseBase):
         slave不允许put
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false', self.leader)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs1)
         rs2 = self.put(self.leader,
                        self.tid,
@@ -192,11 +192,9 @@ class TestPut(TestCaseBase):
     @ddt.data(
         ({'card': ('string:index', 'str1'), 'card2': ('int32:index', 3), 'amt': ('double', 1.1)}, 'Put ok'),
         ({'card': ('string:index', 'card0')}, 'Put ok'),
-        ({'card': ('string', 'card0')}, 'Put ok'),
         ({'card': ('string:index', 'str1'), 'card2': ('int32:index', 3), 'amt': ('double', '')},
          'Input value mismatch schema'),
         ({'card': ('string:index', 'str1'), 'card2': ('int32', 3), 'amt': ('double', 1.1)}, 'Put ok'),
-        ({'card': ('string', 'str1'), 'card2': ('int32', 3), 'amt': ('double', 1.1)}, 'Put ok'),
     )
     @ddt.unpack
     def test_sput_index(self, kv, rsp_msg):
@@ -253,11 +251,11 @@ class TestPut(TestCaseBase):
         ({'card': ('string:index', '3'), 's2': ('uint32', 'aaaa')},
          'bad lexical cast: source type value could not be interpreted as target', {}, ''),
         ({'card': ('string:index', '4'), 's2': ('uint32', -2)},
-         'Put ok', {'card': '4'}, ctypes.c_uint32(-2).value),
+         'put error! -2 is not uint32', {}, ''),
         ({'card': ('string:index', '5'), 's2': ('uint64', 1)},
          'Put ok', {'card': '5'}, 1),
         ({'card': ('string:index', '6'), 's2': ('uint64', -111111111111111111)},
-         'Put ok', {'card': '6'}, ctypes.c_uint64(-111111111111111111).value),
+         'put error! -111111111111111111 is not uint64', {}, ''),
     )
     @ddt.unpack
     def test_sput_uint(self, kv, rsp_msg, scan_kv, scan_value):

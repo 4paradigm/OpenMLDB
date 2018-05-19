@@ -12,6 +12,7 @@
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
+DECLARE_bool(enable_show_tp);
 
 namespace rtidb {
 namespace client {
@@ -139,7 +140,10 @@ bool TabletClient::Put(uint32_t tid,
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
             &request, &response, 12, 1);
-    percentile_.push_back(consumed);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
     if (ok && response.code() == 0) {
         return true;
     }
@@ -162,8 +166,10 @@ bool TabletClient::Put(uint32_t tid,
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
             &request, &response, 12, 1);
-    consumed = ::baidu::common::timer::get_micros() - consumed;
-    percentile_.push_back(consumed);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
     if (ok && response.code() == 0) {
         return true;
     }
@@ -503,8 +509,10 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
             kv_it->GetValue().ToString();
         }
     }
-    consumed = ::baidu::common::timer::get_micros() - consumed;
-    percentile_.push_back(consumed);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
     if (showm) {
         uint64_t rpc_send_time = response->metric().rqtime() - response->metric().sqtime();
         uint64_t mutex_time = response->metric().sctime() - response->metric().rqtime();
@@ -608,6 +616,9 @@ bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
 }
 
 void TabletClient::ShowTp() {
+    if (!FLAGS_enable_show_tp) {
+        return;
+    }
     std::sort(percentile_.begin(), percentile_.end());
     uint32_t size = percentile_.size();
     std::cout << "Percentile:99=" << percentile_[(uint32_t)(size * 0.99)] 

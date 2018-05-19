@@ -651,20 +651,25 @@ void TabletImpl::AddReplica(RpcController* controller,
         }
         std::vector<std::string> vec;
         vec.push_back(request->endpoint());
-        bool ok = replicator->AddReplicateNode(vec);
-        if (ok) {
-            if (task_ptr) {
-	            std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            }
+        int ret = replicator->AddReplicateNode(vec);
+        if (ret == 0) {
             response->set_code(0);
             response->set_msg("ok");
-            return;
-        } else {
+        } else if (ret < 0) {
             response->set_code(-3);
             PDLOG(WARNING, "fail to add endpoint for table %u pid %u", request->tid(), request->pid());
             response->set_msg("fail to add endpoint");
+            break;
+        } else {
+            response->set_code(-4);
+            response->set_msg("replica endpoint is exist");
+            PDLOG(WARNING, "fail to add endpoint for table %u pid %u", request->tid(), request->pid());
         }
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        }
+        return;
     } while(0);
     if (task_ptr) {
 	    std::lock_guard<std::mutex> lock(mu_);
@@ -701,20 +706,25 @@ void TabletImpl::DelReplica(RpcController* controller,
             PDLOG(WARNING,"no replicator for table %u, pid %u", request->tid(), request->pid());
             break;
         }
-        bool ok = replicator->DelReplicateNode(request->endpoint());
-        if (ok) {
+        int ret = replicator->DelReplicateNode(request->endpoint());
+        if (ret == 0) {
             response->set_code(0);
             response->set_msg("ok");
-            if (task_ptr) {
-	            std::lock_guard<std::mutex> lock(mu_);
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            }
-            return;
-        } else {
+        } else if (ret < 0) {
             response->set_code(-3);
+            PDLOG(WARNING, "replicator role is not leader. table %u pid %u", request->tid(), request->pid());
+            response->set_msg("replicator role is not leader");
+            break;
+        } else {
+            response->set_code(-4);
             PDLOG(WARNING, "fail to del endpoint for table %u pid %u", request->tid(), request->pid());
             response->set_msg("fail to del endpoint");
-        }  
+        }
+        if (task_ptr) {
+            std::lock_guard<std::mutex> lock(mu_);
+            task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        }
+        return;
     } while (0);
     if (task_ptr) {
 	    std::lock_guard<std::mutex> lock(mu_);
@@ -794,6 +804,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_tid(table->GetId());
             status->set_pid(table->GetPid());
             status->set_ttl(table->GetTTL());
+            status->set_ttl_type(table->GetTTLType());
             status->set_time_offset(table->GetTimeOffset());
             status->set_is_expire(table->GetExpireStatus());
             status->set_name(table->GetName());
@@ -1116,31 +1127,35 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 		}
     	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
 									std::to_string(pid) + "/snapshot/MANIFEST";
-		int fd = open(manifest_file.c_str(), O_RDONLY);
-		if (fd < 0) {
-			PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
-            has_error = false;
-			break;
-		}
-		// send manifest file
-		if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
-			PDLOG(WARNING, "send MANIFEST failed. tid[%u] pid[%u]", tid, pid);
-			break;
-		}
-		google::protobuf::io::FileInputStream fileInput(fd);
-		fileInput.SetCloseOnDelete(true);
-		::rtidb::api::Manifest manifest;
-		if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-			PDLOG(WARNING, "parse manifest failed. tid[%u] pid[%u]", tid, pid);
-			break;
-		}
-		// send snapshot file
-		if (SendFile(endpoint, tid, pid, manifest.name()) < 0) {
-			PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
-			break;
-		}
+        std::string snapshot_file;
+        {
+            int fd = open(manifest_file.c_str(), O_RDONLY);
+            if (fd < 0) {
+                PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+                has_error = false;
+                break;
+            }
+            google::protobuf::io::FileInputStream fileInput(fd);
+            fileInput.SetCloseOnDelete(true);
+            ::rtidb::api::Manifest manifest;
+            if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
+                PDLOG(WARNING, "parse manifest failed. tid[%u] pid[%u]", tid, pid);
+                break;
+            }
+            snapshot_file = manifest.name();
+        }
+        // send snapshot file
+        if (SendFile(endpoint, tid, pid, snapshot_file) < 0) {
+            PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
+            break;
+        }
+        // send manifest file
+        if (SendFile(endpoint, tid, pid, "MANIFEST") < 0) {
+            PDLOG(WARNING, "send MANIFEST failed. tid[%u] pid[%u]", tid, pid);
+            break;
+        }
         has_error = false;
-		PDLOG(INFO, "send snapshot success. endpoint %s tid %u pid %u", endpoint.c_str(), tid, pid);
+        PDLOG(INFO, "send snapshot success. endpoint %s tid %u pid %u", endpoint.c_str(), tid, pid);
     } while(0);
 	std::lock_guard<std::mutex> lock(mu_);
 	if (task) {
@@ -1173,6 +1188,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         if (try_times < FLAGS_send_file_max_try) {
             std::this_thread::sleep_for(std::chrono::milliseconds((FLAGS_send_file_max_try - try_times) * 
                     FLAGS_retry_send_file_wait_time_ms));
+            PDLOG(INFO, "retry to send file %s to %s. total size[%lu]", full_path.c_str(), endpoint.c_str(), file_size);
         }
         try_times--;
         brpc::Channel channel;
@@ -1240,7 +1256,7 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
                 break;
             }
             if (StreamWrite(stream, buffer, len, limit_time) < 0) {
-                PDLOG(WARNING, "stream write failed. tid %u pid %u file %s", tid, pid, file_name.c_str());
+                PDLOG(WARNING, "stream write failed. tid[%u] pid[%u] file %s", tid, pid, file_name.c_str());
                 ret = -1;
                 break;
             }
@@ -1317,9 +1333,9 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<::rtidb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-		if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kPauseSnapshot, task_ptr) < 0) {
-			response->set_code(-1);
-			response->set_msg("add task failed");
+        if (AddOPTask(request->task_info(), ::rtidb::api::TaskType::kPauseSnapshot, task_ptr) < 0) {
+            response->set_code(-1);
+            response->set_msg("add task failed");
             return;
         }
     }    
@@ -1332,16 +1348,20 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
             response->set_msg("table not exist");
             break;
         }
-		if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-			PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
-					table->GetTableStat(), request->tid(), request->pid());
-			response->set_code(-1);
-			response->set_msg("table status is not kNormal");
-			break;
-		}
-        table->SetTableStat(::rtidb::storage::kSnapshotPaused);
-        PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-                   table->GetTableStat(), request->tid(), request->pid());
+        if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
+            PDLOG(INFO, "table status is kSnapshotPaused, need not pause. tid[%u] pid[%u]", 
+                        request->tid(), request->pid());
+        } else if (table->GetTableStat() != ::rtidb::storage::kNormal) {
+            PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
+                            table->GetTableStat(), request->tid(), request->pid());
+            response->set_code(-1);
+            response->set_msg("table status is not kNormal");
+            break;
+        } else {
+            table->SetTableStat(::rtidb::storage::kSnapshotPaused);
+            PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+                       table->GetTableStat(), request->tid(), request->pid());
+        }           
         if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
         }
@@ -1350,8 +1370,8 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         return;
     } while(0);
     if (task_ptr) {
-    	task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
-	}
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+    }
 }
 
 void TabletImpl::RecoverSnapshot(RpcController* controller,
@@ -1377,20 +1397,25 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
-            if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
+            if (table->GetTableStat() == rtidb::storage::kNormal) {
+                PDLOG(INFO, "table status is already kNormal, need not recover. tid[%u] pid[%u]", 
+                            request->tid(), request->pid());
+
+            } else if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
                 PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
                         table->GetTableStat(), request->tid(), request->pid());
                 response->set_code(-1);
                 response->set_msg("table status is not kSnapshotPaused");
                 break;
+            } else {
+                table->SetTableStat(::rtidb::storage::kNormal);
+                PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
+                           table->GetTableStat(), request->tid(), request->pid());
             }
-            table->SetTableStat(::rtidb::storage::kNormal);
             if (task_ptr) {       
 			    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
             }
         }
-        PDLOG(INFO, "table status has set[%u]. tid[%u] pid[%u]", 
-                   table->GetTableStat(), request->tid(), request->pid());
         response->set_code(0);
         response->set_msg("ok");
         return;
@@ -1689,6 +1714,13 @@ void TabletImpl::GetTermPair(RpcController* controller,
             response->set_offset(0);
 			return;
 		}
+        std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
+        if (!::rtidb::base::IsExists(snapshot_file)) {
+            PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
+            response->set_term(0);
+            response->set_offset(0);
+            return;
+        }
         response->set_term(manifest.term());
         response->set_offset(manifest.offset());
 		return;

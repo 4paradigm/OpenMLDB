@@ -84,27 +84,21 @@ class TestCreateTable(TestCaseBase):
     @multi_dimension(True)
     def test_screate_table_0index(self):
         """
-        创建高维表，无index，检查schema
+        创建高维表，无index，创建失败
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
                           card='string', merchant='string')
-        self.assertIn('Create table ok' ,rs1)
-        schema_d = self.showschema(self.leader, self.tid, self.pid)
-        self.assertEqual(schema_d['card'], ['string', 'no'])
-        self.assertEqual(schema_d['merchant'], ['string', 'no'])
-
+        self.assertIn('create failed! schema has no index' ,rs1)
 
     @multi_dimension(True)
     def test_screate_table_noschema(self):
         """
-        创建高维表，无schema
+        创建高维表，无schema，创建失败
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', **{'': ''})
-        self.assertIn('Create table ok' ,rs1)
-        schema = self.run_client(self.leader, 'showschema {} {}'.format(self.tid, self.pid))
-        self.assertIn('No schema for table', schema)
+        self.assertIn('Bad create format', rs1)
 
 
     @multi_dimension(True)

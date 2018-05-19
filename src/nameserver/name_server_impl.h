@@ -18,6 +18,7 @@
 #include <brpc/server.h>
 #include <mutex>
 #include <condition_variable>
+#include "base/random.h"
 
 namespace rtidb {
 namespace nameserver {
@@ -28,6 +29,8 @@ using ::rtidb::zk::ZkClient;
 using ::rtidb::zk::DistLock;
 using ::rtidb::api::TabletState;
 using ::rtidb::client::TabletClient;
+
+const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 
 // tablet info
 struct TabletInfo {
@@ -311,7 +314,8 @@ private:
 	std::shared_ptr<Task> CreateRecoverTableTask(uint64_t op_index, ::rtidb::api::OPType op_type, 
                     const std::string& name, uint32_t pid, const std::string& endpoint);
 
-    int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data);
+    int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
+                    const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
     int AddOPData(const std::shared_ptr<OPData>& op_data);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint,
                      ::rtidb::api::OPType op_type);
@@ -328,14 +332,14 @@ private:
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
-    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
+    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
+    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
+    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
     int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
-    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
-                    bool is_leader, bool is_alive);
+                    bool is_leader, bool is_alive, uint64_t partent_id);
 
     void NotifyTableChanged();
     void DeleteDoneOP();
@@ -365,6 +369,9 @@ private:
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
     std::atomic<bool> auto_recover_table_;
+    std::map<std::string, std::list<uint64_t>> ordered_op_map_;
+    std::set<::rtidb::api::OPType> ordered_op_type_;
+    ::rtidb::base::Random rand_;
 };
 
 }

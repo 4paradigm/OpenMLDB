@@ -122,7 +122,6 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '2', '144000', 'yes'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '2', '144000', 'yes'])
 
-    @TestCaseBase.skip('FIXME')
     def test_auto_failover_slave_network_flashbreak(self):
         """
         auto_failover=true：连续两次主节点闪断，故障切换成功
@@ -244,8 +243,9 @@ class TestAutoFailover(TestCaseBase):
         self.multidimension_scan_vk = {'k1': 'ccard1'}
         rs5 = self.put(new_tb_leader2, tid, pid, "testkey1", self.now() + 9999, "ccard1")
         self.assertIn("ok", rs5)
+        time.sleep(0.1)
         self.assertTrue(
-            'ccard1' in self.scan(self.leader, tid, pid, 'testkey1', self.now() + 9999, 1))
+            'ccard1' in self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1))
 
 
 if __name__ == "__main__":

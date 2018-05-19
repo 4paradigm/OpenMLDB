@@ -43,6 +43,7 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       backing_store_(new char[kBlockSize]),
       buffer_(),
       last_record_offset_(0),
+      last_record_end_offset_(0),
       end_of_buffer_offset_(0),
       last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
@@ -128,6 +129,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
         scratch->clear();
         *record = fragment;
         last_record_offset_ = prospective_record_offset;
+        last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
         if (offset) {
             last_end_of_buffer_offset_ = offset;
         }    
@@ -177,6 +179,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
           last_record_offset_ = prospective_record_offset;
+          last_record_end_offset_ = end_of_buffer_offset_ - buffer_.size();
           if (offset) {
             last_end_of_buffer_offset_ = offset;
           }
@@ -218,6 +221,10 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
 uint64_t Reader::LastRecordOffset() {
   return last_record_offset_;
+}
+
+uint64_t Reader::LastRecordEndOffset() {
+  return last_record_end_offset_;
 }
 
 void Reader::ReportCorruption(uint64_t bytes, const char* reason) {
@@ -348,6 +355,14 @@ int LogReader::GetLogIndex() {
     return log_part_index_;
 }
 
+uint64_t LogReader::GetLastRecordEndOffset() {
+    if (reader_ == NULL) {
+        PDLOG(WARNING, "reader is NULL");
+        return 0;
+    }
+    return reader_->LastRecordEndOffset();
+}
+
 ::rtidb::base::Status LogReader::ReadNextRecord(
         ::rtidb::base::Slice* record, std::string* buffer) {
     // first read record 
@@ -369,9 +384,7 @@ int LogReader::GetLogIndex() {
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
 
-    // 用binlog恢复数据时, 恢复之后再写入数据会写到新binlog文件里
-    // 如果再次loadtable或者makesnapshot时读到中间一个binlog的状态可能是waitrecord, 这时要切换到下一个文件并返回Eof
-    if (status.IsEof() || status.IsWaitRecord()) {
+    if (status.IsEof()) {
         // reache the end of file 
         int new_log_part_index = RollRLogFile();
         PDLOG(WARNING, "reach the end of file. new index %d  old index %d", new_log_part_index,

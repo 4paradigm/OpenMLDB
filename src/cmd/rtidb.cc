@@ -26,6 +26,7 @@
 #include "base/kv_iterator.h"
 #include "base/schema_codec.h"
 #include "base/flat_array.h"
+#include "base/file_util.h"
 #include "timer.h"
 #include "version.h"
 #include "proto/tablet.pb.h"
@@ -34,6 +35,7 @@
 #include "tprinter.h"
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <random>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -63,6 +65,7 @@ void SetupLog() {
         ::baidu::common::SetLogLevel(INFO);
     }
     if (!FLAGS_log_dir.empty()) {
+        ::rtidb::base::Mkdir(FLAGS_log_dir);
         std::string info_file = FLAGS_log_dir + "/rtidb.info.log";
         std::string warning_file = FLAGS_log_dir + "/rtidb.warning.log";
         ::baidu::common::SetLogFile(info_file.c_str());
@@ -100,7 +103,68 @@ void StartNameServer() {
     server.RunUntilAskedToQuit();
 }
 
+int THPIsEnabled() {
+#ifdef __linux__
+    char buf[1024];
+    FILE *fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled","r");
+    if (!fp) {
+        return 0;
+    }
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    if (strstr(buf,"[never]") == NULL) {
+        return 1;
+    }
+    fp = fopen("/sys/kernel/mm/transparent_hugepage/defrag","r");
+    if (!fp) return 0;
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    return (strstr(buf,"[never]") == NULL) ? 1 : 0;
+#else
+    return 0;
+#endif
+}
+
+int SwapIsEnabled() {
+#ifdef __linux__
+    char buf[1024];
+    FILE *fp = fopen("/proc/swaps","r");
+    if (!fp) {
+        return 0;
+    }
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    // if the swap is disabled, there is only one line in /proc/swaps.
+    // Filename     Type        Size    Used    Priority
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 void StartTablet() {
+    if (THPIsEnabled()) {
+        PDLOG(WARNING, "THP is enabled in your kernel. This will create latency and memory usage issues with RTIDB."
+                       "To fix this issue run the command 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' and "
+                       "'echo never > /sys/kernel/mm/transparent_hugepage/defrag' as root");
+    }
+    if (SwapIsEnabled()) {
+        PDLOG(WARNING, "Swap is enabled in your kernel. This will create latency and memory usage issues with RTIDB."
+                       "To fix this issue run the command 'swapoff -a' as root");
+    }
     SetupLog();
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
@@ -601,7 +665,13 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 
     ::rtidb::nameserver::TableInfo ns_table_info;
     ns_table_info.set_name(table_info.name());
-    if (table_info.ttl_type() != "kAbsoluteTime" && table_info.ttl_type() != "kLatestTime") {
+    std::string ttl_type = table_info.ttl_type();
+    std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
+    if (ttl_type == "kabsolutetime") {
+        ns_table_info.set_ttl_type("kAbsoluteTime");
+    } else if (ttl_type == "klatesttime") {
+        ns_table_info.set_ttl_type("kLatestTime");
+    } else {
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
         return;
     }
@@ -609,7 +679,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         printf("has not table_partition in table meta file\n");
         return;
     }
-    ns_table_info.set_ttl_type(table_info.ttl_type());
     ns_table_info.set_ttl(table_info.ttl());
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
     std::map<uint32_t, std::string> leader_map;
@@ -705,7 +774,9 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     std::set<std::string> name_set;
     bool has_index = false;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
-        if (type_set.find(table_info.column_desc(idx).type()) == type_set.end()) {
+        std::string cur_type = table_info.column_desc(idx).type();
+        std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
+        if (type_set.find(cur_type) == type_set.end()) {
             printf("type %s is invalid\n", table_info.column_desc(idx).type().c_str());
             return;
         }
@@ -720,7 +791,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         name_set.insert(table_info.column_desc(idx).name());
         ::rtidb::nameserver::ColumnDesc* column_desc = ns_table_info.add_column_desc();
         column_desc->set_name(table_info.column_desc(idx).name());
-        column_desc->set_type(table_info.column_desc(idx).type());
+        column_desc->set_type(cur_type);
         column_desc->set_add_ts_idx(table_info.column_desc(idx).add_ts_idx());
     }
     if (!has_index && table_info.column_desc_size() > 0) {
@@ -832,6 +903,8 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     std::vector<std::string> row;
     row.push_back("op_id");
     row.push_back("op_type");
+    row.push_back("name");
+    row.push_back("pid");
     row.push_back("status");
     row.push_back("start_time");
     row.push_back("execute_time");
@@ -841,7 +914,20 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     tp.AddRow(row);
     ::rtidb::nameserver::ShowOPStatusResponse response;
     std::string msg;
-    bool ok = client->ShowOPStatus(response, msg);
+    std::string name;
+    uint32_t pid = ::rtidb::client::INVALID_PID;
+    if (parts.size() > 1) {
+        name = parts[1];
+    }
+    if (parts.size() > 2) {
+        try {
+            pid = boost::lexical_cast<uint32_t>(parts[2]);
+        } catch(std::exception const& e) {
+            std::cout << "Invalid args pid should be uint32_t" << std::endl;
+            return;
+        }
+    }
+    bool ok = client->ShowOPStatus(response, name, pid, msg);
     if (!ok) {
         std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
         return;
@@ -850,6 +936,13 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
         std::vector<std::string> row;
         row.push_back(std::to_string(response.op_status(idx).op_id()));
         row.push_back(response.op_status(idx).op_type());
+        if (response.op_status(idx).has_name() && response.op_status(idx).has_pid()) {
+            row.push_back(response.op_status(idx).name());
+            row.push_back(std::to_string(response.op_status(idx).pid()));
+        } else {
+            row.push_back("-");
+            row.push_back("-");
+        }
         row.push_back(response.op_status(idx).status());
         time_t rawtime = (time_t)response.op_status(idx).start_time();
         tm* timeinfo = localtime(&rawtime);
@@ -925,24 +1018,27 @@ void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::Tab
 }
 
 void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    uint32_t size = 400;
     try {
-        if (parts.size() >= 3) {
-            size = boost::lexical_cast<uint32_t>(parts[2]);
-        }
-        uint32_t times = 10000;
+        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        uint64_t key_num = 100000;
         if (parts.size() >= 4) {
-            times = ::boost::lexical_cast<uint32_t>(parts[3]);
+            key_num = ::boost::lexical_cast<uint32_t>(parts[3]);
         }
-        char val[size];
-        for (uint32_t i = 0; i < size; i++) {
-            val[i] ='0';
+        uint32_t times = 100000;
+        if (parts.size() >= 5) {
+            times = ::boost::lexical_cast<uint32_t>(parts[4]);
         }
-        std::string sval(val);
-        for (uint32_t i = 0 ; i < times; i++) {
-            std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-            for (uint32_t j = 0; j < 1000; j++) {
-                client->Put(1, 1, key, j, sval);
+        std::string value(128, 'a');
+        uint64_t base = 100000000;
+        std::random_device rd;
+        std::default_random_engine engine(rd());
+        std::uniform_int_distribution<> dis(1, key_num);
+        while(true) {
+            for (uint32_t i = 0; i < times; i++) {
+                std::string key = std::to_string(base + dis(engine));
+                uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
+                client->Put(tid, pid, key, ts, value);
             }
             client->ShowTp();
         }
@@ -1133,7 +1229,11 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     } else {
         row.push_back("false");
     }
-    row.push_back(std::to_string(table_status.ttl()) + "min");
+    if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+        row.push_back(std::to_string(table_status.ttl()));
+    } else {
+        row.push_back(std::to_string(table_status.ttl()) + "min");
+    }
     row.push_back(std::to_string(table_status.time_offset()) + "s");
     row.push_back(::rtidb::base::HumanReadableString(table_status.record_byte_size() + table_status.record_idx_byte_size()));
     tp.AddRow(row);
@@ -1414,45 +1514,46 @@ void HandleClientBenchmark(::rtidb::client::TabletClient* client) {
 }
 
 void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 6) {
-        std::cout << "Bad create format, input like create <name> <tid> <pid> <ttl> <seg_cnt>" << std::endl;
+    if (parts.size() < 8) {
+        std::cout << "Bad create format, input like screate <name> <tid> <pid> <ttl> <seg_cnt> <is_leader> <schema>" << std::endl;
         return;
     }
     try {
         int64_t ttl = 0;
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
-        if (parts.size() > 4) {
-            std::vector<std::string> vec;
-            ::rtidb::base::SplitString(parts[4], ":", &vec);
-            if (vec.size() > 1 && vec[0] == "latest") {
-                type = ::rtidb::api::TTLType::kLatestTime;
-            }
-            if (vec.size() > 1 && vec[0] != "latest" ) {
-                std::cout << "invalid ttl type " << std::endl;
-                return;
-            }
-            ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
+        std::vector<std::string> vec;
+        ::rtidb::base::SplitString(parts[4], ":", &vec);
+        if (vec.size() > 1 && vec[0] == "latest") {
+            type = ::rtidb::api::TTLType::kLatestTime;
         }
+        if (vec.size() > 1 && vec[0] != "latest" ) {
+            std::cout << "invalid ttl type " << std::endl;
+            return;
+        }
+        ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         if (ttl < 0) {
             std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
             return;
         }
-        uint32_t seg_cnt = 16;
-        if (parts.size() > 5) {
-            seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
-        }
+        uint32_t seg_cnt = boost::lexical_cast<uint32_t>(parts[5]);
         bool leader = true;
-        if (parts.size() > 6 && parts[6].compare("false") == 0) {
+        if (parts[6].compare("false") != 0 && parts[6].compare("true") != 0) {
+            std::cout << "create failed! is_leader parameter should be true or false" << std::endl;
+            return;
+        }
+        if (parts[6].compare("false") == 0) {
             leader = false;
         }
         std::vector<::rtidb::base::ColumnDesc> columns;
         // check duplicate column
         std::set<std::string> used_column_names;
+        bool has_index = false;
         for (uint32_t i = 7; i < parts.size(); i++) {
             std::vector<std::string> kv;
             ::rtidb::base::SplitString(parts[i], ":", &kv);
             if (kv.size() < 2) {
-                continue;
+                std::cout << "create failed! schema format is illegal" << std::endl;
+                return;
             }
             if (used_column_names.find(kv[0]) != used_column_names.end()) {
                 std::cout << "Duplicated column " << kv[0] << std::endl;
@@ -1462,30 +1563,36 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
             bool add_ts_idx = false;
             if (kv.size() > 2 && kv[2] == "index") {
                 add_ts_idx = true;
+                has_index = true;
             }
             ::rtidb::base::ColType type;
             if (kv[1] == "int32") {
                 type = ::rtidb::base::ColType::kInt32;
-            }else if (kv[1] == "int64") {
+            } else if (kv[1] == "int64") {
                 type = ::rtidb::base::ColType::kInt64;
-            }else if (kv[1] == "uint32") {
+            } else if (kv[1] == "uint32") {
                 type = ::rtidb::base::ColType::kUInt32;
-            }else if (kv[1] == "uint64") {
+            } else if (kv[1] == "uint64") {
                 type = ::rtidb::base::ColType::kUInt64;
-            }else if (kv[1] == "float") {
+            } else if (kv[1] == "float") {
                 type = ::rtidb::base::ColType::kFloat;
-            }else if (kv[1] == "double") {
+            } else if (kv[1] == "double") {
                 type = ::rtidb::base::ColType::kDouble;
-            }else if (kv[1] == "string") {
+            } else if (kv[1] == "string") {
                 type = ::rtidb::base::ColType::kString;
-            }else {
-                continue;
+            } else {
+                std::cout << "create failed! undefined type " << kv[1] << std::endl;
+                return;
             }
             ::rtidb::base::ColumnDesc desc;
             desc.add_ts_idx = add_ts_idx;
             desc.type = type;
             desc.name = kv[0];
             columns.push_back(desc);
+        }
+        if (!has_index) {
+            std::cout << "create failed! schema has no index" << std::endl;
+            return;
         }
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
@@ -1509,10 +1616,15 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
         return;
     }
     std::string schema;
-    bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
-                                    boost::lexical_cast<uint32_t>(parts[2]), schema);
-    if(!ok || schema.empty()) {
-        std::cout << "No schema for table" << std::endl;
+    try {
+        bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
+                                        boost::lexical_cast<uint32_t>(parts[2]), schema);
+        if(!ok || schema.empty()) {
+            std::cout << "No schema for table" << std::endl;
+            return;
+        }
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args" << std::endl;
         return;
     }
     std::vector<::rtidb::base::ColumnDesc> raw;
@@ -1707,17 +1819,25 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
             bool codec_ok = false;
             if (raw[i - 4].type == ::rtidb::base::ColType::kInt32) {
                 codec_ok = codec.Append(boost::lexical_cast<int32_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kInt64) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kInt64) {
                 codec_ok = codec.Append(boost::lexical_cast<int64_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt32) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt32) {
+                if (boost::algorithm::starts_with(parts[i], "-")) {
+                    std::cout << "put error! " << parts[i] << " is not uint32" << std::endl;
+                    return;
+                }
                 codec_ok = codec.Append(boost::lexical_cast<uint32_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt64) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kUInt64) {
+                if (boost::algorithm::starts_with(parts[i], "-")) {
+                    std::cout << "put error! " << parts[i] << " is not uint64" << std::endl;
+                    return;
+                }
                 codec_ok = codec.Append(boost::lexical_cast<uint64_t>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kFloat) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kFloat) {
                 codec_ok = codec.Append(boost::lexical_cast<float>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kDouble) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kDouble) {
                 codec_ok = codec.Append(boost::lexical_cast<double>(parts[i]));
-            }else if (raw[i - 4].type == ::rtidb::base::ColType::kString) {
+            } else if (raw[i - 4].type == ::rtidb::base::ColType::kString) {
                 codec_ok = codec.Append(parts[i]);
             }
             if (!codec_ok) {
@@ -1773,7 +1893,10 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
 }
 
 void StartClient() {
-    //::baidu::common::SetLogLevel(DEBUG);
+    if (FLAGS_endpoint.empty()) {
+        std::cout << "Start failed! not set endpoint" << std::endl;
+        return;
+    }
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
         << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
@@ -1854,7 +1977,6 @@ void StartClient() {
             return;
         }
     }
-
 }
 
 void StartNsClient() {
@@ -1877,8 +1999,11 @@ void StartNsClient() {
             return;
         }
         std::cout << "ns leader: " << endpoint << std::endl;
-    } else {
+    } else if (!FLAGS_endpoint.empty()) {
         endpoint = FLAGS_endpoint;
+    } else {
+        std::cout << "Start failed! not set endpoint or zk_cluster" << std::endl;
+        return;
     }
     ::rtidb::client::NsClient client(endpoint);
     if (client.Init() < 0) {
@@ -1948,7 +2073,6 @@ void StartNsClient() {
             return;
         }
     }
-
 }
 
 int main(int argc, char* argv[]) {

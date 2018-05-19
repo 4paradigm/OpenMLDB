@@ -73,8 +73,15 @@ bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, std::string& 
     return false;
 }
 
-bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, std::string& msg) {
+bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, 
+            const std::string& name, uint32_t pid, std::string& msg) {
     ::rtidb::nameserver::ShowOPStatusRequest request;
+    if (!name.empty()) {
+        request.set_name(name);
+    }
+    if (pid != INVALID_PID) {
+        request.set_pid(pid);
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowOPStatus,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();

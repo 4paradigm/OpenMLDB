@@ -30,9 +30,18 @@ TEST_F(StringsTest, FormatToString) {
 TEST_F(StringsTest, ReadableTime) {
 
     std::string result = HumanReadableTime(60000);
-    ASSERT_EQ("1.000m", result);
+    ASSERT_EQ("1m", result);
+    result = HumanReadableTime(600);
+    ASSERT_EQ("600ms", result);
+    result = HumanReadableTime(6000 + 5);
+    ASSERT_EQ("6s", result);
+    result = HumanReadableTime(60000 * 5 + 100);
+    ASSERT_EQ("5m", result);
+    result = HumanReadableTime(60000 * 60 * 5 + 100);
+    ASSERT_EQ("5h", result);
+    result = HumanReadableTime(60000 * 60 * 24 * 5 + 100);
+    ASSERT_EQ("5d", result);
 }
-
 
 }
 }
