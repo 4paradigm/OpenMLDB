@@ -1585,6 +1585,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "pid is not start with zero and consecutive");
         return;
     }
+    uint32_t tid = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {
@@ -1601,12 +1602,14 @@ void NameServerImpl::CreateTable(RpcController* controller,
         }
         table_index_++;
         table_info->set_tid(table_index_);
+        tid = table_index_;
     }
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (ConvertColumnDesc(table_info, columns) < 0) {
         response->set_code(-1);
         response->set_msg("convert column desc failed");
-        PDLOG(WARNING, "convert table column desc failed. tid[%u]", table_index_);
+        PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", 
+                        table_info->name().c_str(), tid);
         return;
     }
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
@@ -1615,7 +1618,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
                 CreateTableOnTablet(table_info, true, columns, endpoint_map) < 0) {
             response->set_code(-1);
             response->set_msg("create table failed");
-            PDLOG(WARNING, "create table failed. tid[%u]", table_index_);
+            PDLOG(WARNING, "create table failed. name[%s] tid[%u]", 
+                            table_info->name().c_str(), tid);
             break;
         }
         {
