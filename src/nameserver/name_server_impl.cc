@@ -1048,6 +1048,39 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     return 0;
 }
 
+int NameServerImpl::DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+    uint32_t tid = table_info->tid();
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        uint32_t pid = table_info->table_partition(idx).pid();
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+            std::shared_ptr<TabletInfo> tablet_ptr;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                auto iter = tablets_.find(endpoint);
+                // check tablet if exist
+                if (iter == tablets_.end()) {
+                    PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
+                    continue;
+                }
+                tablet_ptr = iter->second;
+                // check tablet healthy
+                if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                    PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
+                    continue;
+                }
+            }
+            if (!tablet_ptr->client_->DropTable(tid, pid)) {
+                PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
+                        table_index_, pid, endpoint.c_str());
+            }
+            PDLOG(INFO, "drop table success. tid[%u] pid[%u] endpoint[%s]", 
+                        table_index_, pid, endpoint.c_str());
+        }
+    }
+    return 0;
+}
+
 void NameServerImpl::ConfSet(RpcController* controller,
             const ConfSetRequest* request,
             GeneralResponse* response,
@@ -1577,41 +1610,45 @@ void NameServerImpl::CreateTable(RpcController* controller,
         return;
     }
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
-    if (CreateTableOnTablet(table_info, false, columns, endpoint_map) < 0 ||
-            CreateTableOnTablet(table_info, true, columns, endpoint_map) < 0) {
-        response->set_code(-1);
-        response->set_msg("create table failed");
-        PDLOG(WARNING, "create table failed. tid[%u]", table_index_);
-        return;
-    }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_))) {
-            PDLOG(WARNING, "update term failed. table name[%s]", 
-                            table_info->name().c_str());
+    do {
+        if (CreateTableOnTablet(table_info, false, columns, endpoint_map) < 0 ||
+                CreateTableOnTablet(table_info, true, columns, endpoint_map) < 0) {
             response->set_code(-1);
-            response->set_msg("update term failed");
-            return;
+            response->set_msg("create table failed");
+            PDLOG(WARNING, "create table failed. tid[%u]", table_index_);
+            break;
         }
-    }    
-    std::string table_value;
-    table_info->SerializeToString(&table_value);
-    if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
-        PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
-                        zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
-        response->set_code(-1);
-        response->set_msg("create table node failed");
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_))) {
+                PDLOG(WARNING, "update term failed. table name[%s]", 
+                                table_info->name().c_str());
+                response->set_code(-1);
+                response->set_msg("update term failed");
+                break;
+            }
+        }    
+        std::string table_value;
+        table_info->SerializeToString(&table_value);
+        if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+            PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
+                            zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
+            response->set_code(-1);
+            response->set_msg("create table node failed");
+            break;
+        }
+        PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
+                      zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            table_info_.insert(std::make_pair(table_info->name(), table_info));
+            NotifyTableChanged();
+        }
+        response->set_code(0);
+        response->set_msg("ok");
         return;
-    }
-    PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
-                  zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        table_info_.insert(std::make_pair(table_info->name(), table_info));
-        NotifyTableChanged();
-    }
-    response->set_code(0);
-    response->set_msg("ok");
+    } while (0);
+    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
 }
 
 void NameServerImpl::AddReplicaNS(RpcController* controller,

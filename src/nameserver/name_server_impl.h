@@ -343,6 +343,7 @@ private:
 
     void NotifyTableChanged();
     void DeleteDoneOP();
+    int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
 private:
     std::mutex mu_;
