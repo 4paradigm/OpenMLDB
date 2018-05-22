@@ -1072,10 +1072,10 @@ int NameServerImpl::DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::Table
             }
             if (!tablet_ptr->client_->DropTable(tid, pid)) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
-                        table_index_, pid, endpoint.c_str());
+                                tid, pid, endpoint.c_str());
             }
             PDLOG(INFO, "drop table success. tid[%u] pid[%u] endpoint[%s]", 
-                        table_index_, pid, endpoint.c_str());
+                        tid, pid, endpoint.c_str());
         }
     }
     return 0;
