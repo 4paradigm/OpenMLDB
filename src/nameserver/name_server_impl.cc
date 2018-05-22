@@ -1622,16 +1622,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
                             table_info->name().c_str(), tid);
             break;
         }
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_))) {
-                PDLOG(WARNING, "update term failed. table name[%s]", 
-                                table_info->name().c_str());
-                response->set_code(-1);
-                response->set_msg("update term failed");
-                break;
-            }
-        }    
         std::string table_value;
         table_info->SerializeToString(&table_value);
         if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
