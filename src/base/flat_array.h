@@ -43,7 +43,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
-        memrev32ifbe(static_cast<const void*>(&data));
+        memrev32ifbe(static_cast<void*>(&data));
         Encode(kInt32, static_cast<const void*>(&data), 4);
         cur_cnt_ ++;
         return true;
@@ -53,7 +53,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
-        memrev64ifbe(static_cast<const void*>(&data));
+        memrev64ifbe(static_cast<void*>(&data));
         Encode(kInt64, static_cast<const void*>(&data), 8);
         cur_cnt_ ++;
         return true;
@@ -63,7 +63,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
-        memrev32ifbe(static_cast<const void*>(&data));
+        memrev32ifbe(static_cast<void*>(&data));
         Encode(kUInt32, static_cast<const void*>(&data), 4);
         cur_cnt_ ++;
         return true;
@@ -73,7 +73,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
-        memrev64ifbe(static_cast<const void*>(&data));
+        memrev64ifbe(static_cast<void*>(&data));
         Encode(kUInt64, static_cast<const void*>(&data), 8);
         cur_cnt_ ++;
         return true;
@@ -83,7 +83,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
-        memrev64ifbe(static_cast<const void*>(&data));
+        memrev64ifbe(static_cast<void*>(&data));
         Encode(kDouble, static_cast<const void*>(&data), 8);
         cur_cnt_ ++;
         return true;
