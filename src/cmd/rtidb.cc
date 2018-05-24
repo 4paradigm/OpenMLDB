@@ -66,8 +66,8 @@ void SetupLog() {
     }
     if (!FLAGS_log_dir.empty()) {
         ::rtidb::base::Mkdir(FLAGS_log_dir);
-        std::string info_file = FLAGS_log_dir + "/rtidb.info.log";
-        std::string warning_file = FLAGS_log_dir + "/rtidb.warning.log";
+        std::string info_file = FLAGS_log_dir + "/" + FLAGS_role + ".info.log";
+        std::string warning_file = FLAGS_log_dir + "/" + FLAGS_role + ".warning.log";
         ::baidu::common::SetLogFile(info_file.c_str());
         ::baidu::common::SetWarningFile(warning_file.c_str());
     }

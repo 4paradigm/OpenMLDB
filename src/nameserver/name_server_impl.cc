@@ -1483,8 +1483,8 @@ void NameServerImpl::DropTable(RpcController* controller,
         code = -1;
     } else {
         PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), request->name().c_str());
+        table_info_.erase(request->name());
     }
-    table_info_.erase(request->name());
     response->set_code(code);
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
     NotifyTableChanged();
