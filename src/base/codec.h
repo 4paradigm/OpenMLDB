@@ -17,6 +17,7 @@
 #include "storage/segment.h"
 #include "logging.h"
 #include "base/strings.h"
+#include "base/endianconv.h"
 
 using ::rtidb::storage::DataBlock;
 
