@@ -985,7 +985,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
-            std::map<uint32_t, std::vector<std::string>>& endpoint_map) {
+            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         uint32_t pid = table_info->table_partition(idx).pid();
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
@@ -1010,14 +1010,10 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                 }
             }
             std::vector<std::string> endpoint_vec;
-            uint64_t term = 0;
             if (is_leader) {
                 if (endpoint_map.find(pid) != endpoint_map.end()) {
                     endpoint_map[pid].swap(endpoint_vec);
                 }
-                std::lock_guard<std::mutex> lock(mu_);
-                term_++;
-                term = term_;
                 ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
                 ::rtidb::nameserver::TermPair* term_pair = table_partition->add_term_offset();
                 term_pair->set_term(term);
@@ -1586,6 +1582,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         return;
     }
     uint32_t tid = 0;
+    uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {
@@ -1603,6 +1600,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         table_index_++;
         table_info->set_tid(table_index_);
         tid = table_index_;
+        cur_term = term_;
     }
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (ConvertColumnDesc(table_info, columns) < 0) {
@@ -1614,8 +1612,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     do {
-        if (CreateTableOnTablet(table_info, false, columns, endpoint_map) < 0 ||
-                CreateTableOnTablet(table_info, true, columns, endpoint_map) < 0) {
+        if (CreateTableOnTablet(table_info, false, columns, endpoint_map, cur_term) < 0 ||
+                CreateTableOnTablet(table_info, true, columns, endpoint_map, cur_term) < 0) {
             response->set_code(-1);
             response->set_msg("create table failed");
             PDLOG(WARNING, "create table failed. name[%s] tid[%u]", 
