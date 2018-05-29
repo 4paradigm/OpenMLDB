@@ -1417,10 +1417,15 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
         return;
     }
     try {
+        uint32_t limit = 0;
+        if (parts.size() > 6) {
+            limit = boost::lexical_cast<uint32_t>(parts[6]);
+        }
         ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
                 boost::lexical_cast<uint32_t>(parts[2]),
                 parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
-                boost::lexical_cast<uint64_t>(parts[5]));
+                boost::lexical_cast<uint64_t>(parts[5]),
+                limit);
         if (it == NULL) {
             std::cout << "Fail to scan table" << std::endl;
         }else {
@@ -1474,7 +1479,7 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
     for (uint32_t j = 0; j < run_times; j++) {
         for (uint32_t i = 0; i < 500 * 4; i++) {
             std::string key =boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0);
             delete it;
         }
         client->ShowTp();
@@ -1749,12 +1754,17 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         return;
     }
     try {
+        uint32_t limit = 0;
+        if (parts.size() > 7) {
+            limit = boost::lexical_cast<uint32_t>(parts[7]);
+        }
         ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
                 boost::lexical_cast<uint32_t>(parts[2]),
                 parts[3], 
                 boost::lexical_cast<uint64_t>(parts[5]), 
                 boost::lexical_cast<uint64_t>(parts[6]),
-                parts[4]);
+                parts[4],
+                limit);
         if (it == NULL) {
             std::cout << "Fail to scan table" << std::endl;
         }else {
@@ -1878,14 +1888,14 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
 
     for (uint32_t i = 0; i < 10; i++) {
         std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-        ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et);
+        ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0);
         delete it;
     }
     client->ShowTp();
     for (uint32_t j = 0; j < times; j++) {
         for (uint32_t i = 0; i < 500; i++) {
             std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0);
             delete it;
         }
         client->ShowTp();
