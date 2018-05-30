@@ -33,6 +33,25 @@ class TestRecoverEndpoint(TestCaseBase):
         self.pid = 3
         self.put_large_datas(data_count, 7)
 
+    def confset_createtable_nofollower_put(self, data_count):
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        self.confset(self.ns_leader, 'auto_recover_table', 'true')
+        self.tname = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata(
+            '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
+            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        table_info = self.showtable(self.ns_leader)
+        self.tid = int(table_info.keys()[0][1])
+        self.pid = 3
+        self.put_large_datas(data_count, 7)
+
 
     def put_data(self, endpoint):
         rs = self.put(endpoint, self.tid, self.pid, "testkey0", self.now() + 1000, "testvalue0")
@@ -77,8 +96,10 @@ class TestRecoverEndpoint(TestCaseBase):
             32: 'self.makesnapshot(self.ns_leader, self.tname, self.pid, "ns_client")',
             33: 'self.get_latest_opid_by_tname_pid(self.tname, self.pid)',
             34: 'self.recoverendpoint(self.ns_leader, self.slave1)',
+            35: 'self.confset_createtable_nofollower_put(1)',
+            36: 'self.assertEqual(self.get_op_by_opid(self.latest_opid), "kUpdatePartitionStatusOP")',
+            37: 'self.assertEqual(self.get_op_by_opid(self.latest_opid), "kReLoadTableOP")',
         }
-
 
     @ddt.data(
         (1, 26, 3, 0, 6, 15, 25, 0, 33, 20, 24, 27),  # 主节点断网后恢复，手动恢复后加为从节点
@@ -111,6 +132,31 @@ class TestRecoverEndpoint(TestCaseBase):
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
 
+    @ddt.data(
+        (35, 26, 3, 0, 6, 15, 25, 0, 33, 36, 27),  # 没有从节点的情况下主节点断网后恢复，手动恢复后仍为主节点
+        (35, 26, 2, 0, 13, 25, 0, 33, 37, 27),  # 没有从节点的情况下主节点挂掉后恢复，手动恢复后仍为主节点
+    )
+    @ddt.unpack
+    def test_recover_endpoint1(self, *steps):
+        """
+        tablet故障恢复流程测试
+        只有主节点没有从节点
+        :param steps:
+        :return:
+        """
+        self.get_new_ns_leader()
+        steps_dict = self.get_steps_dict()
+        for i in steps:
+            infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
+            eval(steps_dict[i])
+        rs = self.showtable(self.ns_leader)
+        role_x = [v[0] for k, v in rs.items()]
+        is_alive_x = [v[-1] for k, v in rs.items()]
+        print self.showopstatus(self.ns_leader)
+        self.assertEqual(role_x.count('leader'), 4)
+        self.assertEqual(is_alive_x.count('yes'), 4)
+        print(self.get_table_status(self.leader, self.tid, self.pid))
+        self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[1], "kTableLeader")
 
     def test_recoversnapshot_offline_master_failed(self):
         """
