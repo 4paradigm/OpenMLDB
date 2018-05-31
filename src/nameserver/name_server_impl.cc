@@ -1706,7 +1706,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(request.endpoint(), op_index, 
                 ::rtidb::api::OPType::kAddReplicaOP, request.name(), 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -1917,7 +1917,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::rtidb::api::OPType::kMigrateOP, 
-                 name, tid, pid, table_info->ttl(), table_info->seg_cnt());
+                 name, tid, pid, table_info->ttl(), table_info->seg_cnt(), false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", 
                         tid, pid, des_endpoint.c_str());
@@ -2579,7 +2579,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -2681,7 +2681,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -2772,7 +2772,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaNoSendOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3002,7 +3002,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::shared_ptr<Task> task = CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), 
                 ::rtidb::api::OPType::kReLoadTableOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, true);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3202,7 +3202,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
 
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name, 
-                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
+                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -3213,7 +3213,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->fun_ = boost::bind(&TabletClient::LoadTable, it->second->client_, name, tid, pid, 
-                ttl, false, std::vector<std::string>(),
+                ttl, is_leader, std::vector<std::string>(),
                 seg_cnt, task->task_info_);
     return task;
 }
