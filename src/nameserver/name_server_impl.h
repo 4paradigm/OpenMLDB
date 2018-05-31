@@ -19,6 +19,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "base/random.h"
+#include "base/schema_codec.h"
 
 namespace rtidb {
 namespace nameserver {
@@ -239,9 +240,6 @@ private:
 
     void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
-
-    int ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-                    std::vector<::rtidb::base::ColumnDesc>& columns);                
 
     void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
                     bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
