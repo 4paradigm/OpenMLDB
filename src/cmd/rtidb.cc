@@ -223,7 +223,7 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
         if (columns[i].add_ts_idx) {
             uint32_t pid = 0;
             if (pid_num > 0) {
-                pid = (uint32_t)::rtidb::base::hash64(data[i]) % pid_num;
+                pid = (uint32_t)(::rtidb::base::hash64(data[i]) % pid_num);
             }
             if (dimensions.find(pid) == dimensions.end()) {
                 dimensions.insert(std::make_pair(pid, std::vector<std::pair<std::string, uint32_t>>()));
@@ -667,7 +667,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             printf("Invalid args. ts %s should be unsigned int\n", parts[3].c_str());
             return;
         } 
-        uint32_t pid = ::rtidb::base::hash64(pk) % tables[0].table_partition_size();
+        uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % tables[0].table_partition_size());
         std::string endpoint;
         for (int idx = 0; idx < tables[0].table_partition_size(); idx++) {
             if (tables[0].table_partition(idx).pid() != pid) {
@@ -750,7 +750,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
                     return;
                 }
             }
-            if (!clients[endpoint]->Put(tid, pid, ts, buffer, dimensions[pid])) {
+            if (!clients[endpoint]->Put(tid, pid, ts, buffer, iter->second)) {
                 std::cout << "Put failed" << std::endl; 
                 return;
             }
