@@ -42,6 +42,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(endpoint);
+DECLARE_int32(port);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(thread_pool_size);
@@ -89,14 +90,21 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
+    if (FLAGS_port > 0) {
+        if (server.Start(FLAGS_port, &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start nameserver on endpoint %d with version %d.%d.%d", 
+                    FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d", 
+                    FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
-    PDLOG(INFO, "start nameserver on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
-            RTIDB_VERSION_MAJOR,
-            RTIDB_VERSION_MINOR,
-            RTIDB_VERSION_BUG);
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
     server.set_version(oss.str());
@@ -182,18 +190,25 @@ void StartTablet() {
     server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
+    if (FLAGS_port > 0) {
+        if (server.Start(FLAGS_port, &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d", 
+                    FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    } else {
+        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+            PDLOG(WARNING, "Fail to start server");
+            exit(1);
+        }
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d", 
+                    FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
-    PDLOG(INFO, "start tablet on port %s with version %d.%d.%d", FLAGS_endpoint.c_str(),
-            RTIDB_VERSION_MAJOR,
-            RTIDB_VERSION_MINOR,
-            RTIDB_VERSION_BUG);
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
     server.set_version(oss.str());
