@@ -785,11 +785,6 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             if (it == NULL) {
                 std::cout << "Fail to scan table" << std::endl;
             } else {
-                std::vector<::rtidb::base::ColumnDesc> columns;
-                if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
-                    std::cout << "convert table column desc failed" << std::endl; 
-                    return;
-                }
                 ShowTableRows(columns, it);
                 delete it;
             }
@@ -827,31 +822,12 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             return;
         } 
         uint32_t pid = (uint32_t)(::rtidb::base::hash64(pk) % tables[0].table_partition_size());
-        std::string endpoint;
-        for (int idx = 0; idx < tables[0].table_partition_size(); idx++) {
-            if (tables[0].table_partition(idx).pid() != pid) {
-                continue;
-            }
-            for (int inner_idx = 0; inner_idx < tables[0].table_partition(idx).partition_meta_size(); inner_idx++) {
-                if (tables[0].table_partition(idx).partition_meta(inner_idx).is_leader() && 
-                         tables[0].table_partition(idx).partition_meta(inner_idx).is_alive()) {
-                    endpoint = tables[0].table_partition(idx).partition_meta(inner_idx).endpoint();
-                    break;
-                }
-            }
-            break;
-        }
-        if (endpoint.empty()) {
-            printf("put error. cannot find healthy endpoint. pid is %u\n", pid);
+        std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+        if (!tablet_client) {
+            std::cout << "Failed to put. error msg: " << msg << std::endl;
             return;
         }
-        ::rtidb::client::TabletClient tablet_client(endpoint);
-        if (tablet_client.Init() < 0) {
-            printf("tablet client init failed, endpoint is %s\n", endpoint.c_str());
-            return;
-        }
-        bool ok = tablet_client.Put(tid, pid, pk, ts, parts[4]);
-        if (ok) {
+        if (tablet_client->Put(tid, pid, pk, ts, parts[4])) {
             std::cout << "Put ok" << std::endl;
         } else {
             std::cout << "Put failed" << std::endl; 
@@ -910,7 +886,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
                 }
             }
             if (!clients[endpoint]->Put(tid, pid, ts, buffer, iter->second)) {
-                std::cout << "Put failed" << std::endl; 
+                printf("put failed. tid %u pid %u endpoint %s\n", tid, pid, endpoint.c_str()); 
                 return;
             }
         }
