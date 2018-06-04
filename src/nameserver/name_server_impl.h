@@ -262,7 +262,7 @@ private:
 
     std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name,
-                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt);
+                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader);
 
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,

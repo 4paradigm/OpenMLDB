@@ -104,7 +104,68 @@ void StartNameServer() {
     server.RunUntilAskedToQuit();
 }
 
+int THPIsEnabled() {
+#ifdef __linux__
+    char buf[1024];
+    FILE *fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled","r");
+    if (!fp) {
+        return 0;
+    }
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    if (strstr(buf,"[never]") == NULL) {
+        return 1;
+    }
+    fp = fopen("/sys/kernel/mm/transparent_hugepage/defrag","r");
+    if (!fp) return 0;
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    return (strstr(buf,"[never]") == NULL) ? 1 : 0;
+#else
+    return 0;
+#endif
+}
+
+int SwapIsEnabled() {
+#ifdef __linux__
+    char buf[1024];
+    FILE *fp = fopen("/proc/swaps","r");
+    if (!fp) {
+        return 0;
+    }
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    // if the swap is disabled, there is only one line in /proc/swaps.
+    // Filename     Type        Size    Used    Priority
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 void StartTablet() {
+    if (THPIsEnabled()) {
+        PDLOG(WARNING, "THP is enabled in your kernel. This will create latency and memory usage issues with RTIDB."
+                       "To fix this issue run the command 'echo never > /sys/kernel/mm/transparent_hugepage/enabled' and "
+                       "'echo never > /sys/kernel/mm/transparent_hugepage/defrag' as root");
+    }
+    if (SwapIsEnabled()) {
+        PDLOG(WARNING, "Swap is enabled in your kernel. This will create latency and memory usage issues with RTIDB."
+                       "To fix this issue run the command 'swapoff -a' as root");
+    }
     SetupLog();
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     bool ok = tablet->Init();
@@ -2071,7 +2132,10 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
 }
 
 void StartClient() {
-    //::baidu::common::SetLogLevel(DEBUG);
+    if (FLAGS_endpoint.empty()) {
+        std::cout << "Start failed! not set endpoint" << std::endl;
+        return;
+    }
     std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
         << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
@@ -2152,7 +2216,6 @@ void StartClient() {
             return;
         }
     }
-
 }
 
 void StartNsClient() {
@@ -2175,8 +2238,11 @@ void StartNsClient() {
             return;
         }
         std::cout << "ns leader: " << endpoint << std::endl;
-    } else {
+    } else if (!FLAGS_endpoint.empty()) {
         endpoint = FLAGS_endpoint;
+    } else {
+        std::cout << "Start failed! not set endpoint or zk_cluster" << std::endl;
+        return;
     }
     ::rtidb::client::NsClient client(endpoint);
     if (client.Init() < 0) {
@@ -2250,7 +2316,6 @@ void StartNsClient() {
             return;
         }
     }
-
 }
 
 int main(int argc, char* argv[]) {

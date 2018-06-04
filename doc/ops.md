@@ -3,6 +3,9 @@
 ## 机器环境准备
 
 * 关闭操作系统swap
+* 关闭THP  
+  echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled  
+  echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag  
 
 ## 分布式运维
 

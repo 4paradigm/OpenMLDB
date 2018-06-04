@@ -469,7 +469,7 @@ bool LogReplicator::RollWLogFile() {
     std::string name = ::rtidb::base::FormatToString(
                 binlog_index_.load(std::memory_order_relaxed), FLAGS_binlog_name_length) + ".log";
     std::string full_path = log_path_ + "/" + name;
-    FILE* fd = fopen(full_path.c_str(), "ab+");
+    FILE* fd = fopen(full_path.c_str(), "wb");
     if (fd == NULL) {
         PDLOG(WARNING, "fail to create file %s", full_path.c_str());
         return false;
