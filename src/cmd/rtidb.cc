@@ -185,11 +185,8 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
     tp.AddRow(vrow);
 }
 
-void ShowTableRows(const std::string& schema, 
+void ShowTableRows(const std::vector<::rtidb::base::ColumnDesc>& raw, 
                    ::rtidb::base::KvIterator* it) { 
-    std::vector<::rtidb::base::ColumnDesc> raw;
-    ::rtidb::base::SchemaCodec codec;
-    codec.Decode(schema, raw);
     ::baidu::common::TPrinter tp(raw.size() + 2, 128);
     std::vector<std::string> row;
     row.push_back("#");
@@ -264,6 +261,33 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
     return 0;
 }        
 
+std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const ::rtidb::nameserver::TableInfo& table_info,
+            uint32_t pid, std::string& msg) {
+    std::string endpoint;
+    for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
+        if (table_info.table_partition(idx).pid() != pid) {
+            continue;
+        }
+        for (int inner_idx = 0; inner_idx < table_info.table_partition(idx).partition_meta_size(); inner_idx++) {
+            if (table_info.table_partition(idx).partition_meta(inner_idx).is_leader() && 
+                     table_info.table_partition(idx).partition_meta(inner_idx).is_alive()) {
+                endpoint = table_info.table_partition(idx).partition_meta(inner_idx).endpoint();
+                break;
+            }
+        }
+        break;
+    }
+    if (endpoint.empty()) {
+        msg = "cannot find healthy endpoint. pid is " + std::to_string(pid);
+        return std::shared_ptr<::rtidb::client::TabletClient>();
+    }
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = std::make_shared<::rtidb::client::TabletClient>(endpoint);
+    if (tablet_client->Init() < 0) {
+        msg = "tablet client init failed, endpoint is " + endpoint;
+        tablet_client.reset();
+    }
+    return tablet_client;
+}
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
@@ -639,6 +663,80 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
         tp.AddRow(row);
     }
     tp.Print(true);
+}
+
+void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]" << std::endl;
+        return;
+    }
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(parts[1], tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("put failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    std::string key = parts[2];
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to scan. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables[0].column_desc_size() == 0) {
+        try {
+            ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,  
+                    boost::lexical_cast<uint64_t>(parts[3]), 
+                    boost::lexical_cast<uint64_t>(parts[4]));
+            if (it == NULL) {
+                std::cout << "Fail to scan table" << std::endl;
+            } else {
+                std::cout << "#\tTime\tData" << std::endl;
+                uint32_t index = 1;
+                while (it->Valid()) {
+                    std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
+                    index ++;
+                    it->Next();
+                }
+                delete it;
+            }
+        } catch (std::exception const& e) {
+            printf("Invalid args. st and et should be unsigned int\n");
+            return;
+        } 
+    } else {
+        std::vector<::rtidb::base::ColumnDesc> columns;
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
+            std::cout << "convert table column desc failed" << std::endl; 
+            return;
+        }
+        try {
+            ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,  
+                    boost::lexical_cast<uint64_t>(parts[4]), 
+                    boost::lexical_cast<uint64_t>(parts[5]),
+                    parts[3]);
+            if (it == NULL) {
+                std::cout << "Fail to scan table" << std::endl;
+            } else {
+                std::vector<::rtidb::base::ColumnDesc> columns;
+                if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
+                    std::cout << "convert table column desc failed" << std::endl; 
+                    return;
+                }
+                ShowTableRows(columns, it);
+                delete it;
+            }
+
+        } catch (std::exception const& e) {
+            printf("Invalid args. st and et should be unsigned int\n");
+        }
+    }
 }
 
 void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -1879,7 +1977,10 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
                 std::cout << "No schema for table ,please use command scan" << std::endl;
                 return;
             }
-            ShowTableRows(schema, it);
+            std::vector<::rtidb::base::ColumnDesc> raw;
+            ::rtidb::base::SchemaCodec codec;
+            codec.Decode(schema, raw);
+            ShowTableRows(raw, it);
             delete it;
         }
 
@@ -2103,6 +2204,8 @@ void StartNsClient() {
             HandleNSCreateTable(parts, &client);
         } else if (parts[0] == "put") {
             HandleNSPut(parts, &client);
+        } else if (parts[0] == "scan") {
+            HandleNSScan(parts, &client);
         } else if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
         } else if (parts[0] == "addreplica") {
