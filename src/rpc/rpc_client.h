@@ -100,7 +100,7 @@ public:
         brpc::Controller cntl;
         cntl.set_log_id(log_id_++);
         if (rpc_timeout > 0) {
-            cntl.set_timeout_ms(rpc_timeout * 1000);
+            cntl.set_timeout_ms(rpc_timeout);
         }
         if (retry_times > 0) {
             cntl.set_max_retry(retry_times);
