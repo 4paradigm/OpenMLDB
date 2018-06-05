@@ -172,7 +172,7 @@ public:
 
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
-            std::map<uint32_t, std::vector<std::string>>& endpoint_map);
+            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);
 
     void CheckZkClient();
 
@@ -343,6 +343,7 @@ private:
 
     void NotifyTableChanged();
     void DeleteDoneOP();
+    int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
 private:
     std::mutex mu_;
