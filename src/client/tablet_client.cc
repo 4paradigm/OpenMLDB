@@ -139,7 +139,7 @@ bool TabletClient::Put(uint32_t tid,
     ::rtidb::api::PutResponse response;
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (FLAGS_enable_show_tp) {
         consumed = ::baidu::common::timer::get_micros() - consumed;
         percentile_.push_back(consumed);
@@ -165,7 +165,7 @@ bool TabletClient::Put(uint32_t tid,
     ::rtidb::api::PutResponse response;
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (FLAGS_enable_show_tp) {
         consumed = ::baidu::common::timer::get_micros() - consumed;
         percentile_.push_back(consumed);
@@ -337,7 +337,7 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
 bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
     ::rtidb::api::TaskStatusRequest request;
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTaskStatus,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ret || response.code() != 0) {
         return false;
     }
@@ -395,7 +395,7 @@ bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifes
 int TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {
     ::rtidb::api::GetTableStatusRequest request;
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (ret) {
         return 0;
     }
@@ -433,7 +433,7 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
     request.set_idx_name(idx_name);
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
-            &request, response, 12, 1);
+            &request, response, FLAGS_request_timeout_ms, 1);
     response->mutable_metric()->set_rptime(::baidu::common::timer::get_micros());
     if (!ok || response->code() != 0) {
         return NULL;
@@ -457,7 +457,7 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
-            &request, response, 12, 1);
+            &request, response, FLAGS_request_timeout_ms, 1);
     response->mutable_metric()->set_rptime(::baidu::common::timer::get_micros());
     if (!ok || response->code() != 0) {
         return NULL;
@@ -473,7 +473,7 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     request.set_pid(pid);
     ::rtidb::api::GetTableSchemaResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableSchema,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
         schema.assign(response.schema());
         return true;
@@ -497,7 +497,7 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
-            &request, response, 12, 1);
+            &request, response, FLAGS_request_timeout_ms, 1);
     response->mutable_metric()->set_rptime(::baidu::common::timer::get_micros());
     if (!ok || response->code() != 0) {
         return NULL;
@@ -593,7 +593,7 @@ bool TabletClient::SetExpire(uint32_t tid, uint32_t pid, bool is_expire) {
     request.set_pid(pid);
     request.set_is_expire(is_expire);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetExpire,
-                                  &request, &response, 12, 1);
+                                  &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -607,7 +607,7 @@ bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
     request.set_pid(pid);
     request.set_timestamp(timestamp);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetTTLClock,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -642,7 +642,7 @@ bool TabletClient::Get(uint32_t tid,
     request.set_key(pk);
     request.set_ts(time);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -666,7 +666,7 @@ bool TabletClient::Get(uint32_t tid,
     request.set_ts(time);
     request.set_idx_name(idx_name);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -679,7 +679,7 @@ bool TabletClient::ConnectZK() {
     ::rtidb::api::ConnectZKRequest request;
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::ConnectZK,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code()  != 0) {
         return false;
     }
@@ -690,7 +690,7 @@ bool TabletClient::DisConnectZK() {
     ::rtidb::api::DisConnectZKRequest request;
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DisConnectZK,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code()  != 0) {
         return false;
     }
