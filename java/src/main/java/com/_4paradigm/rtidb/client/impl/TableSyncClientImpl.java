@@ -191,6 +191,11 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public KvIterator scan(int tid, int pid, String key, int limit) throws TimeoutException, TabletException {
+        return scan(tid, pid, key, null, 0, 0, limit);
+    }
+
+    @Override
     public KvIterator scan(int tid, int pid, String key, long st, long et, int limit) throws TimeoutException, TabletException {
         return scan(tid, pid, key, null, st, et, limit);
     }
@@ -207,9 +212,19 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public KvIterator scan(int tid, int pid, String key, String idxName, int limit) throws TimeoutException, TabletException {
+        return scan(tid, pid, key, idxName, 0, 0, limit);
+    }
+
+    @Override
     public KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException {
 
         return scan(tname, key, null, st, et, 0);
+    }
+
+    @Override
+    public KvIterator scan(String tname, String key, int limit) throws TimeoutException, TabletException {
+        return scan(tname, key, null, 0, 0, limit);
     }
 
     @Override
@@ -234,6 +249,11 @@ public class TableSyncClientImpl implements TableSyncClient {
             pid = pid * -1;
         }
         return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, limit, th);
+    }
+
+    @Override
+    public KvIterator scan(String tname, String key, String idxName, int limit) throws TimeoutException, TabletException {
+        return scan(tname, key, idxName, 0, 0, limit);
     }
 
     private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th)throws TimeoutException, TabletException  {

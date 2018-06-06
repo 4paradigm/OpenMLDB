@@ -185,8 +185,18 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
+    public ScanFuture scan(int tid, int pid, String key, int limit) throws TabletException {
+        return scan(tid, pid, key, null, 0, 0, limit);
+    }
+
+    @Override
     public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) throws TabletException {
         return scan(tid, pid, key, idxName, st, et, 0);
+    }
+
+    @Override
+    public ScanFuture scan(int tid, int pid, String key, String idxName, int limit) throws TabletException {
+        return scan(tid, pid, key, idxName, 0, 0, limit);
     }
 
     @Override
@@ -205,6 +215,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
+    public ScanFuture scan(String name, String key, String idxName, int limit) throws TabletException {
+        return scan(name, key, idxName, 0, 0, limit);
+    }
+
+    @Override
     public ScanFuture scan(String name, String key, String idxName, long st, long et, int limit) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
@@ -220,6 +235,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     @Override
     public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
         return scan(name, key, null, st, et, 0);
+    }
+
+    @Override
+    public ScanFuture scan(String name, String key, int limit) throws TabletException {
+        return scan(name, key, null, 0, 0, limit);
     }
 
     @Override
