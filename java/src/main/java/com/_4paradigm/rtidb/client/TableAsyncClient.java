@@ -41,7 +41,11 @@ public interface TableAsyncClient {
 
     ScanFuture scan(int tid, int pid, String key, long st, long et) throws TabletException;
 
+    ScanFuture scan(int tid, int pid, String key, long st, long et, int limit) throws TabletException;
+
     ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) throws TabletException;
+
+    ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, int limit) throws TabletException;
 
     PutFuture put(String name, String key, long time, byte[] bytes) throws TabletException;
 
@@ -53,7 +57,11 @@ public interface TableAsyncClient {
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ScanFuture scan(String name, String key, String idxName, long st, long et) throws TabletException;
 
+    ScanFuture scan(String name, String key, String idxName, long st, long et, int limit) throws TabletException;
+
     ScanFuture scan(String name, String key, long st, long et) throws TabletException;
+
+    ScanFuture scan(String name, String key, long st, long et, int limit) throws TabletException;
 
     GetFuture get(String name, String key, long time) throws TabletException;
 
