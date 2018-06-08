@@ -90,17 +90,22 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
-        return get(tid, pid, key, time, client.getHandler(tid));
+        return get(tid, pid, key, null, time, client.getHandler(tid));
     }
 
     @Override
     public Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
+        return getRow(tid, pid, key, null, time);
+    }
+
+    @Override
+    public Object[] getRow(int tid, int pid, String key, String idxName, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
         long consumed = 0l;
         if (client.getConfig().isMetricsEnabled()) {
             consumed = System.nanoTime();
         }
-        ByteString response = get(tid, pid, key, time, th);
+        ByteString response = get(tid, pid, key, idxName, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
@@ -116,7 +121,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return row;
     }
-    
+
+    @Override
+    public Object[] getRow(int tid, int pid, String key, String idxName) throws TimeoutException, TabletException {
+        return getRow(tid, pid, key, idxName, 0);
+    }
+
     @Override
     public ByteString get(String tname, String key) throws TimeoutException, TabletException {
         return get(tname, key, 0l);
@@ -124,9 +134,16 @@ public class TableSyncClientImpl implements TableSyncClient {
     
     @Override
     public Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException {
-        if (key == null || key.isEmpty()) {
-            throw new TabletException("key is null or empty");
-        }
+        return getRow(tname, key, null, time);
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, String idxName) throws TimeoutException, TabletException {
+        return getRow(tname, key, idxName, 0);
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -139,7 +156,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (client.getConfig().isMetricsEnabled()) {
             consumed = System.nanoTime();
         }
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, idxName, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
@@ -155,7 +172,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return row;
     }
-    
+
     @Override
     public ByteString get(String tname, String key, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
@@ -166,18 +183,25 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, null, time, th);
         return response;
     }
     
-    private ByteString get(int tid, int pid, String key, long time, TableHandler th) throws TabletException {
+    private ByteString get(int tid, int pid, String key, String idxName, long time, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
-        Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
-                .build();
+        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        builder.setTs(time);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.GetRequest request = builder.build();
         Tablet.GetResponse response = ts.get(request);
         if (response != null && response.getCode() == 0) {
             return response.getValue();
@@ -187,31 +211,59 @@ public class TableSyncClientImpl implements TableSyncClient {
     
     @Override
     public KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException, TabletException {
-        return scan(tid, pid, key, null, st, et);
+        return scan(tid, pid, key, null, st, et, 0);
     }
-    
+
+    @Override
+    public KvIterator scan(int tid, int pid, String key, int limit) throws TimeoutException, TabletException {
+        return scan(tid, pid, key, null, 0, 0, limit);
+    }
+
+    @Override
+    public KvIterator scan(int tid, int pid, String key, long st, long et, int limit) throws TimeoutException, TabletException {
+        return scan(tid, pid, key, null, st, et, limit);
+    }
+
     @Override
     public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et) throws TimeoutException, TabletException {
-        TableHandler th = client.getHandler(tid);
-        return scan(tid, pid, key, idxName, st, et, th);
+        return scan(tid, pid, key, idxName, st, et, 0);
     }
-    
+
+    @Override
+    public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        return scan(tid, pid, key, idxName, st, et, limit, th);
+    }
+
+    @Override
+    public KvIterator scan(int tid, int pid, String key, String idxName, int limit) throws TimeoutException, TabletException {
+        return scan(tid, pid, key, idxName, 0, 0, limit);
+    }
+
     @Override
     public KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException {
-        TableHandler th = client.getHandler(tname);
-        if (th == null) {
-            throw new TabletException("no table with name " + tname);
-        }
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
-        }
-        return scan(th.getTableInfo().getTid(), pid, key, null, st, et, th);
+
+        return scan(tname, key, null, st, et, 0);
+    }
+
+    @Override
+    public KvIterator scan(String tname, String key, int limit) throws TimeoutException, TabletException {
+        return scan(tname, key, null, 0, 0, limit);
+    }
+
+    @Override
+    public KvIterator scan(String tname, String key, long st, long et, int limit) throws TimeoutException, TabletException {
+        return scan(tname, key, null, st, et, limit);
     }
 
     @Override
     public KvIterator scan(String tname, String key, String idxName, long st, long et)
             throws TimeoutException, TabletException {
+        return scan(tname, key, idxName, st, et, 0);
+    }
+
+    @Override
+    public KvIterator scan(String tname, String key, String idxName, long st, long et, int limit) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -220,10 +272,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, th);
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, limit, th);
     }
 
-    private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th)throws TimeoutException, TabletException  {
+    @Override
+    public KvIterator scan(String tname, String key, String idxName, int limit) throws TimeoutException, TabletException {
+        return scan(tname, key, idxName, 0, 0, limit);
+    }
+
+    private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th)throws TimeoutException, TabletException  {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
@@ -235,6 +292,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setEt(et);
         builder.setSt(st);
         builder.setPid(pid);
+        builder.setLimit(limit);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }

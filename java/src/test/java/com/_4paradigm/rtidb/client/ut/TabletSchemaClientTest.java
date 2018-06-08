@@ -356,8 +356,8 @@ public class TabletSchemaClientTest {
         }catch(TabletException e) {
             Assert.assertTrue(true);
         }
-        
-        
+
+
 
     }
 
@@ -443,6 +443,56 @@ public class TabletSchemaClientTest {
         Assert.assertEquals("9527", row[0]);
         Assert.assertEquals("merchant0", row[1]);
         Assert.assertEquals(2.0d, row[2]);
+    }
+
+    @Test
+    public void testMulGet() throws TimeoutException, TabletException {
+        int tid = id.incrementAndGet();
+        List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+        ColumnDesc desc1 = new ColumnDesc();
+        desc1.setAddTsIndex(true);
+        desc1.setName("card");
+        desc1.setType(ColumnType.kString);
+        schema.add(desc1);
+        ColumnDesc desc2 = new ColumnDesc();
+        desc2.setAddTsIndex(true);
+        desc2.setName("merchant");
+        desc2.setType(ColumnType.kString);
+        schema.add(desc2);
+        ColumnDesc desc3 = new ColumnDesc();
+        desc3.setAddTsIndex(false);
+        desc3.setName("amt");
+        desc3.setType(ColumnType.kDouble);
+        schema.add(desc3);
+        boolean ok = tabletClient.createTable("schema-get", tid, 0, 0, 8, schema);
+        Assert.assertTrue(ok);
+        Assert.assertTrue(tableClient.put(tid, 0, 10l, new Object[] { "9527", "merchant0", 2.0d }));
+        Assert.assertTrue(tableClient.put(tid, 0, 20l, new Object[] { "9527", "merchant1", 3.0d }));
+        Assert.assertTrue(tableClient.put(tid, 0, 30l, new Object[] { "9528", "merchant0", 4.0d }));
+        // check no exist
+        Object[] row = tableClient.getRow(tid, 0, "9529", "card", 0l);
+        Assert.assertEquals(3, row.length);
+        Assert.assertEquals(null, row[0]);
+
+        // get head
+        row = tableClient.getRow(tid, 0, "9527", "card",0l);
+        Assert.assertEquals(3, row.length);
+        Assert.assertEquals("9527", row[0]);
+        Assert.assertEquals("merchant1", row[1]);
+        Assert.assertEquals(3.0d, row[2]);
+        // get by time
+        row = tableClient.getRow(tid, 0, "9527","card", 10l);
+        Assert.assertEquals(3, row.length);
+        Assert.assertEquals("9527", row[0]);
+        Assert.assertEquals("merchant0", row[1]);
+        Assert.assertEquals(2.0d, row[2]);
+
+        // get by time
+        row = tableClient.getRow(tid, 0, "merchant0", "merchant" ,30l);
+        Assert.assertEquals(3, row.length);
+        Assert.assertEquals("9528", row[0]);
+        Assert.assertEquals("merchant0", row[1]);
+        Assert.assertEquals(4.0d, row[2]);
     }
     
     public void testUtf8() throws TimeoutException, TabletException {

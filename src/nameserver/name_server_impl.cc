@@ -23,6 +23,8 @@ DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
 DECLARE_int32(max_op_num);
+DECLARE_uint32(partition_num);
+DECLARE_uint32(replica_num);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
 
@@ -983,6 +985,44 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
+int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
+    uint32_t partition_num = FLAGS_partition_num;
+    if (table_info.has_partition_num() && table_info.partition_num() > 0) {
+        partition_num = table_info.partition_num();
+    }
+    uint32_t replica_num = FLAGS_replica_num;
+    if (table_info.has_replica_num() && table_info.replica_num() > 0) {
+        replica_num = table_info.replica_num();
+    }
+    std::vector<std::string> endpoint_vec;
+    for (const auto& kv : tablets_) {
+        if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+            endpoint_vec.push_back(kv.first);
+        }
+    }
+    if (endpoint_vec.size() < replica_num) {
+        PDLOG(WARNING, "healthy endpoint num[%u] is less than replica_num[%u]",
+                        endpoint_vec.size(), replica_num);
+        return -1;
+    }
+    for (uint32_t pid = 0; pid < partition_num; pid++) {
+        TablePartition* table_partition = table_info.add_table_partition();
+        table_partition->set_pid(pid);
+        PartitionMeta* partition_meta = table_partition->add_partition_meta();
+        uint32_t endpoint_pos = rand_.Next() % endpoint_vec.size();
+        partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
+        partition_meta->set_is_leader(true);
+        for (uint32_t idx = 1; idx < replica_num; idx++) {
+            PartitionMeta* partition_meta = table_partition->add_partition_meta();
+            partition_meta->set_endpoint(endpoint_vec[(endpoint_pos + idx) % endpoint_vec.size()]);
+            partition_meta->set_is_leader(false);
+        }
+    }
+    PDLOG(INFO, "set table partition ok. name[%s] partition_num[%u] replica_num[%u]", 
+                 table_info.name().c_str(), partition_num, replica_num);
+    return 0;
+}
+
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
@@ -1512,8 +1552,8 @@ void NameServerImpl::DropTable(RpcController* controller,
         code = -1;
     } else {
         PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), request->name().c_str());
+        table_info_.erase(request->name());
     }
-    table_info_.erase(request->name());
     response->set_code(code);
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
     NotifyTableChanged();
@@ -1532,22 +1572,26 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
-    if (table_info->table_partition_size() == 0) {
-        response->set_code(-1);
-        response->set_msg("table_partition size is zero");
-        PDLOG(WARNING, "table_partition size is zero");
-        return;
-    }
-    std::set<uint32_t> pid_set;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        pid_set.insert(table_info->table_partition(idx).pid());
-    }
-    auto iter = pid_set.rbegin();
-    if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
-        response->set_code(-1);
-        response->set_msg("pid is not start with zero and consecutive");
-        PDLOG(WARNING, "pid is not start with zero and consecutive");
-        return;
+    if (table_info->table_partition_size() > 0) {
+        std::set<uint32_t> pid_set;
+        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+            pid_set.insert(table_info->table_partition(idx).pid());
+        }
+        auto iter = pid_set.rbegin();
+        if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
+            response->set_code(-1);
+            response->set_msg("pid is not start with zero and consecutive");
+            PDLOG(WARNING, "pid is not start with zero and consecutive");
+            return;
+        }
+    } else {
+        // 
+        if (SetPartitionInfo(*table_info) < 0) {
+            response->set_code(-1);
+            response->set_msg("set partition info failed");
+            PDLOG(WARNING, "set partition info failed");
+            return;
+        }
     }
     uint32_t tid = 0;
     uint64_t cur_term = 0;
