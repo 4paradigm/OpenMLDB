@@ -459,7 +459,11 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-    it->Seek(request->st());
+    if (request->st() == 0) {
+        it->SeekToFirst();
+    } else {
+        it->Seek(request->st());
+    }
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     // reduce the times of memcpy in vector

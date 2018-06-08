@@ -690,91 +690,95 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
         return;
     }
-    if (table_info.table_partition_size() < 1) {
-        printf("has not table_partition in table meta file\n");
-        return;
-    }
     ns_table_info.set_ttl(table_info.ttl());
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
-    std::map<uint32_t, std::string> leader_map;
-    std::map<uint32_t, std::set<std::string>> follower_map;
-    for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
-        std::string pid_group = table_info.table_partition(idx).pid_group();
-        uint32_t start_index = 0;
-        uint32_t end_index = 0;
-        if (::rtidb::base::IsNumber(pid_group)) {
-            start_index = boost::lexical_cast<uint32_t>(pid_group);
-            end_index = start_index;
-        } else {
-            std::vector<std::string> vec;
-            boost::split(vec, pid_group, boost::is_any_of("-"));
-            if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
-                printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
+    if (table_info.table_partition_size() > 0) {
+        std::map<uint32_t, std::string> leader_map;
+        std::map<uint32_t, std::set<std::string>> follower_map;
+        for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
+            std::string pid_group = table_info.table_partition(idx).pid_group();
+            uint32_t start_index = 0;
+            uint32_t end_index = 0;
+            if (::rtidb::base::IsNumber(pid_group)) {
+                start_index = boost::lexical_cast<uint32_t>(pid_group);
+                end_index = start_index;
+            } else {
+                std::vector<std::string> vec;
+                boost::split(vec, pid_group, boost::is_any_of("-"));
+                if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
+                    printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
+                    return;
+                }
+                start_index = boost::lexical_cast<uint32_t>(vec[0]);
+                end_index = boost::lexical_cast<uint32_t>(vec[1]);
+
+            }
+            for (uint32_t pid = start_index; pid <= end_index; pid++) {
+                if (table_info.table_partition(idx).is_leader()) {
+                    if (leader_map.find(pid) != leader_map.end()) {
+                        printf("Fail to create table. pid %u has two leader\n", pid);
+                        return;
+                    }
+                    leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
+                } else {
+                    if (follower_map.find(pid) == follower_map.end()) {
+                        follower_map.insert(std::make_pair(pid, std::set<std::string>()));
+                    }
+                    if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
+                        printf("Fail to create table. pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
+                        return;
+                    }
+                    follower_map[pid].insert(table_info.table_partition(idx).endpoint());
+                }
+            }
+        }    
+        if (leader_map.empty()) {
+            printf("Fail to create table. has not leader pid\n");
+            return;
+        }
+        // check leader pid
+        auto iter = leader_map.rbegin();
+        if (iter->first != leader_map.size() -1) {
+            printf("Fail to create table. pid is not start with zero and consecutive\n");
+            return;
+        }
+
+        // check follower's leader 
+        for (const auto& kv : follower_map) {
+            auto iter = leader_map.find(kv.first);
+            if (iter == leader_map.end()) {
+                printf("pid %u has not leader\n", kv.first);
                 return;
             }
-            start_index = boost::lexical_cast<uint32_t>(vec[0]);
-            end_index = boost::lexical_cast<uint32_t>(vec[1]);
-
-        }
-        for (uint32_t pid = start_index; pid <= end_index; pid++) {
-            if (table_info.table_partition(idx).is_leader()) {
-                if (leader_map.find(pid) != leader_map.end()) {
-                    printf("Fail to create table. pid %u has two leader\n", pid);
-                    return;
-                }
-                leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
-            } else {
-                if (follower_map.find(pid) == follower_map.end()) {
-                    follower_map.insert(std::make_pair(pid, std::set<std::string>()));
-                }
-                if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
-                    printf("Fail to create table. pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
-                    return;
-                }
-                follower_map[pid].insert(table_info.table_partition(idx).endpoint());
+            if (kv.second.find(iter->second) != kv.second.end()) {
+                printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
+                return;
             }
         }
-    }
 
-    if (leader_map.empty()) {
-        printf("Fail to create table. has not leader pid\n");
-        return;
-    }
-    // check leader pid
-    auto iter = leader_map.rbegin();
-    if (iter->first != leader_map.size() -1) {
-        printf("Fail to create table. pid is not start with zero and consecutive\n");
-        return;
-    }
-
-    // check follower's leader 
-    for (const auto& kv : follower_map) {
-        auto iter = leader_map.find(kv.first);
-        if (iter == leader_map.end()) {
-            printf("pid %u has not leader\n", kv.first);
-            return;
-        }
-        if (kv.second.find(iter->second) != kv.second.end()) {
-            printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
-            return;
-        }
-    }
-
-    for (const auto& kv : leader_map) {
-        ::rtidb::nameserver::TablePartition* table_partition = ns_table_info.add_table_partition();
-        table_partition->set_pid(kv.first);
-        ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
-        partition_meta->set_endpoint(kv.second);
-        partition_meta->set_is_leader(true);
-        auto iter = follower_map.find(kv.first);
-        if (iter == follower_map.end()) {
-            continue;
-        }
-        // add follower
-        for (const auto& endpoint : iter->second) {
+        for (const auto& kv : leader_map) {
+            ::rtidb::nameserver::TablePartition* table_partition = ns_table_info.add_table_partition();
+            table_partition->set_pid(kv.first);
             ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
-            partition_meta->set_endpoint(endpoint);
-            partition_meta->set_is_leader(false);
+            partition_meta->set_endpoint(kv.second);
+            partition_meta->set_is_leader(true);
+            auto iter = follower_map.find(kv.first);
+            if (iter == follower_map.end()) {
+                continue;
+            }
+            // add follower
+            for (const auto& endpoint : iter->second) {
+                ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
+                partition_meta->set_endpoint(endpoint);
+                partition_meta->set_is_leader(false);
+            }
+        }
+    } else {
+        if (table_info.has_partition_num()) {
+            ns_table_info.set_partition_num(table_info.partition_num());
+        }
+        if (table_info.has_replica_num()) {
+            ns_table_info.set_replica_num(table_info.replica_num());
         }
     }
 
@@ -1432,10 +1436,15 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
         return;
     }
     try {
+        uint32_t limit = 0;
+        if (parts.size() > 6) {
+            limit = boost::lexical_cast<uint32_t>(parts[6]);
+        }
         ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
                 boost::lexical_cast<uint32_t>(parts[2]),
                 parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
-                boost::lexical_cast<uint64_t>(parts[5]));
+                boost::lexical_cast<uint64_t>(parts[5]),
+                limit);
         if (it == NULL) {
             std::cout << "Fail to scan table" << std::endl;
         }else {
@@ -1489,7 +1498,7 @@ void HandleClientBenchmarkScan(uint32_t tid, uint32_t pid,
     for (uint32_t j = 0; j < run_times; j++) {
         for (uint32_t i = 0; i < 500 * 4; i++) {
             std::string key =boost::lexical_cast<std::string>(ns) + "test" + boost::lexical_cast<std::string>(i);
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0);
             delete it;
         }
         client->ShowTp();
@@ -1764,12 +1773,17 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         return;
     }
     try {
+        uint32_t limit = 0;
+        if (parts.size() > 7) {
+            limit = boost::lexical_cast<uint32_t>(parts[7]);
+        }
         ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
                 boost::lexical_cast<uint32_t>(parts[2]),
                 parts[3], 
                 boost::lexical_cast<uint64_t>(parts[5]), 
                 boost::lexical_cast<uint64_t>(parts[6]),
-                parts[4]);
+                parts[4],
+                limit);
         if (it == NULL) {
             std::cout << "Fail to scan table" << std::endl;
         }else {
@@ -1893,14 +1907,14 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
 
     for (uint32_t i = 0; i < 10; i++) {
         std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-        ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et);
+        ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0);
         delete it;
     }
     client->ShowTp();
     for (uint32_t j = 0; j < times; j++) {
         for (uint32_t i = 0; i < 500; i++) {
             std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0);
             delete it;
         }
         client->ShowTp();

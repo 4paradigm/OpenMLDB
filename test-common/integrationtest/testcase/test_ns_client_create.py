@@ -258,8 +258,6 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('table meta file format error',
          ('table_partition', '"{}"'.format(leader), '"0-3"', '""')),
 
-        ('has not table_partition in table meta file', None),  # RTIDB-193
-
         ('missing required fields: table_partition[0].endpoint, table_partition[0].pid_group, table_partition[0].is_leader',
          ('table_partition', None, None, None)),
     )
