@@ -23,6 +23,10 @@ public interface TableSyncClient {
 
     Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException;
 
+    Object[] getRow(int tid, int pid, String key, String idxName, long time) throws TimeoutException, TabletException;
+
+    Object[] getRow(int tid, int pid, String key, String idxName) throws TimeoutException, TabletException;
+
     KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException, TabletException;
 
     KvIterator scan(int tid, int pid, String key, String idxName, long st, long et)
@@ -41,6 +45,10 @@ public interface TableSyncClient {
     ByteString get(String tname, String key, long time) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, String key, String idxName) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException;
 

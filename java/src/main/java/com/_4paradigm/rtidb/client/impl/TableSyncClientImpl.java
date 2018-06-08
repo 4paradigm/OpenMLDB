@@ -90,17 +90,22 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
-        return get(tid, pid, key, time, client.getHandler(tid));
+        return get(tid, pid, key, null, time, client.getHandler(tid));
     }
 
     @Override
     public Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
+        return getRow(tid, pid, key, null, time);
+    }
+
+    @Override
+    public Object[] getRow(int tid, int pid, String key, String idxName, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
         long consumed = 0l;
         if (client.getConfig().isMetricsEnabled()) {
             consumed = System.nanoTime();
         }
-        ByteString response = get(tid, pid, key, time, th);
+        ByteString response = get(tid, pid, key, idxName, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
@@ -116,7 +121,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return row;
     }
-    
+
+    @Override
+    public Object[] getRow(int tid, int pid, String key, String idxName) throws TimeoutException, TabletException {
+        return getRow(tid, pid, key, idxName, 0);
+    }
+
     @Override
     public ByteString get(String tname, String key) throws TimeoutException, TabletException {
         return get(tname, key, 0l);
@@ -124,9 +134,16 @@ public class TableSyncClientImpl implements TableSyncClient {
     
     @Override
     public Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException {
-        if (key == null || key.isEmpty()) {
-            throw new TabletException("key is null or empty");
-        }
+        return getRow(tname, key, null, time);
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, String idxName) throws TimeoutException, TabletException {
+        return getRow(tname, key, idxName, 0);
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -139,7 +156,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (client.getConfig().isMetricsEnabled()) {
             consumed = System.nanoTime();
         }
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, idxName, time, th);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
@@ -155,7 +172,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return row;
     }
-    
+
     @Override
     public ByteString get(String tname, String key, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
@@ -166,18 +183,25 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, time, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, null, time, th);
         return response;
     }
     
-    private ByteString get(int tid, int pid, String key, long time, TableHandler th) throws TabletException {
+    private ByteString get(int tid, int pid, String key, String idxName, long time, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
-        Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
-                .build();
+        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        builder.setTs(time);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.GetRequest request = builder.build();
         Tablet.GetResponse response = ts.get(request);
         if (response != null && response.getCode() == 0) {
             return response.getValue();
