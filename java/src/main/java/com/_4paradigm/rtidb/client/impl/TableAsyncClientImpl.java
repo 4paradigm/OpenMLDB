@@ -190,17 +190,47 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     @Override
+    public ScanFuture scan(int tid, int pid, String key, long st, long et, int limit) throws TabletException {
+        return scan(tid, pid, key, null, st, et, limit);
+    }
+
+    @Override
+    public ScanFuture scan(int tid, int pid, String key, int limit) throws TabletException {
+        return scan(tid, pid, key, null, 0, 0, limit);
+    }
+
+    @Override
     public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et) throws TabletException {
+        return scan(tid, pid, key, idxName, st, et, 0);
+    }
+
+    @Override
+    public ScanFuture scan(int tid, int pid, String key, String idxName, int limit) throws TabletException {
+        return scan(tid, pid, key, idxName, 0, 0, limit);
+    }
+
+    @Override
+    public ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, int limit) throws TabletException {
         TableHandler th = client.getHandler(tid);
         if (th == null) {
             throw new TabletException("no table with id " + tid);
         }
-        return scan(tid, pid, key, idxName, st, et, th);
+        return scan(tid, pid, key, idxName, st, et, limit, th);
     }
 
-    
+
     @Override
     public ScanFuture scan(String name, String key, String idxName, long st, long et) throws TabletException {
+        return scan(name, key, idxName, st, et, 0);
+    }
+
+    @Override
+    public ScanFuture scan(String name, String key, String idxName, int limit) throws TabletException {
+        return scan(name, key, idxName, 0, 0, limit);
+    }
+
+    @Override
+    public ScanFuture scan(String name, String key, String idxName, long st, long et, int limit) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
@@ -209,20 +239,22 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, th);
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, limit, th);
     }
 
     @Override
     public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
-        TableHandler th = client.getHandler(name);
-        if (th == null) {
-            throw new TabletException("no table with name " + name);
-        }
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
-        }
-        return scan(th.getTableInfo().getTid(), pid, key, null, st, et, th);
+        return scan(name, key, null, st, et, 0);
+    }
+
+    @Override
+    public ScanFuture scan(String name, String key, int limit) throws TabletException {
+        return scan(name, key, null, 0, 0, limit);
+    }
+
+    @Override
+    public ScanFuture scan(String name, String key, long st, long et, int limit) throws TabletException {
+        return scan(name, key, null, st, et, limit);
     }
 
     @Override
@@ -317,7 +349,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
     
     
-    private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, TableHandler th) throws TabletException {
+    private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
@@ -327,6 +359,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         builder.setEt(et);
         builder.setSt(st);
         builder.setPid(pid);
+        builder.setLimit(limit);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }

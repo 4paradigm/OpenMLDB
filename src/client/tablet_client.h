@@ -85,14 +85,16 @@ public:
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
-             uint64_t etime);
+             uint64_t etime,
+             uint32_t limit);
     
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
                                  uint32_t pid,
                                  const std::string& pk,
                                  uint64_t stime,
                                  uint64_t etime,
-                                 const std::string& idx_name);
+                                 const std::string& idx_name,
+                                 uint32_t limit);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,

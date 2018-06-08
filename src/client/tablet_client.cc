@@ -423,7 +423,8 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
                                  const std::string& pk,
                                  uint64_t stime,
                                  uint64_t etime,
-                                 const std::string& idx_name) {
+                                 const std::string& idx_name,
+                                 uint32_t limit) {
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
@@ -431,6 +432,7 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_idx_name(idx_name);
+    request.set_limit(limit);
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
             &request, response, FLAGS_request_timeout_ms, 1);
@@ -447,13 +449,15 @@ int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid,
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
-             uint64_t etime) {
+             uint64_t etime,
+             uint32_t limit) {
     ::rtidb::api::ScanRequest request;
     request.set_pk(pk);
     request.set_st(stime);
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_limit(limit);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
