@@ -162,16 +162,26 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public GetFuture get(int tid, int pid, String key) throws TabletException {
-        return get(tid, pid, key, 0l);
+        return get(tid, pid, key, null,0l);
+    }
+
+    @Override
+    public GetFuture get(int tid, int pid, String key, String idxName) throws TabletException {
+        return get(tid, pid, key, idxName, 0l);
     }
 
     @Override
     public GetFuture get(int tid, int pid, String key, long time) throws TabletException {
+        return get(tid, pid, key, null, time);
+    }
+
+    @Override
+    public GetFuture get(int tid, int pid, String key, String idxName, long time) throws TabletException {
         TableHandler th = client.getHandler(tid);
         if (th == null) {
             throw new TabletException("no table with id " + tid);
         }
-        return get(tid, pid, key, time, th);
+        return get(tid, pid, key, idxName, time, th);
     }
 
     @Override
@@ -217,6 +227,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public GetFuture get(String name, String key, long time) throws TabletException {
+        return get(name, key, null, time);
+    }
+
+    @Override
+    public GetFuture get(String name, String key, String idxName, long time) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
@@ -225,14 +240,19 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        return get(th.getTableInfo().getTid(), pid, key, time, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, th);
     }
 
     @Override
     public GetFuture get(String name, String key) throws TabletException {
-        return get(name, key, 0l);
+        return get(name, key, null, 0l);
     }
-    
+
+    @Override
+    public GetFuture get(String name, String key, String idxName) throws TabletException {
+        return get(name, key, idxName, 0l);
+    }
+
     private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph) throws TabletException{
         return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), ph);
     }
@@ -276,12 +296,19 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return response;
     }
     
-    private GetFuture get(int tid, int pid, String key, long time, TableHandler th) throws TabletException {
+    private GetFuture get(int tid, int pid, String key, String idxName, long time, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
-        Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
-                .build();
+        Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        builder.setTs(time);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.GetRequest request = builder.build();
         Long startTime = System.currentTimeMillis();
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
