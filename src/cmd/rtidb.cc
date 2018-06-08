@@ -765,11 +765,16 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         std::cout << "failed to scan. error msg: " << msg << std::endl;
         return;
     }
+    uint32_t limit = 0;
     if (tables[0].column_desc_size() == 0) {
         try {
+            if (parts.size() > 5) {
+                limit = boost::lexical_cast<uint32_t>(parts[5]);
+            }
             ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,  
                     boost::lexical_cast<uint64_t>(parts[3]), 
-                    boost::lexical_cast<uint64_t>(parts[4]));
+                    boost::lexical_cast<uint64_t>(parts[4]),
+                    limit);
             if (it == NULL) {
                 std::cout << "Fail to scan table" << std::endl;
             } else {
@@ -793,10 +798,13 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             return;
         }
         try {
+            if (parts.size() > 6) {
+                limit = boost::lexical_cast<uint32_t>(parts[6]);
+            }
             ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,  
                     boost::lexical_cast<uint64_t>(parts[4]), 
                     boost::lexical_cast<uint64_t>(parts[5]),
-                    parts[3]);
+                    parts[3], limit);
             if (it == NULL) {
                 std::cout << "Fail to scan table" << std::endl;
             } else {
