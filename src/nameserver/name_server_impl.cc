@@ -995,9 +995,12 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         replica_num = table_info.replica_num();
     }
     std::vector<std::string> endpoint_vec;
-    for (const auto& kv : tablets_) {
-        if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-            endpoint_vec.push_back(kv.first);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& kv : tablets_) {
+            if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                endpoint_vec.push_back(kv.first);
+            }
         }
     }
     if (endpoint_vec.size() < replica_num) {
