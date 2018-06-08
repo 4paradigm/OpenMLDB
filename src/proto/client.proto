@@ -19,4 +19,6 @@ message TableInfo {
     repeated TablePartition table_partition = 4;
 	repeated ColumnDesc column_desc = 5;
     optional string ttl_type = 6 [default = "kAbsoluteTime"];
+	optional uint32 partition_num = 7;
+	optional uint32 replica_num = 8; // contain the leader
 }

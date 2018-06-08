@@ -195,6 +195,8 @@ private:
 
     bool RecoverOPTask();
 
+    int SetPartitionInfo(::rtidb::nameserver::TableInfo& table_info);
+
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
     int CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data);
