@@ -62,6 +62,9 @@ public class GetFuture implements Future<ByteString>{
 			throw new TabletException("no schema for table " + t);
 		}
 		ByteString raw = get(timeout, unit);
+		if (raw == null) {
+			throw new TabletException("get failed");
+		}
 		Object[] row = new Object[t.getSchema().size()];
 		decode(raw, row, 0, row.length);
 		return row;
