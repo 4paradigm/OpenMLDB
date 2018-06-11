@@ -741,6 +741,88 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
     tp.Print(true);
 }
 
+void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts" << std::endl;
+        return;
+    }
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(parts[1], tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    std::string key = parts[2];
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to get. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables[0].column_desc_size() == 0) {
+        std::string value;
+        uint64_t ts = 0;
+        try {
+            bool ok = tablet_client->Get(tid, pid, key,
+                                  boost::lexical_cast<uint64_t>(parts[3]),
+                                  value,
+                                  ts);
+            if (ok) {
+                std::cout << "value :" << value << std::endl;
+            } else {
+                std::cout << "Get failed" << std::endl; 
+            }
+        } catch (std::exception const& e) {
+            printf("Invalid args. ts should be unsigned int\n");
+            return;
+        } 
+    } else {
+        std::vector<::rtidb::base::ColumnDesc> columns;
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
+            std::cout << "convert table column desc failed" << std::endl; 
+            return;
+        }
+        ::baidu::common::TPrinter tp(columns.size() + 2, 128);
+        std::vector<std::string> row;
+        row.push_back("#");
+        row.push_back("ts");
+        for (uint32_t i = 0; i < columns.size(); i++) {
+            row.push_back(columns[i].name);
+        }
+        tp.AddRow(row);
+        std::string value;
+        uint64_t ts = 0;
+        try {
+            if (parts.size() > 4) {
+                if (!tablet_client->Get(tid, pid, key, 
+                                boost::lexical_cast<uint64_t>(parts[4]),
+                                parts[3], value, ts)) {
+                    std::cout << "Fail to get value!" << std::endl;
+                    return;
+                }
+            } else {
+                if (!tablet_client->Get(tid, pid, key,
+                                  boost::lexical_cast<uint64_t>(parts[3]),
+                                  value, ts)) {
+                    std::cout << "Fail to get value!" << std::endl;
+                    return;
+                }
+            }
+        } catch (std::exception const& e) {
+            printf("Invalid args. ts should be unsigned int\n");
+            return;
+        } 
+        ShowTableRow(columns, value.c_str(), value.size(), ts, 1, tp);
+        tp.Print(true);
+    }
+}
+
 void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]" << std::endl;
@@ -754,7 +836,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         return;
     }
     if (tables.empty()) {
-        printf("put failed! table %s is not exist\n", parts[1].c_str());
+        printf("scan failed! table %s is not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -2285,6 +2367,8 @@ void StartNsClient() {
             HandleNSPut(parts, &client);
         } else if (parts[0] == "scan") {
             HandleNSScan(parts, &client);
+        } else if (parts[0] == "get") {
+            HandleNSGet(parts, &client);
         } else if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
         } else if (parts[0] == "addreplica") {
