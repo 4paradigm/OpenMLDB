@@ -251,11 +251,11 @@ class TestPut(TestCaseBase):
         ({'card': ('string:index', '3'), 's2': ('uint32', 'aaaa')},
          'bad lexical cast: source type value could not be interpreted as target', {}, ''),
         ({'card': ('string:index', '4'), 's2': ('uint32', -2)},
-         'put error! -2 is not uint32', {}, ''),
+         'Encode data error', {}, ''),
         ({'card': ('string:index', '5'), 's2': ('uint64', 1)},
          'Put ok', {'card': '5'}, 1),
         ({'card': ('string:index', '6'), 's2': ('uint64', -111111111111111111)},
-         'put error! -111111111111111111 is not uint64', {}, ''),
+         'Encode data error', {}, ''),
     )
     @ddt.unpack
     def test_sput_uint(self, kv, rsp_msg, scan_kv, scan_value):
@@ -281,7 +281,7 @@ class TestPut(TestCaseBase):
         ({'card': ('string:index', '2'), 's2': ('string', 'a' * 128)},
          'Put ok', {'card': '2'}, 'a' * 128),
         ({'card': ('string:index', '3'), 's2': ('string', 'a' * 129)},
-         'Failed invalid value', {}, ''),
+         'Encode data error', {}, ''),
     )
     @ddt.unpack
     def test_sput_string(self, kv, rsp_msg, scan_kv, scan_value):

@@ -1562,38 +1562,6 @@ void NameServerImpl::DropTable(RpcController* controller,
     NotifyTableChanged();
 }
 
-int NameServerImpl::ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-                    std::vector<::rtidb::base::ColumnDesc>& columns) {
-    for (int idx = 0; idx < table_info->column_desc_size(); idx++) {
-        ::rtidb::base::ColType type;
-        std::string raw_type = table_info->column_desc(idx).type();
-        if (raw_type == "int32") {
-            type = ::rtidb::base::ColType::kInt32;
-        } else if (raw_type == "int64") {
-            type = ::rtidb::base::ColType::kInt64;
-        } else if (raw_type == "uint32") {
-            type = ::rtidb::base::ColType::kUInt32;
-        } else if (raw_type == "uint64") {
-            type = ::rtidb::base::ColType::kUInt64;
-        } else if (raw_type == "float") {
-            type = ::rtidb::base::ColType::kFloat;
-        } else if (raw_type == "double") {
-            type = ::rtidb::base::ColType::kDouble;
-        } else if (raw_type == "string") {
-            type = ::rtidb::base::ColType::kString;
-        } else {
-            PDLOG(WARNING, "invalid type[%s]", table_info->column_desc(idx).type().c_str());
-            return -1;
-        }
-        ::rtidb::base::ColumnDesc column_desc;
-        column_desc.type = type;
-        column_desc.name = table_info->column_desc(idx).name();
-        column_desc.add_ts_idx = table_info->column_desc(idx).add_ts_idx();
-        columns.push_back(column_desc);
-    }
-    return 0;
-}
-
 void NameServerImpl::CreateTable(RpcController* controller, 
         const CreateTableRequest* request, 
         GeneralResponse* response, 
@@ -1650,7 +1618,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
         cur_term = term_;
     }
     std::vector<::rtidb::base::ColumnDesc> columns;
-    if (ConvertColumnDesc(table_info, columns) < 0) {
+    if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
         response->set_code(-1);
         response->set_msg("convert column desc failed");
         PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", 
