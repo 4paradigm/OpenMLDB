@@ -917,25 +917,21 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     }
 }
 
-void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
-    if (parts.size() < 2) {
-        std::cout << "Bad format" << std::endl;
-        return;
-    }
+int GenTableInfo(const std::string& path, const std::set<std::string>& type_set, 
+            ::rtidb::nameserver::TableInfo& ns_table_info) {
     ::rtidb::client::TableInfo table_info;
-    int fd = open(parts[1].c_str(), O_RDONLY);
+    int fd = open(path.c_str(), O_RDONLY);
     if (fd < 0) {
-        std::cout << "can not open file " << parts[1] << std::endl;
-        return;
+        std::cout << "can not open file " << path << std::endl;
+        return -1;
     }
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
     if (!google::protobuf::TextFormat::Parse(&fileInput, &table_info)) {
         std::cout << "table meta file format error" << std::endl;
-        return;
+        return -1;
     }
 
-    ::rtidb::nameserver::TableInfo ns_table_info;
     ns_table_info.set_name(table_info.name());
     std::string ttl_type = table_info.ttl_type();
     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
@@ -945,7 +941,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         ns_table_info.set_ttl_type("kLatestTime");
     } else {
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
-        return;
+        return -1;
     }
     ns_table_info.set_ttl(table_info.ttl());
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
@@ -964,7 +960,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                 boost::split(vec, pid_group, boost::is_any_of("-"));
                 if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
                     printf("Fail to create table. pid_group[%s] format error.\n", pid_group.c_str());
-                    return;
+                    return -1;
                 }
                 start_index = boost::lexical_cast<uint32_t>(vec[0]);
                 end_index = boost::lexical_cast<uint32_t>(vec[1]);
@@ -974,7 +970,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                 if (table_info.table_partition(idx).is_leader()) {
                     if (leader_map.find(pid) != leader_map.end()) {
                         printf("Fail to create table. pid %u has two leader\n", pid);
-                        return;
+                        return -1;
                     }
                     leader_map.insert(std::make_pair(pid, table_info.table_partition(idx).endpoint()));
                 } else {
@@ -983,7 +979,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     }
                     if (follower_map[pid].find(table_info.table_partition(idx).endpoint()) != follower_map[pid].end()) {
                         printf("Fail to create table. pid %u has same follower on %s\n", pid, table_info.table_partition(idx).endpoint().c_str());
-                        return;
+                        return -1;
                     }
                     follower_map[pid].insert(table_info.table_partition(idx).endpoint());
                 }
@@ -991,13 +987,13 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         }    
         if (leader_map.empty()) {
             printf("Fail to create table. has not leader pid\n");
-            return;
+            return -1;
         }
         // check leader pid
         auto iter = leader_map.rbegin();
         if (iter->first != leader_map.size() -1) {
             printf("Fail to create table. pid is not start with zero and consecutive\n");
-            return;
+            return -1;
         }
 
         // check follower's leader 
@@ -1005,11 +1001,11 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             auto iter = leader_map.find(kv.first);
             if (iter == leader_map.end()) {
                 printf("pid %u has not leader\n", kv.first);
-                return;
+                return -1;
             }
             if (kv.second.find(iter->second) != kv.second.end()) {
                 printf("pid %u leader and follower at same endpoint %s\n", kv.first, iter->second.c_str());
-                return;
+                return -1;
             }
         }
 
@@ -1039,14 +1035,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         }
     }
 
-    std::set<std::string> type_set;
-    type_set.insert("int32");
-    type_set.insert("uint32");
-    type_set.insert("int64");
-    type_set.insert("uint64");
-    type_set.insert("float");
-    type_set.insert("double");
-    type_set.insert("string");
     std::set<std::string> name_set;
     bool has_index = false;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
@@ -1054,12 +1042,12 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
         if (type_set.find(cur_type) == type_set.end()) {
             printf("type %s is invalid\n", table_info.column_desc(idx).type().c_str());
-            return;
+            return -1;
         }
         if (table_info.column_desc(idx).name() == "" || 
                 name_set.find(table_info.column_desc(idx).name()) != name_set.end()) {
             printf("check name failed\n");
-            return;
+            return -1;
         }
         if (table_info.column_desc(idx).add_ts_idx()) {
             has_index = true;
@@ -1072,9 +1060,96 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     }
     if (!has_index && table_info.column_desc_size() > 0) {
         std::cout << "no index" << std::endl;
+        return -1;
+    }
+    return 0;
+
+}
+
+void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    std::set<std::string> type_set;
+    type_set.insert("int32");
+    type_set.insert("uint32");
+    type_set.insert("int64");
+    type_set.insert("uint64");
+    type_set.insert("float");
+    type_set.insert("double");
+    type_set.insert("string");
+    ::rtidb::nameserver::TableInfo ns_table_info;
+    if (parts.size() == 2) {
+        if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
+            return;
+        }
+    } else if (parts.size() > 4) {
+        ns_table_info.set_name(parts[1]);
+        std::string type = "kAbsoluteTime";
+        try {
+            std::vector<std::string> vec;
+            ::rtidb::base::SplitString(parts[2], ":", &vec);
+            if (vec.size() > 1) {
+                if ((vec[0] == "latest" || vec[0] == "kLatestTime"))  {
+                    type = "kLatestTime";
+                } else {
+                    std::cout << "invalid ttl type" << std::endl;
+                    return;
+                }    
+            }
+            ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+            uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
+            if (partition_num == 0) {
+                 std::cout << "partition_num should be large than zero" << std::endl;
+                 return;
+            }
+            ns_table_info.set_partition_num(partition_num);
+            uint32_t replica_num = boost::lexical_cast<uint32_t>(parts[4]);
+            if (replica_num == 0) {
+                 std::cout << "replica_num should be large than zero" << std::endl;
+                 return;
+            }
+            ns_table_info.set_replica_num(replica_num);
+        } catch (std::exception const& e) {
+            std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+            return;
+        } 
+        ns_table_info.set_ttl_type(type);
+        bool has_index = false;
+        std::set<std::string> name_set;
+        for (uint32_t i = 5; i < parts.size(); i++) {
+            std::vector<std::string> kv;
+            ::rtidb::base::SplitString(parts[i], ":", &kv);
+            if (kv.size() < 2) {
+                std::cout << "create failed! schema format is illegal" << std::endl;
+                return;
+            }
+            if (name_set.find(kv[0]) != name_set.end()) {
+                printf("Duplicated column %s\n", kv[0].c_str());
+                return;
+            }
+            std::string cur_type = kv[1];
+            std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
+            if (type_set.find(cur_type) == type_set.end()) {
+                printf("type %s is invalid\n", kv[1].c_str());
+                return;
+            }
+            name_set.insert(kv[0]);
+            ::rtidb::nameserver::ColumnDesc* column_desc = ns_table_info.add_column_desc();
+            column_desc->set_name(kv[0]);
+            column_desc->set_type(cur_type);
+            if (kv.size() > 2 && kv[2] == "index") {
+                column_desc->set_add_ts_idx(true);
+                has_index = true;
+            } else {
+                column_desc->set_add_ts_idx(false);
+            }
+        }
+        if (parts.size() > 5 && !has_index) {
+            std::cout << "create failed! schema has no index" << std::endl;
+            return;
+        }
+    } else {
+        std::cout << "create format error! ex: create table_meta_file | create name ttl partition_num replica_num [name:type:index ...]" << std::endl;
         return;
     }
-
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
