@@ -18,8 +18,8 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
          'Create table ok'),
-        ('"t{}"'.format(time.time()), '"latest"', 144000, 8,
-         'ttl type latest is invalid'),
+        ('"t{}"'.format(time.time()), '"notype"', 144000, 8,
+         'ttl type notype is invalid'),
         ('"t{}"'.format(time.time()), '', 144000, 8,
          'table meta file format error'),
         ('""', None, 144000, 8,
