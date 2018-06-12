@@ -240,13 +240,13 @@ setexpire 设置是否要开启过期删除
 ## nameserver命令用法
 
 create 创建表  
-命令格式: 
-(1) create table_name ttl partition_num replica_num [colum_name1:type:index colum_name2:type ...]
-    * table_name 表名
-    * ttl 过期时间.默认是按时间过期, 如果想指定按条数过期设置ttl为: latest:record_num
-    * partition_num 分片数
-    * replica_num 副本数. 如果设置为3, 那么就是一主两从
-    * 可选 指定schema信息
+命令格式:   
+(1) create table_name ttl partition_num replica_num [colum_name1:type:index colum_name2:type ...]  
+* table_name 表名
+* ttl 过期时间.默认是按时间过期, 如果想指定按条数过期设置ttl为: latest:record_num
+* partition_num 分片数
+* replica_num 副本数. 如果设置为3, 那么就是一主两从
+* 可选 指定schema信息
 ```
 >create table1 120 8 3
 Create table ok
@@ -285,7 +285,6 @@ table_partition {
 name : "test3"
 ttl: 100
 ttl_type : "kLatestTime"
-seg_cnt: 8
 table_partition {
   endpoint: "172.27.128.31:9527"
   pid_group: "0-3"
@@ -296,6 +295,30 @@ table_partition {
   pid_group: "1-2"
   is_leader: false
 }
+column_desc {
+  name : "card"
+  type : "string"
+  add_ts_idx : true
+}
+column_desc {
+  name : "demo"
+  type : "string"
+  add_ts_idx : true
+}
+column_desc {
+  name : "value"
+  type : "string"
+  add_ts_idx : false
+}
+```
+
+不指定table_partition的例子  
+```
+name : "test4"
+ttl: 10
+ttl_type : "kLatestTime"
+partition_num : 16
+replica_num : 3
 column_desc {
   name : "card"
   type : "string"

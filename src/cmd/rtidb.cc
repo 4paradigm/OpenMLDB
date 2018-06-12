@@ -937,7 +937,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
     if (ttl_type == "kabsolutetime") {
         ns_table_info.set_ttl_type("kAbsoluteTime");
-    } else if (ttl_type == "klatesttime") {
+    } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
         ns_table_info.set_ttl_type("kLatestTime");
     } else {
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
