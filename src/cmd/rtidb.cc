@@ -1464,6 +1464,32 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts, ::rtidb::cli
     }
 }
 
+void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 2) {
+        printf("create 创建表\n");
+        printf("drop 删除表\n");
+        printf("put 插入数据\n");
+        printf("sput 插入多维数据\n");
+        printf("scan 获取一段时间内的数据\n");
+        printf("sscan 获取多维表一段时间内的数据\n");
+        printf("get 获取单条数据\n");
+        printf("sget 获取多维表单条数据\n");
+        printf("addreplica 添加副本\n");
+        printf("delreplica 删除副本\n");
+        printf("makesnapshot 做snapshot\n");
+        printf("pausesnapshot 暂停snapshot\n");
+        printf("recoversnapshot 恢复snapshot\n");
+        printf("sendsnapshot 发送snapshot\n");
+        printf("loadtable 创建表并加载数据\n");
+        printf("changerole 修改角色\n");
+        printf("setexpire 设置过期\n");
+        printf("showschema 查看schema\n");
+        printf("gettablestatus 查看表信息\n");
+    } else {
+
+    }
+}
+
 void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad format" << std::endl;
@@ -2221,6 +2247,8 @@ void StartClient() {
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
+        } else if (parts[0] == "help" || parts[0] == "man") {
+            HandleClientHelp(parts, &client);
         } else {
             std::cout << "unsupported cmd" << std::endl;
         }
