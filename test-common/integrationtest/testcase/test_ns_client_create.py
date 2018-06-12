@@ -441,7 +441,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         tname = 'tname{}'.format(time.time())
-        rs = self.ns_create(self.ns_leader, tname, ttl, partition_num, replica_num, schema)
+        rs = self.ns_create_cmd(self.ns_leader, tname, ttl, partition_num, replica_num, schema)
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
         if (schema != ''):
