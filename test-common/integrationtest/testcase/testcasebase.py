@@ -186,6 +186,10 @@ class TestCaseBase(unittest.TestCase):
     def ns_create(self, endpoint, metadata_path):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
 
+    def ns_create(self, endpoint, name, ttl, partition_num, replica_num, schema):
+        cmd = 'create ' + name + ' ' + ttl + ' ' + partition_num + ' ' + replica_num + ' ' + schema
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     def ns_drop(self, endpoint, tname):
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
 

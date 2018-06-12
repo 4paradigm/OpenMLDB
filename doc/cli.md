@@ -259,7 +259,6 @@ Create table ok
 name : "test1"
 ttl: 144000
 ttl_type : "kAbsoluteTime"
-seg_cnt: 8
 table_partition {
   endpoint: "172.27.128.31:9527"
   pid_group: "0-9"
