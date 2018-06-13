@@ -173,6 +173,28 @@ TEST_F(TabletImplTest, Get) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(1, response.code());
     }
+    // put/get expired key
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test0");
+        prequest.set_time(now - 2 * 60 * 1000);
+        prequest.set_value("value0");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test0");
+        request.set_ts(0);
+        ::rtidb::api::GetResponse response;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(1, response.code());
+    }
     // put some key
     {
         ::rtidb::api::PutRequest prequest;
@@ -210,9 +232,13 @@ TEST_F(TabletImplTest, Get) {
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
-        request.set_ts(now);
+        request.set_ts(now - 2);
         ::rtidb::api::GetResponse response;
         MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ("test9", response.value());
+        request.set_ts(0);
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ("test10", response.value());
