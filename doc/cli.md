@@ -24,6 +24,7 @@ changerole  切换leader或者follower
 setexpire  设置是否要开启过期删除  
 
 exit  退出当前会话  
+help 获取命令帮助信息  
 
 ## nameserver客户端命令
 
@@ -34,6 +35,9 @@ create  创建表
 drop  删除表  
 showtable  获取表信息  
 showschema  获取多维表的schema信息  
+put 插入数据  
+scan 查询数据  
+get 查询单条数据  
 
 confget 获取当前conf信息  
 confset 重新设置conf  
@@ -51,6 +55,8 @@ migrate  分片迁移
 gettablepartition  获取nameserver某个table partition的信息并下载到当前目录下  
 settablepartition  用指定的文件覆盖nameserver中某个table partition的信息  
 
+exit  退出当前会话  
+help 获取命令帮助信息  
 
 ## tablet命令用法
 create  创建单维表  
@@ -67,7 +73,7 @@ create  创建单维表
 创建一个leader表
 > create t1 1 0 144000 8
 创建一个leader表, 指定follwer为172.27.128.31:9991, 172.27.128.31:9992
-> create t1 1 0 144000 8 false 172.27.128.31:9991 172.27.128.31:9992
+> create t1 1 0 144000 8 true 172.27.128.31:9991 172.27.128.31:9992
 创建一个follower表, 过期类型设为保留最近10条
 > create t1 1 0 latest:10 8 false
 ```
@@ -304,6 +310,12 @@ type字段标识当前列的数据类型. 支持的数据类型有int32, uint32,
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令
 >create ./table_meta.txt
 ```
+put 插入数据  
+命令格式: put table_name pk ts value | put table_name ts key1 key2 ... value1 value2 ...  
+scan 查询数据  
+命令格式: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]  
+get 查询单条数据  
+命令格式: get table_name key ts | get table_name key idx_name ts  
 drop 删除表  
 命令格式: drop table_name  
 showtable 列出表的分布和状态信息  
