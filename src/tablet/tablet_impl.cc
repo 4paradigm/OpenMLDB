@@ -272,6 +272,11 @@ void TabletImpl::Get(RpcController* controller,
         }
     } else {
         it->SeekToFirst();
+        if (it->Valid() && table->GetTTLType() == ::rtidb::api::TTLType::kAbsoluteTime) {
+            if (it->GetKey() <= table->GetExpireTime()) {
+                has_found = false;
+            }
+        }
     }
     if (it->Valid() && has_found) {
         response->set_code(0);
