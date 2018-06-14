@@ -1,5 +1,5 @@
 #! /bin/sh
 #
-# boot_ns.sh
+# boot_metricbeat.sh
 ulimit -c unlimited
-./bin/metricbeat -e -c ./conf/metricbeat.yml -d "*" --path.home $PWD
+./bin/metricbeat -e -c ./metricbeat.yml -d "*" --path.home $PWD/conf

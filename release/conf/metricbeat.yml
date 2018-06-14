@@ -11,7 +11,7 @@
 
 metricbeat.config.modules:
   # Glob pattern for configuration loading
-  path: ${path.config}/modules.d/*.yml
+  path: ${path.config}/modules.d/brpc.yml
 
   # Set to true to enable config reloading
   reload.enabled: false

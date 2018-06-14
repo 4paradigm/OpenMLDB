@@ -1,0 +1,8 @@
+fields:
+  log_type: raw
+  namespace: rtidb
+  pod_name: rtidb
+fields_under_root: true
+paths:
+- /rtidb_run/logs/rtidb.info.log*
+type: log
