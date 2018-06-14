@@ -1085,34 +1085,34 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 
 void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() == 1) {
-        printf("create 创建表\n");
-        printf("drop 删除表\n");
-        printf("put 插入数据\n");
-        printf("scan 查询一段时间内的数据\n");
-        printf("get 查询某一时刻的数据\n");
-        printf("showtable 查看表信息\n");
-        printf("showtablet 查看tablet节点信息\n");
-        printf("showschema 查看多维表的schema信息\n");
-        printf("showopstatus 查看op信息\n");
-        printf("makesnapshot 产生snapshot\n");
-        printf("addreplica 添加副本\n");
-        printf("delreplica 删除副本\n");
-        printf("confset 修改配置\n");
-        printf("confget 获取配置\n");
-        printf("changeleader 执行选主\n");
-        printf("offlineendpoint 节点下线后批量执行选主和删除副本\n");
-        printf("recovertable 节点上线后恢复单个表\n");
-        printf("recoverendpoint 节点上线后恢复表和数据\n");
-        printf("migrate 分片迁移\n");
-        printf("gettablepartition 获取分片信息\n");
-        printf("settablepartition 修改分片信息\n");
-        printf("exit 退出客户端\n");
-        printf("quit 退出客户端\n");
-        printf("help 获取帮助信息\n");
-        printf("man 获取帮助信息\n");
+        printf("create - create table\n");
+        printf("drop - drop table\n");
+        printf("put -  insert data into table\n");
+        printf("scan - get records for a period of time\n");
+        printf("get - get only one record\n");
+        printf("showtable - show table info\n");
+        printf("showtablet - show tablet info\n");
+        printf("showschema - show schema info\n");
+        printf("showopstatus - show op info\n");
+        printf("makesnapshot - make snapshot\n");
+        printf("addreplica - add replica to leader\n");
+        printf("delreplica - delete replica from leader\n");
+        printf("confset - update conf\n");
+        printf("confget - get conf\n");
+        printf("changeleader - select leader again when the endpoint of leader offline\n");
+        printf("offlineendpoint - select leader and delete replica when endpoint offline\n");
+        printf("recovertable - recover only one table partition\n");
+        printf("recoverendpoint - recover all tables in endpoint when online");
+        printf("migrate - migrate partition form one endpoint to another\n");
+        printf("gettablepartition - get partition info\n");
+        printf("settablepartition - update partition info\n");
+        printf("exit - exit client\n");
+        printf("quit - exit client\n");
+        printf("help - get cmd info\n");
+        printf("man - get cmd info\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
-            printf("desc: 创建表\n");
+            printf("desc: create table\n");
             printf("usage: create table_meta_file_path\n");
             printf("usage: create table_name ttl partition_num replica_num [colum_name1:type:index colum_name2:type ...]\n");
             printf("ex: create ./table_meta.txt\n");
@@ -1120,17 +1120,17 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: create table2 latest:10 8 3\n");
             printf("ex: create table3 latest:10 8 3 card:string:index mcc:string:index value:float\n");
         } else if (parts[1] == "drop") {
-            printf("desc: 删除表\n");
+            printf("desc: drop table\n");
             printf("usage: drop table_name\n");
             printf("ex: drop table1\n");
         } else if (parts[1] == "put") {
-            printf("desc: 插入数据\n");
+            printf("desc: insert data into table\n");
             printf("usage: put table_name pk ts value\n");
             printf("usage: put table_name ts key1 key2 ... value1 value2 ...\n");
             printf("ex: put table1 key1 1528872944000 value1\n");
             printf("ex: put table2 1528872944000 card0 mcc0 1.3\n");
         } else if (parts[1] == "scan") {
-            printf("desc: 查询一段时间内的数据\n");
+            printf("desc: get records for a period of time\n");
             printf("usage: scan table_name pk start_time end_time [limit]\n");
             printf("usage: scan table_name key key_name start_time end_time [limit]\n");
             printf("ex: scan table1 key1 1528872944000 1528872930000\n");
@@ -1140,7 +1140,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: scan table2 card0 card 1528872944000 1528872930000 10\n");
             printf("ex: scan table2 card0 card  0 0 10\n");
         } else if (parts[1] == "get") {
-            printf("desc: 查询某一时刻的数据\n");
+            printf("desc: get only one record\n");
             printf("usage: get table_name key ts\n");
             printf("usage: get table_name key idx_name ts\n");
             printf("ex: get table1 key1 1528872944000\n");
@@ -1148,83 +1148,83 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: get table2 card0 card 1528872944000\n");
             printf("ex: get table2 card0 card 0\n");
         } else if (parts[1] == "showtable") {
-            printf("desc: 查看表信息\n");
+            printf("desc: show table info\n");
             printf("usage: showtable [table_name]\n");
             printf("ex: showtable\n");
             printf("ex: showtable table1\n");
         } else if (parts[1] == "showtablet") {
-            printf("desc: 查看tablet节点信息\n");
+            printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
         } else if (parts[1] == "showschema") {
-            printf("desc: 查看多维表的schema信息\n");
+            printf("desc: show schema info\n");
             printf("usage: showschema table_name\n");
             printf("ex: showschema table1\n");
         } else if (parts[1] == "showopstatus") {
-            printf("desc: 查看op信息\n");
+            printf("desc: show op info\n");
             printf("usage: showopstatus [table_name pid]\n");
             printf("ex: showopstatus\n");
             printf("ex: showopstatus table1\n");
             printf("ex: showopstatus table1 0\n");
         } else if (parts[1] == "makesnapshot") {
-            printf("desc: 产生snapshot\n");
+            printf("desc: make snapshot\n");
             printf("usage: makesnapshot name pid\n");
             printf("ex: makesnapshot table1 0\n");
         } else if (parts[1] == "addreplica") {
-            printf("desc: 添加副本\n");
+            printf("desc: add replica to leader\n");
             printf("usage: addreplica name pid endpoint\n");
             printf("ex: addreplica table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "delreplica") {
-            printf("desc: 删除副本\n");
+            printf("desc: delete replica from leader\n\n");
             printf("usage: delreplica name pid endpoint\n");
             printf("ex: delreplicac table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "confset") {
-            printf("desc: 设置配置信息\n");
+            printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
             printf("usage: confset auto_recover_table true/false\n");
             printf("ex: confset auto_failover true\n");
         } else if (parts[1] == "confget") {
-            printf("desc: 获取配置信息\n");
+            printf("desc: get conf\n");
             printf("usage: confget\n");
             printf("usage: confget conf_name\n");
             printf("ex: confget\n");
             printf("ex: confget auto_failover\n");
             printf("ex: confget auto_recover_table\n");
         } else if (parts[1] == "changeleader") {
-            printf("desc: 执行选主\n");
+            printf("desc: select leader again when the endpoint of leader offline\n");
             printf("usage: changeleader table_name pid\n");
             printf("ex: changeleader table1 0\n");
         } else if (parts[1] == "offlineendpoint") {
-            printf("desc: 节点下线后批量执行选主和删除副本\n");
+            printf("desc: select leader and delete replica when endpoint offline\n");
             printf("usage: offlineendpoint endpoint\n");
             printf("ex: offlineendpoint 172.27.128.31:9527\n");
         } else if (parts[1] == "recovertable") {
-            printf("desc: 节点上线后恢复单个表\n");
+            printf("desc: recover only one table partition\n");
             printf("usage: recovertable table_name pid endpoint\n");
             printf("ex: recovertable table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "recoverendpoint") {
-            printf("desc: 节点上线后恢复表和数据\n");
+            printf("desc: recover all tables in endpoint when online\n");
             printf("usage: recoverendpoint endpoint\n");
             printf("ex: recoverendpoint 172.27.128.31:9527\n");
         } else if (parts[1] == "migrate") {
-            printf("desc: 分片迁移\n");
+            printf("desc: migrate partition form one endpoint to another\n");
             printf("usage: migrate src_endpoint table_name partition des_endpoint\n");
             printf("ex: migrate 172.27.2.52:9991 table1 1-10 172.27.2.52:9992\n");
             printf("ex: migrate 172.27.2.52:9991 table1 15 172.27.2.52:9992\n");
         } else if (parts[1] == "gettablepartition") {
-            printf("desc: 获取分片信息并下载到本地\n");
+            printf("desc: get partition info\n");
             printf("usage: gettablepartition table_name pid\n");
             printf("ex: gettablepartition table1 0\n");
         } else if (parts[1] == "settablepartition") {
-            printf("desc: 设置分片信息\n");
+            printf("desc: set partition info\n");
             printf("usage: settablepartition partition_file_path\n");
             printf("ex: settablepartition ./partition_file.txt\n");
         } else if (parts[1] == "exit" || parts[1] == "quit") {
-            printf("desc: 退出客户端\n");
+            printf("desc: exit client\n");
             printf("ex: quit\n");
             printf("ex: exit\n");
         } else if (parts[1] == "help" || parts[1] == "man") {
-            printf("desc: 获取帮助信息\n");
+            printf("desc: get cmd info\n");
             printf("usage: help [cmd]\n");
             printf("usage: man [cmd]\n");
             printf("ex:help\n");
@@ -1628,128 +1628,128 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts, ::rtidb::cli
 
 void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 2) {
-        printf("create 创建表\n");
-        printf("screate 创建多维表\n");
-        printf("drop 删除表\n");
-        printf("put 插入数据\n");
-        printf("sput 插入多维数据\n");
-        printf("scan 获取一段时间内的数据\n");
-        printf("sscan 获取多维表一段时间内的数据\n");
-        printf("get 获取单条数据\n");
-        printf("sget 获取多维表单条数据\n");
-        printf("addreplica 添加副本\n");
-        printf("delreplica 删除副本\n");
-        printf("makesnapshot 做snapshot\n");
-        printf("pausesnapshot 暂停snapshot\n");
-        printf("recoversnapshot 恢复snapshot\n");
-        printf("sendsnapshot 发送snapshot\n");
-        printf("loadtable 创建表并加载数据\n");
-        printf("changerole 修改角色\n");
-        printf("setexpire 设置过期\n");
-        printf("showschema 查看schema\n");
-        printf("gettablestatus 查看表信息\n");
-        printf("exit 退出客户端\n");
-        printf("quit 退出客户端\n");
-        printf("help 获取帮助信息\n");
-        printf("man 获取帮助信息\n");
+        printf("create - create table\n");
+        printf("screate - create multi dimension table\n");
+        printf("drop - drop table\n");
+        printf("put - insert data into table\n");
+        printf("sput - insert data into table of multi dimension\n");
+        printf("scan - get records for a period of time\n");
+        printf("sscan - get records for a period of time from multi dimension table\n");
+        printf("get - get only one record\n");
+        printf("sget - get only one record from multi dimension table\n");
+        printf("addreplica - add replica to leader\n");
+        printf("delreplica - delete replica from leader\n");
+        printf("makesnapshot - make snapshot\n");
+        printf("pausesnapshot - pause snapshot\n");
+        printf("recoversnapshot - recover snapshot\n");
+        printf("sendsnapshot - send snapshot to another endpoint\n");
+        printf("loadtable - create table and load data\n");
+        printf("changerole - change role\n");
+        printf("setexpire - enable or disable ttl\n");
+        printf("showschema - show schema\n");
+        printf("gettablestatus - get table status\n");
+        printf("exit - exit client\n");
+        printf("quit - exit client\n");
+        printf("help - get cmd info\n");
+        printf("man - get cmd info\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
-            printf("desc: 创建表\n");
+            printf("desc: create table\n");
             printf("usage: create name tid pid ttl segment_cnt [is_leader follower1 follower2]\n");
             printf("ex: create table1 1 0 144000 8\n");
             printf("ex: create table1 1 0 144000 8 true 172.27.128.31:9991 172.27.128.31:9992\n");
             printf("ex: create table1 1 0 144000 8 false\n");
         } else if (parts[1] == "screate") {
-            printf("desc: 创建多维表\n");
+            printf("desc: create multi dimension table\n");
             printf("usage: screate table_name tid pid ttl segment_cnt is_leader schema\n");
             printf("ex: screate table1 1 0 144000 8 true card:string:index merchant:string:index amt:double\n");
         } else if (parts[1] == "drop") {
-            printf("desc: 删除表\n");
+            printf("desc: drop table\n");
             printf("usage: drop tid pid\n");
             printf("ex: drop 1 0\n");
         } else if (parts[1] == "put") {
-            printf("desc: 插入数据\n");
+            printf("desc: insert data into table\n");
             printf("usage: put tid pid pk ts value\n");
             printf("ex: put 1 0 key1 1528858466000 value1\n");
         } else if (parts[1] == "sput") {
-            printf("desc: 插入多维数据\n");
+            printf("desc: insert data into table of multi dimension\n");
             printf("usage: sput tid pid ts key1 key2 ... value\n");
             printf("ex: sput 1 0 1528858466000 card0 merchant0 1.1\n");
         } else if (parts[1] == "scan") {
-            printf("desc: 查询一段时间内的数据\n");
+            printf("desc: get records for a period of time\n");
             printf("usage: scan tid pid pk starttime endtime [limit]\n");
             printf("ex: scan 1 0 key1 1528858466000 1528858300000\n");
             printf("ex: scan 1 0 key1 1528858466000 1528858300000 10\n");
             printf("ex: scan 1 0 key1 0 0 10\n");
         } else if (parts[1] == "sscan") {
-            printf("desc: 查询一段时间内的多维数据\n");
+            printf("desc: get records for a period of time from multi dimension table\n");
             printf("usage: sscan tid pid key ke_name starttime endtime [limit]\n");
             printf("ex: scan 1 0 card0 card 1528858466000 1528858300000\n");
             printf("ex: scan 1 0 card0 card 1528858466000 1528858300000 10\n");
             printf("ex: scan 1 0 card0 card 0 0 10\n");
         } else if (parts[1] == "get") {
-            printf("desc: 查询某一时刻的数据\n");
+            printf("desc: get only one record\n");
             printf("usage: get tid pid key ts\n");
             printf("ex: get 1 0 key1 1528858466000\n");
             printf("ex: get 1 0 key1 0\n");
         } else if (parts[1] == "sget") {
-            printf("desc: 查询某一时刻的多维数据\n");
+            printf("desc: get only one record from multi dimension table\n");
             printf("usage: sget tid pid key key_name ts\n");
             printf("ex: sget 1 0 card0 card 1528858466000\n");
             printf("ex: sget 1 0 card0 card 0\n");
         } else if (parts[1] == "addreplica") {
-            printf("desc: 添加副本\n");
+            printf("desc: add replica to leader\n");
             printf("usage: addreplica tid pid endpoint\n");
             printf("ex: addreplica 1 0 172.27.2.52:9992\n");
         } else if (parts[1] == "delreplica") {
-            printf("desc: 删除副本\n");
+            printf("desc: delete replica from leader\n");
             printf("usage: delreplica tid pid endpoint\n");
             printf("ex: delreplica 1 0 172.27.2.52:9992\n");
         } else if (parts[1] == "makesnapshot") {
-            printf("desc: 产生snapshot\n");
+            printf("desc: make snapshot\n");
             printf("usage: makesnapshot tid pid\n");
             printf("ex: makesnapshot 1 0\n");
         } else if (parts[1] == "pausesnapshot") {
-            printf("desc: 暂停snapshot\n");
+            printf("desc: pause snapshot\n");
             printf("usage: pausesnapshot tid pid\n");
             printf("ex: pausesnapshot 1 0\n");
         } else if (parts[1] == "recoversnapshot") {
-            printf("desc: 恢复snapshot\n");
+            printf("desc: recover snapshot\n");
             printf("usage: recoversnapshot tid pid\n");
             printf("ex: recoversnapshot 1 0\n");
         } else if (parts[1] == "sendsnapshot") {
-            printf("desc: 发送snapshot\n");
+            printf("desc: send snapshot\n");
             printf("usage: sendsnapshot tid pid\n");
             printf("ex: sendsnapshot 1 0\n");
         } else if (parts[1] == "loadtable") {
-            printf("desc: 创建表并加载数据\n");
+            printf("desc: create table and load data\n");
             printf("usage: loadtable table_name tid pid ttl segment_cnt\n");
             printf("ex: loadtable table1 1 0 144000 8\n");
         } else if (parts[1] == "changerole") {
-            printf("desc: 修改表的角色\n");
+            printf("desc: change role\n");
             printf("usage: changerole tid pid is_leader\n");
             printf("ex: changerole 1 0 true\n");
             printf("ex: changerole 1 0 false\n");
         } else if (parts[1] == "setexpire") {
-            printf("desc: 修改表是否过期\n");
+            printf("desc: enable or disable ttl\n");
             printf("usage: setexpire tid pid is_expire\n");
             printf("ex: setexpire 1 0 true\n");
             printf("ex: setexpire 1 0 false\n");
         } else if (parts[1] == "showschema") {
-            printf("desc: 获取表的schema信息\n");
+            printf("desc: show schema\n");
             printf("usage: showschema tid pid\n");
             printf("ex: showschema 1 0\n");
         } else if (parts[1] == "gettablestatus") {
-            printf("desc: 获取表信息\n");
+            printf("desc: get table status\n");
             printf("usage: gettablestatus [tid pid]\n");
             printf("ex: gettablestatus\n");
             printf("ex: gettablestatus 1 0\n");
         } else if (parts[1] == "exit" || parts[1] == "quit") {
-            printf("desc: 退出客户端\n");
+            printf("desc: exit client\n");
             printf("ex: quit\n");
             printf("ex: exit\n");
         } else if (parts[1] == "help" || parts[1] == "man") {
-            printf("desc: 获取帮助信息\n");
+            printf("desc: get cmd info\n");
             printf("usage: help [cmd]\n");
             printf("usage: man [cmd]\n");
             printf("ex:help\n");
