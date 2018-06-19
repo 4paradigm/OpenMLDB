@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.tablet.Tablet;
+
 public interface TableAsyncClient {
     
     /**
@@ -98,9 +100,10 @@ public interface TableAsyncClient {
     ScanFuture scan(String name, String key, long st, long et, int limit) throws TabletException;
 
     GetFuture get(String name, String key, long time) throws TabletException;
+    GetFuture get(String name, String key, long time, Tablet.GetType type) throws TabletException;
 
     GetFuture get(String name, String key, String idxName, long time) throws TabletException;
-
+    GetFuture get(String name, String key, String idxName, long time, Tablet.GetType type) throws TabletException;
     GetFuture get(String name, String key) throws TabletException;
 
     GetFuture get(String name, String key, String idxName) throws TabletException;

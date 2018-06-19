@@ -1230,6 +1230,19 @@ TEST_F(TabletImplTest, TestGetType) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
+    //6 
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test");
+        prequest.set_time(6);
+        prequest.set_value("test6");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
     // eq
     {
         ::rtidb::api::GetRequest request;
@@ -1253,9 +1266,8 @@ TEST_F(TabletImplTest, TestGetType) {
         request.set_tid(id);
         request.set_pid(1);
         request.set_key("test");
-        request.set_ts(4);
+        request.set_ts(5);
         request.set_type(::rtidb::api::GetType::kSubKeyLe);
-
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
@@ -1293,9 +1305,9 @@ TEST_F(TabletImplTest, TestGetType) {
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(3, response.ts());
+        ASSERT_EQ(6, response.ts());
         ASSERT_EQ("test", response.key());
-        ASSERT_EQ("test3", response.value());
+        ASSERT_EQ("test6", response.value());
     }
     // ge
      {
@@ -1309,9 +1321,9 @@ TEST_F(TabletImplTest, TestGetType) {
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(3, response.ts());
+        ASSERT_EQ(6, response.ts());
         ASSERT_EQ("test", response.key());
-        ASSERT_EQ("test3", response.value());
+        ASSERT_EQ("test6", response.value());
     }
 }
 
@@ -1456,7 +1468,7 @@ TEST_F(TabletImplTest, GetTermPair) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();

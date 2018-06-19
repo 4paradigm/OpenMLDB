@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
 public interface TableSyncClient {
@@ -55,10 +56,13 @@ public interface TableSyncClient {
     ByteString get(String tname, String key, long time) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, String idxName) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, String key, String idxName, long time, Tablet.GetType type) throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException;
 
