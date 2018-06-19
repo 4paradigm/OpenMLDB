@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.tablet.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -50,6 +51,7 @@ public class TableAsyncClientTest {
     
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -63,9 +65,29 @@ public class TableAsyncClientTest {
         client.refreshRouteTable();
         return name;
     }
-    
+    private String createSchemaTable(String ttlType) {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
+        PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
+        TablePartition tp1 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
+        TableInfo table = TableInfo.newBuilder().setTtlType(ttlType).addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(10)
+                .addColumnDesc(col0).addColumnDesc(col1).addColumnDesc(col2)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        return name;
+    }
+
     private String createSchemaTable() {
         String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -208,6 +230,7 @@ public class TableAsyncClientTest {
         }
     }
 
+    @Test
     public void testNullDimension() {
         String name = createSchemaTable();
         try {
@@ -254,7 +277,8 @@ public class TableAsyncClientTest {
             Assert.assertTrue(true);
         }
     }
-    
+
+    @Test
     public void testScanDuplicateRecord() {
         config.setRemoveDuplicateByTime(true);
         String name = createSchemaTable();
@@ -277,6 +301,71 @@ public class TableAsyncClientTest {
             config.setRemoveDuplicateByTime(false);
         }
        
+    }
+
+
+    @Test
+    public void testGetWithOperator() {
+        String name = createSchemaTable("kLatestTime");
+        try {
+            PutFuture pf = tableAsyncClient.put(name, 10, new Object[] { "card0", "1222", 1.0 });
+            Assert.assertTrue(pf.get());
+            pf = tableAsyncClient.put(name, 11, new Object[] { "card0", "1224", 2.0 });
+            Assert.assertTrue(pf.get());
+            pf = tableAsyncClient.put(name, 13, new Object[] { "card0", "1224", 3.0 });
+            Assert.assertTrue(pf.get());
+            // equal
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", 13, Tablet.GetType.kSubKeyEq);
+                Object[] row = gf.getRow();
+                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+            }
+
+            // le
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", 11, Tablet.GetType.kSubKeyLe);
+                Object[] row = gf.getRow();
+                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+            }
+
+            // ge
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyGe);
+                Object[] row = gf.getRow();
+                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+            }
+
+            // ge
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", 13, Tablet.GetType.kSubKeyGe);
+                Object[] row = gf.getRow();
+                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+            }
+
+            // gt
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyGt);
+                Object[] row = gf.getRow();
+                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+            }
+
+            // gt
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", 11, Tablet.GetType.kSubKeyGt);
+                Object[] row = gf.getRow();
+                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+            }
+             // le
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyLe);
+                Object[] row = gf.getRow();
+                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+            }
+        } catch (Exception e) {
+            Assert.fail();
+        } finally {
+            config.setRemoveDuplicateByTime(false);
+        }
     }
     
 }

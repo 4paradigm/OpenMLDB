@@ -50,6 +50,7 @@ public class TableAsyncClientForLocalityTest {
     
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
         config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
@@ -67,6 +68,7 @@ public class TableAsyncClientForLocalityTest {
     
     private String createSchemaTable() {
         String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
         config.getReadStrategies().put(name, ReadStrategy.kReadLocal);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();

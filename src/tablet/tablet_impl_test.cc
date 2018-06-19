@@ -1172,6 +1172,161 @@ TEST_F(TabletImplTest, DropTableFollower) {
 
 }
 
+TEST_F(TabletImplTest, TestGetType) {
+
+    TabletImpl tablet;
+    uint32_t id = counter++;
+    tablet.Init();
+    ::rtidb::api::CreateTableRequest request;
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(4);
+    table_meta->set_wal(true);
+    table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+    // 1
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test");
+        prequest.set_time(1);
+        prequest.set_value("test1");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    // 2 
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test");
+        prequest.set_time(2);
+        prequest.set_value("test2");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    // 3 
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test");
+        prequest.set_time(3);
+        prequest.set_value("test3");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    //6 
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test");
+        prequest.set_time(6);
+        prequest.set_value("test6");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    // eq
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(1);
+        request.set_type(::rtidb::api::GetType::kSubKeyEq);
+
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.ts());
+        ASSERT_EQ("test", response.key());
+        ASSERT_EQ("test1", response.value());
+    }
+    // le 
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(5);
+        request.set_type(::rtidb::api::GetType::kSubKeyLe);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(3, response.ts());
+        ASSERT_EQ("test", response.key());
+        ASSERT_EQ("test3", response.value());
+    }
+    // lt
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(3);
+        request.set_type(::rtidb::api::GetType::kSubKeyLt);
+
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(2, response.ts());
+        ASSERT_EQ("test", response.key());
+        ASSERT_EQ("test2", response.value());
+    }
+    // gt
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(2);
+        request.set_type(::rtidb::api::GetType::kSubKeyGt);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(6, response.ts());
+        ASSERT_EQ("test", response.key());
+        ASSERT_EQ("test6", response.value());
+    }
+    // ge
+     {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test");
+        request.set_ts(1);
+        request.set_type(::rtidb::api::GetType::kSubKeyGe);
+        ::rtidb::api::GetResponse response;
+        MockClosure closure;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(6, response.ts());
+        ASSERT_EQ("test", response.key());
+        ASSERT_EQ("test6", response.value());
+    }
+}
+
 TEST_F(TabletImplTest, Snapshot) {
     TabletImpl tablet;
     uint32_t id = counter++;
@@ -1313,7 +1468,7 @@ TEST_F(TabletImplTest, GetTermPair) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();

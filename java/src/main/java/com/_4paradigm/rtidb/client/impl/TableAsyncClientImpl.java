@@ -181,7 +181,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with id " + tid);
         }
-        return get(tid, pid, key, idxName, time, th);
+        return get(tid, pid, key, idxName, time,null,  th);
     }
 
     @Override
@@ -259,7 +259,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public GetFuture get(String name, String key, long time) throws TabletException {
-        return get(name, key, null, time);
+        return get(name, key, null, time, null);
     }
 
     @Override
@@ -272,7 +272,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        return get(th.getTableInfo().getTid(), pid, key, idxName, time, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, null, th);
     }
 
     @Override
@@ -328,7 +328,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return response;
     }
     
-    private GetFuture get(int tid, int pid, String key, String idxName, long time, TableHandler th) throws TabletException {
+    private GetFuture get(int tid, int pid, String key, String idxName, long time, Tablet.GetType  type, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
@@ -337,6 +337,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         builder.setPid(pid);
         builder.setKey(key);
         builder.setTs(time);
+        if (type != null)  builder.setType(type);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
@@ -455,8 +456,22 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return th.getSchema();
     }
 
-   
-   
-    
 
+    @Override
+    public GetFuture get(String name, String key, long time, Tablet.GetType type) throws TabletException {
+        return get(name, key, null, time, type);
+    }
+
+    @Override
+    public GetFuture get(String name, String key, String idxName, long time, Tablet.GetType type) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
+        if (pid < 0) {
+            pid = pid * -1;
+        }
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, type, th);
+    }
 }

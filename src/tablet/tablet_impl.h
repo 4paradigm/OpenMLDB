@@ -264,6 +264,8 @@ private:
     // sched replicator to delete binlog
     void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
+    bool CheckGetDone(::rtidb::api::GetType type, uint64_t ts, uint64_t target_ts); 
+
 private:
     Tables tables_;
     std::mutex mu_;
