@@ -134,7 +134,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(20, offset);
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("key", ticket);
+    Iterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
@@ -203,7 +203,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
 
     {
         Ticket ticket;
-        Table::Iterator* it = table->NewIterator(0, "card0", ticket);
+        Iterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
@@ -220,7 +220,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
 
     {
         Ticket ticket;
-        Table::Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        Iterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
@@ -271,7 +271,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("key", ticket);
+    Iterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
@@ -380,7 +380,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     ASSERT_EQ(2, offset);
     {
         Ticket ticket;
-        Table::Iterator* it = table->NewIterator(0, "card0", ticket);
+        Iterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
@@ -396,7 +396,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     }
     {
         Ticket ticket;
-        Table::Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        Iterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
@@ -492,7 +492,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(2, offset);
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("test0", ticket);
+    Iterator* it = table->NewIterator("test0", ticket);
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9528, it->GetKey());

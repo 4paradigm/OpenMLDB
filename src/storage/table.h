@@ -17,6 +17,7 @@
 #include "proto/tablet.pb.h"
 
 using ::rtidb::base::Slice;
+using ::rtidb::api::LogEntry;
 
 namespace rtidb {
 namespace storage {
@@ -78,25 +79,10 @@ public:
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
-    class Iterator {
-    public:
-        Iterator(Segment::Iterator* it);
-        ~Iterator();
-        bool Valid() const;
-        void Next();
-        void Seek(const uint64_t& time);
-        DataBlock* GetValue() const;
-        uint64_t GetKey() const;
-        void SeekToFirst();
-        uint32_t GetSize();
-    private:
-        Segment::Iterator* it_;
-    };
-
     // use the first demission
-    Table::Iterator* NewIterator(const std::string& pk, Ticket& ticket);
+    Iterator* NewIterator(const std::string& pk, Ticket& ticket);
 
-    Table::Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
+    Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
     // release all memory allocated
     uint64_t Release();
 
@@ -177,6 +163,8 @@ public:
     }
 
     uint64_t GetExpireTime();
+
+    bool IsExpire(const LogEntry& entry);
 
     inline bool GetExpireStatus() {
         return enable_gc_.load(std::memory_order_relaxed);

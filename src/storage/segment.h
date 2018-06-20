@@ -58,6 +58,23 @@ struct TimeComparator {
 const static TimeComparator tcmp;
 typedef ::rtidb::base::Skiplist<uint64_t, DataBlock* , TimeComparator> TimeEntries;
 
+class Iterator {
+public:
+    Iterator(TimeEntries::Iterator* it);
+    ~Iterator();
+    void Seek(const uint64_t& time);
+    bool Valid() const;
+    void Next();
+    DataBlock* GetValue() const;
+    uint64_t GetKey() const;
+    void SeekToFirst();
+    void SeekToLast(uint32_t len = 0);
+    uint32_t GetSize();
+private:
+    TimeEntries::Iterator* it_;
+};
+
+
 class KeyEntry {
 public:
     KeyEntry(const char* data, uint32_t size):key(data, size, true), entries(12, 4, tcmp), refs_(0){}
@@ -128,27 +145,11 @@ public:
              uint64_t time,
              DataBlock** block);
 
-    // Segment Iterator
-    class Iterator {
-    public:
-        Iterator(TimeEntries::Iterator* it);
-        ~Iterator();
-        void Seek(const uint64_t& time);
-        bool Valid() const;
-        void Next();
-        DataBlock* GetValue() const;
-        uint64_t GetKey() const;
-        void SeekToFirst();
-        uint32_t GetSize();
-    private:
-        TimeEntries::Iterator* it_;
-    };
-
     uint64_t Release();
     // gc with specify time, delete the data before time 
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
-    Segment::Iterator* NewIterator(const Slice& key, Ticket& ticket);
+    Iterator* NewIterator(const Slice& key, Ticket& ticket);
 
     inline uint64_t GetIdxCnt() {
         return idx_cnt_.load(std::memory_order_relaxed);

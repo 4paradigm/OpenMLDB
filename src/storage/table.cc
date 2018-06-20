@@ -213,57 +213,44 @@ uint64_t Table::GetExpireTime() {
     return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
 }
 
-Table::Iterator::Iterator(Segment::Iterator* it):it_(it){}
-
-Table::Iterator::~Iterator() {
-    delete it_;
-}
-
-bool Table::Iterator::Valid() const {
-    if (it_ == NULL) {
+bool Table::IsExpire(const LogEntry& entry) {
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) { 
         return false;
     }
-    return it_->Valid();
-}
-
-void Table::Iterator::Next() {
-    it_->Next();
-}
-
-void Table::Iterator::Seek(const uint64_t& time) {
-    if (it_ == NULL) {
-        return;
+    uint64_t expired_time = 0;
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        expired_time = entry.ts();
+        if (entry.dimensions_size() > 0) {
+            for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
+                ::rtidb::storage::Ticket ticket;
+                ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), iter->key(), ticket);
+                it->SeekToLast();
+                if (it->Valid()) {
+                    expired_time = std::min(expired_time, it->GetKey());
+                }
+                delete it;
+            }
+        } else {
+            ::rtidb::storage::Ticket ticket;
+            ::rtidb::storage::Iterator* it = NewIterator(entry.pk(), ticket);
+            it->SeekToLast();
+            if (it->Valid()) {
+                expired_time = std::min(expired_time, it->GetKey());
+            }
+            delete it;
+        }
+    } else {
+        expired_time = GetExpireTime();
     }
-    it_->Seek(time);
+    return entry.ts() < GetExpireTime();
 }
 
-void Table::Iterator::SeekToFirst() {
-    if (it_ == NULL) {
-        return;
-    }
-    it_->SeekToFirst();
-}
 
-DataBlock* Table::Iterator::GetValue() const {
-    return it_->GetValue();
-}
-
-uint64_t Table::Iterator::GetKey() const {
-    return it_->GetKey();
-}
-
-uint32_t Table::Iterator::GetSize() {
-    if (it_ == NULL) {
-        return 0;
-    }
-    return it_->GetSize();
-}
-
-Table::Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
+Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
     return NewIterator(0, pk, ticket); 
 }
 
-Table::Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
+Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
@@ -274,7 +261,7 @@ Table::Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticke
     }
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
-    return new Table::Iterator(segment->NewIterator(spk, ticket));
+    return segment->NewIterator(spk, ticket);
 }
 
 uint64_t Table::GetRecordIdxByteSize() {

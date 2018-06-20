@@ -228,7 +228,7 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = NULL;
+    ::rtidb::storage::Iterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -442,7 +442,7 @@ void TabletImpl::Scan(RpcController* controller,
     // Use seek to process scan request
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = NULL;
+    ::rtidb::storage::Iterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {

@@ -174,7 +174,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
 
 
 // Iterator
-Segment::Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
+Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     KeyEntry* entry = entries_->Get(key);
     if (entry == NULL || key.compare(entry->key)!=0) {
         return NULL;
@@ -183,38 +183,41 @@ Segment::Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     return new Iterator(entry->entries.NewIterator());
 }
 
-Segment::Iterator::Iterator(TimeEntries::Iterator* it): it_(it) {}
+Iterator::Iterator(TimeEntries::Iterator* it): it_(it) {}
 
-Segment::Iterator::~Iterator() {
+Iterator::~Iterator() {
     delete it_;
 }
 
-
-void Segment::Iterator::Seek(const uint64_t& time) {
+void Iterator::Seek(const uint64_t& time) {
     it_->Seek(time);
 }
 
-bool Segment::Iterator::Valid() const {
+bool Iterator::Valid() const {
     return it_->Valid();
 }
 
-void Segment::Iterator::Next() {
+void Iterator::Next() {
     it_->Next();
 }
 
-DataBlock* Segment::Iterator::GetValue() const {
+DataBlock* Iterator::GetValue() const {
     return it_->GetValue();
 }
 
-uint64_t Segment::Iterator::GetKey() const {
+uint64_t Iterator::GetKey() const {
     return it_->GetKey();
 }
 
-void Segment::Iterator::SeekToFirst() {
+void Iterator::SeekToFirst() {
     it_->SeekToFirst();
 }
 
-uint32_t Segment::Iterator::GetSize() {
+void Iterator::SeekToLast(uint32_t len) {
+    it_->SeekToLast(len);
+}
+
+uint32_t Iterator::GetSize() {
     if (it_ == NULL) {
         return 0; 
     }

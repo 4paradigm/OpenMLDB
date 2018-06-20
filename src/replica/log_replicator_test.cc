@@ -25,6 +25,7 @@
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
 using ::rtidb::storage::Ticket;
+using ::rtidb::storage::Iterator;
 using ::rtidb::storage::DataBlock;
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -244,7 +245,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     {
         Ticket ticket;
         // check 18527
-        Table::Iterator* it = t8->NewIterator(0, "card0", ticket);
+        Iterator* it = t8->NewIterator(0, "card0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         DataBlock* value = it->GetValue();
@@ -265,7 +266,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     {
         Ticket ticket;
         // check 18527
-        Table::Iterator* it = t8->NewIterator(1, "merchant0", ticket);
+        Iterator* it = t8->NewIterator(1, "merchant0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         DataBlock* value = it->GetValue();
@@ -363,7 +364,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     {
         Ticket ticket;
         // check 18527
-        Table::Iterator* it = t8->NewIterator("test_pk", ticket);
+        Iterator* it = t8->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         DataBlock* value = it->GetValue();

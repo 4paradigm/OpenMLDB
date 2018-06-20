@@ -29,7 +29,7 @@ TEST_F(TableTest, Put) {
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, table->GetRecordCnt());
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("test", ticket);
+    Iterator* it = table->NewIterator("test", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9537, it->GetKey());
@@ -129,7 +129,7 @@ TEST_F(TableTest, Iterator) {
     table->Put("pk1", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("pk", ticket);
+    Iterator* it = table->NewIterator("pk", ticket);
 
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
@@ -158,7 +158,7 @@ TEST_F(TableTest, Iterator_GetSize) {
     table->Put("pk", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("pk", ticket);
+    Iterator* it = table->NewIterator("pk", ticket);
     ASSERT_EQ(3, it->GetSize());
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
@@ -240,7 +240,7 @@ TEST_F(TableTest, SchedGcHead1) {
         }
         table->SchedGc();
         Ticket ticket;
-        Table::Iterator* it = table->NewIterator("test", ticket);
+        Iterator* it = table->NewIterator("test", ticket);
 
         it->Seek(ts + 1);
         ASSERT_TRUE(it->Valid());
@@ -284,7 +284,7 @@ TEST_F(TableTest, SchedGc) {
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
 
     Ticket ticket;
-    Table::Iterator* it = table->NewIterator("test", ticket);
+    Iterator* it = table->NewIterator("test", ticket);
     it->Seek(now);
     ASSERT_TRUE(it->Valid());
     std::string value_str(it->GetValue()->data, it->GetValue()->size);
@@ -317,7 +317,7 @@ TEST_F(TableTest, OffSet) {
     ASSERT_EQ(1, count);
     {
         Ticket ticket;
-        Table::Iterator* it = table->NewIterator("test", ticket);
+        Iterator* it = table->NewIterator("test", ticket);
         it->Seek(now);
         ASSERT_TRUE(it->Valid());
         std::string value_str(it->GetValue()->data, it->GetValue()->size);

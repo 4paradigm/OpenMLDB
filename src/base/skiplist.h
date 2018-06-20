@@ -230,6 +230,22 @@ public:
         return NULL;
     }
 
+    Node<K, V>* GetLast(int) {
+        Node<K, V>* node = head_; 
+        uint8_t level = GetMaxHeight() - 1;
+        while (true) {
+            Node<K, V>* next = node->GetNext(level);
+            if (next == NULL) {
+                if (level <= 0) {
+                    return node;
+                }
+                level --;
+            } else {
+                node = next;
+            }
+        }
+    }
+
     uint32_t GetSize() {
         uint32_t cnt = 0;
         Node<K, V>* node = head_->GetNext(0);
@@ -325,6 +341,10 @@ public:
         void SeekToFirst() {
             node_ = list_->head_;
             Next();
+        }
+
+        void SeekToLast(uint32_t len) {
+            node_ = len < (uint32_t)list_->GetMaxHeight() ? list_->GetLast() : list_->GetLast(0);
         }
 
         uint32_t GetSize() {
