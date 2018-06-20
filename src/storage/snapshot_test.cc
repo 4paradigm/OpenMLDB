@@ -615,6 +615,118 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ASSERT_EQ(7, manifest.term());
 }
 
+TEST_F(SnapshotTest, MakeSnapshotLatest) {
+    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    Snapshot snapshot(5, 1, log_part);
+    snapshot.Init();
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    std::shared_ptr<Table> table = std::make_shared<Table>("tx_log", 5, 1, 8, mapping , 4);
+    table->Init();
+    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+	std::string log_path = FLAGS_db_root_path + "/5_1/binlog/";
+	std::string snapshot_path = FLAGS_db_root_path + "/5_1/snapshot/";
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    int count = 0;
+    for (; count < 10; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + std::to_string(count % 4);
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value");
+        entry.set_term(5);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        table->Put(key, count, "value", 5);
+        offset++;
+    }
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    for (; count < 30; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + std::to_string(count % 4);
+        entry.set_pk(key);
+        entry.set_term(6);
+        entry.set_ts(count);
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        table->Put(key, count, "value", 5);
+        offset++;
+    }
+    table->SchedGc();
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value);
+    ASSERT_EQ(0, ret);
+    std::vector<std::string> vec;
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+
+    std::string full_path = snapshot_path + "MANIFEST";
+    ::rtidb::api::Manifest manifest;
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(offset-1, manifest.offset());
+    ASSERT_EQ(16, manifest.count());
+    ASSERT_EQ(6, manifest.term());
+
+    for (; count < 1000; count++) {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key1000";
+        if (count == 100) {
+            key = "key2222";
+        }
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value");
+        entry.set_term(7);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        table->Put(key, count, "value", 5);
+        offset++;
+    }
+    table->SchedGc();
+    ret = snapshot.MakeSnapshot(table, offset_value);
+    ASSERT_EQ(0, ret);
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    ret = ::rtidb::base::GetFileName(log_path, vec);
+    ASSERT_EQ(2, vec.size());
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+
+    ASSERT_EQ(offset-1, manifest.offset());
+    ASSERT_EQ(21, manifest.count());
+    ASSERT_EQ(7, manifest.term());
+}
+
 TEST_F(SnapshotTest, RecordOffset) {
 	std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
     Snapshot snapshot(1, 1, NULL);

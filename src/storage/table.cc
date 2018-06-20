@@ -219,30 +219,34 @@ bool Table::IsExpire(const LogEntry& entry) {
     }
     uint64_t expired_time = 0;
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        expired_time = entry.ts();
+        uint32_t ttl_cnt = ttl_ / (60 * 1000);
         if (entry.dimensions_size() > 0) {
             for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
                 ::rtidb::storage::Ticket ticket;
                 ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), iter->key(), ticket);
-                it->SeekToLast();
+                it->SeekToLast(ttl_cnt);
                 if (it->Valid()) {
-                    expired_time = std::min(expired_time, it->GetKey());
+                    if (expired_time == 0) {
+                        expired_time = it->GetKey();
+                    } else {
+                        expired_time = std::min(expired_time, it->GetKey());
+                    }
                 }
                 delete it;
             }
         } else {
             ::rtidb::storage::Ticket ticket;
             ::rtidb::storage::Iterator* it = NewIterator(entry.pk(), ticket);
-            it->SeekToLast();
+            it->SeekToLast(ttl_cnt);
             if (it->Valid()) {
-                expired_time = std::min(expired_time, it->GetKey());
+                expired_time = it->GetKey();
             }
             delete it;
         }
     } else {
         expired_time = GetExpireTime();
     }
-    return entry.ts() < GetExpireTime();
+    return entry.ts() < expired_time;
 }
 
 
