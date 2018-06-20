@@ -84,7 +84,7 @@ private:
     uint8_t const height_;
     K  const key_;
     V  value_;
-    std::atomic< Node<K,V>* >* nexts_;
+    std::atomic<Node<K,V>* >* nexts_;
 };
 
 
@@ -237,7 +237,7 @@ public:
             Node<K, V>* next = node->GetNext(level);
             if (next == NULL) {
                 if (level <= 0) {
-                    return node;
+                    return node == head_ ? NULL : node;
                 }
                 level --;
             } else {

@@ -380,8 +380,6 @@ TEST_F(SkiplistTest, Remove) {
     ASSERT_FALSE(it->Valid());
 }
 
-
-
 TEST_F(SkiplistTest, Get) {
     Comparator cmp;
     Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
@@ -391,6 +389,21 @@ TEST_F(SkiplistTest, Get) {
     uint32_t ret = sl.Get(1);
     ASSERT_EQ(1, ret);
     ASSERT_FALSE(sl.Get(2) == 2);
+}
+
+TEST_F(SkiplistTest, GetLast) {
+    Comparator cmp;
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    ASSERT_TRUE(sl.GetLast() == NULL);
+    ASSERT_TRUE(sl.GetLast(0) == NULL);
+    uint32_t value = 1111111;
+    for (uint32_t idx = 0; idx < 10000; idx++) {
+        sl.Insert(idx, value);
+        ASSERT_EQ(idx, sl.GetLast()->GetKey());
+        ASSERT_EQ(value, sl.GetLast()->GetValue());
+        ASSERT_EQ(idx, sl.GetLast(0)->GetKey());
+        ASSERT_EQ(value, sl.GetLast(0)->GetValue());
+    }
 }
 
 TEST_F(SkiplistTest, Duplicate) {
