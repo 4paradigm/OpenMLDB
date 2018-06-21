@@ -97,7 +97,8 @@ public:
     max_height_(0),
     compare_(compare),
     rand_(0xdeadbeef),
-    head_(NULL) {
+    head_(NULL),
+    tail_(NULL) {
         head_ = new Node<K,V>(MaxHeight);
         for (uint8_t i = 0; i < head_->Height(); i++) {
             head_->SetNext(i, NULL);
@@ -120,6 +121,9 @@ public:
             max_height_.store(height, std::memory_order_relaxed);
         }
         Node<K,V>* node = NewNode(key, value, height);
+        if (pre[0]->GetNext(0) == NULL) {
+            tail_.store(node, std::memory_order_release);
+        }
         for (uint8_t i = 0; i < height; i ++) {
             node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
             pre[i]->SetNext(i, node);
@@ -153,6 +157,9 @@ public:
             pre[i]->SetNextNoBarrier(i, result->GetNextNoBarrier(i));
             result->SetNextNoBarrier(i, NULL);
         }
+        if (result == tail_) {
+            pre[0] == head_ ? tail_.store(NULL, std::memory_order_relaxed) : tail_.store(pre[0], std::memory_order_relaxed);
+        }
         return result;
     }
 
@@ -166,6 +173,7 @@ public:
         if (target == NULL) {
             return NULL;
         }
+        tail_.store(target, std::memory_order_release);
         Node<K, V>* result = target->GetNextNoBarrier(0);
         for (uint8_t i = 0; i < MaxHeight; i++) {
             if (pre[i] == NULL) {
@@ -194,6 +202,7 @@ public:
         uint64_t cnt = 0;
         while (node != NULL) {
             if (cnt == pos) {
+                tail_.store(pre, std::memory_order_release);
                 for (uint8_t i = 0; i < pre->Height(); i++) {
                     pre->SetNext(i, NULL);
                 }
@@ -218,32 +227,7 @@ public:
     }
 
     Node<K, V>* GetLast() {
-        Node<K, V>* node = head_->GetNext(0);
-        while (node != NULL) {
-            Node<K, V>* tmp = node->GetNext(0);
-            // find the end
-            if (tmp == NULL) {
-                return node;
-            }
-            node = tmp;
-        }
-        return NULL;
-    }
-
-    Node<K, V>* GetLast(int) {
-        Node<K, V>* node = head_; 
-        uint8_t level = GetMaxHeight() - 1;
-        while (true) {
-            Node<K, V>* next = node->GetNext(level);
-            if (next == NULL) {
-                if (level <= 0) {
-                    return node == head_ ? NULL : node;
-                }
-                level --;
-            } else {
-                node = next;
-            }
-        }
+        return tail_.load(std::memory_order_acquire);
     }
 
     uint32_t GetSize() {
@@ -280,6 +264,7 @@ public:
             }
             delete tmp;
         }
+        tail_.store(NULL, std::memory_order_relaxed);
         return cnt;
     }
 
@@ -300,6 +285,9 @@ public:
             max_height_.store(height, std::memory_order_relaxed);
         }
         Node<K,V>* node = NewNode(key, value, height);
+        if (pre[0]->GetNext(0) == NULL) {
+            tail_.store(node, std::memory_order_release);
+        }
         for (uint8_t i = 0; i < height; i ++) {
             node->SetNextNoBarrier(i, pre[i]->GetNextNoBarrier(i));
             pre[i]->SetNext(i, node);
@@ -343,8 +331,8 @@ public:
             Next();
         }
 
-        void SeekToLast(uint32_t len) {
-            node_ = len < (uint32_t)list_->GetMaxHeight() ? list_->GetLast() : list_->GetLast(0);
+        void SeekToLast() {
+            node_ = list_->GetLast();
         }
 
         uint32_t GetSize() {
@@ -442,6 +430,7 @@ private:
     Comparator const compare_;
     Random rand_;
     Node<K, V>* head_;
+    std::atomic<Node<K, V>*> tail_;
     friend Iterator;
 };
 

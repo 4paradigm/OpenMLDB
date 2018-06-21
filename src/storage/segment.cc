@@ -158,7 +158,13 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = it->GetValue();
-        ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
+        ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+        if (node == NULL || node->GetKey() > time) {
+            PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
+            it->Next();
+            continue;
+        }
+        node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
@@ -227,11 +233,11 @@ void Iterator::SeekToFirst() {
     it_->SeekToFirst();
 }
 
-void Iterator::SeekToLast(uint32_t len) {
+void Iterator::SeekToLast() {
     if (it_ == NULL) {
         return;
     }
-    it_->SeekToLast(len);
+    it_->SeekToLast();
 }
 
 uint32_t Iterator::GetSize() {

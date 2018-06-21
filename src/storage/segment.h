@@ -68,7 +68,7 @@ public:
     DataBlock* GetValue() const;
     uint64_t GetKey() const;
     void SeekToFirst();
-    void SeekToLast(uint32_t len = 0);
+    void SeekToLast();
     uint32_t GetSize();
 private:
     TimeEntries::Iterator* it_;

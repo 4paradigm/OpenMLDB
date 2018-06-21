@@ -219,12 +219,11 @@ bool Table::IsExpire(const LogEntry& entry) {
     }
     uint64_t expired_time = 0;
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        uint32_t ttl_cnt = ttl_ / (60 * 1000);
         if (entry.dimensions_size() > 0) {
             for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
                 ::rtidb::storage::Ticket ticket;
                 ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), iter->key(), ticket);
-                it->SeekToLast(ttl_cnt);
+                it->SeekToLast();
                 if (it->Valid()) {
                     if (expired_time == 0) {
                         expired_time = it->GetKey();
@@ -237,7 +236,7 @@ bool Table::IsExpire(const LogEntry& entry) {
         } else {
             ::rtidb::storage::Ticket ticket;
             ::rtidb::storage::Iterator* it = NewIterator(entry.pk(), ticket);
-            it->SeekToLast(ttl_cnt);
+            it->SeekToLast();
             if (it->Valid()) {
                 expired_time = it->GetKey();
             }
