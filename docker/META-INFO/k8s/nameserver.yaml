@@ -22,7 +22,7 @@ spec:
           value: {{.zk_cluster}}
         - name: zk_root_path
           value: "/rtidb"
-		- name: MY_NODE_NAME
+        - name: MY_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
