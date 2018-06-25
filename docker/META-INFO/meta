@@ -1,0 +1,6 @@
+meta-version: 1.0
+template:
+- key: zk_cluster
+  type: file
+  desc: zookeeper address
+  value: "please filling in address"
