@@ -22,6 +22,10 @@ spec:
           value: {{.zk_cluster}}
         - name: zk_root_path
           value: "/rtidb"
+		- name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         image: {{.registry}}/nameserver:v3.1.0
         name: rtidb
         imagePullPolicy: Always
