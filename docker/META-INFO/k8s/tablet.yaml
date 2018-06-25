@@ -28,7 +28,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata: 
   name: brpc-deployment-modules
-  namespace: rtidb
+  namespace: {{.namespace}}
   labels: 
     k8s-app: brpc
 data:
@@ -44,7 +44,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: tablet
-  namespace: rtidb
+  namespace: {{.namespace}}
   labels:
     rtidb: tablet  # deployment 标签
 spec:
