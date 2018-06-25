@@ -36,7 +36,7 @@ spec:
               - key: run-rtidb
                 operator: In
                 values:
-                - "true"
+                - "nameserver"
         podAntiAffinity: # pod 互斥性，阻止具有 rtidb=tablet 的 Pod 调度到同一个节点
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
