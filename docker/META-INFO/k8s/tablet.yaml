@@ -1,0 +1,68 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: tablet
+  namespace: {{.namespace}}
+  labels:
+    rtidb: tablet
+spec:
+  replicas: 3
+  selector: 
+    matchLabels:
+      rtidb: tablet
+  template:
+    metadata:
+      labels:
+        rtidb: tablet
+    spec:
+      hostNetwork: true
+      containers:
+      - env:
+        - name: zk_cluster
+          value: {{.zk_cluster}}
+        - name: zk_root_path
+          value: "/rtidb"
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: {{.registry}}/tablet:v3.1.0
+        name: rtidb
+        imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: /root/db/
+          name: db
+        - mountPath: /root/recycle/
+          name: recycle
+      imagePullSecrets:
+      - name: docker-secret
+      securityContext: {}
+      volumes:
+      - name: db
+        hostPath:
+          path: /data/rtidb/db
+          type: DirectoryOrCreate
+      - name: recycle
+        hostPath:
+          path: /data/rtidb/recycle
+          type: DirectoryOrCreate
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: rtidb-tablet
+                operator: In
+                values:
+                - "true"
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: rtidb
+                operator: In
+                values:
+                - tablet
+            topologyKey: "kubernetes.io/hostname"
+      securityContext:
+        runAsUser: 0

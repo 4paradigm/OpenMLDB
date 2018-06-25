@@ -1,0 +1,54 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nameserver
+  namespace: {{.namespace}}
+  labels:
+    rtidb: nameserver
+spec:
+  replicas: 2
+  selector: 
+    matchLabels:
+      rtidb: nameserver
+  template:
+    metadata:
+      labels:
+        rtidb: nameserver
+    spec:
+      hostNetwork: true
+      containers:
+      - env:
+        - name: zk_cluster
+          value: {{.zk_cluster}}
+        - name: zk_root_path
+          value: "/rtidb"
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: {{.registry}}/nameserver:v3.1.0
+        name: rtidb
+        imagePullPolicy: Always
+      imagePullSecrets:
+      - name: docker-secret
+      securityContext: {}
+      affinity:
+        nodeAffinity: 
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: rtidb-nameserver
+                operator: In
+                values:
+                - "true"
+        podAntiAffinity: 
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: rtidb
+                operator: In
+                values:
+                - nameserver
+            topologyKey: "kubernetes.io/hostname"
+      securityContext: 
+        runAsUser: 0
