@@ -33,10 +33,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: run-rtidb
+              - key: rtidb-nameserver
                 operator: In
                 values:
-                - "nameserver"
+                - "true"
         podAntiAffinity: # pod 互斥性，阻止具有 rtidb=tablet 的 Pod 调度到同一个节点
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
