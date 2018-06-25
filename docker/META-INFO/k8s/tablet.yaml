@@ -4,18 +4,18 @@ metadata:
   name: tablet
   namespace: {{.namespace}}
   labels:
-    rtidb: tablet  # deployment 标签
+    rtidb: tablet
 spec:
-  replicas: 3  # 3 副本实例
-  selector: # replicas 匹配的 pod 标签
+  replicas: 3
+  selector: 
     matchLabels:
-      rtidb: tablet  # rtidb 标签
+      rtidb: tablet
   template:
     metadata:
-      labels: # pod 标签
-        rtidb: tablet  # rtidb 标签
+      labels:
+        rtidb: tablet
     spec:
-      hostNetwork: true # hostNetwork
+      hostNetwork: true
       containers:
       - env:
         - name: zk_cluster
@@ -38,16 +38,16 @@ spec:
       - name: docker-secret
       securityContext: {}
       volumes:
-      - name: db  # hostPath volume
+      - name: db
         hostPath:
           path: /data/rtidb/db
-          type: DirectoryOrCreate # 不存在时创建，有可能需要 root 权限。
-      - name: recycle  # hostPath volume
+          type: DirectoryOrCreate
+      - name: recycle
         hostPath:
           path: /data/rtidb/recycle
-          type: DirectoryOrCreate # 不存在时创建，有可能需要 root 权限。
+          type: DirectoryOrCreate
       affinity:
-        nodeAffinity: # node 亲和性，只调度到有 run-rtidb=true 标签的节点
+        nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
@@ -55,7 +55,7 @@ spec:
                 operator: In
                 values:
                 - "true"
-        podAntiAffinity: # pod 互斥性，阻止具有 rtidb=tablet 的 Pod 调度到同一个节点
+        podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchExpressions:
@@ -64,5 +64,5 @@ spec:
                 values:
                 - tablet
             topologyKey: "kubernetes.io/hostname"
-      securityContext: # root 账户运行
+      securityContext:
         runAsUser: 0
