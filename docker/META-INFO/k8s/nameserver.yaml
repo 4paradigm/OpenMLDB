@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: rtidb-cluster
-  namespace: rtidb
+  namespace: {{.namespace}}
   labels:
     k8s-app: brpc
 data:
