@@ -159,11 +159,11 @@ spec:
         podAntiAffinity: # pod 互斥性，阻止具有 rtidb=tablet 的 Pod 调度到同一个节点
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
-            matchExpressions:
-            - key: rtidb
-              operator: In
-              values:
-              - nameserver
+              matchExpressions:
+              - key: rtidb
+                operator: In
+                values:
+                - nameserver
             topologyKey: "kubernetes.io/hostname"
       securityContext: # root 账户运行
         runAsUser: 0
