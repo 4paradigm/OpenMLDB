@@ -253,6 +253,7 @@ public:
         for (uint8_t i = 0; i < head_->Height(); i++) {
             head_->SetNextNoBarrier(i, NULL);
         }
+        tail_.store(NULL, std::memory_order_relaxed);
 
         while (node != NULL) {
             cnt++;
@@ -264,7 +265,6 @@ public:
             }
             delete tmp;
         }
-        tail_.store(NULL, std::memory_order_relaxed);
         return cnt;
     }
 
