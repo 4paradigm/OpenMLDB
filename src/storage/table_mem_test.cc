@@ -34,7 +34,7 @@ TEST_F(TableMemTest, Memory) {
     }
     uint64_t cnt = table->SchedGc();
     ASSERT_EQ(98, cnt);
-    Table::Iterator* it = table->NewIterator("test");
+    Iterator* it = table->NewIterator("test");
     it->Seek(now);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(now, it->GetKey());

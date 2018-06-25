@@ -62,7 +62,7 @@ TEST_F(SegmentTest, PutAndScan) {
    segment.Put(pk, 9529, value.c_str(), value.size());
    ASSERT_EQ(1, segment.GetPkCnt());
    Ticket ticket;
-   Segment::Iterator* it = segment.NewIterator("test1", ticket);
+   Iterator* it = segment.NewIterator("test1", ticket);
    ASSERT_EQ(4, it->GetSize());
    it->Seek(9530);
    ASSERT_TRUE(it->Valid());
@@ -87,7 +87,7 @@ TEST_F(SegmentTest, Iterator) {
    segment.Put(pk, 9769, "test2", 5);
    ASSERT_EQ(1, segment.GetPkCnt());
    Ticket ticket;
-   Segment::Iterator* it = segment.NewIterator("test1", ticket);
+   Iterator* it = segment.NewIterator("test1", ticket);
    ASSERT_EQ(4, it->GetSize());
    it->Seek(9769);
    ASSERT_EQ(9769, it->GetKey());
@@ -115,7 +115,7 @@ TEST_F(SegmentTest, TestGc4Head) {
     ASSERT_EQ(1, gc_record_cnt);
     ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
     Ticket ticket;
-    Segment::Iterator* it = segment.NewIterator(pk, ticket);
+    Iterator* it = segment.NewIterator(pk, ticket);
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9769, it->GetKey());

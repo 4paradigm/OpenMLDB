@@ -320,14 +320,14 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
         }
     }
     if (request->pre_log_index() > last_log_offset) {
-        PDLOG(WARNING, "log mismatch for path %s, pre_log_index %lu, come log index %lu", path_.c_str(),
-                last_log_offset, request->pre_log_index());
+        PDLOG(WARNING, "log mismatch for path %s, pre_log_index %lu, come log index %lu. tid %u pid %u", 
+                        path_.c_str(), last_log_offset, request->pre_log_index(), request->tid(), request->pid());
         return false;
     }
     for (int32_t i = 0; i < request->entries_size(); i++) {
         if (request->entries(i).log_index() <= last_log_offset) {
-            PDLOG(WARNING, "entry log_index %lu cur log_offset %lu", 
-                          request->entries(i).log_index(), last_log_offset);
+            PDLOG(WARNING, "entry log_index %lu cur log_offset %lu tid %u pid %u", 
+                          request->entries(i).log_index(), last_log_offset, request->tid(), request->pid());
             continue;
         }
         std::string buffer;

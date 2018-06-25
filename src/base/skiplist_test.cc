@@ -106,7 +106,7 @@ TEST_F(NodeTest, SliceTest)  {
 TEST_F(NodeTest, AddToFirst) {
     Comparator cmp;
     Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
-    ASSERT_EQ(16, sizeof(sl));
+    ASSERT_EQ(24, sizeof(sl));
     uint32_t key3 = 2;
     uint32_t value3 = 5;
     sl.Insert(key3, value3);
@@ -238,12 +238,16 @@ TEST_F(SkiplistTest, Split1) {
     uint32_t key3 = 2;
     uint32_t value3= 2;
     sl.Insert(key3, value3);
+    ASSERT_EQ(2, sl.GetLast()->GetKey());
     uint32_t key4 = 3;
     uint32_t value4= 6;
     sl.Insert(key4, value4);
+    ASSERT_EQ(3, sl.GetLast()->GetKey());
     Node<uint32_t, uint32_t>* node = sl.Split(4);
+    ASSERT_EQ(3, sl.GetLast()->GetKey());
     ASSERT_EQ(NULL, node);
     node = sl.Split(1);
+    ASSERT_EQ(0, sl.GetLast()->GetKey());
     ASSERT_EQ(1, node->GetKey());
     node = node->GetNext(0);
     ASSERT_TRUE(node != NULL);
@@ -281,10 +285,13 @@ TEST_F(SkiplistTest, SplitByPos) {
     uint32_t key4 = 3;
     uint32_t value4= 6;
     sl.Insert(key4, value4);
+    ASSERT_EQ(3, sl.GetLast()->GetKey());
 
     Node<uint32_t, uint32_t>* node = sl.SplitByPos(6);
     ASSERT_TRUE(node == NULL);
+    ASSERT_EQ(3, sl.GetLast()->GetKey());
     node = sl.SplitByPos(3);
+    ASSERT_EQ(2, sl.GetLast()->GetKey());
     ASSERT_EQ(2, node->GetKey());
     node = node->GetNext(0);
     ASSERT_TRUE(node != NULL);
@@ -318,8 +325,11 @@ TEST_F(SkiplistTest, SplitByPos1) {
     uint32_t key4 = 4;
     uint32_t value4= 4;
     sl.Insert(key4, value4);
+    ASSERT_EQ(4, sl.GetLast()->GetKey());
     Node<uint32_t, uint32_t>* node = sl.SplitByPos(2);
     ASSERT_EQ(3, node->GetKey());
+    ASSERT_EQ(2, sl.GetLast()->GetKey());
+    ASSERT_EQ(2, sl.GetLast()->GetValue());
 }    
 
 TEST_F(SkiplistTest, Iterator2) {
@@ -362,10 +372,12 @@ TEST_F(SkiplistTest, Remove) {
     std::string k2 = "b";
     std::string v3="c";
     sl.Insert(k2, v3);
+    ASSERT_EQ("h", sl.GetLast()->GetKey());
     std::string k3="c";
     Node<std::string, std::string>* none_exist_node = sl.Remove(k3);
     ASSERT_FALSE(none_exist_node != NULL);
     Node<std::string, std::string>* node = sl.Remove(k2);
+    ASSERT_EQ("h", sl.GetLast()->GetKey());
     ASSERT_FALSE(node == NULL);
     ASSERT_EQ("b", node->GetKey());
     ASSERT_EQ("c", node->GetValue());
@@ -378,9 +390,14 @@ TEST_F(SkiplistTest, Remove) {
     ASSERT_EQ("h", it->GetKey());
     it->Next();
     ASSERT_FALSE(it->Valid());
+    node = sl.Remove(k);
+    ASSERT_EQ("a", sl.GetLast()->GetKey());
+    ASSERT_FALSE(node == NULL);
+    ASSERT_EQ("h", node->GetKey());
+    ASSERT_EQ("b", node->GetValue());
+    node = sl.Remove(k1);
+    ASSERT_TRUE(sl.GetLast() == NULL);
 }
-
-
 
 TEST_F(SkiplistTest, Get) {
     Comparator cmp;
@@ -391,6 +408,25 @@ TEST_F(SkiplistTest, Get) {
     uint32_t ret = sl.Get(1);
     ASSERT_EQ(1, ret);
     ASSERT_FALSE(sl.Get(2) == 2);
+}
+
+TEST_F(SkiplistTest, GetLast) {
+    Comparator cmp;
+    Skiplist<uint32_t, uint32_t, Comparator> sl(12, 4, cmp);
+    ASSERT_TRUE(sl.GetLast() == NULL);
+    uint32_t value = 1111111;
+    for (uint32_t idx = 100; idx < 10000; idx++) {
+        sl.Insert(idx, value);
+        ASSERT_EQ(idx, sl.GetLast()->GetKey());
+        ASSERT_EQ(value, sl.GetLast()->GetValue());
+    }
+    for (uint32_t idx = 0; idx < 100; idx++) {
+        sl.Insert(idx, value);
+        ASSERT_EQ(9999, sl.GetLast()->GetKey());
+        ASSERT_EQ(value, sl.GetLast()->GetValue());
+    }
+    sl.Clear();
+    ASSERT_TRUE(sl.GetLast() == NULL);
 }
 
 TEST_F(SkiplistTest, Duplicate) {
