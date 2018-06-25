@@ -1,45 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: rtidb-cluster
-  namespace: {{.namespace}}
-  labels:
-    k8s-app: brpc
-data:
-  metricbeat.yml: |-
-    metricbeat.config.modules:
-      # Mounted `metricbeat-daemonset-modules` configmap:
-      path: ${path.config}/modules.d/*.yml
-      # Reload module configs as they change:
-      reload.enabled: false
-
-    processors:
-      - add_cloud_metadata:
-
-    cloud.id: ${ELASTIC_CLOUD_ID}
-    cloud.auth: ${ELASTIC_CLOUD_AUTH}
-
-    output.elasticsearch:
-      hosts: ['${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
-      username: ${ELASTICSEARCH_USERNAME}
-      password: ${ELASTICSEARCH_PASSWORD}
----
-apiVersion: v1
-kind: ConfigMap
-metadata: 
-  name: brpc-deployment-modules
-  namespace: {{.namespace}}
-  labels: 
-    k8s-app: brpc
-data:
-  brpc.yml: |-
-    - module: brpc
-      period: 10s
-      enable: true
-      metricsets: ["status"]
-      hosts: ["localhost"]
-      portFile: /run/services/rtidb/port/port
----
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -60,96 +18,22 @@ spec:
       hostNetwork: true # hostNetwork
       containers:
       - env:
-        - name: PREDICT_WORKFLOW
-          value: elementhub
-        - name: MODEL_ID
-          value: "11"
-        - name: ELEMENT_HUB_URI
-          value: http://docker02:49001
-        - name: test2
-          value: testenv2
-        - name: test
-          value: testenv
-        - name: ACCESS_TOKEN
-          value: cvmdkkewsdgdhulayoiutgmfjqegomoookyebalsboakjfjvlcittowytsltnegm
-        - name: test1
-          value: test1
         - name: zk_cluster
           value: {{.zk_cluster}}
         - name: zk_root_path
           value: "/rtidb"
         image: {{.registry}}/tablet:v3.1.0
         name: rtidb
-        readinessProbe:
-          exec:
-            command:
-            - /var/run/services/rtidb/ping.sh
-          failureThreshold: 3
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
         imagePullPolicy: Always
         volumeMounts:
         - mountPath: /root/db/
           name: db
         - mountPath: /root/recycle/
           name: recycle
-      - image: registry.4paradigm.com/metricbeat-test:6.0.1
-        imagePullPolicy: Always
-        #command: ["ls"]
-        args: ["-c", "/usr/share/metricbeat/metricbeat.yml","-e"]
-        #args: ["-R", "/usr/share/metricbeat/"]
-        env:
-        - name: ELASTICSEARCH_HOST
-          value: elasticsearch.elastic
-        - name: ELASTICSEARCH_PORT
-          value: "9200"
-        - name: ELASTICSEARCH_USERNAME
-          value: elastic
-        - name: ELASTICSEARCH_PASSWORD
-          value: changeme
-        - name: ELASTIC_CLOUD_ID
-          value:
-        - name: ELASTIC_CLOUD_AUTH
-          value:
-        - name: POD_NAME
-          valueFrom: 
-            fieldRef: 
-              fieldPath: metadata.name
-        securityContext:
-          runAsUser: 0
-        name: metricbeat
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /usr/share/metricbeat/modules.d/
-          name: module
-          readOnly: true
-        - mountPath: /usr/share/metricbeat/metricbeat.yml
-          name: config
-          readOnly: true
-          subPath: metricbeat.yml
-        - mountPath: /run/services/rtidb/port
-          name: port-dir
       imagePullSecrets:
       - name: docker-secret
       securityContext: {}
       volumes:
-      - name: config
-        configMap:
-          defaultMode: 0600
-          name: rtidb-cluster
-      - name: module
-        configMap:
-          defaultMode: 0600
-          name: brpc-deployment-modules
-      - name: brpc-modules  # hostPath volume
-        hostPath:
-          path: /data/brpc-modules
-          type: DirectoryOrCreate # 不存在时创建，有可能需要 root 权限。
       - name: db  # hostPath volume
         hostPath:
           path: /data/rtidb/db
@@ -158,8 +42,6 @@ spec:
         hostPath:
           path: /data/rtidb/recycle
           type: DirectoryOrCreate # 不存在时创建，有可能需要 root 权限。
-      - name: port-dir
-        emptyDir: {}
       affinity:
         nodeAffinity: # node 亲和性，只调度到有 run-rtidb=true 标签的节点
           requiredDuringSchedulingIgnoredDuringExecution:
