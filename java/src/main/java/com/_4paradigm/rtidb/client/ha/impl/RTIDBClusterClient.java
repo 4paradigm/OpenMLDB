@@ -166,7 +166,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     private void tryWatch() {
         try {
-            if (!zookeeper.getState().isConnected()) {
+            if (zookeeper = null && !zookeeper.getState().isConnected()) {
                 connectToZk();
                 onZkConnected();
             } 
