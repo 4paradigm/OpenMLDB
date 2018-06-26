@@ -52,7 +52,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             return t;
         }
     });
-    private ZooKeeper zookeeper;
+    private volatile ZooKeeper zookeeper;
     private volatile Map<String, TableHandler> name2tables = new HashMap<String, TableHandler>();
     private volatile Map<Integer, TableHandler> id2tables = new HashMap<Integer, TableHandler>();
     private RpcBaseClient baseClient;
@@ -74,20 +74,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
         getLocalIpAddress();
-        zookeeper = new ZooKeeper(config.getZkEndpoints(), (int) config.getZkSesstionTimeout(), this);
-        int failedCountDown = 10;
-        while (!zookeeper.getState().isConnected() && failedCountDown > 0) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                logger.error("interrupted", e);
-            }
-            failedCountDown--;
-        }
-
-        if (!zookeeper.getState().isConnected()) {
-            throw new TabletException("fail to connect zookeeper " + config.getZkEndpoints());
-        }
         notifyWatcher = new Watcher() {
             @Override
             public void process(WatchedEvent event) {
@@ -108,10 +94,10 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             }
             
         };
+        connectToZk();
         onZkConnected();
         tryWatch();
         clusterGuardThread.schedule(new Runnable() {
-            
             @Override
             public void run() {
                 checkWatchStatus();
@@ -119,6 +105,33 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             }
         }, 1, TimeUnit.MINUTES);
         
+    }
+    
+    private void connectToZk() throws TabletException,IOException{
+        ZooKeeper localZk = new ZooKeeper(config.getZkEndpoints(), (int) config.getZkSesstionTimeout(), this);
+        int failedCountDown = 10;
+        while (!localZk.getState().isConnected() && failedCountDown > 0) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                logger.error("interrupted", e);
+            }
+            failedCountDown--;
+        }
+        if (!localZk.getState().isConnected()) {
+            throw new TabletException("fail to connect zookeeper " + config.getZkEndpoints());
+        }
+        ZooKeeper old = zookeeper;
+        if (old != null) {
+            try {
+                old.close();
+                logger.info("close old zookeeper client ok");
+            }catch(Exception e) {
+                logger.error("fail to close old zookeeper client", e);
+            }
+        }
+        zookeeper = localZk;
+        logger.info("switch to new zookeeper client instance ok");
     }
 
     private void onZkConnected() {
@@ -153,6 +166,10 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     private void tryWatch() {
         try {
+            if (!zookeeper.getState().isConnected()) {
+                connectToZk();
+                onZkConnected();
+            } 
             zookeeper.getData(config.getZkTableNotifyPath(), notifyWatcher, null);
             watching.set(true);
         } catch (Exception e) {
@@ -298,10 +315,10 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     @Override
     public void close() {
+        clusterGuardThread.shutdown();
         if (nodeManager != null) {
             nodeManager.close();
         }
-
         if (zookeeper != null) {
             try {
                 zookeeper.close();
@@ -312,7 +329,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         if (baseClient != null) {
             baseClient.stop();
         }
-        clusterGuardThread.shutdown();
     }
 
     @Override
