@@ -1,5 +1,5 @@
-apiVersion: extensions/v1beta1
-kind: Deployment
+apiVersion: apps/v1beta2
+kind: Daemonset
 metadata:
   name: tablet
   namespace: {{.namespace}}
@@ -40,29 +40,13 @@ spec:
       volumes:
       - name: db
         hostPath:
-          path: /data/rtidb/db
+          path: {{.hostpath}}/db
           type: DirectoryOrCreate
       - name: recycle
         hostPath:
-          path: /data/rtidb/recycle
+          path: {{.hostpath}}/recycle
           type: DirectoryOrCreate
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: rtidb-tablet
-                operator: In
-                values:
-                - "true"
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: rtidb
-                operator: In
-                values:
-                - tablet
-            topologyKey: "kubernetes.io/hostname"
       securityContext:
         runAsUser: 0
+      nodeSelector:
+        rtidb-tablet: "true"
