@@ -11,5 +11,5 @@ public interface NameServerClient {
     List<TableInfo> showTable(String tname);
     boolean changeLeader(String tname, int pid);
     boolean recoverEndpoint(String endpoint);
-    
+    List<String> showTablet();
 }

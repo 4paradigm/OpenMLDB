@@ -24,10 +24,25 @@ public class RTIDBClientConfig {
 	private int maxRetryCnt = 1;
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
+	private String nsEndpoint;
 
 	public void disableMetrics() {
 	    enableMetrics = false;
 	}
+
+    /**
+     * @return the nsEndpoint
+     */
+    public String getNsEndpoint() {
+        return nsEndpoint;
+    }
+
+    /**
+     * @param nsEndpoint the nsEndpoint to set
+     */
+    public void setNsEndpoint(String nsEndpoint) {
+        this.nsEndpoint = nsEndpoint;
+    }
 
     public boolean isRemoveDuplicateByTime() {
         return removeDuplicateByTime;
