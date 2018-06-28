@@ -7,4 +7,4 @@ template:
 - key: hostpath
   type: file
   desc: hostpath
-  value: "/data/rtidb"
+  value: "/data"
