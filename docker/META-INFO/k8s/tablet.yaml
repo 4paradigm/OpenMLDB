@@ -6,7 +6,6 @@ metadata:
   labels:
     rtidb: tablet
 spec:
-  replicas: 3
   selector: 
     matchLabels:
       rtidb: tablet
