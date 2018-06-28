@@ -999,7 +999,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
             }
         }
     }
-    uint32_t replica_num = std::min(FLAGS_replica_num, endpoint_vec.size());
+    uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_vec.size());
     if (table_info.has_replica_num() && table_info.replica_num() > 0) {
         replica_num = table_info.replica_num();
     }
