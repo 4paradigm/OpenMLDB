@@ -225,7 +225,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
     }    
     if (request.entries_size() > 0) {
         bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
-                                 &request, &response, 12, 1);
+                                 &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
         if (ret && response.code() == 0) {
             PDLOG(DEBUG, "sync log to node[%s] to offset %lld", endpoint_.c_str(), sync_log_offset);
             last_sync_offset_ = sync_log_offset;

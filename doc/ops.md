@@ -116,10 +116,28 @@ ex: 删除表名为name1分片id为0 endpoint为172.27.128.31:9991的副本
 扩容时新增机器的tablet的配置除了endpoint和其他机器保持一致. 先启动服务然后做副本迁移  
 副本迁移是从已有节点中把一部分部分迁移到新的节点上. 用到的命令时migrate  
 命令格式: migrate src_endpoint table_name partition des_endpoint  
-注: 迁移的时候只能迁移从, 不能迁移主
+**注: 迁移的时候只能迁移从, 不能迁移主** 
 ```
-将172.27.2.52:9991节点中table1的1到10分片迁移到172.27.2.52:9992里
->migrate 172.27.2.52:9991 table1 1-10 172.27.2.52:9992
+查看表的分片信息
+>showtable flow_trans
+name        tid  pid  endpoint            role      seg_cnt  ttl  is_alive
+------------------------------------------------------------------------------
+  flow_trans  10   0    172.27.128.32:9991  follower  8        0    yes
+  flow_trans  10   0    172.27.128.33:9991  follower  8        0    yes
+  flow_trans  10   0    172.27.128.31:9991  leader    8        0    yes
+  flow_trans  10   1    172.27.128.33:9991  follower  8        0    yes
+  flow_trans  10   1    172.27.128.31:9991  leader    8        0    yes
+  flow_trans  10   1    172.27.128.32:9991  follower  8        0    yes
+  flow_trans  10   2    172.27.128.32:9991  follower  8        0    yes
+  flow_trans  10   2    172.27.128.33:9991  follower  8        0    yes
+  flow_trans  10   2    172.27.128.31:9991  leader    8        0    yes
+  flow_trans  10   3    172.27.128.33:9991  follower  8        0    yes
+  flow_trans  10   3    172.27.128.31:9991  leader    8        0    yes
+  flow_trans  10   3    172.27.128.32:9991  follower  8        0    yes
+将172.27.128.32:9991节点中flow_trans的分片1迁移到172.27.2.52:9991里
+>migrate 172.27.128.32:9991 flow_trans 1 172.27.2.52:9992
+也可以一次迁移多个分片, 如将172.27.128.32:9991节点中flow_trans的1到3分片迁移到172.27.2.52:9991里
+>migrate 172.27.128.32:9991 flow_trans 1-3 172.27.2.52:9992
 ```
 
 ### 宕机

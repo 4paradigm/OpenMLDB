@@ -1374,8 +1374,8 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: gettablepartition table1 0\n");
         } else if (parts[1] == "settablepartition") {
             printf("desc: set partition info\n");
-            printf("usage: settablepartition partition_file_path\n");
-            printf("ex: settablepartition ./partition_file.txt\n");
+            printf("usage: settablepartition table_name partition_file_path\n");
+            printf("ex: settablepartition table1 ./partition_file.txt\n");
         } else if (parts[1] == "exit" || parts[1] == "quit") {
             printf("desc: exit client\n");
             printf("ex: quit\n");
