@@ -69,24 +69,27 @@ if __name__ == "__main__":
     log_file = open(log_file_name, 'w')
     last_date = get_timestamp()[1]
     while True:
-        time_stamp = get_timestamp()[0]
-        new_date = get_timestamp()[1]
-        if new_date != last_date:
-            log_file.close()
-            os.rename(log_file_name, log_file_name + "." + last_date)
-            last_date = new_date
-            log_file = open(log_file_name, 'w')
+        try:
+            time_stamp = get_timestamp()[0]
+            new_date = get_timestamp()[1]
+            if new_date != last_date:
+                log_file.close()
+                os.rename(log_file_name, log_file_name + "." + last_date)
+                last_date = new_date
+                log_file = open(log_file_name, 'w')
 
-        result = get_data(url)
-        for method_data in result:
-            data = time_stamp + "\t" + method_data + "\t"
-            for key in monitor_key:
-                data += "\t" + key + ":" + result[method_data][key]
-                if key.find("latency") == -1:
-                    gauge[method_data].labels("type", key).set(result[method_data][key])
-                else:
-                    gauge[method_data].labels("latency", key).set(result[method_data][key])
-            log_file.write(data + "\n")        
-            log_file.flush()
+            result = get_data(url)
+            for method_data in result:
+                data = time_stamp + "\t" + method_data + "\t"
+                for key in monitor_key:
+                    data += "\t" + key + ":" + result[method_data][key]
+                    if key.find("latency") == -1:
+                        gauge[method_data].labels("type", key).set(result[method_data][key])
+                    else:
+                        gauge[method_data].labels("latency", key).set(result[method_data][key])
+                log_file.write(data + "\n")
+                log_file.flush()
+        except:
+            log_file.write("has exception\n")
         time.sleep(1)
     log_file.close()
