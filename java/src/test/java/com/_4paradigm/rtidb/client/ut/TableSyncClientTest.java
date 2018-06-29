@@ -46,6 +46,7 @@ public class TableSyncClientTest {
     @Test
     public void test0Create() {
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = tabletClient.createTable("tj0", tid, 0, 0, 8);

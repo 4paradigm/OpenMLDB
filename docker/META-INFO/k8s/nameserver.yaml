@@ -1,0 +1,38 @@
+apiVersion: apps/v1beta2
+kind: Daemonset
+metadata:
+  name: nameserver
+  namespace: {{.namespace}}
+  labels:
+    rtidb: nameserver
+spec:
+  selector: 
+    matchLabels:
+      rtidb: nameserver
+  template:
+    metadata:
+      labels:
+        rtidb: nameserver
+    spec:
+      hostNetwork: true
+      containers:
+      - env:
+        - name: zk_cluster
+          value: {{.zk_cluster}}
+        - name: zk_root_path
+          value: "/rtidb"
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: {{.registry}}/nameserver:v3.1.0
+        name: rtidb
+        imagePullPolicy: Always
+      imagePullSecrets:
+      - name: docker-secret
+      securityContext: {}
+      securityContext: 
+        runAsUser: 0
+      nodeSelector:
+        rtidb-nameserver: "true"
+

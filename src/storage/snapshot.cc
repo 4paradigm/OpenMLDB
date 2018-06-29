@@ -271,7 +271,6 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 
 	std::string buffer;
 	::rtidb::api::LogEntry entry;
-	uint64_t expire_time = table->GetExpireTime();
     bool has_error = false;
 	while (true) {
 		::rtidb::base::Slice record;
@@ -291,7 +290,7 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 			break;
 		}
 		// delete timeout key
-		if (entry.ts() < expire_time) {
+		if (table->IsExpire(entry)) {
 			expired_key_num++;
 			continue;
 		}
@@ -360,7 +359,6 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     uint64_t cur_offset = offset_;
     std::string buffer;
     uint64_t last_term = 0;
-    uint64_t expire_time = table->GetExpireTime();
     while (!has_error) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -382,7 +380,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                 break;
             }
             cur_offset = entry.log_index();
-            if (entry.ts() < expire_time) {
+            if (table->IsExpire(entry)) {
                 expired_key_num++;
                 continue;
             }

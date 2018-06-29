@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -18,7 +19,10 @@ import com._4paradigm.rtidb.ns.NS.GeneralResponse;
 import com._4paradigm.rtidb.ns.NS.RecoverEndpointRequest;
 import com._4paradigm.rtidb.ns.NS.ShowTableRequest;
 import com._4paradigm.rtidb.ns.NS.ShowTableResponse;
+import com._4paradigm.rtidb.ns.NS.ShowTabletRequest;
+import com._4paradigm.rtidb.ns.NS.ShowTabletResponse;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
+import com._4paradigm.rtidb.ns.NS.TabletStatus;
 
 import io.brpc.client.BrpcChannelGroup;
 import io.brpc.client.EndPoint;
@@ -38,6 +42,16 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
+    }
+    
+    public NameServerClientImpl(String endpoint) {
+        EndPoint addr = new EndPoint(endpoint);
+        RpcBaseClient bs = new RpcBaseClient();
+        rpcClient = new SingleEndpointRpcClient(bs);
+        BrpcChannelGroup bcg = new BrpcChannelGroup(addr.getIp(), addr.getPort(),
+                bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+        rpcClient.updateEndpoint(addr, bcg);
+        ns = (NameServer) RpcProxy.getProxy(rpcClient, NameServer.class);
     }
 
     public void init() throws Exception {
@@ -142,5 +156,17 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         return false;
     }
+
+    @Override
+    public List<String> showTablet() {
+        ShowTabletRequest request = ShowTabletRequest.newBuilder().build();
+        ShowTabletResponse response = ns.showTablet(request);
+        List<String> tablets = new ArrayList<String>();
+        for (TabletStatus ts : response.getTabletsList()) {
+            tablets.add(ts.getEndpoint());
+        }
+        return tablets;
+    }
+    
 
 }

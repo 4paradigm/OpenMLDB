@@ -1,0 +1,51 @@
+apiVersion: apps/v1beta2
+kind: Daemonset
+metadata:
+  name: tablet
+  namespace: {{.namespace}}
+  labels:
+    rtidb: tablet
+spec:
+  selector: 
+    matchLabels:
+      rtidb: tablet
+  template:
+    metadata:
+      labels:
+        rtidb: tablet
+    spec:
+      hostNetwork: true
+      containers:
+      - env:
+        - name: zk_cluster
+          value: {{.zk_cluster}}
+        - name: zk_root_path
+          value: "/rtidb"
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: {{.registry}}/tablet:v3.1.0
+        name: rtidb
+        imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: /root/db/
+          name: db
+        - mountPath: /root/recycle/
+          name: recycle
+      imagePullSecrets:
+      - name: docker-secret
+      securityContext: {}
+      volumes:
+      - name: db
+        hostPath:
+          path: {{.hostpath}}/rtidb/db
+          type: DirectoryOrCreate
+      - name: recycle
+        hostPath:
+          path: {{.hostpath}}/rtidb/recycle
+          type: DirectoryOrCreate
+      securityContext:
+        runAsUser: 0
+      nodeSelector:
+        rtidb-tablet: "true"

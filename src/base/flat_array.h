@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <vector>
 #include "base/schema_codec.h"
+#include "base/endianconv.h"
 
 namespace rtidb {
 namespace base {
@@ -32,6 +33,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
+        memrev32ifbe(static_cast<void*>(&data));
         Encode(kFloat, static_cast<const void*>(&data), 4);
         cur_cnt_ ++;
         return true;
@@ -41,6 +43,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
+        memrev32ifbe(static_cast<void*>(&data));
         Encode(kInt32, static_cast<const void*>(&data), 4);
         cur_cnt_ ++;
         return true;
@@ -50,6 +53,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
+        memrev64ifbe(static_cast<void*>(&data));
         Encode(kInt64, static_cast<const void*>(&data), 8);
         cur_cnt_ ++;
         return true;
@@ -59,6 +63,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
+        memrev32ifbe(static_cast<void*>(&data));
         Encode(kUInt32, static_cast<const void*>(&data), 4);
         cur_cnt_ ++;
         return true;
@@ -68,6 +73,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
+        memrev64ifbe(static_cast<void*>(&data));
         Encode(kUInt64, static_cast<const void*>(&data), 8);
         cur_cnt_ ++;
         return true;
@@ -77,6 +83,7 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
+        memrev64ifbe(static_cast<void*>(&data));
         Encode(kDouble, static_cast<const void*>(&data), 8);
         cur_cnt_ ++;
         return true;
@@ -185,6 +192,7 @@ public:
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 4);
+        memrev32ifbe(static_cast<void*>(value));
         buffer_ += 4;
         offset_ += 4;
         return true;
@@ -201,6 +209,7 @@ public:
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 4);
+        memrev32ifbe(static_cast<void*>(value));
         buffer_ += 4;
         offset_ += 4;
         return true;
@@ -217,6 +226,7 @@ public:
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 4);
+        memrev32ifbe(static_cast<void*>(value));
         buffer_ += 4;
         offset_ += 4;
         return true;
@@ -233,6 +243,7 @@ public:
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 8);
+        memrev64ifbe(static_cast<void*>(value));
         buffer_ += 8;
         offset_ += 8;
         return true;
@@ -249,6 +260,7 @@ public:
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 8);
+        memrev64ifbe(static_cast<void*>(value));
         buffer_ += 8;
         offset_ += 8;
         return true;
@@ -265,6 +277,7 @@ public:
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 8);
+        memrev64ifbe(static_cast<void*>(value));
         buffer_ += 8;
         offset_ += 8;
         return true;

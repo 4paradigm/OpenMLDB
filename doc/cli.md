@@ -24,6 +24,7 @@ changerole  切换leader或者follower
 setexpire  设置是否要开启过期删除  
 
 exit  退出当前会话  
+help 获取命令帮助信息  
 
 ## nameserver客户端命令
 
@@ -34,6 +35,9 @@ create  创建表
 drop  删除表  
 showtable  获取表信息  
 showschema  获取多维表的schema信息  
+put 插入数据  
+scan 查询数据  
+get 查询单条数据  
 
 confget 获取当前conf信息  
 confset 重新设置conf  
@@ -51,6 +55,8 @@ migrate  分片迁移
 gettablepartition  获取nameserver某个table partition的信息并下载到当前目录下  
 settablepartition  用指定的文件覆盖nameserver中某个table partition的信息  
 
+exit  退出当前会话  
+help 获取命令帮助信息  
 
 ## tablet命令用法
 create  创建单维表  
@@ -67,7 +73,7 @@ create  创建单维表
 创建一个leader表
 > create t1 1 0 144000 8
 创建一个leader表, 指定follwer为172.27.128.31:9991, 172.27.128.31:9992
-> create t1 1 0 144000 8 false 172.27.128.31:9991 172.27.128.31:9992
+> create t1 1 0 144000 8 true 172.27.128.31:9991 172.27.128.31:9992
 创建一个follower表, 过期类型设为保留最近10条
 > create t1 1 0 latest:10 8 false
 ```
@@ -240,30 +246,43 @@ setexpire 设置是否要开启过期删除
 ## nameserver命令用法
 
 create 创建表  
-命令格式: create table_meta_path  
-首先准备如下格式的表元数据文件  
+命令格式:   
+(1) create table_name ttl partition_num replica_num [colum_name1:type:index colum_name2:type ...]  
+* table_name 表名
+* ttl 过期时间.默认是按时间过期, 如果想指定按条数过期设置ttl为: latest:record_num
+* partition_num 分片数
+* replica_num 副本数. 如果设置为3, 那么就是一主两从
+* 可选 指定schema信息
+```
+>create table1 120 8 3
+Create table ok
+>create table2 latest:10 8 3 card:string:index mcc:string:index value:float
+Create table ok
+```
+(2) create table_meta_path  
+首先准备如下格式的表元数据文件. 其中name和ttl是必填的
 ```
 name : "test1"
 ttl: 144000
-seg_cnt: 8
+ttl_type : "kAbsoluteTime"
 table_partition {
-  endpoint: "0.0.0.0:9993"
+  endpoint: "172.27.128.31:9527"
   pid_group: "0-9"
   is_leader: true
 }
 table_partition {
-  endpoint: "0.0.0.0:9994"
+  endpoint: "172.27.128.32:9527"
   pid_group: "3-7"
   is_leader: false 
 }
 table_partition {
-  endpoint: "0.0.0.0:9995"
+  endpoint: "172.27.128.33:9527"
   pid_group: "3-7"
   is_leader: false 
 }
 
 ```
-上面的配置表示再0.0.0.0:9993创建pid为0到9的leader节点, 在0.0.0.0:9994和0.0.0.0:9995上创建pid为3-7的follower节点
+上面的配置表示再172.27.128.31:9527创建pid为0到9的leader节点, 在172.27.128.32:9527和172.27.128.33:9527上创建pid为3-7的follower节点
 其中table_partition的结构可以重复多次
 
 如果要创建的表是多维表，元数据文件格式如下
@@ -271,14 +290,13 @@ table_partition {
 name : "test3"
 ttl: 100
 ttl_type : "kLatestTime"
-seg_cnt: 8
 table_partition {
-  endpoint: "127.0.0.1:9521"
-  pid_group: "1-3"
+  endpoint: "172.27.128.31:9527"
+  pid_group: "0-3"
   is_leader: true
 }
 table_partition {
-  endpoint: "127.0.0.1:9522"
+  endpoint: "172.27.128.32:9527"
   pid_group: "1-2"
   is_leader: false
 }
@@ -298,12 +316,46 @@ column_desc {
   add_ts_idx : false
 }
 ```
+
+不指定table_partition的例子  
+```
+name : "test4"
+ttl: 10
+ttl_type : "kLatestTime"
+partition_num : 16
+replica_num : 3
+column_desc {
+  name : "card"
+  type : "string"
+  add_ts_idx : true
+}
+column_desc {
+  name : "demo"
+  type : "string"
+  add_ts_idx : true
+}
+column_desc {
+  name : "value"
+  type : "string"
+  add_ts_idx : false
+}
+```
+ttl_type可以设置kAbsoluteTime(按时间过期)和kLatestTime(按条数过期), 默认为kAbsoluteTime  
+table_partition 可以不用指定  
+partition_num用来设置分片数. 只有不指定table_partition时生效. 此项配置是可选的, 默认值是32可由配置文件partition_num来修改  
+replica_num用来设置副本数. 只有不指定table_partition时生效. 此项配置是可选的, 默认值是3, 表示3副本部署时会部一主两从. 可由配置文件replica_num来修改
 column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构  
 type字段标识当前列的数据类型. 支持的数据类型有int32, uint32, int64, uint64, float, double, string  
 ```
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令
 >create ./table_meta.txt
 ```
+put 插入数据  
+命令格式: put table_name pk ts value | put table_name ts key1 key2 ... value1 value2 ...  
+scan 查询数据  
+命令格式: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]  
+get 查询单条数据  
+命令格式: get table_name key ts | get table_name key idx_name ts  
 drop 删除表  
 命令格式: drop table_name  
 showtable 列出表的分布和状态信息  

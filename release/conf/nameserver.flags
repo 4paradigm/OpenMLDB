@@ -23,3 +23,6 @@
 #--name_server_task_pool_size=8
 #--name_server_task_wait_time=1000
 #--get_task_status_interval=2000
+
+#--replica_num=3
+#--partition_num=32

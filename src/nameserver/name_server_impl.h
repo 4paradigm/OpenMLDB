@@ -19,6 +19,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "base/random.h"
+#include "base/schema_codec.h"
 
 namespace rtidb {
 namespace nameserver {
@@ -172,7 +173,7 @@ public:
 
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
-            std::map<uint32_t, std::vector<std::string>>& endpoint_map);
+            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);
 
     void CheckZkClient();
 
@@ -194,6 +195,8 @@ private:
     bool RecoverTableInfo();
 
     bool RecoverOPTask();
+
+    int SetPartitionInfo(::rtidb::nameserver::TableInfo& table_info);
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
@@ -240,9 +243,6 @@ private:
     void DelTableInfo(const std::string& name, const std::string& endpoint, uint32_t pid,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    int ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-                    std::vector<::rtidb::base::ColumnDesc>& columns);                
-
     void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
                     bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
@@ -264,7 +264,7 @@ private:
 
     std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name,
-                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt);
+                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader);
 
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
@@ -343,6 +343,7 @@ private:
 
     void NotifyTableChanged();
     void DeleteDoneOP();
+    int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
 private:
     std::mutex mu_;

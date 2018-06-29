@@ -26,7 +26,6 @@ public class GetFuture implements Future<ByteString>{
     public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, long startTime, RTIDBClientConfig config) {
         return new GetFuture(f, t, startTime, config);
     }
-	 
 	
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long startTime, RTIDBClientConfig config) {
 		this.f = f;
@@ -40,7 +39,6 @@ public class GetFuture implements Future<ByteString>{
         this.startTime = startTime;
         this.config = config;
     }
-    
 	
 	@Override
 	public boolean cancel(boolean mayInterruptIfRunning) {
@@ -62,6 +60,9 @@ public class GetFuture implements Future<ByteString>{
 			throw new TabletException("no schema for table " + t);
 		}
 		ByteString raw = get(timeout, unit);
+		if (raw == null) {
+			throw new TabletException("get failed");
+		}
 		Object[] row = new Object[t.getSchema().size()];
 		decode(raw, row, 0, row.length);
 		return row;

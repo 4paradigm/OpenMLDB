@@ -35,6 +35,8 @@ message TableInfo {
 	optional uint32 tid = 5;
     repeated ColumnDesc column_desc = 6;
     optional string ttl_type = 7 [default = "kAbsoluteTime"];
+	optional uint32 partition_num = 8;
+	optional uint32 replica_num = 9; // contain the leader
 }
 
 message CreateTableRequest {

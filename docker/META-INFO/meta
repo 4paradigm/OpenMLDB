@@ -1,0 +1,10 @@
+meta-version: 1.0
+template:
+- key: zk_cluster
+  type: file
+  desc: zookeeper address
+  value: "m7-common-svr02:2181,m7-common-svr04:2181,m7-cube-k8s01:2181"
+- key: hostpath
+  type: file
+  desc: hostpath
+  value: "/data"

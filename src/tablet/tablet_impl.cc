@@ -201,6 +201,36 @@ bool TabletImpl::RegisterZK() {
     return true;
 }
 
+bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,  uint64_t target_ts) {
+    switch (type) {
+        case rtidb::api::GetType::kSubKeyEq:
+            if (ts == target_ts) {
+                return true;
+            }
+            break;
+        case rtidb::api::GetType::kSubKeyLe:
+            if (ts <= target_ts) {
+                return true;
+            }
+            break;
+        case rtidb::api::GetType::kSubKeyLt:
+            if (ts < target_ts) {
+                return true;
+            }
+            break;
+        case rtidb::api::GetType::kSubKeyGe:
+            if (ts >= target_ts) {
+                return true;
+            }
+            break;
+        case rtidb::api::GetType::kSubKeyGt:
+            if (ts > target_ts) {
+                return true;
+            }
+    }
+    return false;
+}
+
 void TabletImpl::Get(RpcController* controller,
              const ::rtidb::api::GetRequest* request,
              ::rtidb::api::GetResponse* response,
@@ -212,6 +242,7 @@ void TabletImpl::Get(RpcController* controller,
         response->set_msg("invalid table id");
         return;
     }
+
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
@@ -220,6 +251,7 @@ void TabletImpl::Get(RpcController* controller,
         response->set_msg("table not found");
         return;
     }
+
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
         PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
                       request->tid(), request->pid());
@@ -227,8 +259,9 @@ void TabletImpl::Get(RpcController* controller,
         response->set_msg("table is unavailable now");
         return;
     }
+
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = NULL;
+    ::rtidb::storage::Iterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -248,13 +281,18 @@ void TabletImpl::Get(RpcController* controller,
         response->set_msg("idx name not found");
         return;
     }
+    ::rtidb::api::GetType get_type = ::rtidb::api::GetType::kSubKeyEq;
+    if (request->has_type()) {
+        get_type = request->type();
+    }
     bool has_found = true;
+    // filter with time
     if (request->ts() > 0) {
         if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
             uint64_t keep_cnt = table->GetTTL();
             it->SeekToFirst();
             while (it->Valid()) {
-                if (it->GetKey() == request->ts()) {
+                if (CheckGetDone(get_type, it->GetKey(), request->ts())) {
                     break;
                 }
                 keep_cnt--;
@@ -270,8 +308,14 @@ void TabletImpl::Get(RpcController* controller,
                 has_found = false;
             }
         }
+
     } else {
         it->SeekToFirst();
+        if (it->Valid() && table->GetTTLType() == ::rtidb::api::TTLType::kAbsoluteTime) {
+            if (it->GetKey() <= table->GetExpireTime()) {
+                has_found = false;
+            }
+        }
     }
     if (it->Valid() && has_found) {
         response->set_code(0);
@@ -437,7 +481,7 @@ void TabletImpl::Scan(RpcController* controller,
     // Use seek to process scan request
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
-    Table::Iterator* it = NULL;
+    ::rtidb::storage::Iterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -459,7 +503,11 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-    it->Seek(request->st());
+    if (request->st() == 0) {
+        it->SeekToFirst();
+    } else {
+        it->Seek(request->st());
+    }
     metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     // reduce the times of memcpy in vector

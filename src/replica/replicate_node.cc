@@ -173,7 +173,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
             cache_.clear();
             return -1;
         }
-        PDLOG(INFO, "use cached request to send last index  %lu", entry.log_index());
+        PDLOG(INFO, "use cached request to send last index %lu. tid %u pid %u", entry.log_index(), tid_, pid_);
         sync_log_offset = entry.log_index();
     } else {
         request.set_tid(tid_);
@@ -203,7 +203,8 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                 }
                 // the log index should incr by 1
                 if ((sync_log_offset + 1) != entry->log_index()) {
-                    PDLOG(WARNING, "log missing expect offset %lu but %ld", sync_log_offset + 1, entry->log_index());
+                    PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u", 
+                                    sync_log_offset + 1, entry->log_index(), tid_, pid_);
                     request.mutable_entries()->RemoveLast();
                     need_wait = true;
                     log_reader_.GoBackToLastBlock();
@@ -224,7 +225,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
     }    
     if (request.entries_size() > 0) {
         bool ret = rpc_client_.SendRequest(&::rtidb::api::TabletServer_Stub::AppendEntries,
-                                 &request, &response, 12, 1);
+                                 &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
         if (ret && response.code() == 0) {
             PDLOG(DEBUG, "sync log to node[%s] to offset %lld", endpoint_.c_str(), sync_log_offset);
             last_sync_offset_ = sync_log_offset;
@@ -236,7 +237,8 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                 cache_.push_back(request);
             }
             need_wait = true;
-            PDLOG(WARNING, "fail to sync log to node %s", endpoint_.c_str());
+            PDLOG(WARNING, "fail to sync log to node %s. tid %u pid %u", 
+                            endpoint_.c_str(), tid_, pid_);
         }
     }
     if (need_wait) {

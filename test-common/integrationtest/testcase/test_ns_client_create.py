@@ -18,8 +18,8 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
          'Create table ok'),
-        ('"t{}"'.format(time.time()), '"latest"', 144000, 8,
-         'ttl type latest is invalid'),
+        ('"t{}"'.format(time.time()), '"notype"', 144000, 8,
+         'ttl type notype is invalid'),
         ('"t{}"'.format(time.time()), '', 144000, 8,
          'table meta file format error'),
         ('""', None, 144000, 8,
@@ -40,8 +40,6 @@ class TestCreateTableByNsClient(TestCaseBase):
          'Message missing required fields: name'),
         ('"t{}"'.format(time.time()), None, None, 8,
          'Message missing required fields: ttl'),
-        ('"t{}"'.format(time.time()), None, 9, None,
-         'Message missing required fields: seg_cnt'),
     )
     @ddt.unpack
     def test_create_name_ttltype_ttl_seg(self, name, ttl_type, ttl, seg_cnt, exp_msg):
@@ -258,8 +256,6 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('table meta file format error',
          ('table_partition', '"{}"'.format(leader), '"0-3"', '""')),
 
-        ('has not table_partition in table meta file', None),  # RTIDB-193
-
         ('missing required fields: table_partition[0].endpoint, table_partition[0].pid_group, table_partition[0].is_leader',
          ('table_partition', None, None, None)),
     )
@@ -431,6 +427,34 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(schema['k1'], ['string', 'yes'])
         self.assertEqual(schema['k2'], ['double', 'no'])
         self.assertEqual(schema['k3'], ['int32', 'yes'])
+
+    @ddt.data(
+        ('Create table ok', '0', '8', '3', ''),
+        ('Create table ok', 'latest:10', '8', '3', ''),
+        ('Create table ok', '144000', '8', '3', 'k1:string:index k2:double k3:int32:index'),
+        ('partition_num should be large than zero', '144000', '0', '3', ''),
+    )
+    @ddt.unpack
+    def test_create_cmd(self, exp_msg, ttl, partition_num, replica_num, schema):
+        """
+        不用文件, 直接在命令行指定建表信息
+        :return:
+        """
+        tname = 'tname{}'.format(time.time())
+        rs = self.ns_create_cmd(self.ns_leader, tname, ttl, partition_num, replica_num, schema)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
+        if (schema != ''):
+            self.assertIn(exp_msg, rs)
+            rs1 = self.showtable(self.ns_leader)
+            tid = rs1.keys()[0][1]
+            infoLogger.info(rs1)
+            schema = self.showschema(self.slave1, tid, 0)
+            infoLogger.info(schema)
+            self.assertEqual(len(schema), 3)
+            self.assertEqual(schema['k1'], ['string', 'yes'])
+            self.assertEqual(schema['k2'], ['double', 'no'])
+            self.assertEqual(schema['k3'], ['int32', 'yes'])
 
 
 if __name__ == "__main__":

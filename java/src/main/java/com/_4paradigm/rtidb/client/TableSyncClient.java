@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
 public interface TableSyncClient {
@@ -23,9 +24,23 @@ public interface TableSyncClient {
 
     Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException;
 
+    Object[] getRow(int tid, int pid, String key, String idxName, long time) throws TimeoutException, TabletException;
+
+    Object[] getRow(int tid, int pid, String key, String idxName) throws TimeoutException, TabletException;
+
     KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException, TabletException;
 
+    KvIterator scan(int tid, int pid, String key, int limit) throws TimeoutException, TabletException;
+
+    KvIterator scan(int tid, int pid, String key, long st, long et, int limit) throws TimeoutException, TabletException;
+
     KvIterator scan(int tid, int pid, String key, String idxName, long st, long et)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(int tid, int pid, String key, String idxName, int limit)
             throws TimeoutException, TabletException;
 
     // for cluster
@@ -41,10 +56,27 @@ public interface TableSyncClient {
     ByteString get(String tname, String key, long time) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, long time) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, String key, String idxName) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, String key, String idxName, long time, Tablet.GetType type) throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException;
 
+    KvIterator scan(String tname, String key, int limit) throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, String key, long st, long et, int limit) throws TimeoutException, TabletException;
+
     KvIterator scan(String tname, String key, String idxName, long st, long et)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, String key, String idxName, long st, long et, int limit)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, String key, String idxName, int limit)
             throws TimeoutException, TabletException;
 
 }

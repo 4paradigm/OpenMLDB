@@ -23,6 +23,8 @@ DECLARE_int32(get_task_status_interval);
 DECLARE_int32(name_server_task_pool_size);
 DECLARE_int32(name_server_task_wait_time);
 DECLARE_int32(max_op_num);
+DECLARE_uint32(partition_num);
+DECLARE_uint32(replica_num);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
 
@@ -983,9 +985,50 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
+int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
+    uint32_t partition_num = FLAGS_partition_num;
+    if (table_info.has_partition_num() && table_info.partition_num() > 0) {
+        partition_num = table_info.partition_num();
+    }
+    std::vector<std::string> endpoint_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& kv : tablets_) {
+            if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                endpoint_vec.push_back(kv.first);
+            }
+        }
+    }
+    uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_vec.size());
+    if (table_info.has_replica_num() && table_info.replica_num() > 0) {
+        replica_num = table_info.replica_num();
+    }
+    if (endpoint_vec.size() < replica_num) {
+        PDLOG(WARNING, "healthy endpoint num[%u] is less than replica_num[%u]",
+                        endpoint_vec.size(), replica_num);
+        return -1;
+    }
+    for (uint32_t pid = 0; pid < partition_num; pid++) {
+        TablePartition* table_partition = table_info.add_table_partition();
+        table_partition->set_pid(pid);
+        PartitionMeta* partition_meta = table_partition->add_partition_meta();
+        uint32_t endpoint_pos = rand_.Next() % endpoint_vec.size();
+        partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
+        partition_meta->set_is_leader(true);
+        for (uint32_t idx = 1; idx < replica_num; idx++) {
+            PartitionMeta* partition_meta = table_partition->add_partition_meta();
+            partition_meta->set_endpoint(endpoint_vec[(endpoint_pos + idx) % endpoint_vec.size()]);
+            partition_meta->set_is_leader(false);
+        }
+    }
+    PDLOG(INFO, "set table partition ok. name[%s] partition_num[%u] replica_num[%u]", 
+                 table_info.name().c_str(), partition_num, replica_num);
+    return 0;
+}
+
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
-            std::map<uint32_t, std::vector<std::string>>& endpoint_map) {
+            std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         uint32_t pid = table_info->table_partition(idx).pid();
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
@@ -1010,14 +1053,10 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                 }
             }
             std::vector<std::string> endpoint_vec;
-            uint64_t term = 0;
             if (is_leader) {
                 if (endpoint_map.find(pid) != endpoint_map.end()) {
                     endpoint_map[pid].swap(endpoint_vec);
                 }
-                std::lock_guard<std::mutex> lock(mu_);
-                term_++;
-                term = term_;
                 ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
                 ::rtidb::nameserver::TermPair* term_pair = table_partition->add_term_offset();
                 term_pair->set_term(term);
@@ -1043,6 +1082,39 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             }
             PDLOG(INFO, "create table success. tid[%u] pid[%u] endpoint[%s] idx[%d]", 
                         table_index_, pid, endpoint.c_str(), idx);
+        }
+    }
+    return 0;
+}
+
+int NameServerImpl::DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+    uint32_t tid = table_info->tid();
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        uint32_t pid = table_info->table_partition(idx).pid();
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+            std::shared_ptr<TabletInfo> tablet_ptr;
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                auto iter = tablets_.find(endpoint);
+                // check tablet if exist
+                if (iter == tablets_.end()) {
+                    PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
+                    continue;
+                }
+                tablet_ptr = iter->second;
+                // check tablet healthy
+                if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                    PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
+                    continue;
+                }
+            }
+            if (!tablet_ptr->client_->DropTable(tid, pid)) {
+                PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", 
+                                tid, pid, endpoint.c_str());
+            }
+            PDLOG(INFO, "drop table success. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, endpoint.c_str());
         }
     }
     return 0;
@@ -1483,43 +1555,11 @@ void NameServerImpl::DropTable(RpcController* controller,
         code = -1;
     } else {
         PDLOG(INFO, "delete table node[%s/%s]", zk_table_data_path_.c_str(), request->name().c_str());
+        table_info_.erase(request->name());
     }
-    table_info_.erase(request->name());
     response->set_code(code);
     code == 0 ?  response->set_msg("ok") : response->set_msg("drop table error");
     NotifyTableChanged();
-}
-
-int NameServerImpl::ConvertColumnDesc(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-                    std::vector<::rtidb::base::ColumnDesc>& columns) {
-    for (int idx = 0; idx < table_info->column_desc_size(); idx++) {
-        ::rtidb::base::ColType type;
-        std::string raw_type = table_info->column_desc(idx).type();
-        if (raw_type == "int32") {
-            type = ::rtidb::base::ColType::kInt32;
-        } else if (raw_type == "int64") {
-            type = ::rtidb::base::ColType::kInt64;
-        } else if (raw_type == "uint32") {
-            type = ::rtidb::base::ColType::kUInt32;
-        } else if (raw_type == "uint64") {
-            type = ::rtidb::base::ColType::kUInt64;
-        } else if (raw_type == "float") {
-            type = ::rtidb::base::ColType::kFloat;
-        } else if (raw_type == "double") {
-            type = ::rtidb::base::ColType::kDouble;
-        } else if (raw_type == "string") {
-            type = ::rtidb::base::ColType::kString;
-        } else {
-            PDLOG(WARNING, "invalid type[%s]", table_info->column_desc(idx).type().c_str());
-            return -1;
-        }
-        ::rtidb::base::ColumnDesc column_desc;
-        column_desc.type = type;
-        column_desc.name = table_info->column_desc(idx).name();
-        column_desc.add_ts_idx = table_info->column_desc(idx).add_ts_idx();
-        columns.push_back(column_desc);
-    }
-    return 0;
 }
 
 void NameServerImpl::CreateTable(RpcController* controller, 
@@ -1535,23 +1575,29 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
-    if (table_info->table_partition_size() == 0) {
-        response->set_code(-1);
-        response->set_msg("table_partition size is zero");
-        PDLOG(WARNING, "table_partition size is zero");
-        return;
+    if (table_info->table_partition_size() > 0) {
+        std::set<uint32_t> pid_set;
+        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+            pid_set.insert(table_info->table_partition(idx).pid());
+        }
+        auto iter = pid_set.rbegin();
+        if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
+            response->set_code(-1);
+            response->set_msg("pid is not start with zero and consecutive");
+            PDLOG(WARNING, "pid is not start with zero and consecutive");
+            return;
+        }
+    } else {
+        // 
+        if (SetPartitionInfo(*table_info) < 0) {
+            response->set_code(-1);
+            response->set_msg("set partition info failed");
+            PDLOG(WARNING, "set partition info failed");
+            return;
+        }
     }
-    std::set<uint32_t> pid_set;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        pid_set.insert(table_info->table_partition(idx).pid());
-    }
-    auto iter = pid_set.rbegin();
-    if (*iter != (uint32_t)table_info->table_partition_size() - 1) {
-        response->set_code(-1);
-        response->set_msg("pid is not start with zero and consecutive");
-        PDLOG(WARNING, "pid is not start with zero and consecutive");
-        return;
-    }
+    uint32_t tid = 0;
+    uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {
@@ -1568,50 +1614,48 @@ void NameServerImpl::CreateTable(RpcController* controller,
         }
         table_index_++;
         table_info->set_tid(table_index_);
+        tid = table_index_;
+        cur_term = term_;
     }
     std::vector<::rtidb::base::ColumnDesc> columns;
-    if (ConvertColumnDesc(table_info, columns) < 0) {
+    if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
         response->set_code(-1);
         response->set_msg("convert column desc failed");
-        PDLOG(WARNING, "convert table column desc failed. tid[%u]", table_index_);
+        PDLOG(WARNING, "convert table column desc failed. name[%s] tid[%u]", 
+                        table_info->name().c_str(), tid);
         return;
     }
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
-    if (CreateTableOnTablet(table_info, false, columns, endpoint_map) < 0 ||
-            CreateTableOnTablet(table_info, true, columns, endpoint_map) < 0) {
-        response->set_code(-1);
-        response->set_msg("create table failed");
-        PDLOG(WARNING, "create table failed. tid[%u]", table_index_);
-        return;
-    }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_))) {
-            PDLOG(WARNING, "update term failed. table name[%s]", 
-                            table_info->name().c_str());
+    do {
+        if (CreateTableOnTablet(table_info, false, columns, endpoint_map, cur_term) < 0 ||
+                CreateTableOnTablet(table_info, true, columns, endpoint_map, cur_term) < 0) {
             response->set_code(-1);
-            response->set_msg("update term failed");
-            return;
+            response->set_msg("create table failed");
+            PDLOG(WARNING, "create table failed. name[%s] tid[%u]", 
+                            table_info->name().c_str(), tid);
+            break;
         }
-    }    
-    std::string table_value;
-    table_info->SerializeToString(&table_value);
-    if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
-        PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
-                        zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
-        response->set_code(-1);
-        response->set_msg("create table node failed");
+        std::string table_value;
+        table_info->SerializeToString(&table_value);
+        if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+            PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
+                            zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
+            response->set_code(-1);
+            response->set_msg("create table node failed");
+            break;
+        }
+        PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
+                      zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            table_info_.insert(std::make_pair(table_info->name(), table_info));
+            NotifyTableChanged();
+        }
+        response->set_code(0);
+        response->set_msg("ok");
         return;
-    }
-    PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
-                  zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        table_info_.insert(std::make_pair(table_info->name(), table_info));
-        NotifyTableChanged();
-    }
-    response->set_code(0);
-    response->set_msg("ok");
+    } while (0);
+    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::DropTableOnTablet, this, table_info));
 }
 
 void NameServerImpl::AddReplicaNS(RpcController* controller,
@@ -1706,7 +1750,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(request.endpoint(), op_index, 
                 ::rtidb::api::OPType::kAddReplicaOP, request.name(), 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -1917,7 +1961,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::rtidb::api::OPType::kMigrateOP, 
-                 name, tid, pid, table_info->ttl(), table_info->seg_cnt());
+                 name, tid, pid, table_info->ttl(), table_info->seg_cnt(), false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", 
                         tid, pid, des_endpoint.c_str());
@@ -2579,7 +2623,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -2681,7 +2725,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -2772,7 +2816,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaNoSendOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, false);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3002,7 +3046,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::shared_ptr<Task> task = CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), 
                 ::rtidb::api::OPType::kReLoadTableOP, name, 
-                tid, pid, ttl, seg_cnt);
+                tid, pid, ttl, seg_cnt, true);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3202,7 +3246,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
 
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name, 
-                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt) {
+                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -3213,7 +3257,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->fun_ = boost::bind(&TabletClient::LoadTable, it->second->client_, name, tid, pid, 
-                ttl, false, std::vector<std::string>(),
+                ttl, is_leader, std::vector<std::string>(),
                 seg_cnt, task->task_info_);
     return task;
 }

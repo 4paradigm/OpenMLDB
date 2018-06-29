@@ -12,6 +12,7 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include "proto/name_server.pb.h"
 
 namespace rtidb {
 namespace base {
@@ -107,6 +108,37 @@ public:
             desc.add_ts_idx = add_ts_idx;
             columns.push_back(desc);
         }
+    }
+
+    static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
+                        std::vector<ColumnDesc>& columns) {
+        for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
+            ::rtidb::base::ColType type;
+            std::string raw_type = table_info.column_desc(idx).type();
+            if (raw_type == "int32") {
+                type = ::rtidb::base::ColType::kInt32;
+            } else if (raw_type == "int64") {
+                type = ::rtidb::base::ColType::kInt64;
+            } else if (raw_type == "uint32") {
+                type = ::rtidb::base::ColType::kUInt32;
+            } else if (raw_type == "uint64") {
+                type = ::rtidb::base::ColType::kUInt64;
+            } else if (raw_type == "float") {
+                type = ::rtidb::base::ColType::kFloat;
+            } else if (raw_type == "double") {
+                type = ::rtidb::base::ColType::kDouble;
+            } else if (raw_type == "string") {
+                type = ::rtidb::base::ColType::kString;
+            } else {
+                return -1;
+            }
+            ColumnDesc column_desc;
+            column_desc.type = type;
+            column_desc.name = table_info.column_desc(idx).name();
+            column_desc.add_ts_idx = table_info.column_desc(idx).add_ts_idx();
+            columns.push_back(column_desc);
+        }
+        return 0;
     }
 
 private:
