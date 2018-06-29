@@ -56,6 +56,5 @@ server.3=172.27.128.33:2888:3888
 
 * 在配置或者环境变量中指定endpoint, zk_cluster和zk_root_path. (注: zk_cluster和zk_root_path要与nameserver配置的一样)
 * 启动tablet: sh ./bin/start.sh
-* 启动日志监控程序: sh ./bin/start_monitor.sh
 
 
