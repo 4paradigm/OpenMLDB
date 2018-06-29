@@ -8,3 +8,15 @@ template:
   type: file
   desc: hostpath
   value: "/data"
+- key: metric_port
+  type: file
+  desc: metric port
+  value: "8000"
+- key: tablet_port
+  type: file
+  desc: tablet port
+  value: "9527"
+- key: nameserver_port
+  type: file
+  desc: nameserver port
+  value: "6527"

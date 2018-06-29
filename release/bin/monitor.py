@@ -51,8 +51,8 @@ if __name__ == "__main__":
     env_dist = os.environ
     port = 8000
     if "metric_port" in env_dist:
-        port = env_dist["metric_port"]
-    start_http_server(port)    
+        port = int(env_dist["metric_port"])
+    start_http_server(port)
     gauge = Gauge("my_inprogress_requests", "description of gauge")
     gauge = {}
     for cur_method in method:
