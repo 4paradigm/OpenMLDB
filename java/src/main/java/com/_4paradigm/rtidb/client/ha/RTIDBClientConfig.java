@@ -84,7 +84,9 @@ public class RTIDBClientConfig {
         this.zkTableNotifyPath = zkRootPath + "/table/notify";
     }
 
-    public String getZkRootPath() {return zkRootPath;}
+    public String getZkRootPath() {
+        return zkRootPath;
+    }
 
     public String getZkNodeRootPath() {
         return zkNodeRootPath;
