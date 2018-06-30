@@ -29,6 +29,7 @@ enum ColType {
     kNull = 5,
     kUInt32 = 6,
     kUInt64 = 7,
+    kTimestamp = 8,
     kUnknown = 100
 };
 
@@ -129,6 +130,8 @@ public:
                 type = ::rtidb::base::ColType::kDouble;
             } else if (raw_type == "string") {
                 type = ::rtidb::base::ColType::kString;
+            } else if (raw_type == "timestamp") {
+                type = ::rtidb::base::ColType::kTimestamp;
             } else {
                 return -1;
             }
@@ -150,7 +153,6 @@ private:
         }
         return byte_size;
     }
-
 };
 
 }

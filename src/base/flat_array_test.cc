@@ -90,6 +90,20 @@ TEST_F(FlatArrayTest, Encode1) {
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
 }
 
+TEST_F(FlatArrayTest, TimestampEncode) {
+    std::string buffer;
+    FlatArrayCodec codec(&buffer, 3);
+    bool ok = codec.Append("test");
+    ASSERT_TRUE(ok);
+    double v = 1.0;
+    ok = codec.Append(v);
+    ASSERT_TRUE(ok);
+    ok = codec.AppendTimestamp(11111);
+    ASSERT_TRUE(ok);
+    codec.Build();
+    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+}
+
 
 
 }

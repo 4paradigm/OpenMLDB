@@ -79,6 +79,16 @@ public:
         return true;
     }
 
+    bool AppendTimestamp(uint64_t data) {
+        if (cur_cnt_ >= col_cnt_) {
+            return false;
+        }
+        memrev64ifbe(static_cast<void*>(&data));
+        Encode(kTimestamp, static_cast<const void*>(&data), 8);
+        cur_cnt_ ++;
+        return true;
+    }
+
     bool Append(double data) {
         if (cur_cnt_ >= col_cnt_) {
             return false;
@@ -260,6 +270,23 @@ public:
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 8);
+        memrev64ifbe(static_cast<void*>(value));
+        buffer_ += 8;
+        offset_ += 8;
+        return true;
+    }
+
+    bool GetTimestamp(uint64_t* ts) {
+        if (type_ != kTimestamp) {
+            return false;
+        }
+        if (fsize_ == 0) {
+            return true;
+        }
+        if (offset_ + 4 > bsize_) {
+            return false;
+        }
+        memcpy(static_cast<void*>(ts), buffer_, 8);
         memrev64ifbe(static_cast<void*>(value));
         buffer_ += 8;
         offset_ += 8;

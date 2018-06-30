@@ -5,6 +5,8 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import org.joda.time.DateTime;
+
 import com._4paradigm.rtidb.client.TabletException;
 
 public class RowCodec {
@@ -40,20 +42,31 @@ public class RowCodec {
                 break;
             case kUInt32:
                 throw new TabletException("kUInt32 is not support on jvm platform");
+
             case kFloat:
                 buffer.put((byte) 4);
                 buffer.putFloat((Float) row[i]);
                 break;
+
             case kInt64:
                 buffer.put((byte) 8);
                 buffer.putLong((Long) row[i]);
                 break;
+
             case kUInt64:
                 throw new TabletException("kUInt64 is not support on jvm platform");
+
             case kDouble:
                 buffer.put((byte) 8);
                 buffer.putDouble((Double) row[i]);
                 break;
+
+            case kTimestamp:
+                DateTime time = (DateTime)row[i];
+                buffer.put((byte)8);
+                buffer.putLong(time.getMillis());
+                break;
+
             default:
                 throw new TabletException(schema.get(i).getType().toString() + " is not support on jvm platform");
             }
@@ -100,6 +113,10 @@ public class RowCodec {
             case kFloat:
                 row[index] = buffer.getFloat();
                 break;
+            case kTimestamp:
+                long time = buffer.getLong();
+                row[index] = new DateTime(time);
+                break;
             default:
                 throw new TabletException(ctype.toString() + " is not support on jvm platform");
             }
@@ -135,6 +152,7 @@ public class RowCodec {
             case kInt64:
             case kUInt64:
             case kDouble:
+            case kTimestamp:
                 totalSize += 8;
                 break;
             default:
