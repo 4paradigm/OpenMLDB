@@ -97,3 +97,6 @@ name_server_task_wait_time  nameserver任务执行框架中任务队列为空时
 
 max_op_num  配置nameserver内存中保存op的最大数
 
+partition_num  创建表时默认分片数  
+
+replica_num  创建表时默认副本数(包含主节点)  

@@ -404,7 +404,8 @@ showopstatus 获取所有操作信息
   127.0.0.1:9521  kTabletHealthy  3.000h
   127.0.0.1:9522  kTabletHealthy  3.000h
 >showopstatus
-  op_id  op_type              status  start_time      execute_time  end_time        cur_task
-----------------------------------------------------------------------------------------------
-  2      kUpdateTableAliveOP  kDone   20180330175434  0s            20180330175434  -
+  op_id  op_type                name          pid  status   start_time      execute_time  end_time        cur_task
+-------------------------------------------------------------------------------------------------------------------------
+  2      kChangeLeaderOP        flow_trans    4    kDone    20180626103358  11s           20180626103409  -
+  3      kChangeLeaderOP        flow_trans    14   kDone    20180626103358  11s           20180626103409  -
 ```
