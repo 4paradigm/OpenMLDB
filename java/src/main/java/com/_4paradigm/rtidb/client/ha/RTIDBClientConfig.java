@@ -77,7 +77,7 @@ public class RTIDBClientConfig {
         this.maxCntCnnPerHost = maxCntCnnPerHost;
     }
 
-    public void SetZkRootPath(String zkRootPath) {
+    public void setZkRootPath(String zkRootPath) {
         this.zkRootPath = zkRootPath;
         this.zkNodeRootPath = zkRootPath + "/nodes";
         this.zkTableRootPath = zkRootPath + "/table/table_data";
