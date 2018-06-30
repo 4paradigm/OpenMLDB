@@ -2,26 +2,26 @@
 
 ## 单机版部署包介绍
 
-* bin/start.sh 启动脚本 需要在bin目录父目录执行
+* bin/start.sh 启动脚本 
 * bin/stop.sh 停止脚本
 * bin/mon 守护进程程序
 * bin/rtidb rtidb进程程序
 * logs 日志路径
-* db binlog 和 snapshot 存储路径
+* db binlog和snapshot存储路径
 * conf 配置文件路径
 
 ## 单机版部署配置
 
 ### 通用相关配置
 
-* endpoint 配置对外服务地址，格式为 ip:port
+* endpoint 配置对外服务地址，格式为 ip:port或者hostname:port
 * role 如果是单机版本这里需要配置为tablet
 * db_root_path 配置binlog和snapshot根目录
 * recycle_bin_root_path 配置存放已删除表binlog和snapshot 根目录
 
 ### 服务线程相关配置
 
-* thread_pool_size 配置服务线程数量 建议为16线程
+* thread_pool_size 配置服务线程数量 建议和cpu核数一致
 * scan_concurrency_limit scan操作最大并发数，默认值为8，如果请求并发超过这个数直接返回错误信息
 * put_concurrency_limit put操作最大并发数，默认值为8
 * get_concurrency_limit get操作最大并发数

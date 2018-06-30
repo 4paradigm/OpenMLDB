@@ -30,27 +30,14 @@
 * 创建单维表  
 文件格式为proto的文件  
 name ttl ttl_type seg_cnt分别用来指定创建表一些基础参数  
-table_partition用来设定table的拓扑信息. endpoint指定要在该endpoint创建, pid_group指定分片的区间, is_leader表示角色(true为leader, false为follower).  
+partition_num指定分片数, 此项可以用不设置默认值为32. replica_num指定副本数, 此项可以不用设置默认为3   
 ```
 name : "test3"
 ttl: 100
 ttl_type : "kLatestTime"
 seg_cnt: 8
-table_partition {
-  endpoint: "172.27.128.31:9520"
-  pid_group: "0-3"
-  is_leader: true
-}
-table_partition {
-  endpoint: "172.27.128.31:9521"
-  pid_group: "4-6"
-  is_leader: true
-}
-table_partition {
-  endpoint: "172.27.128.32:9522"
-  pid_group: "1-2"
-  is_leader: false
-}
+partition_num: 16
+replica_num: 3
 ```
 
 * 创建多维表  
@@ -59,6 +46,7 @@ column_desc描述每个字段(维度)信息.
 name为字段名  
 type为字段类型. 可以指定int32, uint32, int64, uint64, float, double, string  
 add_ts_idx指定是否是索引列. 如果设置为true, 可以按此列来get和scan  
+也可以用table_partition自己设定分片的分布情况. endpoint指定要在该endpoint创建, pid_group指定分片的区间, is_leader表示角色(true为leader, false为follower).  
 ```
 name : "test3"
 ttl: 100

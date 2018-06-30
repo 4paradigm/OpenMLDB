@@ -1,4 +1,4 @@
-# rtidb 高可用说明
+# rtidb 主从模式高可用说明
 
 ## 新增节点副本
 1. 在主节点运行makesnapshot(如果已经有snapshot文件可以挑过这步)
