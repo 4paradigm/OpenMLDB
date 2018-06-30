@@ -12,6 +12,7 @@ public class RTIDBClientConfig {
     }
 	private boolean enableMetrics = true;
 	private String zkEndpoints = "";
+	private String zkRootPath = "";
 	private String zkTableRootPath = "";
 	private String zkTableNotifyPath = "";
 	private String zkNodeRootPath = "";
@@ -75,6 +76,15 @@ public class RTIDBClientConfig {
     public void setMaxCntCnnPerHost(int maxCntCnnPerHost) {
         this.maxCntCnnPerHost = maxCntCnnPerHost;
     }
+
+    public void SetZkRootPath(String zkRootPath) {
+        this.zkRootPath = zkRootPath;
+        this.zkNodeRootPath = zkRootPath + "/nodes";
+        this.zkTableRootPath = zkRootPath + "/table/table_data";
+        this.zkTableNotifyPath = zkRootPath + "/table/notify";
+    }
+
+    public String getZkRootPath() {return zkRootPath;}
 
     public String getZkNodeRootPath() {
         return zkNodeRootPath;
