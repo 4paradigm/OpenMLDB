@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.joda.time.DateTime;

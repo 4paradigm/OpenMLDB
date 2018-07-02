@@ -19,6 +19,10 @@
 namespace rtidb {
 namespace base {
 
+static const uint8_t bool_true = 1;
+static const uint8_t bool_false = 0;
+static const uint32_t max_row_size = 1024 * 1024;
+
 class FlatArrayCodec {
 
 public:
@@ -28,6 +32,39 @@ public:
     }
 
     ~FlatArrayCodec() {}
+
+    bool Append(bool data) {
+        if (cur_cnt_ >= col_cnt_) {
+            return false;
+        }
+        if (data) {
+            Encode(kBool, static_cast<const void*>(&bool_true), 1);
+        }else {
+            Encode(kBool, static_cast<const void*>(&bool_false), 1);
+        }
+        cur_cnt_ ++;
+        return true;
+    }
+
+    bool Append(uint16_t data) {
+        if (cur_cnt_ >= col_cnt_) {
+            return false;
+        }
+        memrev16ifbe(static_cast<void*>(&data));
+        Encode(kUInt16, static_cast<const void*>(&data), 2);
+        cur_cnt_ ++;
+        return true;
+    }
+
+    bool Append(int16_t data) {
+        if (cur_cnt_ >= col_cnt_) {
+            return false;
+        }
+        memrev16ifbe(static_cast<void*>(&data));
+        Encode(kInt16, static_cast<const void*>(&data), 2);
+        cur_cnt_ ++;
+        return true;
+    }
 
     bool Append(float data) {
         if (cur_cnt_ >= col_cnt_) {
@@ -85,6 +122,16 @@ public:
         }
         memrev64ifbe(static_cast<void*>(&data));
         Encode(kTimestamp, static_cast<const void*>(&data), 8);
+        cur_cnt_ ++;
+        return true;
+    }
+
+    bool AppendDate(uint64_t data) {
+        if (cur_cnt_ >= col_cnt_) {
+            return false;
+        }
+        memrev64ifbe(static_cast<void*>(&data));
+        Encode(kDate, static_cast<const void*>(&data), 8);
         cur_cnt_ ++;
         return true;
     }
@@ -249,13 +296,36 @@ public:
         if (fsize_ == 0) {
             return true;
         }
-        if (offset_ + 4 > bsize_) {
+        if (offset_ + 8 > bsize_) {
             return false;
         }
         memcpy(static_cast<void*>(value), buffer_, 8);
         memrev64ifbe(static_cast<void*>(value));
         buffer_ += 8;
         offset_ += 8;
+        return true;
+    }
+
+    bool GetBool(bool* value) {
+        if (type_ != kBool) {
+            return false;
+        }
+        if (fsize_ == 0) {
+            return true;
+        }
+        if (offset_ + 1 > bsize_) {
+            return false;
+        }
+
+        uint8_t bool_value = 0;
+        memcpy(static_cast<void*>(&bool_value), buffer_, 1);
+        buffer_ += 1;
+        offset_ += 1;
+        if (bool_value == 1) {
+            *value = true;
+        }else {
+            *value = false; 
+        }
         return true;
     }
 
@@ -276,6 +346,57 @@ public:
         return true;
     }
 
+    bool GetUInt16(uint16_t* value) {
+        if (type_ != kInt16) {
+            return false;
+        }
+        if (fsize_ == 0) {
+            return true;
+        }
+        if (offset_ + 2 > bsize_) {
+            return false;
+        }
+        memcpy(static_cast<void*>(value), buffer_, 2);
+        memrev16ifbe(static_cast<void*>(value));
+        buffer_ += 2;
+        offset_ += 2;
+        return true;
+    }
+
+    bool GetInt16(int16_t* value) {
+        if (type_ != kInt16) {
+            return false;
+        }
+        if (fsize_ == 0) {
+            return true;
+        }
+        if (offset_ + 2 > bsize_) {
+            return false;
+        }
+        memcpy(static_cast<void*>(value), buffer_, 2);
+        memrev16ifbe(static_cast<void*>(value));
+        buffer_ += 2;
+        offset_ += 2;
+        return true;
+    }
+
+    bool GetDate(uint64_t* date) {
+        if (type_ != kDate) {
+            return false;
+        }
+        if (fsize_ == 0) {
+            return true;
+        }
+        if (offset_ + 8 > bsize_) {
+            return false;
+        }
+        memcpy(static_cast<void*>(date), buffer_, 8);
+        memrev64ifbe(static_cast<void*>(date));
+        buffer_ += 8;
+        offset_ += 8;
+        return true;
+    }
+
     bool GetTimestamp(uint64_t* ts) {
         if (type_ != kTimestamp) {
             return false;
@@ -283,11 +404,11 @@ public:
         if (fsize_ == 0) {
             return true;
         }
-        if (offset_ + 4 > bsize_) {
+        if (offset_ + 8 > bsize_) {
             return false;
         }
         memcpy(static_cast<void*>(ts), buffer_, 8);
-        memrev64ifbe(static_cast<void*>(value));
+        memrev64ifbe(static_cast<void*>(ts));
         buffer_ += 8;
         offset_ += 8;
         return true;
