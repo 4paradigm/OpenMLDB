@@ -150,9 +150,11 @@ public:
         if (cur_cnt_ >= col_cnt_) {
             return false;
         }
+
         if (data.length() > 128) {
             return false;
         }
+
         uint8_t size = (uint8_t) data.length();
         Encode(kString, static_cast<const void*>(data.c_str()), size);
         cur_cnt_ ++;

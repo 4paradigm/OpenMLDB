@@ -1,7 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 public enum ColumnType {
-	kString(0), kFloat(1), kInt32(2), kInt64(3), kDouble(4), kNull(5), kUInt32(6), kUInt64(7), kTimestamp(8);
+	kString(0), kFloat(1), kInt32(2), kInt64(3), kDouble(4), kNull(5), kUInt32(6), kUInt64(7), kTimestamp(8), kDate(9), kInt16(10), kBool(12);
 
 	private final int value;
 
@@ -33,6 +33,12 @@ public enum ColumnType {
 		    return "kUInt64";
 		case 8:
 		    return "kTimestamp";
+		case 9:
+		    return "kDate";
+		case 10:
+		    return "kInt16";
+		case 12:
+		    return "kBool";
 		default :
 			return "Unknow";
 		}
@@ -58,6 +64,12 @@ public enum ColumnType {
 		    return kUInt64;
 		case 8:
 		    return kTimestamp;
+		case 9:
+		    return kDate;
+		case 10:
+		    return kInt16;
+		case 12:
+		    return kBool;
 		default :
 			return null;
 		}
@@ -80,6 +92,12 @@ public enum ColumnType {
 	        return kUInt64;
 	    }else if ("timestamp".equals(val)) {
 	        return kTimestamp;
+	    }else if ("date".equals(val)) {
+	        return kDate;
+	    }else if ("int16".equals(val)) {
+	       return kInt16; 
+	    }else if ("bool".equals(val)) {
+	        return kBool;
 	    }
 	    return null;
 	}

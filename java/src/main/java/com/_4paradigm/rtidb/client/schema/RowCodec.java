@@ -3,6 +3,8 @@ package com._4paradigm.rtidb.client.schema;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.joda.time.DateTime;
@@ -62,11 +64,17 @@ public class RowCodec {
                 break;
 
             case kTimestamp:
-                DateTime time = (DateTime)row[i];
                 buffer.put((byte)8);
-                buffer.putLong(time.getMillis());
+                if (row[i] instanceof DateTime) {
+                    DateTime time = (DateTime)row[i];
+                    buffer.putLong(time.getMillis());   
+                }else if (row[i] instanceof Timestamp) {
+                    Timestamp ts = (Timestamp)row[i];
+                    buffer.putLong(ts.getTime());
+                }else {
+                    throw new TabletException(row[i].getClass().getName() + "is not support for timestamp ");
+                }
                 break;
-
             default:
                 throw new TabletException(schema.get(i).getType().toString() + " is not support on jvm platform");
             }
