@@ -4,12 +4,14 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.sql.Timestamp;
-import java.time.LocalDate;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 import org.joda.time.DateTime;
 
 import com._4paradigm.rtidb.client.TabletException;
+import org.joda.time.LocalDate;
 
 public class RowCodec {
     private static Charset charset = Charset.forName("utf-8");
@@ -75,6 +77,31 @@ public class RowCodec {
                     throw new TabletException(row[i].getClass().getName() + "is not support for timestamp ");
                 }
                 break;
+            case kInt16:
+                buffer.put((byte)2);
+                buffer.putShort((Short)row[i]);
+                break;
+            case kDate:
+                buffer.put((byte)8);
+                if (row[i] instanceof Date) {
+                    Date date = (Date)row[i];
+                    buffer.putLong(date.getTime());
+                }else if (row[i] instanceof LocalDate) {
+                    LocalDate date = (LocalDate)row[i];
+                    buffer.putLong(date.toDate().getTime());
+                }else {
+                    throw new TabletException(row[i].getClass().getName() + "is not support for date");
+                }
+                break;
+            case kBool:
+                buffer.put((byte)1);
+                Boolean bool = (Boolean)row[i];
+                if (bool) {
+                    buffer.put((byte)1);
+                }else {
+                    buffer.put((byte)0);
+                }
+                break;
             default:
                 throw new TabletException(schema.get(i).getType().toString() + " is not support on jvm platform");
             }
@@ -125,6 +152,21 @@ public class RowCodec {
                 long time = buffer.getLong();
                 row[index] = new DateTime(time);
                 break;
+            case kInt16:
+                row[index] = buffer.getShort();
+                break;
+            case kDate:
+                long date = buffer.getLong();
+                row[index] = new LocalDate(date);
+                break;
+            case kBool:
+                int byteValue = buffer.get();
+                if (byteValue == 0) {
+                    row[index] = false;
+                }else {
+                    row[index] = true;
+                }
+                break;
             default:
                 throw new TabletException(ctype.toString() + " is not support on jvm platform");
             }
@@ -152,6 +194,12 @@ public class RowCodec {
                 cache[i] = bytes;
                 totalSize += bytes.length;
                 break;
+            case kBool:
+                totalSize += 1;
+                break;
+            case kInt16:
+                totalSize += 2;
+                break;
             case kInt32:
             case kUInt32:
             case kFloat:
@@ -161,6 +209,7 @@ public class RowCodec {
             case kUInt64:
             case kDouble:
             case kTimestamp:
+            case kDate:
                 totalSize += 8;
                 break;
             default:

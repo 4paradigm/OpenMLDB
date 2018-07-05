@@ -4,6 +4,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -47,6 +49,111 @@ public class RowCodecTest {
 			Assert.assertTrue(false);
 		}
 	}
+
+	@Test
+	public void testCodecWithTimestamp() {
+		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+		ColumnDesc col1 = new ColumnDesc();
+		col1.setAddTsIndex(true);
+		col1.setName("ts");
+		col1.setType(ColumnType.kTimestamp);
+		schema.add(col1);
+		long time = 1530772193000l;
+		try {
+			ByteBuffer buffer = RowCodec.encode(new Object[] {new DateTime(time)}, schema);
+			buffer.rewind();
+			Object[] row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] instanceof DateTime);
+			Assert.assertEquals(time, ((DateTime)row[0]).getMillis());
+			buffer = RowCodec.encode(new Object[]{null}, schema);
+			buffer.rewind();
+			row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] == null);
+		} catch (TabletException e) {
+			Assert.assertTrue(false);
+		}
+	}
+
+	@Test
+	public void testCodecWithShort() {
+		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+		ColumnDesc col1 = new ColumnDesc();
+		col1.setAddTsIndex(true);
+		col1.setName("ts");
+		col1.setType(ColumnType.kInt16);
+		schema.add(col1);
+		short i = 10;
+		try {
+			ByteBuffer buffer = RowCodec.encode(new Object[] {i}, schema);
+			buffer.rewind();
+			Object[] row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] instanceof Short);
+			Assert.assertEquals(i, row[0]);
+			buffer = RowCodec.encode(new Object[]{null}, schema);
+			buffer.rewind();
+			row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] == null);
+		} catch (TabletException e) {
+			Assert.assertTrue(false);
+		}
+	}
+	@Test
+	public void testCodecWithBool() {
+		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+		ColumnDesc col1 = new ColumnDesc();
+		col1.setAddTsIndex(true);
+		col1.setName("ts");
+		col1.setType(ColumnType.kBool);
+		schema.add(col1);
+		try {
+			ByteBuffer buffer = RowCodec.encode(new Object[] {true}, schema);
+			buffer.rewind();
+			Object[] row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] instanceof Boolean);
+			Assert.assertEquals(true, row[0]);
+			buffer = RowCodec.encode(new Object[]{null}, schema);
+			buffer.rewind();
+			row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] == null);
+		} catch (TabletException e) {
+			Assert.assertTrue(false);
+		}
+	}
+	@Test
+	public void testCodecWithDate() {
+		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+		ColumnDesc col1 = new ColumnDesc();
+		col1.setAddTsIndex(true);
+		col1.setName("ts");
+		col1.setType(ColumnType.kDate);
+		schema.add(col1);
+		long time = 1530772193000l;
+		LocalDate target = new LocalDate(time);
+		try {
+			ByteBuffer buffer = RowCodec.encode(new Object[] {target}, schema);
+			buffer.rewind();
+			Object[] row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] instanceof LocalDate);
+			Assert.assertEquals(target.getYear(), ((LocalDate)row[0]).getYear());
+			Assert.assertEquals(target.getMonthOfYear(), ((LocalDate)row[0]).getMonthOfYear());
+			Assert.assertEquals(target.getDayOfMonth(), ((LocalDate)row[0]).getDayOfMonth());
+			buffer = RowCodec.encode(new Object[]{null}, schema);
+			buffer.rewind();
+			row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(1, row.length);
+			Assert.assertTrue(row[0] == null);
+		} catch (TabletException e) {
+			Assert.assertTrue(false);
+		}
+	}
+
 	
 	@Test
 	public void testDecodeWithArray() {
@@ -56,13 +163,13 @@ public class RowCodecTest {
         col1.setName("card");
         col1.setType(ColumnType.kString);
         schema.add(col1);
-        
+
         ColumnDesc col2 = new ColumnDesc();
         col2.setAddTsIndex(true);
         col2.setName("merchant");
         col2.setType(ColumnType.kString);
         schema.add(col2);
-        
+
         ColumnDesc col3 = new ColumnDesc();
         col3.setAddTsIndex(false);
         col3.setName("amt");
