@@ -349,7 +349,7 @@ public:
     }
 
     bool GetUInt16(uint16_t* value) {
-        if (type_ != kInt16) {
+        if (type_ != kUInt16) {
             return false;
         }
         if (fsize_ == 0) {
