@@ -56,6 +56,16 @@ server.3=172.27.128.33:2888:3888
 
 * 在配置或者环境变量中指定endpoint, zk_cluster和zk_root_path. (注: zk_cluster和zk_root_path要与nameserver配置的一样)
 * 启动tablet: sh ./bin/start.sh
-* 启动日志监控程序: sh ./bin/start_monitor.sh
+
+## 部署metricbeat
+* 在配置或者环境变量中指定endpoint
+* 在conf下的metricbeat.yml中指定所运行模块的路径（目前仅有brpc，所以不需要改动）
+* 在metricbeat.yml中的hosts项中配置正确的es地址
+* 启动metricbeat: sh ./bin/start_metricbeat.sh
 
 
+## 部署filebeat
+* 在conf下的filebeat.yml中指定运行模块的路径（目前仅有rtidb，不需要改动）
+* 在filebeat.yml中的hosts项中配置正确的es地址
+* 在conf/module/rtidb/accesslog/config中的rtidb-accesslog.yml中配置正确的需要收集的日志（目前默认为根目录下logs/rtidb.info.log）
+* 启动filebeat: sh ./bin/start_filebeat.sh

@@ -1,0 +1,4 @@
+- accesslog:
+    enable: true
+  module: rtidb
+

@@ -1,0 +1,10 @@
+filebeat.config.modules:
+  path: ./modules.d/rtidb.yml
+output.elasticsearch:
+  hosts:
+  - http://172.27.129.20:31239
+  index: rtidb-filebeat-%{[beat.version]}-%{+yyyy.MM.dd}
+setup.template.fields: ./fields.yml
+setup.template.name: rtidb-filebeat-%{[beat.version]}
+setup.template.pattern: rtidb-filebeat-%{[beat.version]}-*
+

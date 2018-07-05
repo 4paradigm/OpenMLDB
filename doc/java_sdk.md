@@ -87,9 +87,7 @@ public class ClusterSyncPutToTable {
         strategy.put("trans_log", ReadStrategy.kReadLocal);
         RTIDBClientConfig config = new RTIDBClientConfig();
         config.setZkEndpoints(zookeeper);
-        config.setZkNodeRootPath(rootPath + "/nodes");
-        config.setZkTableRootPath(rootPath + "/table/table_data");
-        config.setZkTableNotifyPath(rootPath + "/table/notify");
+        config.setZkRootPath(rootPath);
         config.setReadStrategies(strategy);
         // 设置重试次数，2为失败后重试1次，默认值是1
         config.setMaxRetryCnt(2);
