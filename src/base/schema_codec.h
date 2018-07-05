@@ -142,6 +142,8 @@ public:
                 type = ::rtidb::base::ColType::kUInt16;
             } else if (raw_type == "bool"){
                 type = ::rtidb::base::ColType::kBool;
+            } else if (raw_type == "date") {
+                type = ::rtidb::base::ColType::kDate;
             } else {
                 return -1;
             }
