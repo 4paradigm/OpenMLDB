@@ -17,14 +17,14 @@ import org.testng.Assert;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSchemaTest {
-    private static String zkEndpoints = "192.168.33.10:6181";
+    private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(50000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
-    private static String[] nodes = new String[] {"192.168.33.10:9522", "192.168.33.10:9521", "192.168.33.10:9520"};
+    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     static {
         try {
             nsc.init();
@@ -82,6 +82,13 @@ public class TableSchemaTest {
             Assert.assertEquals(target.getMonthOfYear(), ((LocalDate)row[3]).getMonthOfYear());
             Assert.assertEquals(target.getDayOfMonth(), ((LocalDate)row[3]).getDayOfMonth());
             Assert.assertEquals(true, row[4]);
+
+            ok = tableSyncClient.put(name, time, new Object[] {"card0", new DateTime(time), (short)1, target, false});
+            Assert.assertTrue(ok);
+            row = tableSyncClient.getRow(name, "card0", 0);
+            Assert.assertNotNull(row);
+            Assert.assertEquals(5, row.length);
+            Assert.assertEquals(false, row[4]);
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
