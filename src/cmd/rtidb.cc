@@ -1171,6 +1171,11 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("float");
     type_set.insert("double");
     type_set.insert("string");
+    type_set.insert("bool");
+    type_set.insert("timestamp");
+    type_set.insert("date");
+    type_set.insert("int16");
+    type_set.insert("uint16");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
