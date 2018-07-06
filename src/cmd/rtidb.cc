@@ -330,6 +330,12 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
                 codec_ok = codec.Append(data[i]);
             } else if (columns[i].type == ::rtidb::base::ColType::kTimestamp) {
                 codec_ok = codec.AppendTimestamp(boost::lexical_cast<uint64_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kDate) {
+                codec_ok = codec.AppendDate(boost::lexical_cast<uint64_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kInt16) {
+                codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kUInt16) {
+                codec_ok = codec.Append(boost::lexical_cast<uint16_t>(data[i]));
             } else {
                 codec_ok = codec.AppendNull();
             }
