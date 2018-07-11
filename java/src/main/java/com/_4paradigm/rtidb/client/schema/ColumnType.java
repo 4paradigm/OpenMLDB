@@ -1,7 +1,7 @@
 package com._4paradigm.rtidb.client.schema;
 
 public enum ColumnType {
-	kString(0), kFloat(1), kInt32(2), kInt64(3), kDouble(4), kNull(5), kUInt32(6), kUInt64(7);
+	kString(0), kFloat(1), kInt32(2), kInt64(3), kDouble(4), kNull(5), kUInt32(6), kUInt64(7), kTimestamp(8), kDate(9), kInt16(10), kUInt16(11), kBool(12);
 
 	private final int value;
 
@@ -29,6 +29,18 @@ public enum ColumnType {
 			return "kNull";
 		case 6:
 			return "kUInt32";
+		case 7:
+		    return "kUInt64";
+		case 8:
+		    return "kTimestamp";
+		case 9:
+		    return "kDate";
+		case 10:
+		    return "kInt16";
+		case 11:
+			return "kUInt16";
+		case 12:
+		    return "kBool";
 		default :
 			return "Unknow";
 		}
@@ -50,8 +62,20 @@ public enum ColumnType {
 			return kNull;
 		case 6:
 			return kUInt32;
+		case 7:
+		    return kUInt64;
+		case 8:
+		    return kTimestamp;
+		case 9:
+		    return kDate;
+		case 10:
+		    return kInt16;
+		case 11:
+			return kUInt16;
+		case 12:
+		    return kBool;
 		default :
-			return null;
+		    throw new RuntimeException("not supported type with" + val);
 		}
 	}
 	
@@ -70,8 +94,18 @@ public enum ColumnType {
 	        return kUInt32;
 	    }else if ("uint64".equals(val)) {
 	        return kUInt64;
+	    }else if ("timestamp".equals(val)) {
+	        return kTimestamp;
+	    }else if ("date".equals(val)) {
+	        return kDate;
+	    }else if ("int16".equals(val)) {
+			return kInt16;
+		}else if ("uint16".equals(val)) {
+	    	return kUInt16;
+	    }else if ("bool".equals(val)) {
+	        return kBool;
 	    }
-	    return null;
+	    throw new RuntimeException("not supported type with " + val);
 	}
 	
 }

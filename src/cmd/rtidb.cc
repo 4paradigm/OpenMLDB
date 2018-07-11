@@ -254,6 +254,10 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
             float float_col = 0.0f;
             fit.GetFloat(&float_col);
             col = boost::lexical_cast<std::string>(float_col);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kTimestamp) {
+            uint64_t ts = 0;
+            fit.GetTimestamp(&ts);
+            col = boost::lexical_cast<std::string>(ts);
         }
         fit.Next();
         vrow.push_back(col);
@@ -324,6 +328,16 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
                 codec_ok = codec.Append(boost::lexical_cast<double>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kString) {
                 codec_ok = codec.Append(data[i]);
+            } else if (columns[i].type == ::rtidb::base::ColType::kTimestamp) {
+                codec_ok = codec.AppendTimestamp(boost::lexical_cast<uint64_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kDate) {
+                codec_ok = codec.AppendDate(boost::lexical_cast<uint64_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kInt16) {
+                codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kUInt16) {
+                codec_ok = codec.Append(boost::lexical_cast<uint16_t>(data[i]));
+            } else {
+                codec_ok = codec.AppendNull();
             }
         } catch(std::exception const& e) {
             std::cout << e.what() << std::endl;
@@ -1157,6 +1171,11 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("float");
     type_set.insert("double");
     type_set.insert("string");
+    type_set.insert("bool");
+    type_set.insert("timestamp");
+    type_set.insert("date");
+    type_set.insert("int16");
+    type_set.insert("uint16");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
