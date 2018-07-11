@@ -209,8 +209,11 @@ uint64_t Table::GetExpireTime() {
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
     }
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000 + time_offset_.load(std::memory_order_relaxed);
+    if (cur_time < ttl_offset_ + ttl_) {
+        return 0;
+    }
+    return cur_time - ttl_offset_ - ttl_;
 }
 
 bool Table::IsExpire(const LogEntry& entry) {
