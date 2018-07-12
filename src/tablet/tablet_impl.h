@@ -83,6 +83,11 @@ public:
               ::rtidb::api::ScanResponse* response,
               Closure* done);
 
+    void Traverse(RpcController* controller,
+              const ::rtidb::api::TraverseRequest* request,
+              ::rtidb::api::TraverseResponse* response,
+              Closure* done);
+
     void CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,

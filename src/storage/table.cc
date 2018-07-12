@@ -24,7 +24,7 @@ DECLARE_string(db_root_path);
 namespace rtidb {
 namespace storage {
 
-const static uint32_t SEED = (uint32_t)::baidu::common::timer::now_time();
+const static uint32_t SEED = 0xe17a1465;
 
 Table::Table(const std::string& name,
         uint32_t id,
@@ -96,7 +96,7 @@ bool Table::Put(const std::string& pk,
     segment->Put(spk, time, data, size);
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
     record_byte_size_.fetch_add(GetRecordSize(size));
-    PDLOG(DEBUG, "record key %s, value %s tid %u pid %u", pk.c_str(), data, id_, pid_);
+    PDLOG(DEBUG, "record key %s, value %s tid %u pid %u index %u", pk.c_str(), data, id_, pid_, index);
     return true;
 }
 
@@ -313,7 +313,162 @@ bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
+TableIterator* Table::NewTableIterator(uint32_t index) {
+    uint64_t expire_value = 0;
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) {
+        expire_value = 0;
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        expire_value = ttl_ / 60 / 1000;
+    } else {
+        expire_value = GetExpireTime();
+    }
+    return new TableIterator(segments_[index], seg_cnt_, ttl_type_, expire_value);
+}
 
+TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt, 
+            ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : segments_(segments),
+        seg_cnt_(seg_cnt), seg_idx_(0), key_it_(NULL), it_(NULL), 
+        ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value), ticket_() {}
+
+TableIterator::~TableIterator() {
+    if (key_it_ != NULL) delete key_it_;
+    if (it_ != NULL) delete it_;
+}
+
+bool TableIterator::Valid() const {
+    return key_it_ != NULL && key_it_->Valid() && it_ != NULL && it_->Valid();
+}
+
+void TableIterator::Next() {
+    it_->Next();
+    record_idx_++;
+    if (!it_->Valid() || IsExpired()) {
+        NextPK();
+        return;
+    }
+}
+
+bool TableIterator::IsExpired() {
+    if (expire_value_ == 0) {
+        return false;
+    }
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        return record_idx_ > expire_value_;       
+    }
+    return it_->GetKey() < expire_value_;
+}
+
+void TableIterator::NextPK() {
+    delete it_;
+    it_ = NULL;
+    do { 
+        ticket_.Pop();
+        if (key_it_->Valid()) {
+            key_it_->Next();
+        }
+        if (!key_it_->Valid()) {
+            delete key_it_;
+            key_it_ = NULL;
+            seg_idx_++;
+            if (seg_idx_ < seg_cnt_) {
+                key_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+                key_it_->SeekToFirst();
+                if (!key_it_->Valid()) {
+                    continue;
+                }
+            } else {
+                break;
+            }
+        }
+        delete it_;
+        it_ = key_it_->GetValue()->entries.NewIterator();
+        ticket_.Push(key_it_->GetValue());
+        it_->SeekToFirst();
+        record_idx_ = 1;
+    } while(it_ == NULL || !it_->Valid() || IsExpired());
+}
+
+void TableIterator::Seek(const std::string& key, uint64_t ts) {
+    if (key_it_ != NULL) {
+        delete key_it_;
+        key_it_ = NULL;
+    }
+    if (it_ != NULL) {
+        delete it_;
+        it_ = NULL;
+    }
+    ticket_.Pop();
+    if (seg_cnt_ > 1) {
+        seg_idx_ = ::rtidb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(key);
+    key_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+    key_it_->Seek(spk);
+    if (key_it_->Valid() && spk.compare(key_it_->GetKey()) == 0) {
+        ticket_.Push(key_it_->GetValue());
+        it_ = key_it_->GetValue()->entries.NewIterator();
+        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+            it_->SeekToFirst();
+            record_idx_ = 1;
+            while(it_->Valid() && record_idx_ <= expire_value_) {
+                if (it_->GetKey() < ts) {
+                    PDLOG(DEBUG, "cur pk %s ts %lu idx %u record_idx_ %u", key.c_str(), it_->GetKey(), seg_idx_, record_idx_);
+                    return;
+                }
+                it_->Next();
+                record_idx_++;
+            }
+            NextPK();
+        } else {
+            it_->Seek(ts);
+            if (it_->Valid() && it_->GetKey() == ts) {
+                PDLOG(DEBUG, "pk %s ts %lu has found, skip to next", key.c_str(), it_->GetKey());
+                it_->Next();
+            }
+            if (!it_->Valid() || IsExpired()) {
+                PDLOG(DEBUG, "skip to next pk, cur pk %s idx %u", key.c_str(), seg_idx_);
+                NextPK();
+            }
+        }
+    } else {
+        PDLOG(DEBUG, "has not found pk %s", key.c_str());
+        delete key_it_;
+        key_it_ = NULL;
+    }
+}
+
+DataBlock* TableIterator::GetValue() const {
+    return it_->GetValue();
+}
+
+uint64_t TableIterator::GetKey() const {
+    return it_->GetKey();
+}
+
+std::string TableIterator::GetPK() const {
+    return key_it_->GetKey().ToString();
+}
+
+void TableIterator::SeekToFirst() {
+    for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
+        key_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+        key_it_->SeekToFirst();
+        while (key_it_->Valid()) {
+            ticket_.Push(key_it_->GetValue());
+            it_ = key_it_->GetValue()->entries.NewIterator();
+            it_->SeekToFirst();
+            if (it_->Valid() && !IsExpired()) {
+                record_idx_ = 1;
+                return;
+            }
+            delete it_;
+            key_it_->Next();
+            ticket_.Pop();
+        }
+        delete key_it_;
+        key_it_ = NULL;
+    }
+}
 
 }
 }

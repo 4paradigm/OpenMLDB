@@ -578,6 +578,100 @@ void TabletImpl::Scan(RpcController* controller,
     done->Run();
 }
 
+void TabletImpl::Traverse(RpcController* controller,
+              const ::rtidb::api::TraverseRequest* request,
+              ::rtidb::api::TraverseResponse* response,
+              Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(10);
+        response->set_msg("table not found");
+        return;
+    }
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+                      request->tid(), request->pid());
+        response->set_code(20);
+        response->set_msg("table is unavailable now");
+        return;
+    }
+    // the first seek to find the total size to copy
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::TableIterator* it = NULL;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(30);
+            response->set_msg("idx name not found");
+            return;
+        }
+        it = table->NewTableIterator(iit->second);
+    } else {
+        it = table->NewTableIterator(0);
+    }
+    if (request->has_pk() && request->pk().size() > 0) {
+        it->Seek(request->pk(), request->ts());
+    } else {
+        it->SeekToFirst();
+    }
+    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    // reduce the times of memcpy in vector
+    tmp.reserve(request->limit());
+    uint32_t total_block_size = 0;
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+        remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
+    uint32_t scount = 0;
+    uint64_t last_time = 0;
+    std::string last_pk;
+    while (it->Valid()) {
+        scount ++;
+        if (request->limit() > 0 && request->limit() <= scount) {
+            PDLOG(DEBUG, "reache the limit %u ", request->limit());
+            break;
+        }
+        PDLOG(DEBUG, "scan key %lld", it->GetKey());
+        // skip duplicate record 
+        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey() && last_pk == it->GetPK()) {
+            PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
+            it->Next();
+            continue;
+        }
+        last_pk = it->GetPK();
+        last_time = it->GetKey();
+        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
+        total_block_size += it->GetValue()->size;
+        it->Next();
+    }
+    delete it;
+    uint32_t total_size = tmp.size() * (8+4) + total_block_size;
+    std::string* pairs = response->mutable_pairs();
+    if (tmp.size() <= 0) {
+        pairs->resize(0);
+    }else {
+        pairs->resize(total_size);
+    }
+    PDLOG(DEBUG, "scan count %d", tmp.size());
+    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
+    uint32_t offset = 0;
+    std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
+    for (; lit != tmp.end(); ++lit) {
+        std::pair<uint64_t, DataBlock*>& pair = *lit;
+        PDLOG(DEBUG, "decode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
+        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
+        offset += (4 + 8 + pair.second->size);
+    }
+    response->set_code(0);
+    response->set_count(tmp.size());
+    response->set_pk(last_pk);
+    response->set_ts(last_time);
+}
+
 void TabletImpl::ChangeRole(RpcController* controller, 
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
