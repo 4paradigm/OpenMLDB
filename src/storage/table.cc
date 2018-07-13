@@ -327,16 +327,16 @@ TableIterator* Table::NewTableIterator(uint32_t index) {
 
 TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt, 
             ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : segments_(segments),
-        seg_cnt_(seg_cnt), seg_idx_(0), key_it_(NULL), it_(NULL), 
+        seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
         ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value), ticket_() {}
 
 TableIterator::~TableIterator() {
-    if (key_it_ != NULL) delete key_it_;
+    if (pk_it_ != NULL) delete pk_it_;
     if (it_ != NULL) delete it_;
 }
 
 bool TableIterator::Valid() const {
-    return key_it_ != NULL && key_it_->Valid() && it_ != NULL && it_->Valid();
+    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid();
 }
 
 void TableIterator::Next() {
@@ -363,17 +363,17 @@ void TableIterator::NextPK() {
     it_ = NULL;
     do { 
         ticket_.Pop();
-        if (key_it_->Valid()) {
-            key_it_->Next();
+        if (pk_it_->Valid()) {
+            pk_it_->Next();
         }
-        if (!key_it_->Valid()) {
-            delete key_it_;
-            key_it_ = NULL;
+        if (!pk_it_->Valid()) {
+            delete pk_it_;
+            pk_it_ = NULL;
             seg_idx_++;
             if (seg_idx_ < seg_cnt_) {
-                key_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-                key_it_->SeekToFirst();
-                if (!key_it_->Valid()) {
+                pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+                pk_it_->SeekToFirst();
+                if (!pk_it_->Valid()) {
                     continue;
                 }
             } else {
@@ -381,17 +381,17 @@ void TableIterator::NextPK() {
             }
         }
         delete it_;
-        it_ = key_it_->GetValue()->entries.NewIterator();
-        ticket_.Push(key_it_->GetValue());
+        it_ = pk_it_->GetValue()->entries.NewIterator();
+        ticket_.Push(pk_it_->GetValue());
         it_->SeekToFirst();
         record_idx_ = 1;
     } while(it_ == NULL || !it_->Valid() || IsExpired());
 }
 
 void TableIterator::Seek(const std::string& key, uint64_t ts) {
-    if (key_it_ != NULL) {
-        delete key_it_;
-        key_it_ = NULL;
+    if (pk_it_ != NULL) {
+        delete pk_it_;
+        pk_it_ = NULL;
     }
     if (it_ != NULL) {
         delete it_;
@@ -402,11 +402,11 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
         seg_idx_ = ::rtidb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
     }
     Slice spk(key);
-    key_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-    key_it_->Seek(spk);
-    if (key_it_->Valid() && spk.compare(key_it_->GetKey()) == 0) {
-        ticket_.Push(key_it_->GetValue());
-        it_ = key_it_->GetValue()->entries.NewIterator();
+    pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+    pk_it_->Seek(spk);
+    if (pk_it_->Valid() && spk.compare(pk_it_->GetKey()) == 0) {
+        ticket_.Push(pk_it_->GetValue());
+        it_ = pk_it_->GetValue()->entries.NewIterator();
         if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
             it_->SeekToFirst();
             record_idx_ = 1;
@@ -432,8 +432,8 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
         }
     } else {
         PDLOG(DEBUG, "has not found pk %s", key.c_str());
-        delete key_it_;
-        key_it_ = NULL;
+        delete pk_it_;
+        pk_it_ = NULL;
     }
 }
 
@@ -446,27 +446,27 @@ uint64_t TableIterator::GetKey() const {
 }
 
 std::string TableIterator::GetPK() const {
-    return key_it_->GetKey().ToString();
+    return pk_it_->GetKey().ToString();
 }
 
 void TableIterator::SeekToFirst() {
     for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
-        key_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-        key_it_->SeekToFirst();
-        while (key_it_->Valid()) {
-            ticket_.Push(key_it_->GetValue());
-            it_ = key_it_->GetValue()->entries.NewIterator();
+        pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
+        pk_it_->SeekToFirst();
+        while (pk_it_->Valid()) {
+            ticket_.Push(pk_it_->GetValue());
+            it_ = pk_it_->GetValue()->entries.NewIterator();
             it_->SeekToFirst();
             if (it_->Valid() && !IsExpired()) {
                 record_idx_ = 1;
                 return;
             }
             delete it_;
-            key_it_->Next();
+            pk_it_->Next();
             ticket_.Pop();
         }
-        delete key_it_;
-        key_it_ = NULL;
+        delete pk_it_;
+        pk_it_ = NULL;
     }
 }
 

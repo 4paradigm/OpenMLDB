@@ -714,5 +714,28 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
     return true;
 }
 
+::rtidb::base::KvIterator* TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
+            const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count) {
+    ::rtidb::api::TraverseRequest request;
+    ::rtidb::api::TraverseResponse* response = new ::rtidb::api::TraverseResponse();
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_limit(limit);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    if (!pk.empty()) {
+        request.set_pk(pk);
+        request.set_ts(ts);
+    }
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Traverse,
+            &request, response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response->code()  != 0) {
+        return NULL;
+    }
+    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    return kv_it;
+}
+
 }
 }

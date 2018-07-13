@@ -567,7 +567,7 @@ void TabletImpl::Scan(RpcController* controller,
     std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
-        PDLOG(DEBUG, "decode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
+        PDLOG(DEBUG, "encode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
@@ -597,8 +597,6 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_msg("table is unavailable now");
         return;
     }
-    // the first seek to find the total size to copy
-    ::rtidb::storage::Ticket ticket;
     ::rtidb::storage::TableIterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
@@ -618,9 +616,7 @@ void TabletImpl::Traverse(RpcController* controller,
     } else {
         it->SeekToFirst();
     }
-    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
-    // reduce the times of memcpy in vector
-    tmp.reserve(request->limit());
+    std::map<std::string, std::vector<std::pair<uint64_t, DataBlock*>>> value_map;
     uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
@@ -630,44 +626,48 @@ void TabletImpl::Traverse(RpcController* controller,
     uint64_t last_time = 0;
     std::string last_pk;
     while (it->Valid()) {
-        scount ++;
-        if (request->limit() > 0 && request->limit() <= scount) {
+        if (request->limit() > 0 && scount > request->limit() - 1) {
             PDLOG(DEBUG, "reache the limit %u ", request->limit());
             break;
         }
-        PDLOG(DEBUG, "scan key %lld", it->GetKey());
+        PDLOG(DEBUG, "scan pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
         // skip duplicate record 
-        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey() && last_pk == it->GetPK()) {
+        if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
             PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
             it->Next();
             continue;
         }
         last_pk = it->GetPK();
         last_time = it->GetKey();
-        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
-        total_block_size += it->GetValue()->size;
+        if (value_map.find(last_pk) == value_map.end()) {
+            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, DataBlock*>>()));
+            value_map[last_pk].reserve(request->limit());
+        }
+        value_map[last_pk].push_back(std::make_pair(it->GetKey(), it->GetValue()));
+        total_block_size += last_pk.length() + it->GetValue()->size;
         it->Next();
+        scount ++;
     }
     delete it;
-    uint32_t total_size = tmp.size() * (8+4) + total_block_size;
+    uint32_t total_size = scount * (8+4+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
-    if (tmp.size() <= 0) {
+    if (scount <= 0) {
         pairs->resize(0);
-    }else {
+    } else {
         pairs->resize(total_size);
     }
-    PDLOG(DEBUG, "scan count %d", tmp.size());
+    PDLOG(DEBUG, "traverse count %d", scount);
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
-    std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
-    for (; lit != tmp.end(); ++lit) {
-        std::pair<uint64_t, DataBlock*>& pair = *lit;
-        PDLOG(DEBUG, "decode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
-        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
-        offset += (4 + 8 + pair.second->size);
+    for (const auto& kv : value_map) {
+        for (const auto& pair : kv.second) {
+            PDLOG(DEBUG, "encode pk %s ts %lu value %s size %u", kv.first.c_str(), pair.first, pair.second->data, pair.second->size);
+            ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second, rbuffer, offset);
+            offset += (4 + 4 + 8 + pair.second->size);
+        }
     }
     response->set_code(0);
-    response->set_count(tmp.size());
+    response->set_count(scount);
     response->set_pk(last_pk);
     response->set_ts(last_time);
 }

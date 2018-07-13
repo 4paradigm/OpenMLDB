@@ -57,7 +57,7 @@ private:
     Segment** segments_;
     uint32_t const seg_cnt_;
     uint32_t seg_idx_;
-    KeyEntries::Iterator* key_it_;
+    KeyEntries::Iterator* pk_it_;
     TimeEntries::Iterator* it_;
     ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
