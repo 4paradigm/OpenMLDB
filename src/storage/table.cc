@@ -380,7 +380,9 @@ void TableIterator::NextPK() {
                 break;
             }
         }
-        delete it_;
+        if (it_ != NULL) {
+            delete it_;
+        }
         it_ = pk_it_->GetValue()->entries.NewIterator();
         ticket_.Push(pk_it_->GetValue());
         it_->SeekToFirst();
@@ -450,6 +452,15 @@ std::string TableIterator::GetPK() const {
 }
 
 void TableIterator::SeekToFirst() {
+    ticket_.Pop();
+    if (pk_it_ != NULL) {
+        delete pk_it_;
+        pk_it_ = NULL;
+    }
+    if (it_ != NULL) {
+        delete it_;
+        it_ = NULL;
+    }
     for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
         pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
         pk_it_->SeekToFirst();
@@ -462,6 +473,7 @@ void TableIterator::SeekToFirst() {
                 return;
             }
             delete it_;
+            it_ = NULL;
             pk_it_->Next();
             ticket_.Pop();
         }

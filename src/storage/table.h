@@ -43,7 +43,6 @@ public:
 	~TableIterator();
 	bool Valid() const;
 	void Next();
-    void NextPK();
 	void Seek(const std::string& key, uint64_t time);
 	DataBlock* GetValue() const;
 	std::string GetPK() const;
@@ -51,6 +50,7 @@ public:
 	void SeekToFirst();
 
 private:
+    void NextPK();
     bool IsExpired();
 
 private:
