@@ -1187,6 +1187,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         try {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[2], ":", &vec);
+            uint64_t ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime"))  {
                     type = "kLatestTime";
@@ -1195,7 +1196,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     return;
                 }    
             }
-            ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
+            ns_table_info.set_ttl(ttl);
             uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
             if (partition_num == 0) {
                  std::cout << "partition_num should be large than zero" << std::endl;
@@ -1250,6 +1251,19 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     } else {
         std::cout << "create format error! ex: create table_meta_file | create name ttl partition_num replica_num [name:type:index ...]" << std::endl;
         return;
+    }
+    if (ns_table_info.ttl_type() == "kAbsoluteTime") {
+        if (ns_table_info.ttl() > ::rtidb::client::ABSOLUTE_TIME_TTL_MAX) {
+            std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                      << ::rtidb::client::ABSOLUTE_TIME_TTL_MAX << std::endl;
+            return;
+        }
+    } else {
+        if (ns_table_info.ttl() > ::rtidb::client::KEEP_LATEST_MAX_NUM) {
+            std::cout << "Create failed. The max num of latest LatestTime is " 
+                      << ::rtidb::client::KEEP_LATEST_MAX_NUM << std::endl;
+            return;
+        }
     }
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
@@ -1674,14 +1688,26 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         if (parts.size() > 4) {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[4], ":", &vec);
-            if (vec.size() > 1 && vec[0] == "latest") {
-                type = ::rtidb::api::TTLType::kLatestTime;
-            }
-            if (vec.size() > 1 && vec[0] != "latest") {
-                std::cout << "invalid ttl type" << std::endl;
-                return;
-            }
             ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
+            if (vec.size() > 1) {
+                if (vec[0] == "latest") {
+                    type = ::rtidb::api::TTLType::kLatestTime;
+                    if (ttl > ::rtidb::client::KEEP_LATEST_MAX_NUM) {
+                        std::cout << "Create failed. The max num of latest LatestTime is " 
+                                  << ::rtidb::client::KEEP_LATEST_MAX_NUM << std::endl;
+                        return;
+                    }
+                } else {
+                    std::cout << "invalid ttl type" << std::endl;
+                    return;
+                }
+            } else {
+                if (ttl > ::rtidb::client::ABSOLUTE_TIME_TTL_MAX) {
+                    std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                              << ::rtidb::client::ABSOLUTE_TIME_TTL_MAX << std::endl;
+                    return;
+                }
+            }
         }
         if (ttl < 0) {
             std::cout << "ttl should be equal or greater than 0" << std::endl;
@@ -2283,14 +2309,26 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(parts[4], ":", &vec);
-        if (vec.size() > 1 && vec[0] == "latest") {
-            type = ::rtidb::api::TTLType::kLatestTime;
-        }
-        if (vec.size() > 1 && vec[0] != "latest" ) {
-            std::cout << "invalid ttl type " << std::endl;
-            return;
-        }
         ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
+        if (vec.size() > 1) {
+            if (vec[0] == "latest") {
+                type = ::rtidb::api::TTLType::kLatestTime;
+                if (ttl > ::rtidb::client::KEEP_LATEST_MAX_NUM) {
+                    std::cout << "Create failed. The max num of latest LatestTime is " 
+                              << ::rtidb::client::KEEP_LATEST_MAX_NUM << std::endl;
+                    return;
+                }
+            } else {
+                std::cout << "invalid ttl type " << std::endl;
+                return;
+            }
+        } else {
+            if (ttl > ::rtidb::client::ABSOLUTE_TIME_TTL_MAX) {
+                std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                          << ::rtidb::client::ABSOLUTE_TIME_TTL_MAX << std::endl;
+                return;
+            }
+        }        
         if (ttl < 0) {
             std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
             return;

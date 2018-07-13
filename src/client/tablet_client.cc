@@ -17,8 +17,6 @@ DECLARE_bool(enable_show_tp);
 namespace rtidb {
 namespace client {
 
-const uint32_t KEEP_LATEST_MAX_NUM = 1000;
-
 TabletClient::TabletClient(const std::string& endpoint):endpoint_(endpoint), client_(endpoint) {
 }
 
@@ -60,8 +58,14 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_name(name);
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
-    if (type == ::rtidb::api::kLatestTime && ttl > KEEP_LATEST_MAX_NUM) {
-        return false;
+    if (type == ::rtidb::api::kLatestTime) {
+        if (ttl > KEEP_LATEST_MAX_NUM) {
+            return false;
+        }    
+    } else {
+        if (ttl > ABSOLUTE_TIME_TTL_MAX) {
+            return false;
+        }
     }
     table_meta->set_ttl(ttl);
     table_meta->set_seg_cnt(seg_cnt);
@@ -93,8 +97,14 @@ bool TabletClient::CreateTable(const std::string& name,
                      const ::rtidb::api::TTLType& type,
                      uint32_t seg_cnt, uint64_t term) {
     ::rtidb::api::CreateTableRequest request;
-    if (type == ::rtidb::api::kLatestTime && ttl > KEEP_LATEST_MAX_NUM) {
-        return false;
+    if (type == ::rtidb::api::kLatestTime) {
+        if (ttl > KEEP_LATEST_MAX_NUM) {
+            return false;
+        }    
+    } else {
+        if (ttl > ABSOLUTE_TIME_TTL_MAX) {
+            return false;
+        }
     }
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name(name);
