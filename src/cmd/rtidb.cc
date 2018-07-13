@@ -1187,7 +1187,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         try {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[2], ":", &vec);
-            uint64_t ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime"))  {
                     type = "kLatestTime";
@@ -1196,7 +1195,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                     return;
                 }    
             }
-            ns_table_info.set_ttl(ttl);
+            ns_table_info.set_ttl(boost::lexical_cast<uint64_t>(vec[vec.size() - 1]));
             uint32_t partition_num = boost::lexical_cast<uint32_t>(parts[3]);
             if (partition_num == 0) {
                  std::cout << "partition_num should be large than zero" << std::endl;

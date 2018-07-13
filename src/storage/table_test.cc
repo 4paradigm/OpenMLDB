@@ -117,11 +117,6 @@ TEST_F(TableTest, IsExpired) {
     entry.set_ts(ts_time);
     ASSERT_TRUE(entry.ts() < table->GetExpireTime());
     delete table;
-
-    Table* table1 = new Table("tx_log", 1, 1, 8, mapping, 50000000);
-    table1->Init();
-    ASSERT_EQ(0, table->GetExpireTime());
-    delete table1;
 }
 
 TEST_F(TableTest, Iterator) {
