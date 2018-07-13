@@ -663,7 +663,7 @@ void TabletImpl::Traverse(RpcController* controller,
         for (const auto& pair : kv.second) {
             PDLOG(DEBUG, "encode pk %s ts %lu value %s size %u", kv.first.c_str(), pair.first, pair.second->data, pair.second->size);
             ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second, rbuffer, offset);
-            offset += (4 + 4 + 8 + pair.second->size);
+            offset += (4 + 4 + 8 + kv.first.length() + pair.second->size);
         }
     }
     response->set_code(0);
