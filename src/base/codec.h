@@ -94,17 +94,16 @@ static inline void DecodeFull(const std::string* str, std::map<std::string, std:
         buffer += 4;
         uint32_t pk_size = 0;
         memcpy(static_cast<void*>(&pk_size), buffer, 4);
+        buffer += 4;
         memrev32ifbe(static_cast<void*>(&pk_size));
         PDLOG(DEBUG, "decode size %d", pk_size);
         assert(size > pk_size + 8);
-        buffer += 4;
         uint64_t time = 0;
         memcpy(static_cast<void*>(&time), buffer, 8);
         memrev64ifbe(static_cast<void*>(&time));
         buffer += 8;
-        assert(pk_size >= 8);
         std::string pk(buffer, pk_size);
-        buffer += (pk_size);
+        buffer += pk_size;
         uint32_t value_size = size - 8 - pk_size;
         std::string* data = new std::string(value_size, '0');
         memcpy(reinterpret_cast<char*>(& ((*data)[0])), buffer, value_size);
@@ -113,7 +112,7 @@ static inline void DecodeFull(const std::string* str, std::map<std::string, std:
             value_map.insert(std::make_pair(pk, std::vector<std::pair<uint64_t, std::string*>>()));
         }
         value_map[pk].push_back(std::make_pair(time, data));
-        total_size -= (size + 4);
+        total_size -= (size + 8);
     }
 }
 
