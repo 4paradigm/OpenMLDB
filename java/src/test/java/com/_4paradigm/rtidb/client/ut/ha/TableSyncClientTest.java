@@ -192,6 +192,45 @@ public class TableSyncClientTest {
     }
 
     @Test
+    public void testTraverse() {
+        String name = createKvTable();
+        try {
+            boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9528, "value1");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9529, "value2");
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.traverse(name, "test1");
+            Assert.assertTrue(it.valid());
+            byte[] buffer = new byte[6];
+            it.getValue().get(buffer);
+            String value = new String(buffer);
+            Assert.assertEquals(value, "value2");
+            it.next();
+
+            Assert.assertTrue(it.valid());
+            it.getValue().get(buffer);
+            value = new String(buffer);
+            Assert.assertEquals(value, "value1");
+            it.next();
+
+            Assert.assertTrue(it.valid());
+            it.getValue().get(buffer);
+            value = new String(buffer);
+            Assert.assertEquals(value, "value0");
+            it.next();
+
+            Assert.assertFalse(it.valid());
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
     public void testScanLimit() {
         String name = createKvTable();
         try {

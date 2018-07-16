@@ -23,6 +23,7 @@ import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
+import com.sun.istack.internal.localization.NullLocalizable;
 import rtidb.api.TabletServer;
 
 public class TableSyncClientImpl implements TableSyncClient {
@@ -253,6 +254,17 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public KvIterator scan(String tname, String key, String idxName, int limit) throws TimeoutException, TabletException {
         return scan(tname, key, idxName, 0, 0, limit);
+    }
+
+    @Override
+    public KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        TraverseKvIterator it = new TraverseKvIterator(client, tname, th.getSchema(), idxName);
+        it.next();
+        return it;
     }
 
     private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th)throws TimeoutException, TabletException  {
