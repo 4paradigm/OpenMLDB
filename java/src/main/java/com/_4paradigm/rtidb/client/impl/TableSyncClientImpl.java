@@ -216,6 +216,19 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public KvIterator traverse(int tid) throws TimeoutException, TabletException {
+        return traverse(tid, null);
+    }
+
+    @Override
+    public KvIterator traverse(int tid, String idxName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        TraverseKvIterator it = new TraverseKvIterator(client, th, idxName);
+        it.next();
+        return it;
+    }
+
+    @Override
     public KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException {
 
         return scan(tname, key, null, st, et, 0);
@@ -261,9 +274,14 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        TraverseKvIterator it = new TraverseKvIterator(client, tname, th.getSchema(), idxName);
+        TraverseKvIterator it = new TraverseKvIterator(client, th, idxName);
         it.next();
         return it;
+    }
+
+    @Override
+    public KvIterator traverse(String tname) throws TimeoutException, TabletException {
+        return traverse(tname, null);
     }
 
     private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th)throws TimeoutException, TabletException  {

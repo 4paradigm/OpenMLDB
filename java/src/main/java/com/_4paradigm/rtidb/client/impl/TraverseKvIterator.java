@@ -12,7 +12,6 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com.google.protobuf.ByteString;
@@ -20,7 +19,6 @@ import rtidb.api.TabletServer;
 import com._4paradigm.rtidb.tablet.Tablet;
 
 public class TraverseKvIterator implements KvIterator {
-    private String tname;
     private int pid = 0;
     private int lastPid = 0;
     private String idxName = null;
@@ -38,25 +36,21 @@ public class TraverseKvIterator implements KvIterator {
 
     private boolean isFinished = false;
 
-    private RTIDBClientConfig config = null;
     private RTIDBClient client = null;
+    private TableHandler th = null;
     private static Charset charset = Charset.forName("utf-8");
 
-    public TraverseKvIterator(RTIDBClient client, String tname, List<ColumnDesc> schema, String idxName) {
+    public TraverseKvIterator(RTIDBClient client, TableHandler th, String idxName) {
         this.offset = 0;
         this.totalSize = 0;
         this.client = client;
-        this.tname = tname;
-        this.schema = schema;
+        this.th = th;
+        this.schema = th.getSchema();
         this.idxName = idxName;
         this.isFinished = false;
     }
 
     private void getData() throws TimeoutException, TabletException {
-        TableHandler th = client.getHandler(tname);
-        if (th == null) {
-            throw new TabletException("no table with name " + tname);
-        }
         do {
             if (pid >= th.getPartitions().length) {
                 return;
@@ -151,7 +145,6 @@ public class TraverseKvIterator implements KvIterator {
 
     @Override
     public void getDecodedValue(Object[] row, int start, int length) throws TabletException {
-        long delta = 0l;
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
