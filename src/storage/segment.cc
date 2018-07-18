@@ -73,7 +73,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     }
     idx_cnt_.fetch_add(1, std::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
-    PDLOG(DEBUG, "add ts with height %u", height);
+    PDLOG(DEBUG, "add ts %lu with height %u", time, height);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }

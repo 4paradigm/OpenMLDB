@@ -433,7 +433,7 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
             }
         }
     } else {
-        PDLOG(DEBUG, "has not found pk %s", key.c_str());
+        PDLOG(DEBUG, "has not found pk %s. seg_idx[%u]", key.c_str(), seg_idx_);
         delete pk_it_;
         pk_it_ = NULL;
     }

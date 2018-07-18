@@ -612,8 +612,11 @@ void TabletImpl::Traverse(RpcController* controller,
         it = table->NewTableIterator(0);
     }
     if (request->has_pk() && request->pk().size() > 0) {
+        PDLOG(DEBUG, "tid %u, pid %u seek pk %s ts %lu", 
+                    request->tid(), request->pid(), request->pk().c_str(), request->ts());
         it->Seek(request->pk(), request->ts());
     } else {
+        PDLOG(DEBUG, "tid %u, pid %u seek to first", request->tid(), request->pid());
         it->SeekToFirst();
     }
     std::map<std::string, std::vector<std::pair<uint64_t, DataBlock*>>> value_map;
@@ -656,7 +659,6 @@ void TabletImpl::Traverse(RpcController* controller,
     } else {
         pairs->resize(total_size);
     }
-    PDLOG(DEBUG, "traverse count %d", scount);
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
     for (const auto& kv : value_map) {
@@ -666,6 +668,7 @@ void TabletImpl::Traverse(RpcController* controller,
             offset += (4 + 4 + 8 + kv.first.length() + pair.second->size);
         }
     }
+    PDLOG(DEBUG, "traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
     response->set_code(0);
     response->set_count(scount);
     response->set_pk(last_pk);
