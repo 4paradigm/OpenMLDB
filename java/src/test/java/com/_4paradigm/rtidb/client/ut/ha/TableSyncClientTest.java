@@ -193,35 +193,54 @@ public class TableSyncClientTest {
 
     @Test
     public void testTraverse() {
-        String name = createKvTable();
+        String name = createSchemaTable();
         try {
-            boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
+            Map<String, Object> rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc0");
+            rowMap.put("amt", 9.15d);
+            boolean ok = tableSyncClient.put(name, 9527, rowMap);
             Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, "test1", 9528, "value1");
+            rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc1");
+            rowMap.put("amt", 9.2d);
+            ok = tableSyncClient.put(name, 9528, rowMap);
             Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, "test1", 9529, "value2");
-            Assert.assertTrue(ok);
-            KvIterator it = tableSyncClient.traverse(name, "test1");
+            Thread.sleep(200);
+            KvIterator it = tableSyncClient.traverse(name, "card");
             Assert.assertTrue(it.valid());
-            byte[] buffer = new byte[6];
-            it.getValue().get(buffer);
-            String value = new String(buffer);
-            Assert.assertEquals(value, "value2");
+            /*Object[] row = it.getDecodedValue();
+            Assert.assertEquals(it.getKey(), 9528);
+            Assert.assertEquals(it.getPK(), "card0");
+            Assert.assertEquals(row.length, 3);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
             it.next();
-
             Assert.assertTrue(it.valid());
-            it.getValue().get(buffer);
-            value = new String(buffer);
-            Assert.assertEquals(value, "value1");
+            row = it.getDecodedValue();
+            Assert.assertEquals(it.getKey(), 9527);
+            Assert.assertEquals(it.getPK(), "card9527");
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 9.15d);
             it.next();
-
-            Assert.assertTrue(it.valid());
-            it.getValue().get(buffer);
-            value = new String(buffer);
-            Assert.assertEquals(value, "value0");
-            it.next();
-
-            Assert.assertFalse(it.valid());
+            Assert.assertFalse(it.valid());*/
+            /*for (int i = 0; i < 200; i++) {
+                rowMap = new HashMap<String, Object>();
+                rowMap.put("card", "card" + i + 9529);
+                rowMap.put("mcc", "mcc" + i);
+                rowMap.put("amt", 9.2d);
+                ok = tableSyncClient.put(name, i, rowMap);
+                Assert.assertTrue(ok);
+            }
+            it = tableSyncClient.traverse(name, "card");
+            for (int j = 0; j < 202; j++) {
+                Assert.assertTrue(it.valid());
+                it.next();
+            }
+            Assert.assertFalse(it.valid());*/
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);

@@ -23,7 +23,6 @@ import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
-import com.sun.istack.internal.localization.NullLocalizable;
 import rtidb.api.TabletServer;
 
 public class TableSyncClientImpl implements TableSyncClient {

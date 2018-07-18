@@ -768,6 +768,53 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     delete kv_it;
 }
 
+TEST_F(TabletImplTest, Traverse) {
+    TabletImpl tablet;
+    uint32_t id = counter++;
+    tablet.Init();
+    ::rtidb::api::CreateTableRequest request;
+    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    table_meta->set_ttl(0);
+    table_meta->set_wal(true);
+    ::rtidb::api::CreateTableResponse response;
+    MockClosure closure;
+    tablet.CreateTable(NULL, &request, &response,
+            &closure);
+    ASSERT_EQ(0, response.code());
+    for (int ts = 9527; ts < 9540; ts++) {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(ts);
+        prequest.set_value("test" + std::to_string(ts));
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    ::rtidb::api::TraverseRequest sr;
+    sr.set_tid(id);
+    sr.set_pid(1);
+    sr.set_limit(100);
+    ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
+    tablet.Traverse(NULL, &sr, srp, &closure);
+    ASSERT_EQ(0, srp->code());
+    ASSERT_EQ(13, srp->count());
+    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
+    for (int cnt = 0; cnt < 13; cnt++) {
+        uint64_t cur_ts = 9539 - cnt;
+        ASSERT_EQ(cur_ts, kv_it->GetKey());
+        ASSERT_STREQ(std::string("test" + std::to_string(cur_ts)).c_str(), kv_it->GetValue().ToString().c_str());
+        kv_it->Next();
+    }
+    ASSERT_FALSE(kv_it->Valid());
+    delete kv_it;
+}
+
 TEST_F(TabletImplTest, Scan_with_limit) {
     TabletImpl tablet;
     uint32_t id = counter++;
@@ -1468,7 +1515,7 @@ TEST_F(TabletImplTest, GetTermPair) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();

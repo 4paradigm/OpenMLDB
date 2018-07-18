@@ -49,7 +49,7 @@ public class TraverseKvIterator implements KvIterator {
         this.isFinished = false;
     }
 
-    private boolean getData() throws TimeoutException, TabletException {
+    private void getData() throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -69,22 +69,29 @@ public class TraverseKvIterator implements KvIterator {
         if (client.getConfig().isRemoveDuplicateByTime()) {
             builder.setEnableRemoveDuplicatedRecord(true);
         }
+        if (offset != 0) {
+            builder.setPk(pk);
+            builder.setTs(time);
+            offset = 0;
+        }
         Tablet.TraverseRequest request = builder.build();
         Tablet.TraverseResponse response = ts.traverse(request);
         if (response != null && response.getCode() == 0) {
             bs = response.getPairs();
             bb = bs.asReadOnlyByteBuffer();
-            offset = 0;
             totalSize = this.bs.size();
-            if (response.count() < client.getConfig().getTraverseLimit()) {
+            if (response.getCount() < client.getConfig().getTraverseLimit()) {
                 pid++;
                 if (pid >= th.getPartitions().length) {
                     isFinished = true;
                 }
             }
-            return true;
+			return;
         }
-        return false;
+		if (response != null) {
+            throw new TabletException(response.getMsg());
+        }
+        throw new TabletException("rtidb internal server error");
     }
 
     @Override
@@ -140,14 +147,12 @@ public class TraverseKvIterator implements KvIterator {
     }
 
     @Override
-    public void next() throws TimeoutException, TabletException {
+    public void next() {
         if (offset >= totalSize && !isFinished) {
-            int tryTime = client.getConfig().getTraverseMaxTryCnt();
-            while(tryTime > 0) {
-                tryTime--;
-                if (getData()) {
-                    break;
-                }
+            try {
+                getData();
+            } catch(Exception e){
+                throw new RuntimeException(e.getMessage());
             }
         }
         if (offset + 8 > totalSize) {

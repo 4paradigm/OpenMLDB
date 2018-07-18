@@ -26,7 +26,6 @@ public class RTIDBClientConfig {
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	private String nsEndpoint;
 	private int traverseLimit = 100;
-	private int traverseMaxTryCnt = 3;
 
 	public void disableMetrics() {
 	    enableMetrics = false;
@@ -60,14 +59,6 @@ public class RTIDBClientConfig {
 
     public int getTraverseLimit() {
         return traverseLimit;
-    }
-
-    public int getTraverseMaxTryCnt() {
-        return traverseMaxTryCnt;
-    }
-
-    public void setTraverseMaxTryCnt(int traverseMaxTryCnt) {
-        this.traverseMaxTryCnt = traverseMaxTryCnt;
     }
 
     public int getMaxRetryCnt() {

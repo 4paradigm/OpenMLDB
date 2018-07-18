@@ -24,5 +24,5 @@ public interface KvIterator {
     
     void getDecodedValue(Object[] row, int start, int length) throws TabletException;
 
-    void next() throws TimeoutException, TabletException;
+    void next();
 }

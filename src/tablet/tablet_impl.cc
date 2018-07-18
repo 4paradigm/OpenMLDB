@@ -630,7 +630,7 @@ void TabletImpl::Traverse(RpcController* controller,
             PDLOG(DEBUG, "reache the limit %u ", request->limit());
             break;
         }
-        PDLOG(DEBUG, "scan pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
+        PDLOG(DEBUG, "traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
         // skip duplicate record 
         if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
             PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
