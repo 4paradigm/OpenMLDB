@@ -22,6 +22,7 @@ import com._4paradigm.rtidb.tablet.Tablet;
 public class TraverseKvIterator implements KvIterator {
     private String tname;
     private int pid = 0;
+    private int lastPid = 0;
     private String idxName = null;
     private ByteString bs;
     private int offset;
@@ -30,7 +31,9 @@ public class TraverseKvIterator implements KvIterator {
     private ByteBuffer slice;
     private int totalSize;
     private long time;
+    private long lastTime;
     private String pk;
+    private String lastPk;
     private List<ColumnDesc> schema;
 
     private boolean isFinished = false;
@@ -54,44 +57,53 @@ public class TraverseKvIterator implements KvIterator {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        if (pid >= th.getPartitions().length) {
-            throw new TabletException("traverse invalid pid");
-        }
-        PartitionHandler ph = th.getHandler(pid);
-        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
-        Tablet.TraverseRequest.Builder builder = Tablet.TraverseRequest.newBuilder();
-        builder.setTid(th.getTableInfo().getTid());
-        builder.setPid(pid);
-        builder.setLimit(client.getConfig().getTraverseLimit());
-        if (idxName != null && !idxName.isEmpty()) {
-            builder.setIdxName(idxName);
-        }
-        if (client.getConfig().isRemoveDuplicateByTime()) {
-            builder.setEnableRemoveDuplicatedRecord(true);
-        }
-        if (offset != 0) {
-            builder.setPk(pk);
-            builder.setTs(time);
-            offset = 0;
-        }
-        Tablet.TraverseRequest request = builder.build();
-        Tablet.TraverseResponse response = ts.traverse(request);
-        if (response != null && response.getCode() == 0) {
-            bs = response.getPairs();
-            bb = bs.asReadOnlyByteBuffer();
-            totalSize = this.bs.size();
-            if (response.getCount() < client.getConfig().getTraverseLimit()) {
-                pid++;
-                if (pid >= th.getPartitions().length) {
-                    isFinished = true;
-                }
+        do {
+            if (pid >= th.getPartitions().length) {
+                return;
             }
-			return;
-        }
-		if (response != null) {
-            throw new TabletException(response.getMsg());
-        }
-        throw new TabletException("rtidb internal server error");
+            PartitionHandler ph = th.getHandler(pid);
+            TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+            Tablet.TraverseRequest.Builder builder = Tablet.TraverseRequest.newBuilder();
+            builder.setTid(th.getTableInfo().getTid());
+            builder.setPid(pid);
+            builder.setLimit(client.getConfig().getTraverseLimit());
+            if (idxName != null && !idxName.isEmpty()) {
+                builder.setIdxName(idxName);
+            }
+            if (client.getConfig().isRemoveDuplicateByTime()) {
+                builder.setEnableRemoveDuplicatedRecord(true);
+            }
+            if (offset != 0 && lastPid == pid) {
+                builder.setPk(lastPk);
+                builder.setTs(lastTime);
+            }
+            Tablet.TraverseRequest request = builder.build();
+            Tablet.TraverseResponse response = ts.traverse(request);
+            if (response != null && response.getCode() == 0) {
+                bs = response.getPairs();
+                bb = bs.asReadOnlyByteBuffer();
+                totalSize = this.bs.size();
+                offset = 0;
+                if (totalSize == 0) {
+                    pid++;
+                    continue;
+                }
+                lastPid = pid;
+                lastPk = response.getPk();
+                lastTime = response.getTs();
+                if (response.getCount() < client.getConfig().getTraverseLimit()) {
+                    pid++;
+                    if (pid >= th.getPartitions().length) {
+                        isFinished = true;
+                    }
+                }
+                return;
+            }
+            if (response != null) {
+                throw new TabletException(response.getMsg());
+            }
+            throw new TabletException("rtidb internal server error");
+        } while (true);
     }
 
     @Override

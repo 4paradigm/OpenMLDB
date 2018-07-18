@@ -68,11 +68,13 @@ public class TableSyncClientTest {
         nsc.dropTable(name);
         PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
+        PartitionMeta pm0_2 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(false).build();
+        PartitionMeta pm0_3 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(true).build();
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
         ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
         ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
         TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
-        TablePartition tp1 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
+        TablePartition tp1 = TablePartition.newBuilder().addPartitionMeta(pm0_3).addPartitionMeta(pm0_2).setPid(1).build();
         TableInfo table = TableInfo.newBuilder().setTtlType(ttlType).addTablePartition(tp0).addTablePartition(tp1)
                 .setSegCnt(8).setName(name).setTtl(10)
                 .addColumnDesc(col0).addColumnDesc(col1).addColumnDesc(col2)
@@ -210,7 +212,7 @@ public class TableSyncClientTest {
             Thread.sleep(200);
             KvIterator it = tableSyncClient.traverse(name, "card");
             Assert.assertTrue(it.valid());
-            /*Object[] row = it.getDecodedValue();
+            Object[] row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 9528);
             Assert.assertEquals(it.getPK(), "card0");
             Assert.assertEquals(row.length, 3);
@@ -221,18 +223,18 @@ public class TableSyncClientTest {
             Assert.assertTrue(it.valid());
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 9527);
-            Assert.assertEquals(it.getPK(), "card9527");
+            Assert.assertEquals(it.getPK(), "card0");
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc0");
             Assert.assertEquals(row[2], 9.15d);
             it.next();
-            Assert.assertFalse(it.valid());*/
-            /*for (int i = 0; i < 200; i++) {
+            Assert.assertFalse(it.valid());
+            for (int i = 0; i < 200; i++) {
                 rowMap = new HashMap<String, Object>();
-                rowMap.put("card", "card" + i + 9529);
+                rowMap.put("card", "card" + (i + 9529));
                 rowMap.put("mcc", "mcc" + i);
                 rowMap.put("amt", 9.2d);
-                ok = tableSyncClient.put(name, i, rowMap);
+                ok = tableSyncClient.put(name, i + 9529, rowMap);
                 Assert.assertTrue(ok);
             }
             it = tableSyncClient.traverse(name, "card");
@@ -240,7 +242,7 @@ public class TableSyncClientTest {
                 Assert.assertTrue(it.valid());
                 it.next();
             }
-            Assert.assertFalse(it.valid());*/
+            Assert.assertFalse(it.valid());
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);

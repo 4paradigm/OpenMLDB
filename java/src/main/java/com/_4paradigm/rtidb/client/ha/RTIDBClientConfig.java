@@ -53,12 +53,12 @@ public class RTIDBClientConfig {
         this.removeDuplicateByTime = removeDuplicateByTime;
     }
 
-    public void SetTraverseLimit(int limit) {
-        this.traverseLimit = limit;
-    }
-
     public int getTraverseLimit() {
         return traverseLimit;
+    }
+
+    public void setTraverseLimit(int traverseLimit) {
+        this.traverseLimit = traverseLimit;
     }
 
     public int getMaxRetryCnt() {
