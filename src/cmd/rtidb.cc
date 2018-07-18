@@ -58,6 +58,8 @@ DEFINE_string(log_dir, "", "Config the log dir");
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
+DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(absolute_ttl_max);
 
 void SetupLog() {
     // Config log 
@@ -1252,15 +1254,15 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         return;
     }
     if (ns_table_info.ttl_type() == "kAbsoluteTime") {
-        if (ns_table_info.ttl() > ::rtidb::client::ABSOLUTE_TIME_TTL_MAX) {
+        if (ns_table_info.ttl() > FLAGS_absolute_ttl_max) {
             std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
-                      << ::rtidb::client::ABSOLUTE_TIME_TTL_MAX << std::endl;
+                      << FLAGS_absolute_ttl_max << std::endl;
             return;
         }
     } else {
-        if (ns_table_info.ttl() > ::rtidb::client::KEEP_LATEST_MAX_NUM) {
+        if (ns_table_info.ttl() > FLAGS_latest_ttl_max) {
             std::cout << "Create failed. The max num of latest LatestTime is " 
-                      << ::rtidb::client::KEEP_LATEST_MAX_NUM << std::endl;
+                      << FLAGS_latest_ttl_max << std::endl;
             return;
         }
     }
@@ -1691,9 +1693,9 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
                     type = ::rtidb::api::TTLType::kLatestTime;
-                    if (ttl > ::rtidb::client::KEEP_LATEST_MAX_NUM) {
+                    if (ttl > FLAGS_latest_ttl_max) {
                         std::cout << "Create failed. The max num of latest LatestTime is " 
-                                  << ::rtidb::client::KEEP_LATEST_MAX_NUM << std::endl;
+                                  << FLAGS_latest_ttl_max << std::endl;
                         return;
                     }
                 } else {
@@ -1701,9 +1703,9 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
                     return;
                 }
             } else {
-                if (ttl > ::rtidb::client::ABSOLUTE_TIME_TTL_MAX) {
+                if (ttl > FLAGS_absolute_ttl_max) {
                     std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
-                              << ::rtidb::client::ABSOLUTE_TIME_TTL_MAX << std::endl;
+                              << FLAGS_absolute_ttl_max << std::endl;
                     return;
                 }
             }
@@ -2312,9 +2314,9 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         if (vec.size() > 1) {
             if (vec[0] == "latest") {
                 type = ::rtidb::api::TTLType::kLatestTime;
-                if (ttl > ::rtidb::client::KEEP_LATEST_MAX_NUM) {
+                if (ttl > FLAGS_latest_ttl_max) {
                     std::cout << "Create failed. The max num of latest LatestTime is " 
-                              << ::rtidb::client::KEEP_LATEST_MAX_NUM << std::endl;
+                              << FLAGS_latest_ttl_max << std::endl;
                     return;
                 }
             } else {
@@ -2322,9 +2324,9 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 return;
             }
         } else {
-            if (ttl > ::rtidb::client::ABSOLUTE_TIME_TTL_MAX) {
+            if (ttl > FLAGS_absolute_ttl_max) {
                 std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
-                          << ::rtidb::client::ABSOLUTE_TIME_TTL_MAX << std::endl;
+                          << FLAGS_absolute_ttl_max << std::endl;
                 return;
             }
         }        

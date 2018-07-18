@@ -18,9 +18,6 @@ namespace rtidb {
 namespace client {
 using ::rtidb::api::TaskInfo;
 
-const uint32_t KEEP_LATEST_MAX_NUM = 1000;
-const uint32_t ABSOLUTE_TIME_TTL_MAX= 15768000; // 60*24*365*30, 30years
-
 class TabletClient {
 
 public:

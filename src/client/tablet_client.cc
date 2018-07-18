@@ -12,6 +12,8 @@
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
+DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(absolute_ttl_max);
 DECLARE_bool(enable_show_tp);
 
 namespace rtidb {
@@ -59,11 +61,11 @@ bool TabletClient::CreateTable(const std::string& name,
     table_meta->set_tid(tid);
     table_meta->set_pid(pid);
     if (type == ::rtidb::api::kLatestTime) {
-        if (ttl > KEEP_LATEST_MAX_NUM) {
+        if (ttl > FLAGS_latest_ttl_max) {
             return false;
         }    
     } else {
-        if (ttl > ABSOLUTE_TIME_TTL_MAX) {
+        if (ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
     }
@@ -98,11 +100,11 @@ bool TabletClient::CreateTable(const std::string& name,
                      uint32_t seg_cnt, uint64_t term) {
     ::rtidb::api::CreateTableRequest request;
     if (type == ::rtidb::api::kLatestTime) {
-        if (ttl > KEEP_LATEST_MAX_NUM) {
+        if (ttl > FLAGS_latest_ttl_max) {
             return false;
         }    
     } else {
-        if (ttl > ABSOLUTE_TIME_TTL_MAX) {
+        if (ttl > FLAGS_absolute_ttl_max) {
             return false;
         }
     }
