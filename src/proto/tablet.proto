@@ -329,7 +329,8 @@ message SendDataRequest {
     required uint32 pid = 2;
     required string file_name = 3;
     required uint64 block_id = 4;
-    required uint32 block_size = 5;
+    optional uint32 block_size = 5;
+    optional bool eof = 6 [default = false];
 }
 
 message ChangeRoleResponse {
