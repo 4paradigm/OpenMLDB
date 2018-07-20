@@ -324,10 +324,12 @@ message SendSnapshotRequest {
     optional TaskInfo task_info = 4;
 }
 
-message CreateStreamRequest {
+message SendDataRequest {
     required uint32 tid = 1;
     required uint32 pid = 2;
     required string file_name = 3;
+    required uint64 block_id = 4;
+    required uint32 block_size = 5;
 }
 
 message ChangeRoleResponse {
@@ -448,7 +450,7 @@ service TabletServer {
     rpc RecoverSnapshot(GeneralRequest) returns(GeneralResponse);
     rpc SendSnapshot(SendSnapshotRequest) returns(GeneralResponse);
 
-    rpc CreateStream(CreateStreamRequest) returns(GeneralResponse);
+    rpc SendData(SendDataRequest) returns(GeneralResponse);
 
     rpc SetExpire(SetExpireRequest) returns(GeneralResponse);
     rpc SetTTLClock(SetTTLClockRequest) returns(GeneralResponse);

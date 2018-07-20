@@ -19,7 +19,6 @@
 #include <map>
 #include <list>
 #include <brpc/server.h>
-#include <brpc/stream.h>
 #include <mutex>
 
 using ::google::protobuf::RpcController;
@@ -38,23 +37,24 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
-class StreamReceiver : public brpc::StreamInputHandler {
+class FileReceiver {
 public:
-	StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid);
-	virtual ~StreamReceiver();
+    FileReceiver(const std::string& file_name, uint32_t tid, uint32_t pid);
+    ~FileReceiver();
+    FileReceiver(const FileReceiver&) = delete;
+    FileReceiver& operator = (const FileReceiver&) = delete;
     int Init();
-    virtual int on_received_messages(brpc::StreamId id,
-                    butil::IOBuf *const messages[],
-                    size_t size) override;
-    virtual void on_idle_timeout(brpc::StreamId id) override;
-    virtual void on_closed(brpc::StreamId id) override;
+    int WriteData(const std::string& data, uint64_t block_id);
+    void SaveFile();
+    uint64_t GetBlockId();
+
 private:
-	std::string file_name_;
+    std::string file_name_;
     uint32_t tid_;
     uint32_t pid_;
     uint64_t size_;
-	FILE* file_;
-	static ::rtidb::base::set<std::string> stream_receiver_set_;
+    uint64_t block_id_;
+    FILE* file_;
 };
 
 class TabletImpl : public ::rtidb::api::TabletServer {
@@ -143,8 +143,8 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
-    void CreateStream(RpcController* controller,
-            const ::rtidb::api::CreateStreamRequest* request,
+    void SendData(RpcController* controller,
+            const ::rtidb::api::SendDataRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
 
@@ -233,7 +233,8 @@ private:
 
     int SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid, const std::string& file_name);
 
-    int StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time);
+    int DataWrite(::rtidb::api::TabletServer_Stub& stub, uint32_t tid, uint32_t pid,
+                  const std::string& file_name, char* buffer, size_t len, uint64_t block_id, uint64_t limit_time);
 
     void SchedMakeSnapshot();
 
@@ -278,6 +279,7 @@ private:
     ThreadPool io_pool_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
+    std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
 };
 
 
