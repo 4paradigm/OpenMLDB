@@ -51,9 +51,9 @@
 #--gc_safe_offset=1
 
 # send file conf
----send_file_max_try=3
+#--send_file_max_try=3
 #--stream_close_wait_time_ms=1000
---stream_block_size=1048576
+#--stream_block_size=1048576
 --stream_bandwidth_limit=10485760
 #--request_max_retry=3
 #--request_timeout_ms=5000
