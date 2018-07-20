@@ -58,6 +58,8 @@ DEFINE_string(log_dir, "", "Config the log dir");
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
+DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(absolute_ttl_max);
 
 void SetupLog() {
     // Config log 
@@ -1251,6 +1253,19 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         std::cout << "create format error! ex: create table_meta_file | create name ttl partition_num replica_num [name:type:index ...]" << std::endl;
         return;
     }
+    if (ns_table_info.ttl_type() == "kAbsoluteTime") {
+        if (ns_table_info.ttl() > FLAGS_absolute_ttl_max) {
+            std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                      << FLAGS_absolute_ttl_max << std::endl;
+            return;
+        }
+    } else {
+        if (ns_table_info.ttl() > FLAGS_latest_ttl_max) {
+            std::cout << "Create failed. The max num of latest LatestTime is " 
+                      << FLAGS_latest_ttl_max << std::endl;
+            return;
+        }
+    }
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
@@ -1674,14 +1689,26 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         if (parts.size() > 4) {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[4], ":", &vec);
-            if (vec.size() > 1 && vec[0] == "latest") {
-                type = ::rtidb::api::TTLType::kLatestTime;
-            }
-            if (vec.size() > 1 && vec[0] != "latest") {
-                std::cout << "invalid ttl type" << std::endl;
-                return;
-            }
             ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
+            if (vec.size() > 1) {
+                if (vec[0] == "latest") {
+                    type = ::rtidb::api::TTLType::kLatestTime;
+                    if (ttl > FLAGS_latest_ttl_max) {
+                        std::cout << "Create failed. The max num of latest LatestTime is " 
+                                  << FLAGS_latest_ttl_max << std::endl;
+                        return;
+                    }
+                } else {
+                    std::cout << "invalid ttl type" << std::endl;
+                    return;
+                }
+            } else {
+                if (ttl > FLAGS_absolute_ttl_max) {
+                    std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                              << FLAGS_absolute_ttl_max << std::endl;
+                    return;
+                }
+            }
         }
         if (ttl < 0) {
             std::cout << "ttl should be equal or greater than 0" << std::endl;
@@ -2283,14 +2310,26 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(parts[4], ":", &vec);
-        if (vec.size() > 1 && vec[0] == "latest") {
-            type = ::rtidb::api::TTLType::kLatestTime;
-        }
-        if (vec.size() > 1 && vec[0] != "latest" ) {
-            std::cout << "invalid ttl type " << std::endl;
-            return;
-        }
         ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
+        if (vec.size() > 1) {
+            if (vec[0] == "latest") {
+                type = ::rtidb::api::TTLType::kLatestTime;
+                if (ttl > FLAGS_latest_ttl_max) {
+                    std::cout << "Create failed. The max num of latest LatestTime is " 
+                              << FLAGS_latest_ttl_max << std::endl;
+                    return;
+                }
+            } else {
+                std::cout << "invalid ttl type " << std::endl;
+                return;
+            }
+        } else {
+            if (ttl > FLAGS_absolute_ttl_max) {
+                std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                          << FLAGS_absolute_ttl_max << std::endl;
+                return;
+            }
+        }        
         if (ttl < 0) {
             std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
             return;
