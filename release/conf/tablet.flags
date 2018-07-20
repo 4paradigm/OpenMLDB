@@ -52,7 +52,6 @@
 
 # send file conf
 ---send_file_max_try=3
-
 #--stream_close_wait_time_ms=1000
 --stream_block_size=1048576
 --stream_bandwidth_limit=10485760
