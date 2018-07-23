@@ -50,9 +50,8 @@ DECLARE_string(recycle_bin_root_path);
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
-DECLARE_int32(stream_wait_time_ms);
 DECLARE_int32(stream_close_wait_time_ms);
-DECLARE_int32(stream_block_size);
+DECLARE_uint32(stream_block_size);
 DECLARE_int32(stream_bandwidth_limit);
 DECLARE_int32(send_file_max_try);
 DECLARE_int32(retry_send_file_wait_time_ms);
@@ -70,26 +69,19 @@ DECLARE_int32(binlog_delete_interval);
 namespace rtidb {
 namespace tablet {
 
-StreamReceiver::StreamReceiver(const std::string& file_name, uint32_t tid, uint32_t pid):
-        file_name_(file_name), tid_(tid), pid_(pid), size_(0), file_(NULL) {}
+FileReceiver::FileReceiver(const std::string& file_name, uint32_t tid, uint32_t pid):
+        file_name_(file_name), tid_(tid), pid_(pid), size_(0), block_id_(0), file_(NULL) {}
 
-StreamReceiver::~StreamReceiver() {
-    if (file_) {
-        fclose(file_);
-    }    
-    std::string combine_key = std::to_string(tid_) + "_" + std::to_string(pid_) + "_" + file_name_;
-    stream_receiver_set_.erase(combine_key);
+FileReceiver::~FileReceiver() {
+    if (file_) fclose(file_);
 }
 
-::rtidb::base::set<std::string> StreamReceiver::stream_receiver_set_;
-
-int StreamReceiver::Init() {
-    std::string combine_key = std::to_string(tid_) + "_" + std::to_string(pid_) + "_" + file_name_;
-    if (stream_receiver_set_.contain(combine_key)) {
-        PDLOG(WARNING, "stream is exist! tid[%u] pid[%u] file[%s]", tid_, pid_, file_name_.c_str());
-        return -1;
+int FileReceiver::Init() {
+    if (file_) {
+        fclose(file_);
+        file_ = NULL;
     }
-    stream_receiver_set_.insert(combine_key);
+    block_id_ = 0;
     std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
     if (file_name_ != "table_meta.txt") {
         tmp_file_path += "snapshot/";
@@ -99,7 +91,7 @@ int StreamReceiver::Init() {
         return -1;
     }
     std::string full_path = tmp_file_path + file_name_ + ".tmp";
-	FILE* file = fopen(full_path.c_str(), "wb");
+    FILE* file = fopen(full_path.c_str(), "wb");
     if (file == NULL) {
         PDLOG(WARNING, "fail to open file %s", full_path.c_str());
         return -1;
@@ -108,35 +100,31 @@ int StreamReceiver::Init() {
     return 0;
 }
 
-int StreamReceiver::on_received_messages(brpc::StreamId id,
-		butil::IOBuf *const messages[], size_t size) {
+uint64_t FileReceiver::GetBlockId() {
+	return block_id_;
+}
+
+int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
     if (file_ == NULL) {
         PDLOG(WARNING, "file is NULL");
+		return -1;
     }
-    for (size_t i = 0; i < size; i++) {
-        if (messages[i]->empty()) {
-            continue;
-        }
-        std::string data = messages[i]->to_string();
-        size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
-        if (r < data.size()) {
-            PDLOG(WARNING, "write error. tid[%u] pid[%u]", tid_, pid_);
-        }
-        size_ += r;
-    }
-	return 0;
+	size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
+	if (r < data.size()) {
+		PDLOG(WARNING, "write error. tid[%u] pid[%u]", tid_, pid_);
+		return -1;
+	}
+	size_ += r;
+	block_id_ = block_id;
+    return 0;
 }
 
-void StreamReceiver::on_idle_timeout(brpc::StreamId id) {
-    PDLOG(WARNING, "on_idle_timeout. tid %u pid %u", tid_, pid_);
-}
-
-void StreamReceiver::on_closed(brpc::StreamId id) {
+void FileReceiver::SaveFile() {
     std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
     if (file_name_ != "table_meta.txt") {
         full_path += "snapshot/";
     }
-	full_path += file_name_;
+    full_path += file_name_;
     std::string tmp_file_path = full_path + ".tmp";
     if (::rtidb::base::IsExists(full_path)) {
         std::string backup_file = full_path + "." + ::rtidb::base::GetNowTime();
@@ -144,8 +132,6 @@ void StreamReceiver::on_closed(brpc::StreamId id) {
     }
     rename(tmp_file_path.c_str(), full_path.c_str());
     PDLOG(INFO, "file %s received. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
-    brpc::StreamClose(id);
-    delete this;
 }
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
@@ -1061,45 +1047,80 @@ void TabletImpl::SchedMakeSnapshot() {
     task_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 }
 
-void TabletImpl::CreateStream(RpcController* controller,
-            const ::rtidb::api::CreateStreamRequest* request,
+void TabletImpl::SendData(RpcController* controller,
+            const ::rtidb::api::SendDataRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
     brpc::Controller *cntl = static_cast<brpc::Controller*>(controller);
-    std::lock_guard<std::mutex> lock(mu_);
     uint32_t tid = request->tid(); 
     uint32_t pid = request->pid(); 
-    std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
-    if (table) {
-        PDLOG(WARNING, "table is exist. tid %u, pid %u", tid, pid);
-        response->set_code(-1);
-        response->set_msg("table is exist");
+	std::string combine_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + request->file_name();
+	std::shared_ptr<FileReceiver> receiver;
+	{
+    	std::lock_guard<std::mutex> lock(mu_);
+		auto iter = file_receiver_map_.find(combine_key);
+		if (request->block_id() == 0) {
+            std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
+            if (table) {
+                PDLOG(WARNING, "table is exist. tid %u, pid %u", tid, pid);
+                response->set_code(-1);
+                response->set_msg("table is exist");
+                return;
+            }
+		    if (iter == file_receiver_map_.end()) {
+				file_receiver_map_.insert(std::make_pair(combine_key, std::make_shared<FileReceiver>(request->file_name(), tid, pid)));
+                iter = file_receiver_map_.find(combine_key);
+            }
+            if (iter->second->Init() < 0) {
+                PDLOG(WARNING, "file receiver init failed. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
+                response->set_code(-1);
+                response->set_msg("file receiver init failed");
+                file_receiver_map_.erase(iter);
+                return;
+            }
+            PDLOG(INFO, "file receiver init ok. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
+            response->set_code(0);
+            response->set_msg("ok");
+		} else if (iter == file_receiver_map_.end()){
+            PDLOG(WARNING, "cannot find receiver. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
+            response->set_code(-1);
+            response->set_msg("cannot find receiver");
+            return;
+        }
+		receiver = iter->second;
+	}
+	if (receiver->GetBlockId() == request->block_id()) {
+		response->set_msg("ok");
+		response->set_code(0);
+		return;
+	}
+	if (request->block_id() != receiver->GetBlockId() + 1) {
+		response->set_msg("block_id is not match");
+		PDLOG(WARNING, "block_id is not match. tid %u, pid %u, file_name %s, request block_id %lu cur block_id %lu", 
+                        tid, pid, request->file_name().c_str(), request->block_id(), receiver->GetBlockId());
+		response->set_code(-1);
+		return;
+	}
+	std::string data = cntl->request_attachment().to_string();
+    if (data.length() != request->block_size()) {
+		PDLOG(WARNING, "receive data error. tid %u, pid %u, file_name %s, expected length %u real length %u", 
+                        tid, pid, request->file_name().c_str(), request->block_size(), data.length());
+		response->set_code(-1);
+		response->set_msg("receive data error");
         return;
     }
-    StreamReceiver* stream_receiver = new StreamReceiver(request->file_name(), tid, pid);
-	if (stream_receiver->Init() < 0) {
-        delete stream_receiver;
-        response->set_code(-1);
-        response->set_msg("stream_receiver init failed");
-        PDLOG(WARNING, "init stream_receiver failed. remote side %s file %s", 
-                        butil::endpoint2str(cntl->remote_side()).c_str(), request->file_name().c_str());
+	if (receiver->WriteData(data, request->block_id()) < 0) {
+		PDLOG(WARNING, "receiver write data failed. tid %u, pid %u, file_name %s", tid, pid, request->file_name().c_str());
+		response->set_code(-1);
+		response->set_msg("receiver write data failed");
         return;
+	}
+    if (request->eof()) {
+        receiver->SaveFile();
+        std::lock_guard<std::mutex> lock(mu_);
+        file_receiver_map_.erase(combine_key);
     }
-    brpc::StreamOptions stream_options;
-    stream_options.handler = stream_receiver;
-    brpc::StreamId sd;
-    if (brpc::StreamAccept(&sd, *cntl, &stream_options) != 0) {
-        delete stream_receiver;
-        cntl->SetFailed("Fail to accept stream");
-        PDLOG(WARNING, "accept stream from %s failed. file %s", 
-                        butil::endpoint2str(cntl->remote_side()).c_str(), 
-                        request->file_name().c_str());
-        return;
-    }
-    PDLOG(INFO, "create stream succeed. remote side %s file %s tid %u pid %u", 
-                 butil::endpoint2str(cntl->remote_side()).c_str(),
-                 request->file_name().c_str(), tid, pid);
     response->set_msg("ok");
     response->set_code(0);
 }
@@ -1231,143 +1252,130 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
         return -1;
     }
     PDLOG(INFO, "send file %s to %s. size[%lu]", full_path.c_str(), endpoint.c_str(), file_size);
-    int try_times = FLAGS_send_file_max_try;   
+    int try_times = FLAGS_send_file_max_try;
     do {
-        if (try_times < FLAGS_send_file_max_try) {
-            std::this_thread::sleep_for(std::chrono::milliseconds((FLAGS_send_file_max_try - try_times) * 
+       if (try_times < FLAGS_send_file_max_try) {
+            std::this_thread::sleep_for(std::chrono::milliseconds((FLAGS_send_file_max_try - try_times) *
                     FLAGS_retry_send_file_wait_time_ms));
             PDLOG(INFO, "retry to send file %s to %s. total size[%lu]", full_path.c_str(), endpoint.c_str(), file_size);
         }
         try_times--;
-        brpc::Channel channel;
-        brpc::ChannelOptions options;
-        SleepRetryPolicy sleep_retry_policy;
-        options.retry_policy = &sleep_retry_policy;
-        options.protocol = brpc::PROTOCOL_BAIDU_STD;
-        options.timeout_ms = FLAGS_request_timeout_ms;
-        options.connect_timeout_ms = FLAGS_request_timeout_ms;
-        options.max_retry = FLAGS_request_max_retry;
-        if (channel.Init(endpoint.c_str(), "", &options) != 0) {
-            PDLOG(WARNING, "init channel failed. endpoint[%s] tid[%u] pid[%u]", 
-                            endpoint.c_str(), tid, pid);
-            continue;
-        }
-        ::rtidb::api::TabletServer_Stub stub(&channel);
-        brpc::Controller cntl;
-        brpc::StreamId stream;
-        cntl.set_timeout_ms(FLAGS_request_timeout_ms);
-        cntl.set_max_retry(FLAGS_request_max_retry);
-        if (brpc::StreamCreate(&stream, cntl, NULL) != 0) {
-            PDLOG(WARNING, "create stream failed. endpoint[%s] tid[%u] pid[%u]", 
-                            endpoint.c_str(), tid, pid);
-            continue;
-        }
-        FILE* file = fopen(full_path.c_str(), "rb");
-        if (file == NULL) {
-            PDLOG(WARNING, "fail to open file %s", full_path.c_str());
-            return -1;
-        }
-        ::rtidb::api::CreateStreamRequest request;
-        ::rtidb::api::GeneralResponse response;
-        request.set_tid(tid);
-        request.set_pid(pid);
-        request.set_file_name(file_name);
-        stub.CreateStream(&cntl, &request, &response, NULL);
-        if (cntl.Failed()) {
-            PDLOG(WARNING, "connect stream failed. tid[%u] pid[%u] error msg: %s", 
-                            tid, pid, cntl.ErrorText().c_str());
-            fclose(file);
-            continue;
-        }
-        char buffer[FLAGS_stream_block_size];
-        // compute the used time(microseconds) that send a block by limit bandwidth. 
-        // limit_time = (FLAGS_stream_block_size / FLAGS_stream_bandwidth_limit) * 1000 * 1000 
-        uint64_t limit_time = 0;
-        if (FLAGS_stream_bandwidth_limit > 0) {
-            limit_time = ((uint64_t)FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
-        }    
-        uint64_t block_num = file_size / (uint64_t)FLAGS_stream_block_size + 1;
-        uint64_t report_block_num = block_num / 100;
-        int ret = 0;
-        uint64_t block_count = 0;
-        while (true) {
-            size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
-            if (len < (uint32_t)FLAGS_stream_block_size) {
-                if (feof(file)) {
-                    if (len > 0) {
-                        ret = StreamWrite(stream, buffer, len, limit_time);
-                    }
-                    break;
-                }
-                PDLOG(WARNING, "read file %s error. error message: %s", file_name.c_str(), strerror(errno));
-                ret = -1;
-                break;
-            }
-            if (StreamWrite(stream, buffer, len, limit_time) < 0) {
-                PDLOG(WARNING, "stream write failed. tid[%u] pid[%u] file %s", tid, pid, file_name.c_str());
-                ret = -1;
-                break;
-            }
-            block_count++;
-            if (report_block_num == 0 || block_count % report_block_num == 0) {
-                PDLOG(INFO, "send block num[%lu] total block num[%lu]. tid[%u] pid[%u] file[%s]", 
-                            block_count, block_num, tid, pid, file_name.c_str());
-            }
-        }
-        fclose(file);
-        brpc::StreamClose(stream);
-        if (ret == -1) {
-            continue;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_stream_close_wait_time_ms));
-        // check file
-        ::rtidb::api::CheckFileRequest check_request;
-        check_request.set_tid(tid);
-        check_request.set_pid(pid);
-        check_request.set_file(file_name);
-        check_request.set_size(file_size);
-        brpc::Controller cntl1;
-        stub.CheckFile(&cntl1, &check_request, &response, NULL);
-        if (cntl1.Failed()) {
-            PDLOG(WARNING, "check file[%s] request failed. tid[%u] pid[%u] error msg: %s", 
-                            file_name.c_str(), tid, pid, cntl1.ErrorText().c_str());
-            continue;
-        }
-        if (response.code() == 0) {
-            PDLOG(INFO, "send file[%s] success. tid[%u] pid[%u]", file_name.c_str(), tid, pid);
-            return 0;
-        }
-        PDLOG(WARNING, "check file[%s] failed. tid[%u] pid[%u]", file_name.c_str(), tid, pid);
-    } while (try_times > 0);
+		brpc::Channel channel;
+		brpc::ChannelOptions options;
+		options.timeout_ms = FLAGS_request_timeout_ms;
+		options.connect_timeout_ms = FLAGS_request_timeout_ms;
+		options.max_retry = FLAGS_request_max_retry;
+		if (channel.Init(endpoint.c_str(), "", &options) != 0) {
+			PDLOG(WARNING, "init channel failed. endpoint[%s] tid[%u] pid[%u]",
+							endpoint.c_str(), tid, pid);
+			continue;
+		}
+		::rtidb::api::TabletServer_Stub stub(&channel);
+		FILE* file = fopen(full_path.c_str(), "rb");
+		if (file == NULL) {
+			PDLOG(WARNING, "fail to open file %s", full_path.c_str());
+			return -1;
+		}
+		char buffer[FLAGS_stream_block_size];
+		// compute the used time(microseconds) that send a block by limit bandwidth. 
+		// limit_time = (FLAGS_stream_block_size / FLAGS_stream_bandwidth_limit) * 1000 * 1000 
+		uint64_t limit_time = 0;
+		if (FLAGS_stream_bandwidth_limit > 0) {
+			limit_time = (FLAGS_stream_block_size * 1000000) / FLAGS_stream_bandwidth_limit;
+		}    
+		uint64_t block_num = file_size / FLAGS_stream_block_size + 1;
+		uint64_t report_block_num = block_num / 100;
+		int ret = 0;
+		uint64_t block_count = 0;
+		do {
+			if (block_count == 0 && DataWrite(stub, tid, pid, file_name, buffer, 0, block_count, limit_time) < 0) {
+				PDLOG(WARNING, "Init file receiver failed. tid[%u] pid[%u] file %s", tid, pid, file_name.c_str());
+				ret = -1;   
+				break;
+			}
+			block_count++;
+			size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
+			if (len < FLAGS_stream_block_size) {
+				if (feof(file)) {
+					if (len > 0) {
+						ret = DataWrite(stub, tid, pid, file_name, buffer, len, block_count, limit_time);
+					}
+					break;
+				}
+				PDLOG(WARNING, "read file %s error. error message: %s", file_name.c_str(), strerror(errno));
+				ret = -1;
+				break;
+			}
+			if (DataWrite(stub, tid, pid, file_name, buffer, len, block_count, limit_time) < 0) {
+				PDLOG(WARNING, "data write failed. tid[%u] pid[%u] file %s", tid, pid, file_name.c_str());
+				ret = -1;
+				break;
+			}
+			if (report_block_num == 0 || block_count % report_block_num == 0) {
+				PDLOG(INFO, "send block num[%lu] total block num[%lu]. tid[%u] pid[%u] file[%s]", 
+							block_count, block_num, tid, pid, file_name.c_str());
+			}
+		} while(true);
+		fclose(file);
+		if (ret == -1) {
+			continue;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_stream_close_wait_time_ms));
+		// check file
+		::rtidb::api::CheckFileRequest check_request;
+		::rtidb::api::GeneralResponse response;
+		check_request.set_tid(tid);
+		check_request.set_pid(pid);
+		check_request.set_file(file_name);
+		check_request.set_size(file_size);
+		brpc::Controller cntl1;
+		stub.CheckFile(&cntl1, &check_request, &response, NULL);
+		if (cntl1.Failed()) {
+			PDLOG(WARNING, "check file[%s] request failed. tid[%u] pid[%u] error msg: %s", 
+							file_name.c_str(), tid, pid, cntl1.ErrorText().c_str());
+			continue;
+		}
+		if (response.code() == 0) {
+			PDLOG(INFO, "send file[%s] success. tid[%u] pid[%u]", file_name.c_str(), tid, pid);
+			return 0;
+		}
+		PDLOG(WARNING, "check file[%s] failed. tid[%u] pid[%u]", file_name.c_str(), tid, pid);
+	} while (try_times > 0);
     return -1;
 }
 
-int TabletImpl::StreamWrite(brpc::StreamId stream, char* buffer, size_t len, uint64_t limit_time) {
+int TabletImpl::DataWrite(::rtidb::api::TabletServer_Stub& stub, uint32_t tid, uint32_t pid,
+			const std::string& file_name, char* buffer, size_t len, uint64_t block_id, uint64_t limit_time) {
     if (buffer == NULL) {
         return -1;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros();
-	butil::IOBuf data;
-    data.clear();
-    data.append(buffer, len);
-    while (true) {
-        int ret_code = brpc::StreamWrite(stream, data);
-        if (ret_code == 0) {
-            break;
-        } else if (ret_code == EAGAIN) {
-            const timespec duetime = butil::milliseconds_from_now(FLAGS_stream_wait_time_ms);
-            if (brpc::StreamWait(stream, &duetime) == EINVAL) {
-                PDLOG(WARNING, "stream closed!");
-                return -1;
-            }
-            PDLOG(DEBUG, "ret_code is EAGAIN. wait %d milliseconds", FLAGS_stream_wait_time_ms);
-        } else { 
-            PDLOG(WARNING, "stream write failed");
-            return -1;
-        }
+	::rtidb::api::SendDataRequest request;
+	request.set_tid(tid);
+	request.set_pid(pid);
+	request.set_file_name(file_name);
+	request.set_block_id(block_id);
+	request.set_block_size(len);
+    brpc::Controller cntl;
+    if (block_id > 0) {
+        cntl.request_attachment().append(buffer, len);
+    }
+    if (len > 0 && len < FLAGS_stream_block_size) {
+        request.set_eof(true);
+    }
+    ::rtidb::api::GeneralResponse response;
+    stub.SendData(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+        PDLOG(WARNING, "send data failed. tid %u pid %u file %s error msg %s", 
+                        tid, pid, file_name.c_str(), cntl.ErrorText().c_str());
+        return -1;
+    } else if (response.code() != 0) {
+        PDLOG(WARNING, "send data failed. tid %u pid %u file %s error msg %s", 
+                        tid, pid, file_name.c_str(), response.msg().c_str());
+        return -1;
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() - cur_time;
-    if (limit_time > time_used && len > (uint64_t)FLAGS_stream_block_size / 2) {
+    if (limit_time > time_used && len > FLAGS_stream_block_size / 2) {
         PDLOG(DEBUG, "sleep %lu us, limit_time %lu time_used %lu", limit_time - time_used, limit_time, time_used);
         std::this_thread::sleep_for(std::chrono::microseconds(limit_time - time_used));
     }

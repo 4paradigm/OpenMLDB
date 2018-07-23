@@ -40,8 +40,6 @@ request_max_retry  请求失败时的最大重试次数
 
 **get_concurrency_limit**  配置get的最大并发数
 
-stream_wait_time_ms  streaming发送数据失败时的等待时间, 单位是ms
-
 stream_close_wait_time_ms  streaming发送数据完毕后的等待时间, 单位是ms
 
 stream_block_size  streaming一次发送数据块的最大值, 单位是byte
