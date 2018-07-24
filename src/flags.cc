@@ -61,10 +61,9 @@ DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_int32(send_file_max_try, 3, "the max retry time when send file failed");
 DEFINE_int32(retry_send_file_wait_time_ms, 3000, "conf the wait time when retry send file");
-DEFINE_int32(stream_wait_time_ms, 5, "the wait time when send too fast");
 DEFINE_int32(stream_close_wait_time_ms, 1000, "the wait time before close stream");
-DEFINE_int32(stream_block_size, 4 * 1024 * 1024, "config the write/read block size in streaming");
-DEFINE_int32(stream_bandwidth_limit, 1 * 1204 * 1024, "the limit bandwidth. Byte/Second");
+DEFINE_uint32(stream_block_size, 1 * 1204 * 1024, "config the write/read block size in streaming");
+DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024, "the limit bandwidth. Byte/Second");
 
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
