@@ -13,6 +13,7 @@
 #include <strings.h>
 #include "base/strings.h"
 #include <chrono>
+#include <boost/algorithm/string.hpp>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -27,6 +28,8 @@ DECLARE_uint32(partition_num);
 DECLARE_uint32(replica_num);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
+DECLARE_uint32(tablet_offline_interval);
+DECLARE_uint32(tablet_offline_check_interval);
 
 namespace rtidb {
 namespace nameserver {
@@ -42,6 +45,7 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     std::string zk_op_path = FLAGS_zk_root_path + "/op";
     zk_op_index_node_ = zk_op_path + "/op_index";
     zk_op_data_path_ = zk_op_path + "/op_data";
+    zk_offline_endpoint_lock_node_ = FLAGS_zk_root_path + "/offline_endpoint_lock";
     std::string zk_config_path = FLAGS_zk_root_path + "/config";
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
     zk_auto_recover_table_node_ = zk_config_path + "/auto_recover_table";
@@ -157,7 +161,19 @@ bool NameServerImpl::Recover() {
         PDLOG(WARNING, "recover task failed!");
         return false;
     }
+    RecoverOfflineTablet();
     return true;
+}
+
+void NameServerImpl::RecoverOfflineTablet() {
+    offline_endpoint_map_.clear();
+    for(const auto& tablet : tablets_) {
+        if (tablet.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            offline_endpoint_map_.insert(std::make_pair(tablet.first, tablet.second->ctime_));
+            thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tablet.first, false));
+            PDLOG(INFO, "recover offlinetablet. endpoint %s", tablet.first.c_str());
+        }
+    }
 }
 
 bool NameServerImpl::RecoverTableInfo() {
@@ -479,17 +495,51 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint[%s]", tit->first.c_str());
             tit->second->state_ = ::rtidb::api::TabletState::kTabletOffline;
-            thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first));
+            tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            if (offline_endpoint_map_.find(tit->first) == offline_endpoint_map_.end()) {
+                offline_endpoint_map_.insert(std::make_pair(tit->first, tit->second->ctime_));
+                thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first, false));
+            } else {
+                offline_endpoint_map_[tit->first] = tit->second->ctime_;
+            }
         }
     }
 }
 
-void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
+void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_flag) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
+    auto tit = tablets_.find(endpoint);
+    if (tit == tablets_.end()) {
+        PDLOG(WARNING, "cannot find endpoint %s in tablet map", endpoint.c_str());
+        return;
+    }
+    auto iter = offline_endpoint_map_.find(endpoint);
+    if (iter == offline_endpoint_map_.end()) {
+        PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map", endpoint.c_str());
+        return;
+    }
+    if (!startup_flag && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+        PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
+        offline_endpoint_map_.erase(iter);
+        return;
+    }
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    if (!startup_flag && cur_time < iter->second + FLAGS_tablet_offline_interval) {
+        thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
+        return;
+    }
+    if (zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) == 0) {
+        PDLOG(WARNING, "offline endpoint lock node is exist! endpoint %s", endpoint.c_str());
+        return;
+    }
+    if (!zk_client_->CreateNode(zk_offline_endpoint_lock_node_ + "/" + endpoint, "1")) {
+        PDLOG(WARNING, "create offline endpoint lock node failed! endpoint %s", endpoint.c_str());
+        return;
+    }
     for (const auto& kv : table_info_) {
         if (!auto_failover_.load(std::memory_order_acquire)) {
             CreateUpdateTableAliveOP(kv.second->name(), endpoint, false);
@@ -524,6 +574,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
             CreateDelReplicaOP(kv.first, pid, endpoint, ::rtidb::api::OPType::kOfflineReplicaOP);
         }
     }
+    offline_endpoint_map_.erase(iter);
 }
 
 void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
@@ -531,6 +582,22 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    std::string value;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/nodes/" + endpoint, value)) {
+            PDLOG(WARNING, "get tablet node value failed");
+            return;
+        }
+    }
+    if (boost::starts_with(value, "startup_")) {
+        PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
+        OnTabletOffline(endpoint, true);
+    }
+    RecoverEndpoint(endpoint);
+}
+
+void NameServerImpl::RecoverEndpoint(const std::string& endpoint) {
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
@@ -542,6 +609,9 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
                 }
             }
         }
+    }
+    if (!zk_client_->DeleteNode(zk_offline_endpoint_lock_node_ + "/" + endpoint)) {
+        PDLOG(WARNING, "offline endpoint lock node delete failed. endpoint[%s]", endpoint.c_str());
     }
 }
 
@@ -583,6 +653,8 @@ bool NameServerImpl::Init() {
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
         zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
+    } else {
+        UpdateTablets(endpoints);
     }
     zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
     zk_client_->WatchNodes();
@@ -1354,7 +1426,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
             return;
         }
     }
-    OnTabletOnline(endpoint);
+    RecoverEndpoint(endpoint);
     response->set_code(0);
     response->set_msg("ok");
 }

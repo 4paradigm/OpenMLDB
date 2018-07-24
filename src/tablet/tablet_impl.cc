@@ -191,7 +191,7 @@ bool TabletImpl::Init() {
 
 bool TabletImpl::RegisterZK() {
     if (!FLAGS_zk_cluster.empty()) {
-        if (!zk_client_->Register()) {
+        if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register tablet with endpoint %s", FLAGS_endpoint.c_str());
             return false;
         }

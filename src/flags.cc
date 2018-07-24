@@ -10,6 +10,8 @@
 DEFINE_string(endpoint, "", "config the ip and port that rtidb serves for");
 DEFINE_int32(port, 0, "config the port that rtidb serves for");
 DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
+DEFINE_uint32(tablet_offline_interval, 5 * 60 * 1000, "config the interval of tablet offline");
+DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline");
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep alive check");

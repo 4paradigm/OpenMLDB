@@ -234,9 +234,13 @@ private:
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
 
-    void OnTabletOffline(const std::string& endpoint);
+    void OnTabletOffline(const std::string& endpoint, bool startup_flag);
+
+    void RecoverOfflineTablet();
 
     void OnTabletOnline(const std::string& endpoint);
+
+    void RecoverEndpoint(const std::string& endpoint);
 
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
@@ -359,6 +363,7 @@ private:
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
+    std::string zk_offline_endpoint_lock_node_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;
@@ -372,6 +377,7 @@ private:
     std::atomic<bool> auto_recover_table_;
     std::map<std::string, std::list<uint64_t>> ordered_op_map_;
     std::set<::rtidb::api::OPType> ordered_op_type_;
+    std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
 };
 
