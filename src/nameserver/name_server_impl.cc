@@ -28,7 +28,7 @@ DECLARE_uint32(partition_num);
 DECLARE_uint32(replica_num);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
-DECLARE_uint32(tablet_offline_interval);
+DECLARE_uint32(tablet_heartbeat_timeout);
 DECLARE_uint32(tablet_offline_check_interval);
 
 namespace rtidb {
@@ -526,7 +526,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         return;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    if (!startup_flag && cur_time < iter->second + FLAGS_tablet_offline_interval) {
+    if (!startup_flag && cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
         thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
         return;
     }

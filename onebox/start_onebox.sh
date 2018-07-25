@@ -44,20 +44,20 @@ test -d recycle_bin2 && rm -rf recycle_bin2
 ../build/bin/rtidb --endpoint=127.0.0.1:9622 --role=nameserver \
                    --zk_cluster=127.0.0.1:6181\
                    --tablet_offline_check_interval=1\
-                   --tablet_offline_interval=1\
+                   --tablet_heartbeat_timeout=1\
                    --zk_root_path=/onebox > ns1.log 2>&1 &
 
 # start ns2 
 ../build/bin/rtidb --endpoint=127.0.0.1:9623 --role=nameserver \
                    --zk_cluster=127.0.0.1:6181\
                    --tablet_offline_check_interval=1\
-                   --tablet_offline_interval=1\
+                   --tablet_heartbeat_timeout=1\
                    --zk_root_path=/onebox > ns2.log 2>&1 &
 
 # start ns3 
 ../build/bin/rtidb --endpoint=127.0.0.1:9624 --role=nameserver \
                    --tablet_offline_check_interval=1\
-                   --tablet_offline_interval=1\
+                   --tablet_heartbeat_timeout=1\
                    --zk_cluster=127.0.0.1:6181\
                    --zk_root_path=/onebox > ns3.log 2>&1 &
 

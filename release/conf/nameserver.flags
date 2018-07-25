@@ -17,8 +17,10 @@
 --request_timeout_ms=5000
 #--request_sleep_time=1000
 
-#--zk_session_timeout=2000
+--zk_session_timeout=10000
 #--zk_keep_alive_check_interval=5000
+--tablet_heartbeat_timeout=300000
+#--tablet_offline_check_interval=1000
 
 #--name_server_task_pool_size=8
 #--name_server_task_wait_time=1000
