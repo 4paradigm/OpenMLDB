@@ -2753,6 +2753,8 @@ void StartClient() {
 
 void StartNsClient() {
     std::string endpoint;
+    std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+        << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     if (!FLAGS_zk_cluster.empty()) {
         ZkClient zk_client(FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
         if (!zk_client.Init()) {
