@@ -480,9 +480,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
                 tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
-                if (auto_recover_table_.load(std::memory_order_acquire)) {
-                    thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
-                }
+                thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
             }
         }
         PDLOG(INFO, "healthy tablet with endpoint[%s]", it->c_str());
@@ -594,7 +592,9 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
         OnTabletOffline(endpoint, true);
     }
-    RecoverEndpoint(endpoint);
+    if (auto_recover_table_.load(std::memory_order_acquire)) {
+        RecoverEndpoint(endpoint);
+    }
 }
 
 void NameServerImpl::RecoverEndpoint(const std::string& endpoint) {
