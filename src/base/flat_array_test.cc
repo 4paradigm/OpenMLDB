@@ -48,11 +48,12 @@ TEST_F(FlatArrayTest, Encode) {
     FlatArrayCodec codec(&buffer, 2);
     bool ok = codec.Append(1.2f);
     ASSERT_TRUE(ok);
-    ok = codec.Append("helloworld");
+    ok = codec.Append(1.0f);
     ASSERT_TRUE(ok);
     codec.Build();
-    ASSERT_TRUE(buffer.size() == 19);
+    std::cout << buffer.size() << std::endl;
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+    ASSERT_TRUE(buffer.size() == 13);
     FlatArrayIterator it(buffer.c_str(), buffer.size());
     ASSERT_EQ(kFloat, it.GetType());
     ASSERT_TRUE(it.Valid());
@@ -62,12 +63,11 @@ TEST_F(FlatArrayTest, Encode) {
     ASSERT_TRUE(ok);
     ASSERT_EQ(1.2f, value);
     std::cout << value << std::endl;
-    std::string value2;
     it.Next();
     ASSERT_TRUE(it.Valid());
-    ok = it.GetString(&value2);
+    ok = it.GetFloat(&value);
     ASSERT_TRUE(ok);
-    ASSERT_EQ("helloworld", value2);
+    ASSERT_EQ(1.0f, value);
     it.Next();
     ASSERT_FALSE(it.Valid());
     std::string buffer2;
@@ -85,6 +85,42 @@ TEST_F(FlatArrayTest, Encode1) {
     ASSERT_TRUE(ok);
     double v = 1.0;
     ok = codec.Append(v);
+    ASSERT_TRUE(ok);
+    codec.Build();
+    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+}
+
+TEST_F(FlatArrayTest, TimestampEncode) {
+    std::string buffer;
+    FlatArrayCodec codec(&buffer, 3);
+    bool ok = codec.Append("test");
+    ASSERT_TRUE(ok);
+    double v = 1.0;
+    ok = codec.Append(v);
+    ASSERT_TRUE(ok);
+    ok = codec.AppendTimestamp(11111);
+    ASSERT_TRUE(ok);
+    codec.Build();
+    std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
+}
+
+TEST_F(FlatArrayTest, DateEncode) {
+    std::string buffer;
+    FlatArrayCodec codec(&buffer, 6);
+    bool ok = codec.Append("test");
+    ASSERT_TRUE(ok);
+    double v = 1.0;
+    ok = codec.Append(v);
+    ASSERT_TRUE(ok);
+    ok = codec.AppendDate(11111);
+    ASSERT_TRUE(ok);
+    ok = codec.Append(true);
+    ASSERT_TRUE(ok);
+    uint16_t value = 10;
+    ok = codec.Append(value);
+    ASSERT_TRUE(ok);
+    int16_t value2 = -10;
+    ok = codec.Append(value2);
     ASSERT_TRUE(ok);
     codec.Build();
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;

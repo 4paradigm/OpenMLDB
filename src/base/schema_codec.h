@@ -29,6 +29,11 @@ enum ColType {
     kNull = 5,
     kUInt32 = 6,
     kUInt64 = 7,
+    kTimestamp = 8,
+    kDate = 9,
+    kInt16 = 10,
+    kUInt16 = 11,
+    kBool = 12,
     kUnknown = 100
 };
 
@@ -129,6 +134,16 @@ public:
                 type = ::rtidb::base::ColType::kDouble;
             } else if (raw_type == "string") {
                 type = ::rtidb::base::ColType::kString;
+            } else if (raw_type == "timestamp") {
+                type = ::rtidb::base::ColType::kTimestamp;
+            } else if (raw_type == "int16") {
+                type = ::rtidb::base::ColType::kInt16;
+            } else if (raw_type == "uint16"){
+                type = ::rtidb::base::ColType::kUInt16;
+            } else if (raw_type == "bool"){
+                type = ::rtidb::base::ColType::kBool;
+            } else if (raw_type == "date") {
+                type = ::rtidb::base::ColType::kDate;
             } else {
                 return -1;
             }
@@ -150,7 +165,6 @@ private:
         }
         return byte_size;
     }
-
 };
 
 }
