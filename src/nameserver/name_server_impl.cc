@@ -593,6 +593,13 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         OnTabletOffline(endpoint, true);
     }
     if (auto_recover_table_.load(std::memory_order_acquire)) {
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) != 0) {
+                PDLOG(WARNING, "offline endpoint lock node is not exist, need not recover. endpoint %s", endpoint.c_str());
+                return;
+            }
+        }
         RecoverEndpoint(endpoint);
     }
 }
@@ -2519,9 +2526,9 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                 }
                 if (iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
                     if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                        PDLOG(WARNING, "endpoint[%s] is alive, need not recover. name[%s] pid[%u]", 
+                        PDLOG(INFO, "endpoint[%s] is alive, need not recover. name[%s] pid[%u]", 
                                         endpoint.c_str(), name.c_str(), pid);
-                        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                        task_info->set_status(::rtidb::api::TaskStatus::kDone);
                         return;
                     }
                     auto tablet_iter = tablets_.find(endpoint);
