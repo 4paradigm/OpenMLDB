@@ -1,8 +1,8 @@
 fields:
   log_type: raw
-  namespace: rtidb
-  pod_name: rtidb
+  namespace: tablet
+  pod_name: docker02
 fields_under_root: true
 paths:
-- ./logs/rtidb.info.log*
+- ./logs/tablet*
 type: log

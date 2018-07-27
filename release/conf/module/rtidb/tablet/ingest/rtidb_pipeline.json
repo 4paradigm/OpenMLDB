@@ -1,0 +1,18 @@
+{
+  "on_failure": [
+    {
+      "set": {
+        "field": "error.message", 
+        "value": "{{ _ingest.on_failure_message }}"
+      }
+    }, 
+    {
+      "script": {
+        "lang": "painless", 
+        "inline": "ctx.remove(\"split_message\");"
+      }
+    }
+  ], 
+  "description": "rtidb-accesslog pipeline", 
+  "processors": []
+}
