@@ -1312,8 +1312,8 @@ int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid
 				break;
 			}
 			if (report_block_num == 0 || block_count % report_block_num == 0) {
-				PDLOG(INFO, "send block num[%lu] total block num[%lu]. tid[%u] pid[%u] file[%s]", 
-							block_count, block_num, tid, pid, file_name.c_str());
+				PDLOG(INFO, "send block num[%lu] total block num[%lu]. tid[%u] pid[%u] file[%s] endpoint[%s]", 
+							block_count, block_num, tid, pid, file_name.c_str(), endpoint.c_str());
 			}
 		} while(true);
 		fclose(file);
