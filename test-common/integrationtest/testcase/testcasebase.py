@@ -167,6 +167,8 @@ class TestCaseBase(unittest.TestCase):
                     manifest_dict['name'] = l.split(':')[1][2:-2].strip()
                 elif 'count: ' in l:
                     manifest_dict['count'] = l.split(':')[1].strip()
+                elif 'term: ' in l:
+                    manifest_dict['term'] = l.split(':')[1].strip()
         return manifest_dict
 
     def create(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='true', *slave_endpoints, **schema):

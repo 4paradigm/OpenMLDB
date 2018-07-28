@@ -2524,7 +2524,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     }
     int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
     if (ret_code < 0) {
-        PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+        PDLOG(WARNING, "match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                         name.c_str(), tid, pid, endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
@@ -3160,7 +3160,7 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
     if (iter == term_map.end()) {
         PDLOG(WARNING, "not found term[%lu] in table_info. name[%s] pid[%u]", 
                         term, name.c_str(), pid);
-        return -1;
+        return 1;
     } else if (iter->second > offset) {
         PDLOG(INFO, "offset is not matched. name[%s] pid[%u] term[%lu] term start offset[%lu] cur offset[%lu]", 
                         name.c_str(), pid, term, iter->second, offset);
