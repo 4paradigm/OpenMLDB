@@ -268,6 +268,14 @@ bool NameServerImpl::RecoverOPTask() {
                     continue;
                 }
                 break;
+            case ::rtidb::api::OPType::kDelReplicaOP:
+                if (CreateDelReplicaOPTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
+                    continue;
+                }
+                break;
             case ::rtidb::api::OPType::kReAddReplicaOP:
                 if (CreateReAddReplicaTask(op_data) < 0) {
                     PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
@@ -521,7 +529,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
         }
         // delete replica
         for (auto pid : follower_pid) {
-            CreateDelReplicaOP(kv.first, pid, endpoint, ::rtidb::api::OPType::kOfflineReplicaOP);
+            CreateOfflineReplicaOP(kv.first, pid, endpoint);
         }
     }
 }
@@ -1320,7 +1328,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         }
         // delete replica
         for (auto pid : follower_pid) {
-            CreateDelReplicaOP(kv.first, pid, endpoint, ::rtidb::api::OPType::kOfflineReplicaOP);
+            CreateOfflineReplicaOP(kv.first, pid, endpoint);
         }
     }
     response->set_code(0);
@@ -2037,8 +2045,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         PDLOG(WARNING, "tablet[%s] is not online", request->endpoint().c_str());
         return;
     }
-    if (CreateDelReplicaOP(request->name(), request->pid(), request->endpoint(), 
-                ::rtidb::api::OPType::kDelReplicaOP) < 0) {
+    if (CreateDelReplicaOP(request->name(), request->pid(), request->endpoint()) < 0) {
         response->set_code(-1);
         response->set_msg("create op failed");
     } else {
@@ -2122,68 +2129,17 @@ void NameServerImpl::DeleteDoneOP() {
     }
 }
 
-int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint, 
-                ::rtidb::api::OPType op_type) {
-    if (op_type != ::rtidb::api::OPType::kDelReplicaOP && 
-            op_type != ::rtidb::api::OPType::kOfflineReplicaOP) {
-        PDLOG(WARNING, "optype is[%s]", ::rtidb::api::OPType_Name(op_type).c_str());
-        return -1;
-    }
-    std::string leader_endpoint;
-    uint32_t tid;
-    auto iter = table_info_.find(name);
-    if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
-        return -1;
-    }
-    tid = iter->second->tid();
-    if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
-        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
-        return -1;
-    }
-    if (leader_endpoint == endpoint) {
-        PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
-        return -1;
-    }
+int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
     std::string value = endpoint;
     std::shared_ptr<OPData> op_data;
-    if (CreateOPData(op_type, value, op_data, name, pid) < 0) {
+    if (CreateOPData(::rtidb::api::OPType::kDelReplicaOP, value, op_data, name, pid) < 0) {
         PDLOG(WARNING, "create op data error. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-
-    std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index_, 
-                op_type, tid, pid, endpoint);
-    if (!task) {
-        PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", 
+    if (CreateDelReplicaOPTask(op_data) < 0) {
+        PDLOG(WARNING, "create delreplica op task failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
-    }
-    op_data->task_list_.push_back(task);
-    if (op_type == ::rtidb::api::OPType::kDelReplicaOP) {
-        task = CreateDelTableInfoTask(name, pid, endpoint, op_index_, op_type);
-        if (!task) {
-            PDLOG(WARNING, "create deltableinfo task failed. table[%s] pid[%u] endpoint[%s]", 
-                            name.c_str(), pid, endpoint.c_str());
-            return -1;
-        }
-        op_data->task_list_.push_back(task);
-        task = CreateDropTableTask(endpoint, op_index_, op_type, tid, pid);
-        if (!task) {
-            PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u] endpoint[%s]", 
-                            tid, pid, endpoint.c_str());
-            return -1;
-        }
-        op_data->task_list_.push_back(task);
-    } else {
-        task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
-                    op_index_, op_type);
-        if (!task) {
-            PDLOG(WARNING, "create update table alive status task failed. table[%s] pid[%u] endpoint[%s]", 
-                            name.c_str(), pid, endpoint.c_str());
-            return -1;
-        }
-        op_data->task_list_.push_back(task);
     }
     if (AddOPData(op_data) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
@@ -2193,6 +2149,75 @@ int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, co
     PDLOG(INFO, "add delreplica op. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
     return 0;
+}
+
+int NameServerImpl::CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data) {
+    std::string name = op_data->op_info_.name();
+    uint32_t pid = op_data->op_info_.pid();
+    std::string endpoint = op_data->op_info_.data();
+    std::string leader_endpoint;
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        return -1;
+    }
+    uint32_t tid;
+    tid = iter->second->tid();
+    if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    if (leader_endpoint == endpoint) {
+        PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    uint64_t op_index = op_data->op_info_.op_id();
+    std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kDelReplicaOP, tid, pid, endpoint);
+    if (!task) {
+        PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", 
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateDelTableInfoTask(name, pid, endpoint, op_index, ::rtidb::api::OPType::kDelReplicaOP);
+    if (!task) {
+        PDLOG(WARNING, "create deltableinfo task failed. table[%s] pid[%u] endpoint[%s]", 
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateDropTableTask(endpoint, op_index, ::rtidb::api::OPType::kDelReplicaOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    PDLOG(INFO, "create DelReplica op task ok. table[%s] pid[%u] endpoint[%s]", 
+                 name.c_str(), pid, endpoint.c_str());
+    return 0;
+}    
+
+int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+    std::string value = endpoint;
+    std::shared_ptr<OPData> op_data;
+    if (CreateOPData(::rtidb::api::OPType::kOfflineReplicaOP, value, op_data, name, pid) < 0) {
+        PDLOG(WARNING, "create op data failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    if (CreateOfflineReplicaTask(op_data) < 0) {
+        PDLOG(WARNING, "create offline replica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    PDLOG(INFO, "add kOfflineReplicaOP. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
+                op_index_, name.c_str(), pid, endpoint.c_str());
+    return 0;            
 }
 
 int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {

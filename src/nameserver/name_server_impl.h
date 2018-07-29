@@ -208,6 +208,8 @@ private:
 
     int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
 
+    int CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data);
+
     int CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data);
 
     int CreateReAddReplicaTask(std::shared_ptr<OPData> op_data);
@@ -317,8 +319,7 @@ private:
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
                     const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
     int AddOPData(const std::shared_ptr<OPData>& op_data);
-    int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint,
-                     ::rtidb::api::OPType op_type);
+    int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
     int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
@@ -340,6 +341,8 @@ private:
     int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
                     bool is_leader, bool is_alive, uint64_t partent_id);
+
+    int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);                
 
     void NotifyTableChanged();
     void DeleteDoneOP();
