@@ -2161,8 +2161,7 @@ int NameServerImpl::CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
         return -1;
     }
-    uint32_t tid;
-    tid = iter->second->tid();
+    uint32_t tid = iter->second->tid();
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
@@ -2217,7 +2216,7 @@ int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid
     }
     PDLOG(INFO, "add kOfflineReplicaOP. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
-    return 0;            
+    return 0;
 }
 
 int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
