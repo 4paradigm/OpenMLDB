@@ -2167,6 +2167,14 @@ int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, co
                             name.c_str(), pid, endpoint.c_str());
             return -1;
         }
+        op_data->task_list_.push_back(task);
+        task = CreateDropTableTask(endpoint, op_index_, op_type, tid, pid);
+        if (!task) {
+            PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u] endpoint[%s]", 
+                            tid, pid, endpoint.c_str());
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
     } else {
         task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
                     op_index_, op_type);
@@ -2175,8 +2183,8 @@ int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, co
                             name.c_str(), pid, endpoint.c_str());
             return -1;
         }
+        op_data->task_list_.push_back(task);
     }
-    op_data->task_list_.push_back(task);
     if (AddOPData(op_data) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
@@ -3416,12 +3424,9 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
             ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(des_endpoint_index);
             partition_meta->set_is_alive(true);
             partition_meta->set_is_leader(false);
-            if (src_endpoint_index != partition_meta_field->size() - 1) {
-                partition_meta_field->SwapElements(src_endpoint_index, partition_meta_field->size() - 1);
-            }
             PDLOG(INFO, "remove partition[%u] in endpoint[%s]. name[%s]", 
                         pid, src_endpoint.c_str(), name.c_str());
-            partition_meta_field->RemoveLast();
+            partition_meta_field->DeleteSubrange(src_endpoint_index, 1);
         }
         break;
     }
@@ -3493,36 +3498,41 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         if (iter->second->table_partition(idx).pid() != pid) {
             continue;
         }
+        bool has_found = false;
         for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+             if (iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
                 ::rtidb::nameserver::TablePartition* table_partition = 
                             iter->second->mutable_table_partition(idx);
                 ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta = 
                             table_partition->mutable_partition_meta();
-                if (meta_idx != partition_meta->size() - 1) {
-                    partition_meta->SwapElements(idx, partition_meta->size() - 1);
-                }
                 PDLOG(INFO, "remove pid[%u] in table[%s]. endpoint is[%s]", 
                             pid, name.c_str(), endpoint.c_str());
-                partition_meta->RemoveLast();
-                std::string table_value;
-                iter->second->SerializeToString(&table_value);
-                if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-                    PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                                    zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-                    task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
-                    return;         
-                }
-                PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
-                                zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-                task_info->set_status(::rtidb::api::TaskStatus::kDone);
-                NotifyTableChanged();
-                PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
-                            task_info->op_id(), 
-                            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                partition_meta->DeleteSubrange(meta_idx, 1);
+                has_found = true;
                 break;
             }
         }
+        if (!has_found) {
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            PDLOG(INFO, "not found endpoint[%s] in partition_meta. name [%s] pid[%u]",
+                         endpoint.c_str(), name.c_str(), pid);
+            return;
+        }
+        std::string table_value;
+        iter->second->SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
+        PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
+                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kDone);
+        NotifyTableChanged();
+        PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
+                    task_info->op_id(),
+                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
         break;
     }
 }
