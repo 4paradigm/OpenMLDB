@@ -47,7 +47,6 @@ class NsCluster(object):
     def clear_zk(self):
         exe_shell('rm -rf {}/data'.format(os.getenv('zkpath')))
 
-
     def start(self, *endpoints):
         nsconfpath = os.getenv('nsconfpath')
         i = 0
@@ -68,6 +67,9 @@ class NsCluster(object):
             exe_shell("echo '--name_server_task_pool_size=10' >> {}".format(nameserver_flags))
             exe_shell("echo '--tablet_startup_wait_time=3000' >> {}".format(nameserver_flags))
             exe_shell("echo '--zk_keep_alive_check_interval=500000' >> {}".format(nameserver_flags))
+            exe_shell("echo '--tablet_offline_check_interval=1' >> {}".format(nameserver_flags))
+            exe_shell("echo '--tablet_heartbeat_timeout=0' >> {}".format(nameserver_flags))
+            exe_shell("echo '--zk_session_timeout=2000' >> {}".format(nameserver_flags))
             exe_shell("ulimit -c unlimited")
             cmd = '{}/rtidb --flagfile={}'.format(self.test_path, nameserver_flags)
             infoLogger.info('start rtidb: {}'.format(cmd))

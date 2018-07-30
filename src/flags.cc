@@ -10,6 +10,8 @@
 DEFINE_string(endpoint, "", "config the ip and port that rtidb serves for");
 DEFINE_int32(port, 0, "config the port that rtidb serves for");
 DEFINE_int32(zk_session_timeout, 2000, "config the session timeout of tablet or nameserver");
+DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline");
+DEFINE_uint32(tablet_offline_check_interval, 1000, "config the check interval of tablet offline");
 DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,ip3:2181");
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 5000, "config the interval of keep alive check");
@@ -19,7 +21,7 @@ DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
 DEFINE_bool(auto_recover_table, false, "enable or disable auto recover table");
 DEFINE_int32(max_op_num, 10000, "config the max op num");
-DEFINE_uint32(partition_num, 32, "config the default partition_num");
+DEFINE_uint32(partition_num, 16, "config the default partition_num");
 DEFINE_uint32(replica_num, 3, "config the default replica_num. if set 3, there is one leader and two followers");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
