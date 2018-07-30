@@ -22,6 +22,17 @@
   endpoint: 指定nameserver的主节点. 如果提供的endpoint不是主节点, 执行其他命令时就会提示连接的不是主节点  
   role: 指定启动角色为nameserver client
 
+### 命令帮助及用法  
+help和help cmd  
+```
+>help put
+desc: insert data into table
+usage: put table_name pk ts value
+usage: put table_name ts key1 key2 ... value1 value2 ...
+ex: put table1 key1 1528872944000 value1
+ex: put table2 1528872944000 card0 mcc0 1.3
+```
+
 ### 创建表
 命令格式: create table_meta_path  
 ```
@@ -129,8 +140,8 @@ name        tid  pid  endpoint            role      seg_cnt  ttl  is_alive
 >migrate 172.27.128.32:9991 flow_trans 1-3 172.27.2.52:9992
 ```
 
-### 宕机
-如果部署tablet服务的机器宕机或者tablet服务挂了并且auto_failover没有开启的情况下就需要手动操作(运行命令: confget auto_failover 可获取是否开启)  
+### 机器下线与恢复
+由机器宕机、tablet服务挂掉以及网络断开等原因造成节点下线并且auto_failover没有开启的情况下就需要手动操作(运行命令: confget 可以查看,如果需要修改用confset)  
 命令格式: offlineendpoint endpoint  
 该命令会对所有分片执行如下操作:
 * 如果是主, 执行重新选主
@@ -144,7 +155,7 @@ name        tid  pid  endpoint            role      seg_cnt  ttl  is_alive
 >changeleader name1 0
 ```
 
-### 机器恢复
+#### 节点恢复
 如果机器重新恢复了(节点重启等)可以执行recoverendpoint来恢复该节点在不可用之前的状态(包括恢复数据)  
 命令格式: recoverendpoint endpoint  
 ```

@@ -2,11 +2,23 @@
 
 ## 部署zookeeper
 
-* 修改zk目录中conf/zoo.cfg的ip和clientPort
+* 修改zk目录中conf/zoo.cfg的clientPort和dataDir
+* 在conf/zoo.cfg添加server配置. 格式为server.id=ip:port1:port2, 假如部署三个节点就添加三行:  
+  server.1=172.27.128.31:2881:3881  
+  server.2=172.27.128.32:2882:3882  
+  server.3=172.27.128.33:2883:3883  
+  **注: port1和port2不能和对应ip机器已占用端口冲突**  
 * 在配置的dataDir路径里创建myid文件  
-  如果本实例对应的是server1, dataDir配置的为datadir, 运行echo 1 > datadir/myid  
-  同理如果是对应的是server2, 则运行echo 2 > datadir/myid  
-* 启动zk ./bin/zkServer.sh start
+  如果本实例对应的是server.1, dataDir配置的为./data, 运行echo 1 > ./data/myid  
+  同理如果是对应的是server.2, 则运行echo 2 > ./data/myid  
+* 分别在各节点启动zk ./bin/zkServer.sh start
+* 查看zk节点运行角色 ./bin/zkServer.sh status  
+  显示Mode: leader或者Mode: follower说明zk集群启动成功  
+* 检查zk状态  
+  1 用客户端连到zk集群 ./bin/zkCli.sh -server 172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181  
+  2 运行命令 ls /  
+  3 输出[zookeeper]  
+  说明zk集群运行正常  
 
 ### sample 配置
 
@@ -39,9 +51,9 @@ maxClientCnxns=60
 # Purge task interval in hours
 # Set to "0" to disable auto purge feature
 #autopurge.purgeInterval=1
-server.1=172.27.128.31:2888:3888
-server.2=172.27.128.32:2888:3888
-server.3=172.27.128.33:2888:3888
+server.1=172.27.128.31:2881:3881
+server.2=172.27.128.32:2882:3882
+server.3=172.27.128.33:2883:3883
 ```
 
 
