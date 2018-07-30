@@ -51,6 +51,51 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertIn('kMakeSnapshotOP', last_opstatus)
         self.clear_ns_table(self.ns_leader)
 
+    def test_makesnapshot_expired(self):
+        """
+        数据全部过期后, termid正常
+        makesnapshot功能正常，op是kMakeSnapshotOP
+        :return:
+        """
+        self.clear_ns_table(self.ns_leader)
+        old_last_op_id = max(self.showopstatus(self.ns_leader).keys()) if self.showopstatus(self.ns_leader) != {} else 1
+        name = 't{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+
+        pid_group = '"0"'
+        m = utils.gen_table_metadata(
+            '"{}"'.format(name), None, 1, 8,
+            ('table_partition', '"{}"'.format(self.leader), pid_group, 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), pid_group, 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), pid_group, 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'true'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+
+        table_info = self.showtable(self.ns_leader)
+        tid = table_info.keys()[0][1]
+        pid = '0'
+
+        self.put(self.leader, tid, pid, 'testkey0', self.now() - 120000, 'testvalue0')
+        self.assertFalse("0" == "1")
+
+        rs3 = self.makesnapshot(self.ns_leader, name, pid, 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        time.sleep(2)
+
+        mf = self.get_manifest(self.leaderpath, tid, pid)
+        self.assertEqual(mf['offset'], '1')
+        self.assertTrue(mf['name'])
+        self.assertEqual(mf['count'], '0')
+        self.assertFalse(mf['term'] == '0')
+        last_op_id = max(self.showopstatus(self.ns_leader).keys())
+        self.assertFalse(old_last_op_id == last_op_id)
+        last_opstatus = self.showopstatus(self.ns_leader)[last_op_id]
+        self.assertIn('kMakeSnapshotOP', last_opstatus)
+
 
     def test_makesnapshot_name_notexist(self):
         """

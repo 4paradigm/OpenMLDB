@@ -1368,7 +1368,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         } else if (parts[1] == "delreplica") {
             printf("desc: delete replica from leader\n\n");
             printf("usage: delreplica name pid endpoint\n");
-            printf("ex: delreplicac table1 0 172.27.128.31:9527\n");
+            printf("ex: delreplica table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
@@ -2753,6 +2753,10 @@ void StartClient() {
 
 void StartNsClient() {
     std::string endpoint;
+    if (FLAGS_interactive) {
+        std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+            << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
+    }
     if (!FLAGS_zk_cluster.empty()) {
         ZkClient zk_client(FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
         if (!zk_client.Init()) {

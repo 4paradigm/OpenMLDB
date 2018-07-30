@@ -14,6 +14,9 @@
 --put_concurrency_limit=8
 --get_concurrency_limit=8
 
+--zk_session_timeout=10000
+#--zk_keep_alive_check_interval=5000
+
 # log conf
 --log_dir=./logs
 --log_file_count=24
