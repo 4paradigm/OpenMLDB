@@ -27,4 +27,4 @@
 #--get_task_status_interval=2000
 
 #--replica_num=3
-#--partition_num=32
+#--partition_num=16
