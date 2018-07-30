@@ -1999,6 +1999,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
                         tid, pid, src_endpoint.c_str());
         return -1;
     }
+    op_data->task_list_.push_back(task);
     task = CreateUpdateTableInfoTask(src_endpoint, name, pid, des_endpoint, 
                 op_index, ::rtidb::api::OPType::kMigrateOP);
     if (!task) {
