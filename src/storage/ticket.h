@@ -24,6 +24,7 @@ public:
     ~Ticket();
 
     void Push(KeyEntry* entry);
+    void Pop();
 private:
     std::vector<KeyEntry*> entries_;
 };

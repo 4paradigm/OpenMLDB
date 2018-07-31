@@ -163,6 +163,10 @@ public:
         return pk_cnt_.load(std::memory_order_relaxed);
     }
 
+    KeyEntries* GetKeyEntries() {
+        return entries_;
+    }
+
 private:
     void FreeList(const Slice& pk, 
                   ::rtidb::base::Node<uint64_t, DataBlock*>* node,

@@ -97,6 +97,11 @@ public class DefaultKvIterator implements KvIterator {
         return time;
     }
 
+    @Override
+    public String getPK() {
+        return null;
+    }
+
     // no copy
     public ByteBuffer getValue() {
         return slice;

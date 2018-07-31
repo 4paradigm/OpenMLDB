@@ -26,6 +26,7 @@ public class RTIDBClientConfig {
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	private String nsEndpoint;
+	private int traverseLimit = 100;
 
 	public void disableMetrics() {
 	    enableMetrics = false;
@@ -51,6 +52,14 @@ public class RTIDBClientConfig {
 
     public void setRemoveDuplicateByTime(boolean removeDuplicateByTime) {
         this.removeDuplicateByTime = removeDuplicateByTime;
+    }
+
+    public int getTraverseLimit() {
+        return traverseLimit;
+    }
+
+    public void setTraverseLimit(int traverseLimit) {
+        this.traverseLimit = traverseLimit;
     }
 
     public int getMaxRetryCnt() {
