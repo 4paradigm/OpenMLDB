@@ -9,10 +9,10 @@
 
 # concurrency conf
 # thread_pool_size建议和cpu核数一致
---thread_pool_size=20
---scan_concurrency_limit=8
+--thread_pool_size=24
+--scan_concurrency_limit=16
 --put_concurrency_limit=8
---get_concurrency_limit=8
+--get_concurrency_limit=16
 
 --zk_session_timeout=10000
 #--zk_keep_alive_check_interval=5000
@@ -48,7 +48,7 @@
 
 # garbage collection conf
 # 60m
---gc_interval=30
+--gc_interval=60
 #--gc_pool_size=2
 # 1m
 #--gc_safe_offset=1
