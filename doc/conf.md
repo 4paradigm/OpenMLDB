@@ -101,6 +101,10 @@ name_server_task_pool_size  配置nameserver任务线程池的大小
 
 name_server_task_wait_time  nameserver任务执行框架中任务队列为空时的休眠时间, 单位是ms.
 
+tablet_heartbeat_timeout  配置tablet心跳超时时间, 如果tablet和zk断开时间超过配置的值就将该节点上的所有表下线  
+
+tablet_offline_check_interval  如果nameserver检测到tablet下线, 以配置的时间间隔去检查是否上线直到超时
+
 max_op_num  配置nameserver内存中保存op的最大数
 
 partition_num  创建表时默认分片数  

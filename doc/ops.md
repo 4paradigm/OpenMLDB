@@ -157,6 +157,6 @@ name        tid  pid  endpoint            role      seg_cnt  ttl  is_alive
 ```
 在恢复的过程中执行showopstatus可以查看进度  
 命令格式: 
-*showopstatus  
-*showopstatus table_name  
-*showopstatus table_name pid  
+* showopstatus  
+* showopstatus table_name  
+* showopstatus table_name pid  
