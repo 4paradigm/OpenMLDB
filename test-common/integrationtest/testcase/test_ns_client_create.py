@@ -310,7 +310,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('column_desc', '"k2"', '"string"', 'true'),
         ('column_desc', '"k3"', '"double"', 'true')),
 
-        ('check name failed',
+        ('check column_desc name failed. name is card',
         ('column_desc', '"card"', '"string"', 'true'),
         ('column_desc', '"card"', '"double"', 'false')),
 
