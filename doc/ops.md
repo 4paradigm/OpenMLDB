@@ -143,11 +143,6 @@ name        tid  pid  endpoint            role      seg_cnt  ttl  is_alive
 ```
 >offlineendpoint 172.27.2.52:9991
 ```
-也可以对单个分片运行changeleader命令  
-命令格式: changeleader table_name pid
-```
->changeleader name1 0
-```
 
 #### 节点恢复
 如果机器重新恢复了(节点重启等)可以执行recoverendpoint来恢复该节点在不可用之前的状态(包括恢复数据)  
@@ -161,6 +156,7 @@ name        tid  pid  endpoint            role      seg_cnt  ttl  is_alive
 >recovertable name1 0 172.27.2.52:9991
 ```
 在恢复的过程中执行showopstatus可以查看进度  
-命令格式: showopstatus  
-          showopstatus table_name  
-          showopstatus table_name pid  
+命令格式: 
+*showopstatus  
+*showopstatus table_name  
+*showopstatus table_name pid  
