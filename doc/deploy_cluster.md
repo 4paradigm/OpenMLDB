@@ -7,6 +7,7 @@
   echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled  
   echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag  
 * 保证系统时钟正确(rtidb过期删除依赖于系统时钟, 如果系统时钟不正确会导致过期数据没有删掉或者删掉了没有过期的数据)  
+  运行命令date 查看时间和时区  
 
 
 ## 部署zookeeper
@@ -67,25 +68,23 @@ server.3=172.27.128.33:2883:3883
 
 
 ## 部署nameserver
-* 修改配置文件
-  打开conf/nameserver.flags文件, 把endpoint, zk_cluster和zk_root_path改为对应的值
+* 修改配置文件  
+  打开conf/nameserver.flags文件, 把endpoint, zk_cluster和zk_root_path改为对应的值  
 * 如果要开启自动failover和自动恢复, 设置auto_failover和auto_recover_table为true
 * 启动nameserver: sh ./bin/start_ns.sh
 
 
 ## 部署tablet
-* 修改配置文件
-  打开conf/tablet.flags文件, 把endpoint, zk_cluster和zk_root_path改为对应的值
+* 修改配置文件  
+  打开conf/tablet.flags文件, 把endpoint, zk_cluster和zk_root_path改为对应的值  
 * 启动tablet: sh ./bin/start.sh
 
 ## 部署metricbeat
-* 在conf下的metricbeat.yml中指定所运行模块的路径（目前仅有brpc，所以不需要改动）
 * 在conf/metricbeat.yml中的hosts项中配置正确的es地址
 * 启动metricbeat: sh ./bin/start_metricbeat.sh
 
 
 ## 部署filebeat
-* 在conf/filebeat.yml中指定运行模块的路径（目前仅有rtidb，不需要改动）
 * 在conf/filebeat.yml中的hosts项中配置正确的es地址
 * 在conf/module/rtidb/tablet/config中的rtidb-accesslog.yml中配置正确的需要收集的日志（目前默认为当前目录下logs/tablet*), 修改pod_name的值为当前机器的hostname或者ip(默认是docker02)
 * 在conf/module/rtidb/nameserver/config中的rtidb-accesslog.yml中配置正确的需要收集的日志（目前默认为当前目录下logs/nameserver*), 修改pod_name的值为当前机器的hostname或者ip(默认是docker02)

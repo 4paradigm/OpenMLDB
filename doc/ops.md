@@ -33,13 +33,16 @@ ex: put table2 1528872944000 card0 mcc0 1.3
 创建表分为单维表和多维表. 区别就是table_meta文件
 * 创建单维表  
 文件格式为proto的文件  
-name ttl ttl_type seg_cnt分别用来指定创建表一些基础参数  
-partition_num指定分片数, 此项可以用不设置默认值为32. replica_num指定副本数, 此项可以不用设置默认为3   
+name 表示要创建的表名    
+ttl_type 表示过期类型  
+  1 如果指定的ttl_type为kAbsoluteTime, 对应ttl配置为过期时间, **单位是分钟**  
+  2 如果指定的ttl_type为kLatestTime, 对应ttl配置为过期条数. 如果配成100表示保留最近100条   
+partition_num指定分片数, 此项可以用不设置默认值为16  
+replica_num指定副本数, 此项可以不用设置默认为3   
 ```
 name : "test3"
 ttl: 100
 ttl_type : "kLatestTime"
-seg_cnt: 8
 partition_num: 16
 replica_num: 3
 ```
@@ -55,7 +58,6 @@ add_ts_idx指定是否是索引列. 如果设置为true, 可以按此列来get�
 name : "test3"
 ttl: 100
 ttl_type : "kLatestTime"
-seg_cnt: 8
 table_partition {
   endpoint: "172.27.128.31:9520"
   pid_group: "0-3"
@@ -153,8 +155,12 @@ name        tid  pid  endpoint            role      seg_cnt  ttl  is_alive
 ```
 >recoverendpoint 172.27.2.52:9991
 ```
-也可以恢复单个分片  
+如果表的某个分片恢复失败可以单独恢复失败的分片  
 命令格式: recovertable table_name pid endpoint
 ```
 >recovertable name1 0 172.27.2.52:9991
 ```
+在恢复的过程中执行showopstatus可以查看进度  
+命令格式: showopstatus  
+          showopstatus table_name  
+          showopstatus table_name pid  
