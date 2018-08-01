@@ -11,7 +11,7 @@ zk_session_timeout  设置zk session的超时时间, 单位是ms
 
 zk_keep_alive_check_interval  检查和zk连接的时间间隔, 如果断开会自动重连. 单位是ms
 
-**gc_interval**  执行过期键删除任务的时间间隔, 单位是分钟
+**gc_interval**  执行过期键删除任务的时间间隔, **单位是分钟**
 
 gc_safe_offset  ttl时间的偏移, 单位是分钟. 一般不用配置该项
 
@@ -26,6 +26,14 @@ mem_release_rate  用来设置tcmalloc SetMemoryReleaseRate
 request_sleep_time  请求失败时的等待时间
 
 request_max_retry  请求失败时的最大重试次数
+
+**log_dir**  配置日志文件目录
+
+log_file_count  保留日志文件最大个数
+
+log_file_size  单个日志文件的最大值, 单位是MB
+
+log_level  日志级别
 
 
 
@@ -92,6 +100,10 @@ binlog_name_length  配置binlog名字的长度
 name_server_task_pool_size  配置nameserver任务线程池的大小
 
 name_server_task_wait_time  nameserver任务执行框架中任务队列为空时的休眠时间, 单位是ms.
+
+tablet_heartbeat_timeout  配置tablet心跳超时时间, 如果tablet和zk断开时间超过配置的值就将该节点上的所有表下线  
+
+tablet_offline_check_interval  如果nameserver检测到tablet下线, 以配置的时间间隔去检查是否上线直到超时
 
 max_op_num  配置nameserver内存中保存op的最大数
 
