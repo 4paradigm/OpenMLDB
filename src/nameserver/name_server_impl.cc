@@ -13,6 +13,7 @@
 #include <strings.h>
 #include "base/strings.h"
 #include <chrono>
+#include <boost/algorithm/string.hpp>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -27,6 +28,8 @@ DECLARE_uint32(partition_num);
 DECLARE_uint32(replica_num);
 DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
+DECLARE_uint32(tablet_heartbeat_timeout);
+DECLARE_uint32(tablet_offline_check_interval);
 
 namespace rtidb {
 namespace nameserver {
@@ -42,6 +45,7 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     std::string zk_op_path = FLAGS_zk_root_path + "/op";
     zk_op_index_node_ = zk_op_path + "/op_index";
     zk_op_data_path_ = zk_op_path + "/op_data";
+    zk_offline_endpoint_lock_node_ = FLAGS_zk_root_path + "/offline_endpoint_lock";
     std::string zk_config_path = FLAGS_zk_root_path + "/config";
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
     zk_auto_recover_table_node_ = zk_config_path + "/auto_recover_table";
@@ -157,7 +161,19 @@ bool NameServerImpl::Recover() {
         PDLOG(WARNING, "recover task failed!");
         return false;
     }
+    RecoverOfflineTablet();
     return true;
+}
+
+void NameServerImpl::RecoverOfflineTablet() {
+    offline_endpoint_map_.clear();
+    for(const auto& tablet : tablets_) {
+        if (tablet.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            offline_endpoint_map_.insert(std::make_pair(tablet.first, tablet.second->ctime_));
+            thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tablet.first, false));
+            PDLOG(INFO, "recover offlinetablet. endpoint %s", tablet.first.c_str());
+        }
+    }
 }
 
 bool NameServerImpl::RecoverTableInfo() {
@@ -262,6 +278,14 @@ bool NameServerImpl::RecoverOPTask() {
                 break;
             case ::rtidb::api::OPType::kOfflineReplicaOP:
                 if (CreateOfflineReplicaTask(op_data) < 0) {
+                    PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
+                                ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
+                                op_data->op_info_.op_id());
+                    continue;
+                }
+                break;
+            case ::rtidb::api::OPType::kDelReplicaOP:
+                if (CreateDelReplicaOPTask(op_data) < 0) {
                     PDLOG(WARNING, "recover op[%s] failed. op_id[%lu]", 
                                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(),
                                 op_data->op_info_.op_id());
@@ -464,9 +488,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
                 tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
-                if (auto_recover_table_.load(std::memory_order_acquire)) {
-                    thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
-                }
+                thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
             }
         }
         PDLOG(INFO, "healthy tablet with endpoint[%s]", it->c_str());
@@ -479,17 +501,51 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             // tablet offline
             PDLOG(INFO, "offline tablet with endpoint[%s]", tit->first.c_str());
             tit->second->state_ = ::rtidb::api::TabletState::kTabletOffline;
-            thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first));
+            tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
+            if (offline_endpoint_map_.find(tit->first) == offline_endpoint_map_.end()) {
+                offline_endpoint_map_.insert(std::make_pair(tit->first, tit->second->ctime_));
+                thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first, false));
+            } else {
+                offline_endpoint_map_[tit->first] = tit->second->ctime_;
+            }
         }
     }
 }
 
-void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
+void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_flag) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
+    auto tit = tablets_.find(endpoint);
+    if (tit == tablets_.end()) {
+        PDLOG(WARNING, "cannot find endpoint %s in tablet map", endpoint.c_str());
+        return;
+    }
+    auto iter = offline_endpoint_map_.find(endpoint);
+    if (iter == offline_endpoint_map_.end()) {
+        PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map", endpoint.c_str());
+        return;
+    }
+    if (!startup_flag && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+        PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
+        offline_endpoint_map_.erase(iter);
+        return;
+    }
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    if (!startup_flag && cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
+        thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
+        return;
+    }
+    if (zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) == 0) {
+        PDLOG(WARNING, "offline endpoint lock node is exist! endpoint %s", endpoint.c_str());
+        return;
+    }
+    if (!zk_client_->CreateNode(zk_offline_endpoint_lock_node_ + "/" + endpoint, "1")) {
+        PDLOG(WARNING, "create offline endpoint lock node failed! endpoint %s", endpoint.c_str());
+        return;
+    }
     for (const auto& kv : table_info_) {
         if (!auto_failover_.load(std::memory_order_acquire)) {
             CreateUpdateTableAliveOP(kv.second->name(), endpoint, false);
@@ -521,9 +577,10 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint) {
         }
         // delete replica
         for (auto pid : follower_pid) {
-            CreateDelReplicaOP(kv.first, pid, endpoint, ::rtidb::api::OPType::kOfflineReplicaOP);
+            CreateOfflineReplicaOP(kv.first, pid, endpoint);
         }
     }
+    offline_endpoint_map_.erase(iter);
 }
 
 void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
@@ -531,6 +588,31 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    std::string value;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/nodes/" + endpoint, value)) {
+            PDLOG(WARNING, "get tablet node value failed");
+            return;
+        }
+    }
+    if (boost::starts_with(value, "startup_")) {
+        PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
+        OnTabletOffline(endpoint, true);
+    }
+    if (auto_recover_table_.load(std::memory_order_acquire)) {
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) != 0) {
+                PDLOG(WARNING, "offline endpoint lock node is not exist, need not recover. endpoint %s", endpoint.c_str());
+                return;
+            }
+        }
+        RecoverEndpoint(endpoint);
+    }
+}
+
+void NameServerImpl::RecoverEndpoint(const std::string& endpoint) {
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
@@ -542,6 +624,9 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
                 }
             }
         }
+    }
+    if (!zk_client_->DeleteNode(zk_offline_endpoint_lock_node_ + "/" + endpoint)) {
+        PDLOG(WARNING, "offline endpoint lock node delete failed. endpoint[%s]", endpoint.c_str());
     }
 }
 
@@ -583,6 +668,8 @@ bool NameServerImpl::Init() {
     std::vector<std::string> endpoints;
     if (!zk_client_->GetNodes(endpoints)) {
         zk_client_->CreateNode(FLAGS_zk_root_path + "/nodes", "");
+    } else {
+        UpdateTablets(endpoints);
     }
     zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
     zk_client_->WatchNodes();
@@ -1320,7 +1407,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         }
         // delete replica
         for (auto pid : follower_pid) {
-            CreateDelReplicaOP(kv.first, pid, endpoint, ::rtidb::api::OPType::kOfflineReplicaOP);
+            CreateOfflineReplicaOP(kv.first, pid, endpoint);
         }
     }
     response->set_code(0);
@@ -1354,7 +1441,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
             return;
         }
     }
-    OnTabletOnline(endpoint);
+    RecoverEndpoint(endpoint);
     response->set_code(0);
     response->set_msg("ok");
 }
@@ -1999,6 +2086,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
                         tid, pid, src_endpoint.c_str());
         return -1;
     }
+    op_data->task_list_.push_back(task);
     task = CreateUpdateTableInfoTask(src_endpoint, name, pid, des_endpoint, 
                 op_index, ::rtidb::api::OPType::kMigrateOP);
     if (!task) {
@@ -2037,8 +2125,7 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         PDLOG(WARNING, "tablet[%s] is not online", request->endpoint().c_str());
         return;
     }
-    if (CreateDelReplicaOP(request->name(), request->pid(), request->endpoint(), 
-                ::rtidb::api::OPType::kDelReplicaOP) < 0) {
+    if (CreateDelReplicaOP(request->name(), request->pid(), request->endpoint()) < 0) {
         response->set_code(-1);
         response->set_msg("create op failed");
     } else {
@@ -2122,21 +2209,39 @@ void NameServerImpl::DeleteDoneOP() {
     }
 }
 
-int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint, 
-                ::rtidb::api::OPType op_type) {
-    if (op_type != ::rtidb::api::OPType::kDelReplicaOP && 
-            op_type != ::rtidb::api::OPType::kOfflineReplicaOP) {
-        PDLOG(WARNING, "optype is[%s]", ::rtidb::api::OPType_Name(op_type).c_str());
+int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+    std::string value = endpoint;
+    std::shared_ptr<OPData> op_data;
+    if (CreateOPData(::rtidb::api::OPType::kDelReplicaOP, value, op_data, name, pid) < 0) {
+        PDLOG(WARNING, "create op data error. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
+    if (CreateDelReplicaOPTask(op_data) < 0) {
+        PDLOG(WARNING, "create delreplica op task failed. name[%s] pid[%u] endpoint[%s]", 
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    if (AddOPData(op_data) < 0) {
+        PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    PDLOG(INFO, "add delreplica op. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
+                op_index_, name.c_str(), pid, endpoint.c_str());
+    return 0;
+}
+
+int NameServerImpl::CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data) {
+    std::string name = op_data->op_info_.name();
+    uint32_t pid = op_data->op_info_.pid();
+    std::string endpoint = op_data->op_info_.data();
     std::string leader_endpoint;
-    uint32_t tid;
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
         return -1;
     }
-    tid = iter->second->tid();
+    uint32_t tid = iter->second->tid();
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
@@ -2145,44 +2250,51 @@ int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, co
         PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
-    std::string value = endpoint;
-    std::shared_ptr<OPData> op_data;
-    if (CreateOPData(op_type, value, op_data, name, pid) < 0) {
-        PDLOG(WARNING, "create op data error. table[%s] pid[%u]", name.c_str(), pid);
-        return -1;
-    }
-
-    std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index_, 
-                op_type, tid, pid, endpoint);
+    uint64_t op_index = op_data->op_info_.op_id();
+    std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kDelReplicaOP, tid, pid, endpoint);
     if (!task) {
         PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
     op_data->task_list_.push_back(task);
-    if (op_type == ::rtidb::api::OPType::kDelReplicaOP) {
-        task = CreateDelTableInfoTask(name, pid, endpoint, op_index_, op_type);
-        if (!task) {
-            PDLOG(WARNING, "create deltableinfo task failed. table[%s] pid[%u] endpoint[%s]", 
-                            name.c_str(), pid, endpoint.c_str());
-            return -1;
-        }
-    } else {
-        task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
-                    op_index_, op_type);
-        if (!task) {
-            PDLOG(WARNING, "create update table alive status task failed. table[%s] pid[%u] endpoint[%s]", 
-                            name.c_str(), pid, endpoint.c_str());
-            return -1;
-        }
+    task = CreateDelTableInfoTask(name, pid, endpoint, op_index, ::rtidb::api::OPType::kDelReplicaOP);
+    if (!task) {
+        PDLOG(WARNING, "create deltableinfo task failed. table[%s] pid[%u] endpoint[%s]", 
+                        name.c_str(), pid, endpoint.c_str());
+        return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateDropTableTask(endpoint, op_index, ::rtidb::api::OPType::kDelReplicaOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u] endpoint[%s]", 
+                        tid, pid, endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    PDLOG(INFO, "create DelReplica op task ok. table[%s] pid[%u] endpoint[%s]", 
+                 name.c_str(), pid, endpoint.c_str());
+    return 0;
+}    
+
+int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+    std::string value = endpoint;
+    std::shared_ptr<OPData> op_data;
+    if (CreateOPData(::rtidb::api::OPType::kOfflineReplicaOP, value, op_data, name, pid) < 0) {
+        PDLOG(WARNING, "create op data failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
+    if (CreateOfflineReplicaTask(op_data) < 0) {
+        PDLOG(WARNING, "create offline replica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
+        return -1;
+    }
     if (AddOPData(op_data) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    PDLOG(INFO, "add delreplica op. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
+    PDLOG(INFO, "add kOfflineReplicaOP. op_id[%lu] table[%s] pid[%u] endpoint[%s]", 
                 op_index_, name.c_str(), pid, endpoint.c_str());
     return 0;
 }
@@ -2447,9 +2559,9 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                 }
                 if (iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
                     if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                        PDLOG(WARNING, "endpoint[%s] is alive, need not recover. name[%s] pid[%u]", 
+                        PDLOG(INFO, "endpoint[%s] is alive, need not recover. name[%s] pid[%u]", 
                                         endpoint.c_str(), name.c_str(), pid);
-                        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                        task_info->set_status(::rtidb::api::TaskStatus::kDone);
                         return;
                     }
                     auto tablet_iter = tablets_.find(endpoint);
@@ -2524,7 +2636,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     }
     int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
     if (ret_code < 0) {
-        PDLOG(WARNING, "term and offset match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+        PDLOG(WARNING, "match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                         name.c_str(), tid, pid, endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
@@ -3160,7 +3272,7 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
     if (iter == term_map.end()) {
         PDLOG(WARNING, "not found term[%lu] in table_info. name[%s] pid[%u]", 
                         term, name.c_str(), pid);
-        return -1;
+        return 1;
     } else if (iter->second > offset) {
         PDLOG(INFO, "offset is not matched. name[%s] pid[%u] term[%lu] term start offset[%lu] cur offset[%lu]", 
                         name.c_str(), pid, term, iter->second, offset);
@@ -3416,12 +3528,9 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
             ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(des_endpoint_index);
             partition_meta->set_is_alive(true);
             partition_meta->set_is_leader(false);
-            if (src_endpoint_index != partition_meta_field->size() - 1) {
-                partition_meta_field->SwapElements(src_endpoint_index, partition_meta_field->size() - 1);
-            }
             PDLOG(INFO, "remove partition[%u] in endpoint[%s]. name[%s]", 
                         pid, src_endpoint.c_str(), name.c_str());
-            partition_meta_field->RemoveLast();
+            partition_meta_field->DeleteSubrange(src_endpoint_index, 1);
         }
         break;
     }
@@ -3493,36 +3602,41 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         if (iter->second->table_partition(idx).pid() != pid) {
             continue;
         }
+        bool has_found = false;
         for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+             if (iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
                 ::rtidb::nameserver::TablePartition* table_partition = 
                             iter->second->mutable_table_partition(idx);
                 ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta = 
                             table_partition->mutable_partition_meta();
-                if (meta_idx != partition_meta->size() - 1) {
-                    partition_meta->SwapElements(idx, partition_meta->size() - 1);
-                }
                 PDLOG(INFO, "remove pid[%u] in table[%s]. endpoint is[%s]", 
                             pid, name.c_str(), endpoint.c_str());
-                partition_meta->RemoveLast();
-                std::string table_value;
-                iter->second->SerializeToString(&table_value);
-                if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-                    PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                                    zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-                    task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
-                    return;         
-                }
-                PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
-                                zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-                task_info->set_status(::rtidb::api::TaskStatus::kDone);
-                NotifyTableChanged();
-                PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
-                            task_info->op_id(), 
-                            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                partition_meta->DeleteSubrange(meta_idx, 1);
+                has_found = true;
                 break;
             }
         }
+        if (!has_found) {
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            PDLOG(INFO, "not found endpoint[%s] in partition_meta. name [%s] pid[%u]",
+                         endpoint.c_str(), name.c_str(), pid);
+            return;
+        }
+        std::string table_value;
+        iter->second->SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
+        PDLOG(INFO, "update table node[%s/%s]. value is [%s]",
+                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kDone);
+        NotifyTableChanged();
+        PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
+                    task_info->op_id(),
+                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
         break;
     }
 }

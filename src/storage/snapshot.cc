@@ -343,12 +343,15 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     bool has_error = false;
     uint64_t write_count = 0;
     uint64_t expired_key_num = 0;
+    uint64_t last_term = 0;
     int result = GetSnapshotRecord(manifest);
     if (result == 0) {
         // filter old snapshot
         if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num) < 0) {
             has_error = true;
         }
+        last_term = manifest.term();
+        PDLOG(DEBUG, "old manifest term is %lu", last_term);
     } else if (result < 0) {
         // parse manifest error
         has_error = true;
@@ -358,7 +361,6 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
-    uint64_t last_term = 0;
     while (!has_error) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -380,6 +382,9 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                 break;
             }
             cur_offset = entry.log_index();
+            if (entry.has_term()) {
+                last_term = entry.term();
+            }
             if (table->IsExpire(entry)) {
                 expired_key_num++;
                 continue;
@@ -394,9 +399,6 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             write_count++;
             if ((write_count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
                 PDLOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
-            }
-            if (entry.has_term()) {
-                last_term = entry.term();
             }
         } else if (status.IsEof()) {
             continue;

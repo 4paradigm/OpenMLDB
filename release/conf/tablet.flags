@@ -9,10 +9,13 @@
 
 # concurrency conf
 # thread_pool_size建议和cpu核数一致
---thread_pool_size=20
---scan_concurrency_limit=8
+--thread_pool_size=24
+--scan_concurrency_limit=16
 --put_concurrency_limit=8
---get_concurrency_limit=8
+--get_concurrency_limit=16
+
+--zk_session_timeout=10000
+#--zk_keep_alive_check_interval=5000
 
 # log conf
 --log_dir=./logs
@@ -45,17 +48,16 @@
 
 # garbage collection conf
 # 60m
---gc_interval=30
+--gc_interval=60
 #--gc_pool_size=2
 # 1m
 #--gc_safe_offset=1
 
 # send file conf
---send_file_max_try=3
---stream_wait_time_ms=5
+#--send_file_max_try=3
 #--stream_close_wait_time_ms=1000
---stream_block_size=1048576
---stream_bandwidth_limit=1048576
+#--stream_block_size=1048576
+--stream_bandwidth_limit=10485760
 #--request_max_retry=3
 #--request_timeout_ms=5000
 #--request_sleep_time=1000

@@ -121,7 +121,7 @@ class TestSendSnapshot(TestCaseBase):
 
 
     def assert_send_fail_by_log(self):
-        rs = utils.exe_shell('cat {}/info.log | grep "connect stream failed. '
+        rs = utils.exe_shell('cat {}/info.log | grep "Init file receiver failed. '
                               'tid\[{}\] pid\[{}\]"'.format(self.leaderpath, self.tid, self.pid, self.tid, self.pid))
         self.assertTrue(rs)
 

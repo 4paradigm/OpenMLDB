@@ -29,7 +29,7 @@ class TestTtl(TestCaseBase):
         ('latest:-1', 'ttl should be equal or greater than 0'),
         ('latest:1.0', 'Invalid args, tid , pid or ttl should be uint32_t'),
         ('latest:1.5', 'Invalid args, tid , pid or ttl should be uint32_t'),
-        ('latest:111111111111', 'Fail to create table'),
+        ('latest:111111111111', 'Create failed. The max num of latest LatestTime is 1000'),
         ('latest:a', 'Invalid args, tid , pid or ttl should be uint32_t'),
         ('latestt:1', 'invalid ttl type'),
     )
@@ -50,7 +50,7 @@ class TestTtl(TestCaseBase):
         ('latest:-1', 'invalid ttl which should be equal or greater than 0'),
         ('latest:1.0', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
         ('latest:1.5', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
-        ('latest:1111111111111111', 'Fail to create table'),
+        ('latest:1111111111111111', 'Create failed. The max num of latest LatestTime is 1000'),
         ('latest:a', 'Invalid args bad lexical cast: source type value could not be interpreted as target'),
         ('latestt:1', 'invalid ttl type'),
     )

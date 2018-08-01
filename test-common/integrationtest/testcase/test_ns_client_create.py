@@ -18,6 +18,8 @@ class TestCreateTableByNsClient(TestCaseBase):
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
          'Create table ok'),
+        ('"t{}"'.format(time.time()), None, 157680000, 8,
+         'Create failed. The max num of AbsoluteTime ttl is 15768000'),
         ('"t{}"'.format(time.time()), '"notype"', 144000, 8,
          'ttl type notype is invalid'),
         ('"t{}"'.format(time.time()), '', 144000, 8,
@@ -308,7 +310,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('column_desc', '"k2"', '"string"', 'true'),
         ('column_desc', '"k3"', '"double"', 'true')),
 
-        ('check name failed',
+        ('check column_desc name failed. name is card',
         ('column_desc', '"card"', '"string"', 'true'),
         ('column_desc', '"card"', '"double"', 'false')),
 

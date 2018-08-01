@@ -46,6 +46,86 @@ TEST_F(SchemaCodecTest, Encode) {
     ASSERT_EQ("age", decoded_columns[1].name);
 }
 
+TEST_F(SchemaCodecTest, Timestamp) {
+
+    std::vector<ColumnDesc> columns;
+    ColumnDesc desc1;
+    desc1.name = "card";
+    desc1.type = ::rtidb::base::ColType::kString;
+    desc1.add_ts_idx = true;
+    columns.push_back(desc1);
+    
+    ColumnDesc desc2;
+    desc2.name = "ts";
+    desc2.type = ::rtidb::base::ColType::kTimestamp;
+    desc2.add_ts_idx = false;
+    columns.push_back(desc2);
+
+    SchemaCodec codec;
+    std::string buffer;
+    codec.Encode(columns, buffer);
+    std::vector<ColumnDesc > decoded_columns;
+    codec.Decode(buffer, decoded_columns);
+
+    ASSERT_EQ(2, decoded_columns.size());
+    ASSERT_EQ(::rtidb::base::ColType::kString, decoded_columns[0].type);
+    ASSERT_EQ("card", decoded_columns[0].name);
+    ASSERT_EQ(::rtidb::base::ColType::kTimestamp, decoded_columns[1].type);
+    ASSERT_EQ("ts", decoded_columns[1].name);
+}
+
+TEST_F(SchemaCodecTest, Int16) {
+    std::vector<ColumnDesc> columns;
+    ColumnDesc desc1;
+    desc1.name = "int16";
+    desc1.type = ::rtidb::base::ColType::kInt16;
+    desc1.add_ts_idx = false;
+    columns.push_back(desc1);
+    SchemaCodec codec;
+    std::string buffer;
+    codec.Encode(columns, buffer);
+    std::vector<ColumnDesc > decoded_columns;
+    codec.Decode(buffer, decoded_columns);
+    ASSERT_EQ(1, decoded_columns.size());
+    ASSERT_EQ(::rtidb::base::ColType::kInt16, decoded_columns[0].type);
+    ASSERT_EQ("int16", decoded_columns[0].name);
+}
+
+TEST_F(SchemaCodecTest, UInt16) {
+    std::vector<ColumnDesc> columns;
+    ColumnDesc desc1;
+    desc1.name = "uint16";
+    desc1.type = ::rtidb::base::ColType::kUInt16;
+    desc1.add_ts_idx = false;
+    columns.push_back(desc1);
+    SchemaCodec codec;
+    std::string buffer;
+    codec.Encode(columns, buffer);
+    std::vector<ColumnDesc > decoded_columns;
+    codec.Decode(buffer, decoded_columns);
+    ASSERT_EQ(1, decoded_columns.size());
+    ASSERT_EQ(::rtidb::base::ColType::kUInt16, decoded_columns[0].type);
+    ASSERT_EQ("uint16", decoded_columns[0].name);
+}
+
+TEST_F(SchemaCodecTest, Bool) {
+    std::vector<ColumnDesc> columns;
+    ColumnDesc desc1;
+    desc1.name = "bool";
+    desc1.type = ::rtidb::base::ColType::kBool;
+    desc1.add_ts_idx = false;
+    columns.push_back(desc1);
+    SchemaCodec codec;
+    std::string buffer;
+    codec.Encode(columns, buffer);
+    std::vector<ColumnDesc > decoded_columns;
+    codec.Decode(buffer, decoded_columns);
+    ASSERT_EQ(1, decoded_columns.size());
+    ASSERT_EQ(::rtidb::base::ColType::kBool, decoded_columns[0].type);
+    ASSERT_EQ("bool", decoded_columns[0].name);
+}
+
+
 }
 }
 

@@ -58,6 +58,8 @@ DEFINE_string(log_dir, "", "Config the log dir");
 DEFINE_int32(log_file_size, 1024, "Config the log size in MB");
 DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
+DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(absolute_ttl_max);
 
 void SetupLog() {
     // Config log 
@@ -254,6 +256,10 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
             float float_col = 0.0f;
             fit.GetFloat(&float_col);
             col = boost::lexical_cast<std::string>(float_col);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kTimestamp) {
+            uint64_t ts = 0;
+            fit.GetTimestamp(&ts);
+            col = boost::lexical_cast<std::string>(ts);
         }
         fit.Next();
         vrow.push_back(col);
@@ -324,6 +330,16 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
                 codec_ok = codec.Append(boost::lexical_cast<double>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kString) {
                 codec_ok = codec.Append(data[i]);
+            } else if (columns[i].type == ::rtidb::base::ColType::kTimestamp) {
+                codec_ok = codec.AppendTimestamp(boost::lexical_cast<uint64_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kDate) {
+                codec_ok = codec.AppendDate(boost::lexical_cast<uint64_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kInt16) {
+                codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kUInt16) {
+                codec_ok = codec.Append(boost::lexical_cast<uint16_t>(data[i]));
+            } else {
+                codec_ok = codec.AppendNull();
             }
         } catch(std::exception const& e) {
             std::cout << e.what() << std::endl;
@@ -1128,7 +1144,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         }
         if (table_info.column_desc(idx).name() == "" || 
                 name_set.find(table_info.column_desc(idx).name()) != name_set.end()) {
-            printf("check name failed\n");
+            printf("check column_desc name failed. name is %s\n", table_info.column_desc(idx).name().c_str());
             return -1;
         }
         if (table_info.column_desc(idx).add_ts_idx()) {
@@ -1157,6 +1173,11 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     type_set.insert("float");
     type_set.insert("double");
     type_set.insert("string");
+    type_set.insert("bool");
+    type_set.insert("timestamp");
+    type_set.insert("date");
+    type_set.insert("int16");
+    type_set.insert("uint16");
     ::rtidb::nameserver::TableInfo ns_table_info;
     if (parts.size() == 2) {
         if (GenTableInfo(parts[1], type_set, ns_table_info) < 0) {
@@ -1231,6 +1252,19 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
     } else {
         std::cout << "create format error! ex: create table_meta_file | create name ttl partition_num replica_num [name:type:index ...]" << std::endl;
         return;
+    }
+    if (ns_table_info.ttl_type() == "kAbsoluteTime") {
+        if (ns_table_info.ttl() > FLAGS_absolute_ttl_max) {
+            std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                      << FLAGS_absolute_ttl_max << std::endl;
+            return;
+        }
+    } else {
+        if (ns_table_info.ttl() > FLAGS_latest_ttl_max) {
+            std::cout << "Create failed. The max num of latest LatestTime is " 
+                      << FLAGS_latest_ttl_max << std::endl;
+            return;
+        }
     }
     std::string msg;
     if (!client->CreateTable(ns_table_info, msg)) {
@@ -1334,7 +1368,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         } else if (parts[1] == "delreplica") {
             printf("desc: delete replica from leader\n\n");
             printf("usage: delreplica name pid endpoint\n");
-            printf("ex: delreplicac table1 0 172.27.128.31:9527\n");
+            printf("ex: delreplica table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
@@ -1655,14 +1689,26 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         if (parts.size() > 4) {
             std::vector<std::string> vec;
             ::rtidb::base::SplitString(parts[4], ":", &vec);
-            if (vec.size() > 1 && vec[0] == "latest") {
-                type = ::rtidb::api::TTLType::kLatestTime;
-            }
-            if (vec.size() > 1 && vec[0] != "latest") {
-                std::cout << "invalid ttl type" << std::endl;
-                return;
-            }
             ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
+            if (vec.size() > 1) {
+                if (vec[0] == "latest") {
+                    type = ::rtidb::api::TTLType::kLatestTime;
+                    if (ttl > FLAGS_latest_ttl_max) {
+                        std::cout << "Create failed. The max num of latest LatestTime is " 
+                                  << FLAGS_latest_ttl_max << std::endl;
+                        return;
+                    }
+                } else {
+                    std::cout << "invalid ttl type" << std::endl;
+                    return;
+                }
+            } else {
+                if (ttl > FLAGS_absolute_ttl_max) {
+                    std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                              << FLAGS_absolute_ttl_max << std::endl;
+                    return;
+                }
+            }
         }
         if (ttl < 0) {
             std::cout << "ttl should be equal or greater than 0" << std::endl;
@@ -2264,14 +2310,26 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
         ::rtidb::base::SplitString(parts[4], ":", &vec);
-        if (vec.size() > 1 && vec[0] == "latest") {
-            type = ::rtidb::api::TTLType::kLatestTime;
-        }
-        if (vec.size() > 1 && vec[0] != "latest" ) {
-            std::cout << "invalid ttl type " << std::endl;
-            return;
-        }
         ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
+        if (vec.size() > 1) {
+            if (vec[0] == "latest") {
+                type = ::rtidb::api::TTLType::kLatestTime;
+                if (ttl > FLAGS_latest_ttl_max) {
+                    std::cout << "Create failed. The max num of latest LatestTime is " 
+                              << FLAGS_latest_ttl_max << std::endl;
+                    return;
+                }
+            } else {
+                std::cout << "invalid ttl type " << std::endl;
+                return;
+            }
+        } else {
+            if (ttl > FLAGS_absolute_ttl_max) {
+                std::cout << "Create failed. The max num of AbsoluteTime ttl is " 
+                          << FLAGS_absolute_ttl_max << std::endl;
+                return;
+            }
+        }        
         if (ttl < 0) {
             std::cout << "invalid ttl which should be equal or greater than 0" << std::endl;
             return;
@@ -2695,6 +2753,10 @@ void StartClient() {
 
 void StartNsClient() {
     std::string endpoint;
+    if (FLAGS_interactive) {
+        std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+            << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
+    }
     if (!FLAGS_zk_cluster.empty()) {
         ZkClient zk_client(FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
         if (!zk_client.Init()) {

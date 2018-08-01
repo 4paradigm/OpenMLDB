@@ -46,7 +46,7 @@ public:
 
     // the client will create a ephemeral node in zk_root_path
     // eg {zk_root_path}/nodes/000000 -> endpoint
-    bool Register();
+    bool Register(bool startup_flag = false);
 
     // close zk connection
     bool CloseZK();
