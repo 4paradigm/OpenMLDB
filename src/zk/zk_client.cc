@@ -70,12 +70,11 @@ bool ZkClient::Init() {
                          LogEventWrapper, 
                          session_timeout_, 0, (void *)this, 0);
     // one second
-    cv_.wait_for(lock, std::chrono::milliseconds(1000 * 5));
+    cv_.wait_for(lock, std::chrono::milliseconds(session_timeout_));
     if (zk_ == NULL || !connected_) {
         PDLOG(WARNING, "fail to init zk handler with hosts %s, session_timeout %d", hosts_.c_str(), session_timeout_);
         return false;
     }
-    session_term_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 
@@ -361,11 +360,11 @@ bool ZkClient::Reconnect() {
                          LogEventWrapper, 
                          session_timeout_, 0, (void *)this, 0);
 
-    cv_.wait_for(lock, std::chrono::milliseconds(1000 * 5));
+    cv_.wait_for(lock, std::chrono::milliseconds(session_timeout_));
     if (zk_ == NULL || !connected_) {
+        PDLOG(WARNING, "fail to init zk handler with hosts %s, session_timeout %d", hosts_.c_str(), session_timeout_);
         return false;
     }
-    session_term_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 
@@ -383,7 +382,9 @@ void ZkClient::LogEvent(int type, int state, const char* path) {
 void ZkClient::Connected() {
     std::lock_guard<std::mutex> lock(mu_);
     connected_ = true;
+    session_term_.fetch_add(1, std::memory_order_relaxed);
     cv_.notify_one();
+    PDLOG(INFO, "connect success");
 }
 
 bool ZkClient::Mkdir(const std::string& path) {

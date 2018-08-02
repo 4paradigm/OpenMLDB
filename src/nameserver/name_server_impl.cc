@@ -37,7 +37,7 @@ namespace nameserver {
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
     table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
     task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(),
-    rand_(0xdeadbeef) {
+    rand_(0xdeadbeef), session_term_(0) {
     std::string zk_table_path = FLAGS_zk_root_path + "/table";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
@@ -673,6 +673,7 @@ bool NameServerImpl::Init() {
     }
     zk_client_->WatchNodes(boost::bind(&NameServerImpl::UpdateTabletsLocked, this, _1));
     zk_client_->WatchNodes();
+    session_term_ = zk_client_->GetSessionTerm();
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
     dist_lock_ = new DistLock(FLAGS_zk_root_path + "/leader", zk_client_, 
@@ -687,8 +688,15 @@ void NameServerImpl::CheckZkClient() {
         OnLostLock();
         PDLOG(WARNING, "reconnect zk");
         if (zk_client_->Reconnect()) {
-            zk_client_->WatchNodes();
             PDLOG(INFO, "reconnect zk ok");
+        }
+    }
+    if (session_term_ != zk_client_->GetSessionTerm()) {
+        if (zk_client_->WatchNodes()) {
+            session_term_ = zk_client_->GetSessionTerm();
+            PDLOG(INFO, "watch node ok");
+        } else {
+            PDLOG(WARNING, "watch node falied");
         }
     }
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
@@ -926,7 +934,12 @@ void NameServerImpl::ConnectZK(RpcController* controller,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (zk_client_->Reconnect()) {
-        zk_client_->WatchNodes();
+        if (session_term_ != zk_client_->GetSessionTerm()) {
+            if (zk_client_->WatchNodes()) {
+                session_term_ = zk_client_->GetSessionTerm();
+                PDLOG(INFO, "watch node ok");
+            }
+        }
         response->set_code(0);
         response->set_msg("ok");
         PDLOG(INFO, "connect zk ok");
