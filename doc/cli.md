@@ -344,7 +344,7 @@ ttl_type可以设置kAbsoluteTime(按时间过期)和kLatestTime(按条数过期
 table_partition 可以不用指定  
 partition_num用来设置分片数. 只有不指定table_partition时生效. 此项配置是可选的, 默认值是32可由配置文件partition_num来修改  
 replica_num用来设置副本数. 只有不指定table_partition时生效. 此项配置是可选的, 默认值是3, 表示3副本部署时会部一主两从. 可由配置文件replica_num来修改
-column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构  
+column_desc用来描述维度信息, 有多少个维度就创建多少个column_desc结构. **如果字段数太多会创建失败, 可尝试缩短字段名称, 最多不超过4200个**   
 type字段标识当前列的数据类型. 支持的数据类型有int32, uint32, int64, uint64, float, double, string  
 ```
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令
