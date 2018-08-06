@@ -50,7 +50,7 @@ void DistLock::InternalLock() {
             zk_client_->CancelWatchChildren(root_path_);
             bool ok = zk_client_->CreateNode(root_path_ + "/lock_request", lock_value_, ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path_);
             if (!ok) {
-                PDLOG(WARNING, "create node falied with assigned path %s", assigned_path_.c_str());
+                PDLOG(WARNING, "create node falied. lock value %s", lock_value_.c_str());
                 continue;
             }
             PDLOG(INFO, "create node ok with assigned path %s", assigned_path_.c_str());
