@@ -326,15 +326,23 @@ void TabletImpl::Put(RpcController* controller,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
     if (request->tid() < 1) {
-        PDLOG(WARNING, "invalid table tid %u", request->tid());
+        PDLOG(DEBUG, "invalid table tid %u", request->tid());
         response->set_code(11);
         response->set_msg("invalid table id");
         done->Run();
         return;
     }
+    if (request->time() == 0) {
+        PDLOG(DEBUG, "ts must be greater than zero. tid %u, pid %u", request->tid(),
+                request->pid());
+        response->set_code(12);
+        response->set_msg("ts must be greater than zero");
+        done->Run();
+        return;
+    }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
+        PDLOG(DEBUG, "fail to find table with tid %u, pid %u", request->tid(),
                 request->pid());
         response->set_code(10);
         response->set_msg("table not found");
@@ -342,7 +350,7 @@ void TabletImpl::Put(RpcController* controller,
         return;
     }
     if (!table->IsLeader()) {
-        PDLOG(WARNING, "table with tid %u, pid %u is follower and it's readonly ", request->tid(),
+        PDLOG(DEBUG, "table with tid %u, pid %u is follower and it's readonly ", request->tid(),
                 request->pid());
         response->set_code(20);
         response->set_msg("table is follower, and it's readonly");
@@ -379,6 +387,7 @@ void TabletImpl::Put(RpcController* controller,
     if (!ok) {
         response->set_code(-1);
         response->set_msg("put failed");
+        done->Run();
         return;
     }
     response->set_code(0);

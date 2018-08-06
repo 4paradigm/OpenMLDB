@@ -50,6 +50,7 @@ void DistLock::InternalLock() {
             zk_client_->CancelWatchChildren(root_path_);
             bool ok = zk_client_->CreateNode(root_path_ + "/lock_request", lock_value_, ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path_);
             if (!ok) {
+                PDLOG(WARNING, "create node falied with assigned path %s", assigned_path_.c_str());
                 continue;
             }
             PDLOG(INFO, "create node ok with assigned path %s", assigned_path_.c_str());
@@ -83,7 +84,7 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
             lock_state_.store(kLocked, std::memory_order_relaxed);
             current_lock_value_ = lock_value_;
         }
-    }else {
+    } else {
         bool ok = zk_client_->GetNodeValue(current_lock_node_, current_lock_value_);
         if (!ok) {
             PDLOG(WARNING, "fail to get lock value");
@@ -92,8 +93,15 @@ void DistLock::HandleChildrenChangedLocked(const std::vector<std::string>& child
         if (lock_state_.load(std::memory_order_relaxed) == kLocked) {
             on_lost_lock_cl_();
             lock_state_.store(kLostLock, std::memory_order_relaxed);
+            PDLOG(INFO, "lock lost. wait a channce to get a lock");
+        } else if (lock_state_.load(std::memory_order_relaxed) == kTryLock && current_lock_value_ == lock_value_) {
+            PDLOG(INFO, "get lock with assigned_path %s", assigned_path_.c_str());
+            on_locked_cl_();
+            lock_state_.store(kLocked, std::memory_order_relaxed);
+            current_lock_value_ = lock_value_;
+        } else {
+            PDLOG(INFO, "wait a channce to get a lock");
         }
-        PDLOG(INFO, "wait a channce to get a lock");
     }
     PDLOG(INFO, "my path %s , first child %s , lock value %s", 
                assigned_path_.c_str(), current_lock_node_.c_str(), current_lock_value_.c_str());
