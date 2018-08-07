@@ -42,6 +42,10 @@ import io.brpc.client.RpcProxy;
 import io.brpc.client.SingleEndpointRpcClient;
 import rtidb.api.TabletServer;
 
+import java.util.zip.GZIPInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
     private static Set<String> localIpAddr = new HashSet<String>();
@@ -207,6 +211,20 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             for (String path : children) {
                 byte[] data = zookeeper.getData(config.getZkTableRootPath() + "/" + path, false, null);
                 if (data != null) {
+                    if (config.isTableInfoCompressed()) {
+                        try {
+                            GZIPInputStream in = new GZIPInputStream(new ByteArrayInputStream(data));
+                            ByteArrayOutputStream out = new ByteArrayOutputStream();
+                            byte[] buffer = new byte[256];
+                            int n;
+                            while ((n = in.read(buffer)) >= 0) {
+                                out.write(buffer, 0, n);
+                            }
+                            data = out.toByteArray();
+                        } catch (IOException e) {
+                            logger.error("uncompress error");
+                        }
+                    }
                     try {
                         TableInfo tableInfo = TableInfo.parseFrom(data);
                         newTableList.add(tableInfo);

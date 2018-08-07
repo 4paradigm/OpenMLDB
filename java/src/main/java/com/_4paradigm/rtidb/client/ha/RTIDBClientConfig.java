@@ -26,6 +26,7 @@ public class RTIDBClientConfig {
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	private String nsEndpoint;
+    private boolean tableInfoCompressed = true;
 
 	public void disableMetrics() {
 	    enableMetrics = false;
@@ -43,6 +44,14 @@ public class RTIDBClientConfig {
      */
     public void setNsEndpoint(String nsEndpoint) {
         this.nsEndpoint = nsEndpoint;
+    }
+
+    public boolean isTableInfoCompressed() {
+        return this.tableInfoCompressed;
+    }
+
+    public void setTableInfoCompressed(boolean tableInfoCompressed) {
+        this.tableInfoCompressed = tableInfoCompressed;
     }
 
     public boolean isRemoveDuplicateByTime() {
