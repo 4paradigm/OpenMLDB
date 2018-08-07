@@ -222,7 +222,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                             }
                             data = out.toByteArray();
                         } catch (IOException e) {
-                            logger.error("uncompress error");
+                            logger.error("uncompress error", e);
+                            continue
                         }
                     }
                     try {
