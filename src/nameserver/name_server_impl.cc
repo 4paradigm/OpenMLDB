@@ -1026,7 +1026,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         table_partition->Clear();        
         table_partition->CopyFrom(request->table_partition());
         std::string table_value;
-        iter->second->SerializeToString(&table_value);
+        cur_table_info->SerializeToString(&table_value);
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
