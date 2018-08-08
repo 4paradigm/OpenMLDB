@@ -1144,7 +1144,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         }
         if (table_info.column_desc(idx).name() == "" || 
                 name_set.find(table_info.column_desc(idx).name()) != name_set.end()) {
-            printf("check name failed\n");
+            printf("check column_desc name failed. name is %s\n", table_info.column_desc(idx).name().c_str());
             return -1;
         }
         if (table_info.column_desc(idx).add_ts_idx()) {

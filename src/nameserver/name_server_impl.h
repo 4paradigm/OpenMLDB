@@ -382,6 +382,7 @@ private:
     std::set<::rtidb::api::OPType> ordered_op_type_;
     std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
+    uint64_t session_term_;
 };
 
 }
