@@ -183,6 +183,19 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, srp.count());
     ASSERT_EQ(0, srp.code());
+    {
+        ::rtidb::api::GetTableFollowerRequest gr;
+        ::rtidb::api::GetTableFollowerResponse grs;
+        gr.set_tid(tid);
+        gr.set_pid(pid);
+        tablet->GetTableFollower(NULL, &gr, &grs, &closure);
+        ASSERT_EQ(0, grs.code());
+        ASSERT_EQ(12, grs.offset());
+        ASSERT_EQ(1, grs.follower_info_size());
+        ASSERT_STREQ(follower_point.c_str(), grs.follower_info(0).endpoint().c_str());
+        ASSERT_EQ(12, grs.follower_info(0).offset());
+
+    }
     ::rtidb::api::DropTableRequest dr;
     dr.set_tid(tid);
     dr.set_pid(pid);
