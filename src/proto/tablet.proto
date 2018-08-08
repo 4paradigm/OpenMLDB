@@ -414,6 +414,23 @@ message GetManifestResponse {
     optional Manifest manifest = 3;
 }
 
+message GetTableFollowerRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message FollowerInfo {
+    optional string endpoint = 1;
+    optional uint64 offset = 2;
+}
+
+message GetTableFollowerResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 offset = 3;
+    repeated FollowerInfo follower_info = 4;
+}
+
 message CheckFileRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
@@ -440,6 +457,7 @@ service TabletServer {
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
+    rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);

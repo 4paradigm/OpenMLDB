@@ -631,6 +631,27 @@ bool TabletClient::SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp) {
 
 }
 
+bool TabletClient::GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset, 
+            std::map<std::string, uint64_t>& info_map, std::string& msg) {
+    ::rtidb::api::GetTableFollowerRequest request;
+    ::rtidb::api::GetTableFollowerResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableFollower,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (response.has_msg()) {
+        msg = response.msg();
+    }
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    for (int idx = 0; idx < response.follower_info_size(); idx++) {
+        info_map.insert(std::make_pair(response.follower_info(idx).endpoint(), response.follower_info(idx).offset()));
+    }
+    offset = response.offset();
+    return true;
+}
+
 void TabletClient::ShowTp() {
     if (!FLAGS_enable_show_tp) {
         return;

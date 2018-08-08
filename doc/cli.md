@@ -230,6 +230,8 @@ recoversnapshot 恢复makesnapshot功能
 命令格式: recoversnapshot tid pid  
 sendsnapshot 给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件. 注: 发送前必须pausesnapshot, 发送完再运行recoversnapshot  
 命令格式: sendsnapshot tid pid endpoint  
+getfollower 获取从节点信息    
+命令格式: getfollower tid pid  
 
 changerole 切换leader或者follower  
 命令格式: changerole tid pid role  

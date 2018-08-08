@@ -76,6 +76,8 @@ public:
 
     int DelReplicateNode(const std::string& endpoint);
 
+    void GetReplicateInfo(std::map<std::string, uint64_t>& info_map);
+
     void MatchLogOffset();
 
     void ReplicateToNode(const std::string& endpoint);

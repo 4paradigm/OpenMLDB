@@ -153,6 +153,9 @@ public:
                     ::rtidb::api::TableStatus& table_status);
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term, uint64_t& offset);
+
+    bool GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset, 
+                    std::map<std::string, uint64_t>& info_map, std::string& msg);
     
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
