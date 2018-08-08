@@ -1029,7 +1029,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         table_partition->Clear();        
         table_partition->CopyFrom(request->table_partition());
         std::string table_value;
-        if (!SerializeTableInfo(*(iter->second), table_value)) {
+        if (!SerializeTableInfo(*cur_table_info, table_value)) {
             PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
             response->set_code(-1);
             response->set_msg("serialize table info failed");
