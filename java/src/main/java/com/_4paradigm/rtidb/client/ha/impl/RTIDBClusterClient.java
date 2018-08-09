@@ -32,7 +32,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
-import com._4paradigm.utils.Compress;
+import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.brpc.client.BrpcChannelGroup;

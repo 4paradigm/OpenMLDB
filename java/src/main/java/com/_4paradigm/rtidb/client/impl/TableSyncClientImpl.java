@@ -18,7 +18,7 @@ import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
-import com._4paradigm.utils.MurmurHash;
+import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
