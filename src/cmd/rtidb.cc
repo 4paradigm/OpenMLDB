@@ -1851,6 +1851,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         printf("setexpire - enable or disable ttl\n");
         printf("showschema - show schema\n");
         printf("gettablestatus - get table status\n");
+        printf("getfollower - get follower\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
         printf("help - get cmd info\n");
@@ -1947,6 +1948,10 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("usage: gettablestatus [tid pid]\n");
             printf("ex: gettablestatus\n");
             printf("ex: gettablestatus 1 0\n");
+        } else if (parts[1] == "getfollower") {
+            printf("desc: get table follower\n");
+            printf("usage: getfollower tid pid\n");
+            printf("ex: getfollower 1 0\n");
         } else if (parts[1] == "exit" || parts[1] == "quit") {
             printf("desc: exit client\n");
             printf("ex: quit\n");
@@ -2409,6 +2414,52 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
     }
 }
 
+void HandleClientGetFollower(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout <<  "Bad get follower format" << std::endl;
+        return;
+    }
+    uint32_t tid = 0;
+    uint32_t pid = 0;
+    try {
+        tid = boost::lexical_cast<uint32_t>(parts[1]);
+        pid = boost::lexical_cast<uint32_t>(parts[2]);
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args" << std::endl;
+        return;
+    }
+    std::map<std::string, uint64_t> info_map;
+    uint64_t offset = 0;
+    std::string msg;
+    if (!client->GetTableFollower(tid, pid, offset, info_map, msg)) {
+        std::cout << "get failed. msg: " << msg << std::endl;
+        return;
+    }
+    std::vector<std::string> header;
+    header.push_back("#");
+    header.push_back("tid");
+    header.push_back("pid");
+    header.push_back("leader_offset");
+    header.push_back("follower");
+    header.push_back("offset");
+    ::baidu::common::TPrinter tp(header.size());
+
+    tp.AddRow(header);
+    int idx = 0;
+    for (const auto& kv : info_map) {
+        std::vector<std::string> row;
+        row.push_back(std::to_string(idx));
+        idx++;
+        row.push_back(std::to_string(tid));
+        row.push_back(std::to_string(pid));
+        row.push_back(std::to_string(offset));
+        row.push_back(kv.first);
+        row.push_back(std::to_string(kv.second));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout <<  "Bad show schema format" << std::endl;
@@ -2702,6 +2753,8 @@ void StartClient() {
             HandleClientSScan(parts, &client);
         } else if (parts[0] == "showschema") {
             HandleClientShowSchema(parts, &client);
+        } else if (parts[0] == "getfollower") {
+            HandleClientGetFollower(parts, &client);
         } else if (parts[0] == "benput") {
             HandleClientBenPut(parts, &client);
         } else if (parts[0] == "benscan") {
