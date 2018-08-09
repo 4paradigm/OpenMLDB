@@ -32,6 +32,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.utils.Compress;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.brpc.client.BrpcChannelGroup;
@@ -41,10 +42,6 @@ import io.brpc.client.RpcClientOptions;
 import io.brpc.client.RpcProxy;
 import io.brpc.client.SingleEndpointRpcClient;
 import rtidb.api.TabletServer;
-
-import java.util.zip.GZIPInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
@@ -212,18 +209,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 byte[] data = zookeeper.getData(config.getZkTableRootPath() + "/" + path, false, null);
                 if (data != null) {
                     if (config.isTableInfoCompressed()) {
-                        try {
-                            GZIPInputStream in = new GZIPInputStream(new ByteArrayInputStream(data));
-                            ByteArrayOutputStream out = new ByteArrayOutputStream();
-                            byte[] buffer = new byte[256];
-                            int n;
-                            while ((n = in.read(buffer)) >= 0) {
-                                out.write(buffer, 0, n);
-                            }
-                            data = out.toByteArray();
-                        } catch (IOException e) {
-                            logger.error("uncompress error with name {}", path, e);
-                            continue;
+                        byte[] uncompressed = Compress.gunzip(data);
+                        if (uncompressed != null) {
+                            data = uncompressed;
                         }
                     }
                     try {
