@@ -14,6 +14,7 @@
 #include "base/strings.h"
 #include <chrono>
 #include <boost/algorithm/string.hpp>
+#include <brpc/policy/gzip_compress.h>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -30,6 +31,8 @@ DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
 DECLARE_uint32(tablet_heartbeat_timeout);
 DECLARE_uint32(tablet_offline_check_interval);
+DECLARE_uint32(table_meta_max_size);
+DECLARE_bool(enable_table_meta_compress);
 
 namespace rtidb {
 namespace nameserver {
@@ -192,14 +195,14 @@ bool NameServerImpl::RecoverTableInfo() {
         std::string table_name_node = zk_table_data_path_ + "/" + table_name;
         std::string value;
         if (!zk_client_->GetNodeValue(table_name_node, value)) {
-            PDLOG(WARNING, "get table info failed! table node[%s]", table_name_node.c_str());
-            return false;
+            PDLOG(WARNING, "get table info failed! name[%s] table node[%s]", table_name.c_str(), table_name_node.c_str());
+            continue;
         }
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = 
                     std::make_shared<::rtidb::nameserver::TableInfo>();
-        if (!table_info->ParseFromString(value)) {
-            PDLOG(WARNING, "parse table info failed! value[%s]", value.c_str());
-            return false;
+        if (!ParseTableInfoFromString(value, *table_info)) {
+            PDLOG(WARNING, "parse table info failed! name[%s] value[%s] value size[%d]", table_name.c_str(), value.c_str(), value.length());
+            continue;
         }
         table_info_.insert(std::make_pair(table_name, table_info));
         PDLOG(INFO, "recover table[%s] success", table_name.c_str());
@@ -1026,7 +1029,12 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         table_partition->Clear();        
         table_partition->CopyFrom(request->table_partition());
         std::string table_value;
-        cur_table_info->SerializeToString(&table_value);
+        if (!SerializeTableInfo(*cur_table_info, table_value)) {
+            PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
+            response->set_code(-1);
+            response->set_msg("serialize table info failed");
+            return; 
+        }
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -1662,6 +1670,29 @@ void NameServerImpl::DropTable(RpcController* controller,
     NotifyTableChanged();
 }
 
+bool NameServerImpl::SerializeTableInfo(const ::rtidb::nameserver::TableInfo& table_info, std::string& table_value) {
+    if (FLAGS_enable_table_meta_compress) {
+        butil::IOBuf io_buf;
+        if (!brpc::policy::GzipCompress(table_info, &io_buf)) {
+            return false;
+        }
+        table_value = io_buf.to_string();
+    } else {
+        table_info.SerializeToString(&table_value);
+    }
+    return true;
+}
+
+bool NameServerImpl::ParseTableInfoFromString(const std::string& table_value, ::rtidb::nameserver::TableInfo& table_info) {
+    if (FLAGS_enable_table_meta_compress) {
+        butil::IOBuf io_buf;
+        io_buf.append(table_value);
+        return brpc::policy::GzipDecompress(io_buf, &table_info);
+    } else {
+        return table_info.ParseFromString(table_value);
+    }
+}
+
 void NameServerImpl::CreateTable(RpcController* controller, 
         const CreateTableRequest* request, 
         GeneralResponse* response, 
@@ -1725,6 +1756,18 @@ void NameServerImpl::CreateTable(RpcController* controller,
                         table_info->name().c_str(), tid);
         return;
     }
+    std::string table_value;
+    if (!SerializeTableInfo(*table_info, table_value)) {
+        PDLOG(WARNING, "serialize table info failed. name[%s]", table_info->name().c_str());
+        response->set_code(-1);
+        response->set_msg("serialize table info failed");
+    }
+    if (table_value.length() > FLAGS_table_meta_max_size) {
+        PDLOG(WARNING, "table meta is too large. name[%s] meta size[%d]", table_info->name().c_str(), table_value.length());
+        response->set_code(-1);
+        response->set_msg("table meta is too large");
+        return;
+    }
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     do {
         if (CreateTableOnTablet(table_info, false, columns, endpoint_map, cur_term) < 0 ||
@@ -1735,8 +1778,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
                             table_info->name().c_str(), tid);
             break;
         }
-        std::string table_value;
-        table_info->SerializeToString(&table_value);
         if (!zk_client_->CreateNode(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
             PDLOG(WARNING, "create table node[%s/%s] failed! value[%s] value_size[%u]", 
                             zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
@@ -1744,7 +1785,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             response->set_msg("create table node failed");
             break;
         }
-        PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
+        PDLOG(INFO, "create table node[%s/%s] success! value[%s] value_size[%u]", 
                       zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -3434,7 +3475,11 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
         }
     }
     std::string table_value;
-    iter->second->SerializeToString(&table_value);
+    if (!SerializeTableInfo(*(iter->second), table_value)) {
+        PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        return; 
+    }
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                         zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -3548,7 +3593,11 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
         break;
     }
     std::string table_value;
-    iter->second->SerializeToString(&table_value);
+    if (!SerializeTableInfo(*(iter->second), table_value)) {
+        PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        return; 
+    }
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                         zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -3636,7 +3685,11 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
             return;
         }
         std::string table_value;
-        iter->second->SerializeToString(&table_value);
+        if (!SerializeTableInfo(*(iter->second), table_value)) {
+            PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return; 
+        }
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -3680,7 +3733,11 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
                 partition_meta->set_is_leader(is_leader);
                 partition_meta->set_is_alive(is_alive);
                 std::string table_value;
-                iter->second->SerializeToString(&table_value);
+                if (!SerializeTableInfo(*(iter->second), table_value)) {
+                    PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
+                    task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                    return; 
+                }
                 if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
                     PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                                     zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -3733,7 +3790,11 @@ void NameServerImpl::UpdateTableAlive(const std::string& name, const std::string
     }
     if (has_update) {
         std::string table_value;
-        iter->second->SerializeToString(&table_value);
+        if (!SerializeTableInfo(*(iter->second), table_value)) {
+            PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return; 
+        }
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -3983,7 +4044,11 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
         term_offset->set_term(change_leader_data.term());
         term_offset->set_offset(change_leader_data.offset() + 1);
         std::string table_value;
-        table_iter->second->SerializeToString(&table_value);
+        if (!SerializeTableInfo(*(table_iter->second), table_value)) {
+            PDLOG(WARNING, "serialize table info failed. name[%s]", name.c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return; 
+        }
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());

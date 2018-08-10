@@ -1,4 +1,4 @@
-package com._4paradigm.utils;
+package com._4paradigm.rtidb.utils;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;

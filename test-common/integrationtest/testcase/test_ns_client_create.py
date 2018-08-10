@@ -147,6 +147,53 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs2 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertIn('Fail to create table', rs2)
 
+    def test_create_name_too_many_field(self):
+        """
+        4000个字段 创建成功
+        :return:
+        """
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata(
+            '"large_table"', None, 144000, 8,
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
+            ('column_desc', '"k1000"', '"string"', 'true'),
+            ('column_desc', '"k1001"', '"double"', 'false'),
+            ('column_desc', '"k1002"', '"int32"', 'true'),
+        )
+        for num in range(1003, 4000):
+            name = 'k' + str(num)
+            m.append(('column_desc', [('name', '"' + name + '"'), ('type', '"int32"'), ('add_ts_idx', 'false')]))
+        print(m[-1])
+        #self.assertTrue(False)
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
+        self.assertIn('Create table ok', rs1)
+
+    def test_create_name_too_many_field1(self):
+        """
+        字段太多，创建失败
+        :return:
+        """
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata(
+            '"large_table"', None, 144000, 8,
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
+            ('column_desc', '"k1000"', '"string"', 'true'),
+            ('column_desc', '"k1001"', '"double"', 'false'),
+            ('column_desc', '"k1002"', '"int32"', 'true'),
+        )
+        for num in range(1003, 4500):
+            name = 'k' + str(num)
+            m.append(('column_desc', [('name', '"' + name + '"'), ('type', '"int32"'), ('add_ts_idx', 'false')]))
+        print(m[-1])
+        #self.assertTrue(False)
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
+        self.assertIn('Fail to create table. error msg: table meta is too large', rs1)
 
     @ddt.data(
         (('"0-9"', 'true'), ('"1-3"', 'false'), 'Create table ok'),
@@ -163,7 +210,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         (('"0"', 'true'), ('"0"', 'true'), 'pid 0 has two leader'),
         (('"0-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
         (('""', 'true'), ('"2-4"', 'true'), 'pid_group[] format error.'),
-        (('"0-10240"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
+        (('"0-4000"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
         (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
         ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
         (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),

@@ -22,7 +22,7 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.tablet.Tablet.PutResponse;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
-import com._4paradigm.utils.MurmurHash;
+import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 
