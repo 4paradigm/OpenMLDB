@@ -36,5 +36,5 @@ spec:
       securityContext: 
         runAsUser: 0
       nodeSelector:
-        rtidb-nameserver: "true"
+        prophet.4paradigm.com/rtidb-nameserver: "true"
 
