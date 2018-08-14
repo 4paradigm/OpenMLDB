@@ -848,6 +848,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_pid(table->GetPid());
             status->set_ttl(table->GetTTL());
             status->set_ttl_type(table->GetTTLType());
+            status->set_compress_type(table->GetCompressType());
             status->set_time_offset(table->GetTimeOffset());
             status->set_is_expire(table->GetExpireStatus());
             status->set_name(table->GetName());
@@ -2014,6 +2015,9 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());
     table->SetTTLType(table_meta->ttl_type());
+    if (table_meta->has_compress_type()) {
+        table->SetCompressType(table_meta->compress_type());
+    }
     std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(table_meta->tid()) +
                 "_" + std::to_string(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;

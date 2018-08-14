@@ -47,7 +47,8 @@ KvIterator* Scan(TabletClient* client,
         const char* pk,
         uint64_t st,
         uint64_t et) {
-    return client->Scan(tid, pid, pk, st, et, false);
+    std::string msg;    
+    return client->Scan(tid, pid, pk, st, et, msg, false);
 }
 
 bool DropTable(TabletClient* client, uint32_t tid, uint32_t pid) {
