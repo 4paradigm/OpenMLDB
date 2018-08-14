@@ -37,6 +37,7 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <random>
+#include <snappy.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -2712,6 +2713,12 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
         if (EncodeMultiDimensionData(std::vector<std::string>(parts.begin() + 4, parts.end()), raw, 0, buffer, dimensions) < 0) {
             std::cout << "Encode data error" << std::endl;
             return;
+        }
+        ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
+        if (compress_type == ::rtidb::api::CompressType::kSnappy) {
+            std::string compressed;
+            ::snappy::Compress(buffer.c_str(), buffer.length(), compressed);
+            buffer = compressed;
         }
         ok = client->Put(boost::lexical_cast<uint32_t>(parts[1]),
                          boost::lexical_cast<uint32_t>(parts[2]),
