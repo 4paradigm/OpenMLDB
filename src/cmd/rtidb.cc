@@ -1067,7 +1067,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
     }
-    ns_table_info.set_ttl(table_info.ttl());
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
     if (table_info.table_partition_size() > 0) {
         std::map<uint32_t, std::string> leader_map;
