@@ -1750,13 +1750,25 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
             is_leader = false;
         }
         std::vector<std::string> endpoints;
-        for (size_t i = 7; i < parts.size(); i++) {
-            endpoints.push_back(parts[i]);
+        ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
+        if (parts.size() > 7) {
+            std::string raw_compress_type = parts[7];
+            std::transform(raw_compress_type.begin(), raw_compress_type.end(), raw_compress_type.begin(), ::tolower);
+            if (raw_compress_type == "knocompress" || raw_compress_type == "nocompress") {
+                compress_type = ::rtidb::api::CompressType::kNoCompress;
+            } else if (raw_compress_type == "ksnappy" || raw_compress_type == "snappy") {
+                compress_type = ::rtidb::api::CompressType::kSnappy;
+            } else if (raw_compress_type == "kgzip" || raw_compress_type == "gzip") {
+                compress_type = ::rtidb::api::CompressType::kGzip;
+            } else {
+                printf("compress type %s is invalid\n", parts[7].c_str());
+                return;
+            }
         }
         bool ok = client->CreateTable(parts[1], 
                                       boost::lexical_cast<uint32_t>(parts[2]),
                                       boost::lexical_cast<uint32_t>(parts[3]), 
-                                      (uint64_t)ttl, is_leader, endpoints, type, seg_cnt);
+                                      (uint64_t)ttl, is_leader, endpoints, type, seg_cnt, 0, compress_type);
         if (!ok) {
             std::cout << "Fail to create table" << std::endl;
         }else {
@@ -1886,9 +1898,9 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
-            printf("usage: create name tid pid ttl segment_cnt [is_leader follower1 follower2]\n");
+            printf("usage: create name tid pid ttl segment_cnt [is_leader compress_type]\n");
             printf("ex: create table1 1 0 144000 8\n");
-            printf("ex: create table1 1 0 144000 8 true 172.27.128.31:9991 172.27.128.31:9992\n");
+            printf("ex: create table1 1 0 144000 8 true snappy\n");
             printf("ex: create table1 1 0 144000 8 false\n");
         } else if (parts[1] == "screate") {
             printf("desc: create multi dimension table\n");

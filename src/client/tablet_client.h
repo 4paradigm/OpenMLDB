@@ -36,7 +36,8 @@ public:
                      bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
-                     uint32_t seg_cnt, uint64_t term = 0, const ::rtidb::api::CompressType = ::rtidb::api::CompressType::kNoCompress);
+                     uint32_t seg_cnt, uint64_t term, 
+                     const ::rtidb::api::CompressType compress_type);
 
 
     bool CreateTable(const std::string& name, 
@@ -45,7 +46,7 @@ public:
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
-                     uint64_t term = 0, const ::rtidb::api::CompressType = ::rtidb::api::CompressType::kNoCompress);
+                     uint64_t term = 0, const ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress);
 
     bool Put(uint32_t tid,
              uint32_t pid,

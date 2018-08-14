@@ -76,7 +76,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     client.Init();
     std::vector<std::string> endpoints;
     bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints,
-                    ::rtidb::api::TTLType::kAbsoluteTime, 16);
+                    ::rtidb::api::TTLType::kAbsoluteTime, 16, 0, ::rtidb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
