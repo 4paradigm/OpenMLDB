@@ -17,6 +17,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
 import com._4paradigm.rtidb.utils.MurmurHash;
@@ -180,7 +181,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.GetRequest request = builder.build();
         Tablet.GetResponse response = ts.get(request);
         if (response != null && response.getCode() == 0) {
-            if (th.getTableInfo().getCompressType().equals("kSnappy")) {
+            if (th.getTableInfo().getCompressType().equals(NS.CompressType.kSnappy)) {
                 byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
                 return ByteString.copyFrom(uncompressed);
             } else {
@@ -377,9 +378,12 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("key is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
-        if (th.getTableInfo().getCompressType().equals("kSnappy")) {
+        if (th.getTableInfo().getCompressType().equals(NS.CompressType.kSnappy)) {
             byte[] data = row.array();
             byte[] compressed = Compress.snappyCompress(data);
+            if (compressed == null) {
+                throw new TabletException("snappy compress error");
+            }
             ByteBuffer buffer = ByteBuffer.wrap(compressed);
             row = buffer;
         }

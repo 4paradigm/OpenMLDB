@@ -66,6 +66,10 @@ public class TableHandler {
         return tableInfo;
     }
 
+    public void setTableInfo(TableInfo tableInfo) {
+        this.tableInfo = tableInfo;
+    }
+
     public PartitionHandler[] getPartitions() {
         return partitions;
     }

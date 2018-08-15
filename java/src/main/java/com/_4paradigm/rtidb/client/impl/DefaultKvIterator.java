@@ -10,6 +10,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
@@ -28,7 +29,7 @@ public class DefaultKvIterator implements KvIterator {
     private Long decode = 0l;
     private int count;
     private RTIDBClientConfig config = null;
-    private String compressType = "kNoCompress";
+    private NS.CompressType compressType = NS.CompressType.kNoCompress;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -50,11 +51,11 @@ public class DefaultKvIterator implements KvIterator {
 		this.count = count;
 	}
 
-    public String getCompressType() {
+    public NS.CompressType getCompressType() {
         return compressType;
     }
 
-    public void setCompressType(String compressType) {
+    public void setCompressType(NS.CompressType compressType) {
         this.compressType = compressType;
     }
 
@@ -155,10 +156,13 @@ public class DefaultKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        if (compressType.equals("kSnappy")) {
+        if (compressType.equals(NS.CompressType.kSnappy)) {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
             byte[] uncompressed = Compress.snappyUnCompress(data);
+            if (uncompressed == null) {
+                throw new TabletException("snappy uncompress error");
+            }
             RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
         } else {
             RowCodec.decode(slice, schema, row, start, length);

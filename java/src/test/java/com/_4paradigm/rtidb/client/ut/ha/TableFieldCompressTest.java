@@ -59,7 +59,7 @@ public class TableFieldCompressTest {
         NS.TablePartition tp1 = NS.TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
         NS.TableInfo.Builder builder = NS.TableInfo.newBuilder();
         builder = NS.TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
-                .setSegCnt(8).setName(name).setTtl(0).setCompressType("kSnappy");
+                .setSegCnt(8).setName(name).setTtl(0).setCompressType(NS.CompressType.kSnappy);
         for (NS.ColumnDesc desc: list) {
             builder.addColumnDesc(desc);
         }
