@@ -23,7 +23,7 @@ public class TableSyncClientTest {
     private AtomicInteger id = new AtomicInteger(7000);
     private static TableSyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static EndPoint endpoint = new EndPoint("172.27.2.52:9520");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     static {
@@ -57,7 +57,6 @@ public class TableSyncClientTest {
     @Test
     public void test1Put() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
-        Assert.assertFalse(tableClient.put(tid, 0, "pk", 9527, "test0"));
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = tableClient.put(tid, 0, "pk", 9527, "test0");

@@ -58,6 +58,9 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public boolean put(int tid, int pid, long time, Object[] row) throws TimeoutException, TabletException {
         TableHandler tableHandler = client.getHandler(tid);
+        if (tableHandler == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
         ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         int index = 0;
@@ -103,6 +106,9 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public Object[] getRow(int tid, int pid, String key, String idxName, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("fail to find table with id " + tid);
+        }
         long consumed = 0l;
         if (client.getConfig().isMetricsEnabled()) {
             consumed = System.nanoTime();
@@ -214,6 +220,9 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with tid" + tid);
+        }
         return scan(tid, pid, key, idxName, st, et, limit, th);
     }
 
