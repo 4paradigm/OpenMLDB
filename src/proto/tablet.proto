@@ -14,7 +14,6 @@ enum TableMode {
 enum CompressType {
     kNoCompress = 0;
     kSnappy = 1;
-    kGzip = 2;
 }
 
 enum TableState {

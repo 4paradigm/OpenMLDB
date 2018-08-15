@@ -1095,8 +1095,6 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_compress_type("kNoCompress");
     } else if (compress_type == "ksnappy" || compress_type == "snappy") {
         ns_table_info.set_compress_type("kSnappy");
-    } else if (compress_type == "kgzip" || compress_type == "gzip") {
-        ns_table_info.set_compress_type("kGzip");
     } else {
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
@@ -1792,8 +1790,6 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
                 compress_type = ::rtidb::api::CompressType::kNoCompress;
             } else if (raw_compress_type == "ksnappy" || raw_compress_type == "snappy") {
                 compress_type = ::rtidb::api::CompressType::kSnappy;
-            } else if (raw_compress_type == "kgzip" || raw_compress_type == "gzip") {
-                compress_type = ::rtidb::api::CompressType::kGzip;
             } else {
                 printf("compress type %s is invalid\n", parts[7].c_str());
                 return;
@@ -2117,7 +2113,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     if (parts.size() == 3) {
         ::rtidb::api::TableStatus table_status;
         try {
-            if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status) == 0) {
+            if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status)) {
                 AddPrintRow(table_status, tp);
                 tp.Print(true);
             } else {
@@ -2129,7 +2125,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
         }
     } else if (parts.size() == 1) {
         ::rtidb::api::GetTableStatusResponse response;
-        if (client->GetTableStatus(response) < 0) {
+        if (!client->GetTableStatus(response)) {
             std::cout << "gettablestatus failed" << std::endl;
             return;
         }

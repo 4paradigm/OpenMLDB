@@ -67,7 +67,7 @@ create  创建单维表
 * ttl 指定过期时间,默认过期类型为AbsoluteTime. 如果过期类型设置LatestTime,格式为latest:保留条数(ex: latest:10, 保留最近10条)
 * segment_cnt 为表的segement 个数, 建议为8~1024
 * is_leader 指定是否为leader. 默认为leader
-* compress_type 指定字段压缩类型. 取值为[nocompress, snappy, gzip], 默认不压缩  
+* compress_type 指定字段压缩类型. 取值为[nocompress, snappy], 默认不压缩  
 
 ```
 创建一个leader表

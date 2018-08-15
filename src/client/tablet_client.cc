@@ -406,30 +406,30 @@ bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifes
     return true;
 }
 
-int TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {
+bool TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response) {
     ::rtidb::api::GetTableStatusRequest request;
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ret) {
-        return 0;
+        return true;
     }
-    return -1;
+    return false;
 }
 
-int TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, 
+bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, 
             ::rtidb::api::TableStatus& table_status) {
     ::rtidb::api::GetTableStatusResponse response;
-    if (GetTableStatus(response) < 0) {
-        return -1;
+    if (!GetTableStatus(response)) {
+        return false;
     }
     for (int idx = 0; idx < response.all_table_status_size(); idx++) {
         if (response.all_table_status(idx).tid() == tid &&
                 response.all_table_status(idx).pid() == pid) {
             table_status = response.all_table_status(idx);
-            return 0;    
+            return true;    
         }
     }
-    return -1;
+    return false;
 }
 
 ::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,

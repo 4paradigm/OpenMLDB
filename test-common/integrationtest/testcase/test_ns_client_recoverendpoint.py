@@ -235,9 +235,9 @@ class TestRecoverEndpoint(TestCaseBase):
         time.sleep(10)
 
         rs5 = self.showtable(self.ns_leader)
-        self.assertEqual(rs5[(name, tid, '0', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs5[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs5[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs5[(name, tid, '0', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs5[(name, tid, '1', self.leader)], ['follower',  '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs5[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
 
 if __name__ == "__main__":

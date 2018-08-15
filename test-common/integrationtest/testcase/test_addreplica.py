@@ -56,12 +56,13 @@ class TestAddReplica(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertIn('Create table ok', rs1)
-        self.put(self.leader,
+        rs = self.put(self.leader,
                  self.tid,
                  self.pid,
                  '',
                  self.now() - 1,
                  'v1','1.1','k1')
+        self.assertIn('Put ok', rs)
         rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs2)
         rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false')
@@ -123,10 +124,14 @@ class TestAddReplica(TestCaseBase):
         主节点删除replica后put数据，slave scan不出来
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true')
         self.assertIn('Create table ok', rs1)
         self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
         self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertIn('AddReplica ok', rs)
+        rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave2)
+        self.assertIn('AddReplica ok', rs)
         self.put(self.leader,
                  self.tid,
                  self.pid,
