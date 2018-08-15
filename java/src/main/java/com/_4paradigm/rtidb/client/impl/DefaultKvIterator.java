@@ -58,7 +58,6 @@ public class DefaultKvIterator implements KvIterator {
         this.compressType = compressType;
     }
 
-
 	public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema) {
         this(bs);
         this.schema = schema;

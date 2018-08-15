@@ -1,7 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -116,14 +115,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             network = System.nanoTime() - consumed;
             consumed = System.nanoTime();
         }
-        ByteBuffer buf = response.asReadOnlyByteBuffer();
-        if (th.getTableInfo().getCompressType().equals("kSnappy")) {
-            byte[] data = new byte[buf.remaining()];
-            buf.get(data);
-            byte[] uncompressed = Compress.snappyUnCompress(data);
-            buf = ByteBuffer.wrap(uncompressed);
-        }
-        Object[] row = RowCodec.decode(buf, th.getSchema());
+        Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         if (client.getConfig().isMetricsEnabled()) {
             long decode = System.nanoTime() - consumed;
             TabletMetrics.getInstance().addGet(decode, network);
@@ -385,8 +377,8 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("key is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
-        byte[] data = row.array();
         if (th.getTableInfo().getCompressType().equals("kSnappy")) {
+            byte[] data = row.array();
             byte[] compressed = Compress.snappyCompress(data);
             ByteBuffer buffer = ByteBuffer.wrap(compressed);
             row = buffer;
