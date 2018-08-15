@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xerial.snappy.Snappy;
 
 public class Compress {
     private final static Logger logger = LoggerFactory.getLogger(Compress.class);
@@ -65,7 +67,6 @@ public class Compress {
         try {
             gzip_out = new GZIPOutputStream(out_stream);
             gzip_out.write(data);
-            compressed = out_stream.toByteArray();
         } catch (IOException e) {
             logger.error("uncompress data error", e);
         } finally {
@@ -77,11 +78,30 @@ public class Compress {
                 }
             }
             try {
+                compressed = out_stream.toByteArray();
                 out_stream.close();
             } catch (IOException e) {
                 logger.error("ByteArrayOutputStream close failed", e);
             }
         }
         return compressed;
+    }
+
+    public static byte[] snappyCompress(byte[] data) {
+        try {
+            return Snappy.compress(data);
+        } catch (IOException e) {
+            logger.error("snappy compress data error", e);
+            return null;
+        }
+    }
+
+    public static byte[] snappyUnCompress(byte[] data) {
+        try {
+            return Snappy.uncompress(data);
+        } catch (IOException e) {
+            logger.error("snappy uncompress data error", e);
+            return null;
+        }
     }
 }
