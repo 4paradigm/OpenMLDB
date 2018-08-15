@@ -18,7 +18,7 @@ import java.util.Map;
 
 
 public class TableFieldCompressTest {
-    private static String zkEndpoints = "172.27.2.52:12200";
+    private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
@@ -26,14 +26,12 @@ public class TableFieldCompressTest {
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
     private static TableAsyncClient tableAsyncClient = null;
-    private static String[] nodes = new String[] {"172.27.2.52:9522", "172.27.2.52:9521", "172.27.2.52:9520"};
+    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     static {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath("/onebox/nodes");
-            config.setZkTableRootPath("/onebox/table/table_data");
-            config.setZkTableNotifyPath("/onebox/table/notify");
+            config.setZkRootPath("/onebox");
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

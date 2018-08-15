@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com._4paradigm.rtidb.ns.NS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +16,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 
 import io.brpc.client.EndPoint;
@@ -79,9 +79,9 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
             Tablet.GetTableStatusResponse statusResponse = tabletServer.getTableStatus(statusRequest);
             if (response.getCode() == 0 && statusResponse.getCode() == 0) {
                 if (response.getSchema().isEmpty()) {
+                    // some table maybe have no schema, eg kv table
                     th = new TableHandler();
                 } else {
-                    // some table maybe have no schema, eg kv table
                     List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
                     th = new TableHandler(schema);
                 }
