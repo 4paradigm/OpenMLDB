@@ -109,7 +109,7 @@ class TestAutoRecoverTable(TestCaseBase):
             eval(steps_dict[i])
         rs = self.showtable(self.ns_leader)
         role_x = [v[0] for k, v in rs.items()]
-        is_alive_x = [v[-1] for k, v in rs.items()]
+        is_alive_x = [v[-2] for k, v in rs.items()]
         print self.showopstatus(self.ns_leader)
         self.assertEqual(role_x.count('leader'), 10)
         self.assertEqual(role_x.count('follower'), 18)
