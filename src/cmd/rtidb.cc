@@ -269,7 +269,8 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
 }
 
 void ShowTableRows(const std::vector<::rtidb::base::ColumnDesc>& raw, 
-                   ::rtidb::base::KvIterator* it, const std::string& compress_type) { 
+                   ::rtidb::base::KvIterator* it, 
+                   const ::rtidb::nameserver::CompressType compress_type) { 
     ::baidu::common::TPrinter tp(raw.size() + 2, 128);
     std::vector<std::string> row;
     row.push_back("#");
@@ -280,7 +281,7 @@ void ShowTableRows(const std::vector<::rtidb::base::ColumnDesc>& raw,
     tp.AddRow(row);
     uint32_t index = 1;
     while (it->Valid()) {
-        if (compress_type == "kSnappy") {
+        if (compress_type == ::rtidb::nameserver::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &uncompressed);
             ShowTableRow(raw, uncompressed.c_str(), uncompressed.length(), it->GetKey(), index, tp); 
@@ -717,7 +718,7 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
                     row.push_back("no");
                 }
                 if (value.has_compress_type()) {
-                    row.push_back(value.compress_type());
+                    row.push_back(::rtidb::nameserver::CompressType_Name(value.compress_type()));
                 } else {
                     row.push_back("kNoCompress");
                 }
@@ -806,7 +807,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
                                   ts,
                                   msg);
             if (ok) {
-                if (tables[0].compress_type() == "kSnappy") {
+                if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
@@ -856,7 +857,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             printf("Invalid args. ts should be unsigned int\n");
             return;
         } 
-        if (tables[0].compress_type() == "kSnappy") {
+        if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
             std::string uncompressed;
             ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
             value = uncompressed;
@@ -908,7 +909,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
                 uint32_t index = 1;
                 while (it->Valid()) {
                     std::string value = it->GetValue().ToString();
-                    if (tables[0].compress_type() == "kSnappy") {
+                    if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                         std::string uncompressed;
                         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                         value = uncompressed;
@@ -984,7 +985,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             return;
         }
         std::string value = parts[4];
-        if (tables[0].compress_type() == "kSnappy") {
+        if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
             std::string compressed;
             ::snappy::Compress(value.c_str(), value.length(), &compressed);
             value = compressed;
@@ -1048,7 +1049,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
                 }
             }
             std::string value = buffer;
-            if (tables[0].compress_type() == "kSnappy") {
+            if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                 std::string compressed;
                 ::snappy::Compress(value.c_str(), value.length(), &compressed);
                 value = compressed;
@@ -1092,9 +1093,9 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     std::string compress_type = table_info.compress_type();
     std::transform(compress_type.begin(), compress_type.end(), compress_type.begin(), ::tolower);
     if (compress_type == "knocompress" || compress_type == "nocompress" || compress_type == "no") {
-        ns_table_info.set_compress_type("kNoCompress");
+        ns_table_info.set_compress_type(::rtidb::nameserver::kNoCompress);
     } else if (compress_type == "ksnappy" || compress_type == "snappy") {
-        ns_table_info.set_compress_type("kSnappy");
+        ns_table_info.set_compress_type(::rtidb::nameserver::kSnappy);
     } else {
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
@@ -2704,9 +2705,9 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             std::vector<::rtidb::base::ColumnDesc> raw;
             ::rtidb::base::SchemaCodec codec;
             codec.Decode(schema, raw);
-            std::string compress_type = "kNoCompress";
+            ::rtidb::nameserver::CompressType compress_type = ::rtidb::nameserver::kNoCompress;
             if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
-                compress_type = "kSnappy";
+                compress_type = ::rtidb::nameserver::kSnappy;
             }
             ShowTableRows(raw, it, compress_type);
             delete it;

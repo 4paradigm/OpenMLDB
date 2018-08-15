@@ -1180,7 +1180,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                 ttl_type = ::rtidb::api::TTLType::kLatestTime;
             }
             ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
-            if (table_info->compress_type() == "kSnappy") {
+            if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
                 compress_type = ::rtidb::api::CompressType::kSnappy;
             }
             if (!tablet_ptr->client_->CreateTable(table_info->name(), table_index_, pid, 
