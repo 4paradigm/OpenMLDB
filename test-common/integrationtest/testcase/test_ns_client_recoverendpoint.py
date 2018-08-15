@@ -122,7 +122,7 @@ class TestRecoverEndpoint(TestCaseBase):
             eval(steps_dict[i])
         rs = self.showtable(self.ns_leader)
         role_x = [v[0] for k, v in rs.items()]
-        is_alive_x = [v[-1] for k, v in rs.items()]
+        is_alive_x = [v[-2] for k, v in rs.items()]
         print self.showopstatus(self.ns_leader)
         self.assertEqual(role_x.count('leader'), 4)
         self.assertEqual(role_x.count('follower'), 6)
@@ -151,7 +151,7 @@ class TestRecoverEndpoint(TestCaseBase):
             eval(steps_dict[i])
         rs = self.showtable(self.ns_leader)
         role_x = [v[0] for k, v in rs.items()]
-        is_alive_x = [v[-1] for k, v in rs.items()]
+        is_alive_x = [v[-2] for k, v in rs.items()]
         print self.showopstatus(self.ns_leader)
         self.assertEqual(role_x.count('leader'), 4)
         self.assertEqual(is_alive_x.count('yes'), 4)
