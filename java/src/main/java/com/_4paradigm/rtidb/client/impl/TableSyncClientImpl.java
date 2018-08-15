@@ -18,6 +18,7 @@ import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.utils.Compress;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -40,7 +41,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("fail to find partition with pid "+ pid +" from table " +th.getTableInfo().getName());
         }
         PartitionHandler ph = th.getHandler(pid);
-        return put(tid, pid, key, time, bytes, ph);
+        return put(tid, pid, key, time, bytes, th);
     }
 
     @Override
@@ -80,7 +81,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (count == 0) {
             throw new TabletException("no dimension in this row");
         }
-        return put(tid, pid, null, time, dimList, buffer, tableHandler.getHandler(pid));
+        return put(tid, pid, null, time, dimList, buffer, tableHandler);
     }
 
     @Override
@@ -179,7 +180,12 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.GetRequest request = builder.build();
         Tablet.GetResponse response = ts.get(request);
         if (response != null && response.getCode() == 0) {
-            return response.getValue();
+            if (th.getTableInfo().getCompressType().equals("kSnappy")) {
+                byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
+                return ByteString.copyFrom(uncompressed);
+            } else {
+                return response.getValue();
+            }
         }
         return null;
     }
@@ -287,6 +293,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
             it.setCount(response.getCount());
+            it.setCompressType(th.getTableInfo().getCompressType());
             return it;
         }
         if (response != null) {
@@ -305,7 +312,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        return put(th.getTableInfo().getTid(), pid, key, time, bytes, th.getHandler(pid));
+        return put(th.getTableInfo().getTid(), pid, key, time, bytes, th);
     }
 
     @Override
@@ -352,23 +359,29 @@ public class TableSyncClientImpl implements TableSyncClient {
         while (it.hasNext()) {
             Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
             ret = ret && put(th.getTableInfo().getTid(), entry.getKey(), null, 
-                             time, entry.getValue(), buffer, 
-                             th.getHandler(entry.getKey()));
+                             time, entry.getValue(), buffer, th);
         }
         return ret;
     }
     
     
-    private boolean put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph) throws TabletException{
-        return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), ph);
+    private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException{
+        return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), th);
     }
     
     private boolean put(int tid, int pid, 
             String key, long time, 
             List<Tablet.Dimension> ds, 
-            ByteBuffer row, PartitionHandler ph) throws TabletException {
+            ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
+        }
+        PartitionHandler ph = th.getHandler(pid);
+        if (th.getTableInfo().getCompressType().equals("kSnappy")) {
+            byte[] data = row.array();
+            byte[] compressed = Compress.snappyCompress(data);
+            ByteBuffer buffer = ByteBuffer.wrap(compressed);
+            row = buffer;
         }
         long consumed = 0l;
         if (client.getConfig().isMetricsEnabled()) {

@@ -11,6 +11,7 @@ import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
+import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
 public class GetFuture implements Future<ByteString>{
@@ -102,7 +103,12 @@ public class GetFuture implements Future<ByteString>{
 	public ByteString get() throws InterruptedException, ExecutionException {
 		GetResponse response = f.get();
 		if (response != null && response.getCode() == 0) {
-			return response.getValue();
+			if (t.getTableInfo().getCompressType().equals("kSnappy")) {
+				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
+				return ByteString.copyFrom(uncompressed);
+			} else {
+				return response.getValue();
+			}
 		}
 		return null;
 	}
@@ -111,7 +117,12 @@ public class GetFuture implements Future<ByteString>{
 	public ByteString get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 		GetResponse response = f.get(timeout, unit);
 		if (response != null && response.getCode() == 0) {
-			return response.getValue();
+			if (t.getTableInfo().getCompressType().equals("kSnappy")) {
+				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
+				return ByteString.copyFrom(uncompressed);
+			} else {
+				return response.getValue();
+			}
 		}
 		return null;
 	}

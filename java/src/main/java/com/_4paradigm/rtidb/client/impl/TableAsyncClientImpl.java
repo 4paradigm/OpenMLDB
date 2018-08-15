@@ -22,6 +22,7 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.tablet.Tablet.PutResponse;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
+import com._4paradigm.rtidb.utils.Compress;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
@@ -70,7 +71,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (count == 0) {
             throw new TabletException("no dimension in this row");
         }
-        return put(tid, pid, null, time, dimList, buffer, tableHandler.getHandler(pid));
+        return put(tid, pid, null, time, dimList, buffer, tableHandler);
     }
     
     @Override
@@ -82,8 +83,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th.getPartitions().length <= pid) {
             throw new TabletException("fail to find partition with pid "+ pid +" from table " +th.getTableInfo().getName());
         }
-        PartitionHandler ph = th.getHandler(pid);
-        return put(tid, pid, key, time, bytes, ph);
+        return put(tid, pid, key, time, bytes, th);
     }
 
     @Override
@@ -101,7 +101,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        return put(th.getTableInfo().getTid(), pid, key, time, bytes, th.getHandler(pid));
+        return put(th.getTableInfo().getTid(), pid, key, time, bytes, th);
     }
     
     @Override
@@ -148,8 +148,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         while (it.hasNext()) {
             Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
             Future<PutResponse> response = putForInternal(th.getTableInfo().getTid(), entry.getKey(), null, 
-                             time, entry.getValue(), buffer, 
-                             th.getHandler(entry.getKey()));
+                             time, entry.getValue(), buffer, th);
             pl.add(response);
         }
         return PutFuture.wrapper(pl);
@@ -285,29 +284,30 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return get(name, key, idxName, 0l);
     }
 
-    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph) throws TabletException{
-        return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), ph);
+    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException{
+        return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), th);
     }
     
     private PutFuture put(int tid, int pid, 
             String key, long time, 
             List<Tablet.Dimension> ds, 
-            ByteBuffer row, PartitionHandler ph) throws TabletException {
+            ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
         long start = System.currentTimeMillis();
-        Future<PutResponse> response = putForInternal(tid, pid, key, time, ds, row, ph);
+        Future<PutResponse> response = putForInternal(tid, pid, key, time, ds, row, th);
         return PutFuture.wrapper(response, start, client.getConfig());
     }
     
     private Future<PutResponse> putForInternal(int tid, int pid, 
             String key, long time, 
             List<Tablet.Dimension> ds, 
-            ByteBuffer row, PartitionHandler ph) throws TabletException {
+            ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
+        PartitionHandler ph = th.getHandler(pid);
         TabletServer tablet = ph.getLeader();
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         if (ds != null) {
@@ -322,6 +322,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             builder.setPk(key);
         }
         row.rewind();
+        if (th.getTableInfo().getCompressType().equals("kSnappy")) {
+            byte[] data = row.array();
+            byte[] compressed = Compress.snappyCompress(data);
+            ByteBuffer buffer = ByteBuffer.wrap(compressed);
+            row = buffer;
+        }
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
         Tablet.PutRequest request = builder.build();
         Future<PutResponse> response = tablet.put(request, putFakeCallback);
