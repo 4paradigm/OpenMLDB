@@ -38,10 +38,12 @@ class TestPut(TestCaseBase):
         put到leader后，slave同步成功
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true')
         self.assertIn('Create table ok', rs1)
-        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false')
         self.assertIn('Create table ok', rs2)
+        rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertIn('AddReplica ok', rs)
         rs2 = self.put(self.leader,
                        self.tid,
                        self.pid,
@@ -101,10 +103,12 @@ class TestPut(TestCaseBase):
         重新启动后可以loadtable成功，数据与主节点一致
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true', self.slave1)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertIn('Create table ok', rs1)
-        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs2)
+        rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertIn('AddReplica ok', rs)
 
         def put(count):
             for i in range(0, count):

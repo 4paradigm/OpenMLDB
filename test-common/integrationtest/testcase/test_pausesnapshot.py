@@ -26,10 +26,12 @@ class TestPauseSnapshot(TestCaseBase):
         暂停主节点指定表的snapshot，仍可以put数据且被同步
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true', self.slave1)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertIn('Create table ok', rs1)
-        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
         self.assertIn('Create table ok', rs2)
+        rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertIn('AddReplica ok', rs)
         rs3 = self.pausesnapshot(self.leader, self.tid, self.pid)
         self.assertIn('PauseSnapshot ok', rs3)
 
