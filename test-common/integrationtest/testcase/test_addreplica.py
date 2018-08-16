@@ -126,8 +126,8 @@ class TestAddReplica(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true')
         self.assertIn('Create table ok', rs1)
-        self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
-        self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false', self.slave1)
+        self.create(self.slave1, 't', self.tid, self.pid, 144000, 8, 'false')
+        self.create(self.slave2, 't', self.tid, self.pid, 144000, 8, 'false')
         rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertIn('AddReplica ok', rs)
         rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave2)
