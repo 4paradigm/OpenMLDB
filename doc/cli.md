@@ -263,6 +263,7 @@ Create table ok
 ```
 (2) create table_meta_path  
 首先准备如下格式的表元数据文件. 其中name和ttl是必填的
+compress_type 指定字段压缩类型. 取值为[nocompress, snappy], 默认不压缩  
 ```
 name : "test1"
 ttl: 144000
