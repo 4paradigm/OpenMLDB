@@ -18,6 +18,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.tablet.Tablet.PutResponse;
@@ -322,9 +323,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             builder.setPk(key);
         }
         row.rewind();
-        if (th.getTableInfo().getCompressType().equals("kSnappy")) {
+        if (th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
             byte[] compressed = Compress.snappyCompress(data);
+            if (compressed == null) {
+                throw new TabletException("snappy compress error");
+            }
             ByteBuffer buffer = ByteBuffer.wrap(compressed);
             row = buffer;
         }

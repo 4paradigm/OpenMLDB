@@ -57,7 +57,6 @@ public class TableSyncClientTest {
     @Test
     public void test1Put() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
-        Assert.assertFalse(tableClient.put(tid, 0, "pk", 9527, "test0"));
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = tableClient.put(tid, 0, "pk", 9527, "test0");
