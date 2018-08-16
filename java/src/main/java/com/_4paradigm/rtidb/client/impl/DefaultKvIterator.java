@@ -156,7 +156,7 @@ public class DefaultKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        if (compressType.equals(NS.CompressType.kSnappy)) {
+        if (compressType == NS.CompressType.kSnappy) {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
             byte[] uncompressed = Compress.snappyUnCompress(data);
