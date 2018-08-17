@@ -52,16 +52,16 @@ class TestOfflineEndpoint(TestCaseBase):
         time.sleep(10)
 
         # showtable ok
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '3', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '3', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
         act1 = rs2[(name, tid, '2', self.slave1)]
         act2 = rs2[(name, tid, '2', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
-        self.assertEqual(rs2[(name, tid, '3', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '3', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
         # put and sync ok
         leader_new = self.slave1 if 'leader' in act1 else self.slave2
@@ -107,13 +107,13 @@ class TestOfflineEndpoint(TestCaseBase):
 
         rs2 = self.showtable(self.ns_leader)
         # showtable ok
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '3', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '3', self.slave2)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '3', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '3', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
 
 
     @ddt.data(

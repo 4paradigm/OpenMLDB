@@ -52,4 +52,4 @@ spec:
       securityContext:
         runAsUser: 0
       nodeSelector:
-        rtidb-tablet: "true"
+        prophet.4paradigm.com/rtidb-tablet: "true"

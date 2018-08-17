@@ -82,7 +82,7 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn('Put ok', rs9)
 
         # put after re-addreplica by client
-        rs10 = self.addreplica(self.leader, tid, pid, 'client', self.slave1)
+        rs10 = self.addreplica(self.ns_leader, name, pid, 'ns_client', self.slave1)
         self.assertIn('AddReplica ok', rs10)
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue3'), 'amt': ('double', 1.1)}
@@ -96,6 +96,31 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn('testvalue2', rs12)
         self.assertIn('testvalue3', rs12)
 
+    def test_delreplica_drop_table(self):
+        """
+        delreplica后droptable
+        :return:
+        """
+        name = 't{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+                                     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+                                     ('table_partition', '"{}"'.format(self.slave1), '"0-2"', 'false'),
+                                     ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs1)
+        rs2 = self.get_table_status(self.slave1)
+        rs3 = self.showtable(self.ns_leader)
+        tid = tid = int(rs3.keys()[0][1])
+        rs4 = self.delreplica(self.ns_leader, name, 0, 'ns_client', self.slave1)
+        time.sleep(10)
+        rs5 = self.showtable(self.ns_leader)
+        rs6 = self.get_table_status(self.slave1)
+        self.assertIn((name, str(tid), str(0), self.slave1), rs3)
+        self.assertNotIn((name, str(tid), str(0), self.slave1), rs5)
+        self.assertIn((tid, 0), rs2.keys())
+        self.assertNotIn((tid, 0), rs6.keys())
 
     @ddt.data(
         ('notexsit', None, None, 'Fail to delreplica'),
@@ -159,7 +184,7 @@ class TestDelReplicaNs(TestCaseBase):
         self.start_client(self.slave1)
         time.sleep(10)
         self.assertIn('Fail to delreplica', rs3)
-        self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '8', '100', 'no'])
+        self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '100', 'no', 'kNoCompress'])
 
 
 if __name__ == "__main__":

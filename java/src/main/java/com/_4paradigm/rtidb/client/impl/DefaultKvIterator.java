@@ -10,6 +10,8 @@ import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
 public class DefaultKvIterator implements KvIterator {
@@ -27,6 +29,7 @@ public class DefaultKvIterator implements KvIterator {
     private Long decode = 0l;
     private int count;
     private RTIDBClientConfig config = null;
+    private NS.CompressType compressType = NS.CompressType.kNoCompress;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -47,6 +50,14 @@ public class DefaultKvIterator implements KvIterator {
 	public void setCount(int count) {
 		this.count = count;
 	}
+
+    public NS.CompressType getCompressType() {
+        return compressType;
+    }
+
+    public void setCompressType(NS.CompressType compressType) {
+        this.compressType = compressType;
+    }
 
 	public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema) {
         this(bs);
@@ -145,7 +156,17 @@ public class DefaultKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        RowCodec.decode(slice, schema, row, start, length);
+        if (compressType == NS.CompressType.kSnappy) {
+            byte[] data = new byte[slice.remaining()];
+            slice.get(data);
+            byte[] uncompressed = Compress.snappyUnCompress(data);
+            if (uncompressed == null) {
+                throw new TabletException("snappy uncompress error");
+            }
+            RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
+        } else {
+            RowCodec.decode(slice, schema, row, start, length);
+        }
         if (config != null && config.isMetricsEnabled()) {
             decode += System.nanoTime() - delta;
         }

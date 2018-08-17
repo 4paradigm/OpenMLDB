@@ -1,0 +1,8 @@
+fields:
+  log_type: raw
+  namespace: nameserver
+  pod_name: docker02
+fields_under_root: true
+paths:
+- ./logs/nameserver*
+type: log

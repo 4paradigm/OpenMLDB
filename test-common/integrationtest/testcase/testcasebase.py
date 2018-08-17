@@ -74,6 +74,9 @@ class TestCaseBase(unittest.TestCase):
                 self.clear_tb_table(edp)
             self.confset(self.ns_leader, 'auto_failover', 'true')
             self.confset(self.ns_leader, 'auto_recover_table', 'true')
+            self.clear_lock(self.leader)
+            self.clear_lock(self.slave1)
+            self.clear_lock(self.slave2)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' SETUP FINISHED ' + '=' * 50 + '\n')
@@ -85,6 +88,7 @@ class TestCaseBase(unittest.TestCase):
             self.confset(self.ns_leader, 'auto_recover_table', 'true')
             self.clear_ns_table(self.ns_leader)
             rs = self.showtablet(self.ns_leader)
+
             for edp_tuple in conf.tb_endpoints:
                 edp = edp_tuple[1]
                 if rs[edp][0] != 'kTabletHealthy':
@@ -135,6 +139,10 @@ class TestCaseBase(unittest.TestCase):
             cmd = "lsof -i:{}".format(port) + "|grep '(CLOSE_WAIT)'|awk '{print $2}'|xargs kill -9"
             utils.exe_shell(cmd)
 
+    def clear_lock(self, endpoint):
+        infoLogger.info('\n ' + 'clear lock ' + endpoint + '\n')
+        utils.exe_shell("sh {}/bin/zkCli.sh -server {} delete /onebox/offline_endpoint_lock/{}".format(os.getenv('zkpath'), conf.zk_endpoint, endpoint))
+
     def get_new_ns_leader(self):
         nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
         nsc.get_ns_leader()
@@ -167,6 +175,8 @@ class TestCaseBase(unittest.TestCase):
                     manifest_dict['name'] = l.split(':')[1][2:-2].strip()
                 elif 'count: ' in l:
                     manifest_dict['count'] = l.split(':')[1].strip()
+                elif 'term: ' in l:
+                    manifest_dict['term'] = l.split(':')[1].strip()
         return manifest_dict
 
     def create(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='true', *slave_endpoints, **schema):

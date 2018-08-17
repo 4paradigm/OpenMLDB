@@ -4,6 +4,11 @@ option cc_generic_services = true;
 option java_package = "com._4paradigm.rtidb.ns";
 option java_outer_classname = "NS";
 
+enum CompressType {
+    kNoCompress = 0;
+    kSnappy = 1;
+}
+
 message ColumnDesc {
     required string name = 1;
     required string type = 2;
@@ -28,15 +33,16 @@ message TablePartition {
 }
 
 message TableInfo {
-	required string name = 1;
-	optional uint64 ttl = 2 [default = 0];
-	optional uint32 seg_cnt = 3 [default = 8];
+    optional string name = 1;
+    optional uint64 ttl = 2 [default = 0];
+    optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
-	optional uint32 tid = 5;
+    optional uint32 tid = 5;
     repeated ColumnDesc column_desc = 6;
     optional string ttl_type = 7 [default = "kAbsoluteTime"];
-	optional uint32 partition_num = 8;
-	optional uint32 replica_num = 9; // contain the leader
+    optional uint32 partition_num = 8;
+    optional uint32 replica_num = 9; // contain the leader
+    optional CompressType compress_type = 10 [default = kNoCompress];
 }
 
 message CreateTableRequest {

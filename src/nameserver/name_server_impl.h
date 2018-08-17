@@ -208,6 +208,8 @@ private:
 
     int CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data);
 
+    int CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data);
+
     int CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data);
 
     int CreateReAddReplicaTask(std::shared_ptr<OPData> op_data);
@@ -234,9 +236,13 @@ private:
     // Update tablets from zookeeper
     void UpdateTablets(const std::vector<std::string>& endpoints);
 
-    void OnTabletOffline(const std::string& endpoint);
+    void OnTabletOffline(const std::string& endpoint, bool startup_flag);
+
+    void RecoverOfflineTablet();
 
     void OnTabletOnline(const std::string& endpoint);
+
+    void RecoverEndpoint(const std::string& endpoint);
 
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
@@ -317,8 +323,7 @@ private:
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
                     const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
     int AddOPData(const std::shared_ptr<OPData>& op_data);
-    int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint,
-                     ::rtidb::api::OPType op_type);
+    int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
     int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
@@ -341,9 +346,14 @@ private:
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
                     bool is_leader, bool is_alive, uint64_t partent_id);
 
+    int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);                
+
     void NotifyTableChanged();
     void DeleteDoneOP();
     int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+
+    bool SerializeTableInfo(const ::rtidb::nameserver::TableInfo& table_info, std::string& table_value);
+    bool ParseTableInfoFromString(const std::string& table_value, ::rtidb::nameserver::TableInfo& table_info);
 
 private:
     std::mutex mu_;
@@ -359,6 +369,7 @@ private:
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;
+    std::string zk_offline_endpoint_lock_node_;
     uint32_t table_index_;
     uint64_t term_;
     std::string zk_op_index_node_;
@@ -372,7 +383,9 @@ private:
     std::atomic<bool> auto_recover_table_;
     std::map<std::string, std::list<uint64_t>> ordered_op_map_;
     std::set<::rtidb::api::OPType> ordered_op_type_;
+    std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
+    uint64_t session_term_;
 };
 
 }
