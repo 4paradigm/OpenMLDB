@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.functiontest.cases;
 
 import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.TableAsyncClient;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.TabletSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
@@ -8,6 +9,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
+import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnType;
@@ -30,8 +32,8 @@ import org.testng.annotations.Test;
 @Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class CompressTest {
 
-  private static String zkEndpoints = "127.0.0.1:22181";
-  private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
+  private static String zkEndpoints = "172.27.2.52:12200";
+  private static EndPoint endpoint = new EndPoint("172.27.2.52:9522");
   private static String leaderPath  = "/onebox/leader";
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
@@ -39,8 +41,8 @@ public class CompressTest {
   private static RTIDBClusterClient ns_client = null;
   private static TabletSyncClient client = null;
   private static TableSyncClient tableSyncClient = null;
-  private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
-
+  private static TableAsyncClient tableAsyncClient = null;
+  private static String[] nodes = new String[] {"172.27.2.52:9520", "172.27.2.52:9521", "172.27.2.52:9522"};
 
   static {
     try {
@@ -53,6 +55,7 @@ public class CompressTest {
       ns_client = new RTIDBClusterClient(config);
       ns_client.init();
       tableSyncClient = new TableSyncClientImpl(ns_client);
+      tableAsyncClient = new TableAsyncClientImpl(ns_client);
       client = new TabletSyncClientImpl(snc);
     } catch (Exception e) {
       // TODO Auto-generated catch block
@@ -123,8 +126,8 @@ public class CompressTest {
     for (CompressType cType : CompressType.values()) {
       String tname = createKvTable(cType);
       try {
-        boolean status = tableSyncClient.put(tname, "test1", System.currentTimeMillis() + 9999, value);
-        ByteString result = tableSyncClient.get(tname, "test1");
+        boolean status = tableAsyncClient.put(tname, "test1", System.currentTimeMillis() + 9999, value).get();
+        ByteString result = tableAsyncClient.get(tname, "test1").get();
         Assert.assertTrue(status == putOk);
         Assert.assertEquals(new String(result.toByteArray()), value);
       } catch (Exception e) {
