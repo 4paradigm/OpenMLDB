@@ -156,7 +156,7 @@ public class CompressTest {
         boolean status = tableSyncClient.put(tname, "test1", System.currentTimeMillis() + 9999, value);
         ByteString result = tableSyncClient.get(tname, "test1");
         Assert.assertTrue(status == putOk);
-        Assert.assertEquals(new String(result.toByteArray()), value);
+        Assert.assertEquals(result.toByteArray(), value);
       } catch (Exception e) {
         e.printStackTrace();
         Assert.assertTrue(false);
