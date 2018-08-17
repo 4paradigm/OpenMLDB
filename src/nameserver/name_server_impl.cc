@@ -1179,9 +1179,13 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             if (table_info->ttl_type() == "kLatestTime") {
                 ttl_type = ::rtidb::api::TTLType::kLatestTime;
             }
+            ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
+            if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
+                compress_type = ::rtidb::api::CompressType::kSnappy;
+            }
             if (!tablet_ptr->client_->CreateTable(table_info->name(), table_index_, pid, 
                                     table_info->ttl(), table_info->seg_cnt(), columns, ttl_type,
-                                    is_leader, endpoint_vec, term)) {
+                                    is_leader, endpoint_vec, term, compress_type)) {
 
                 PDLOG(WARNING, "create table failed. tid[%u] pid[%u] endpoint[%s]", 
                         table_index_, pid, endpoint.c_str());

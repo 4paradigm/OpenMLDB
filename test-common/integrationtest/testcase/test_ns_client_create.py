@@ -467,9 +467,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
         infoLogger.info(rs1)
-        self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '8', '144000', 'yes'])
-        self.assertEqual(rs1[(tname, tid, '0', self.slave1)], ['follower', '8', '144000', 'yes'])
-        self.assertEqual(rs1[(tname, tid, '2', self.slave2)], ['follower', '8', '144000', 'yes'])
+        self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs1[(tname, tid, '0', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs1[(tname, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         schema = self.showschema(self.slave1, tid, 0)
         infoLogger.info(schema)
         self.assertEqual(len(schema), 3)

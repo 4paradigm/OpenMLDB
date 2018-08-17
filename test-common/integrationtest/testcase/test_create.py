@@ -10,20 +10,20 @@ class TestCreateTable(TestCaseBase):
     @multi_dimension(False)
     def test_create_table_success(self):
         """
-        创建带有主从关系的表成功
+        创建表成功
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', self.slave1, self.slave2)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true')
         self.assertIn('Create table ok' ,rs1)
         table_status = self.get_table_status(self.leader, self.tid, self.pid)
         self.assertEqual(table_status[:6], ['0', 'kTableLeader', 'kTableNormal', 'true', '144000min', '0s'])
 
-        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
+        rs2 = self.create(self.slave1, 't', self.tid, self.pid, 144000, 2, 'false')
         self.assertIn('Create table ok' ,rs2)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
         self.assertEqual(table_status[:6], ['0', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
 
-        rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 2, 'false', self.slave1, self.slave2)
+        rs3 = self.create(self.slave2, 't', self.tid, self.pid, 144000, 2, 'false')
         self.assertIn('Create table ok' ,rs3)
         table_status = self.get_table_status(self.slave1, self.tid, self.pid)
         self.assertEqual(table_status[:6], ['0', 'kTableFollower', 'kTableNormal', 'true', '144000min', '0s'])
