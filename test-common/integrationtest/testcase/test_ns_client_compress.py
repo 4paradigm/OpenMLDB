@@ -90,44 +90,5 @@ class TestCreateTableByNsClient(TestCaseBase):
             for v in rs1.values():
                 self.assertEqual(v[3], "kSnappy")
 
-            # for edp in (self.leader, self.slave1, self.slave2):
-            #     schema = self.showschema(edp, tid, 2)
-            #     infoLogger.info(schema)
-            #     self.assertEqual(len(schema), len(column_descs))
-            #     for i in column_descs:
-            #         key = i[1][1:-1]
-            #         type = i[2][1:-1]
-            #         index = 'yes' if i[3] == 'true' else 'no'
-            #         self.assertEqual(schema[key], [type, index])
-
-    @ddt.data(
-        ('Create table ok', '0', '8', '3', ''),
-        ('Create table ok', 'latest:10', '8', '3', ''),
-        ('Create table ok', '144000', '8', '3', 'k1:string:index k2:double k3:int32:index'),
-        ('partition_num should be large than zero', '144000', '0', '3', ''),
-    )
-    @ddt.unpack
-    def test_create_cmd(self, exp_msg, ttl, partition_num, replica_num, schema):
-        """
-        不用文件, 直接在命令行指定建表信息
-        :return:
-        """
-        tname = 'tname{}'.format(time.time())
-        rs = self.ns_create_cmd(self.ns_leader, tname, ttl, partition_num, replica_num, schema)
-        infoLogger.info(rs)
-        self.assertIn(exp_msg, rs)
-        if (schema != ''):
-            self.assertIn(exp_msg, rs)
-            rs1 = self.showtable(self.ns_leader)
-            tid = rs1.keys()[0][1]
-            infoLogger.info(rs1)
-            schema = self.showschema(self.slave1, tid, 0)
-            infoLogger.info(schema)
-            self.assertEqual(len(schema), 3)
-            self.assertEqual(schema['k1'], ['string', 'yes'])
-            self.assertEqual(schema['k2'], ['double', 'no'])
-            self.assertEqual(schema['k3'], ['int32', 'yes'])
-
-
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)
