@@ -85,7 +85,7 @@ TEST_F(SnapshotReplicaTest, AddReplicate) {
     client.Init();
     std::vector<std::string> endpoints;
     bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints, 
-                ::rtidb::api::TTLType::kAbsoluteTime, 16);
+                ::rtidb::api::TTLType::kAbsoluteTime, 16, 0, ::rtidb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
 
     std::string end_point = "127.0.0.1:18530";
@@ -126,7 +126,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     client.Init();
     std::vector<std::string> endpoints;
     bool ret = client.CreateTable("table1", tid, pid, 100000, true, endpoints,
-                ::rtidb::api::TTLType::kAbsoluteTime, 16);
+                ::rtidb::api::TTLType::kAbsoluteTime, 16, 0, ::rtidb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     ret = client.Put(tid, pid, "testkey", cur_time, "value1");
@@ -158,7 +158,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     ::rtidb::client::TabletClient client1(follower_point);
     client1.Init();
     ret = client1.CreateTable("table1", tid, pid, 14400, false, endpoints,
-                ::rtidb::api::TTLType::kAbsoluteTime, 16);
+                ::rtidb::api::TTLType::kAbsoluteTime, 16, 0, ::rtidb::api::CompressType::kNoCompress);
     ASSERT_TRUE(ret);
     client.AddReplica(tid, pid, follower_point);
     sleep(3);
@@ -183,6 +183,19 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     tablet1->Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(1, srp.count());
     ASSERT_EQ(0, srp.code());
+    {
+        ::rtidb::api::GetTableFollowerRequest gr;
+        ::rtidb::api::GetTableFollowerResponse grs;
+        gr.set_tid(tid);
+        gr.set_pid(pid);
+        tablet->GetTableFollower(NULL, &gr, &grs, &closure);
+        ASSERT_EQ(0, grs.code());
+        ASSERT_EQ(12, grs.offset());
+        ASSERT_EQ(1, grs.follower_info_size());
+        ASSERT_STREQ(follower_point.c_str(), grs.follower_info(0).endpoint().c_str());
+        ASSERT_EQ(12, grs.follower_info(0).offset());
+
+    }
     ::rtidb::api::DropTableRequest dr;
     dr.set_tid(tid);
     dr.set_pid(pid);

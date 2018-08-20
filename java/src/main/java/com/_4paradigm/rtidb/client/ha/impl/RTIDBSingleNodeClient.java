@@ -16,6 +16,8 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
+import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.ns.NS.TableInfo;
 
 import io.brpc.client.EndPoint;
 import io.brpc.client.RpcBaseClient;
@@ -73,23 +75,35 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
             Tablet.GetTableSchemaRequest request = Tablet.GetTableSchemaRequest.newBuilder().setTid(id).setPid(0)
                     .build();
             Tablet.GetTableSchemaResponse response = tabletServer.getTableSchema(request);
-            if (response.getCode() == 0) {
-                List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
-                th = new TableHandler(schema);
+            Tablet.GetTableStatusRequest statusRequest = Tablet.GetTableStatusRequest.newBuilder().build();
+            Tablet.GetTableStatusResponse statusResponse = tabletServer.getTableStatus(statusRequest);
+            if (response.getCode() == 0 && statusResponse.getCode() == 0) {
+                if (response.getSchema().isEmpty()) {
+                    // some table maybe have no schema, eg kv table
+                    th = new TableHandler();
+                } else {
+                    List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
+                    th = new TableHandler(schema);
+                }
+                for (Tablet.TableStatus status : statusResponse.getAllTableStatusList()) {
+                    if (status.getTid() == id) {
+                        TableInfo.Builder builder = TableInfo.newBuilder();
+                        builder.setTid(status.getTid()).setTtl(status.getTtl());
+                        if (status.getCompressType() == Tablet.CompressType.kSnappy) {
+                            builder.setCompressType(NS.CompressType.kSnappy);
+                        }
+                        th.setTableInfo(builder.build());
+                        break;
+                    }
+                }
                 PartitionHandler ph = new PartitionHandler();
                 ph.setLeader(tabletServer);
                 th.setPartitions(new PartitionHandler[] {ph});
                 id2tables.putIfAbsent(id, th);
                 return th;
 
-            } else if (response.getCode() == -1) {
-                // some table maybe have no schema, eg kv table
-                th = new TableHandler();
-                PartitionHandler ph = new PartitionHandler();
-                ph.setLeader(tabletServer);
-                th.setPartitions(new PartitionHandler[] {ph});
-                id2tables.putIfAbsent(id, th);
-                return th;
+            } else {
+                return null;
             }
         }
         return th;

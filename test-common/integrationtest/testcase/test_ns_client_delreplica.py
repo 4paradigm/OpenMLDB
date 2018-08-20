@@ -184,7 +184,7 @@ class TestDelReplicaNs(TestCaseBase):
         self.start_client(self.slave1)
         time.sleep(10)
         self.assertIn('Fail to delreplica', rs3)
-        self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '8', '100', 'no'])
+        self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '100', 'no', 'kNoCompress'])
 
 
 if __name__ == "__main__":

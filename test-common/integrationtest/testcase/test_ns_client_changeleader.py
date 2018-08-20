@@ -51,9 +51,9 @@ class TestChangeLeader(TestCaseBase):
         rs2 = self.showtable(self.ns_leader)
         self.connectzk(self.leader)
 
-        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         act1 = rs2[(name, tid, '0', self.slave1)]
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
@@ -112,9 +112,9 @@ class TestChangeLeader(TestCaseBase):
         rs2 = self.showtable(self.ns_leader)
         self.start_client(self.leader)
         time.sleep(3)
-        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         act1 = rs2[(name, tid, '0', self.slave1)]
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]

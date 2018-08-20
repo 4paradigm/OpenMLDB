@@ -57,19 +57,19 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('kTabletOffline', rs2[self.leader])
 
         # leader to offline
-        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])  # RTIDB-203
-        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '3', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])  # RTIDB-203
+        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '3', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
 
         # slave to leader
-        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
         act1 = rs3[(name, tid, '2', self.slave1)]
         act2 = rs3[(name, tid, '2', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
-        self.assertEqual(rs3[(name, tid, '3', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '3', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
 
     @ddt.data(
@@ -114,13 +114,13 @@ class TestAutoFailover(TestCaseBase):
             self.connectzk(self.slave1)
         self.assertIn('kTabletOffline', rs2[self.slave1])
 
-        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
 
     def test_auto_failover_slave_network_flashbreak(self):
         """
@@ -158,19 +158,19 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('kTabletHealthy', rs4[self.leader])
         self.assertIn('kTabletHealthy', rs4[self.slave1])
 
-        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
-        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
 
     def test_select_leader(self):

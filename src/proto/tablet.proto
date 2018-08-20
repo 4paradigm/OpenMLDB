@@ -11,6 +11,11 @@ enum TableMode {
     kTableFollower = 2;
 }
 
+enum CompressType {
+    kNoCompress = 0;
+    kSnappy = 1;
+}
+
 enum TableState {
     kTableUndefined = 0;
     kTableNormal = 1;
@@ -232,6 +237,7 @@ message TableMeta {
     optional uint64 term = 10 [default = 0];
     optional bytes schema = 11;
     repeated string dimensions = 12;
+    optional CompressType compress_type = 13;
 }
 
 message CreateTableRequest {
@@ -364,6 +370,7 @@ message TableStatus {
     optional uint64 record_idx_byte_size = 14;
     optional uint64 record_pk_cnt = 15;
     optional TTLType ttl_type = 16;
+    optional CompressType compress_type = 17;
 }
 
 message GetTableStatusResponse {
@@ -414,6 +421,23 @@ message GetManifestResponse {
     optional Manifest manifest = 3;
 }
 
+message GetTableFollowerRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message FollowerInfo {
+    optional string endpoint = 1;
+    optional uint64 offset = 2;
+}
+
+message GetTableFollowerResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 offset = 3;
+    repeated FollowerInfo follower_info = 4;
+}
+
 message CheckFileRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
@@ -440,6 +464,7 @@ service TabletServer {
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
+    rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
