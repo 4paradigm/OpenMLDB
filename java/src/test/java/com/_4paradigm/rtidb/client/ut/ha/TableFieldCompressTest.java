@@ -174,6 +174,7 @@ public class TableFieldCompressTest {
             Assert.assertTrue(false);
         } finally {
             nsc.dropTable(name);
+            nsc.dropTable(kvTable);
         }
     }
 }
