@@ -39,7 +39,8 @@ Table::Table(const std::string& name,
     ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
+    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress)
 {}
 
 Table::Table(const std::string& name,
@@ -81,6 +82,14 @@ void Table::Init() {
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
             id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+}
+
+void Table::SetCompressType(::rtidb::api::CompressType compress_type) {
+    compress_type_ = compress_type;
+}
+
+::rtidb::api::CompressType Table::GetCompressType() {
+    return compress_type_;
 }
 
 bool Table::Put(const std::string& pk, 

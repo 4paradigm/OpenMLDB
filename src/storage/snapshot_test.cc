@@ -616,7 +616,6 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 }
 
 TEST_F(SnapshotTest, MakeSnapshotLatest) {
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(5, 1, log_part);
     snapshot.Init();

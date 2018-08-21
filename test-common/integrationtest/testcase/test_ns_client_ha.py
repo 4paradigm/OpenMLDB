@@ -161,7 +161,7 @@ class TestNameserverHa(TestCaseBase):
         self.get_new_ns_leader()
         self.assertEqual(rs1, rs2)
         self.assertEqual(rs3[self.leader][0], 'kTabletOffline')
-        self.assertEqual([v[-1] for k, v in rs4.items() if k[-1] == self.leader], ['no'] * 4)
+        self.assertEqual([v[-2] for k, v in rs4.items() if k[-1] == self.leader], ['no'] * 4)
 
 
     @ddt.data(

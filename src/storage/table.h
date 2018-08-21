@@ -97,6 +97,9 @@ public:
     uint64_t GetRecordIdxByteSize();
     uint64_t GetRecordPkCnt();
 
+    void SetCompressType(::rtidb::api::CompressType compress_type);
+    ::rtidb::api::CompressType GetCompressType();
+
     inline uint64_t GetRecordByteSize() const {
         return record_byte_size_.load(std::memory_order_relaxed);    
     }
@@ -220,6 +223,7 @@ private:
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
+    ::rtidb::api::CompressType compress_type_;
 };
 
 }

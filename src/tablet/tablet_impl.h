@@ -183,6 +183,11 @@ public:
             ::rtidb::api::GetTermPairResponse* response,
             Closure* done);
 
+    void GetTableFollower(RpcController* controller,
+            const ::rtidb::api::GetTableFollowerRequest* request,
+            ::rtidb::api::GetTableFollowerResponse* response,
+            Closure* done);
+
     void GetManifest(RpcController* controller,
             const ::rtidb::api::GetManifestRequest* request,
             ::rtidb::api::GetManifestResponse* response,

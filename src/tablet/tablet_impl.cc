@@ -848,6 +848,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_pid(table->GetPid());
             status->set_ttl(table->GetTTL());
             status->set_ttl_type(table->GetTTLType());
+            status->set_compress_type(table->GetCompressType());
             status->set_time_offset(table->GetTimeOffset());
             status->set_is_expire(table->GetExpireStatus());
             status->set_name(table->GetName());
@@ -1741,6 +1742,49 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
 }
 
+void TabletImpl::GetTableFollower(RpcController* controller,
+            const ::rtidb::api::GetTableFollowerRequest* request,
+            ::rtidb::api::GetTableFollowerResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
+    if (!table) {
+        PDLOG(DEBUG, "table is not exist. tid %u pid %u", tid, pid);
+	    response->set_code(-1);
+        response->set_msg("table not found");
+        return;
+    }
+    if (!table->IsLeader()) {
+        PDLOG(DEBUG, "table with tid %u, pid %u is follower", tid, pid);
+        response->set_msg("table is follower");
+        response->set_code(-1);
+        return;
+    }
+    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+    if (!replicator) {
+        PDLOG(DEBUG, "replicator is not exist. tid %u pid %u", tid, pid);
+		response->set_msg("replicator is not exist");
+        response->set_code(-1);
+        return;
+    }
+    response->set_offset(replicator->GetOffset());
+    std::map<std::string, uint64_t> info_map;
+    replicator->GetReplicateInfo(info_map);
+    if (info_map.empty()) {
+        response->set_msg("has no follower");
+        response->set_code(-1);
+    }
+    for (const auto& kv : info_map) {
+        ::rtidb::api::FollowerInfo* follower_info = response->add_follower_info();
+        follower_info->set_endpoint(kv.first);
+        follower_info->set_offset(kv.second);
+    }
+	response->set_msg("ok");
+    response->set_code(0);
+}
+
 void TabletImpl::GetTermPair(RpcController* controller,
             const ::rtidb::api::GetTermPairRequest* request,
             ::rtidb::api::GetTermPairResponse* response,
@@ -1971,6 +2015,9 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());
     table->SetTTLType(table_meta->ttl_type());
+    if (table_meta->has_compress_type()) {
+        table->SetCompressType(table_meta->compress_type());
+    }
     std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(table_meta->tid()) +
                 "_" + std::to_string(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;

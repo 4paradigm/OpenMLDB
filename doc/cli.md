@@ -60,20 +60,20 @@ help 获取命令帮助信息
 
 ## tablet命令用法
 create  创建单维表  
-命名格式: create table_name tid pid ttl segment_cnt is_leader(optional) follower1 follower2 ...  
+命名格式: create table_name tid pid ttl segment_cnt [is_leader compress_type]  
 * table_name 为要创建表名称
 * tid 指定table的id
 * pid 指定table的分片id
 * ttl 指定过期时间,默认过期类型为AbsoluteTime. 如果过期类型设置LatestTime,格式为latest:保留条数(ex: latest:10, 保留最近10条)
 * segment_cnt 为表的segement 个数, 建议为8~1024
 * is_leader 指定是否为leader. 默认为leader
-* follower 指定follower
+* compress_type 指定字段压缩类型. 取值为[nocompress, snappy], 默认不压缩  
 
 ```
 创建一个leader表
 > create t1 1 0 144000 8
-创建一个leader表, 指定follwer为172.27.128.31:9991, 172.27.128.31:9992
-> create t1 1 0 144000 8 true 172.27.128.31:9991 172.27.128.31:9992
+创建一个leader表, 压缩类型指定为snappy  
+> create t1 1 0 144000 8 true snappy
 创建一个follower表, 过期类型设为保留最近10条
 > create t1 1 0 latest:10 8 false
 ```
@@ -230,6 +230,8 @@ recoversnapshot 恢复makesnapshot功能
 命令格式: recoversnapshot tid pid  
 sendsnapshot 给指定endpoint发送snapshot, 包括table.meta, MANIFEST和sdb文件. 注: 发送前必须pausesnapshot, 发送完再运行recoversnapshot  
 命令格式: sendsnapshot tid pid endpoint  
+getfollower 获取从节点信息    
+命令格式: getfollower tid pid  
 
 changerole 切换leader或者follower  
 命令格式: changerole tid pid role  
@@ -261,6 +263,7 @@ Create table ok
 ```
 (2) create table_meta_path  
 首先准备如下格式的表元数据文件. 其中name和ttl是必填的
+compress_type 指定字段压缩类型. 取值为[nocompress, snappy], 默认不压缩  
 ```
 name : "test1"
 ttl: 144000
@@ -344,7 +347,7 @@ ttl_type可以设置kAbsoluteTime(按时间过期)和kLatestTime(按条数过期
 table_partition 可以不用指定  
 partition_num用来设置分片数. 只有不指定table_partition时生效. 此项配置是可选的, 默认值是32可由配置文件partition_num来修改  
 replica_num用来设置副本数. 只有不指定table_partition时生效. 此项配置是可选的, 默认值是3, 表示3副本部署时会部一主两从. 可由配置文件replica_num来修改
-column_desc用来描述维度信息，有多少个维度就创建多少个column_desc结构  
+column_desc用来描述维度信息, 有多少个维度就创建多少个column_desc结构. **如果字段数太多会创建失败, 可尝试缩短字段名称, 最多不超过4200个**   
 type字段标识当前列的数据类型. 支持的数据类型有int32, uint32, int64, uint64, float, double, string  
 ```
 如果表元数据信息保存在了./table_meta.txt，则运行如下命令

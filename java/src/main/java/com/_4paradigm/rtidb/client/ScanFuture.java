@@ -69,6 +69,7 @@ public class ScanFuture implements Future<KvIterator> {
             }else {
                 kit = new DefaultKvIterator(response.getPairs(), network);
             }
+            kit.setCompressType(t.getTableInfo().getCompressType());
             kit.setCount(response.getCount());
             return kit;
         }
@@ -94,6 +95,7 @@ public class ScanFuture implements Future<KvIterator> {
             }else {
                 kit = new DefaultKvIterator(response.getPairs(), network);
             }
+            kit.setCompressType(t.getTableInfo().getCompressType());
             kit.setCount(response.getCount());
             return kit;
         }

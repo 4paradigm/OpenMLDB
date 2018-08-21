@@ -32,6 +32,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.brpc.client.BrpcChannelGroup;
@@ -207,6 +208,12 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             for (String path : children) {
                 byte[] data = zookeeper.getData(config.getZkTableRootPath() + "/" + path, false, null);
                 if (data != null) {
+                    if (config.isTableInfoCompressed()) {
+                        byte[] uncompressed = Compress.gunzip(data);
+                        if (uncompressed != null) {
+                            data = uncompressed;
+                        }
+                    }
                     try {
                         TableInfo tableInfo = TableInfo.parseFrom(data);
                         newTableList.add(tableInfo);

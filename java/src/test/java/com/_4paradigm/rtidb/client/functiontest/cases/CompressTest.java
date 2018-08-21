@@ -1,45 +1,62 @@
 package com._4paradigm.rtidb.client.functiontest.cases;
 
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.TableAsyncClient;
+import com._4paradigm.rtidb.client.TableSyncClient;
+import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
+import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
+import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
+import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.ns.NS.ColumnDesc;
+import com._4paradigm.rtidb.ns.NS.CompressType;
+import com._4paradigm.rtidb.ns.NS.PartitionMeta;
+import com._4paradigm.rtidb.ns.NS.TableInfo;
+import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.rtidb.utils.MurmurHash;
+import com.google.protobuf.ByteString;
+import io.brpc.client.EndPoint;
+import java.util.ArrayList;
+import java.util.List;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
-import com._4paradigm.rtidb.utils.MurmurHash;
-import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
-import com._4paradigm.rtidb.ns.NS.ColumnDesc;
-import com._4paradigm.rtidb.ns.NS.PartitionMeta;
-import com._4paradigm.rtidb.ns.NS.TableInfo;
-import com._4paradigm.rtidb.ns.NS.TablePartition;
-import com.google.protobuf.ByteString;
-import com._4paradigm.rtidb.client.ha.TableHandler;
-
 @Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
-public class HaPutTest {
+public class CompressTest {
 
   private static String zkEndpoints = "127.0.0.1:22181";
+  private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
   private static String leaderPath  = "/onebox/leader";
-  private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
   private static RTIDBClientConfig config = new RTIDBClientConfig();
-  private static RTIDBClusterClient client = null;
+  private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
+  private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
+  private static RTIDBClusterClient ns_client = null;
+  private static TabletSyncClient client = null;
   private static TableSyncClient tableSyncClient = null;
+  private static TableAsyncClient tableAsyncClient = null;
   private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
 
   static {
     try {
       nsc.init();
+      snc.init();
       config.setZkEndpoints(zkEndpoints);
       config.setZkNodeRootPath("/onebox/nodes");
       config.setZkTableRootPath("/onebox/table/table_data");
       config.setZkTableNotifyPath("/onebox/table/notify");
-      client = new RTIDBClusterClient(config);
-      client.init();
-      tableSyncClient = new TableSyncClientImpl(client);
+      ns_client = new RTIDBClusterClient(config);
+      ns_client.init();
+      tableSyncClient = new TableSyncClientImpl(ns_client);
+      tableAsyncClient = new TableAsyncClientImpl(ns_client);
+      client = new TabletSyncClientImpl(snc);
     } catch (Exception e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
@@ -54,7 +71,7 @@ public class HaPutTest {
     return str;
   }
 
-  private String createKvTable() {
+  private String createKvTable(CompressType cType) {
     String name = String.valueOf(System.currentTimeMillis());
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
@@ -62,15 +79,15 @@ public class HaPutTest {
     TablePartition tp1 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
 
     TableInfo table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
-        .setSegCnt(8).setName(name).setTtl(0).build();
+        .setSegCnt(8).setName(name).setTtl(0).setCompressType(cType).build();
 
     boolean ok = nsc.createTable(table);
-    client.refreshRouteTable();
+    ns_client.refreshRouteTable();
     Assert.assertTrue(ok);
     return name;
   }
 
-  private String createSchemaTable(Boolean isIndex1, String type1, Boolean isIndex2, String type2) {
+  private String createSchemaTable(CompressType cType, Boolean isIndex1, String type1, Boolean isIndex2, String type2) {
     String name = String.valueOf(System.currentTimeMillis());
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
@@ -84,9 +101,10 @@ public class HaPutTest {
     TableInfo table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1).addTablePartition(tp2)
         .setSegCnt(8).setName(name).setTtl(0)
         .addColumnDesc(col0).addColumnDesc(col1).addColumnDesc(col2)
+            .setCompressType(cType)
         .build();
     boolean ok = nsc.createTable(table);
-    client.refreshRouteTable();
+    ns_client.refreshRouteTable();
     Assert.assertEquals(ok, true);
     return name;
   }
@@ -105,17 +123,19 @@ public class HaPutTest {
 
   @Test(dataProvider = "putdataString")
   public void testPutStringValue(String value, boolean putOk) {
-    String name = createKvTable();
-    try {
-      boolean ok = tableSyncClient.put(name, "test1", System.currentTimeMillis() + 9999, value);
-      ByteString bs = tableSyncClient.get(name, "test1");
-      Assert.assertTrue(ok == putOk);
-      Assert.assertEquals(new String(bs.toByteArray()), value);
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.assertTrue(false);
-    } finally {
-      nsc.dropTable(name);
+    for (CompressType cType : CompressType.values()) {
+      String tname = createKvTable(cType);
+      try {
+        boolean status = tableAsyncClient.put(tname, "test1", System.currentTimeMillis() + 9999, value).get();
+        ByteString result = tableAsyncClient.get(tname, "test1").get();
+        Assert.assertTrue(status == putOk);
+        Assert.assertEquals(new String(result.toByteArray()), value);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.assertTrue(false);
+      } finally {
+        nsc.dropTable(tname);
+      }
     }
   }
 
@@ -133,16 +153,19 @@ public class HaPutTest {
 
   @Test(dataProvider = "putdataByte")
   public void testPutByteValue(byte[] value, boolean putOk) {
-    String name = createKvTable();
-    try {
-      boolean ok = tableSyncClient.put(name, "test1", System.currentTimeMillis() + 9999, value);
-      ByteString bs = tableSyncClient.get(name, "test1");
-      Assert.assertTrue(ok == putOk);
-      Assert.assertEquals(bs.toByteArray(), value);
-    } catch (Exception e) {
-      Assert.assertTrue(false);
-    } finally {
-      nsc.dropTable(name);
+    for (CompressType cType : CompressType.values()) {
+      String tname = createKvTable(cType);
+      try {
+        boolean status = tableSyncClient.put(tname, "test1", System.currentTimeMillis() + 9999, value);
+        ByteString result = tableSyncClient.get(tname, "test1");
+        Assert.assertTrue(status == putOk);
+        Assert.assertEquals(result.toByteArray(), value);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.assertTrue(false);
+      } finally {
+        nsc.dropTable(tname);
+      }
     }
   }
 
@@ -199,74 +222,75 @@ public class HaPutTest {
   @Test(dataProvider = "putdataSchema")
   public void testSchemaPutValue(Boolean isIndex1, String type1, Object value1,
                                  Boolean isIndex2, String type2, Object value2, Boolean putOk) {
-    Boolean ok = null;
-    Boolean okT1 = null;
-    Boolean okT2 = null;
-    String name = createSchemaTable(isIndex1, type1, isIndex2, type2);
-    try {
-      ok = tableSyncClient.put(name, 1555555555555L, new Object[]{value1, value2, "value3"});
-      okT1 = tableSyncClient.put(name, 1666666666666L, new Object[]{"t1", value2, "amt2"});
-      okT2 = tableSyncClient.put(name, 1777777777777L, new Object[]{"t2", value2, "amt3"});
-      Assert.assertTrue(ok);
-      Assert.assertTrue(okT1);
-      Assert.assertTrue(okT2);
-      if (putOk == true) {
-        Object[] row = tableSyncClient.getRow(name, value1.toString(), 1555555555555L);
-        Assert.assertEquals(row[0], value1);
-        if (value2 != null && value2.equals("")) {
-          value2 = null;
-        }
-        Assert.assertEquals(row[2], "value3");
+    for (CompressType cType: CompressType.values()){
+      Boolean ok = null;
+      Boolean okT1 = null;
+      Boolean okT2 = null;
+      String name = createSchemaTable(cType, isIndex1, type1, isIndex2, type2);
+      try {
+        ok = tableSyncClient.put(name, 1555555555555L, new Object[]{value1, value2, "value3"});
+        okT1 = tableSyncClient.put(name, 1666666666666L, new Object[]{"t1", value2, "amt2"});
+        okT2 = tableSyncClient.put(name, 1777777777777L, new Object[]{"t2", value2, "amt3"});
+        Assert.assertTrue(ok);
+        Assert.assertTrue(okT1);
+        Assert.assertTrue(okT2);
+        if (putOk == true) {
+          Object[] row = tableSyncClient.getRow(name, value1.toString(), 1555555555555L);
+          Assert.assertEquals(row[0], value1);
+          if (value2 != null && value2.equals("")) {
+            value2 = null;
+          }
+          Assert.assertEquals(row[2], "value3");
 
-        KvIterator it = tableSyncClient.scan(name, value1.toString(), "card", 1999999999999L, 1L);
-        Assert.assertTrue(it.valid());
-        Assert.assertTrue(it.getCount() == 1);
-        Object[] rowScan = it.getDecodedValue();
-        Assert.assertEquals(rowScan[0], value1);
-        Assert.assertEquals(rowScan[1], value2);
-        Assert.assertEquals(rowScan[2], "value3");
-        it.next();
-
-        TableHandler tbHandler = client.getHandler(name);
-        int tid = tbHandler.getTableInfo().getTid();
-        int pid1 = (int) (MurmurHash.hash64(value1.toString()) % tbHandler.getPartitions().length);
-        System.out.println("pid1 = " + pid1);
-        int pid1Col2 = -1;
-
-        it = tableSyncClient.scan(tid, pid1, value1.toString(), "card", 1999999999999L, 1L);
-        rowScan = it.getDecodedValue();
-        Assert.assertEquals(rowScan[0], value1);
-        if (isIndex2 == true && value2 == "3") {
-          pid1Col2 = (int) (MurmurHash.hash64(value2.toString()) % tbHandler.getPartitions().length);
-          System.out.println("pid1Col2 = " + pid1Col2);
-          it = tableSyncClient.scan(tid, pid1Col2, value2.toString(), "mcc",1666666666665L, 1L);
-          rowScan = it.getDecodedValue();
+          KvIterator it = tableSyncClient.scan(name, value1.toString(), "card", 1999999999999L, 1L);
+          Assert.assertTrue(it.valid());
+          Assert.assertTrue(it.getCount() == 1);
+          Object[] rowScan = it.getDecodedValue();
           Assert.assertEquals(rowScan[0], value1);
           Assert.assertEquals(rowScan[1], value2);
+          Assert.assertEquals(rowScan[2], "value3");
+          it.next();
+
+          TableHandler tbHandler = ns_client.getHandler(name);
+          int tid = tbHandler.getTableInfo().getTid();
+          int pid1 = (int) (MurmurHash.hash64(value1.toString()) % tbHandler.getPartitions().length);
+          System.out.println("pid1 = " + pid1);
+          int pid1Col2 = -1;
+
+          it = tableSyncClient.scan(tid, pid1, value1.toString(), "card", 1999999999999L, 1L);
+          rowScan = it.getDecodedValue();
+          Assert.assertEquals(rowScan[0], value1);
+          if (isIndex2 == true && value2 == "3") {
+            pid1Col2 = (int) (MurmurHash.hash64(value2.toString()) % tbHandler.getPartitions().length);
+            System.out.println("pid1Col2 = " + pid1Col2);
+            it = tableSyncClient.scan(tid, pid1Col2, value2.toString(), "mcc",1666666666665L, 1L);
+            rowScan = it.getDecodedValue();
+            Assert.assertEquals(rowScan[0], value1);
+            Assert.assertEquals(rowScan[1], value2);
+          }
+
+          int pid2 = (int) (MurmurHash.hash64("t1") % tbHandler.getPartitions().length);
+          System.out.println("pid2 = " + pid2);
+          it = tableSyncClient.scan(tid, pid2, "t1", "card", 1999999999999L, 1L);
+          rowScan = it.getDecodedValue();
+          Assert.assertEquals(rowScan[0], "t1");
+
+          int pid3 = (int) (MurmurHash.hash64("t2") % tbHandler.getPartitions().length) * -1;
+          System.out.println("pid3 = " + pid3);
+          it = tableSyncClient.scan(tid, pid3, "t2", "card", 1999999999999L, 1L);
+          rowScan = it.getDecodedValue();
+          Assert.assertEquals(rowScan[0], "t2");
+
+          Assert.assertFalse(pid1 == pid2 && pid1 == pid3 && pid2 == pid3);
         }
-
-        int pid2 = (int) (MurmurHash.hash64("t1") % tbHandler.getPartitions().length);
-        System.out.println("pid2 = " + pid2);
-        it = tableSyncClient.scan(tid, pid2, "t1", "card", 1999999999999L, 1L);
-        rowScan = it.getDecodedValue();
-        Assert.assertEquals(rowScan[0], "t1");
-
-        int pid3 = (int) (MurmurHash.hash64("t2") % tbHandler.getPartitions().length) * -1;
-        System.out.println("pid3 = " + pid3);
-        it = tableSyncClient.scan(tid, pid3, "t2", "card", 1999999999999L, 1L);
-        rowScan = it.getDecodedValue();
-        Assert.assertEquals(rowScan[0], "t2");
-
-        Assert.assertFalse(pid1 == pid2 && pid1 == pid3 && pid2 == pid3);
+      } catch (Exception e) {
+        ok = false;
+        e.printStackTrace();
+      } finally {
+        System.out.println(ok);
+        nsc.dropTable(name);
+        Assert.assertEquals(ok, putOk);
       }
-    } catch (Exception e) {
-      ok = false;
-      e.printStackTrace();
-    } finally {
-      System.out.println(ok);
-      nsc.dropTable(name);
-      Assert.assertEquals(ok, putOk);
     }
   }
-
 }
