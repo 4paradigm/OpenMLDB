@@ -114,9 +114,6 @@ public class DefaultKvIterator implements KvIterator {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
             byte[] uncompressed = Compress.snappyUnCompress(data);
-            if (uncompressed == null) {
-                return null;
-            }
             return ByteBuffer.wrap(uncompressed);
         } else {
             return slice;

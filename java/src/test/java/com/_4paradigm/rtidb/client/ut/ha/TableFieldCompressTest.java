@@ -97,29 +97,55 @@ public class TableFieldCompressTest {
         for (int i = 0; i < schema_num -1; i++) {
             row.put("field" + i, "valueabcad123ajcr3456" + i);
         }
+        Map<String, Object> row1 = new HashMap<String, Object>();
+        row1.put("card", "card0");
+        for (int i = 0; i < schema_num -1; i++) {
+            row1.put("field" + i, "XXvalueabcad123ajcr3456" + i);
+        }
         try {
             boolean ok = tableSyncClient.put(name, 9527, row);
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 9528, row1);
             Assert.assertTrue(ok);
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 9529, 1000);
             Assert.assertTrue(it.valid());
             Object[] result = it.getDecodedValue();
             Assert.assertEquals(result[0], "card0");
+            Assert.assertEquals(result[1], "XXvalueabcad123ajcr34560");
+            it.next();
+            result = it.getDecodedValue();
+            Assert.assertEquals(result[0], "card0");
             Assert.assertEquals(result[1], "valueabcad123ajcr34560");
+            it.next();
+            Assert.assertFalse(it.valid());
             Object[] result1 = tableSyncClient.getRow(name, "card0", "card", 9527);
             Assert.assertEquals(result1[0], "card0");
             Assert.assertEquals(result1[1], "valueabcad123ajcr34560");
 
             ok = tableSyncClient.put(kvTable, "test1", 9527, "value1");
             Assert.assertTrue(ok);
+            ok = tableSyncClient.put(kvTable, "test1", 9528, "value2");
+            Assert.assertTrue(ok);
             it = tableSyncClient.scan(kvTable, "test1", 9529, 1000);
             Assert.assertTrue(it.valid());
-            Assert.assertEquals(9527l, it.getKey());
+            Assert.assertEquals(9528l, it.getKey());
             ByteBuffer bb = it.getValue();
             Assert.assertEquals(6, bb.limit() - bb.position());
             byte[] buf = new byte[6];
             bb.get(buf);
+            Assert.assertEquals("value2", new String(buf));
+            it.next();
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(9527l, it.getKey());
+            bb = it.getValue();
+            Assert.assertEquals(6, bb.limit() - bb.position());
+            buf = new byte[6];
+            bb.get(buf);
             Assert.assertEquals("value1", new String(buf));
-            ByteString bs = tableSyncClient.get(kvTable, "test1", 0);
+            it.next();
+            Assert.assertFalse(it.valid());
+
+            ByteString bs = tableSyncClient.get(kvTable, "test1", 9527);
             Assert.assertEquals(bs.toStringUtf8(), "value1");
 
         } catch (Exception e) {
