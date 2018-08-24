@@ -429,7 +429,7 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::clie
         std::string endpoint;
         std::string real_path = node_path + "/" + path;
         if (!zk_client->GetNodeValue(real_path, endpoint)) {
-            std::cout << "get endpoint failed. path " << path << std::endl;
+            std::cout << "get endpoint failed. path " << real_path << std::endl;
             return;
         }
         if (std::find(endpoint_vec.begin(), endpoint_vec.end(), endpoint) == endpoint_vec.end()) {
