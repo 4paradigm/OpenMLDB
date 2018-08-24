@@ -1383,6 +1383,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("get - get only one record\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
+        printf("showns - show nameserver info\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
         printf("makesnapshot - make snapshot\n");
@@ -1447,6 +1448,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
+        } else if (parts[1] == "showns") {
+            printf("desc: show nameserver info\n");
+            printf("usage: showns\n");
+            printf("ex: showns\n");
         } else if (parts[1] == "showschema") {
             printf("desc: show schema info\n");
             printf("usage: showschema table_name\n");
