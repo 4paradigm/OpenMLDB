@@ -175,6 +175,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
         Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
@@ -277,6 +280,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
@@ -401,6 +407,9 @@ public class TableSyncClientImpl implements TableSyncClient {
             consumed = System.nanoTime();
         }
         TabletServer tablet = ph.getLeader();
+        if (tablet == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         if (ds != null) {
             for (Tablet.Dimension dim : ds) {
