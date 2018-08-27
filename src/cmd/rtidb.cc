@@ -412,6 +412,48 @@ void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::
     tp.Print(true);
 }
 
+void HandleNSShowNameServer(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client, 
+        std::shared_ptr<ZkClient> zk_client) {
+    if (FLAGS_zk_cluster.empty() || !zk_client) {
+        std::cout << "Show nameserver failed. zk_cluster is empty" << std::endl;
+        return;
+    }    
+    std::string node_path = FLAGS_zk_root_path + "/leader";
+    std::vector<std::string> children;
+    if (!zk_client->GetChildren(node_path, children) || children.empty()) {
+        std::cout << "get children failed" << std::endl;
+        return;
+    }
+    std::vector<std::string> endpoint_vec;
+    for (auto path : children) {
+        std::string endpoint;
+        std::string real_path = node_path + "/" + path;
+        if (!zk_client->GetNodeValue(real_path, endpoint)) {
+            std::cout << "get endpoint failed. path " << real_path << std::endl;
+            return;
+        }
+        if (std::find(endpoint_vec.begin(), endpoint_vec.end(), endpoint) == endpoint_vec.end()) {
+            endpoint_vec.push_back(endpoint);
+        }
+    }
+    std::vector<std::string> row;
+    row.push_back("endpoint");
+    row.push_back("role");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    for (size_t i = 0; i < endpoint_vec.size(); i++) { 
+        std::vector<std::string> row;
+        row.push_back(endpoint_vec[i]);
+        if (i == 0) {
+            row.push_back("leader");
+        } else {
+            row.push_back("standby");
+        }
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 void HandleNSMakeSnapshot(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
         std::cout << "Bad format" << std::endl;
@@ -1341,6 +1383,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("get - get only one record\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
+        printf("showns - show nameserver info\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
         printf("makesnapshot - make snapshot\n");
@@ -1405,6 +1448,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
+        } else if (parts[1] == "showns") {
+            printf("desc: show nameserver info\n");
+            printf("usage: showns\n");
+            printf("ex: showns\n");
         } else if (parts[1] == "showschema") {
             printf("desc: show schema info\n");
             printf("usage: showschema table_name\n");
@@ -2904,20 +2951,21 @@ void StartNsClient() {
         std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
             << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     }
+    std::shared_ptr<ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        ZkClient zk_client(FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
-        if (!zk_client.Init()) {
+        zk_client = std::make_shared<ZkClient>(FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
+        if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
         }
         std::string node_path = FLAGS_zk_root_path + "/leader";
         std::vector<std::string> children;
-        if (!zk_client.GetChildren(node_path, children) || children.empty()) {
+        if (!zk_client->GetChildren(node_path, children) || children.empty()) {
             std::cout << "get children failed" << std::endl;
             return;
         }
         std::string leader_path = node_path + "/" + children[0];
-        if (!zk_client.GetNodeValue(leader_path, endpoint)) {
+        if (!zk_client->GetNodeValue(leader_path, endpoint)) {
             std::cout << "get leader failed" << std::endl;
             return;
         }
@@ -2948,6 +2996,8 @@ void StartNsClient() {
         ::rtidb::base::SplitString(buffer, " ", &parts);
         if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
+        } else if (parts[0] == "showns") {
+            HandleNSShowNameServer(parts, &client, zk_client);
         } else if (parts[0] == "showopstatus") {
             HandleNSShowOPStatus(parts, &client);
         } else if (parts[0] == "create") {
