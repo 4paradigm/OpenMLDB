@@ -2048,9 +2048,9 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex: loadtable table1 1 0 144000 8\n");
         } else if (parts[1] == "changerole") {
             printf("desc: change role\n");
-            printf("usage: changerole tid pid is_leader\n");
-            printf("ex: changerole 1 0 true\n");
-            printf("ex: changerole 1 0 false\n");
+            printf("usage: changerole tid pid role\n");
+            printf("ex: changerole 1 0 leader\n");
+            printf("ex: changerole 1 0 follower\n");
         } else if (parts[1] == "setexpire") {
             printf("desc: enable or disable ttl\n");
             printf("usage: setexpire tid pid is_expire\n");
