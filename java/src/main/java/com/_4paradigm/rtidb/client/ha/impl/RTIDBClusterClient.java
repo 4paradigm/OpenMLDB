@@ -72,6 +72,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         options.setReadTimeoutMillis(config.getReadTimeout());
         options.setWriteTimeoutMillis(config.getWriteTimeout());
         options.setMaxTryTimes(config.getMaxRetryCnt());
+        options.setTimerBucketSize(config.getTimerBucketSize());
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
         getLocalIpAddress();

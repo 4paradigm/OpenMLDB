@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -33,6 +34,10 @@ public class TabletSyncClientTest {
         client = new TabletSyncClientImpl(snc);
     }
 
+    @AfterClass
+    public void tearDown() {
+        snc.close();
+    }
     @Test
     public void testInvalidTtlCreate() {
         int tid = id.incrementAndGet();

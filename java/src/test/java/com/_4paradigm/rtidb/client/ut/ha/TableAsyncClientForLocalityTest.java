@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -46,6 +47,11 @@ public class TableAsyncClientForLocalityTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+    @AfterClass
+    public void closeResource() {
+        nsc.close();
     }
     
     private String createKvTable() {

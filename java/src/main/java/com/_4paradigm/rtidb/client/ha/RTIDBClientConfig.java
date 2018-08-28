@@ -5,6 +5,10 @@ import java.util.Map;
 
 import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 
+/**
+ * @author wangtaize
+ *
+ */
 public class RTIDBClientConfig {
 
     public enum Mode {
@@ -26,9 +30,26 @@ public class RTIDBClientConfig {
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	private String nsEndpoint;
+	private int timerBucketSize = 16;
+	
+
+    /**
+     * @return the timerBucketSize
+     */
+    public int getTimerBucketSize() {
+        return timerBucketSize;
+    }
+
+    /**
+     * @param timerBucketSize the timerBucketSize to set
+     */
+    public void setTimerBucketSize(int timerBucketSize) {
+        this.timerBucketSize = timerBucketSize;
+    }
+
     private boolean tableInfoCompressed = true;
 
-	public void disableMetrics() {
+    public void disableMetrics() {
 	    enableMetrics = false;
 	}
 

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com._4paradigm.rtidb.tablet.Tablet;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -18,6 +18,7 @@ import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
 public class TableSyncClientTest {
@@ -44,6 +45,12 @@ public class TableSyncClientTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+    
+    @AfterClass
+    public void tearDown() {
+        nsc.close();
+        client.close();
     }
     
     private String createKvTable() {
