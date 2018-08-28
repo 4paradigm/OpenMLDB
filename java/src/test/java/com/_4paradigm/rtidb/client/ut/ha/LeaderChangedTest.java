@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -51,6 +52,12 @@ public class LeaderChangedTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+    
+    @AfterClass
+    public void closeResource() {
+        nsc.close();
+        snc.close();
     }
     
     private String createSchemaTable() {

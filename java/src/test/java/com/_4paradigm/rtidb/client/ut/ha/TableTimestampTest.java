@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.joda.time.DateTime;
+import org.junit.AfterClass;
 import org.junit.Test;
 import org.testng.Assert;
 
@@ -40,6 +41,12 @@ public class TableTimestampTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+    
+    @AfterClass
+    public void tearDown() {
+        nsc.close();
+        client.close();
     }
 
     private String createSchemaTable() {

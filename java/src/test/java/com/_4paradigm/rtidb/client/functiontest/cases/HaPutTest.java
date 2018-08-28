@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.functiontest.cases;
 
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
@@ -53,7 +54,11 @@ public class HaPutTest {
     }
     return str;
   }
-
+  @AfterClass
+  public void tearDown() {
+      nsc.close();
+      client.close();
+  }
   private String createKvTable() {
     String name = String.valueOf(System.currentTimeMillis());
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();

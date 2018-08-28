@@ -1,20 +1,27 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import com._4paradigm.rtidb.client.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com._4paradigm.rtidb.client.GetFuture;
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.PutFuture;
+import com._4paradigm.rtidb.client.ScanFuture;
+import com._4paradigm.rtidb.client.TableAsyncClient;
+import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.HashMap;
-import java.util.Map;
 
 
 public class TableFieldCompressTest {
@@ -42,6 +49,12 @@ public class TableFieldCompressTest {
         }
     }
 
+    @AfterClass
+    public void closeResource() {
+        nsc.close();
+        client.close();
+    }
+    
     private String createSchemaTable(int schema_num) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);

@@ -61,6 +61,7 @@ public class NodeManagerTest {
         BrpcChannelGroup bcg6 = nm.getChannel(endPoint3);
         Assert.assertTrue(bcg6.getIp().equals("127.0.0.1"));
         Assert.assertEquals(bcg6.getPort(), 12347);
+        nm.close(); 
     }
 
 }

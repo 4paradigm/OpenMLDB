@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -34,6 +35,11 @@ public class TableSyncClientTest {
         }
         tableClient = new TableSyncClientImpl(snc);
         tabletClient = new TabletClientImpl(snc);
+    }
+
+    @AfterClass
+    public void tearDown() {
+        snc.close();
     }
 
     @Test
