@@ -536,6 +536,11 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         offline_endpoint_map_.erase(iter);
         return;
     }
+    if (table_info_.empty()) {
+        PDLOG(INFO, "endpoint %s has no table, need not offline endpoint", endpoint.c_str());
+        offline_endpoint_map_.erase(iter);
+        return;
+    }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     if (!startup_flag && cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
         thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));

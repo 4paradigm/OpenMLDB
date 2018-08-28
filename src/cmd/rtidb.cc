@@ -2040,8 +2040,8 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex: recoversnapshot 1 0\n");
         } else if (parts[1] == "sendsnapshot") {
             printf("desc: send snapshot\n");
-            printf("usage: sendsnapshot tid pid\n");
-            printf("ex: sendsnapshot 1 0\n");
+            printf("usage: sendsnapshot tid pid endpoint\n");
+            printf("ex: sendsnapshot 1 0 172.27.128.32:8541\n");
         } else if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
             printf("usage: loadtable table_name tid pid ttl segment_cnt\n");
