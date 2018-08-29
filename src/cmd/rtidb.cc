@@ -2040,17 +2040,17 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex: recoversnapshot 1 0\n");
         } else if (parts[1] == "sendsnapshot") {
             printf("desc: send snapshot\n");
-            printf("usage: sendsnapshot tid pid\n");
-            printf("ex: sendsnapshot 1 0\n");
+            printf("usage: sendsnapshot tid pid endpoint\n");
+            printf("ex: sendsnapshot 1 0 172.27.128.32:8541\n");
         } else if (parts[1] == "loadtable") {
             printf("desc: create table and load data\n");
             printf("usage: loadtable table_name tid pid ttl segment_cnt\n");
             printf("ex: loadtable table1 1 0 144000 8\n");
         } else if (parts[1] == "changerole") {
             printf("desc: change role\n");
-            printf("usage: changerole tid pid is_leader\n");
-            printf("ex: changerole 1 0 true\n");
-            printf("ex: changerole 1 0 false\n");
+            printf("usage: changerole tid pid role\n");
+            printf("ex: changerole 1 0 leader\n");
+            printf("ex: changerole 1 0 follower\n");
         } else if (parts[1] == "setexpire") {
             printf("desc: enable or disable ttl\n");
             printf("usage: setexpire tid pid is_expire\n");
