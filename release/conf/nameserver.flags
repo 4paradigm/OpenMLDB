@@ -28,9 +28,5 @@
 #--get_task_status_interval=2000
 #--max_op_num=10000
 
-#--enable_table_meta_compress=true
-# table_meta_max_size不超过9216
-#--table_meta_max_size=8192
-
 #--replica_num=3
 #--partition_num=16
