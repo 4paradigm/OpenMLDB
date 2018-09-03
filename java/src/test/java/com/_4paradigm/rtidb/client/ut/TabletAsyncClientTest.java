@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -38,6 +39,11 @@ public class TabletAsyncClientTest {
         }
         client = new TabletAsyncClientImpl(snc);
         syncClient = new TabletSyncClientImpl(snc);
+    }
+    
+    @AfterClass
+    public void tearDown() {
+        snc.close();
     }
 
     @Test

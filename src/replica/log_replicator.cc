@@ -417,6 +417,20 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
     return 0;
 }
 
+void LogReplicator::GetReplicateInfo(std::map<std::string, uint64_t>& info_map) {
+    std::lock_guard<bthread::Mutex> lock(mu_);
+    if (role_ != kLeaderNode) {
+        PDLOG(DEBUG, "cur table is not leader");
+        return;
+    }
+    if (nodes_.empty()) {
+        return;
+    }
+    for (const auto& node : nodes_) {
+        info_map.insert(std::make_pair(node->GetEndPoint(), node->GetLastSyncOffset()));
+    }
+}
+
 bool LogReplicator::DelAllReplicateNode() {
     std::vector<std::shared_ptr<ReplicateNode>> copied_nodes = nodes_;
     {

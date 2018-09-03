@@ -36,7 +36,8 @@ public:
                      bool leader, 
                      const std::vector<std::string>& endpoints,
                      const ::rtidb::api::TTLType& type,
-                     uint32_t seg_cnt, uint64_t term = 0);
+                     uint32_t seg_cnt, uint64_t term, 
+                     const ::rtidb::api::CompressType compress_type);
 
 
     bool CreateTable(const std::string& name, 
@@ -45,7 +46,7 @@ public:
                      const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
-                     uint64_t term = 0);
+                     uint64_t term = 0, const ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress);
 
     bool Put(uint32_t tid,
              uint32_t pid,
@@ -71,7 +72,8 @@ public:
              const std::string& pk,
              uint64_t time,
              std::string& value,
-             uint64_t& ts);
+             uint64_t& ts,
+             std::string& msg);
 
     bool Get(uint32_t tid, 
              uint32_t pid,
@@ -79,14 +81,16 @@ public:
              uint64_t time,
              const std::string& idx_name,
              std::string& value,
-             uint64_t& ts);
+             uint64_t& ts,
+             std::string& msg);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
              uint64_t stime,
              uint64_t etime,
-             uint32_t limit);
+             uint32_t limit,
+             std::string& msg);
     
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
                                  uint32_t pid,
@@ -94,13 +98,15 @@ public:
                                  uint64_t stime,
                                  uint64_t etime,
                                  const std::string& idx_name,
-                                 uint32_t limit);
+                                 uint32_t limit,
+                                 std::string& msg);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const char* pk,
              uint64_t stime,
              uint64_t etime,
+             std::string& msg,
              bool showm = false);
 
     bool GetTableSchema(uint32_t tid, uint32_t pid, 
@@ -148,11 +154,14 @@ public:
 
     bool GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest);
 
-    int GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
-    int GetTableStatus(uint32_t tid, uint32_t pid,
+    bool GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
+    bool GetTableStatus(uint32_t tid, uint32_t pid,
                     ::rtidb::api::TableStatus& table_status);
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term, uint64_t& offset);
+
+    bool GetTableFollower(uint32_t tid, uint32_t pid, uint64_t& offset, 
+                    std::map<std::string, uint64_t>& info_map, std::string& msg);
     
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);

@@ -192,14 +192,14 @@ bool NameServerImpl::RecoverTableInfo() {
         std::string table_name_node = zk_table_data_path_ + "/" + table_name;
         std::string value;
         if (!zk_client_->GetNodeValue(table_name_node, value)) {
-            PDLOG(WARNING, "get table info failed! table node[%s]", table_name_node.c_str());
-            return false;
+            PDLOG(WARNING, "get table info failed! name[%s] table node[%s]", table_name.c_str(), table_name_node.c_str());
+            continue;
         }
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = 
                     std::make_shared<::rtidb::nameserver::TableInfo>();
         if (!table_info->ParseFromString(value)) {
-            PDLOG(WARNING, "parse table info failed! value[%s]", value.c_str());
-            return false;
+            PDLOG(WARNING, "parse table info failed! name[%s] value[%s] value size[%d]", table_name.c_str(), value.c_str(), value.length());
+            continue;
         }
         table_info_.insert(std::make_pair(table_name, table_info));
         PDLOG(INFO, "recover table[%s] success", table_name.c_str());
@@ -530,6 +530,11 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
     }
     if (!startup_flag && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
+        offline_endpoint_map_.erase(iter);
+        return;
+    }
+    if (table_info_.empty()) {
+        PDLOG(INFO, "endpoint %s has no table, need not offline endpoint", endpoint.c_str());
         offline_endpoint_map_.erase(iter);
         return;
     }
@@ -1026,7 +1031,7 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         table_partition->Clear();        
         table_partition->CopyFrom(request->table_partition());
         std::string table_value;
-        iter->second->SerializeToString(&table_value);
+        cur_table_info->SerializeToString(&table_value);
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                             zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
@@ -1171,9 +1176,13 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
             if (table_info->ttl_type() == "kLatestTime") {
                 ttl_type = ::rtidb::api::TTLType::kLatestTime;
             }
+            ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
+            if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
+                compress_type = ::rtidb::api::CompressType::kSnappy;
+            }
             if (!tablet_ptr->client_->CreateTable(table_info->name(), table_index_, pid, 
                                     table_info->ttl(), table_info->seg_cnt(), columns, ttl_type,
-                                    is_leader, endpoint_vec, term)) {
+                                    is_leader, endpoint_vec, term, compress_type)) {
 
                 PDLOG(WARNING, "create table failed. tid[%u] pid[%u] endpoint[%s]", 
                         table_index_, pid, endpoint.c_str());
@@ -1744,7 +1753,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             response->set_msg("create table node failed");
             break;
         }
-        PDLOG(DEBUG, "create table node[%s/%s] success! value[%s] value_size[%u]", 
+        PDLOG(INFO, "create table node[%s/%s] success! value[%s] value_size[%u]", 
                       zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str(), table_value.length());
         {
             std::lock_guard<std::mutex> lock(mu_);

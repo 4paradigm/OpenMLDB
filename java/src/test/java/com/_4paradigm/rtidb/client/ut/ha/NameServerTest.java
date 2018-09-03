@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.List;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -31,6 +32,7 @@ public class NameServerTest {
             leaderPath = envleaderPath;
         }
     }
+    
     @Test
     public void testInvalidZkInit() {
         try {

@@ -32,6 +32,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.brpc.client.BrpcChannelGroup;
@@ -71,6 +72,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         options.setReadTimeoutMillis(config.getReadTimeout());
         options.setWriteTimeoutMillis(config.getWriteTimeout());
         options.setMaxTryTimes(config.getMaxRetryCnt());
+        options.setTimerBucketSize(config.getTimerBucketSize());
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
         getLocalIpAddress();

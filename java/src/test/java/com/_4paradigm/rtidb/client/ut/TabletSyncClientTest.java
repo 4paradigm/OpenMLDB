@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -33,6 +34,10 @@ public class TabletSyncClientTest {
         client = new TabletSyncClientImpl(snc);
     }
 
+    @AfterClass
+    public void tearDown() {
+        snc.close();
+    }
     @Test
     public void testInvalidTtlCreate() {
         int tid = id.incrementAndGet();
@@ -53,7 +58,6 @@ public class TabletSyncClientTest {
     @Test
     public void test1Put() throws TimeoutException {
         int tid = id.incrementAndGet();
-        Assert.assertFalse(client.put(tid, 0, "pk", 9527, "test0"));
         boolean ok = client.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = client.put(tid, 0, "pk", 9527, "test0");
@@ -67,13 +71,11 @@ public class TabletSyncClientTest {
     @Test
     public void test3Scan() throws TimeoutException {
         int tid = id.incrementAndGet();
-        KvIterator it = client.scan(tid, 0, "pk", 9527, 9526);
-        Assert.assertNull(it);
         boolean ok = client.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = client.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(ok);
-        it = client.scan(tid, 0, "pk", 9527l, 9526l);
+        KvIterator it = client.scan(tid, 0, "pk", 9527l, 9526l);
         Assert.assertTrue(it != null);
         Assert.assertTrue(it.valid());
         Assert.assertEquals(9527l, it.getKey());

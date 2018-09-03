@@ -21,4 +21,5 @@ message TableInfo {
     optional string ttl_type = 6 [default = "kAbsoluteTime"];
 	optional uint32 partition_num = 7;
 	optional uint32 replica_num = 8; // contain the leader
+	optional string compress_type = 9 [default = "kNoCompress"];
 }

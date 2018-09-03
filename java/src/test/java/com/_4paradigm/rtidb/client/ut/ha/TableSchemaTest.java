@@ -11,6 +11,7 @@ import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
+import org.junit.AfterClass;
 import org.junit.Test;
 import org.testng.Assert;
 import java.util.ArrayList;
@@ -43,6 +44,12 @@ public class TableSchemaTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+    
+    @AfterClass
+    public void tearDown() {
+        nsc.close();
+        client.close();
     }
 
     private String createSchemaTable() {

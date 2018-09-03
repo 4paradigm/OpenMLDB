@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,6 +37,11 @@ public class TableSyncClientTest {
         tabletClient = new TabletClientImpl(snc);
     }
 
+    @AfterClass
+    public void tearDown() {
+        snc.close();
+    }
+
     @Test
     public void testInvalidTtlCreate() {
         int tid = id.incrementAndGet();
@@ -57,7 +63,6 @@ public class TableSyncClientTest {
     @Test
     public void test1Put() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
-        Assert.assertFalse(tableClient.put(tid, 0, "pk", 9527, "test0"));
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = tableClient.put(tid, 0, "pk", 9527, "test0");
