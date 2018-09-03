@@ -24,7 +24,11 @@ public class RowCodec {
         // TODO limit the max size
         int size = getSize(row, schema, cache);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-        buffer.put((byte) row.length);
+        if (row.length > 128) {
+            buffer.putShort((short)row.length);
+        } else {
+            buffer.put((byte) row.length);
+        }
         for (int i = 0; i < row.length; i++) {
             buffer.put((byte) schema.get(i).getType().getValue());
             if (row[i] == null) {
@@ -113,7 +117,12 @@ public class RowCodec {
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
-        int colLength = buffer.get() & 0xFF;
+        int colLength = 0;
+        if (schema.size() > 128) {
+            colLength = buffer.getShort();
+        } else {
+            colLength = buffer.get() & 0xFF;
+        }
         if (colLength > length) {
             colLength = length;
         }
@@ -183,6 +192,9 @@ public class RowCodec {
 
     private static int getSize(Object[] row, List<ColumnDesc> schema, Object[] cache) {
         int totalSize = 1;
+        if (schema.size() > 128) {
+            totalSize++;
+        }
         for (int i = 0; i < row.length; i++) {
             totalSize += 2;
             if (row[i] == null) {
