@@ -352,9 +352,6 @@ private:
     void DeleteDoneOP();
     int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
-    bool SerializeTableInfo(const ::rtidb::nameserver::TableInfo& table_info, std::string& table_value);
-    bool ParseTableInfoFromString(const std::string& table_value, ::rtidb::nameserver::TableInfo& table_info);
-
 private:
     std::mutex mu_;
     Tablets tablets_;

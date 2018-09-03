@@ -110,7 +110,3 @@ max_op_num  配置nameserver内存中保存op的最大数
 partition_num  创建表时默认分片数  
 
 replica_num  创建表时默认副本数(包含主节点)  
-
-enable_table_meta_compress  是否开启table_meta压缩, 如果开启的话存在zk的表元数据信息会用gzip压缩  
-
-table_meta_max_size  创建表时生成的table_meta结构的最大值, 不要超过9k  
