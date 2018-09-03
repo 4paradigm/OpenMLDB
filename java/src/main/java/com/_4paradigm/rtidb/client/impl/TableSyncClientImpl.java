@@ -190,7 +190,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.GetRequest request = builder.build();
         Tablet.GetResponse response = ts.get(request);
         if (response != null && response.getCode() == 0) {
-            if (th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+            if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
                 byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
                 return ByteString.copyFrom(uncompressed);
             } else {
@@ -309,7 +309,9 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
             it.setCount(response.getCount());
-            it.setCompressType(th.getTableInfo().getCompressType());
+            if (th.getTableInfo().hasCompressType()) {
+                it.setCompressType(th.getTableInfo().getCompressType());
+            }
             return it;
         }
         if (response != null) {
@@ -393,7 +395,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("key is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
-        if (th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+        if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
             byte[] compressed = Compress.snappyCompress(data);
             if (compressed == null) {

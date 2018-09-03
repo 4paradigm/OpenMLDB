@@ -104,7 +104,7 @@ public class GetFuture implements Future<ByteString>{
 	public ByteString get() throws InterruptedException, ExecutionException {
 		GetResponse response = f.get();
 		if (response != null && response.getCode() == 0) {
-			if (t.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+			if (t.getTableInfo().hasCompressType() && t.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
 				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
 				return ByteString.copyFrom(uncompressed);
 			} else {
@@ -118,7 +118,7 @@ public class GetFuture implements Future<ByteString>{
 	public ByteString get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 		GetResponse response = f.get(timeout, unit);
 		if (response != null && response.getCode() == 0) {
-			if (t.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+			if (t.getTableInfo().hasCompressType() && t.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
 				byte[] uncompressed = Compress.snappyUnCompress(response.getValue().toByteArray());
 				return ByteString.copyFrom(uncompressed);
 			} else {

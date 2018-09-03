@@ -89,7 +89,7 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
                     if (status.getTid() == id) {
                         TableInfo.Builder builder = TableInfo.newBuilder();
                         builder.setTid(status.getTid()).setTtl(status.getTtl());
-                        if (status.getCompressType() == Tablet.CompressType.kSnappy) {
+                        if (status.hasCompressType() && status.getCompressType() == Tablet.CompressType.kSnappy) {
                             builder.setCompressType(NS.CompressType.kSnappy);
                         }
                         th.setTableInfo(builder.build());

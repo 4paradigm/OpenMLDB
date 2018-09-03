@@ -326,7 +326,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             builder.setPk(key);
         }
         row.rewind();
-        if (th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+        if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
             byte[] compressed = Compress.snappyCompress(data);
             if (compressed == null) {

@@ -31,7 +31,7 @@ public class Compress {
             }
             compressed = out_stream.toByteArray();
         } catch (IOException e) {
-            logger.error("compress data error", e);
+            logger.error("gzip uncompress data error", e);
         } finally {
             if(gzip_in != null) {
                 try {
@@ -67,7 +67,7 @@ public class Compress {
             gzip_out = new GZIPOutputStream(out_stream);
             gzip_out.write(data);
         } catch (IOException e) {
-            logger.error("uncompress data error", e);
+            logger.error("gzip compress data error", e);
         } finally {
             if(gzip_out != null) {
                 try {

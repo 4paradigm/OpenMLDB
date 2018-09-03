@@ -25,7 +25,7 @@ namespace zk {
 
 typedef boost::function<void (const std::vector<std::string>& endpoint)> NodesChangedCallback;
 
-const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 10;
+const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 1024;
 
 class ZkClient {
 
