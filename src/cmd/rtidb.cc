@@ -224,7 +224,7 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                   const uint64_t ts,
                   const uint32_t index,
                   ::baidu::common::TPrinter& tp) {
-    rtidb::base::FlatArrayIterator fit(row, row_size);
+    rtidb::base::FlatArrayIterator fit(row, row_size, schema.size());
     std::vector<std::string> vrow;
     vrow.push_back(boost::lexical_cast<std::string>(index));
     vrow.push_back(boost::lexical_cast<std::string>(ts));
@@ -279,7 +279,7 @@ void ShowTableRows(const std::vector<::rtidb::base::ColumnDesc>& raw,
     tp.AddRow(row);
     uint32_t index = 1;
     while (it->Valid()) {
-        rtidb::base::FlatArrayIterator fit(it->GetValue().data(), it->GetValue().size());
+        rtidb::base::FlatArrayIterator fit(it->GetValue().data(), it->GetValue().size(), raw.size());
         ShowTableRow(raw, it->GetValue().data(), it->GetValue().size(), it->GetKey(), index, tp); 
         index ++;
         it->Next();

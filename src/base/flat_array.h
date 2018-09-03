@@ -27,7 +27,7 @@ class FlatArrayCodec {
 
 public:
     FlatArrayCodec(std::string* buffer, 
-                   uint8_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
+                   uint16_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
     cur_cnt_(0), datas_(col_cnt_){
     }
 
@@ -174,7 +174,13 @@ public:
         //TODO limit the total size of single row
         buffer_->resize(GetSize());
         char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0]));
-        memcpy(cbuffer, static_cast<const void*>(&col_cnt_), 1);
+        if (col_cnt_ > 128) {
+            memcpy(cbuffer, static_cast<const void*>(&col_cnt_), 2);
+            memrev16ifbe(static_cast<void*>(cbuffer));
+        } else {
+            uint8_t col_cnt_tmp = (uint8_t)col_cnt_;
+            memcpy(cbuffer, static_cast<const void*>(&col_cnt_tmp), 1);
+        }
         cbuffer += 1;
         std::vector<Column>::iterator it = datas_.begin();
         for (; it != datas_.end(); ++it) {
@@ -194,6 +200,9 @@ private:
     uint32_t GetSize() {
         // one byte for column count
         uint32_t size = 1;
+        if (datas_.size() > 128) {
+            size++;
+        }
         std::vector<Column>::iterator it = datas_.begin();
         for (; it != datas_.end(); ++it) {
             Column& col = *it;
@@ -215,8 +224,8 @@ private:
 
 private:
     std::string* buffer_;
-    uint8_t col_cnt_;
-    uint8_t cur_cnt_;
+    uint16_t col_cnt_;
+    uint16_t cur_cnt_;
     std::vector<Column> datas_;
 };
 
@@ -224,9 +233,16 @@ class FlatArrayIterator {
 
 public:
 
-    FlatArrayIterator(const char* buffer, uint32_t bsize):buffer_(buffer), 
+    FlatArrayIterator(const char* buffer, uint32_t bsize, uint16_t column_size):buffer_(buffer), 
     col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0){
-        memcpy(static_cast<void*>(&col_cnt_), buffer_, 1);
+        if (column_size > 128) {
+            memcpy(static_cast<void*>(&col_cnt_), buffer_, 2);
+            memrev16ifbe(static_cast<void*>(&col_cnt_));
+        } else {
+            uint8_t col_cnt_tmp = 0;
+            memcpy(static_cast<void*>(&col_cnt_tmp), buffer_, 1);
+            col_cnt_ = col_cnt_tmp;
+        }
         buffer_ += 1;
         offset_ += 1;
         Next();
@@ -235,7 +251,7 @@ public:
     ~FlatArrayIterator() {}
 
     // Get the column count 
-    uint8_t Size() {
+    uint16_t Size() {
         return col_cnt_;
     }
 
@@ -477,7 +493,7 @@ public:
 
 private:
     const char* buffer_;
-    uint8_t col_cnt_;
+    uint16_t col_cnt_;
     uint32_t bsize_;
     // some run time field
     ColType type_;
