@@ -225,7 +225,7 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                   const uint64_t ts,
                   const uint32_t index,
                   ::baidu::common::TPrinter& tp) {
-    rtidb::base::FlatArrayIterator fit(row, row_size);
+    rtidb::base::FlatArrayIterator fit(row, row_size, schema.size());
     std::vector<std::string> vrow;
     vrow.push_back(boost::lexical_cast<std::string>(index));
     vrow.push_back(boost::lexical_cast<std::string>(ts));

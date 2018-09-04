@@ -92,8 +92,9 @@ int MultiDimensionEncode(const std::vector<::rtidb::base::ColumnDesc>& colum_des
 }
 
 void MultiDimensionDecode(const std::string& value,
-                  std::vector<std::string>& output) {
-    rtidb::base::FlatArrayIterator fit(value.c_str(), value.size());
+                  std::vector<std::string>& output,
+                  uint16_t column_num) {
+    rtidb::base::FlatArrayIterator fit(value.c_str(), value.size(), column_num);
     while (fit.Valid()) {
         std::string col;
         if (fit.GetType() == ::rtidb::base::ColType::kString) {
@@ -506,7 +507,7 @@ TEST_F(TabletImplTest, MultiGet) {
   	ASSERT_EQ(1100, get_response.ts());
 	std::string value(get_response.value());
 	std::vector<std::string> vec;
-    MultiDimensionDecode(value, vec);
+    MultiDimensionDecode(value, vec, columns.size());
   	ASSERT_EQ(3, vec.size());
 	ASSERT_STREQ("test2", vec[0].c_str());
 	ASSERT_STREQ("abcd2", vec[1].c_str());

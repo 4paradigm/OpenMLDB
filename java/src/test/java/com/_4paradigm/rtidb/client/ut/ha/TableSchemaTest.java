@@ -14,6 +14,10 @@ import org.joda.time.LocalDate;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.testng.Assert;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -69,7 +73,29 @@ public class TableSchemaTest {
         client.refreshRouteTable();
         return name;
     }
-   
+
+    private String createMoreFieldTable(int schema_size) {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        List<ColumnDesc> schema = new ArrayList<ColumnDesc>(schema_size);
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        schema.add(col0);
+        for (int idx = 0; idx < schema_size -1; idx++) {
+            ColumnDesc col = ColumnDesc.newBuilder().setName("filed" + idx).setAddTsIdx(false).setType("double").build();
+            schema.add(col);
+        }
+        TableInfo.Builder builder = TableInfo.newBuilder()
+                .setSegCnt(8).setName(name).setTtl(0);
+        for(ColumnDesc desc: schema) {
+            builder.addColumnDesc(desc);
+        }
+        TableInfo table = builder.build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        return name;
+    }
+
     @Test
     public void testNewTypesPut() {
         String name = createSchemaTable();
@@ -99,6 +125,40 @@ public class TableSchemaTest {
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testFieldPut() {
+        int []schema_num_arr = {30, 126, 127, 128, 129, 256, 500, 1200, 2000};
+        for (int idx = 0; idx < schema_num_arr.length; idx++) {
+            int schema_num = schema_num_arr[idx];
+            String name = createMoreFieldTable(schema_num);
+            //String name = "50001";
+            long time = System.currentTimeMillis();
+            LocalDate target = new LocalDate(time);
+            Map<String, Object> row1 = new HashMap<String, Object>();
+            row1.put("card", "card0");
+            for (int i = 0; i < schema_num - 1; i++) {
+                row1.put("filed" + i, i + 1.5d);
+            }
+            try {
+
+                boolean ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                Object[] row = tableSyncClient.getRow(name, "card0", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num, row.length);
+                Assert.assertEquals("card0", row[0]);
+                for (int i = 0; i < row.length - 1; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Assert.assertTrue(false);
+            } finally {
+                nsc.dropTable(name);
+            }
         }
     }
 }
