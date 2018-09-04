@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -40,6 +41,10 @@ public class SCreateTest {
       client = new TabletSyncClientImpl(snc);
   }
 
+  @AfterClass
+  public void close() {
+      snc.close();
+  }
   public static String genLongString(int len) {
     String str = "";
     for(int i = 0; i < len; i ++) {

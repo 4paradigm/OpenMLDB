@@ -110,7 +110,14 @@ public class DefaultKvIterator implements KvIterator {
 
     // no copy
     public ByteBuffer getValue() {
-        return slice;
+        if (compressType == NS.CompressType.kSnappy) {
+            byte[] data = new byte[slice.remaining()];
+            slice.get(data);
+            byte[] uncompressed = Compress.snappyUnCompress(data);
+            return ByteBuffer.wrap(uncompressed);
+        } else {
+            return slice;
+        }
     }
     
     public Object[] getDecodedValue() throws TabletException {

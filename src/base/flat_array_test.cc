@@ -28,7 +28,7 @@ TEST_F(FlatArrayTest, Decode) {
     ASSERT_TRUE(ok);
     codec.Build();
 
-    FlatArrayIterator it(buffer.c_str(), buffer.size());
+    FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
     float value = 0;
     ok = it.GetFloat(&value);
     ASSERT_TRUE(ok);
@@ -54,7 +54,7 @@ TEST_F(FlatArrayTest, Encode) {
     std::cout << buffer.size() << std::endl;
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
     ASSERT_TRUE(buffer.size() == 13);
-    FlatArrayIterator it(buffer.c_str(), buffer.size());
+    FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
     ASSERT_EQ(kFloat, it.GetType());
     ASSERT_TRUE(it.Valid());
     ASSERT_EQ(2, it.Size());
