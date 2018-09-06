@@ -72,6 +72,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         options.setReadTimeoutMillis(config.getReadTimeout());
         options.setWriteTimeoutMillis(config.getWriteTimeout());
         options.setMaxTryTimes(config.getMaxRetryCnt());
+        options.setTimerBucketSize(config.getTimerBucketSize());
         baseClient = new RpcBaseClient(options);
         nodeManager = new NodeManager(baseClient);
         getLocalIpAddress();
@@ -208,12 +209,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             for (String path : children) {
                 byte[] data = zookeeper.getData(config.getZkTableRootPath() + "/" + path, false, null);
                 if (data != null) {
-                    if (config.isTableInfoCompressed()) {
-                        byte[] uncompressed = Compress.gunzip(data);
-                        if (uncompressed != null) {
-                            data = uncompressed;
-                        }
-                    }
                     try {
                         TableInfo tableInfo = TableInfo.parseFrom(data);
                         newTableList.add(tableInfo);

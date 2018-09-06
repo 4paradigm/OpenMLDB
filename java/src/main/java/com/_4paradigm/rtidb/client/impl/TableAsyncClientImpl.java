@@ -310,6 +310,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         PartitionHandler ph = th.getHandler(pid);
         TabletServer tablet = ph.getLeader();
+        if (tablet == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         if (ds != null) {
             for (Tablet.Dimension dim : ds) {
@@ -323,7 +326,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             builder.setPk(key);
         }
         row.rewind();
-        if (th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
+        if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
             byte[] data = row.array();
             byte[] compressed = Compress.snappyCompress(data);
             if (compressed == null) {
@@ -355,6 +358,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Long startTime = System.currentTimeMillis();
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
         Future<Tablet.GetResponse> response = ts.get(request, getFakeCallback);
         return GetFuture.wrappe(response, th, startTime, client.getConfig());
     }
@@ -381,6 +387,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Long startTime = System.nanoTime();
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
         Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
         return ScanFuture.wrappe(response, th, startTime);
     }
