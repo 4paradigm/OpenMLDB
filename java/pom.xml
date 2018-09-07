@@ -61,7 +61,7 @@
 		<dependency>
 			<groupId>io.brpc</groupId>
 			<artifactId>brpc-java</artifactId>
-			<version>1.3.5</version>
+			<version>1.3.6-RELEASE</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.xerial.snappy/snappy-java -->
