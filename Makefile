@@ -1,7 +1,7 @@
 .PHONY: all
 #docker_tag := $(shell export LC_CTYPE=C && LANG=C cat /dev/urandom | tr -cd 'a-f0-9' | head -c 32) 
 module = rtidb
-version = v1.3.5
+version = v3.2.0
  
 tablet: 
 	rm -rfv release/tablet.meta.tar.gz
