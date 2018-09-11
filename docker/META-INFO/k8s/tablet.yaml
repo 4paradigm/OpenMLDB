@@ -29,7 +29,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: {{.registry}}/tablet:v3.1.0
+        image: {{.registry}}/{{.image}}
         name: rtidb
         imagePullPolicy: Always
         volumeMounts:
@@ -48,6 +48,10 @@ spec:
       - name: recycle
         hostPath:
           path: {{.hostpath}}/rtidb/recycle
+          type: DirectoryOrCreate
+      - name: logs
+        hostPath:
+          path: {{.hostpath}}/rtidb/tablet_logs
           type: DirectoryOrCreate
       securityContext:
         runAsUser: 0

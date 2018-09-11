@@ -27,11 +27,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: {{.registry}}/nameserver:v3.1.0
+        image: {{.registry}}/{{.image}}
         name: rtidb
         imagePullPolicy: Always
       imagePullSecrets:
       - name: docker-secret
+      volumes:
+      - name: logs
+        hostPath:
+          path: {{.hostpath}}/rtidb/ns_logs
+          type: DirectoryOrCreate
       securityContext: {}
       securityContext: 
         runAsUser: 0
