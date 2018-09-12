@@ -22,7 +22,7 @@ spec:
         - name: zk_root_path
           value: "/rtidb"
         - name: port
-          value: {{.nameserver_port}}
+          value: "{{.nameserver_port}}"
         - name: MY_NODE_NAME
           valueFrom:
             fieldRef:
