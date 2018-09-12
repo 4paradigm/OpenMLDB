@@ -65,6 +65,8 @@ DECLARE_int32(zk_keep_alive_check_interval);
 
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
+DECLARE_uint32(absolute_ttl_max);
+DECLARE_uint32(latest_ttl_max);
 
 namespace rtidb {
 namespace tablet {
