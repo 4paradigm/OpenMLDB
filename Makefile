@@ -6,10 +6,10 @@ tablet:
 	rm -rfv release/tablet.meta.tar.gz
 	rm -rfv release/tablet.tar
 	cd docker && tar -zcvf ../release/tablet.meta.tar.gz META-INFO
-	cd docker/tablet && docker build -t docker02:35000/tablet:${docker_tag} . && docker save docker02:35000/tablet:${docker_tag} > ../../release/tablet.tar && docker rmi docker02:35000/tablet:${docker_tag}
+	cd docker/tablet && docker build -t tablet:${docker_tag} . && docker save tablet:${docker_tag} > ../../release/tablet.tar && docker rmi tablet:${docker_tag}
 
 nameserver: 
 	rm -rfv release/nameserver.meta.tar.gz
 	rm -rfv release/nameserver.tar
 	cd docker && tar -zcvf ../release/nameserver.meta.tar.gz META-INFO
-	cd docker/nameserver && docker build -t docker02:35000/nameserver:${docker_tag}  . && docker save docker02:35000/nameserver:${docker_tag} > ../../release/nameserver.tar && docker rmi docker02:35000/nameserver:${docker_tag}
+	cd docker/nameserver && docker build -t nameserver:${docker_tag}  . && docker save nameserver:${docker_tag} > ../../release/nameserver.tar && docker rmi nameserver:${docker_tag}
