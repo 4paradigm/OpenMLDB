@@ -1679,7 +1679,6 @@ void TabletImpl::CreateTable(RpcController* controller,
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     ::rtidb::api::TTLType type = table_meta->ttl_type();
-    PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     uint64_t ttl = table_meta->ttl();
     if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
             (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
@@ -1689,6 +1688,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         done->Run();
         return;
     }
+    PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string name = table_meta->name();
     uint32_t seg_cnt = 8;
     if (table_meta->seg_cnt() > 0) {

@@ -1690,7 +1690,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
             || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
         response->set_code(-1);
         response->set_msg("ttl is greater than conf value");
-        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s]", table_info->ttl(), table_info->ttl_type());
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s]", table_info->ttl(), table_info->ttl_type().c_str());
         return;
     }
     if (table_info->table_partition_size() > 0) {
