@@ -1681,6 +1681,14 @@ void TabletImpl::CreateTable(RpcController* controller,
     ::rtidb::api::TTLType type = table_meta->ttl_type();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     uint64_t ttl = table_meta->ttl();
+    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+        response->set_code(-1);
+        response->set_msg("ttl is greater than conf value");
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s]", ttl, ::rtidb::api::TTLType_Name(type).c_str());
+        done->Run();
+        return;
+    }
     std::string name = table_meta->name();
     uint32_t seg_cnt = 8;
     if (table_meta->seg_cnt() > 0) {

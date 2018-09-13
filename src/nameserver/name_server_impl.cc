@@ -1687,7 +1687,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
     if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max) 
-            || (table_info->ttl_type() != "kAbsoluteTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
+            || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
         response->set_code(-1);
         response->set_msg("ttl is greater than conf value");
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s]", table_info->ttl(), table_info->ttl_type());
