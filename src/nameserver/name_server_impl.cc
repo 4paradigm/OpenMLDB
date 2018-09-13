@@ -1689,8 +1689,10 @@ void NameServerImpl::CreateTable(RpcController* controller,
     if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max) 
             || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
         response->set_code(-1);
-        response->set_msg("ttl is greater than conf value");
-        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s]", table_info->ttl(), table_info->ttl_type().c_str());
+        uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
+                        table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
         return;
     }
     if (table_info->table_partition_size() > 0) {

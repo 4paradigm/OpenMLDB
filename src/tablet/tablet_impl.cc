@@ -1683,8 +1683,10 @@ void TabletImpl::CreateTable(RpcController* controller,
     if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
             (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
         response->set_code(-1);
-        response->set_msg("ttl is greater than conf value");
-        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s]", ttl, ::rtidb::api::TTLType_Name(type).c_str());
+        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
+                        ttl, ::rtidb::api::TTLType_Name(type).c_str(), max_ttl);
         done->Run();
         return;
     }
