@@ -288,6 +288,16 @@ message GetTableSchemaResponse {
     optional bytes schema = 3;
 }
 
+message SetConcurrencyRequest {
+    optional string key = 1;
+    optional int32 max_concurrency = 2;
+}
+
+message SetConcurrencyResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 // raft protocol
 message LogEntry {
     // term for leader
@@ -465,6 +475,7 @@ service TabletServer {
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
+    rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);

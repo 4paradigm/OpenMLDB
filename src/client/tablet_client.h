@@ -139,11 +139,12 @@ public:
                bool leader, const std::vector<std::string>& endpoints, uint32_t seg_cnt,
                std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
 
-    bool ChangeRole(uint32_t tid, uint32_t pid, bool leader);
+    bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term = 0);
 
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
                     const std::vector<std::string>& endpoints, uint64_t term = 0);
 
+    bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
     bool DeleteBinlog(uint32_t tid, uint32_t pid);
 
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
