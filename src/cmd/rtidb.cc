@@ -215,7 +215,7 @@ void StartTablet() {
         exit(1);
     }
     std::ostringstream oss;
-
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
