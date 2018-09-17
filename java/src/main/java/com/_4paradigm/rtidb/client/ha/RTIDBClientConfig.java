@@ -65,6 +65,10 @@ public class RTIDBClientConfig {
         this.nsEndpoint = nsEndpoint;
     }
 
+    @Deprecated
+    public void setTableInfoCompressed(boolean tableInfoCompressed) {
+    }
+
     public boolean isRemoveDuplicateByTime() {
         return removeDuplicateByTime;
     }
