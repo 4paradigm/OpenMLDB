@@ -175,6 +175,32 @@ bool TabletImpl::Init() {
     return true;
 }
 
+void TabletImpl::UpdateTTL(RpcController* ctrl,
+        const ::rtidb::api::UpdateTTLRequest* request,
+        ::rtidb::api::UpdateTTLResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);         
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+
+    if (!table) {
+        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not found");
+        return;
+    }
+
+    if (request->type() != table->GetTTLType()) {
+        response->set_code(-1);
+        response->set_msg("ttl type mismatch");
+        return;
+    }
+    table->SetTTL(request->value());
+    response->set_code(0);
+    response->set_msg("ok");
+    PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
+}
+
 bool TabletImpl::RegisterZK() {
     if (!FLAGS_zk_cluster.empty()) {
         if (!zk_client_->Register(true)) {

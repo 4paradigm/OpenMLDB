@@ -173,6 +173,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
     
+    void UpdateTTL(RpcController* controller, 
+            const ::rtidb::api::UpdateTTLRequest* request,
+            ::rtidb::api::UpdateTTLResponse* response,
+            Closure* done);
+
     void ShowMemPool(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,

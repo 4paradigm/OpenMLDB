@@ -181,9 +181,9 @@ uint64_t Table::SchedGc() {
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
-            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_); 
+            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
+    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
@@ -196,7 +196,7 @@ uint64_t Table::SchedGc() {
                 segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 break;
             case ::rtidb::api::TTLType::kLatestTime:
-                segment->Gc4Head(ttl_ / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                segment->Gc4Head(ttl_.load(std::memory_order_relaxed) / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 break;
             default:
                 PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
@@ -214,16 +214,16 @@ uint64_t Table::SchedGc() {
 }
 
 uint64_t Table::GetExpireTime() {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0 
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0 
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
 }
 
 bool Table::IsExpire(const LogEntry& entry) {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) { 
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0) { 
         return false;
     }
     uint64_t expired_time = 0;
