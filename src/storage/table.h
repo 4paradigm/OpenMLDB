@@ -89,7 +89,7 @@ public:
     uint64_t SchedGc();
 
     uint64_t GetTTL() const {
-        return ttl_ / (60 * 1000);
+        return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
     }
 
     uint64_t GetRecordIdxCnt();
