@@ -338,6 +338,153 @@ TEST_F(TabletImplTest, Get) {
 
 }
 
+TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
+    TabletImpl tablet;
+    tablet.Init();
+    // create table
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_wal(true);
+        table_meta->set_ttl(1);
+        table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // table not exist
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(0);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_value(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(-1, response.code());
+    }
+    // ttl type mismatch
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kLatestTime);
+        request.set_value(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(-2, response.code());
+    }
+    // normal case 
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_value(2);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ::rtidb::api::GetTableStatusRequest gr;
+        ::rtidb::api::GetTableStatusResponse gres;
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(2, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+
+
+
+}
+TEST_F(TabletImplTest, UpdateTTLLatest) {
+    TabletImpl tablet;
+    tablet.Init();
+    // create table
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_wal(true);
+        table_meta->set_ttl(1);
+        table_meta->set_ttl_type(::rtidb::api::kLatestTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // table not exist
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(0);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kLatestTime);
+        request.set_value(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(-1, response.code());
+    }
+
+    // ttl type mismatch
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_value(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(-2, response.code());
+    }
+    // normal case 
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kLatestTime);
+        request.set_value(2);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ::rtidb::api::GetTableStatusRequest gr;
+        ::rtidb::api::GetTableStatusResponse gres;
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(2, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+}
+
 TEST_F(TabletImplTest, CreateTableWithSchema) {
     
     TabletImpl tablet;

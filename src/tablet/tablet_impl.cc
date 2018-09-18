@@ -191,7 +191,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     }
 
     if (request->type() != table->GetTTLType()) {
-        response->set_code(-1);
+        response->set_code(-2);
         response->set_msg("ttl type mismatch");
         return;
     }
