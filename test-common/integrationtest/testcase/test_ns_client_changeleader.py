@@ -137,7 +137,7 @@ class TestChangeLeader(TestCaseBase):
 
     def test_changeleader_master_alive(self):
         """
-        changeleader传入有主节点的表，执行失败
+        changeleader传入有主节点的表，执行失败. 加上force参数可以执行成功
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -154,6 +154,8 @@ class TestChangeLeader(TestCaseBase):
         rs2 = self.changeleader(self.ns_leader, name, 0)
         self.assertIn('failed to change leader', rs2)
 
+        rs3 = self.changeleader(self.ns_leader, name, 0, True)
+        self.assertIn('change leader ok', rs3)
 
     def test_changeleader_tname_notexist(self):
         """
