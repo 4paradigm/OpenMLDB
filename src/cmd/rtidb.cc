@@ -1701,6 +1701,33 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
     tp.Print(true);
 }
 
+void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 5) {
+        std::cout << "Bad setttl format, eg setttl tid pid type ttl" << std::endl;
+        return;
+    }
+    try {
+        std::string value;
+        uint64_t ttl = boost::lexical_cast<uint64_t>(parts[4]);
+        ::rtidb::api::TTLType type = ::rtidb::api::kLatestTime;
+        if (parts[3] == "absolute") {
+            type = ::rtidb::api::kAbsoluteTime; 
+        }
+        bool ok = client->UpdateTTL(boost::lexical_cast<uint32_t>(parts[1]),
+                                    boost::lexical_cast<uint32_t>(parts[2]),
+                                    type,
+                                    ttl);
+        if (ok) {
+            std::cout << "Set ttl ok !" << std::endl;
+        }else {
+            std::cout << "Set ttl failed! " << std::endl; 
+        }
+    
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
+    }
+}
+
 void HandleClientGet(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 5) {
         std::cout << "Bad get format, eg get tid pid key time" << std::endl;
@@ -1969,6 +1996,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         printf("showschema - show schema\n");
         printf("gettablestatus - get table status\n");
         printf("getfollower - get follower\n");
+        printf("setttl - set ttl for partition\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
         printf("help - get cmd info\n");
@@ -2081,6 +2109,11 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex:help create\n");
             printf("ex:man\n");
             printf("ex:man create\n");
+        } else if (parts[1] == "setttl") {
+            printf("desc: setttl cmd info\n");
+            printf("usage: help [cmd]\n");
+            printf("usage: man [cmd]\n");
+            printf("ex: setttl 1 0 absolute 10\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -2930,7 +2963,9 @@ void StartClient() {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
             HandleClientDisConnectZK(parts, &client);
-        } else if (parts[0] == "exit" || parts[0] == "quit") {
+        } else if (parts[0] == "setttl") {
+            HandleClientSetTTL(parts, &client);
+        }else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {

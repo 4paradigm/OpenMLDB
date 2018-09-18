@@ -358,6 +358,23 @@ bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
     return true;
 }
 
+bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
+                             const ::rtidb::api::TTLType& type,
+                             uint64_t ttl) {
+    ::rtidb::api::UpdateTTLRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_type(type);
+    request.set_value(ttl);
+    ::rtidb::api::UpdateTTLResponse response;
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::UpdateTTL,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (ret && response.code() == 0) {
+        return true; 
+    }
+    return false;
+}
+
 bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     ::rtidb::api::DeleteTaskRequest request;
     ::rtidb::api::GeneralResponse response;
