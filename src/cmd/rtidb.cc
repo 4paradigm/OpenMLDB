@@ -577,11 +577,11 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::rtidb::
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
         std::string msg;
-        bool force = false;
-        if (parts.size() > 3 && parts[3] == "force") {
-            force = true;
+        std::string candidate_leader;
+        if (parts.size() > 3) {
+            candidate_leader = parts[3];
         }
-        bool ret = client->ChangeLeader(parts[1], pid, force, msg);
+        bool ret = client->ChangeLeader(parts[1], pid, candidate_leader, msg);
         if (!ret) {
             std::cout << "failed to change leader. error msg: " << msg << std::endl;
             return;

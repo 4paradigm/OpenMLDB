@@ -154,7 +154,7 @@ class TestChangeLeader(TestCaseBase):
         rs2 = self.changeleader(self.ns_leader, name, 0)
         self.assertIn('failed to change leader', rs2)
 
-        rs3 = self.changeleader(self.ns_leader, name, 0, True)
+        rs3 = self.changeleader(self.ns_leader, name, 0, 'auto')
         self.assertIn('change leader ok', rs3)
 
     def test_changeleader_tname_notexist(self):

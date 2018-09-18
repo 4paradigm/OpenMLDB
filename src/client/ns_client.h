@@ -54,7 +54,7 @@ public:
 
     bool ConfGet(const std::string& key, std::map<std::string, std::string>& conf_map, std::string& msg);
 
-    bool ChangeLeader(const std::string& name, uint32_t pid, bool force, std::string& msg);
+    bool ChangeLeader(const std::string& name, uint32_t pid, std::string& candidate_leader, std::string& msg);
 
     bool OfflineEndpoint(const std::string& endpoint, std::string& msg);
 
