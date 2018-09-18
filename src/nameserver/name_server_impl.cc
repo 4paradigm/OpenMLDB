@@ -1348,14 +1348,16 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
             response->set_msg("leader has no followers");
             return;
         }
-        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                if (iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
-                    PDLOG(WARNING, "leader is alive, cannot change leader. table[%s] pid[%u]",
-                                    name.c_str(), pid);
-                    response->set_code(-1);
-                    response->set_msg("leader is alive");
-                    return;
+        if (request->has_force() && !request->force()) {
+            for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    if (iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
+                        PDLOG(WARNING, "leader is alive, cannot change leader. table[%s] pid[%u]",
+                                        name.c_str(), pid);
+                        response->set_code(-1);
+                        response->set_msg("leader is alive");
+                        return;
+                    }
                 }
             }
         }

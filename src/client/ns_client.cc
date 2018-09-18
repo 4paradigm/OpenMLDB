@@ -191,11 +191,12 @@ bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string
     return false;
 }
 
-bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& msg) {
+bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, bool force, std::string& msg) {
     ::rtidb::nameserver::ChangeLeaderRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(pid);
+    request.set_force(force);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ChangeLeader,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();

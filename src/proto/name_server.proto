@@ -100,6 +100,7 @@ message ConfGetResponse {
 message ChangeLeaderRequest {
 	required string name = 1;
     required uint32 pid = 2;
+    optional bool force = 3 [default = false];
 }
 
 message OfflineEndpointRequest {
