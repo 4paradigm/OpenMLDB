@@ -1492,9 +1492,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: confget auto_recover_table\n");
         } else if (parts[1] == "changeleader") {
             printf("desc: select leader again when the endpoint of leader offline\n");
-            printf("usage: changeleader table_name pid [force]\n");
+            printf("usage: changeleader table_name pid [candidate_leader]\n");
             printf("ex: changeleader table1 0\n");
-            printf("ex: changeleader table1 0 force\n");
+            printf("ex: changeleader table1 0 auto\n");
+            printf("ex: changeleader table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "offlineendpoint") {
             printf("desc: select leader and delete replica when endpoint offline\n");
             printf("usage: offlineendpoint endpoint\n");

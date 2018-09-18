@@ -317,7 +317,7 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, 'recoverendpoint {}'.format(offline_endpoint), 'ns_client')
 
     def changeleader(self, endpoint, tname, pid, candidate_leader=''):
-        if candidate_leader == '':
+        if candidate_leader != '':
             return self.run_client(endpoint, 'changeleader {} {} {}'.format(tname, pid, candidate_leader), 'ns_client')
         else:
             return self.run_client(endpoint, 'changeleader {} {}'.format(tname, pid), 'ns_client')

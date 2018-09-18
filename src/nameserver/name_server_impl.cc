@@ -3812,23 +3812,8 @@ std::shared_ptr<Task> NameServerImpl::CreateUpdateLeaderInfoTask(uint64_t op_ind
 void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
             std::vector<std::string>& follower_endpoint, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     uint64_t cur_term = 0;
-    std::shared_ptr<OPData> op_data;
-    ChangeLeaderData change_leader_data;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        auto pos = task_map_.find(task_info->op_id());
-        if (pos == task_map_.end()) {
-            PDLOG(WARNING, "cannot find op[%lu] in task_map", task_info->op_id());
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-            return;
-        }
-        op_data = pos->second;
-        if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
-            PDLOG(WARNING, "parse change leader data failed. name[%s] pid[%u] data[%s]", 
-                            name.c_str(), pid, op_data->op_info_.data().c_str());
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-            return;
-        }
         if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 2))) {
             PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u]", name.c_str(), pid);
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
@@ -3869,6 +3854,24 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
             leader_endpoint_vec.push_back(endpoint);
         } else if (offset == max_offset) {
             leader_endpoint_vec.push_back(endpoint);
+        }
+    }
+    std::shared_ptr<OPData> op_data;
+    ChangeLeaderData change_leader_data;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto pos = task_map_.find(task_info->op_id());
+        if (pos == task_map_.end()) {
+            PDLOG(WARNING, "cannot find op[%lu] in task_map", task_info->op_id());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
+        op_data = pos->second;
+        if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
+            PDLOG(WARNING, "parse change leader data failed. name[%s] pid[%u] data[%s]", 
+                            name.c_str(), pid, op_data->op_info_.data().c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
         }
     }
     std::string leader_endpoint;
