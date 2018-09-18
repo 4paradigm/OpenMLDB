@@ -388,6 +388,30 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const ::rtidb::na
     return tablet_client;
 }
 
+void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "bad setttl format, eg settl t1 absolute 10" <<std::endl;
+        return;
+    }
+    try {
+        std::string value;
+        std::string err;
+        uint64_t ttl = boost::lexical_cast<uint64_t>(parts[3]);
+        bool ok = client->UpdateTTL(parts[1],
+                                    parts[2],
+                                    ttl,
+                                    err);
+        if (ok) {
+            std::cout << "Set ttl ok !" << std::endl;
+        }else {
+            std::cout << "Set ttl failed! "<< err << std::endl; 
+        }
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args ttl which should be uint64_t" << std::endl;
+    }
+
+}
+
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
@@ -1398,6 +1422,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("migrate - migrate partition form one endpoint to another\n");
         printf("gettablepartition - get partition info\n");
         printf("settablepartition - update partition info\n");
+        printf("setttl - set table ttl\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
         printf("help - get cmd info\n");
@@ -1527,6 +1552,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex:help create\n");
             printf("ex:man\n");
             printf("ex:man create\n");
+        } else if (parts[1] == "setttl") {
+            printf("desc: setttl cmd info\n");
+            printf("usage: help [cmd]\n");
+            printf("usage: man [cmd]\n");
+            printf("ex: setttl t1 absolute 10\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -3077,6 +3107,8 @@ void StartNsClient() {
             HandleNSClientGetTablePartition(parts, &client);
         } else if (parts[0] == "settablepartition") {
             HandleNSClientSetTablePartition(parts, &client);
+        } else if (parts[0] == "setttl") {
+            HandleNSClientSetTTL(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
