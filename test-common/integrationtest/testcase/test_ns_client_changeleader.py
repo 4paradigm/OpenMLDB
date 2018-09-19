@@ -137,7 +137,7 @@ class TestChangeLeader(TestCaseBase):
 
     def test_changeleader_master_alive(self):
         """
-        changeleader传入有主节点的表，执行失败
+        changeleader传入有主节点的表，执行失败. 加上auto参数可以执行成功
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -154,6 +154,46 @@ class TestChangeLeader(TestCaseBase):
         rs2 = self.changeleader(self.ns_leader, name, 0)
         self.assertIn('failed to change leader', rs2)
 
+        rs3 = self.changeleader(self.ns_leader, name, 0, 'auto')
+        self.assertIn('change leader ok', rs3)
+
+    def test_changeleader_candidate_leader(self):
+        """
+        指定candidate_leader
+        :return:
+        """
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = 'tname{}'.format(time.time())
+        m = utils.gen_table_metadata(
+            '"{}"'.format(name), None, 144000, 2,
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false')
+        )
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs1)
+        result = self.showtable(self.ns_leader)
+        tid = result.keys()[0][1]
+        rs2 = self.put(self.leader, tid, 0, 'testkey0', self.now(), 'testvalue0')
+        self.assertIn('Put ok', rs2)
+
+        rs3 = self.changeleader(self.ns_leader, name, 0, self.slave1)
+        self.assertIn('change leader ok', rs3)
+        time.sleep(3)
+        rs4 = self.showtable(self.ns_leader)
+        self.assertEqual(rs4[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs4[(name, tid, '0', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs4[(name, tid, '0', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
+
+        rs5 = self.put(self.slave1, tid, 0, 'testkey1', self.now(), 'testvalue1')
+        self.assertIn('Put ok', rs5)
+        time.sleep(1)
+        self.multidimension_scan_vk = {'k1': 'testvalue1'}
+        self.assertIn('testvalue1', self.scan(self.slave2, tid, 0, 'testkey1', self.now(), 1))
 
     def test_changeleader_tname_notexist(self):
         """

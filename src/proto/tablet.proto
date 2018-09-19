@@ -288,6 +288,7 @@ message GetTableSchemaResponse {
     optional bytes schema = 3;
 }
 
+<<<<<<< HEAD
 message UpdateTTLRequest {
     optional int32 tid = 1;
     optional int32 pid = 2;
@@ -296,6 +297,14 @@ message UpdateTTLRequest {
 }
 
 message UpdateTTLResponse {
+=======
+message SetConcurrencyRequest {
+    optional string key = 1;
+    optional int32 max_concurrency = 2;
+}
+
+message SetConcurrencyResponse {
+>>>>>>> origin/release/1.3.6
     optional int32 code = 1;
     optional string msg = 2;
 }
@@ -477,7 +486,11 @@ service TabletServer {
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
+<<<<<<< HEAD
     rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
+=======
+    rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
+>>>>>>> origin/release/1.3.6
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);

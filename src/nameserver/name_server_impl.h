@@ -331,7 +331,7 @@ private:
                     const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
     int AddOPData(const std::shared_ptr<OPData>& op_data);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateChangeLeaderOP(const std::string& name, uint32_t pid);
+    int CreateChangeLeaderOP(const std::string& name, uint32_t pid, std::string candidate_leader = "");
     int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 

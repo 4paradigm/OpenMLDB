@@ -111,6 +111,7 @@ message ConfGetResponse {
 message ChangeLeaderRequest {
 	required string name = 1;
     required uint32 pid = 2;
+    optional string candidate_leader = 3;
 }
 
 message OfflineEndpointRequest {
@@ -178,6 +179,7 @@ message ChangeLeaderData {
     optional uint64 offset = 5;
     optional string leader = 6;
     repeated string follower = 7;
+    optional string candidate_leader = 8;
 }
 
 message OPStatus {

@@ -193,6 +193,7 @@ void StartTablet() {
     }
     server.MaxConcurrencyOf(tablet, "Scan") = FLAGS_scan_concurrency_limit;
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
+    tablet->SetServer(&server);
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
     if (FLAGS_port > 0) {
         if (server.Start(FLAGS_port, &options) != 0) {
@@ -601,7 +602,11 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::rtidb::
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
         std::string msg;
-        bool ret = client->ChangeLeader(parts[1], pid, msg);
+        std::string candidate_leader;
+        if (parts.size() > 3) {
+            candidate_leader = parts[3];
+        }
+        bool ret = client->ChangeLeader(parts[1], pid, candidate_leader, msg);
         if (!ret) {
             std::cout << "failed to change leader. error msg: " << msg << std::endl;
             return;
@@ -1513,8 +1518,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: confget auto_recover_table\n");
         } else if (parts[1] == "changeleader") {
             printf("desc: select leader again when the endpoint of leader offline\n");
-            printf("usage: changeleader table_name pid\n");
+            printf("usage: changeleader table_name pid [candidate_leader]\n");
             printf("ex: changeleader table1 0\n");
+            printf("ex: changeleader table1 0 auto\n");
+            printf("ex: changeleader table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "offlineendpoint") {
             printf("desc: select leader and delete replica when endpoint offline\n");
             printf("usage: offlineendpoint endpoint\n");
@@ -2027,6 +2034,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         printf("gettablestatus - get table status\n");
         printf("getfollower - get follower\n");
         printf("setttl - set ttl for partition\n");
+        printf("setlimit - set tablet max concurrency limit\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
         printf("help - get cmd info\n");
@@ -2144,7 +2152,14 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("usage: help [cmd]\n");
             printf("usage: man [cmd]\n");
             printf("ex: setttl 1 0 absolute 10\n");
-        } else {
+        } else if (parts[1] == "setlimit") {
+            printf("desc: setlimit for tablet interface\n");
+            printf("usage: man [cmd]\n");
+            printf("ex:setlimit server 10, limit the server max concurrency to 10\n");
+            printf("ex:setlimit Put 10, limit the server put  max concurrency to 10\n");
+            printf("ex:setlimit Get 10, limit the server get  max concurrency to 10\n");
+            printf("ex:setlimit Scan, limit the server scan  max concurrency to 10\n");
+        }else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
     } else {
@@ -2351,21 +2366,45 @@ void HandleClientLoadTable(const std::vector<std::string> parts, ::rtidb::client
     }
 }
 
+void HandleClientSetLimit(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "Bad set limit format" << std::endl;
+        return;
+    }
+    try {
+
+        std::string key = parts[1];
+        int32_t limit = boost::lexical_cast<int32_t> (parts[2]);
+        bool ok = client->SetMaxConcurrency(key, limit);
+        if (ok) {
+            std::cout << "Set Limit ok" << std::endl;
+        }else {
+            std::cout << "Fail to set limit" << std::endl;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "Bad set limit format" << std::endl;
+    }
+}
+
 void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 4) {
         std::cout << "Bad changerole format" << std::endl;
         return;
     }
     try {
+        uint64_t termid = 0;
+        if (parts.size() > 4) {
+            termid = boost::lexical_cast<uint64_t>(parts[4]);
+        }
         if (parts[3].compare("leader") == 0) {
-            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true);
+            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), true, termid);
             if (ok) {
                 std::cout << "ChangeRole ok" << std::endl;
             } else {
                 std::cout << "Fail to change leader" << std::endl;
             }
         } else if (parts[3].compare("follower") == 0) {
-            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), false);
+            bool ok = client->ChangeRole(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), false, termid);
             if (ok) {
                 std::cout << "ChangeRole ok" << std::endl;
             } else {
@@ -2993,9 +3032,15 @@ void StartClient() {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
             HandleClientDisConnectZK(parts, &client);
+<<<<<<< HEAD
         } else if (parts[0] == "setttl") {
             HandleClientSetTTL(parts, &client);
         }else if (parts[0] == "exit" || parts[0] == "quit") {
+=======
+        } else if (parts[0] == "setlimit") {
+            HandleClientSetLimit(parts, &client);
+        } else if (parts[0] == "exit" || parts[0] == "quit") {
+>>>>>>> origin/release/1.3.6
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {
