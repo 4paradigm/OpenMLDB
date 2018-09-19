@@ -319,9 +319,9 @@ bool TabletClient::LoadTable(const std::string& name,
     return false;
 }
 
-bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader) {
+bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term) {
     std::vector<std::string> endpoints;
-    return ChangeRole(tid, pid, leader, endpoints);
+    return ChangeRole(tid, pid, leader, endpoints, term);
 }
 
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
@@ -347,6 +347,19 @@ bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
     return false;
 }
 
+bool TabletClient::SetMaxConcurrency(const std::string& key,  int32_t max_concurrency) {
+    ::rtidb::api::SetConcurrencyRequest request;
+    request.set_key(key);
+    request.set_max_concurrency(max_concurrency);
+    ::rtidb::api::SetConcurrencyResponse response;
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SetConcurrency,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ret || response.code() != 0) {
+        std::cout << response.msg() << std::endl;
+        return false;
+    }
+    return true;
+}
 
 bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
     ::rtidb::api::TaskStatusRequest request;
