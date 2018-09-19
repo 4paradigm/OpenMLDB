@@ -1336,6 +1336,12 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
+    if (pid > (uint32_t)iter->second->table_partition_size() - 1) {
+        PDLOG(WARNING, "pid[%u] is not exist, table[%s]", pid, name.c_str());
+        response->set_code(-1);
+        response->set_msg("pid is not exist");
+        return;
+    }
     std::vector<std::string> follower_endpoint;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() != pid) {
@@ -1348,20 +1354,26 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
             response->set_msg("leader has no followers");
             return;
         }
-        if (!request->has_candidate_leader()) {
-            for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                    if (iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
-                        PDLOG(WARNING, "leader is alive, cannot change leader. table[%s] pid[%u]",
-                                        name.c_str(), pid);
-                        response->set_code(-1);
-                        response->set_msg("leader is alive");
-                        return;
-                    }
+        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                if (!iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
+                    follower_endpoint.push_back(iter->second->table_partition(idx).partition_meta(meta_idx).endpoint());
+                } else if (!request->has_candidate_leader()) {
+                    PDLOG(WARNING, "leader is alive, cannot change leader. table[%s] pid[%u]",
+                                    name.c_str(), pid);
+                    response->set_code(-1);
+                    response->set_msg("leader is alive");
+                    return;
                 }
             }
         }
         break;
+    }
+    if (follower_endpoint.empty()) {
+        response->set_code(-1);
+        response->set_msg("no alive follower");
+        PDLOG(WARNING, "no alive follower. table[%s] pid[%u]", name.c_str(), pid);
+        return;
     }
     std::string candidate_leader;
     if (request->has_candidate_leader() && request->candidate_leader() != "auto") {
