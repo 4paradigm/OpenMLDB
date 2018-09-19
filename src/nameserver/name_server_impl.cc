@@ -3956,6 +3956,76 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
                 ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
+void NameServerImpl::UpdateTTL(RpcController* controller,
+        const ::rtidb::nameserver::UpdateTTLRequest* request,
+        ::rtidb::nameserver::UpdateTTLResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::shared_ptr<TableInfo> table = GetTableInfo(request->name());
+    if (!table) {
+        PDLOG(WARNING, "table with name %s does not exist", request->name().c_str());
+        response->set_code(-1);
+        response->set_msg("table does not exist");
+        return;
+    }
+    // validation
+    if (table->ttl_type() != request->ttl_type()) {
+        PDLOG(WARNING, "table ttl type mismatch, expect %s bug %s", table->ttl_type().c_str(), request->ttl_type().c_str());
+        response->set_code(-2);
+        response->set_msg("table ttl type mismatch");
+        return;
+    }
+
+    ::rtidb::api::TTLType ttl_type;
+    bool ok = ::rtidb::api::TTLType_Parse(request->ttl_type(), &ttl_type);
+    if (!ok) {
+        PDLOG(WARNING, "fail to parse ttl_type %s", request->ttl_type().c_str());
+        response->set_code(-3);
+        response->set_msg("table ttl type invalid");
+        return;
+    }
+    uint64_t old_ttl = table->ttl();
+    table->set_ttl(request->value());
+
+    // update the tablet
+    bool all_ok = true;
+    for (int32_t i = 0; i < table->table_partition_size(); i++) {
+        if (!all_ok) {
+            break;
+        }
+        const TablePartition& table_partition = table->table_partition(i);
+        for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
+            const PartitionMeta& meta = table_partition.partition_meta(j);
+            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(), ttl_type, request->value()); 
+        }
+    }
+
+    if (!all_ok) {
+        table->set_ttl(old_ttl);
+        response->set_code(-4);
+        response->set_msg("fail to update ttl from tablet");
+        return;
+    }
+    // update zookeeper
+    std::string table_value;
+    table->SerializeToString(&table_value);
+    if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table->name(), table_value)) {
+        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                        zk_table_data_path_.c_str(), table->name().c_str(), table_value.c_str());
+        response->set_code(-5);
+        response->set_msg("save ttl to zk failed");
+        return;
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
 void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     std::shared_ptr<OPData> op_data;
     {
@@ -4053,6 +4123,50 @@ void NameServerImpl::NotifyTableChanged() {
         PDLOG(WARNING, "incr zk table changed notify node value failed");
     }
     PDLOG(INFO, "notify table changed ok, update counter from %s to %lu", value.c_str(), counter);
+}
+
+std::shared_ptr<TableInfo> NameServerImpl::GetTableInfo(const std::string& name) {
+    std::lock_guard<std::mutex> lock(mu_);
+    std::shared_ptr<TableInfo> table;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>::iterator it = table_info_.find(name);
+    if (it == table_info_.end()) {
+        return table;
+    }
+    table = it->second;
+    return table;
+}
+
+std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfo(const std::string& endpoint) {
+    std::lock_guard<std::mutex> lock(mu_);
+    std::shared_ptr<TabletInfo> tablet;
+    std::map<std::string, std::shared_ptr<TabletInfo>>::iterator it = tablets_.find(endpoint);
+    if (it == tablets_.end()) {
+        return tablet;
+    }
+    tablet = it->second;
+    return tablet;
+}
+
+bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
+        int32_t tid, int32_t pid, const ::rtidb::api::TTLType& type,
+        uint64_t ttl) {
+    std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
+    if (!tablet) {
+        PDLOG(WARNING, "tablet with endpoint %s is not found", endpoint.c_str());
+        return false;
+    }
+
+    if (!tablet->client_) {
+        PDLOG(WARNING, "tablet with endpoint %s has not client", endpoint.c_str());
+        return false;
+    }
+    bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl);
+    if (!ok) {
+        PDLOG(WARNING, "fail to update ttl with tid %d, pid %d , ttl %ld", tid, pid, ttl);
+    }else {
+        PDLOG(INFO, "update ttl with tid %d pid %d ttl %ld ok", tid, pid, ttl);
+    }
+    return ok;
 }
 
 }

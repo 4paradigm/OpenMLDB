@@ -89,7 +89,7 @@ public:
     uint64_t SchedGc();
 
     uint64_t GetTTL() const {
-        return ttl_ / (60 * 1000);
+        return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
     }
 
     uint64_t GetRecordIdxCnt();
@@ -201,6 +201,10 @@ public:
         return ttl_type_;
     }
 
+    inline void SetTTL(uint64_t ttl) {
+        ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+    }
+
 private:
     std::string const name_;
     uint32_t const id_;
@@ -211,7 +215,7 @@ private:
     Segment*** segments_;
     std::atomic<uint32_t> ref_;
     std::atomic<bool> enable_gc_;
-    uint64_t const ttl_;
+    std::atomic<uint64_t> ttl_;
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;

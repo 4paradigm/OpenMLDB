@@ -325,6 +325,28 @@ bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
     return false;
 }            
 
+bool NsClient::UpdateTTL(const std::string& name, 
+                         const std::string& ttl_type,
+                         uint64_t ttl,
+                         std::string& msg) {
+    ::rtidb::nameserver::UpdateTTLRequest request;
+    ::rtidb::nameserver::UpdateTTLResponse response;
+    request.set_name(name);
+    if (ttl_type == "absolute") {
+        request.set_ttl_type("kAbsoluteTime");
+    }else {
+        request.set_ttl_type("kLatestTime");
+    }
+    request.set_value(ttl);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,
+                                  &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 }
 }
 

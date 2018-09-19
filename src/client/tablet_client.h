@@ -144,6 +144,9 @@ public:
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, 
                     const std::vector<std::string>& endpoints, uint64_t term = 0);
 
+    bool UpdateTTL(uint32_t tid, uint32_t pid, 
+                   const ::rtidb::api::TTLType& type,
+                   uint64_t ttl);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
     bool DeleteBinlog(uint32_t tid, uint32_t pid);
 
