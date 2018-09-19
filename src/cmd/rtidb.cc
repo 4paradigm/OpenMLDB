@@ -3032,15 +3032,11 @@ void StartClient() {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
             HandleClientDisConnectZK(parts, &client);
-<<<<<<< HEAD
         } else if (parts[0] == "setttl") {
             HandleClientSetTTL(parts, &client);
-        }else if (parts[0] == "exit" || parts[0] == "quit") {
-=======
         } else if (parts[0] == "setlimit") {
             HandleClientSetLimit(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
->>>>>>> origin/release/1.3.6
             std::cout << "bye" << std::endl;
             return;
         } else if (parts[0] == "help" || parts[0] == "man") {
@@ -3048,7 +3044,6 @@ void StartClient() {
         } else {
             std::cout << "unsupported cmd" << std::endl;
         }
-
         if (!FLAGS_interactive) {
             return;
         }
