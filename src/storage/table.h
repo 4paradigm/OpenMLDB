@@ -203,6 +203,11 @@ public:
 
     inline void SetTTL(uint64_t ttl) {
         ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+        if (ttl > 0) {
+            enable_gc_.store(true, std::memory_order_relaxed);
+        }else {
+            enable_gc_.store(false, std::memory_order_relaxed);
+        }
     }
 
 private:

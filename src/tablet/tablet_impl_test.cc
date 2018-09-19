@@ -23,6 +23,7 @@
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
+DECLARE_int32(gc_interval);
 
 namespace rtidb {
 namespace tablet {
@@ -1060,6 +1061,147 @@ TEST_F(TabletImplTest, Scan) {
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, srp.count());
 
+}
+
+
+TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
+    int32_t old_ttl = FLAGS_gc_interval;
+    // 1 minute
+    FLAGS_gc_interval = 1;
+    TabletImpl tablet;
+    uint32_t id = counter ++;
+    tablet.Init();
+    MockClosure closure;
+    // create a latest table
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(3);
+        table_meta->set_ttl_type(::rtidb::api::kLatestTime);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+
+    // version 1
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_value("test1");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        prequest.set_time(1);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+    }
+
+    // version 2 
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_value("test2");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        prequest.set_time(2);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+    }
+
+    // version 3 
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_value("test3");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        prequest.set_time(3);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+    }
+
+    // get version 1 
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test1");
+        request.set_ts(1);
+        ::rtidb::api::GetResponse response;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.ts());
+        ASSERT_EQ("test1", response.key());
+        ASSERT_EQ("test1", response.value());
+    }
+
+    // update ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_type(::rtidb::api::kLatestTime);
+        request.set_value(2);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+    }
+
+    // get version 1 again
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test1");
+        request.set_ts(1);
+        ::rtidb::api::GetResponse response;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(1, response.code());
+        ASSERT_EQ("Not Found", response.msg());
+    }
+
+    // sleep 70s
+    sleep(70);
+
+    // revert ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_type(::rtidb::api::kLatestTime);
+        request.set_value(3);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+
+    // make sure that gc has clean the data
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test1");
+        request.set_ts(1);
+        ::rtidb::api::GetResponse response;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(1, response.code());
+        ASSERT_EQ("Not Found", response.msg());
+    }
+
+    FLAGS_gc_interval = old_ttl;
 }
 
 TEST_F(TabletImplTest, GC) {
