@@ -577,7 +577,11 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::rtidb::
     try {
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
         std::string msg;
-        bool ret = client->ChangeLeader(parts[1], pid, msg);
+        std::string candidate_leader;
+        if (parts.size() > 3) {
+            candidate_leader = parts[3];
+        }
+        bool ret = client->ChangeLeader(parts[1], pid, candidate_leader, msg);
         if (!ret) {
             std::cout << "failed to change leader. error msg: " << msg << std::endl;
             return;
@@ -1488,8 +1492,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: confget auto_recover_table\n");
         } else if (parts[1] == "changeleader") {
             printf("desc: select leader again when the endpoint of leader offline\n");
-            printf("usage: changeleader table_name pid\n");
+            printf("usage: changeleader table_name pid [candidate_leader]\n");
             printf("ex: changeleader table1 0\n");
+            printf("ex: changeleader table1 0 auto\n");
+            printf("ex: changeleader table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "offlineendpoint") {
             printf("desc: select leader and delete replica when endpoint offline\n");
             printf("usage: offlineendpoint endpoint\n");

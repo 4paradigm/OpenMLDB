@@ -1348,20 +1348,26 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
             response->set_msg("leader has no followers");
             return;
         }
-        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                if (iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
-                    PDLOG(WARNING, "leader is alive, cannot change leader. table[%s] pid[%u]",
-                                    name.c_str(), pid);
-                    response->set_code(-1);
-                    response->set_msg("leader is alive");
-                    return;
+        if (!request->has_candidate_leader()) {
+            for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    if (iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
+                        PDLOG(WARNING, "leader is alive, cannot change leader. table[%s] pid[%u]",
+                                        name.c_str(), pid);
+                        response->set_code(-1);
+                        response->set_msg("leader is alive");
+                        return;
+                    }
                 }
             }
         }
         break;
     }
-    if (CreateChangeLeaderOP(name, pid) < 0) {
+    std::string candidate_leader;
+    if (request->has_candidate_leader() && request->candidate_leader() != "auto") {
+        candidate_leader = request->candidate_leader();
+    }
+    if (CreateChangeLeaderOP(name, pid, candidate_leader) < 0) {
         response->set_code(-1);
         response->set_msg("change leader failed");
         PDLOG(WARNING, "change leader failed. name[%s] pid[%u]", name.c_str(), pid);
@@ -2363,7 +2369,7 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     return 0;
 }
 
-int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) {
+int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid, std::string candidate_leader) {
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
@@ -2396,6 +2402,10 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
         PDLOG(INFO, "table not found follower. name[%s] pid[%u]", name.c_str(), pid);
         return 0;
     }
+    if (!candidate_leader.empty() && std::find(follower_endpoint.begin(), follower_endpoint.end(), candidate_leader) == follower_endpoint.end()) {
+        PDLOG(WARNING, "candidate_leader[%s] is not in followers. name[%s] pid[%u]", candidate_leader.c_str(), name.c_str(), pid);
+        return -1;
+    }
     std::shared_ptr<OPData> op_data;
     ChangeLeaderData change_leader_data;
     change_leader_data.set_name(name);
@@ -2403,6 +2413,9 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid) 
     change_leader_data.set_pid(pid);
     for (const auto& endpoint : follower_endpoint) {
         change_leader_data.add_follower(endpoint);
+    }
+    if (!candidate_leader.empty()) {
+        change_leader_data.set_candidate_leader(candidate_leader);
     }
     std::string value;
     change_leader_data.SerializeToString(&value);
@@ -3803,7 +3816,7 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 2))) {
             PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u]", name.c_str(), pid);
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
         cur_term = term_ + 1;
@@ -3811,7 +3824,7 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
     }
     // select the max offset endpoint as leader
     uint64_t max_offset = 0;    
-    std::string leader_endpoint;
+    std::vector<std::string> leader_endpoint_vec;
     for (const auto& endpoint : follower_endpoint) {
         std::shared_ptr<TabletInfo> tablet_ptr;
         {
@@ -3835,31 +3848,45 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
         }
         PDLOG(INFO, "FollowOfNoOne ok. term[%lu] offset[%lu] name[%s] tid[%u] pid[%u] endpoint[%s]", 
                      cur_term, offset, name.c_str(), tid, pid, endpoint.c_str());
-        if (offset > max_offset || leader_endpoint.empty()) {
-            leader_endpoint = endpoint;
+        if (offset > max_offset || leader_endpoint_vec.empty()) {
             max_offset = offset;
-        } else if (offset == max_offset && rand_.Next() % follower_endpoint.size() == 1) {
-            // select leader random from the endpoint of equal offset
-            leader_endpoint = endpoint;
+            leader_endpoint_vec.clear();
+            leader_endpoint_vec.push_back(endpoint);
+        } else if (offset == max_offset) {
+            leader_endpoint_vec.push_back(endpoint);
         }
     }
     std::shared_ptr<OPData> op_data;
+    ChangeLeaderData change_leader_data;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto pos = task_map_.find(task_info->op_id());
         if (pos == task_map_.end()) {
             PDLOG(WARNING, "cannot find op[%lu] in task_map", task_info->op_id());
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
         op_data = pos->second;
+        if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
+            PDLOG(WARNING, "parse change leader data failed. name[%s] pid[%u] data[%s]", 
+                            name.c_str(), pid, op_data->op_info_.data().c_str());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
     }
-    ChangeLeaderData change_leader_data;
-    if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
-        PDLOG(WARNING, "parse change leader data failed. name[%s] pid[%u] data[%s]", 
-                        name.c_str(), pid, op_data->op_info_.data().c_str());
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
-        return;
+    std::string leader_endpoint;
+    if (change_leader_data.has_candidate_leader()) {
+        std::string candidate_leader = change_leader_data.candidate_leader();
+        if (std::find(leader_endpoint_vec.begin(), leader_endpoint_vec.end(), candidate_leader) != leader_endpoint_vec.end()) {
+            leader_endpoint = candidate_leader;
+        } else {
+            PDLOG(WARNING, "select leader failed, candidate_leader[%s] is not in leader_endpoint_vec. tid[%u] pid[%u]", 
+                            candidate_leader.c_str(), tid, pid);
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            return;
+        }
+    } else {
+        leader_endpoint = leader_endpoint_vec[rand_.Next() % leader_endpoint_vec.size()];
     }
     change_leader_data.set_leader(leader_endpoint);
     change_leader_data.set_offset(max_offset);
