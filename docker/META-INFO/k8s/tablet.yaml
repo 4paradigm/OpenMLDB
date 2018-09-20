@@ -21,7 +21,7 @@ spec:
           value: {{.zk_cluster}}
         - name: zk_root_path
           value: "/rtidb"
-        - name: port
+        - name: tablet_port
           value: "{{.tablet_port}}"
         - name: metric_port
           value: "{{.metric_port}}"
