@@ -530,7 +530,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
     }
     if (!startup_flag && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
-        offline_endpoint_map_.erase(iter);
+        // offline_endpoint_map_.erase(iter);
         return;
     }
     if (table_info_.empty()) {
