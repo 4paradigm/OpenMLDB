@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
@@ -35,8 +36,9 @@ public class LeaderChangedTest {
     private static TabletClientImpl tc = null;
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9522");
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    static {
-        try {
+    @BeforeClass
+    public static void setUp() {
+         try {
             nsc.init();
             snc.init();
             config.setZkEndpoints(zkEndpoints);
@@ -53,9 +55,8 @@ public class LeaderChangedTest {
             e.printStackTrace();
         }
     }
-    
     @AfterClass
-    public void closeResource() {
+    public static void closeResource() {
         nsc.close();
         snc.close();
     }

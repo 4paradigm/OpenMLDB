@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
@@ -22,7 +23,6 @@ import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 
-import io.brpc.client.DefaultRpcClient;
 import io.brpc.client.EndPoint;
 
 public class TabletSchemaAsyncClientTest {
@@ -33,7 +33,8 @@ public class TabletSchemaAsyncClientTest {
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    static {
+    @BeforeClass
+    public static void setUp() {
         try {
             snc.init();
         } catch (Exception e) {
@@ -43,9 +44,8 @@ public class TabletSchemaAsyncClientTest {
         aclient = new TabletAsyncClientImpl(snc);
         sclient = new TabletSyncClientImpl(snc);
     }
-    
     @AfterClass
-    public void tearDown() {
+    public static void tearDown() {
         snc.close();
     }
     
