@@ -631,7 +631,8 @@ void NameServerImpl::RecoverEndpoint(const std::string& endpoint) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
             uint32_t pid =  kv.second->table_partition(idx).pid();
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint &&
+                       ! kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                     PDLOG(INFO, "recover table[%s] pid[%u] endpoint[%s]", kv.first.c_str(), pid, endpoint.c_str());
                     CreateRecoverTableOP(kv.first, pid, endpoint);
                 }
