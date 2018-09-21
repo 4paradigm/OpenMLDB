@@ -543,11 +543,13 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
         return;
     }
-    if (zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) == 0) {
+    if (auto_failover_.load(std::memory_order_acquire) && 
+            zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) == 0) {
         PDLOG(WARNING, "offline endpoint lock node is exist! endpoint %s", endpoint.c_str());
         return;
     }
-    if (!zk_client_->CreateNode(zk_offline_endpoint_lock_node_ + "/" + endpoint, "1")) {
+    if (auto_failover_.load(std::memory_order_acquire) && 
+            !zk_client_->CreateNode(zk_offline_endpoint_lock_node_ + "/" + endpoint, "1")) {
         PDLOG(WARNING, "create offline endpoint lock node failed! endpoint %s", endpoint.c_str());
         return;
     }
@@ -614,6 +616,12 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
             }
         }
         RecoverEndpoint(endpoint);
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (!zk_client_->DeleteNode(zk_offline_endpoint_lock_node_ + "/" + endpoint)) {
+                PDLOG(WARNING, "offline endpoint lock node delete failed. endpoint[%s]", endpoint.c_str());
+            }
+        }
     }
 }
 
@@ -629,9 +637,6 @@ void NameServerImpl::RecoverEndpoint(const std::string& endpoint) {
                 }
             }
         }
-    }
-    if (!zk_client_->DeleteNode(zk_offline_endpoint_lock_node_ + "/" + endpoint)) {
-        PDLOG(WARNING, "offline endpoint lock node delete failed. endpoint[%s]", endpoint.c_str());
     }
 }
 
