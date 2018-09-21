@@ -191,11 +191,14 @@ bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string
     return false;
 }
 
-bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& msg) {
+bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& candidate_leader, std::string& msg) {
     ::rtidb::nameserver::ChangeLeaderRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(pid);
+    if (!candidate_leader.empty()) {
+        request.set_candidate_leader(candidate_leader);
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ChangeLeader,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -321,6 +324,28 @@ bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
     }
     return false;
 }            
+
+bool NsClient::UpdateTTL(const std::string& name, 
+                         const std::string& ttl_type,
+                         uint64_t ttl,
+                         std::string& msg) {
+    ::rtidb::nameserver::UpdateTTLRequest request;
+    ::rtidb::nameserver::UpdateTTLResponse response;
+    request.set_name(name);
+    if (ttl_type == "absolute") {
+        request.set_ttl_type("kAbsoluteTime");
+    }else {
+        request.set_ttl_type("kLatestTime");
+    }
+    request.set_value(ttl);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,
+                                  &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
 
 }
 }

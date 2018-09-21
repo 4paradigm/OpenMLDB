@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
@@ -27,18 +28,20 @@ public class TableSyncClientTest {
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    static {
-        try {
+
+    @BeforeClass
+    public static void setUp() {
+         try {
             snc.init();
         } catch (Exception e) {
             e.printStackTrace();
         }
         tableClient = new TableSyncClientImpl(snc);
         tabletClient = new TabletClientImpl(snc);
-    }
 
+    }
     @AfterClass
-    public void tearDown() {
+    public static void tearDown() {
         snc.close();
     }
 

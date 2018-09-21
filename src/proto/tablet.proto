@@ -288,6 +288,28 @@ message GetTableSchemaResponse {
     optional bytes schema = 3;
 }
 
+message UpdateTTLRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional TTLType type = 3;
+    optional uint64 value = 4;
+}
+
+message UpdateTTLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message SetConcurrencyRequest {
+    optional string key = 1;
+    optional int32 max_concurrency = 2;
+}
+
+message SetConcurrencyResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
 // raft protocol
 message LogEntry {
     // term for leader
@@ -454,20 +476,22 @@ message HttpResponse { }
 service TabletServer {
 
     // write and read api for client
-	rpc Put(PutRequest) returns (PutResponse);
+	  rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
-	rpc Scan(ScanRequest) returns (ScanResponse);
+	  rpc Scan(ScanRequest) returns (ScanResponse);
 
     // table api for master
-	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+	  rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
-	rpc DropTable(DropTableRequest) returns (DropTableResponse);
+	  rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
+    rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
+    rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
 
     // replication api for master
-	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
+	  rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
     rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
     rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
