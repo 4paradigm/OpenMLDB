@@ -530,7 +530,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
     }
     if (!startup_flag && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
-        offline_endpoint_map_.erase(iter);
+        // offline_endpoint_map_.erase(iter);
         return;
     }
     if (table_info_.empty()) {
@@ -543,11 +543,13 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
         return;
     }
-    if (zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) == 0) {
+    if (auto_failover_.load(std::memory_order_acquire) && 
+            zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) == 0) {
         PDLOG(WARNING, "offline endpoint lock node is exist! endpoint %s", endpoint.c_str());
         return;
     }
-    if (!zk_client_->CreateNode(zk_offline_endpoint_lock_node_ + "/" + endpoint, "1")) {
+    if (auto_failover_.load(std::memory_order_acquire) && 
+            !zk_client_->CreateNode(zk_offline_endpoint_lock_node_ + "/" + endpoint, "1")) {
         PDLOG(WARNING, "create offline endpoint lock node failed! endpoint %s", endpoint.c_str());
         return;
     }
@@ -614,6 +616,12 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
             }
         }
         RecoverEndpoint(endpoint);
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (!zk_client_->DeleteNode(zk_offline_endpoint_lock_node_ + "/" + endpoint)) {
+                PDLOG(WARNING, "offline endpoint lock node delete failed. endpoint[%s]", endpoint.c_str());
+            }
+        }
     }
 }
 
@@ -629,9 +637,6 @@ void NameServerImpl::RecoverEndpoint(const std::string& endpoint) {
                 }
             }
         }
-    }
-    if (!zk_client_->DeleteNode(zk_offline_endpoint_lock_node_ + "/" + endpoint)) {
-        PDLOG(WARNING, "offline endpoint lock node delete failed. endpoint[%s]", endpoint.c_str());
     }
 }
 
@@ -2349,8 +2354,7 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
         return -1;
     }
-    uint32_t tid;
-    tid = iter->second->tid();
+    uint32_t tid = iter->second->tid();
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
@@ -2518,6 +2522,31 @@ int NameServerImpl::CreateRecoverTableOP(const std::string& name, uint32_t pid, 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        return -1;
+    }
+    do {
+        std::string leader_endpoint;
+        uint32_t tid = iter->second->tid();
+        if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+            PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+            break;
+        }
+        if (leader_endpoint == endpoint) {
+            PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
+            break;
+        }
+        std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_data->op_info_.op_id(), 
+                    ::rtidb::api::OPType::kRecoverTableOP, tid, pid, endpoint);
+        if (!task) {
+            PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", 
+                            name.c_str(), pid, endpoint.c_str());
+            break;
+        }
+        op_data->task_list_.push_back(task);
+    } while (0);
     std::shared_ptr<Task> task = CreateRecoverTableTask(op_data->op_info_.op_id(), 
             ::rtidb::api::OPType::kRecoverTableOP, name, pid, endpoint);
     if (!task) {
