@@ -110,6 +110,7 @@ public class TableSyncClientForLocalityTest {
             value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value1");
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }finally {
             nsc.dropTable(name);
