@@ -2349,8 +2349,7 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
         return -1;
     }
-    uint32_t tid;
-    tid = iter->second->tid();
+    uint32_t tid = iter->second->tid();
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
         return -1;
@@ -2518,6 +2517,31 @@ int NameServerImpl::CreateRecoverTableOP(const std::string& name, uint32_t pid, 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        return -1;
+    }
+    do {
+        std::string leader_endpoint;
+        uint32_t tid = iter->second->tid();
+        if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+            PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+            break;
+        }
+        if (leader_endpoint == endpoint) {
+            PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
+            break;
+        }
+        std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_data->op_info_.op_id(), 
+                    ::rtidb::api::OPType::kRecoverTableOP, tid, pid, endpoint);
+        if (!task) {
+            PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", 
+                            name.c_str(), pid, endpoint.c_str());
+            break;
+        }
+        op_data->task_list_.push_back(task);
+    } while (0);
     std::shared_ptr<Task> task = CreateRecoverTableTask(op_data->op_info_.op_id(), 
             ::rtidb::api::OPType::kRecoverTableOP, name, pid, endpoint);
     if (!task) {
