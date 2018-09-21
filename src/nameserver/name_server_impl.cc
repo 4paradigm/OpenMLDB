@@ -2711,13 +2711,13 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         PDLOG(INFO, "delete binlog ok. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                             name.c_str(), tid, pid, endpoint.c_str());
     }
-    int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
+    /*int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
     if (ret_code < 0) {
         PDLOG(WARNING, "match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                         name.c_str(), tid, pid, endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
-    }
+    }*/
     ::rtidb::api::Manifest manifest;
     if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u]", 
@@ -2726,14 +2726,16 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
+    PDLOG(INFO, "offset[%lu] manifest offset[%lu]. name[%s] tid[%u] pid[%u]", 
+                 offset,  manifest.offset(), name.c_str(), tid, pid);
     if (has_table) {
-        if (ret_code == 0 && offset >= manifest.offset()) {
+        if (offset >= manifest.offset()) {
             CreateReAddReplicaSimplifyOP(name, pid, endpoint, task_info->op_id());
         } else {
             CreateReAddReplicaWithDropOP(name, pid, endpoint, task_info->op_id());
         }
     } else {
-        if (ret_code == 0 && offset >= manifest.offset()) {
+        if (offset >= manifest.offset()) {
             CreateReAddReplicaNoSendOP(name, pid, endpoint, task_info->op_id());
         } else {
             CreateReAddReplicaOP(name, pid, endpoint, task_info->op_id());
