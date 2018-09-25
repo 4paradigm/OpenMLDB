@@ -27,6 +27,9 @@ parser.add_option("--endpoint",
                   help="the endpoint for migrate")
 
 (options, args) = parser.parse_args()
+common_cmd =  [options.rtidb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path,
+               "--role=ns_client", "--interactive=false"]
+
 def promot_input(msg,validate_func=None,try_times=1):
     while try_times>0:
         answer = raw_input(msg).strip()
@@ -150,10 +153,7 @@ def GetLeaderFollowerOffset(endpoint, tid, pid):
     print stdout
 
 def ChangeLeader():
-    common_cmd =  [options.rtidb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path,
-        "--role=ns_client", "--interactive=false"]
-
-    # show tablet
+        # show tablet
     show_tablet = list(common_cmd)
     show_tablet.append("--cmd=showtablet")
     _,stdout,_ = RunWithRetuncode(show_tablet)
@@ -193,11 +193,50 @@ def ChangeLeader():
                 print stdout
         else:
             print "skip to change leader for %s %s"%(p[0], p[2])
+
+def RecoverEndpoint():
+    # show table
+    show_table = list(common_cmd)
+    show_table.append("--cmd=showtable")
+    code, stdout,stderr = RunWithRetuncode(show_table)
+    if code != 0:
+        print "fail to show table"
+        return
+    partitions = GetTables(stdout)
+    not_alive_partitions = []
+    for p in partitions[options.endpoint]:
+        if p[4] == "follower" and p[6] == "no":
+            not_alive_partitions.append(p)
+    if not not_alive_partitions:
+        print "no need recover not alive partition"
+        return
+    print "start to recover partiton on %s"%options.endpoint
+    for p in not_alive_partitions:
+        print "not a alive partition information"
+        print " ".join(p)
+        recover_cmd = list(common_cmd)
+        recover_cmd.append("--cmd=recovertable %s %s %s"%(p[0], p[2], options.endpoint))
+        msg = "command:%s \nwill be excute, sure to recover endpoint(y/n):"%(" ".join(recover_cmd))
+        yes = yes_or_no_promot(msg)
+        if yes:
+            code, stdout, stderr = RunWithRetuncode(recover_cmd)
+            if code != 0:
+                print "fail to recover partiton for %s %s on %s"%(p[0], p[2], options.endpoint)
+                print stdout
+                print stderr
+            else:
+                print stdout
+        else:
+            print "skip to recover partiton for %s %s on %s"%(p[0], p[2], options.endpoint)
+
+
 def Main():
     if options.cmd == "analysis":
         Analysis()
     elif options.cmd == "changeleader":
         ChangeLeader()
+    elif options.cmd == "recovertable":
+        RecoverEndpoint()
 
 if __name__ == "__main__":
     Main()
