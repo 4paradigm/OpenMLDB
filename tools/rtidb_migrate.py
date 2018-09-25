@@ -77,7 +77,6 @@ def RunWithRealtimePrint(command,
 	p.wait()
 	return p.returncode
     except Exception,ex:
-	self.logger.exception(ex)
 	return -1
 
 def RunWithRetuncode(command,
