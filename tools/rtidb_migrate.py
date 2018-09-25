@@ -27,8 +27,7 @@ parser.add_option("--endpoint",
                   help="the endpoint for migrate")
 
 (options, args) = parser.parse_args()
-common_cmd =  [options.rtidb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path,
-               "--role=ns_client", "--interactive=false"]
+common_cmd =  [options.rtidb_bin_path, "--zk_cluster=" + options.zk_cluster, "--zk_root_path=" + options.zk_root_path, "--role=ns_client", "--interactive=false"]
 
 def promot_input(msg,validate_func=None,try_times=1):
     while try_times>0:
@@ -70,27 +69,22 @@ def RunWithRealtimePrint(command,
                               stderr = subprocess.STDOUT,
                               shell = useshell, 
                               env = env )
-	if print_output:
+        if print_output:
             for line in iter(p.stdout.readline,''):
-		sys.stdout.write(line)
-		sys.stdout.write('\r')
-	p.wait()
-	return p.returncode
+                sys.stdout.write(line)
+                sys.stdout.write('\r')
+        p.wait()
+        return p.returncode
     except Exception,ex:
-	self.logger.exception(ex)
-	return -1
+	    print(ex)
+	    return -1
 
 def RunWithRetuncode(command,
                      universal_newlines = True,
                      useshell = USE_SHELL,
                      env = os.environ):
     try:
-       p = subprocess.Popen(command,
-			      stdout = subprocess.PIPE,
-			      stderr = subprocess.PIPE,
-			      shell = useshell, 
-			      universal_newlines = universal_newlines,
-			      env = env )
+        p = subprocess.Popen(command, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = useshell, universal_newlines = universal_newlines, env = env )
         output = p.stdout.read()
         p.wait()
         errout = p.stderr.read()
@@ -98,8 +92,8 @@ def RunWithRetuncode(command,
         p.stderr.close()
         return p.returncode,output,errout
     except Exception,ex:
-	self.logger.exception(ex)
-	return -1,None,None
+	    print(ex)
+	    return -1,None,None
 
 def GetTables(output):
     # name  tid  pid  endpoint  role  ttl  is_alive  compress_type
