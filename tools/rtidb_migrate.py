@@ -205,7 +205,9 @@ def RecoverEndpoint():
     partitions = GetTables(stdout)
     not_alive_partitions = []
     for p in partitions[options.endpoint]:
-        if p[4] == "follower" and p[6] == "no":
+        # follower status no
+        # leader status no
+        if  p[6] == "no":
             not_alive_partitions.append(p)
     if not not_alive_partitions:
         print "no need recover not alive partition"
