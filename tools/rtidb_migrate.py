@@ -85,18 +85,18 @@ def RunWithRetuncode(command,
                      useshell = USE_SHELL,
                      env = os.environ):
     try:
-	p = subprocess.Popen(command,
+       p = subprocess.Popen(command,
 			      stdout = subprocess.PIPE,
 			      stderr = subprocess.PIPE,
 			      shell = useshell, 
 			      universal_newlines = universal_newlines,
 			      env = env )
-	output = p.stdout.read()
-	p.wait()
-	errout = p.stderr.read()
-	p.stdout.close()
-	p.stderr.close()
-	return p.returncode,output,errout
+        output = p.stdout.read()
+        p.wait()
+        errout = p.stderr.read()
+        p.stdout.close()
+        p.stderr.close()
+        return p.returncode,output,errout
     except Exception,ex:
 	self.logger.exception(ex)
 	return -1,None,None
