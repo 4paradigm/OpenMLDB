@@ -3353,7 +3353,7 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
         return 1;
     } else if (iter->second > offset) {
         if (term_map.rbegin()->second == offset + 1) {
-            PDLOG(INFO, "term[%lu] offset[%s] has matched. name[%s] pid[%u]", 
+            PDLOG(INFO, "term[%lu] offset[%lu] has matched. name[%s] pid[%u]", 
                             term, offset, name.c_str(), pid);
             return 0;
         }
