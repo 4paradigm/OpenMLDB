@@ -631,8 +631,7 @@ void NameServerImpl::RecoverEndpoint(const std::string& endpoint) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
             uint32_t pid =  kv.second->table_partition(idx).pid();
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint &&
-                       ! kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
                     PDLOG(INFO, "recover table[%s] pid[%u] endpoint[%s]", kv.first.c_str(), pid, endpoint.c_str());
                     CreateRecoverTableOP(kv.first, pid, endpoint);
                 }
@@ -2711,13 +2710,13 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         PDLOG(INFO, "delete binlog ok. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                             name.c_str(), tid, pid, endpoint.c_str());
     }
-    /*int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
+    int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
     if (ret_code < 0) {
         PDLOG(WARNING, "match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
                         name.c_str(), tid, pid, endpoint.c_str());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
-    }*/
+    }
     ::rtidb::api::Manifest manifest;
     if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u]", 
@@ -2729,13 +2728,13 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     PDLOG(INFO, "offset[%lu] manifest offset[%lu]. name[%s] tid[%u] pid[%u]", 
                  offset,  manifest.offset(), name.c_str(), tid, pid);
     if (has_table) {
-        if (offset >= manifest.offset()) {
+        if (ret_code == 0 && offset >= manifest.offset()) {
             CreateReAddReplicaSimplifyOP(name, pid, endpoint, task_info->op_id());
         } else {
             CreateReAddReplicaWithDropOP(name, pid, endpoint, task_info->op_id());
         }
     } else {
-        if (offset >= manifest.offset()) {
+        if (ret_code == 0 && offset >= manifest.offset()) {
             CreateReAddReplicaNoSendOP(name, pid, endpoint, task_info->op_id());
         } else {
             CreateReAddReplicaOP(name, pid, endpoint, task_info->op_id());
@@ -3353,6 +3352,11 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
                         term, name.c_str(), pid);
         return 1;
     } else if (iter->second > offset) {
+        if (term_map.rbegin()->second == offset + 1) {
+            PDLOG(INFO, "term[%lu] offset[%lu] has matched. name[%s] pid[%u]", 
+                            term, offset, name.c_str(), pid);
+            return 0;
+        }
         PDLOG(INFO, "offset is not matched. name[%s] pid[%u] term[%lu] term start offset[%lu] cur offset[%lu]", 
                         name.c_str(), pid, term, iter->second, offset);
         return 1;
