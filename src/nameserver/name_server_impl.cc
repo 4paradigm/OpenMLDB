@@ -3825,7 +3825,7 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
     }
     if (has_update) {
         std::string table_value;
-        iter->second->SerializeToString(&table_value);
+        cur_table_info->SerializeToString(&table_value);
         if (zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
             NotifyTableChanged();
             iter->second = cur_table_info;
