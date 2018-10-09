@@ -77,6 +77,9 @@ public:
                            ::rtidb::nameserver::TablePartition& table_partition, 
                            std::string& msg);
 
+    bool UpdateTableAliveStatus(const std::string& endpoint, std::string& name, 
+                            uint32_t pid, bool is_alive, std::string& msg);
+
     bool UpdateTTL(const std::string& name, 
                    const std::string& ttl_type, 
                    uint64_t ttl,

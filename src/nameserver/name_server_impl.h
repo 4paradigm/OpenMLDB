@@ -176,6 +176,11 @@ public:
             GetTablePartitionResponse* response,
             Closure* done);
 
+    void UpdateTableAliveStatus(RpcController* controller,
+            const UpdateTableAliveRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);
