@@ -25,6 +25,7 @@ DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
+DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_bool(auto_failover);
 
@@ -107,7 +108,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     meta->set_endpoint("127.0.0.1:9530");
     meta->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
 
@@ -115,7 +116,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     m_request.set_name(name);
     m_request.set_pid(0);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS,
-            &m_request, &response, 12, 1);
+            &m_request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
 
     sleep(5);
@@ -154,7 +155,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     drop_request.set_name(name);
     response.Clear();
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
-            &drop_request, &response, 12, 1);
+            &drop_request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
     ok = zk_client.GetNodeValue(table_data_node, value);
@@ -284,7 +285,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     meta1->set_endpoint("127.0.0.1:9531");
     meta1->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(-1, response.code());
 
@@ -294,7 +295,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     meta2->set_endpoint("127.0.0.1:9531");
     meta2->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
     delete nameserver;
@@ -383,7 +384,7 @@ TEST_F(NameServerImplTest, Offline) {
     meta1->set_endpoint("127.0.0.1:9534");
     meta1->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(-1, response.code());
 
@@ -393,7 +394,7 @@ TEST_F(NameServerImplTest, Offline) {
     meta2->set_endpoint("127.0.0.1:9534");
     meta2->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
 
@@ -409,7 +410,7 @@ TEST_F(NameServerImplTest, Offline) {
         ::rtidb::nameserver::ShowTableRequest request;
         ::rtidb::nameserver::ShowTableResponse response;
         ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
-                    &request, &response, 12, 1);
+                    &request, &response, FLAGS_request_timeout_ms, 1);
         ASSERT_TRUE(ok);
         ASSERT_EQ(0, response.code());
     }
@@ -477,7 +478,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     meta1->set_endpoint("127.0.0.1:9531");
     meta1->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(-1, response.code());
 
@@ -487,7 +488,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     meta2->set_endpoint("127.0.0.1:9531");
     meta2->set_is_leader(true);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
-            &request, &response, 12, 1);
+            &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
 
@@ -496,7 +497,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     get_request.set_name(name);
     get_request.set_pid(0);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::GetTablePartition,
-            &get_request, &get_response, 12, 1);
+            &get_request, &get_response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, get_response.code());
     ::rtidb::nameserver::TablePartition table_partition;
@@ -512,12 +513,12 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     ::rtidb::nameserver::TablePartition* cur_table_partition = set_request.mutable_table_partition();
     cur_table_partition->CopyFrom(table_partition);
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::SetTablePartition,
-            &set_request, &set_response, 12, 1);
+            &set_request, &set_response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, set_response.code());
 
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::GetTablePartition,
-            &get_request, &get_response, 12, 1);
+            &get_request, &get_response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, get_response.code());
     ASSERT_FALSE(get_response.table_partition().partition_meta(0).is_leader());

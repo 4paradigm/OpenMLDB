@@ -1571,10 +1571,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex:man\n");
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
-            printf("desc: setttl cmd info\n");
-            printf("usage: help [cmd]\n");
-            printf("usage: man [cmd]\n");
+            printf("desc: set table ttl \n");
+            printf("usage: setttl table_name ttl_type ttl\n");
             printf("ex: setttl t1 absolute 10\n");
+            printf("ex: setttl t2 latest 5\n");
         } else if (parts[1] == "updatetablealive") {
             printf("desc: update table alive status\n");
             printf("usage: updatetablealive endppoint is_alive table [pid]\n");
@@ -2197,17 +2197,17 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex:man\n");
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
-            printf("desc: setttl cmd info\n");
-            printf("usage: help [cmd]\n");
-            printf("usage: man [cmd]\n");
+            printf("desc: set table ttl \n");
+            printf("usage: setttl tid pid ttl_type ttl\n");
             printf("ex: setttl 1 0 absolute 10\n");
+            printf("ex: setttl 2 0 latest 10\n");
         } else if (parts[1] == "setlimit") {
             printf("desc: setlimit for tablet interface\n");
-            printf("usage: man [cmd]\n");
+            printf("usage: setlimit method limit\n");
             printf("ex:setlimit server 10, limit the server max concurrency to 10\n");
             printf("ex:setlimit Put 10, limit the server put  max concurrency to 10\n");
             printf("ex:setlimit Get 10, limit the server get  max concurrency to 10\n");
-            printf("ex:setlimit Scan, limit the server scan  max concurrency to 10\n");
+            printf("ex:setlimit Scan 10, limit the server scan  max concurrency to 10\n");
         }else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
