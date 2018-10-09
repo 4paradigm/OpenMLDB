@@ -1577,9 +1577,9 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: setttl t2 latest 5\n");
         } else if (parts[1] == "updatetablealive") {
             printf("desc: update table alive status\n");
-            printf("usage: updatetablealive endppoint is_alive table [pid]\n");
-            printf("ex: updatetablealive 172.27.2.52:9991 no t1\n");
-            printf("ex: updatetablealive 172.27.2.52:9991 no t1 0\n");
+            printf("usage: updatetablealive table_name pid endppoint is_alive\n");
+            printf("ex: updatetablealive t1 * 172.27.2.52:9991 no\n");
+            printf("ex: updatetablealive t1 0 172.27.2.52:9991 no\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -1691,21 +1691,26 @@ void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::rti
         std::cout << "Bad format" << std::endl;
         return;
     }
-    std::string endpoint = parts[1];
+    std::string name = parts[1];
+    std::string endpoint = parts[3];
     bool is_alive = false;
-    if (parts[2] == "yes") {
+    if (parts[4] == "yes") {
         is_alive = true;
-    } else if (parts[2] == "no") {
+    } else if (parts[4] == "no") {
         is_alive = false;
     } else {
         std::cout << "is_alive should be yes or no" << std::endl;
         return;
     }
-    std::string name = parts[3];
     uint32_t pid = UINT32_MAX;
-    if (parts.size() > 4) {
+    if (parts[2] != "*") {
         try {
-            pid = boost::lexical_cast<uint32_t>(parts[4]);
+            int pid_tmp  = boost::lexical_cast<int32_t>(parts[2]);
+            if (pid_tmp < 0) {
+                std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+                return;
+            }
+            pid = pid_tmp;
         } catch (std::exception const& e) {
             std::cout << "Invalid args. pid should be uint32_t" << std::endl;
             return;
