@@ -3774,6 +3774,76 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
                     name.c_str(), endpoint.c_str(), pid);
 }
 
+void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
+            const UpdateTableAliveRequest* request,
+            GeneralResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    std::string name = request->name();
+    std::string endpoint = request->endpoint();
+    if (tablets_.find(endpoint) == tablets_.end()) {
+        PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
+        response->set_code(-1);
+        response->set_msg("endpoint is not exist");
+        return;
+    }
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        response->set_code(-1);
+        response->set_msg("table is not exist");
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> cur_table_info(iter->second->New());
+    cur_table_info->CopyFrom(*(iter->second));
+    bool has_update = false;
+    for (int idx = 0; idx < cur_table_info->table_partition_size(); idx++) {
+        if (request->has_pid() && cur_table_info->table_partition(idx).pid() != request->pid()) {
+            continue;
+        }
+        for (int meta_idx = 0; meta_idx < cur_table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (cur_table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+                ::rtidb::nameserver::TablePartition* table_partition =
+                        cur_table_info->mutable_table_partition(idx);
+                ::rtidb::nameserver::PartitionMeta* partition_meta = 
+                        table_partition->mutable_partition_meta(meta_idx);        
+                partition_meta->set_is_alive(request->is_alive());
+                std::string is_alive = request->is_alive() ? "true" : "false";
+                PDLOG(INFO, "update status[%s]. name[%s] endpoint[%s] pid[%u]", 
+                            is_alive.c_str(), name.c_str(), endpoint.c_str(), iter->second->table_partition(idx).pid());
+                has_update = true;
+                break;
+            }
+        }
+    }
+    if (has_update) {
+        std::string table_value;
+        cur_table_info->SerializeToString(&table_value);
+        if (zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
+            NotifyTableChanged();
+            iter->second = cur_table_info;
+            PDLOG(INFO, "update alive status ok. name[%s] endpoint[%s]", name.c_str(), endpoint.c_str());
+            response->set_code(0);
+            response->set_msg("ok");
+            return;         
+        } else {
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            response->set_msg("no pid has set");
+        }
+    } else {
+        response->set_msg("no pid has update");
+    }
+    response->set_code(-1);
+}
+
 void NameServerImpl::UpdateTableAlive(const std::string& name, const std::string& endpoint,
                 bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     if (!running_.load(std::memory_order_acquire)) {

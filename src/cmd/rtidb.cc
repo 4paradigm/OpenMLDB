@@ -1437,6 +1437,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("migrate - migrate partition form one endpoint to another\n");
         printf("gettablepartition - get partition info\n");
         printf("settablepartition - update partition info\n");
+        printf("updatetablealive - update table alive status\n");
         printf("setttl - set table ttl\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
@@ -1574,6 +1575,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: setttl table_name ttl_type ttl\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
+        } else if (parts[1] == "updatetablealive") {
+            printf("desc: update table alive status\n");
+            printf("usage: updatetablealive endppoint is_alive table [pid]\n");
+            printf("ex: updatetablealive 172.27.2.52:9991 no t1\n");
+            printf("ex: updatetablealive 172.27.2.52:9991 no t1 0\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -1678,6 +1684,39 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::rt
 	if (!io_error) {
 		std::cout << "get table partition ok" << std::endl;
 	}
+}
+
+void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string endpoint = parts[1];
+    bool is_alive = false;
+    if (parts[2] == "yes") {
+        is_alive = true;
+    } else if (parts[2] == "no") {
+        is_alive = false;
+    } else {
+        std::cout << "is_alive should be yes or no" << std::endl;
+        return;
+    }
+    std::string name = parts[3];
+    uint32_t pid = UINT32_MAX;
+    if (parts.size() > 4) {
+        try {
+            pid = boost::lexical_cast<uint32_t>(parts[4]);
+        } catch (std::exception const& e) {
+            std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+            return;
+        } 
+    }
+    std::string msg;
+    if (!client->UpdateTableAliveStatus(endpoint, name, pid, is_alive, msg)) {
+        std::cout << "Fail to update table alive. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "update ok" << std::endl;
 }
 
 void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -3157,6 +3196,8 @@ void StartNsClient() {
             HandleNSClientGetTablePartition(parts, &client);
         } else if (parts[0] == "settablepartition") {
             HandleNSClientSetTablePartition(parts, &client);
+        } else if (parts[0] == "updatetablealive") {
+            HandleNSClientUpdateTableAlive(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleNSClientSetTTL(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
