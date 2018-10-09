@@ -33,5 +33,6 @@ mvn clean test -Dtest=com._4paradigm.rtidb.client.ut.*Test,com._4paradigm.rtidb.
 
 clear_debug
 cd $ROOT_DIR
-cd onebox && sh stop_all.sh && cd $ROOT_DIR
+cd onebox && sh stop_all.sh
+cd $ROOT_DIR
 cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
