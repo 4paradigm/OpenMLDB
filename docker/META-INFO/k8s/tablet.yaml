@@ -22,9 +22,9 @@ spec:
         - name: zk_root_path
           value: "/rtidb"
         - name: port
-          value: {{.tablet_port}}
+          value: "{{.tablet_port}}"
         - name: metric_port
-          value: {{.metric_port}}
+          value: "{{.metric_port}}"
         - name: MY_NODE_NAME
           valueFrom:
             fieldRef:

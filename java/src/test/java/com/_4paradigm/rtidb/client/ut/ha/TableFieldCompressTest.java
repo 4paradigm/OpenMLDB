@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.GetFuture;
@@ -38,7 +39,9 @@ public class TableFieldCompressTest {
     private static TableSyncClient tableSyncClient = null;
     private static TableAsyncClient tableAsyncClient = null;
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
-    static {
+
+    @BeforeClass
+    public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
@@ -54,7 +57,7 @@ public class TableFieldCompressTest {
     }
 
     @AfterClass
-    public void closeResource() {
+    public static void closeResource() {
         nsc.close();
         client.close();
     }

@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.joda.time.DateTime;
 import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.testng.Assert;
 
@@ -27,7 +28,8 @@ public class TableTimestampTest {
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
-    static {
+    @BeforeClass
+    public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
@@ -42,9 +44,8 @@ public class TableTimestampTest {
             e.printStackTrace();
         }
     }
-    
     @AfterClass
-    public void tearDown() {
+    public static void tearDown() {
         nsc.close();
         client.close();
     }

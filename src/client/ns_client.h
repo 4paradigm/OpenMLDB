@@ -54,7 +54,7 @@ public:
 
     bool ConfGet(const std::string& key, std::map<std::string, std::string>& conf_map, std::string& msg);
 
-    bool ChangeLeader(const std::string& name, uint32_t pid, std::string& msg);
+    bool ChangeLeader(const std::string& name, uint32_t pid, std::string& candidate_leader, std::string& msg);
 
     bool OfflineEndpoint(const std::string& endpoint, std::string& msg);
 
@@ -70,11 +70,20 @@ public:
     bool DisConnectZK(std::string& msg);
 
     bool SetTablePartition(const std::string& name,
-                const ::rtidb::nameserver::TablePartition& table_partition, std::string& msg);
+                           const ::rtidb::nameserver::TablePartition& table_partition, 
+                           std::string& msg);
 
     bool GetTablePartition(const std::string& name, uint32_t pid,
-                ::rtidb::nameserver::TablePartition& table_partition, std::string& msg);
-	
+                           ::rtidb::nameserver::TablePartition& table_partition, 
+                           std::string& msg);
+
+    bool UpdateTableAliveStatus(const std::string& endpoint, std::string& name, 
+                            uint32_t pid, bool is_alive, std::string& msg);
+
+    bool UpdateTTL(const std::string& name, 
+                   const std::string& ttl_type, 
+                   uint64_t ttl,
+                   std::string& msg);
 private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;

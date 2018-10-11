@@ -70,7 +70,7 @@ DECLARE_uint32(latest_ttl_max);
 
 namespace rtidb {
 namespace tablet {
-
+const static std::string SERVER_CONCURRENCY_KEY = "server";
 FileReceiver::FileReceiver(const std::string& file_name, uint32_t tid, uint32_t pid):
         file_name_(file_name), tid_(tid), pid_(pid), size_(0), block_id_(0), file_(NULL) {}
 
@@ -139,7 +139,7 @@ void FileReceiver::SaveFile() {
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
-    io_pool_(FLAGS_io_pool_size){}
+    io_pool_(FLAGS_io_pool_size), server_(NULL){}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -175,6 +175,32 @@ bool TabletImpl::Init() {
     tcmalloc->SetMemoryReleaseRate(FLAGS_mem_release_rate);
 #endif 
     return true;
+}
+
+void TabletImpl::UpdateTTL(RpcController* ctrl,
+        const ::rtidb::api::UpdateTTLRequest* request,
+        ::rtidb::api::UpdateTTLResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);         
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+
+    if (!table) {
+        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
+                request->pid());
+        response->set_code(-1);
+        response->set_msg("table not found");
+        return;
+    }
+
+    if (request->type() != table->GetTTLType()) {
+        response->set_code(-2);
+        response->set_msg("ttl type mismatch");
+        return;
+    }
+    table->SetTTL(request->value());
+    response->set_code(0);
+    response->set_msg("ok");
+    PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
 }
 
 bool TabletImpl::RegisterZK() {
@@ -659,7 +685,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
             replicator->SetLeaderTerm(term);
         }
     }
-    if (!replicator->AddReplicateNode(replicas)) {
+    if (replicator->AddReplicateNode(replicas) < 0) {
         PDLOG(WARNING,"add replicator failed. tid[%u] pid[%u]", tid, pid);
     }
     return 0;
@@ -2177,6 +2203,34 @@ void TabletImpl::DisConnectZK(RpcController* controller,
     response->set_msg("ok");
     PDLOG(INFO, "disconnect zk ok"); 
     return;
+}
+
+void TabletImpl::SetConcurrency(RpcController* ctrl,
+        const ::rtidb::api::SetConcurrencyRequest* request,
+        ::rtidb::api::SetConcurrencyResponse* response,
+        Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    if (server_ == NULL) {
+        response->set_code(-1);
+        response->set_msg("server is NULL");
+        return;
+    }
+
+    if (request->max_concurrency() < 0) {
+        response->set_code(-1);
+        response->set_msg("invalid max concurrency " + request->max_concurrency());
+        return;
+    }
+
+    if (SERVER_CONCURRENCY_KEY.compare(request->key()) == 0) {
+        PDLOG(INFO, "update server max concurrency to %d", request->max_concurrency());
+        server_->ResetMaxConcurrency(request->max_concurrency());
+    }else {
+        PDLOG(INFO, "update server api %s max concurrency to %d", request->key().c_str(), request->max_concurrency());
+        server_->MaxConcurrencyOf(this, request->key()) = request->max_concurrency();
+    }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 int TabletImpl::AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,

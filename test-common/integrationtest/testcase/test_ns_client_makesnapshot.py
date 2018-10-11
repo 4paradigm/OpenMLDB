@@ -179,6 +179,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         time.sleep(10)
 
         self.changeleader(self.ns_leader, name, 0)
+        time.sleep(2)
 
         rs2 = self.showtable(self.ns_leader)
         rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')

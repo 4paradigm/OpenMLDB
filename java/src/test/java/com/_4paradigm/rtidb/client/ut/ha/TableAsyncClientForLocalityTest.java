@@ -6,7 +6,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
@@ -24,7 +27,7 @@ import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 
 public class TableAsyncClientForLocalityTest {
-
+    private final static Logger logger = LoggerFactory.getLogger(TableAsyncClientForLocalityTest.class);
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(20000);
@@ -33,7 +36,8 @@ public class TableAsyncClientForLocalityTest {
     private static RTIDBClusterClient client = null;
     private static TableAsyncClient tableAsyncClient = null;
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
-    static {
+    @BeforeClass
+    public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
@@ -48,9 +52,8 @@ public class TableAsyncClientForLocalityTest {
             e.printStackTrace();
         }
     }
-
     @AfterClass
-    public void closeResource() {
+    public static void closeResource() {
         nsc.close();
     }
     
@@ -110,6 +113,7 @@ public class TableAsyncClientForLocalityTest {
             value = new String(gf.get().toByteArray());
             Assert.assertEquals(value, "value1");
         } catch (Exception e) {
+            logger.error("fail to put ", e);
             e.printStackTrace();
             Assert.fail();
         }finally {
@@ -139,7 +143,7 @@ public class TableAsyncClientForLocalityTest {
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 9.2d);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("fail to schema put", e);
             Assert.assertTrue(false);
         } finally {
             nsc.dropTable(name);

@@ -209,10 +209,10 @@ if [ -f "brpc_succ" ]
 then
     echo "brpc exist"
 else
-    wget -O brpc-master.zip https://github.com/brpc/brpc/archive/master.zip > /dev/null
-    unzip brpc-master.zip 
-    BRPC_DIR=$DEPS_SOURCE/brpc-master
-    cd brpc-master
+    wget http://pkg.4paradigm.com:81/rtidb/dev/brpc-legacy-1.3.7.tar.gz
+    tar -zxvf brpc-legacy-1.3.7.tar.gz
+    BRPC_DIR=$DEPS_SOURCE/brpc-legacy
+    cd brpc-legacy
     sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
     make -j5 libbrpc.a
     make output/include

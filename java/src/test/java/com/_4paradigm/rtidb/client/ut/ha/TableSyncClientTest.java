@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
@@ -31,7 +32,8 @@ public class TableSyncClientTest {
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
-    static {
+    @BeforeClass
+    public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
@@ -46,9 +48,8 @@ public class TableSyncClientTest {
             e.printStackTrace();
         }
     }
-    
     @AfterClass
-    public void tearDown() {
+    public static void tearDown() {
         nsc.close();
         client.close();
     }
