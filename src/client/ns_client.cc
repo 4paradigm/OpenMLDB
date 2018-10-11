@@ -325,6 +325,25 @@ bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
     return false;
 }            
 
+bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& name, 
+                    uint32_t pid, bool is_alive, std::string& msg) {
+    ::rtidb::nameserver::UpdateTableAliveRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_endpoint(endpoint);
+    request.set_name(name);
+    request.set_is_alive(is_alive);
+    if (pid < UINT32_MAX) {
+        request.set_pid(pid);
+    }
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTableAliveStatus,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::UpdateTTL(const std::string& name, 
                          const std::string& ttl_type,
                          uint64_t ttl,

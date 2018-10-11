@@ -683,7 +683,7 @@ int TabletImpl::ChangeToLeader(uint32_t tid, uint32_t pid, const std::vector<std
             replicator->SetLeaderTerm(term);
         }
     }
-    if (!replicator->AddReplicateNode(replicas)) {
+    if (replicator->AddReplicateNode(replicas) < 0) {
         PDLOG(WARNING,"add replicator failed. tid[%u] pid[%u]", tid, pid);
     }
     return 0;

@@ -541,6 +541,16 @@ void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::cli
         std::cout << "Bad format" << std::endl;
         return;
     }
+    if (FLAGS_interactive) {
+        printf("Drop table %s? yes/no\n", parts[1].c_str());
+        std::string input;
+        std::cin >> input;
+        std::transform(input.begin(), input.end(), input.begin(), ::tolower);
+        if (input != "yes") {
+            printf("'drop %s' cmd is canceled!\n", parts[1].c_str());
+            return;
+        }
+    }
     std::string msg;
     bool ret = client->DropTable(parts[1], msg);
     if (!ret) {
@@ -1427,6 +1437,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("migrate - migrate partition form one endpoint to another\n");
         printf("gettablepartition - get partition info\n");
         printf("settablepartition - update partition info\n");
+        printf("updatetablealive - update table alive status\n");
         printf("setttl - set table ttl\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
@@ -1560,10 +1571,15 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex:man\n");
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
-            printf("desc: setttl cmd info\n");
-            printf("usage: help [cmd]\n");
-            printf("usage: man [cmd]\n");
+            printf("desc: set table ttl \n");
+            printf("usage: setttl table_name ttl_type ttl\n");
             printf("ex: setttl t1 absolute 10\n");
+            printf("ex: setttl t2 latest 5\n");
+        } else if (parts[1] == "updatetablealive") {
+            printf("desc: update table alive status\n");
+            printf("usage: updatetablealive table_name pid endppoint is_alive\n");
+            printf("ex: updatetablealive t1 * 172.27.2.52:9991 no\n");
+            printf("ex: updatetablealive t1 0 172.27.2.52:9991 no\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -1668,6 +1684,44 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::rt
 	if (!io_error) {
 		std::cout << "get table partition ok" << std::endl;
 	}
+}
+
+void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad format" << std::endl;
+        return;
+    }
+    std::string name = parts[1];
+    std::string endpoint = parts[3];
+    bool is_alive = false;
+    if (parts[4] == "yes") {
+        is_alive = true;
+    } else if (parts[4] == "no") {
+        is_alive = false;
+    } else {
+        std::cout << "is_alive should be yes or no" << std::endl;
+        return;
+    }
+    uint32_t pid = UINT32_MAX;
+    if (parts[2] != "*") {
+        try {
+            int pid_tmp  = boost::lexical_cast<int32_t>(parts[2]);
+            if (pid_tmp < 0) {
+                std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+                return;
+            }
+            pid = pid_tmp;
+        } catch (std::exception const& e) {
+            std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+            return;
+        } 
+    }
+    std::string msg;
+    if (!client->UpdateTableAliveStatus(endpoint, name, pid, is_alive, msg)) {
+        std::cout << "Fail to update table alive. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "update ok" << std::endl;
 }
 
 void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -2148,17 +2202,17 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex:man\n");
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
-            printf("desc: setttl cmd info\n");
-            printf("usage: help [cmd]\n");
-            printf("usage: man [cmd]\n");
+            printf("desc: set table ttl \n");
+            printf("usage: setttl tid pid ttl_type ttl\n");
             printf("ex: setttl 1 0 absolute 10\n");
+            printf("ex: setttl 2 0 latest 10\n");
         } else if (parts[1] == "setlimit") {
             printf("desc: setlimit for tablet interface\n");
-            printf("usage: man [cmd]\n");
+            printf("usage: setlimit method limit\n");
             printf("ex:setlimit server 10, limit the server max concurrency to 10\n");
             printf("ex:setlimit Put 10, limit the server put  max concurrency to 10\n");
             printf("ex:setlimit Get 10, limit the server get  max concurrency to 10\n");
-            printf("ex:setlimit Scan, limit the server scan  max concurrency to 10\n");
+            printf("ex:setlimit Scan 10, limit the server scan  max concurrency to 10\n");
         }else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -3147,6 +3201,8 @@ void StartNsClient() {
             HandleNSClientGetTablePartition(parts, &client);
         } else if (parts[0] == "settablepartition") {
             HandleNSClientSetTablePartition(parts, &client);
+        } else if (parts[0] == "updatetablealive") {
+            HandleNSClientUpdateTableAlive(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleNSClientSetTTL(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
