@@ -17,13 +17,21 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
+DECLARE_uint32(pk_node_max_height);
+
 namespace rtidb {
 namespace storage {
 
 const static SliceComparator scmp;
 
 Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0){
-    entries_ = new KeyEntries(12, 4, scmp);
+    entries_ = new KeyEntries((uint8_t)FLAGS_pk_node_max_height, 4, scmp);
+    key_entry_height_ = 12;
+}
+
+Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
+		key_entry_height_(height) {
+    entries_ = new KeyEntries((uint8_t)FLAGS_pk_node_max_height, 4, scmp);
 }
 
 Segment::~Segment() {
@@ -65,7 +73,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
             PDLOG(DEBUG, "new pk entry %s", key.data());
             char* pk = new char[key.size()];
             memcpy(pk, key.data(), key.size());
-            entry = new KeyEntry(pk, (uint32_t)key.size());
+            entry = new KeyEntry(pk, (uint32_t)key.size(), key_entry_height_);
             uint8_t height = entries_->Insert(entry->key, entry);
             byte_size += GetRecordPkIdxSize(height, key.size());
             pk_cnt_.fetch_add(1, std::memory_order_relaxed);
