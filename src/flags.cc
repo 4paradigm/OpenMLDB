@@ -75,6 +75,6 @@ DEFINE_uint32(latest_ttl_max, 1000 , "the max ttl of latest");
 DEFINE_uint32(absolute_ttl_max, 60*24*365*30 , "the max ttl of absolute time");
 DEFINE_uint32(absolute_key_entry_max_height, 4, "the max height of key entry in absolute table");
 DEFINE_uint32(latest_key_entry_max_height, 1, "the max height of key entry in latest table");
-DEFINE_uint32(pk_node_max_height, 10, "the max height of first level node");
+DEFINE_uint32(pk_node_max_height, 12, "the max height of first level node");
 
 DEFINE_bool(enable_show_tp, false, "enable show tp");
