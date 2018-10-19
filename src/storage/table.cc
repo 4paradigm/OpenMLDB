@@ -75,12 +75,14 @@ void Table::Init() {
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
+            uint8_t height = 0;
             if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
-                segments_[i][j] = new Segment(FLAGS_absolute_key_entry_max_height);
+                height = FLAGS_absolute_key_entry_max_height;
             } else {
-                segments_[i][j] = new Segment(FLAGS_latest_key_entry_max_height);
+                height = FLAGS_latest_key_entry_max_height;
             }
-            PDLOG(DEBUG, "init %u, %u segment", i, j);
+            segments_[i][j] = new Segment(height);
+            PDLOG(DEBUG, "init %u, %u segment. height %u", i, j, height);
         }
     }
     if (ttl_ > 0) {

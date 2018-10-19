@@ -2037,10 +2037,10 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
                                                            mapping,
                                                            table_meta->ttl(), is_leader,
                                                            endpoints);
+    table->SetTTLType(table_meta->ttl_type());
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());
-    table->SetTTLType(table_meta->ttl_type());
     if (table_meta->has_compress_type()) {
         table->SetCompressType(table_meta->compress_type());
     }

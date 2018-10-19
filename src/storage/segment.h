@@ -180,7 +180,7 @@ private:
     std::atomic<uint64_t> idx_cnt_;
     std::atomic<uint64_t> idx_byte_size_;
     std::atomic<uint64_t> pk_cnt_;
-    uint8_t key_entry_height_;
+    uint8_t key_entry_max_height_;
 };
 
 }// namespace storage

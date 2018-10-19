@@ -86,6 +86,8 @@ TEST_F(NodeTest, SetNext) {
 TEST_F(NodeTest, NodeByteSize) {
     std::atomic<Node<Slice, std::string*>* > node0[12];
     ASSERT_EQ(96, sizeof(node0));
+    ASSERT_EQ(32, sizeof(Node<uint64_t, void*>));
+    ASSERT_EQ(40, sizeof(Node<Slice, void*>));
 }
 
 

@@ -26,11 +26,11 @@ const static SliceComparator scmp;
 
 Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0){
     entries_ = new KeyEntries((uint8_t)FLAGS_pk_node_max_height, 4, scmp);
-    key_entry_height_ = 12;
+    key_entry_max_height_ = 12;
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
-		key_entry_height_(height) {
+		key_entry_max_height_(height) {
     entries_ = new KeyEntries((uint8_t)FLAGS_pk_node_max_height, 4, scmp);
 }
 
@@ -73,9 +73,9 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
             PDLOG(DEBUG, "new pk entry %s", key.data());
             char* pk = new char[key.size()];
             memcpy(pk, key.data(), key.size());
-            entry = new KeyEntry(pk, (uint32_t)key.size(), key_entry_height_);
+            entry = new KeyEntry(pk, (uint32_t)key.size(), key_entry_max_height_);
             uint8_t height = entries_->Insert(entry->key, entry);
-            byte_size += GetRecordPkIdxSize(height, key.size());
+            byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
             pk_cnt_.fetch_add(1, std::memory_order_relaxed);
         }
     }
