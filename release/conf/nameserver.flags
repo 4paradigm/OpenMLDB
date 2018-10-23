@@ -29,4 +29,4 @@
 #--max_op_num=10000
 
 #--replica_num=3
-#--partition_num=16
+#--partition_num=8

@@ -26,7 +26,7 @@ const static SliceComparator scmp;
 
 Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0){
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-    key_entry_max_height_ = FLAGS_skiplist_max_height;
+    key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 

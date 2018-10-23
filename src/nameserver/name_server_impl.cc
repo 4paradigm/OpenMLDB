@@ -14,7 +14,6 @@
 #include "base/strings.h"
 #include <chrono>
 #include <boost/algorithm/string.hpp>
-#include "proto/tablet.pb.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
