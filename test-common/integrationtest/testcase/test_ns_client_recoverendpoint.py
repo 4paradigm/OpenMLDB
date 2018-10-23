@@ -32,6 +32,7 @@ class TestRecoverEndpoint(TestCaseBase):
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
         self.put_large_datas(data_count, 7)
+        time.sleep(1)
 
     def confset_createtable_nofollower_put(self, data_count):
         self.confset(self.ns_leader, 'auto_failover', 'true')
