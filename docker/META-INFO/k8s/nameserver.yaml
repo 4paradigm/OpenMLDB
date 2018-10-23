@@ -21,7 +21,7 @@ spec:
           value: {{.zk_cluster}}
         - name: zk_root_path
           value: "/rtidb"
-        - name: port
+        - name: nameserver_port
           value: "{{.nameserver_port}}"
         - name: MY_NODE_NAME
           valueFrom:
