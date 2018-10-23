@@ -61,6 +61,7 @@ DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
+DECLARE_uint32(skiplist_max_height);
 
 void SetupLog() {
     // Config log 
@@ -1180,6 +1181,14 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     } else {
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
+    }
+    if (table_info.has_key_entry_max_height()) {
+        if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
+            printf("key_entry_max_height %u large than the max heght %u\n", 
+                        table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
+            return -1;
+        }
+        ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
     }
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
     if (table_info.table_partition_size() > 0) {

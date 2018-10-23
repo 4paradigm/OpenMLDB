@@ -65,6 +65,8 @@ DECLARE_int32(zk_keep_alive_check_interval);
 
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
+DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(key_entry_max_height);
 
 namespace rtidb {
 namespace tablet {
@@ -2031,16 +2033,21 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         mapping.insert(std::make_pair("idx0", 0));
         PDLOG(INFO, "no index specified with default");
     }
+    uint32_t key_entry_max_height = FLAGS_key_entry_max_height;
+    if (table_meta->has_key_entry_max_height() && table_meta->key_entry_max_height() < FLAGS_skiplist_max_height) {
+        key_entry_max_height = table_meta->key_entry_max_height();
+    }
     std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
                                                            table_meta->tid(),
                                                            table_meta->pid(), seg_cnt, 
                                                            mapping,
                                                            table_meta->ttl(), is_leader,
-                                                           endpoints);
-    table->SetTTLType(table_meta->ttl_type());
+                                                           endpoints,
+                                                           key_entry_max_height);
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());
+    table->SetTTLType(table_meta->ttl_type());
     if (table_meta->has_compress_type()) {
         table->SetCompressType(table_meta->compress_type());
     }

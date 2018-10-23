@@ -17,7 +17,7 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-DECLARE_uint32(pk_node_max_height);
+DECLARE_uint32(skiplist_max_height);
 
 namespace rtidb {
 namespace storage {
@@ -25,13 +25,13 @@ namespace storage {
 const static SliceComparator scmp;
 
 Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0){
-    entries_ = new KeyEntries((uint8_t)FLAGS_pk_node_max_height, 4, scmp);
-    key_entry_max_height_ = 12;
+    entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
+    key_entry_max_height_ = FLAGS_skiplist_max_height;
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
 		key_entry_max_height_(height) {
-    entries_ = new KeyEntries((uint8_t)FLAGS_pk_node_max_height, 4, scmp);
+    entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
 }
 
 Segment::~Segment() {

@@ -135,6 +135,19 @@ bool TabletClient::CreateTable(const std::string& name,
     return false;
 }
 
+bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
+    ::rtidb::api::CreateTableRequest request;
+    ::rtidb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();
+    table_meta_ptr->CopyFrom(table_meta);
+    ::rtidb::api::CreateTableResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool TabletClient::Put(uint32_t tid,
              uint32_t pid,
              uint64_t time,

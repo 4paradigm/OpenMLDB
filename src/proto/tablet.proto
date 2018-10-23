@@ -238,6 +238,7 @@ message TableMeta {
     optional bytes schema = 11;
     repeated string dimensions = 12;
     optional CompressType compress_type = 13;
+    optional uint32 key_entry_max_height = 14;
 }
 
 message CreateTableRequest {

@@ -47,6 +47,8 @@ public:
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
                      uint64_t term = 0, const ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress);
+                    
+    bool CreateTable(const ::rtidb::api::TableMeta& table_meta);                
 
     bool Put(uint32_t tid,
              uint32_t pid,
