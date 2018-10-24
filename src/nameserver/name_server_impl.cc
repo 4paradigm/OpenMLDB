@@ -30,6 +30,8 @@ DECLARE_bool(auto_failover);
 DECLARE_bool(auto_recover_table);
 DECLARE_uint32(tablet_heartbeat_timeout);
 DECLARE_uint32(tablet_offline_check_interval);
+DECLARE_uint32(absolute_ttl_max);
+DECLARE_uint32(latest_ttl_max);
 
 namespace rtidb {
 namespace nameserver {
@@ -1730,6 +1732,15 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
+    if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max) 
+            || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
+        response->set_code(-1);
+        uint32_t max_ttl = table_info->ttl_type() == "kAbsoluteTime" ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
+                        table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
+        return;
+    }
     if (table_info->table_partition_size() > 0) {
         std::set<uint32_t> pid_set;
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {

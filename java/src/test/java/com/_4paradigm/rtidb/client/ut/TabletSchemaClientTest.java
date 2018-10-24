@@ -86,6 +86,25 @@ public class TabletSchemaClientTest {
     }
 
     @Test
+    public void testTTL() {
+        int tid = id.incrementAndGet();
+        boolean ok = tabletClient.createTable("ttl", tid, 0, 1000, TTLType.kLatestTime, 8);
+        Assert.assertTrue(ok);
+        Assert.assertTrue(tabletClient.dropTable(tid, 0));
+        tid = id.incrementAndGet();
+        ok = tabletClient.createTable("ttl1", tid, 0, 1001, TTLType.kLatestTime, 8);
+        Assert.assertFalse(ok);
+        int max_ttl = 60*24*365*30;
+        tid = id.incrementAndGet();
+        ok = tabletClient.createTable("ttl2", tid, 0, max_ttl + 1, TTLType.kAbsoluteTime, 8);
+        Assert.assertFalse(ok);
+        tid = id.incrementAndGet();
+        ok = tabletClient.createTable("ttl3", tid, 0, max_ttl, TTLType.kAbsoluteTime, 8);
+        Assert.assertTrue(ok);
+        Assert.assertTrue(tabletClient.dropTable(tid, 0));
+    }
+
+    @Test
     public void testEmptyColNameCreate() {
         int tid = id.incrementAndGet();
         List<ColumnDesc> schema = new ArrayList<ColumnDesc>();

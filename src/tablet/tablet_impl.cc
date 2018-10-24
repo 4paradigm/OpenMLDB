@@ -65,6 +65,8 @@ DECLARE_int32(zk_keep_alive_check_interval);
 
 DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
+DECLARE_uint32(absolute_ttl_max);
+DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(key_entry_max_height);
 
@@ -1705,8 +1707,18 @@ void TabletImpl::CreateTable(RpcController* controller,
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     ::rtidb::api::TTLType type = table_meta->ttl_type();
-    PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     uint64_t ttl = table_meta->ttl();
+    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+        response->set_code(-1);
+        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
+                        ttl, ::rtidb::api::TTLType_Name(type).c_str(), max_ttl);
+        done->Run();
+        return;
+    }
+    PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string name = table_meta->name();
     uint32_t seg_cnt = 8;
     if (table_meta->seg_cnt() > 0) {
