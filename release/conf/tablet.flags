@@ -64,7 +64,5 @@
 #--retry_send_file_wait_time_ms=3000
 #
 # table conf
-#--absolute_key_entry_max_height=1
-#--latest_key_entry_max_height=1
 #--skiplist_max_height=12
 #--key_entry_max_height=1

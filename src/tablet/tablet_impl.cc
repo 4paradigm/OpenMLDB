@@ -2034,7 +2034,8 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         PDLOG(INFO, "no index specified with default");
     }
     uint32_t key_entry_max_height = FLAGS_key_entry_max_height;
-    if (table_meta->has_key_entry_max_height() && table_meta->key_entry_max_height() < FLAGS_skiplist_max_height) {
+    if (table_meta->has_key_entry_max_height() && table_meta->key_entry_max_height() < FLAGS_skiplist_max_height 
+            && table_meta->key_entry_max_height() > 0) {
         key_entry_max_height = table_meta->key_entry_max_height();
     }
     std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 

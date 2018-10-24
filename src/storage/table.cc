@@ -77,7 +77,7 @@ void Table::Init() {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             segments_[i][j] = new Segment(key_entry_max_height_);
-            PDLOG(DEBUG, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
+            PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
         }
     }
     if (ttl_ > 0) {
