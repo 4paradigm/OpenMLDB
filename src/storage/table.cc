@@ -219,7 +219,7 @@ uint64_t Table::GetExpireTime() {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_.load(std::memory_order_relaxed);
 }
 
 bool Table::IsExpire(const LogEntry& entry) {

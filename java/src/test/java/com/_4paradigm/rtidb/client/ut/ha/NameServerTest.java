@@ -92,5 +92,29 @@ public class NameServerTest {
             Assert.assertTrue(false);
         }
     }
-    
+
+    @Test
+    public void testCreateTableTTL() {
+        NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
+        try {
+            nsc.init();
+            int max_ttl = 60*24*365*30;
+            TableInfo tableInfo1 = TableInfo.newBuilder().setName("t1").setSegCnt(8).setTtl(max_ttl + 1).build();
+            Assert.assertFalse(nsc.createTable(tableInfo1));
+            TableInfo tableInfo2 = TableInfo.newBuilder().setName("t2").setSegCnt(8).setTtl(max_ttl).build();
+            Assert.assertTrue(nsc.createTable(tableInfo2));
+            Assert.assertTrue(nsc.dropTable("t2"));
+            TableInfo tableInfo3 = TableInfo.newBuilder().setName("t3").setSegCnt(8).setTtlType("kLatestTime").setTtl(1001).build();
+            Assert.assertFalse(nsc.createTable(tableInfo3));
+            TableInfo tableInfo4 = TableInfo.newBuilder().setName("t4").setSegCnt(8).setTtlType("kLatestTime").setTtl(1000).build();
+            Assert.assertTrue(nsc.createTable(tableInfo4));
+            Assert.assertTrue(nsc.dropTable("t4"));
+        } catch(Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.close();
+        }
+    }
+
 }
