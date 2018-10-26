@@ -406,6 +406,22 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     return status;
 }
 
+int LogReader::GetEndLogIndex() {
+    int log_index = -1;
+    LogParts::Iterator* it = logs_->NewIterator();
+    if (logs_->GetSize() <= 0) {
+        delete it;
+        return log_index;
+    }
+    it->SeekToFirst();
+    while (it->Valid()) {
+        log_index = it->GetKey();
+        it->Next();
+    }
+    delete it;
+    return log_index;
+}
+
 int LogReader::RollRLogFile() {
     LogParts::Iterator* it = logs_->NewIterator();
     if (logs_->GetSize() <= 0) {

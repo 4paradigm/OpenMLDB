@@ -94,6 +94,14 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         ::rtidb::base::Slice record;
         ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
         if (status.IsWaitRecord()) {
+            int end_log_index = log_reader.GetEndLogIndex();
+            int cur_log_index = log_reader.GetLogIndex();
+            if (end_log_index >= 0 && end_log_index > cur_log_index) {
+                log_reader.RollRLogFile();
+                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
+                                tid_, pid_, cur_log_index, end_log_index, cur_offset);
+                continue;
+            }
             consumed = ::baidu::common::timer::now_time() - consumed;
             PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                        tid_, pid_, succ_cnt, failed_cnt, consumed);
@@ -260,63 +268,63 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
 
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
             uint64_t& count, uint64_t& expired_key_num) {
-	std::string full_path = snapshot_path_ + manifest.name();
-	FILE* fd = fopen(full_path.c_str(), "rb");
-	if (fd == NULL) {
-		PDLOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
-		return -1;
-	}
-	::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(manifest.name(), fd);
-	::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    std::string full_path = snapshot_path_ + manifest.name();
+    FILE* fd = fopen(full_path.c_str(), "rb");
+    if (fd == NULL) {
+        PDLOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
+        return -1;
+    }
+    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(manifest.name(), fd);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
 
-	std::string buffer;
-	::rtidb::api::LogEntry entry;
+    std::string buffer;
+    ::rtidb::api::LogEntry entry;
     bool has_error = false;
-	while (true) {
-		::rtidb::base::Slice record;
-		::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
-		if (status.IsEof()) {
-			break;
-		}
-		if (!status.ok()) {
-			PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
-			has_error = true;        
-			break;
-		}
-		if (!entry.ParseFromString(record.ToString())) {
-			PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-					::rtidb::base::DebugString(record.ToString()).c_str());
-			has_error = true;        
-			break;
-		}
-		// delete timeout key
-		if (table->IsExpire(entry)) {
-			expired_key_num++;
-			continue;
-		}
-		status = wh->Write(record);
-		if (!status.ok()) {
-			PDLOG(WARNING, "fail to write snapshot. status[%s]", 
-			              status.ToString().c_str());
-			has_error = true;        
-			break;
-		}
-        if ((count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
-			PDLOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count()); 
+    while (true) {
+        ::rtidb::base::Slice record;
+        ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
+        if (status.IsEof()) {
+            break;
         }
-		count++;
-	}
-	delete seq_file;
+        if (!status.ok()) {
+            PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
+            has_error = true;        
+            break;
+        }
+        if (!entry.ParseFromString(record.ToString())) {
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+                    ::rtidb::base::DebugString(record.ToString()).c_str());
+            has_error = true;        
+            break;
+        }
+        // delete timeout key
+        if (table->IsExpire(entry)) {
+            expired_key_num++;
+            continue;
+        }
+        status = wh->Write(record);
+        if (!status.ok()) {
+            PDLOG(WARNING, "fail to write snapshot. status[%s]", 
+                          status.ToString().c_str());
+            has_error = true;        
+            break;
+        }
+        if ((count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
+            PDLOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count()); 
+        }
+        count++;
+    }
+    delete seq_file;
     if (expired_key_num + count != manifest.count()) {
-	    PDLOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
+        PDLOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
                     manifest.count(), count, expired_key_num);
         has_error = true;
     }
-	if (has_error) {
-		return -1;
-	}	
-	PDLOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num); 
-	return 0;
+    if (has_error) {
+        return -1;
+    }    
+    PDLOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num); 
+    return 0;
 }
 
 int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
@@ -378,8 +386,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             }
             if (cur_offset + 1 != entry.log_index()) {
                 PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
-                has_error = true;
-                break;
+                continue;
             }
             cur_offset = entry.log_index();
             if (entry.has_term()) {
@@ -403,6 +410,15 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
         } else if (status.IsEof()) {
             continue;
         } else if (status.IsWaitRecord()) {
+            int end_log_index = log_reader.GetEndLogIndex();
+            int cur_log_index = log_reader.GetLogIndex();
+            // judge end_log_index greater than cur_log_index + 1
+            if (end_log_index >= 0 && end_log_index > cur_log_index + 1) {
+                log_reader.RollRLogFile();
+                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
+                                tid_, pid_, cur_log_index, end_log_index, cur_offset);
+                continue;
+            }
             PDLOG(DEBUG, "has read all record!");
             break;
         } else {
