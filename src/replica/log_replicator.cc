@@ -184,7 +184,7 @@ bool LogReplicator::Recover() {
         delete seq_file;
         if (!status.ok()) {
             PDLOG(WARNING, "fail to get offset from file %s", full_path.c_str());
-            return false;
+            continue;
         }
         ok = entry.ParseFromString(record.ToString());
         if (!ok) {
