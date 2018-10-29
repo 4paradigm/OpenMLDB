@@ -211,6 +211,10 @@ public:
         }
     }
 
+    inline uint32_t GetKeyEntryHeight() {
+        return key_entry_max_height_;
+    }
+
 private:
     std::string const name_;
     uint32_t const id_;

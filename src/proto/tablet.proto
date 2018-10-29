@@ -394,6 +394,7 @@ message TableStatus {
     optional uint64 record_pk_cnt = 15;
     optional TTLType ttl_type = 16;
     optional CompressType compress_type = 17;
+    optional uint32 skiplist_height = 18;
 }
 
 message GetTableStatusResponse {

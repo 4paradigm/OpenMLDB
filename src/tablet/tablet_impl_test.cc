@@ -28,6 +28,8 @@ DECLARE_int32(gc_interval);
 namespace rtidb {
 namespace tablet {
 
+using ::rtidb::api::TableStatus;
+
 uint32_t counter = 10;
 
 inline std::string GenRand() {
@@ -1820,6 +1822,134 @@ TEST_F(TabletImplTest, Snapshot) {
     ASSERT_EQ(0, gresponse.code());
 }
 
+TEST_F(TabletImplTest, CreateTableLatestTest_Default){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    // no height specify
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(1, ts.skiplist_height());
+    }
+
+}
+
+TEST_F(TabletImplTest, CreateTableLatestTest_Specify){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_key_entry_max_height(2);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(2, ts.skiplist_height());
+    }
+}
+
+TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(4, ts.skiplist_height());
+    }
+}
+
+TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify){
+    uint32_t id = counter++;
+    MockClosure closure;
+    TabletImpl tablet;
+    tablet.Init();
+    {
+       ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_ttl(0);
+        table_meta->set_mode(::rtidb::api::kTableLeader);
+        table_meta->set_wal(true);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_key_entry_max_height(8);
+        ::rtidb::api::CreateTableResponse response;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    // get table status
+    {
+        ::rtidb::api::GetTableStatusRequest request;
+        ::rtidb::api::GetTableStatusResponse response;
+        tablet.GetTableStatus(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        const TableStatus& ts = response.all_table_status(0);
+        ASSERT_EQ(8, ts.skiplist_height());
+    }
+}
+
 TEST_F(TabletImplTest, GetTermPair) {
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
@@ -1898,7 +2028,6 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(0, pair_response.offset());
 }
-
 
 
 }
