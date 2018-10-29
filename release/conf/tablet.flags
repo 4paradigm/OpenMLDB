@@ -49,7 +49,7 @@
 # garbage collection conf
 # 60m
 --gc_interval=60
-#--gc_pool_size=2
+--gc_pool_size=1
 # 1m
 #--gc_safe_offset=1
 
