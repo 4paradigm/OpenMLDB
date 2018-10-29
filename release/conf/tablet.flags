@@ -65,4 +65,4 @@
 #
 # table conf
 #--skiplist_max_height=12
-#--key_entry_max_height=1
+#--key_entry_max_height=8
