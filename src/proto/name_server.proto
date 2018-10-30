@@ -54,6 +54,7 @@ message TableInfo {
     optional uint32 partition_num = 8;
     optional uint32 replica_num = 9; // contain the leader
     optional CompressType compress_type = 10 [default = kNoCompress];
+    optional uint32 key_entry_max_height = 11;
 }
 
 message CreateTableRequest {

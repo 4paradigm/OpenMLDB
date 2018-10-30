@@ -1141,8 +1141,40 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
 int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term) {
+    ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
+    if (table_info->ttl_type() == "kLatestTime") {
+        ttl_type = ::rtidb::api::TTLType::kLatestTime;
+    }
+    ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
+    if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
+        compress_type = ::rtidb::api::CompressType::kSnappy;
+    }
+    ::rtidb::api::TableMeta table_meta;
+    for (uint32_t i = 0; i < columns.size(); i++) {
+        if (columns[i].add_ts_idx) {
+            table_meta.add_dimensions(columns[i].name);
+        }
+    }
+    std::string schema;
+    ::rtidb::base::SchemaCodec codec;
+    bool codec_ok = codec.Encode(columns, schema);
+    if (!codec_ok) {
+        return false;
+    }
+    table_meta.set_name(table_info->name());
+    table_meta.set_tid(table_index_);
+    table_meta.set_ttl(table_info->ttl());
+    table_meta.set_seg_cnt(table_info->seg_cnt());
+    table_meta.set_schema(schema);
+    table_meta.set_ttl_type(ttl_type);
+    table_meta.set_compress_type(compress_type);
+    if (table_info->has_key_entry_max_height()) {
+        table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
+    }
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         uint32_t pid = table_info->table_partition(idx).pid();
+        table_meta.set_pid(pid);
+        table_meta.clear_replicas();
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader() != is_leader) {
                 continue;
@@ -1164,33 +1196,24 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
                     return -1;
                 }
             }
-            std::vector<std::string> endpoint_vec;
             if (is_leader) {
-                if (endpoint_map.find(pid) != endpoint_map.end()) {
-                    endpoint_map[pid].swap(endpoint_vec);
-                }
                 ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
                 ::rtidb::nameserver::TermPair* term_pair = table_partition->add_term_offset();
                 term_pair->set_term(term);
                 term_pair->set_offset(0);
+                table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+                table_meta.set_term(term);
+                for (const auto& endpoint : endpoint_map[pid]) {
+                    table_meta.add_replicas(endpoint);
+                }
             } else {
                 if (endpoint_map.find(pid) == endpoint_map.end()) {
                     endpoint_map.insert(std::make_pair(pid, std::vector<std::string>()));
                 }
                 endpoint_map[pid].push_back(endpoint);
+                table_meta.set_mode(::rtidb::api::TableMode::kTableFollower);
             }
-            ::rtidb::api::TTLType ttl_type = ::rtidb::api::TTLType::kAbsoluteTime;
-            if (table_info->ttl_type() == "kLatestTime") {
-                ttl_type = ::rtidb::api::TTLType::kLatestTime;
-            }
-            ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress;
-            if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
-                compress_type = ::rtidb::api::CompressType::kSnappy;
-            }
-            if (!tablet_ptr->client_->CreateTable(table_info->name(), table_index_, pid, 
-                                    table_info->ttl(), table_info->seg_cnt(), columns, ttl_type,
-                                    is_leader, endpoint_vec, term, compress_type)) {
-
+            if (!tablet_ptr->client_->CreateTable(table_meta)) {
                 PDLOG(WARNING, "create table failed. tid[%u] pid[%u] endpoint[%s]", 
                         table_index_, pid, endpoint.c_str());
                 return -1;

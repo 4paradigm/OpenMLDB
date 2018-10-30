@@ -481,6 +481,36 @@ class TestCreateTableByNsClient(TestCaseBase):
             self.assertEqual(schema['k2'], ['double', 'no'])
             self.assertEqual(schema['k3'], ['int32', 'yes'])
 
-
+    @ddt.data(
+        ('Fail to create table. key_entry_max_height must be greater than 0', '0'),
+        ('Create table ok', '1'),
+        ('Create table ok', '5'),
+        ('Create table ok', '12'),
+        ('Fail to create table. key_entry_max_height 13 is greater than the max heght 12', '13'),
+    )
+    @ddt.unpack
+    def test_create_key_entry_max_height(self, exp_msg, height):
+        self.tname = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata(
+            '"{}"'.format(self.tname), '"kAbsoluteTime"', 144000, 8,
+            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false'))
+        m[0].append(("key_entry_max_height", height))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
+        table_info = self.showtable(self.ns_leader)
+        if len(table_info) > 0:
+            tid = table_info.keys()[0][1]
+            for pid in xrange(3):
+                table_meta = self.get_table_meta(self.leaderpath, tid, pid)
+                self.assertEqual(table_meta['key_entry_max_height'], height)
+        
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)

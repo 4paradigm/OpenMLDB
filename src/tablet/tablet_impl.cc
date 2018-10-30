@@ -67,6 +67,10 @@ DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(key_entry_max_height);
+DECLARE_uint32(latest_default_skiplist_height);
+DECLARE_uint32(absolute_default_skiplist_height);
 
 namespace rtidb {
 namespace tablet {
@@ -887,6 +891,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_record_byte_size(table->GetRecordByteSize());
             status->set_record_idx_byte_size(table->GetRecordIdxByteSize());
             status->set_record_pk_cnt(table->GetRecordPkCnt());
+            status->set_skiplist_height(table->GetKeyEntryHeight());
             uint64_t record_idx_cnt = 0;
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
             for (;iit != table->GetMapping().end(); ++iit) {
@@ -2043,12 +2048,24 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         mapping.insert(std::make_pair("idx0", 0));
         PDLOG(INFO, "no index specified with default");
     }
+    uint32_t key_entry_max_height = FLAGS_key_entry_max_height;
+    if (table_meta->has_key_entry_max_height() && table_meta->key_entry_max_height() <= FLAGS_skiplist_max_height 
+            && table_meta->key_entry_max_height() > 0) {
+        key_entry_max_height = table_meta->key_entry_max_height();
+    }else {
+        if (table_meta->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+            key_entry_max_height = FLAGS_latest_default_skiplist_height;
+        }else if (table_meta->ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+            key_entry_max_height = FLAGS_absolute_default_skiplist_height;
+        }
+    }
     std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
                                                            table_meta->tid(),
                                                            table_meta->pid(), seg_cnt, 
                                                            mapping,
                                                            table_meta->ttl(), is_leader,
-                                                           endpoints);
+                                                           endpoints,
+                                                           key_entry_max_height);
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());

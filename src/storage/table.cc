@@ -19,6 +19,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(db_root_path);
+DECLARE_uint32(skiplist_max_height);
 
 
 namespace rtidb {
@@ -33,14 +34,15 @@ Table::Table(const std::string& name,
         const std::map<std::string, uint32_t>& mapping,
         uint64_t ttl,
         bool is_leader,
-        const std::vector<std::string>& replicas):name_(name), id_(id),
+        const std::vector<std::string>& replicas,
+        uint32_t key_entry_max_height):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
-    ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
+    enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-    compress_type_(::rtidb::api::CompressType::kNoCompress)
+    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(key_entry_max_height)
 {}
 
 Table::Table(const std::string& name,
@@ -51,10 +53,11 @@ Table::Table(const std::string& name,
         uint64_t ttl):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
-    ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
+    enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
     replicas_(), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
+    mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(FLAGS_skiplist_max_height)
 {}
 
 Table::~Table() {
@@ -73,8 +76,8 @@ void Table::Init() {
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            segments_[i][j] = new Segment();
-            PDLOG(DEBUG, "init %u, %u segment", i, j);
+            segments_[i][j] = new Segment(key_entry_max_height_);
+            PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
         }
     }
     if (ttl_ > 0) {
