@@ -201,7 +201,20 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         response->set_msg("ttl type mismatch");
         return;
     }
-    table->SetTTL(request->value());
+
+    uint64_t ttl = request->value();
+    if ((table->GetTTLType() == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+            (table->GetTTLType() == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+        response->set_code(-1);
+        uint32_t max_ttl = table->GetTTLType() == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
+                        ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
+        done->Run();
+        return;
+    }
+
+    table->SetTTL(ttl);
     response->set_code(0);
     response->set_msg("ok");
     PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());

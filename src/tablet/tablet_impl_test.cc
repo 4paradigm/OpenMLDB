@@ -374,6 +374,19 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-1, response.code());
     }
+    // bigger than max ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_value(60*24*365*30*2);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(-1, response.code());
+    }
+
     // ttl type mismatch
     {
         ::rtidb::api::UpdateTTLRequest request;
@@ -414,6 +427,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
 
 
 
+
 }
 TEST_F(TabletImplTest, UpdateTTLLatest) {
     TabletImpl tablet;
@@ -449,6 +463,18 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         ASSERT_EQ(-1, response.code());
     }
 
+    // reach the max ttl
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kLatestTime);
+        request.set_value(20000);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(-1, response.code());
+    }
     // ttl type mismatch
     {
         ::rtidb::api::UpdateTTLRequest request;
