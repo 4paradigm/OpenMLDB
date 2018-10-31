@@ -210,7 +210,6 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
                         ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
-        done->Run();
         return;
     }
 
