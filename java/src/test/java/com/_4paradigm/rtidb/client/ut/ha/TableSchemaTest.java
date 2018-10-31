@@ -1,5 +1,20 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
@@ -9,20 +24,9 @@ import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.testng.Assert;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSchemaTest {
+    private final static Logger logger = LoggerFactory.getLogger(TableSchemaTest.class);
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(50000);
@@ -51,7 +55,7 @@ public class TableSchemaTest {
     @AfterClass
     public static void tearDown() {
         nsc.close();
-        client.close();
+        //client.close();
     }
 
     private String createSchemaTable() {
@@ -75,6 +79,28 @@ public class TableSchemaTest {
         client.refreshRouteTable();
         return name;
     }
+ 
+    private String createStringSchemaTable() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
+        PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("timestamp").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("str1").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col3 = ColumnDesc.newBuilder().setName("str2").setAddTsIdx(false).setType("string").build();
+        TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
+        TablePartition tp1 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
+        TableInfo table = TableInfo.newBuilder().addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(0)
+                .addColumnDesc(col0).addColumnDesc(col1).addColumnDesc(col2).addColumnDesc(col3)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        return name;
+    }
+ 
 
     private String createMoreFieldTable(int schema_size) {
         String name = String.valueOf(id.incrementAndGet());
@@ -98,6 +124,26 @@ public class TableSchemaTest {
         return name;
     }
 
+    @Test
+    public void testEmptyStringPut() {
+        String name = createStringSchemaTable();
+        long time = System.currentTimeMillis();
+        try {
+            boolean ok = tableSyncClient.put(name, time, new Object[] {"xxx", new DateTime(time), null, ""});
+            Assert.assertTrue(ok);
+            Object[] row = tableSyncClient.getRow(name, "xxx", 0);
+            Assert.assertNotNull(row);
+            Assert.assertEquals(4, row.length);
+            Assert.assertEquals("xxx", row[0]);
+            Assert.assertEquals(time,((DateTime)row[1]).getMillis());
+            Assert.assertEquals(null, row[2]);
+            Assert.assertEquals("", row[3]);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error("", e);
+            Assert.assertTrue(false);
+        }
+    }
     @Test
     public void testNewTypesPut() {
         String name = createSchemaTable();
