@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.ut;
 
 import java.nio.ByteBuffer;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,9 +60,11 @@ public class RowCodecTest {
 		col1.setType(ColumnType.kTimestamp);
 		schema.add(col1);
 		long time = 1530772193000l;
+        System.out.println(new Timestamp(time));
 		try {
 			ByteBuffer buffer = RowCodec.encode(new Object[] {new DateTime(time)}, schema);
-			buffer.rewind();
+//            ByteBuffer buffer = RowCodec.encode(new Object[] {time}, schema);
+            buffer.rewind();
 			Object[] row = RowCodec.decode(buffer, schema);
 			Assert.assertEquals(1, row.length);
 			Assert.assertTrue(row[0] instanceof DateTime);
@@ -135,6 +138,9 @@ public class RowCodecTest {
 		schema.add(col1);
 		long time = 1530772193000l;
 		LocalDate target = new LocalDate(time);
+		DateTime jodaTime=new DateTime(time);
+		System.out.println(target);
+        System.out.println(jodaTime);
 		try {
 			ByteBuffer buffer = RowCodec.encode(new Object[] {target}, schema);
 			buffer.rewind();
@@ -291,15 +297,15 @@ public class RowCodecTest {
 		schema.add(col7);
 
 		try{
-			ByteBuffer buffer = RowCodec.encode(new Object[] {"","I am a string",null,"",null,"",""},schema);
+			ByteBuffer buffer = RowCodec.encode(new Object[] {"","I am a string",null,null," ","",""},schema);
 			buffer.rewind();
 			Object[] row =RowCodec.decode(buffer,schema);
 			Assert.assertEquals(7,row.length);
 			Assert.assertEquals("",row[0]);
 			Assert.assertEquals("I am a string",row[1]);
 			Assert.assertEquals(null,row[2]);
-			Assert.assertEquals("",row[3]);
-			Assert.assertEquals(null,row[4]);
+			Assert.assertEquals(null,row[3]);
+			Assert.assertEquals(" ",row[4]);
 			Assert.assertEquals("",row[5]);
 			Assert.assertEquals("",row[6]);
 			for(int i=0;i<row.length;i++){

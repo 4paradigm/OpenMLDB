@@ -1,5 +1,7 @@
 package com._4paradigm.rtidb.client.functiontest.cases;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.DataProvider;
@@ -30,7 +32,7 @@ public class HaPutTest {
   private static RTIDBClusterClient client = null;
   private static TableSyncClient tableSyncClient = null;
   private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
-
+  private final static Logger logger = LoggerFactory.getLogger(HaPutTest.class);
   static {
     try {
       nsc.init();
@@ -219,7 +221,7 @@ public class HaPutTest {
         Object[] row = tableSyncClient.getRow(name, value1.toString(), 1555555555555L);
         Assert.assertEquals(row[0], value1);
         if (value2 != null && value2.equals("")) {
-          value2 = null;
+          value2 = "";
         }
         Assert.assertEquals(row[2], "value3");
 
