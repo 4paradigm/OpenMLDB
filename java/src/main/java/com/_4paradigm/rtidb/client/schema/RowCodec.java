@@ -12,10 +12,13 @@ import org.joda.time.DateTime;
 
 import com._4paradigm.rtidb.client.TabletException;
 import org.joda.time.LocalDate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class RowCodec {
     private static Charset charset = Charset.forName("utf-8");
+    private final static Logger logger = LoggerFactory.getLogger(RowCodec.class);
 
     public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
         if (row.length != schema.size()) {
@@ -31,7 +34,7 @@ public class RowCodec {
             buffer.put((byte) row.length);
         }
         for (int i = 0; i < row.length; i++) {
-            if(row[i]!=null && schema.get(i).getType().equals  (ColumnType.kString)){
+            if(row[i]!=null && schema.get(i).getType().equals(ColumnType.kString)){
                 if(((String)row[i]).equals("")){
                     schema.get(i).setType(ColumnType.kEmptyString);
                 }
@@ -142,13 +145,13 @@ public class RowCodec {
         while (buffer.position() < buffer.limit() && count < colLength) {
             byte type = buffer.get();
             int size = buffer.get() & 0xFF;
+            if(size == 0&&ColumnType.valueOf((int) type).equals(ColumnType.kEmptyString)){
+                row[index] = "";
+                index++;
+                count++;
+                continue;
+            }
             if (size == 0) {
-                if(ColumnType.valueOf((int) type).equals(ColumnType.kEmptyString)){
-                    row[index] = "";
-                    index++;
-                    count++;
-                    continue;
-                }
                 row[index] = null;
                 index++;
                 count++;
@@ -193,6 +196,9 @@ public class RowCodec {
                         row[index] = true;
                     }
                     break;
+//                case kEmptyString:
+//                    row[index]="";
+//                    break;
                 default:
                     throw new TabletException(ctype.toString() + " is not support on jvm platform");
             }
