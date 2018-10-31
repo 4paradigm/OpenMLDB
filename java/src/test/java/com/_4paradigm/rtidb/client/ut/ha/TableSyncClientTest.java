@@ -24,22 +24,22 @@ import com.google.protobuf.ByteString;
 
 public class TableSyncClientTest {
 
-    private static String zkEndpoints = "127.0.0.1:6181";
-    private static String leaderPath  = "/onebox/leader";
+    private static String zkEndpoints = "172.27.128.31:2181";
+    private static String leaderPath  = "/trybox/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
-    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+    private static String[] nodes = new String[] {"172.27.128.33:9527", "172.27.128.32:9527", "172.27.128.31:9527"};
     @BeforeClass
     public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath("/onebox/nodes");
-            config.setZkTableRootPath("/onebox/table/table_data");
-            config.setZkTableNotifyPath("/onebox/table/notify");
+            config.setZkNodeRootPath("/trybox/nodes");
+            config.setZkTableRootPath("/trybox/table/table_data");
+            config.setZkTableNotifyPath("/trybox/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);
@@ -425,5 +425,47 @@ public class TableSyncClientTest {
         } finally {
             config.setRemoveDuplicateByTime(false);
         }
+    }
+
+    @Test
+    public void testIsRunning(){
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
+        PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
+        TablePartition tp1 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(1).build();
+        TableInfo table = TableInfo.newBuilder().setTtlType("kLatestTime").addTablePartition(tp0).addTablePartition(tp1)
+                .setSegCnt(8).setName(name).setTtl(10)
+                .addColumnDesc(col0).addColumnDesc(col1).addColumnDesc(col2)
+                .build();
+        System.out.println(table);
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        System.out.println(name);
+        try {
+            ok = tableSyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 9528, new Object[] {"card1", "mcc1", 9.2d});
+            Assert.assertTrue(ok);
+            Object[] row = tableSyncClient.getRow(name, "card0", 9527);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 9.15d);
+            row = tableSyncClient.getRow(name, "card1", 9528);
+            Assert.assertEquals(row[0], "card1");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+//        return name;
     }
 }
