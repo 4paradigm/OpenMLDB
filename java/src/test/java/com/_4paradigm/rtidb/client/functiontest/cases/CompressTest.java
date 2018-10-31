@@ -32,7 +32,7 @@ import org.testng.annotations.Test;
 @Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class CompressTest {
 
-  private static String zkEndpoints = "127.0.0.1:2181";
+  private static String zkEndpoints = "127.0.0.1:22181";
   private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
   private static String leaderPath  = "/onebox/leader";
   private static RTIDBClientConfig config = new RTIDBClientConfig();
@@ -42,7 +42,7 @@ public class CompressTest {
   private static TabletSyncClient client = null;
   private static TableSyncClient tableSyncClient = null;
   private static TableAsyncClient tableAsyncClient = null;
-  private static String[] nodes = new String[] {"127.0.0.1:9527", "127.0.0.1:9528", "127.0.0.1:9529"};
+  private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
   private final static Logger logger = LoggerFactory.getLogger(CompressTest.class);
   static {
     try {

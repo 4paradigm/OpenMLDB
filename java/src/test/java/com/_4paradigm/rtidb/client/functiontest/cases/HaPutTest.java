@@ -25,13 +25,13 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 @Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class HaPutTest {
 
-  private static String zkEndpoints = "127.0.0.1:2181";
+  private static String zkEndpoints = "127.0.0.1:22181";
   private static String leaderPath  = "/onebox/leader";
   private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static RTIDBClusterClient client = null;
   private static TableSyncClient tableSyncClient = null;
-  private static String[] nodes = new String[] {"127.0.0.1:9527", "127.0.0.1:9528", "127.0.0.1:9529"};
+  private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
   private final static Logger logger = LoggerFactory.getLogger(HaPutTest.class);
   static {
     try {

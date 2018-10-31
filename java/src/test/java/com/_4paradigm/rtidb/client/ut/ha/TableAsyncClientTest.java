@@ -26,22 +26,22 @@ import com._4paradigm.rtidb.tablet.Tablet;
 
 public class TableAsyncClientTest {
 
-    private static String zkEndpoints = "172.27.128.32:2181";
+    private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(20000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableAsyncClient tableAsyncClient = null;
-    private static String[] nodes = new String[] {"172.27.128.33:9527", "172.27.128.32:9527", "172.27.128.31:9527"};
+    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     @BeforeClass
     public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath("/trybox/nodes");
-            config.setZkTableRootPath("/trybox/table/table_data");
-            config.setZkTableNotifyPath("/trybox/table/notify");
+            config.setZkNodeRootPath("/onebox/nodes");
+            config.setZkTableRootPath("/onebox/table/table_data");
+            config.setZkTableNotifyPath("/onebox/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableAsyncClient = new TableAsyncClientImpl(client);
