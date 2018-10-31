@@ -25,21 +25,21 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 @Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class HaPutTest {
 
-  private static String zkEndpoints = "172.27.128.32:2181";
-  private static String leaderPath  = "/trybox/leader";
+  private static String zkEndpoints = "127.0.0.1:2181";
+  private static String leaderPath  = "/onebox/leader";
   private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static RTIDBClusterClient client = null;
   private static TableSyncClient tableSyncClient = null;
-  private static String[] nodes = new String[] {"172.27.128.33:9527", "172.27.128.32:9527", "172.27.128.31:9527"};
+  private static String[] nodes = new String[] {"127.0.0.1:9527", "127.0.0.1:9528", "127.0.0.1:9529"};
   private final static Logger logger = LoggerFactory.getLogger(HaPutTest.class);
   static {
     try {
       nsc.init();
       config.setZkEndpoints(zkEndpoints);
-      config.setZkNodeRootPath("/trybox/nodes");
-      config.setZkTableRootPath("/trybox/table/table_data");
-      config.setZkTableNotifyPath("/trybox/table/notify");
+      config.setZkNodeRootPath("/onebox/nodes");
+      config.setZkTableRootPath("/onebox/table/table_data");
+      config.setZkTableNotifyPath("/onebox/table/notify");
       client = new RTIDBClusterClient(config);
       client.init();
       tableSyncClient = new TableSyncClientImpl(client);

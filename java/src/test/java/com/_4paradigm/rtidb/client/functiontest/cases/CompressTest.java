@@ -32,9 +32,9 @@ import org.testng.annotations.Test;
 @Listeners({ com._4paradigm.rtidb.client.functiontest.utils.TestReport.class })
 public class CompressTest {
 
-  private static String zkEndpoints = "172.27.128.32:2181";
+  private static String zkEndpoints = "127.0.0.1:2181";
   private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
-  private static String leaderPath  = "/trybox/leader";
+  private static String leaderPath  = "/onebox/leader";
   private static RTIDBClientConfig config = new RTIDBClientConfig();
   private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
   private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
@@ -42,16 +42,16 @@ public class CompressTest {
   private static TabletSyncClient client = null;
   private static TableSyncClient tableSyncClient = null;
   private static TableAsyncClient tableAsyncClient = null;
-  private static String[] nodes = new String[] {"172.27.128.33:9527", "172.27.128.32:9527", "172.27.128.31:9527"};
+  private static String[] nodes = new String[] {"127.0.0.1:9527", "127.0.0.1:9528", "127.0.0.1:9529"};
   private final static Logger logger = LoggerFactory.getLogger(CompressTest.class);
   static {
     try {
       nsc.init();
       snc.init();
       config.setZkEndpoints(zkEndpoints);
-      config.setZkNodeRootPath("/trybox/nodes");
-      config.setZkTableRootPath("/trybox/table/table_data");
-      config.setZkTableNotifyPath("/trybox/table/notify");
+      config.setZkNodeRootPath("/onebox/nodes");
+      config.setZkTableRootPath("/onebox/table/table_data");
+      config.setZkTableNotifyPath("/onebox/table/notify");
       ns_client = new RTIDBClusterClient(config);
       ns_client.init();
       tableSyncClient = new TableSyncClientImpl(ns_client);
