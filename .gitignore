@@ -27,3 +27,11 @@
 *.exe
 *.out
 *.app
+# idea
+*.class
+java/target
+*.idea
+*.iml
+*.DS_store
+
+
