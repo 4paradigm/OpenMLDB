@@ -31,18 +31,20 @@ public class RowCodec {
             buffer.put((byte) row.length);
         }
         for (int i = 0; i < row.length; i++) {
-            if(row[i]!=null && schema.get(i).getType().equals  (ColumnType.kString)){
-                if(((String)row[i]).equals("")){
-                    schema.get(i).setType(ColumnType.kEmptyString);
+            ColumnType ct = schema.get(i).getType();
+            if(row[i]!=null && ct == ColumnType.kString){
+                if(((byte[])cache[i]).length <= 0){
+                    ct = ColumnType.kEmptyString;
                 }
             }
-            buffer.put((byte) schema.get(i).getType().getValue());
+
+            buffer.put((byte) ct.getValue());
             if (row[i] == null) {
                 buffer.put((byte) 0);
                 continue;
             }
 
-            switch (schema.get(i).getType()) {
+            switch (ct) {
                 case kString:
                     byte[] bytes = (byte[]) cache[i];
                     if (bytes.length > 128) {
@@ -113,10 +115,8 @@ public class RowCodec {
                     }
                     break;
                 case kEmptyString:
-                    if(((String)row[i]).equals("")){
-                        buffer.put((byte) 0);
-                        break;
-                    }
+                    buffer.put((byte) 0);
+                    break;
                 default:
                     throw new TabletException(schema.get(i).getType().toString() + " is not support on jvm platform");
             }
@@ -214,9 +214,6 @@ public class RowCodec {
         }
         for (int i = 0; i < row.length; i++) {
             totalSize += 2;
-            if(schema.get(i).getType().equals(ColumnType.kEmptyString)){
-                continue;
-            }
             if (row[i] == null) {
                 continue;
             }
