@@ -256,7 +256,7 @@ public class RowCodecTest {
 		ColumnDesc col1= new ColumnDesc();
 		col1.setAddTsIndex(true);
 		col1.setName("empty");
-		col1.setType(ColumnType.kEmptyString);
+		col1.setType(ColumnType.kString);
 		schema.add(col1);
 
 		ColumnDesc col2 = new ColumnDesc();
@@ -287,13 +287,13 @@ public class RowCodecTest {
 		ColumnDesc col6 = new ColumnDesc();
 		col6.setAddTsIndex(true);
 		col6.setName("emptystring");
-		col6.setType(ColumnType.kEmptyString);
+		col6.setType(ColumnType.kString);
 		schema.add(col6);
 
 		ColumnDesc col7 = new ColumnDesc();
 		col7.setAddTsIndex(true);
 		col7.setName("emptystring");
-		col7.setType(ColumnType.kEmptyString);
+		col7.setType(ColumnType.kString);
 		schema.add(col7);
 
 		try{
