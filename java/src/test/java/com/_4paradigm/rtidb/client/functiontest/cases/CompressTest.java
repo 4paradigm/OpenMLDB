@@ -21,6 +21,8 @@ import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteString;
 import io.brpc.client.EndPoint;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +75,7 @@ public class CompressTest {
 
   private String createKvTable(CompressType cType) {
     String name = String.valueOf(System.currentTimeMillis());
+    nsc.dropTable(name);
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
     TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -89,6 +92,7 @@ public class CompressTest {
 
   private String createSchemaTable(CompressType cType, Boolean isIndex1, String type1, Boolean isIndex2, String type2) {
     String name = String.valueOf(System.currentTimeMillis());
+    nsc.dropTable(name);
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
     PartitionMeta pm0_2 = PartitionMeta.newBuilder().setEndpoint(nodes[2]).setIsLeader(false).build();
