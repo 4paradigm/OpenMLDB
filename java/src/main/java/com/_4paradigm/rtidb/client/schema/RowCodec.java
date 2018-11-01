@@ -143,7 +143,8 @@ public class RowCodec {
         while (buffer.position() < buffer.limit() && count < colLength) {
             byte type = buffer.get();
             int size = buffer.get() & 0xFF;
-            if(size == 0&&ColumnType.valueOf((int) type).equals(ColumnType.kEmptyString)){
+            ColumnType ctype = ColumnType.valueOf((int) type);
+            if(size == 0 && ctype == ColumnType.kEmptyString){
                 row[index] = "";
                 index++;
                 count++;
@@ -155,7 +156,6 @@ public class RowCodec {
                 count++;
                 continue;
             }
-            ColumnType ctype = ColumnType.valueOf((int) type);
             switch (ctype) {
                 case kString:
                     byte[] inner = new byte[size];
