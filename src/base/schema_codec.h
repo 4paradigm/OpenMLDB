@@ -34,7 +34,8 @@ enum ColType {
     kInt16 = 10,
     kUInt16 = 11,
     kBool = 12,
-    kUnknown = 100
+    kEmptyString = 100,
+    kUnknown = 200
 };
 
 struct Column {

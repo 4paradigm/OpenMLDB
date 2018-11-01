@@ -264,7 +264,7 @@ public class TableAsyncClientTest {
             Assert.assertTrue(it.valid());
             Object[] row = it.getDecodedValue();
             Assert.assertEquals("9527", row[0]);
-            Assert.assertEquals(null, row[1]);
+            Assert.assertEquals("", row[1]);
             Assert.assertEquals(1.0, row[2]);
         } catch (Exception e) {
             Assert.fail();

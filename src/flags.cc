@@ -21,7 +21,7 @@ DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
 DEFINE_bool(auto_recover_table, false, "enable or disable auto recover table");
 DEFINE_int32(max_op_num, 10000, "config the max op num");
-DEFINE_uint32(partition_num, 16, "config the default partition_num");
+DEFINE_uint32(partition_num, 8, "config the default partition_num");
 DEFINE_uint32(replica_num, 3, "config the default replica_num. if set 3, there is one leader and two followers");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
@@ -71,7 +71,10 @@ DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to c
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 
-DEFINE_uint32(latest_ttl_max, 1000 , "the max ttl of latest");
+DEFINE_uint32(latest_ttl_max, 1000, "the max ttl of latest");
 DEFINE_uint32(absolute_ttl_max, 60*24*365*30 , "the max ttl of absolute time");
-
+DEFINE_uint32(skiplist_max_height, 12, "the max height of skiplist");
+DEFINE_uint32(key_entry_max_height, 8, "the max height of key entry");
+DEFINE_uint32(latest_default_skiplist_height, 1, "the default height of skiplist for latest table");
+DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skiplist for absolute table");
 DEFINE_bool(enable_show_tp, false, "enable show tp");

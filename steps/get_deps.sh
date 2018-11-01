@@ -209,7 +209,7 @@ if [ -f "brpc_succ" ]
 then
     echo "brpc exist"
 else
-    wget http://pkg.4paradigm.com:81/rtidb/dev/brpc-legacy-1.3.7.tar.gz
+    wget http://pkg.4paradigm.com/rtidb/dev/brpc-legacy-1.3.7.tar.gz
     tar -zxvf brpc-legacy-1.3.7.tar.gz
     BRPC_DIR=$DEPS_SOURCE/brpc-legacy
     cd brpc-legacy
