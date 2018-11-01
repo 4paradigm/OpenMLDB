@@ -170,10 +170,10 @@ public class SPutTest {
         Assert.assertTrue(row.length == 2);
         System.out.println(row[1]);
         Assert.assertEquals("9527", row[0]);
-        if (type.equals(ColumnType.kNull) || value == "") {
+        if (type.equals(ColumnType.kNull) ) {
           Assert.assertEquals(null, row[1]);
         } else {
-          System.out.println(value);
+          System.out.println("value = "+value+";");
           Assert.assertEquals(value, row[1]);
         }
         it.next();

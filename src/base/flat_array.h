@@ -453,7 +453,7 @@ public:
     }
 
     bool GetString(std::string* value) {
-        if (type_ != kString) {
+        if (type_ != kString && type_ != kEmptyString) {
             return false;
         }
         if (fsize_ == 0) {

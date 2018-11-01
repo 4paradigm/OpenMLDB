@@ -12,8 +12,6 @@ import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
-import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.CompressType;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
@@ -22,8 +20,12 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteString;
 import io.brpc.client.EndPoint;
-import java.util.ArrayList;
-import java.util.List;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
@@ -43,7 +45,7 @@ public class CompressTest {
   private static TableSyncClient tableSyncClient = null;
   private static TableAsyncClient tableAsyncClient = null;
   private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
-
+  private final static Logger logger = LoggerFactory.getLogger(CompressTest.class);
   static {
     try {
       nsc.init();
@@ -73,6 +75,7 @@ public class CompressTest {
 
   private String createKvTable(CompressType cType) {
     String name = String.valueOf(System.currentTimeMillis());
+    nsc.dropTable(name);
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
     TablePartition tp0 = TablePartition.newBuilder().addPartitionMeta(pm0_0).addPartitionMeta(pm0_1).setPid(0).build();
@@ -89,6 +92,7 @@ public class CompressTest {
 
   private String createSchemaTable(CompressType cType, Boolean isIndex1, String type1, Boolean isIndex2, String type2) {
     String name = String.valueOf(System.currentTimeMillis());
+    nsc.dropTable(name);
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
     PartitionMeta pm0_1 = PartitionMeta.newBuilder().setEndpoint(nodes[1]).setIsLeader(false).build();
     PartitionMeta pm0_2 = PartitionMeta.newBuilder().setEndpoint(nodes[2]).setIsLeader(false).build();
@@ -228,6 +232,8 @@ public class CompressTest {
       Boolean okT2 = null;
       String name = createSchemaTable(cType, isIndex1, type1, isIndex2, type2);
       try {
+        logger.info("type1 = "+type1+";  type2 = "+ type2+";");
+        logger.info("value1 = "+value1+";  value2 = "+ value2+";");
         ok = tableSyncClient.put(name, 1555555555555L, new Object[]{value1, value2, "value3"});
         okT1 = tableSyncClient.put(name, 1666666666666L, new Object[]{"t1", value2, "amt2"});
         okT2 = tableSyncClient.put(name, 1777777777777L, new Object[]{"t2", value2, "amt3"});
@@ -238,7 +244,7 @@ public class CompressTest {
           Object[] row = tableSyncClient.getRow(name, value1.toString(), 1555555555555L);
           Assert.assertEquals(row[0], value1);
           if (value2 != null && value2.equals("")) {
-            value2 = null;
+            value2 = "";
           }
           Assert.assertEquals(row[2], "value3");
 
