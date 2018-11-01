@@ -61,6 +61,9 @@ DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
+DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(latest_default_skiplist_height);
+DECLARE_uint32(absolute_default_skiplist_height);
 
 void SetupLog() {
     // Config log 
@@ -1162,10 +1165,12 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     ns_table_info.set_name(table_info.name());
     std::string ttl_type = table_info.ttl_type();
     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
+    uint32_t default_skiplist_height = FLAGS_absolute_default_skiplist_height;
     if (ttl_type == "kabsolutetime") {
         ns_table_info.set_ttl_type("kAbsoluteTime");
     } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
         ns_table_info.set_ttl_type("kLatestTime");
+        default_skiplist_height = FLAGS_latest_default_skiplist_height;
     } else {
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
         return -1;
@@ -1180,6 +1185,21 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     } else {
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
+    }
+    if (table_info.has_key_entry_max_height()) {
+        if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
+            printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n", 
+                        table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
+            return -1;
+        }
+        if (table_info.key_entry_max_height() == 0) {
+            printf("Fail to create table. key_entry_max_height must be greater than 0\n"); 
+            return -1;
+        }
+        ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
+    }else {
+        // config default height
+        ns_table_info.set_key_entry_max_height(default_skiplist_height);
     }
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
     if (table_info.table_partition_size() > 0) {
@@ -2273,6 +2293,7 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     row.push_back(std::to_string(table_status.time_offset()) + "s");
     row.push_back(::rtidb::base::HumanReadableString(table_status.record_byte_size() + table_status.record_idx_byte_size()));
     row.push_back(::rtidb::api::CompressType_Name(table_status.compress_type()));
+    row.push_back(std::to_string(table_status.skiplist_height()));
     tp.AddRow(row);
 }
 
@@ -2288,6 +2309,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     row.push_back("ttl_offset");
     row.push_back("memused");
     row.push_back("compress_type");
+    row.push_back("skiplist_height");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     if (parts.size() == 3) {

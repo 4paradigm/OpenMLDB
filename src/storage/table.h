@@ -50,7 +50,8 @@ public:
           const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl,
           bool is_leader,
-          const std::vector<std::string>& replicas);
+          const std::vector<std::string>& replicas,
+          uint32_t key_entry_max_height);
 
     Table(const std::string& name,
           uint32_t id,
@@ -210,6 +211,10 @@ public:
         }
     }
 
+    inline uint32_t GetKeyEntryHeight() {
+        return key_entry_max_height_;
+    }
+
 private:
     std::string const name_;
     uint32_t const id_;
@@ -218,7 +223,6 @@ private:
     uint32_t const idx_cnt_;
     // Segments is readonly
     Segment*** segments_;
-    std::atomic<uint32_t> ref_;
     std::atomic<bool> enable_gc_;
     std::atomic<uint64_t> ttl_;
     uint64_t ttl_offset_;
@@ -233,6 +237,7 @@ private:
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
+    uint32_t key_entry_max_height_;
 };
 
 }

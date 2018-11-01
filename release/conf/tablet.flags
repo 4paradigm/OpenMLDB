@@ -62,3 +62,7 @@
 #--request_timeout_ms=5000
 #--request_sleep_time=1000
 #--retry_send_file_wait_time_ms=3000
+#
+# table conf
+#--skiplist_max_height=12
+#--key_entry_max_height=8

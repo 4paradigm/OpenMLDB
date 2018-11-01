@@ -179,6 +179,21 @@ class TestCaseBase(unittest.TestCase):
                     manifest_dict['term'] = l.split(':')[1].strip()
         return manifest_dict
 
+    @staticmethod
+    def get_table_meta(nodepath, tid, pid):
+        table_meta_dict = {}
+        with open('{}/db/{}_{}/table_meta.txt'.format(nodepath, tid, pid)) as f:
+            for l in f:
+                if 'tid: ' in l:
+                    table_meta_dict['tid'] = l.split(':')[1].strip()
+                elif 'name: ' in l:
+                    table_meta_dict['name'] = l.split(':')[1][2:-2].strip()
+                elif 'compress_type: ' in l:
+                    table_meta_dict['compress_type'] = l.split(':')[1].strip()
+                elif 'key_entry_max_height: ' in l:
+                    table_meta_dict['key_entry_max_height'] = l.split(':')[1].strip()
+        return table_meta_dict
+
     def create(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='true', *slave_endpoints, **schema):
         if not schema:
             if self.multidimension:
