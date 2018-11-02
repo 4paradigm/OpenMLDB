@@ -106,6 +106,8 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.0</version>
         <configuration>
+		  <forkMode>once</forkMode>
+		  <argLine>-Dfile.encoding=UTF-8</argLine>
           <properties>
             <property>
               <name>junit</name>
