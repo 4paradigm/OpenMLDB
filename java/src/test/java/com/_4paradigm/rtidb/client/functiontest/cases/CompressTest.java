@@ -252,6 +252,8 @@ public class CompressTest {
           Assert.assertTrue(it.valid());
           Assert.assertTrue(it.getCount() == 1);
           Object[] rowScan = it.getDecodedValue();
+          logger.info("value1 = "+value1+";");
+          logger.info("value2 = "+value2+";");
           Assert.assertEquals(rowScan[0], value1);
           Assert.assertEquals(rowScan[1], value2);
           Assert.assertEquals(rowScan[2], "value3");
