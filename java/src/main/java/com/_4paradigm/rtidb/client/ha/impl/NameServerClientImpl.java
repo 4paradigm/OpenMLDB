@@ -124,6 +124,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         if(response.getTableInfoList().size()>0){
             TableInfo tmp=response.getTableInfoList().get(0);
             logger.info("table.name = "+tmp.getName());
+            logger.info("TablePartitionList().size() = "+String.valueOf(tmp.getTablePartitionList().size()));
             logger.info("RecordCnt = "+String.valueOf(tmp.getRecordCnt()));
             logger.info("RecordByteSize = "+String.valueOf(tmp.getRecordByteSize()));
         }

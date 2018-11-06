@@ -1651,6 +1651,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
         uint64_t record_cnt=0;
         uint64_t record_byte_size=0;
         auto iter = table_info_.find(request->name());
+
         for(int idx=0;idx<iter->second->table_partition_size();idx++){
             for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
                 auto tablet_ptr=tablets_.find(iter->second->table_partition(idx).partition_meta(meta_idx).endpoint());
@@ -1661,6 +1662,10 @@ void NameServerImpl::ShowTable(RpcController* controller,
             }
 
         }
+         if(iter->second->table_partition_size()>0){
+            record_cnt/=iter->second->table_partition_size();
+            record_byte_size/=iter->second->table_partition_size();
+         }
         table_info->set_record_cnt(record_cnt);
         table_info->set_record_byte_size(record_byte_size);
     }

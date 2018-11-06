@@ -120,6 +120,7 @@ public class TableSyncClientTest {
             boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, "test2", 9527, "value1");
+            ok = tableSyncClient.put(name, "test2", 9527, "value1");
             Assert.assertTrue(ok);
             logger.info("test nsc showTable");
             nsc.showTable(name);
@@ -156,6 +157,9 @@ public class TableSyncClientTest {
             Assert.assertEquals(row[0], "card1");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 9.2d);
+            logger.info("test nsc showTable on schema");
+            nsc.showTable(name);
+            nsc.showNs();
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
