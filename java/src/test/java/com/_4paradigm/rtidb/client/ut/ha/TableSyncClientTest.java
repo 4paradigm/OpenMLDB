@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -120,9 +121,8 @@ public class TableSyncClientTest {
             boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, "test2", 9527, "value1");
-            ok = tableSyncClient.put(name, "test2", 9527, "value1");
             Assert.assertTrue(ok);
-            logger.info("test nsc showTable");
+            logger.info("test nsc showTable on kvTable");
             nsc.showTable(name);
             nsc.showNs();
             ByteString bs = tableSyncClient.get(name, "test1");

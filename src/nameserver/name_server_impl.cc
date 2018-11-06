@@ -1648,26 +1648,22 @@ void NameServerImpl::ShowTable(RpcController* controller,
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
         table_info->CopyFrom(*(kv.second));
-        uint64_t record_cnt=0;
-        uint64_t record_byte_size=0;
         auto iter = table_info_.find(request->name());
-
         for(int idx=0;idx<iter->second->table_partition_size();idx++){
+            uint64_t record_cnt=0;
+            uint64_t record_byte_size=0;
             for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
                 auto tablet_ptr=tablets_.find(iter->second->table_partition(idx).partition_meta(meta_idx).endpoint());
                 ::rtidb::api::TableStatus table_status;
                 tablet_ptr->second->client_->GetTableStatus(table_info->tid(),table_info->table_partition(idx).pid(),table_status);
-                record_cnt+=(table_status.record_cnt());
-                record_byte_size+=(table_status.record_byte_size());
+                record_cnt+=table_status.record_cnt();
+                record_byte_size+=table_status.record_byte_size();
             }
+             table_info->mutable_table_partition(idx)->set_record_cnt(record_cnt);
+             table_info->mutable_table_partition(idx)->set_record_byte_size(record_byte_size);
 
         }
-         if(iter->second->table_partition_size()>0){
-            record_cnt/=iter->second->table_partition_size();
-            record_byte_size/=iter->second->table_partition_size();
-         }
-        table_info->set_record_cnt(record_cnt);
-        table_info->set_record_byte_size(record_byte_size);
+
     }
     response->set_code(0);
     response->set_msg("ok");
