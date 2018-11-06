@@ -21,9 +21,11 @@ import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TableSyncClientTest {
-
+    private final static Logger logger = LoggerFactory.getLogger(TableSyncClientTest.class);
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
@@ -119,6 +121,9 @@ public class TableSyncClientTest {
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, "test2", 9527, "value1");
             Assert.assertTrue(ok);
+            logger.info("test nsc showTable");
+            nsc.showTable(name);
+            nsc.showNs();
             ByteString bs = tableSyncClient.get(name, "test1");
             String value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value0");

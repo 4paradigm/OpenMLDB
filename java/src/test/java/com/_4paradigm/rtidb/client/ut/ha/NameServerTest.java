@@ -10,6 +10,8 @@ import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -22,6 +24,7 @@ public class NameServerTest {
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+    private final static Logger logger = LoggerFactory.getLogger(NameServerTest.class);
     static {
         String envZkEndpoints = System.getenv("zkEndpoints");
         if (envZkEndpoints != null) {
@@ -116,5 +119,11 @@ public class NameServerTest {
             nsc.close();
         }
     }
+
+    @Test
+    public void testShowNS(){
+        logger.info("testShowNS");
+    }
+
 
 }

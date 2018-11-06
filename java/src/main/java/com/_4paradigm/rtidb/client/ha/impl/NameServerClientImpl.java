@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com._4paradigm.rtidb.client.schema.Table;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -38,6 +39,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private ZooKeeper zookeeper;
     private SingleEndpointRpcClient rpcClient;
     private NameServer ns;
+
 
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
@@ -86,6 +88,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     }
 
+
     @Override
     public boolean createTable(TableInfo tableInfo) {
         CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
@@ -117,8 +120,16 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             request = ShowTableRequest.newBuilder().setName(tname).build();
         }
         ShowTableResponse response = ns.showTable(request);
+        logger.info("response.getTableInfoList().size() = "+response.getTableInfoList().size());
+        if(response.getTableInfoList().size()>0){
+            TableInfo tmp=response.getTableInfoList().get(0);
+            logger.info("table.name = "+tmp.getName());
+            logger.info("RecordCnt = "+String.valueOf(tmp.getRecordCnt()));
+            logger.info("RecordByteSize = "+String.valueOf(tmp.getRecordByteSize()));
+        }
         return response.getTableInfoList();
     }
+
 
     @Override
     public void process(WatchedEvent event) {
@@ -167,6 +178,19 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         return tablets;
     }
-    
+
+    public List<String> showNs() throws Exception{
+        ShowTabletRequest request = ShowTabletRequest.newBuilder().build();
+        ShowTabletResponse response = ns.showTablet(request);
+        List<String> endpoints = new ArrayList<String>();
+        for (TabletStatus ts : response.getTabletsList()) {
+            endpoints.add(ts.getEndpoint());
+        }
+        for(String e:endpoints){
+            logger.info("endpoint = "+e);
+        }
+
+        return endpoints;
+    }
 
 }

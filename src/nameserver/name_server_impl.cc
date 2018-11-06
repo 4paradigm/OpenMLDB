@@ -1640,6 +1640,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         if (request->has_name() && request->name() != kv.first) {
@@ -1647,6 +1648,21 @@ void NameServerImpl::ShowTable(RpcController* controller,
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
         table_info->CopyFrom(*(kv.second));
+        uint64_t record_cnt=0;
+        uint64_t record_byte_size=0;
+        auto iter = table_info_.find(request->name());
+        for(int idx=0;idx<iter->second->table_partition_size();idx++){
+            for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                auto tablet_ptr=tablets_.find(iter->second->table_partition(idx).partition_meta(meta_idx).endpoint());
+                ::rtidb::api::TableStatus table_status;
+                tablet_ptr->second->client_->GetTableStatus(table_info->tid(),table_info->table_partition(idx).pid(),table_status);
+                record_cnt+=(table_status.record_cnt());
+                record_byte_size+=(table_status.record_byte_size());
+            }
+
+        }
+        table_info->set_record_cnt(record_cnt);
+        table_info->set_record_byte_size(record_byte_size);
     }
     response->set_code(0);
     response->set_msg("ok");

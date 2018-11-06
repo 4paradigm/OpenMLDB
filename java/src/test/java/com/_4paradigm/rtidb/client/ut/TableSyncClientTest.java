@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -19,9 +20,11 @@ import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com.google.protobuf.ByteString;
 
 import io.brpc.client.EndPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TableSyncClientTest {
-
+    private final static Logger logger = LoggerFactory.getLogger(TableSyncClientTest.class);
     private AtomicInteger id = new AtomicInteger(7000);
     private static TableSyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;
