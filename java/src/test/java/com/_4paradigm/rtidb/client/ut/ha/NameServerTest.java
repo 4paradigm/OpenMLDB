@@ -119,11 +119,4 @@ public class NameServerTest {
             nsc.close();
         }
     }
-
-    @Test
-    public void testShowNS(){
-        logger.info("testShowNS");
-    }
-
-
 }
