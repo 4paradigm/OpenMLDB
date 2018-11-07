@@ -1642,48 +1642,63 @@ void NameServerImpl::ShowTable(RpcController* controller,
     }
 
     std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& kv : table_info_) {
-        if (request->has_name() && request->name() != kv.first) {
-            continue;
+
+    for(auto tablet : tablets_){
+        auto endpoint = tablet.first;
+        auto tablet_map = tablets_.find(endpoint);
+        if(tablet_map == tablets_.end()){
+            PDLOG(WARNING,"endpoint[%s] can not find client",endpoint.c_str());
+            response->set_code(-1);
+            response->set_msg("endpoint can not find client");
+            return;
         }
-        ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
-        table_info->CopyFrom(*(kv.second));
-        auto iter = table_info_.find(request->name());
-        for(int idx = 0; idx < iter->second->table_partition_size(); idx++){
-            uint64_t record_cnt=0;
-            uint64_t record_byte_size=0;
-            for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                auto endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                auto tablet_map = tablets_.find(endpoint);
-                if(tablet_map == tablets_.end()){
-                    PDLOG(WARNING,"endpoint[%s] can not find client",endpoint.c_str());
-                    response->set_code(-1);
-                    response->set_msg("endpoint can not find client");
-                    return;
-                }
-                auto tablet_ptr = tablet_map->second;
-                if(tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy){
-                    PDLOG(WARNING,"endpoint[%s] is offline",endpoint.c_str());
-                    response->set_code(-1);
-                    response->set_msg("endpoint is offline");
-                    return;
-                }
-                ::rtidb::api::TableStatus table_status;
-                if(!tablet_ptr->client_->GetTableStatus(table_info->tid(),table_info->table_partition(idx).pid(),table_status)){
-                    PDLOG(WARNING,"[%s] with tid[%d] pid[%d] can not get table_status",request->name().c_str(),idx,meta_idx);
-                    response->set_code(-1);
-                    response->set_msg("can not find table_status");
-                    return;
-                }
-                record_cnt+=table_status.record_cnt();
-                record_byte_size+=table_status.record_byte_size();
+
+        auto tablet_ptr = tablet_map->second;
+        if(tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy){
+            PDLOG(WARNING,"endpoint[%s] is offline",endpoint.c_str());
+            response->set_code(-1);
+            response->set_msg("endpoint is offline");
+            return;
+        }
+
+        ::rtidb::api::TableStatus table_status;
+        ::rtidb::api::GetTableStatusResponse tablet_status_response;
+        if(!tablet_ptr->client_->GetTableStatus(tablet_status_response)){
+            PDLOG(WARNING,"[%s]  can not get table_status",request->name().c_str());
+            response->set_code(-1);
+            response->set_msg("can not find table_status");
+            return;
+        }
+
+        for (const auto& kv : table_info_) {
+            if (request->has_name() && request->name() != kv.first) {
+                continue;
             }
-             table_info->mutable_table_partition(idx)->set_record_cnt(record_cnt);
-             table_info->mutable_table_partition(idx)->set_record_byte_size(record_byte_size);
+            ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
+            table_info->CopyFrom(*(kv.second));
+            auto iter = table_info_.find(request->name());
+            for(int idx = 0; idx < iter->second->table_partition_size(); idx++){
+                uint64_t record_cnt=table_info->mutable_table_partition(idx)->record_cnt();
+                uint64_t record_byte_size=table_info->mutable_table_partition(idx)->record_byte_size();
+                for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    auto iter_endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    if(iter_endpoint == endpoint && tablet_status_response.all_table_status(idx).pid() == (uint32_t)meta_idx){
+                        record_cnt+=tablet_status_response.all_table_status(idx).record_cnt();
+                        record_byte_size+=tablet_status_response.all_table_status(idx).record_byte_size();
+                        table_info->mutable_table_partition(idx)->set_record_cnt(record_cnt);
+                        table_info->mutable_table_partition(idx)->set_record_byte_size(record_byte_size);
+                    }
+                }
+
+            }
 
         }
+
+
+
 
     }
+
     response->set_code(0);
     response->set_msg("ok");
 }
