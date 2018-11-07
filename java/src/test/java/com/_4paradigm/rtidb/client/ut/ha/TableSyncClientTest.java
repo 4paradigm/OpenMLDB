@@ -122,9 +122,6 @@ public class TableSyncClientTest {
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, "test2", 9527, "value1");
             Assert.assertTrue(ok);
-            logger.info("test nsc showTable on kvTable");
-            nsc.showTable(name);
-            nsc.showNs();
             ByteString bs = tableSyncClient.get(name, "test1");
             String value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value0");
@@ -157,9 +154,6 @@ public class TableSyncClientTest {
             Assert.assertEquals(row[0], "card1");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 9.2d);
-            logger.info("test nsc showTable on schema");
-            nsc.showTable(name);
-            nsc.showNs();
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
