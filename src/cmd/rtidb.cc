@@ -763,10 +763,8 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(name, tables, msg);
-    std::cout << std::endl << "bool ret = " << ret << std::endl;
     if (!ret) {
         std::cout << "failed to showtable. error msg: " << msg << std::endl;
-        client->Init();
         return;
     }
     std::vector<std::string> row;
