@@ -59,6 +59,7 @@ bool NsClient::ShowTable(const std::string& name,
     return false;
 }
 
+
 bool NsClient::MakeSnapshot(const std::string& name, uint32_t pid, std::string& msg) {
     ::rtidb::nameserver::MakeSnapshotNSRequest request;
     request.set_name(name);

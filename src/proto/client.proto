@@ -4,6 +4,8 @@ message TablePartition {
     required string endpoint = 1;
     required string pid_group = 2;
     required bool is_leader = 3;
+    optional uint64 record_cnt = 4;
+    optional uint64 record_byte_size = 5;
 }
 
 message ColumnDesc {

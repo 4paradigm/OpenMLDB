@@ -1640,6 +1640,9 @@ void NameServerImpl::ShowTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    for(int i=0;i<10000;i++){
+        std::cout<<"test";
+    }
 
     std::lock_guard<std::mutex> lock(mu_);
 
@@ -1658,49 +1661,50 @@ void NameServerImpl::ShowTable(RpcController* controller,
             PDLOG(WARNING,"endpoint[%s] is offline",endpoint.c_str());
             response->set_code(-1);
             response->set_msg("endpoint is offline");
-            return;
+            continue;
         }
 
-        ::rtidb::api::TableStatus table_status;
-        ::rtidb::api::GetTableStatusResponse tablet_status_response;
-        if(!tablet_ptr->client_->GetTableStatus(tablet_status_response)){
-            PDLOG(WARNING,"[%s]  can not get table_status",request->name().c_str());
-            response->set_code(-1);
-            response->set_msg("can not find table_status");
-            return;
-        }
-
-        for (const auto& kv : table_info_) {
-            if (request->has_name() && request->name() != kv.first) {
-                continue;
-            }
-            ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
-            table_info->CopyFrom(*(kv.second));
-            auto iter = table_info_.find(request->name());
-            for(int idx = 0; idx < iter->second->table_partition_size(); idx++){
-                uint64_t record_cnt=table_info->mutable_table_partition(idx)->record_cnt();
-                uint64_t record_byte_size=table_info->mutable_table_partition(idx)->record_byte_size();
-                for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                    auto iter_endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                    if(iter_endpoint == endpoint && tablet_status_response.all_table_status(idx).pid() == (uint32_t)meta_idx){
-                        record_cnt+=tablet_status_response.all_table_status(idx).record_cnt();
-                        record_byte_size+=tablet_status_response.all_table_status(idx).record_byte_size();
-                        table_info->mutable_table_partition(idx)->set_record_cnt(record_cnt);
-                        table_info->mutable_table_partition(idx)->set_record_byte_size(record_byte_size);
-                    }
-                }
-
-            }
-
-        }
-
-
-
-
+//        ::rtidb::api::TableStatus table_status;
+//        ::rtidb::api::GetTableStatusResponse tablet_status_response;
+//        if(!tablet_ptr->client_->GetTableStatus(tablet_status_response)){
+//            PDLOG(WARNING,"[%s]  can not get table_status",request->name().c_str());
+//            response->set_code(-1);
+//            response->set_msg("can not find table_status");
+//            continue;
+//        }
+//
+//        for (const auto& kv : table_info_) {
+//            if (request->has_name() && request->name() != kv.first) {
+//                continue;
+//            }
+//            ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
+//            table_info->CopyFrom(*(kv.second));
+//            auto iter = table_info_.find(request->name());
+//
+//            for(int idx = 0; idx < iter->second->table_partition_size(); idx++){
+//                uint64_t record_cnt=table_info->mutable_table_partition(idx)->record_cnt();
+//                uint64_t record_byte_size=table_info->mutable_table_partition(idx)->record_byte_size();
+//                for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+//                    auto iter_endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
+//                    if(iter_endpoint == endpoint && tablet_status_response.all_table_status(idx).pid() == (uint32_t)meta_idx){
+//                        record_cnt+=tablet_status_response.all_table_status(idx).record_cnt();
+//                        record_byte_size+=tablet_status_response.all_table_status(idx).record_byte_size();
+//                        table_info->mutable_table_partition(idx)->set_record_cnt(record_cnt);
+//                        table_info->mutable_table_partition(idx)->set_record_byte_size(record_byte_size);
+//                    }
+//                }
+//
+//            }
+//
+//        }
     }
+
+
+
 
     response->set_code(0);
     response->set_msg("ok");
+    return;
 }
 
 void NameServerImpl::DropTable(RpcController* controller, 
