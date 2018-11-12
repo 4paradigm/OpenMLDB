@@ -1640,68 +1640,46 @@ void NameServerImpl::ShowTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    for(int i=0;i<10000;i++){
-        std::cout<<"test";
-    }
-
     std::lock_guard<std::mutex> lock(mu_);
-
-    for(auto tablet : tablets_){
+    std::vector<::rtidb::api::GetTableStatusResponse> tablet_status_responses;
+    for (auto tablet : tablets_){
         auto endpoint = tablet.first;
-        auto tablet_map = tablets_.find(endpoint);
-        if(tablet_map == tablets_.end()){
-            PDLOG(WARNING,"endpoint[%s] can not find client",endpoint.c_str());
-            response->set_code(-1);
-            response->set_msg("endpoint can not find client");
-            return;
-        }
-
-        auto tablet_ptr = tablet_map->second;
-        if(tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy){
-            PDLOG(WARNING,"endpoint[%s] is offline",endpoint.c_str());
+        auto tablet_ptr = tablet.second;
+        if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy){
+            PDLOG(WARNING, "endpoint[%s] is offline", endpoint.c_str());
             response->set_code(-1);
             response->set_msg("endpoint is offline");
             continue;
         }
-
-//        ::rtidb::api::TableStatus table_status;
-//        ::rtidb::api::GetTableStatusResponse tablet_status_response;
-//        if(!tablet_ptr->client_->GetTableStatus(tablet_status_response)){
-//            PDLOG(WARNING,"[%s]  can not get table_status",request->name().c_str());
-//            response->set_code(-1);
-//            response->set_msg("can not find table_status");
-//            continue;
-//        }
-//
-//        for (const auto& kv : table_info_) {
-//            if (request->has_name() && request->name() != kv.first) {
-//                continue;
-//            }
-//            ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
-//            table_info->CopyFrom(*(kv.second));
-//            auto iter = table_info_.find(request->name());
-//
-//            for(int idx = 0; idx < iter->second->table_partition_size(); idx++){
-//                uint64_t record_cnt=table_info->mutable_table_partition(idx)->record_cnt();
-//                uint64_t record_byte_size=table_info->mutable_table_partition(idx)->record_byte_size();
-//                for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-//                    auto iter_endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-//                    if(iter_endpoint == endpoint && tablet_status_response.all_table_status(idx).pid() == (uint32_t)meta_idx){
-//                        record_cnt+=tablet_status_response.all_table_status(idx).record_cnt();
-//                        record_byte_size+=tablet_status_response.all_table_status(idx).record_byte_size();
-//                        table_info->mutable_table_partition(idx)->set_record_cnt(record_cnt);
-//                        table_info->mutable_table_partition(idx)->set_record_byte_size(record_byte_size);
-//                    }
-//                }
-//
-//            }
-//
-//        }
+        ::rtidb::api::TableStatus table_status;
+        ::rtidb::api::GetTableStatusResponse tablet_status_response;
+        if (!tablet_ptr->client_->GetTableStatus(tablet_status_response)){
+            PDLOG(WARNING, "[%s]  can not get table_status", request->name().c_str());
+            response->set_code(-1);
+            response->set_msg("can not find table_status");
+            continue;
+        }
+        tablet_status_responses.push_back(tablet_status_response);
     }
-
-
-
-
+    for (const auto& kv : table_info_){
+        if (request->has_name() && request->name() != kv.first) {
+            continue;
+        }
+        ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
+        for (auto tablet_status_response : tablet_status_responses){
+            uint32_t tid = kv.second->tid();
+            uint32_t pid = kv.second->table_partition(tid).pid();
+            for (int idx = 0; idx < tablet_status_response.all_table_status_size(); idx++){
+                if (tablet_status_response.all_table_status(idx).tid() == tid &&
+                        tablet_status_response.all_table_status(idx).pid() == pid){
+                    ::rtidb::nameserver::TablePartition* table_partition = kv.second->mutable_table_partition(tid);
+                    table_partition->set_record_cnt(tablet_status_response.all_table_status(idx).record_cnt());
+                    table_partition->set_record_byte_size(tablet_status_response.all_table_status(idx).record_byte_size());
+                }
+            }
+        }
+        table_info->CopyFrom(*(kv.second));
+    }
     response->set_code(0);
     response->set_msg("ok");
     return;
