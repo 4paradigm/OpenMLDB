@@ -1642,7 +1642,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
     }
     std::lock_guard<std::mutex> lock(mu_);
     std::vector<::rtidb::api::GetTableStatusResponse> tablet_status_responses;
-    for (auto tablet : tablets_){
+    for (const auto tablet : tablets_){
         auto endpoint = tablet.first;
         auto tablet_ptr = tablet.second;
         if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy){
@@ -1670,13 +1670,14 @@ void NameServerImpl::ShowTable(RpcController* controller,
         for (int idx = 0; idx < table_info->table_partition_size(); idx++){
              uint32_t tid = table_info->tid();
              uint32_t pid = table_info->table_partition(idx).pid();
-             for (auto tablet_status_response : tablet_status_responses){
+             for (const auto tablet_status_response : tablet_status_responses){
                 for (int tidx = 0; tidx < tablet_status_response.all_table_status_size(); tidx++){
                      if (tablet_status_response.all_table_status(tidx).tid() == tid &&
                              tablet_status_response.all_table_status(tidx).pid() == pid){
                          ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
                          table_partition->set_record_cnt(tablet_status_response.all_table_status(tidx).record_cnt());
                          table_partition->set_record_byte_size(tablet_status_response.all_table_status(tidx).record_byte_size());
+                         break;
                      }
                  }
              }
