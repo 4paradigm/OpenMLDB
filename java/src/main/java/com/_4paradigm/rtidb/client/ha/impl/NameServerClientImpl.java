@@ -1,8 +1,6 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import com._4paradigm.rtidb.client.schema.Table;
 import org.apache.zookeeper.WatchedEvent;
@@ -172,18 +170,23 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         return tablets;
     }
 
-    public List<String> showNs() throws Exception{
-        ShowTabletRequest request = ShowTabletRequest.newBuilder().build();
-        ShowTabletResponse response = ns.showTablet(request);
-        List<String> endpoints = new ArrayList<String>();
-        for (TabletStatus ts : response.getTabletsList()) {
-            endpoints.add(ts.getEndpoint());
+    public Map<String,String> showNs() throws Exception{
+        List<String> node = zookeeper.getChildren(leaderPath,false);
+        Collections.sort(node);
+        int i = 0;
+        Map<String,String> nsEndpoint = new HashMap<>();
+        for(String e: node){
+            byte[] bytes = zookeeper.getData(leaderPath + "/" + e, false, null);
+            EndPoint endpoint = new EndPoint(new String(bytes));
+            String address = endpoint.getIp() + ":" + endpoint.getPort();
+            if(i == 0){
+                nsEndpoint.put(address,"leader");
+                i++;
+            }else {
+                nsEndpoint.put(address,"standby");
+            }
         }
-        for(String e:endpoints){
-            logger.info("endpoint = "+e);
-        }
-
-        return endpoints;
+        return nsEndpoint;
     }
 
 }
