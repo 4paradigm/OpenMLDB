@@ -1681,9 +1681,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
                      }
                  }
              }
-
         }
-
     }
     response->set_code(0);
     response->set_msg("ok");
