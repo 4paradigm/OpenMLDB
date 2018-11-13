@@ -66,3 +66,5 @@
 # table conf
 #--skiplist_max_height=12
 #--key_entry_max_height=8
+
+#--scan_max_num=200000

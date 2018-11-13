@@ -38,6 +38,7 @@ DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
+DECLARE_uint32(scan_max_num);
 DECLARE_uint32(scan_reserve_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
@@ -562,6 +563,10 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t last_time = 0;
     end_time = std::max(end_time, table->GetExpireTime());
     PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
+    uint32_t limit = 0;
+    if (request->has_limit()) {
+        limit = request->limit();
+    }
     while (it->Valid()) {
         scount ++;
         PDLOG(DEBUG, "scan key %lld", it->GetKey());
@@ -579,8 +584,12 @@ void TabletImpl::Scan(RpcController* controller,
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
         total_block_size += it->GetValue()->size;
         it->Next();
-        if (request->limit() > 0 && request->limit() <= scount) {
-            PDLOG(DEBUG, "reache the limit %u ", request->limit());
+        if (limit > 0 && scount >= limit) {
+            PDLOG(DEBUG, "reach the limit %u", limit);
+            break;
+        }
+        if (limit == 0 && scount >= FLAGS_scan_max_num) {
+            PDLOG(DEBUG, "reach the scan max num %u", FLAGS_scan_max_num);
             break;
         }
     }
