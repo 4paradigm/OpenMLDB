@@ -69,7 +69,22 @@ public class NameServerTest {
             Assert.assertTrue(false);
         }
     }
-    
+
+    @Test
+    public void testNsClose() {
+        for (int i = 0; i < 10000; i++) {
+            try {
+                NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
+                nsc.init();
+                Assert.assertTrue(true);
+                nsc.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+                Assert.assertTrue(false);
+            }
+        }
+    }
+
     @Test
     public void testAllFlow() {
         PartitionMeta pm = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
