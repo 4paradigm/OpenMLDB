@@ -69,7 +69,7 @@ public class NameServerTest {
             Assert.assertTrue(false);
         }
     }
-
+    
     @Test
     public void testAllFlow() {
         PartitionMeta pm = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();

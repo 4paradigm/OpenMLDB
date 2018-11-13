@@ -61,7 +61,6 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private RTIDBClientConfig config;
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
-
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
