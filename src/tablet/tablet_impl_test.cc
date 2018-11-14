@@ -24,7 +24,6 @@ DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
-DECLARE_uint32(scan_max_num);
 
 namespace rtidb {
 namespace tablet {
@@ -1090,50 +1089,6 @@ TEST_F(TabletImplTest, Scan) {
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(1, srp.count());
 
-}
-
-TEST_F(TabletImplTest, Scan_with_max_num) {
-    uint32_t old_max_num = FLAGS_scan_max_num;
-    FLAGS_scan_max_num = 100;
-    TabletImpl tablet;
-    uint32_t id = counter++;
-    tablet.Init();
-    ::rtidb::api::CreateTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name("t0");
-    table_meta->set_tid(id);
-    table_meta->set_pid(1);
-    table_meta->set_ttl(0);
-    table_meta->set_wal(true);
-    ::rtidb::api::CreateTableResponse response;
-    MockClosure closure;
-    tablet.CreateTable(NULL, &request, &response,
-            &closure);
-    ASSERT_EQ(0, response.code());
-    for (int ts = 1000; ts < 2000; ts++) {
-        ::rtidb::api::PutRequest prequest;
-        prequest.set_pk("test1");
-        prequest.set_time(ts);
-        prequest.set_value("test" + std::to_string(ts));
-        prequest.set_tid(id);
-        prequest.set_pid(1);
-        ::rtidb::api::PutResponse presponse;
-        tablet.Put(NULL, &prequest, &presponse,
-                &closure);
-        ASSERT_EQ(0, presponse.code());
-    }
-    ::rtidb::api::ScanRequest sr;
-    sr.set_tid(id);
-    sr.set_pid(1);
-    sr.set_pk("test1");
-    sr.set_st(2000);
-    sr.set_et(0);
-    ::rtidb::api::ScanResponse* srp = new ::rtidb::api::ScanResponse();
-    tablet.Scan(NULL, &sr, srp, &closure);
-    ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(100, srp->count());
-    delete srp;
-    FLAGS_scan_max_num = old_max_num;
 }
 
 

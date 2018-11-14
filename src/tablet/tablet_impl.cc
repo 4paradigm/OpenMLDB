@@ -38,7 +38,6 @@ DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
-DECLARE_uint32(scan_max_num);
 DECLARE_uint32(scan_reserve_size);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
@@ -588,21 +587,17 @@ void TabletImpl::Scan(RpcController* controller,
             PDLOG(DEBUG, "reach the limit %u", limit);
             break;
         }
-        if (limit == 0 && scount >= FLAGS_scan_max_num) {
-            PDLOG(DEBUG, "reach the scan max num %u", FLAGS_scan_max_num);
-            break;
+        // check reach the max bytes size
+        if (total_block_size > FLAGS_scan_max_bytes_size) {
+            response->set_code(31);
+            response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
+            done->Run();
+            return;
         }
     }
     delete it;
     metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
-    // check reach the max bytes size
-    if (total_size > FLAGS_scan_max_bytes_size) {
-        response->set_code(31);
-        response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_size));
-        done->Run();
-        return;
-    }
     std::string* pairs = response->mutable_pairs();
     if (tmp.size() <= 0) {
         pairs->resize(0);
