@@ -30,7 +30,6 @@ using ::rtidb::zk::ZkClient;
 using ::rtidb::zk::DistLock;
 using ::rtidb::api::TabletState;
 using ::rtidb::client::TabletClient;
-using ::rtidb::api::TableStatus;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 

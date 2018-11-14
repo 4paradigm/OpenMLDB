@@ -38,7 +38,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private SingleEndpointRpcClient rpcClient;
     private NameServer ns;
 
-
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
@@ -85,8 +84,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         logger.info("connect leader path {} endpoint {} ok", children.get(0), endpoint);
 
     }
-
-
+    
     @Override
     public boolean createTable(TableInfo tableInfo) {
         CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
