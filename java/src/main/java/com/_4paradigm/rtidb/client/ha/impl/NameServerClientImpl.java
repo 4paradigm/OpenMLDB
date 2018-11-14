@@ -175,15 +175,13 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         Collections.sort(node);
         int i = 0;
         Map<String,String> nsEndpoint = new HashMap<>();
-        for(String e: node){
+        for (String e: node){
             byte[] bytes = zookeeper.getData(leaderPath + "/" + e, false, null);
-            EndPoint endpoint = new EndPoint(new String(bytes));
-            String address = endpoint.getIp() + ":" + endpoint.getPort();
             if(i == 0){
-                nsEndpoint.put(address,"leader");
+                nsEndpoint.put(new String(bytes), "leader");
                 i++;
             }else {
-                nsEndpoint.put(address,"standby");
+                nsEndpoint.put(new String(bytes), "standby");
             }
         }
         return nsEndpoint;

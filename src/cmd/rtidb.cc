@@ -808,8 +808,16 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
                 } else {
                     row.push_back("kNoCompress");
                 }
-                row.push_back(std::to_string(value.table_partition(idx).record_cnt()));
-                row.push_back(std::to_string(value.table_partition(idx).record_byte_size()));
+                if (value.table_partition(idx).has_record_cnt()){
+                    row.push_back(std::to_string(value.table_partition(idx).record_cnt()));
+                } else {
+                    row.push_back(std::to_string(0));
+                }
+                if (value.table_partition(idx).has_record_byte_size()){
+                    row.push_back(std::to_string(value.table_partition(idx).record_byte_size()));
+                } else {
+                    row.push_back(std::to_string(0));
+                }
                 tp.AddRow(row);
             }
         }
