@@ -32,7 +32,6 @@ DECLARE_uint32(tablet_heartbeat_timeout);
 DECLARE_uint32(tablet_offline_check_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
-DECLARE_uint32(name_server_task_max_concurrency);
 
 namespace rtidb {
 namespace nameserver {
@@ -358,12 +357,9 @@ bool NameServerImpl::RecoverOPTask() {
         if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
             done_op_list_.push_back(op_data);
         } else {
-            uint32_t idx = task_vec_.size();
-            if (op_data->op_info_.has_vec_idx()) {
+            uint32_t idx = op_data->op_info_.pid() % task_vec_.size();
+            if (op_data->op_info_.has_vec_idx() && op_data->op_info_.vec_idx() < task_vec_.size()) {
                 idx = op_data->op_info_.vec_idx();
-            }
-            if (idx >= task_vec_.size()) {
-                idx = rand_.Next() % task_vec_.size();
             }
             task_vec_[idx].push_back(op_data);
         }
@@ -2232,9 +2228,10 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
     return 0;
 }
 
-int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t idx) {
-    if (idx >= task_vec_.size()) {
-        idx = rand_.Next() % task_vec_.size();
+int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency) {
+    uint32_t idx = op_data->op_info_.pid() % task_vec_.size();
+    if (concurrency < task_vec_.size()) {
+        idx = op_data->op_info_.pid() % concurrency;
     }
     op_data->op_info_.set_vec_idx(idx);
     std::string value;
