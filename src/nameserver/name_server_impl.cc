@@ -1668,6 +1668,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
         }
         tablet_status_response_map.insert(std::make_pair(endpoint, tablet_status_response));
     }
+    std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         if (request->has_name() && request->name() != kv.first) {
             continue;
@@ -1692,7 +1693,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
                 }
                 for (int tidx = 0; tidx < tablet_status_response.all_table_status_size(); tidx++) {
                      if (tablet_status_response.all_table_status(tidx).tid() == tid &&
-                             tablet_status_response.all_table_status(tidx).pid() == pid) {
+                         tablet_status_response.all_table_status(tidx).pid() == pid) {
                          table_partition->set_record_cnt(tablet_status_response.all_table_status(tidx).record_cnt());
                          table_partition->set_record_byte_size(tablet_status_response.all_table_status(tidx).record_byte_size());
                          break;
