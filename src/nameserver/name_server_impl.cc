@@ -1640,7 +1640,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::map<std::shared_ptr<TabletInfo>, std::string> tablet_ptr_map;
+    std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& tablet : tablets_) {
@@ -1652,13 +1652,13 @@ void NameServerImpl::ShowTable(RpcController* controller,
                 response->set_msg("endpoint is offline");
                 continue;
             }
-            tablet_ptr_map.insert(std::make_pair(tablet_ptr, endpoint));
+            tablet_ptr_map.insert(std::make_pair(endpoint, tablet_ptr));
         }
     }
     std::map<std::string, ::rtidb::api::GetTableStatusResponse> tablet_status_response_map;
     for (const auto& tablet : tablet_ptr_map) {
-        auto tablet_ptr = tablet.first;
-        auto endpoint = tablet.second;
+        auto tablet_ptr = tablet.second;
+        auto endpoint = tablet.first;
         ::rtidb::api::GetTableStatusResponse tablet_status_response;
         if (!tablet_ptr->client_->GetTableStatus(tablet_status_response)) {
             PDLOG(WARNING, "[%s]  can not get table_status", request->name().c_str());
