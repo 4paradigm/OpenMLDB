@@ -725,7 +725,7 @@ int NameServerImpl::UpdateTaskStatus() {
                         continue;
                     }
                     std::shared_ptr<OPData> op_data = op_list.front();
-                    if (op_data->task_list_.empty()) {
+                    if (op_data->op_info_.op_id() != response.task(idx).op_id() || op_data->task_list_.empty()) {
                         continue;
                     }
                     // update task status
@@ -739,7 +739,8 @@ int NameServerImpl::UpdateTaskStatus() {
                                     ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
                         task->task_info_->set_status(response.task(idx).status());
                     }
-                }    
+                    break;
+                }
             }
         }
     }
@@ -857,6 +858,7 @@ int NameServerImpl::DeleteTask() {
                 }
                 done_op_list_.push_back(op_data);
                 task_vec_[index].pop_front();
+                PDLOG(INFO, "delete op[%lu] in running op", op_id); 
             } else {
                 if (zk_client_->DeleteNode(node)) {
                     PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
@@ -867,6 +869,7 @@ int NameServerImpl::DeleteTask() {
                     }
                     done_op_list_.push_back(op_data);
                     task_vec_[index].pop_front();
+                    PDLOG(INFO, "delete op[%lu] in running op", op_id); 
                 } else {
                     PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
                 }
