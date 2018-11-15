@@ -358,7 +358,10 @@ bool NameServerImpl::RecoverOPTask() {
         if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
             done_op_list_.push_back(op_data);
         } else {
-            uint32_t idx = op_data->op_info_.vec_idx();
+            uint32_t idx = task_vec_.size();
+            if (op_data->op_info_.has_vec_idx()) {
+                idx = op_data->op_info_.vec_idx();
+            }
             if (idx >= task_vec_.size()) {
                 idx = rand_.Next() % task_vec_.size();
             }
@@ -885,6 +888,7 @@ void NameServerImpl::ProcessTask() {
             for (const auto& op_list : task_vec_) {
                 if (!op_list.empty()) {
                     has_task = true;
+                    break;
                 }
             }
             if (!has_task) {
@@ -2252,13 +2256,8 @@ void NameServerImpl::DeleteDoneOP() {
     if (done_op_list_.empty()) {
         return;
     }
-    auto iter = done_op_list_.begin();
-    while (done_op_list_.size() > (uint32_t)FLAGS_max_op_num && iter != done_op_list_.end()) {
-        if ((*iter)->op_info_.task_status() == ::rtidb::api::TaskStatus::kDone) {
-            iter = done_op_list_.erase(iter);
-        } else {
-            iter++;
-        }
+    while (done_op_list_.size() > (uint32_t)FLAGS_max_op_num) {
+        done_op_list_.pop_front();
     }
 }
 
@@ -4159,7 +4158,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
     std::shared_ptr<OPData> op_data = FindRunningOP(task_info->op_id());
     if (!op_data) {
         PDLOG(WARNING, "cannot find op[%lu] in running op", task_info->op_id());
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
     ChangeLeaderData change_leader_data;
