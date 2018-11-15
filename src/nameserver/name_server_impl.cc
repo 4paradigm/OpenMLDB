@@ -1705,7 +1705,7 @@ void NameServerImpl::DropTable(RpcController* controller,
         }
     }
     if (!zk_client_->DeleteNode(zk_table_data_path_ + "/" + request->name())) {
-        PDLOG(WARNING, "delete table node[%s/%s] failed! value[%s]", 
+        PDLOG(WARNING, "delete table node[%s/%s] failed!", 
                         zk_table_data_path_.c_str(), request->name().c_str());
         code = -1;
     } else {
