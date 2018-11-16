@@ -1681,14 +1681,14 @@ void NameServerImpl::ShowTable(RpcController* controller,
             ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
             for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
                 auto endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-                if (tablet_status_response_map.find(endpoint) == tablet_status_response_map.end()) {
-                    continue;
-                }
-                auto tablet_status_response = tablet_status_response_map.find(endpoint)->second;
                 if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                     continue;
                 }
                 if (!table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                    continue;
+                }
+                auto tablet_status_response = tablet_status_response_map.find(endpoint)->second;
+                if (tablet_status_response == tablet_status_response_map.end()) {
                     continue;
                 }
                 for (int tidx = 0; tidx < tablet_status_response.all_table_status_size(); tidx++) {
@@ -1699,6 +1699,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
                          break;
                      }
                 }
+                break;
             }
         }
     }

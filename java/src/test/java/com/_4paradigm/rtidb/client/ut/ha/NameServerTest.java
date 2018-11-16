@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -81,6 +82,12 @@ public class NameServerTest {
             Assert.assertTrue(true);
             Assert.assertTrue(nsc.createTable(tableInfo));
             List<TableInfo> tables = nsc.showTable("t1");
+            Map<String,String> nscMap = nsc.showNs();
+            Assert.assertTrue(nscMap.size() == 3);
+            TableInfo e = tables.get(0);
+            Assert.assertTrue(e.getTablePartitionList().size() == 1);
+            Assert.assertTrue(e.getTablePartition(0).getRecordCnt() == 0);
+            Assert.assertTrue(e.getTablePartition(0).getRecordCnt() == 0);
             Assert.assertTrue(tables.size() == 1);
             Assert.assertTrue(tables.get(0).getName().equals("t1"));
             Assert.assertTrue( nsc.dropTable("t1"));
