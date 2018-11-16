@@ -1687,10 +1687,11 @@ void NameServerImpl::ShowTable(RpcController* controller,
                 if (!table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
                     continue;
                 }
-                auto tablet_status_response = tablet_status_response_map.find(endpoint)->second;
-                if (tablet_status_response == tablet_status_response_map.end()) {
+                auto tablet_status_response_iter = tablet_status_response_map.find(endpoint);
+                if (tablet_status_response_iter == tablet_status_response_map.end()) {
                     continue;
                 }
+                auto tablet_status_response = tablet_status_response_map.find(endpoint)->second;
                 for (int tidx = 0; tidx < tablet_status_response.all_table_status_size(); tidx++) {
                      if (tablet_status_response.all_table_status(tidx).tid() == tid &&
                          tablet_status_response.all_table_status(tidx).pid() == pid) {
