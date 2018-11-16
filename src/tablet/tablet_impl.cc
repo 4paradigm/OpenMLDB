@@ -562,6 +562,10 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t last_time = 0;
     end_time = std::max(end_time, table->GetExpireTime());
     PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
+    uint32_t limit = 0;
+    if (request->has_limit()) {
+        limit = request->limit();
+    }
     while (it->Valid()) {
         scount ++;
         PDLOG(DEBUG, "scan key %lld", it->GetKey());
@@ -579,21 +583,21 @@ void TabletImpl::Scan(RpcController* controller,
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
         total_block_size += it->GetValue()->size;
         it->Next();
-        if (request->limit() > 0 && request->limit() <= scount) {
-            PDLOG(DEBUG, "reache the limit %u ", request->limit());
+        if (limit > 0 && scount >= limit) {
+            PDLOG(DEBUG, "reach the limit %u", limit);
             break;
+        }
+        // check reach the max bytes size
+        if (total_block_size > FLAGS_scan_max_bytes_size) {
+            response->set_code(31);
+            response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
+            done->Run();
+            return;
         }
     }
     delete it;
     metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
-    // check reach the max bytes size
-    if (total_size > FLAGS_scan_max_bytes_size) {
-        response->set_code(31);
-        response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_size));
-        done->Run();
-        return;
-    }
     std::string* pairs = response->mutable_pairs();
     if (tmp.size() <= 0) {
         pairs->resize(0);
