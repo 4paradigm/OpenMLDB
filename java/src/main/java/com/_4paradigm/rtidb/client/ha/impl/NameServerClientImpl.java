@@ -122,8 +122,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         ShowTableResponse response = ns.showTable(request);
         return response.getTableInfoList();
     }
-
-
+    
     @Override
     public void process(WatchedEvent event) {
         

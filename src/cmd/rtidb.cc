@@ -3174,12 +3174,7 @@ void StartNsClient() {
         std::cout << "client init failed" << std::endl;
         return;
     }
-    ::rtidb::client::NsClient client_tmp(endpoint);
-    client_tmp.Init();
-
-
     while (true) {
-
         std::cout << ">";
         std::string buffer;
         if (!FLAGS_interactive) {
@@ -3215,7 +3210,7 @@ void StartNsClient() {
         } else if (parts[0] == "drop") {
             HandleNSClientDropTable(parts, &client);
         } else if (parts[0] == "showtable") {
-            HandleNSClientShowTable(parts, &client_tmp);
+            HandleNSClientShowTable(parts, &client);
         } else if (parts[0] == "showschema") {
             HandleNSClientShowSchema(parts, &client);
         } else if (parts[0] == "confset") {
