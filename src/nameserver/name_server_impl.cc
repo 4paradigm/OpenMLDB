@@ -1691,7 +1691,7 @@ void NameServerImpl::ShowTable(RpcController* controller,
                 if (tablet_status_response_iter == tablet_status_response_map.end()) {
                     continue;
                 }
-                auto tablet_status_response = tablet_status_response_map.find(endpoint)->second;
+                auto tablet_status_response = tablet_status_response_iter->second;
                 for (int tidx = 0; tidx < tablet_status_response.all_table_status_size(); tidx++) {
                      if (tablet_status_response.all_table_status(tidx).tid() == tid &&
                          tablet_status_response.all_table_status(tidx).pid() == pid) {
