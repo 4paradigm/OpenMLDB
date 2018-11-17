@@ -366,6 +366,8 @@ private:
     void DeleteDoneOP();
     int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
 
+    void WrapTaskFun(const boost::function<bool ()>& fun, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
     std::shared_ptr<OPData> FindRunningOP(uint64_t op_id);

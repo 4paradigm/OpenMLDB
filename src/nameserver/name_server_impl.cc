@@ -730,6 +730,9 @@ int NameServerImpl::UpdateTaskStatus() {
                     }
                     // update task status
                     std::shared_ptr<Task> task = op_data->task_list_.front();
+                    if (task->task_info_->status() == ::rtidb::api::kFailed) {
+                        continue;
+                    }
                     if (task->task_info_->task_type() == response.task(idx).task_type() && 
                             task->task_info_->status() != response.task(idx).status()) {
                         PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
@@ -3384,6 +3387,14 @@ int NameServerImpl::MatchTermOffset(const std::string& name, uint32_t pid, bool 
     return 0;
 }
 
+void NameServerImpl::WrapTaskFun(const boost::function<bool ()>& fun, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+    if (!fun()) {
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        PDLOG(WARNING, "task[%s] run failed. op_id[%lu]", 
+                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(), task_info->op_id());
+    }
+}
+
 std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
@@ -3395,7 +3406,8 @@ std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& 
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid, task->task_info_);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -3410,7 +3422,8 @@ std::shared_ptr<Task> NameServerImpl::CreatePauseSnapshotTask(const std::string&
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kPauseSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::PauseSnapshot, it->second->client_, tid, pid, task->task_info_);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::PauseSnapshot, it->second->client_, tid, pid, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -3425,7 +3438,8 @@ std::shared_ptr<Task> NameServerImpl::CreateRecoverSnapshotTask(const std::strin
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kRecoverSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::RecoverSnapshot, it->second->client_, tid, pid, task->task_info_);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::RecoverSnapshot, it->second->client_, tid, pid, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -3441,8 +3455,9 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kSendSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::SendSnapshot, it->second->client_, tid, pid, 
+    boost::function<bool ()> fun = boost::bind(&TabletClient::SendSnapshot, it->second->client_, tid, pid, 
                 des_endpoint, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -3458,9 +3473,10 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::LoadTable, it->second->client_, name, tid, pid, 
+    boost::function<bool ()> fun = boost::bind(&TabletClient::LoadTable, it->second->client_, name, tid, pid, 
                 ttl, is_leader, std::vector<std::string>(),
                 seg_cnt, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -3476,8 +3492,9 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaTask(const std::string& en
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kAddReplica);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, 
+    boost::function<bool ()> fun = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, 
                 des_endpoint, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -3539,8 +3556,9 @@ std::shared_ptr<Task> NameServerImpl::CreateDelReplicaTask(const std::string& en
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kDelReplica);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::DelReplica, it->second->client_, tid, pid, 
+    boost::function<bool ()> fun = boost::bind(&TabletClient::DelReplica, it->second->client_, tid, pid, 
                 follower_endpoint, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -3555,7 +3573,8 @@ std::shared_ptr<Task> NameServerImpl::CreateDropTableTask(const std::string& end
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kDropTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&TabletClient::DropTable, it->second->client_, tid, pid, task->task_info_);
+    boost::function<bool ()> fun = boost::bind(&TabletClient::DropTable, it->second->client_, tid, pid, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
