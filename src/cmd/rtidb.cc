@@ -2450,6 +2450,18 @@ void HandleClientSetLimit(const std::vector<std::string> parts, ::rtidb::client:
     try {
 
         std::string key = parts[1];
+        if (std::isupper(key[0])) {
+            std::string subname = key.substr(1);
+            for (char e : subname) {
+                if (std::isupper(e)) {
+                    std::cout<<"Invalid args name which should be Put , Scan , Get or Server"<<std::endl;
+                    return;
+                }
+            }
+        } else {
+            std::cout<<"Invalid args name which should be Put , Scan , Get or Server"<<std::endl;
+            return;
+        }
         int32_t limit = boost::lexical_cast<int32_t> (parts[2]);
         bool ok = client->SetMaxConcurrency(key, limit);
         if (ok) {
