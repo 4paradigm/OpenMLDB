@@ -43,5 +43,23 @@ class TestNsDropTable(TestCaseBase):
         self.assertEqual(rs3, {})
 
 
+    def test_ns_drop_table_with_help(self):
+        """
+        drop表的时候会提示是否删除该表
+        :return:
+        """
+        rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
+        rs_latest1 = self.ns_create_cmd(self.ns_leader, 'latest1', 'latest:10', str(8), str(3), '')
+        self.assertIn('Create table ok', rs_absolute1)
+        self.assertIn('Create table ok', rs_latest1)
+
+        rs_drop1 = self.ns_drop(self.ns_leader, 't1')
+        self.assertIn('Drop table t1? yes/no', rs_drop1)
+
+
+
+
+
+
 if __name__ == "__main__":
     load(TestNsDropTable)
