@@ -279,7 +279,7 @@ class TestChangeLeader(TestCaseBase):
     @ddt.unpack
     def test_changeleader_endpoint_without_offline(self, pid, switch,rsp_msg):
         """
-        不当机更新leader,指定endpoint模式,同时测试原leaderput数据是否会同步的问题
+        不当机更新leader,指定endpoint模式,同时测试原leader在put数据的时候，是否会同步到其他节点的问题
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -317,10 +317,6 @@ class TestChangeLeader(TestCaseBase):
         put_rsslave = self.scan(self.slave2,  tid, str(pid), 'before', data_time, 1)
         self.assertTrue('beforevalue' in put_rsslave)
 
-
-
-
-
         self.assertEqual(rs1[(name, tid,  str(pid), self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs1[(name, tid,  str(pid), self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs1[(name, tid,  str(pid), self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
@@ -357,11 +353,6 @@ class TestChangeLeader(TestCaseBase):
             self.assertTrue('newleadervalue' in put_rsslave)
 
 
-
-
-
-
-
     @ddt.data(
         (0, '127.0.0.1:37771', 'no'),
         (0, '127.0.0.1:37771', 'no'),
@@ -371,7 +362,7 @@ class TestChangeLeader(TestCaseBase):
         (1, '', 'no')
     )
     @ddt.unpack
-    def test_changeleader_with_illegal_parameter(self, pid, switch,rsp_msg):
+    def test_changeleader_with_illegal_parameter(self, pid, switch, rsp_msg):
         """
         不当机更新leader,测试不合法的参数值
         :return:
@@ -416,17 +407,13 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, '127.0.0.1:37771', 'no'),
-        (0, '127.0.0.1:37771', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
-        (0, '', 'no'),
-        (1, '', 'no')
+        (0, '127.0.0.1:37771', '127.0.0.1:37772', 'no'),
+        (1, '127.0.0.1:37771', '127.0.0.1:37772', 'no')
     )
     @ddt.unpack
-    def test_changeleader_with_illegal_parameter(self, pid, switch,rsp_msg):
+    def test_changeleader_with_many_times(self, pid, switch, switch1, rsp_msg):
         """
-        不当机更新leader,测试不合法的参数值
+        不当机更新leader,多次changeleader。有follower情况，change成功，无follow情况，change失败
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -458,14 +445,21 @@ class TestChangeLeader(TestCaseBase):
         self.assertEqual(rs1[(name, tid,  str(pid), self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs1[(name, tid,  str(pid), self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
 
-        rs = self.changeleader(self.ns_leader, name+'wrong', pid, switch)
-        self.assertTrue('failed to change leader. error msg: table is not exist' in rs)
+        rs_change1 = self.changeleader(self.ns_leader, name, pid, switch)
+        time.sleep(1)
+        self.assertTrue('change leader ok' in rs_change1)
+        rs_change2 = self.changeleader(self.ns_leader, name, pid, switch1)
+        time.sleep(1)
+        self.assertTrue('change leader ok' in rs_change2)
+        rs_change3 = self.changeleader(self.ns_leader, name, pid, 'auto')
+        self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change3)
+        rs_change4 = self.changeleader(self.ns_leader, name, pid, 'auto')
+        self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change4)
+        rs_change5 = self.changeleader(self.ns_leader, name, pid, switch)
+        self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change5)
+        rs_change6 = self.changeleader(self.ns_leader, name, pid, self.leader)
+        self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change6)
 
-        rs = self.changeleader(self.ns_leader, name, pid+10, switch)
-        self.assertTrue('failed to change leader. error msg: pid is not exist' in rs)
-
-        rs = self.changeleader(self.ns_leader, name, pid, '199.199.233.21:21')
-        self.assertTrue('failed to change leader. error msg: change leader failed' in rs)
 
 if __name__ == "__main__":
     load(TestChangeLeader)

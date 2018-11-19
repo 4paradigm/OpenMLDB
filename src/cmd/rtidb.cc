@@ -2448,7 +2448,6 @@ void HandleClientSetLimit(const std::vector<std::string> parts, ::rtidb::client:
         return;
     }
     try {
-
         std::string key = parts[1];
         if (std::isupper(key[0])) {
             std::string subname = key.substr(1);
