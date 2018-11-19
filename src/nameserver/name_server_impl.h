@@ -33,8 +33,6 @@ using ::rtidb::zk::DistLock;
 using ::rtidb::api::TabletState;
 using ::rtidb::client::TabletClient;
 
-const uint64_t INVALID_PARENT_ID = UINT64_MAX;
-
 // tablet info
 struct TabletInfo {
     // tablet state
@@ -335,7 +333,7 @@ private:
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
-                    const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
+                    const std::string& name, uint32_t pid);
     int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_max_concurrency);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid, std::string candidate_leader = "");
@@ -351,14 +349,14 @@ private:
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
-    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
-    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
-    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
-    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
+    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
-    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
+    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
-                    bool is_leader, bool is_alive, uint64_t partent_id);
+                    bool is_leader, bool is_alive);
 
     int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);                
 
