@@ -24,6 +24,7 @@
 #--tablet_offline_check_interval=1000
 
 #--name_server_task_pool_size=8
+#--name_server_task_concurrency=2
 #--name_server_task_max_concurrency=8
 #--name_server_task_wait_time=1000
 #--get_task_status_interval=2000

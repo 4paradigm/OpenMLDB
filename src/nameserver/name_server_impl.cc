@@ -32,6 +32,7 @@ DECLARE_uint32(tablet_heartbeat_timeout);
 DECLARE_uint32(tablet_offline_check_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(name_server_task_max_concurrency);
 
 namespace rtidb {
 namespace nameserver {
@@ -2235,7 +2236,7 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
 
 int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency) {
     uint32_t idx = op_data->op_info_.pid() % task_vec_.size();
-    if (concurrency < task_vec_.size()) {
+    if (concurrency < task_vec_.size() && concurrency > 0) {
         idx = op_data->op_info_.pid() % concurrency;
     }
     op_data->op_info_.set_vec_idx(idx);

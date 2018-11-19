@@ -21,7 +21,7 @@
 #include "base/random.h"
 #include "base/schema_codec.h"
 
-DECLARE_uint32(name_server_task_max_concurrency);
+DECLARE_uint32(name_server_task_concurrency);
 
 namespace rtidb {
 namespace nameserver {
@@ -334,7 +334,7 @@ private:
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
                     const std::string& name, uint32_t pid);
-    int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_max_concurrency);
+    int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid, std::string candidate_leader = "");
     int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
