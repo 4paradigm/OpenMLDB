@@ -56,7 +56,7 @@ public:
 
     bool ChangeLeader(const std::string& name, uint32_t pid, std::string& candidate_leader, std::string& msg);
 
-    bool OfflineEndpoint(const std::string& endpoint, std::string& msg);
+    bool OfflineEndpoint(const std::string& endpoint, uint32_t concurrency, std::string& msg);
 
     bool Migrate(const std::string& src_endpoint, const std::string& name, const std::vector<uint32_t>& pid_vec, 
                  const std::string& des_endpoint, std::string& msg);

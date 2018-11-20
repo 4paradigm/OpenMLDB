@@ -1430,6 +1430,12 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    /*if (request->has_concurrency() && request->concurrency() > FLAGS_name_server_task_max_concurrency) {
+        response->set_code(-1);
+        response->set_msg("concurrency is greater than the max value " + std::to_string(FLAGS_name_server_task_max_concurrency));
+        PDLOG(WARNING, "concurrency is greater than the max value %u", FLAGS_name_server_task_max_concurrency);
+        return;
+    }*/
     std::string endpoint = request->endpoint();
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = tablets_.find(endpoint);
@@ -1445,39 +1451,43 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         std::set<uint32_t> leader_pid;
         std::set<uint32_t> follower_pid;
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
+            uint32_t pid = kv.second->table_partition(idx).pid();
+            if (kv.second->table_partition(idx).partition_meta_size() == 1 && 
+                    kv.second->table_partition(idx).partition_meta(0).endpoint() == endpoint) {
+                PDLOG(INFO, "table[%s] pid[%u] has no followers", kv.first.c_str(), pid);
+                if (kv.second->table_partition(idx).partition_meta(0).is_alive()) {
+                    CreateUpdatePartitionStatusOP(kv.first, pid, endpoint, true, false, INVALID_PARENT_ID);
+                } else {
+                    PDLOG(INFO, "table[%s] pid[%u] is_alive status is no, need not offline", 
+                                kv.first.c_str(), pid);
+                }
+                continue;
+            }
+            std::string alive_leader;
+            int endpoint_index = -1;
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                // tackle the alive partition only
-                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
-                    if (kv.second->table_partition(idx).partition_meta_size() == 1) {
-                        PDLOG(INFO, "table[%s] pid[%u] has no followers. need not to do offline task", 
-                                    kv.first.c_str(), kv.second->table_partition(idx).pid());
-                        break;
-                    }
-                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                        response->set_code(-1);
-                        std::string err_msg = "partition " + std::to_string(kv.second->table_partition(idx).pid()) + 
-                                        " is alive";
-                        response->set_msg(err_msg);
-                        PDLOG(WARNING, "partition[%u] is alive. name[%s] endpoint[%s]", 
-                                        kv.second->table_partition(idx).pid(),
-                                        kv.first.c_str(), endpoint.c_str());
-                        return;
-                    }
-                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                        leader_pid.insert(kv.second->table_partition(idx).pid());
-                    } else {
-                        follower_pid.insert(kv.second->table_partition(idx).pid());
-                    }
+                const ::rtidb::nameserver::PartitionMeta& partition_meta = 
+                    kv.second->table_partition(idx).partition_meta(meta_idx);  
+                if (partition_meta.is_leader() && partition_meta.is_alive()) {
+                    alive_leader = partition_meta.endpoint();
+                }
+                if (partition_meta.endpoint() == endpoint) {
+                    endpoint_index = meta_idx;
                 }
             }
-        }
-        for (auto pid : leader_pid) {
-            PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
-            CreateChangeLeaderOP(kv.first, pid);
-        }
-        // delete replica
-        for (auto pid : follower_pid) {
-            CreateOfflineReplicaOP(kv.first, pid, endpoint);
+            if (endpoint_index < 0) {
+                continue;
+            }
+            const ::rtidb::nameserver::PartitionMeta& partition_meta = 
+                    kv.second->table_partition(idx).partition_meta(endpoint_index);  
+            if (partition_meta.is_leader()) {
+                if (alive_leader.empty() || alive_leader == endpoint) {
+                    PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
+                    CreateChangeLeaderOP(kv.first, pid);
+                }
+            } else if (!partition_meta.is_alive()) {
+                CreateOfflineReplicaOP(kv.first, pid, endpoint);
+            }
         }
     }
     response->set_code(0);
