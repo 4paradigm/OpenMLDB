@@ -1421,12 +1421,12 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    /*if (request->has_concurrency() && request->concurrency() > FLAGS_name_server_task_max_concurrency) {
+    if (request->has_concurrency() && request->concurrency() > FLAGS_name_server_task_max_concurrency) {
         response->set_code(-1);
         response->set_msg("concurrency is greater than the max value " + std::to_string(FLAGS_name_server_task_max_concurrency));
         PDLOG(WARNING, "concurrency is greater than the max value %u", FLAGS_name_server_task_max_concurrency);
         return;
-    }*/
+    }
     std::string endpoint = request->endpoint();
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = tablets_.find(endpoint);
@@ -1447,7 +1447,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
                     kv.second->table_partition(idx).partition_meta(0).endpoint() == endpoint) {
                 PDLOG(INFO, "table[%s] pid[%u] has no followers", kv.first.c_str(), pid);
                 if (kv.second->table_partition(idx).partition_meta(0).is_alive()) {
-                    CreateUpdatePartitionStatusOP(kv.first, pid, endpoint, true, false, INVALID_PARENT_ID);
+                    CreateUpdatePartitionStatusOP(kv.first, pid, endpoint, true, false);
                 } else {
                     PDLOG(INFO, "table[%s] pid[%u] is_alive status is no, need not offline", 
                                 kv.first.c_str(), pid);
