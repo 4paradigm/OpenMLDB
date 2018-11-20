@@ -270,8 +270,8 @@ class TestChangeLeader(TestCaseBase):
 
     @ddt.data(
         (0, '127.0.0.1:37771', 'no'),
-        (0, '127.0.0.1:37771', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
+        (0, '127.0.0.1:37772', 'no'),
+        (1, '127.0.0.1:37771', 'no'),
         (1, '127.0.0.1:37772', 'no'),
         (0, '', 'no'),
         (1, '', 'no')
@@ -355,8 +355,8 @@ class TestChangeLeader(TestCaseBase):
 
     @ddt.data(
         (0, '127.0.0.1:37771', 'no'),
-        (0, '127.0.0.1:37771', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
+        (0, '127.0.0.1:37772', 'no'),
+        (1, '127.0.0.1:37771', 'no'),
         (1, '127.0.0.1:37772', 'no'),
         (0, '', 'no'),
         (1, '', 'no')
@@ -459,6 +459,104 @@ class TestChangeLeader(TestCaseBase):
         self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change5)
         rs_change6 = self.changeleader(self.ns_leader, name, pid, self.leader)
         self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change6)
+
+
+    @ddt.data(
+            (0, '127.0.0.1:37771', 'no'),
+            (1, '127.0.0.1:37771', 'no'),
+            (0, '', 'no'),
+            (1, '', 'no')
+        )
+    @ddt.unpack
+    def test_changeleader_endpoint_without_offline_with_one_follower_and_endpoint(self, pid, switch,rsp_msg):
+        """
+        不当机更新leader,指定endpoint模式。一个leader和一个follower
+        :return:
+        """
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = 'tname{}'.format(time.time())
+        m = utils.gen_table_metadata(
+            '"{}"'.format(name), None, 144000, 2,
+            ('table_partition', '"{}"'.format(self.leader), '"0-1"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false')
+        )
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs0 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs0)
+        self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string', 'testvalue0'),
+                                  'k3': ('string', 'testvalue0')}
+        self.multidimension_scan_vk = {'k1': 'testvalue0'}
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.confset(self.ns_leader, 'auto_recover_table', 'false')
+        rs1 = self.showtable(self.ns_leader)
+        tid = rs1.keys()[0][1]
+
+        self.assertEqual(rs1[(name, tid,  str(pid), self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs1[(name, tid,  str(pid), self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+
+        rs0 = self.changeleader(self.ns_leader, name, pid, switch)
+        time.sleep(1)
+        if (switch == ''):
+            self.assertIn(rs0, 'failed to change leader. error msg: leader is alive')
+        else:
+            rs2 = self.showtable(self.ns_leader)
+            self.assertEqual(rs2[(name, tid, str(pid), self.leader)], ['leader', '144000min', rsp_msg, 'kNoCompress'])
+            self.assertEqual(rs2[(name, tid, str(pid), switch)], ['leader', '144000min', 'yes', 'kNoCompress'])
+
+
+
+    @ddt.data(
+        (0, 'auto', 'no'),
+        (1, 'auto', 'no'),
+        (0, '', 'no'),
+        (1, '', 'no')
+    )
+    @ddt.unpack
+    def test_changeleader_endpoint_without_offline_with_one_follower_and_auto(self, pid, switch,rsp_msg):
+        """
+        不当机更新leader,auto模式。一个leader和一个follower
+        :return:
+        """
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = 'tname{}'.format(time.time())
+        m = utils.gen_table_metadata(
+            '"{}"'.format(name), None, 144000, 2,
+            ('table_partition', '"{}"'.format(self.leader), '"0-1"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false')
+        )
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs0 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs0)
+        self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string', 'testvalue0'),
+                                  'k3': ('string', 'testvalue0')}
+        self.multidimension_scan_vk = {'k1': 'testvalue0'}
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.confset(self.ns_leader, 'auto_recover_table', 'false')
+        rs1 = self.showtable(self.ns_leader)
+        tid = rs1.keys()[0][1]
+
+        self.assertEqual(rs1[(name, tid,  str(pid), self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs1[(name, tid,  str(pid), self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+
+        rs0 = self.changeleader(self.ns_leader, name, pid, switch)
+        time.sleep(1)
+        if (switch == ''):
+            self.assertIn(rs0, 'failed to change leader. error msg: leader is alive')
+        else:
+            rs2 = self.showtable(self.ns_leader)
+            self.assertEqual(rs2[(name, tid, str(pid), self.leader)], ['leader', '144000min', rsp_msg, 'kNoCompress'])
+            self.assertEqual(rs2[(name, tid, str(pid), '127.0.0.1:37771')], ['leader', '144000min', 'yes', 'kNoCompress'])
+
 
 
 if __name__ == "__main__":
