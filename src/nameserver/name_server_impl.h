@@ -21,6 +21,8 @@
 #include "base/random.h"
 #include "base/schema_codec.h"
 
+DECLARE_uint32(name_server_task_concurrency);
+
 namespace rtidb {
 namespace nameserver {
 
@@ -30,8 +32,6 @@ using ::rtidb::zk::ZkClient;
 using ::rtidb::zk::DistLock;
 using ::rtidb::api::TabletState;
 using ::rtidb::client::TabletClient;
-
-const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 
 // tablet info
 struct TabletInfo {
@@ -337,8 +337,8 @@ private:
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
-                    const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
-    int AddOPData(const std::shared_ptr<OPData>& op_data);
+                    const std::string& name, uint32_t pid);
+    int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid, std::string candidate_leader = "");
     int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
@@ -353,14 +353,14 @@ private:
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
-    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
-    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
-    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
-    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
+    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
-    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint64_t parent_id);
+    int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
-                    bool is_leader, bool is_alive, uint64_t partent_id);
+                    bool is_leader, bool is_alive);
 
     int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);                
 
@@ -372,9 +372,13 @@ private:
                                  const std::string& follower, uint64_t delta, 
                                  std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
+    void WrapTaskFun(const boost::function<bool ()>& fun, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
-    
+    std::shared_ptr<OPData> FindRunningOP(uint64_t op_id);
+    void SetOPStatus(const std::shared_ptr<OPData>& op_data, OPStatus* op_status);
+
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint,
                            int32_t tid, int32_t pid, 
@@ -402,13 +406,11 @@ private:
     std::string zk_op_data_path_;
     uint64_t op_index_;
     std::atomic<bool> running_;
-    std::map<uint64_t, std::shared_ptr<OPData>> task_map_;
-    std::map<uint64_t, std::shared_ptr<OPData>> done_map_;
+    std::list<std::shared_ptr<OPData>> done_op_list_;
+    std::vector<std::list<std::shared_ptr<OPData>>> task_vec_;
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
     std::atomic<bool> auto_recover_table_;
-    std::map<std::string, std::list<uint64_t>> ordered_op_map_;
-    std::set<::rtidb::api::OPType> ordered_op_type_;
     std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
     uint64_t session_term_;

@@ -807,9 +807,10 @@ void TabletImpl::DelReplica(RpcController* controller,
             response->set_msg("replicator role is not leader");
             break;
         } else {
-            response->set_code(-4);
-            PDLOG(WARNING, "fail to del endpoint for table %u pid %u", request->tid(), request->pid());
-            response->set_msg("fail to del endpoint");
+            response->set_code(0);
+            PDLOG(WARNING, "fail to del endpoint for table %u pid %u. replica does not exist", 
+                            request->tid(), request->pid());
+            response->set_msg("replica does not exist");
         }
         if (task_ptr) {
             std::lock_guard<std::mutex> lock(mu_);
