@@ -309,7 +309,6 @@ class TestChangeLeader(TestCaseBase):
         self.assertTrue('Put ok' in put_rs0)
         time.sleep(3)
         put_rsleader = self.scan(self.leader,  tid, str(pid), 'before', self.now(), 1)
-        infoLogger.error(put_rsleader)
         self.assertTrue('beforevalue' in put_rsleader)
         put_rsslave = self.scan(self.slave1,  tid, str(pid), 'before', self.now(), 1)
         self.assertTrue('beforevalue' in put_rsslave)

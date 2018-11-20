@@ -9,7 +9,7 @@ from libs.test_loader import load
 import libs.utils as utils
 
 class TestRecoverTable(TestCaseBase):
-
+    @multi_dimension(False)
     def test_recover_table_normal(self):
         """
         测试recovertable函数。put数据之后是否会同步
