@@ -3037,8 +3037,10 @@ void StartClient() {
         std::cout << "Start failed! not set endpoint" << std::endl;
         return;
     }
-    std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
-        << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
+    if (FLAGS_interactive) {
+        std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+            << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
+    }
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
     client.Init();
     while (true) {
