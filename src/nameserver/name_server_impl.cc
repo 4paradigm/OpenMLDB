@@ -1648,8 +1648,6 @@ void NameServerImpl::ShowTable(RpcController* controller,
             auto tablet_ptr = tablet.second;
             if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 PDLOG(WARNING, "endpoint[%s] is offline", endpoint.c_str());
-                response->set_code(-1);
-                response->set_msg("endpoint is offline");
                 continue;
             }
             tablet_ptr_map.insert(std::make_pair(endpoint, tablet_ptr));
@@ -1662,8 +1660,6 @@ void NameServerImpl::ShowTable(RpcController* controller,
         ::rtidb::api::GetTableStatusResponse tablet_status_response;
         if (!tablet_ptr->client_->GetTableStatus(tablet_status_response)) {
             PDLOG(WARNING, "[%s]  can not get table_status", request->name().c_str());
-            response->set_code(-1);
-            response->set_msg("can not find table_status");
             continue;
         }
         tablet_status_response_map.insert(std::make_pair(endpoint, tablet_status_response));
