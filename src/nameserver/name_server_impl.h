@@ -336,7 +336,8 @@ private:
                     const std::string& name, uint32_t pid);
     int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateChangeLeaderOP(const std::string& name, uint32_t pid, std::string candidate_leader = "");
+    int CreateChangeLeaderOP(const std::string& name, uint32_t pid, 
+                    const std::string& candidate_leader, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
@@ -356,9 +357,10 @@ private:
     int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
     int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
-                    bool is_leader, bool is_alive);
+                    bool is_leader, bool is_alive, uint32_t concurrency = FLAGS_name_server_task_concurrency);
 
-    int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);                
+    int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, 
+                    const std::string& endpoint, uint32_t concurrency = FLAGS_name_server_task_concurrency);
 
     void NotifyTableChanged();
     void DeleteDoneOP();
