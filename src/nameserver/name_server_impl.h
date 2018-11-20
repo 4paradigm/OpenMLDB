@@ -324,6 +324,10 @@ private:
     std::shared_ptr<Task> CreateUpdateLeaderInfoTask(uint64_t op_index, ::rtidb::api::OPType op_type,
                     const std::string& name, uint32_t pid);
 
+    std::shared_ptr<Task> CreateCheckBinlogSyncProgressTask(uint64_t op_index, 
+                    ::rtidb::api::OPType op_type, const std::string& name, uint32_t pid,
+                    const std::string& follower, uint64_t delta);
+
 	std::shared_ptr<Task> CreateDropTableTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
 
@@ -362,7 +366,11 @@ private:
 
     void NotifyTableChanged();
     void DeleteDoneOP();
+    void UpdateTableStatus();
     int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
+    void CheckBinlogSyncProgress(const std::string& name, uint32_t pid,
+                                 const std::string& follower, uint64_t delta, 
+                                 std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);

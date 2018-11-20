@@ -19,6 +19,7 @@ message PartitionMeta {
     required string endpoint = 1;
     required bool is_leader = 2;
     optional bool is_alive = 3 [default = true];
+    optional uint64 offset = 4;
 }
 
 message TermPair {
@@ -120,12 +121,13 @@ message OfflineEndpointRequest {
 }
 
 message RecoverEndpointRequest {
-	required string endpoint = 1;
+    required string endpoint = 1;
+    optional uint32 concurrency = 2;
 }
 
 message GeneralResponse {
-	required int32 code = 1;
-	optional string msg = 2;
+    required int32 code = 1;
+    optional string msg = 2;
 }
 
 message ShowTabletRequest {}

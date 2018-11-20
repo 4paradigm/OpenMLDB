@@ -32,6 +32,7 @@ DECLARE_uint32(tablet_heartbeat_timeout);
 DECLARE_uint32(tablet_offline_check_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(get_table_status_interval);
 
 namespace rtidb {
 namespace nameserver {
@@ -1495,6 +1496,12 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+	/*if (request->has_concurrency() && request->concurrency() > FLAGS_name_server_task_max_concurrency) {
+        response->set_code(-1);
+        response->set_msg("concurrency is greater than the max value " + std::to_string(FLAGS_name_server_task_max_concurrency));
+        PDLOG(WARNING, "concurrency is greater than the max value %u", FLAGS_name_server_task_max_concurrency);
+        return;
+    }*/
     std::string endpoint = request->endpoint();
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2288,6 +2295,61 @@ void NameServerImpl::DeleteDoneOP() {
     }
 }
 
+void NameServerImpl::UpdateTableStatus() {
+    if (!running_.load(std::memory_order_acquire)) {
+        return;
+    }
+    std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& kv : tablets_) {
+            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                continue;
+            }
+            tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
+        }
+    }
+    std::map<std::string, ::rtidb::api::GetTableStatusResponse> tablet_status_response_map;
+    for (const auto& kv : tablet_ptr_map) {
+        ::rtidb::api::GetTableStatusResponse tablet_status_response;
+        if (!kv.second->client_->GetTableStatus(tablet_status_response)) {
+            PDLOG(WARNING, "get table status failed! endpoint[%s]", kv.first.c_str());
+            continue;
+        }
+        tablet_status_response_map.insert(std::make_pair(kv.first, tablet_status_response));
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& kv : table_info_) {
+        uint32_t tid = kv.second->tid();
+        for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
+            uint32_t pid = kv.second->table_partition(idx).pid();
+            ::rtidb::nameserver::TablePartition* table_partition =
+                kv.second->mutable_table_partition(idx);
+            ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta_field = 
+                table_partition->mutable_partition_meta();
+            for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
+                auto tablet_status_response_iter = tablet_status_response_map.find(endpoint);
+                if (tablet_status_response_iter == tablet_status_response_map.end()) {
+                    continue;
+                }
+                ::rtidb::api::GetTableStatusResponse tablet_status_response = tablet_status_response_iter->second;
+                for (int tidx = 0; tidx < tablet_status_response.all_table_status_size(); tidx++) {
+                    if (tablet_status_response.all_table_status(tidx).tid() == tid &&
+                        tablet_status_response.all_table_status(tidx).pid() == pid) {
+                        ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
+                        partition_meta->set_offset(tablet_status_response.all_table_status(tidx).offset());
+                        break;
+                     }
+                }
+            }
+        }
+    }
+    if (running_.load(std::memory_order_acquire)) {
+        task_thread_pool_.DelayTask(FLAGS_get_table_status_interval, boost::bind(&NameServerImpl::UpdateTableStatus, this));
+    }
+}
+
 int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
     std::string value = endpoint;
     std::shared_ptr<OPData> op_data;
@@ -2540,6 +2602,7 @@ void NameServerImpl::OnLocked() {
     }
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this));
+    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
 }
 
@@ -3586,6 +3649,19 @@ std::shared_ptr<Task> NameServerImpl::CreateDropTableTask(const std::string& end
     return task;
 }
 
+std::shared_ptr<Task> NameServerImpl::CreateCheckBinlogSyncProgressTask(uint64_t op_index, 
+        ::rtidb::api::OPType op_type, const std::string& name, uint32_t pid, 
+    const std::string& follower, uint64_t delta) {
+    std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
+    task->task_info_->set_op_id(op_index);
+    task->task_info_->set_op_type(op_type);
+    task->task_info_->set_task_type(::rtidb::api::TaskType::kCheckBinlogSyncProgress);
+    task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->fun_ = boost::bind(&NameServerImpl::CheckBinlogSyncProgress, this, name, pid, 
+        follower, delta, task->task_info_);
+    return task;
+}
+
 std::shared_ptr<Task> NameServerImpl::CreateUpdateTableInfoTask(const std::string& src_endpoint,
                     const std::string& name, uint32_t pid, const std::string& des_endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type) {
@@ -3595,8 +3671,66 @@ std::shared_ptr<Task> NameServerImpl::CreateUpdateTableInfoTask(const std::strin
     task->task_info_->set_task_type(::rtidb::api::TaskType::kUpdateTableInfo);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->fun_ = boost::bind(&NameServerImpl::UpdateTableInfo, this, src_endpoint, name, pid, 
-            des_endpoint,task->task_info_);
+            des_endpoint, task->task_info_);
     return task;
+}
+
+void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t pid,
+                const std::string& follower, uint64_t delta, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+    if (task_info->status() != ::rtidb::api::TaskStatus::kDoing) {
+        PDLOG(WARNING, "task status is[%s], exit task. op_id[%lu], task_type[%s]",
+                        ::rtidb::api::TaskStatus_Name(task_info->status()).c_str(),
+                        task_info->op_id(), 
+                        ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        return;
+    }
+    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+        if (iter->second->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        uint64_t leader_offset = 0;
+        uint64_t follower_offset = 0;
+        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+            std::string endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
+            const PartitionMeta& meta = iter->second->table_partition(idx).partition_meta(meta_idx);
+            if (!meta.has_offset()) {
+                continue;
+            }
+            if (meta.is_leader() && meta.is_alive()) {
+                leader_offset = meta.offset();
+            } else if (meta.endpoint() == follower) {
+                follower_offset = meta.offset();
+            }
+        }
+        if (leader_offset <= follower_offset + delta) {
+            task_info->set_status(::rtidb::api::TaskStatus::kDone);
+            PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s], leader_offset[%lu], follower_offset[%lu]",
+                        task_info->op_id(), 
+                        ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(),
+                        leader_offset, follower_offset);
+            return;
+        }
+        if (leader_offset < follower_offset) {
+            PDLOG(WARNING, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s],leader_offset[%lu], follower_offset[%lu]",
+                            task_info->op_id(), 
+                            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(),
+                            leader_offset, follower_offset);
+                            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+            return;
+        }
+        break;
+    }
+    if (running_.load(std::memory_order_acquire)) {
+        task_thread_pool_.DelayTask(FLAGS_get_table_status_interval,
+                boost::bind(&NameServerImpl::CheckBinlogSyncProgress, this, name, pid, follower, delta, task_info));
+    }
 }
 
 void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std::string& name, uint32_t pid,
