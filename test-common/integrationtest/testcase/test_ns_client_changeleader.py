@@ -10,8 +10,6 @@ import libs.ddt as ddt
 
 @ddt.ddt
 class TestChangeLeader(TestCaseBase):
-
-
     def test_changeleader_master_disconnect(self):
         """
         changeleader功能正常，主节点断网后，可以手工故障切换，切换成功后从节点可以同步数据

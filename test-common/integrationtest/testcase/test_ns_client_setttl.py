@@ -35,7 +35,6 @@ class TestSetTTL(TestCaseBase):
         self.assertIn('Set ttl failed! fail to update ttl from tablet', rs_latest3)
 
 
-
     def test_set_ttl_expired(self):
         """
         测试修改后的ttl值，scan后的数据被删除。两种类型latest和absolute都要测试

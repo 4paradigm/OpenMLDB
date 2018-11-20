@@ -234,6 +234,10 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{} {} {} {} {}'.format(updatetablealive, table_name, pid, endpoint, is_alive)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
 
+    def ns_recover_table_cmd(self, ns_endpoint, recovertable, table_name, pid, endpoint):
+        cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
             if self.multidimension and key is not '':
@@ -431,7 +435,6 @@ class TestCaseBase(unittest.TestCase):
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
-
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
