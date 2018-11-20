@@ -117,7 +117,7 @@ class TestOfflineEndpoint(TestCaseBase):
 
 
     @ddt.data(
-        (conf.tb_endpoints[0][1], 'failed to offline endpoint'),
+        (conf.tb_endpoints[0][1], 'offline endpoint ok'),
         ('127.0.0.1:80', 'failed to offline endpoint'),
     )
     @ddt.unpack
