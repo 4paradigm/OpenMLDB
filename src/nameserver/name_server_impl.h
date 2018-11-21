@@ -252,7 +252,7 @@ private:
 
     void OnTabletOnline(const std::string& endpoint);
 
-    void RecoverEndpoint(const std::string& endpoint, uint32_t concurrency);
+    void RecoverEndpoint(const std::string& endpoint, bool need_restore, uint32_t concurrency);
 
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
@@ -340,8 +340,10 @@ private:
                     const std::string& name, uint32_t pid);
     int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateChangeLeaderOP(const std::string& name, uint32_t pid, std::string candidate_leader = "");
-    int CreateRecoverTableOP(const std::string& name, uint32_t pid, const std::string& endpoint, uint32_t concurrency);
+    int CreateChangeLeaderOP(const std::string& name, uint32_t pid, 
+                    const std::string& candidate_leader, uint32_t concurrency = FLAGS_name_server_task_concurrency);
+    int CreateRecoverTableOP(const std::string& name, uint32_t pid, 
+                    const std::string& endpoint, bool is_leader, uint32_t concurrency);
     void SelectLeader(const std::string& name, uint32_t tid, uint32_t pid, 
                     std::vector<std::string>& follower_endpoint, 
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
