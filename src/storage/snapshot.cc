@@ -503,5 +503,3 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
 
 }
 }
-
-
