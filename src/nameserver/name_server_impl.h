@@ -371,7 +371,6 @@ private:
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
     std::shared_ptr<OPData> FindRunningOP(uint64_t op_id);
-    void SetOPStatus(const std::shared_ptr<OPData>& op_data, OPStatus* op_status);
 
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint,

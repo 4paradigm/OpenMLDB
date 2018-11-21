@@ -1477,6 +1477,8 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
                 if (alive_leader.empty() || alive_leader == endpoint) {
                     PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
                     CreateChangeLeaderOP(kv.first, pid, "", concurrency);
+                } else {
+                    PDLOG(INFO, "table[%s] pid[%u] need not change leader", kv.first.c_str(), pid);
                 }
             } else {
                 CreateOfflineReplicaOP(kv.first, pid, endpoint, concurrency);
@@ -1596,6 +1598,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    std::map<uint64_t, std::shared_ptr<OPData>> op_map;
     std::lock_guard<std::mutex> lock(mu_);
     DeleteDoneOP();
     for (const auto& op_data : done_op_list_) {
@@ -1605,8 +1608,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
             continue;
         }
-        OPStatus* op_status = response->add_op_status();
-        SetOPStatus(op_data, op_status);
+        op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
     }
     for (const auto& op_list : task_vec_) {
         if (op_list.empty()) {
@@ -1619,28 +1621,27 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
             if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
                 continue;
             }
-            OPStatus* op_status = response->add_op_status();
-            SetOPStatus(op_data, op_status);
+            op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
         }
+    }
+    for (const auto& kv : op_map) {
+        OPStatus* op_status = response->add_op_status();
+        op_status->set_op_id(kv.second->op_info_.op_id());
+        op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+        op_status->set_name(kv.second->op_info_.name());
+        op_status->set_pid(kv.second->op_info_.pid());
+        op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
+        if (kv.second->task_list_.empty() || kv.second->op_info_.task_status() == ::rtidb::api::kInited) {
+            op_status->set_task_type("-");
+        } else {
+            std::shared_ptr<Task> task = kv.second->task_list_.front();
+            op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
+        }
+        op_status->set_start_time(kv.second->op_info_.start_time());
+        op_status->set_end_time(kv.second->op_info_.end_time());
     }
     response->set_code(0);
     response->set_msg("ok");
-}
-
-void NameServerImpl::SetOPStatus(const std::shared_ptr<OPData>& op_data, OPStatus* op_status) {
-    op_status->set_op_id(op_data->op_info_.op_id());
-    op_status->set_op_type(::rtidb::api::OPType_Name(op_data->op_info_.op_type()));
-    op_status->set_name(op_data->op_info_.name());
-    op_status->set_pid(op_data->op_info_.pid());
-    op_status->set_status(::rtidb::api::TaskStatus_Name(op_data->op_info_.task_status()));
-    if (op_data->task_list_.empty() || op_data->op_info_.task_status() == ::rtidb::api::kInited) {
-        op_status->set_task_type("-");
-    } else { 
-        std::shared_ptr<Task> task = op_data->task_list_.front();
-        op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
-    }
-    op_status->set_start_time(op_data->op_info_.start_time());
-    op_status->set_end_time(op_data->op_info_.end_time());
 }
 
 void NameServerImpl::ShowTable(RpcController* controller,
@@ -2272,6 +2273,20 @@ void NameServerImpl::DeleteDoneOP() {
         return;
     }
     while (done_op_list_.size() > (uint32_t)FLAGS_max_op_num) {
+        std::shared_ptr<OPData> op_data = done_op_list_.front();
+		if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+            std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+            if (zk_client_->DeleteNode(node)) {
+                PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
+                op_data->task_list_.clear();
+            } else {
+                PDLOG(WARNING, "delete zk op_node failed. op_id[%lu] node[%s]", 
+                                op_data->op_info_.op_id(), node.c_str()); 
+                break;
+            }
+        }
+        PDLOG(INFO, "done_op_list size[%u] is greater than the max_op_num[%u], delete op[%lu]", 
+                    done_op_list_.size(), (uint32_t)FLAGS_max_op_num, op_data->op_info_.op_id()); 
         done_op_list_.pop_front();
     }
 }
