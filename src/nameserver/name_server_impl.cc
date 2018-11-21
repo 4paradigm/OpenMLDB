@@ -34,6 +34,7 @@ DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(get_table_status_interval);
 DECLARE_uint32(name_server_task_max_concurrency);
+DECLARE_uint32(check_binlog_sync_progress_delta);
 
 namespace rtidb {
 namespace nameserver {
@@ -2802,15 +2803,15 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                  offset,  manifest.offset(), name.c_str(), tid, pid);
     if (has_table) {
         if (ret_code == 0 && offset >= manifest.offset()) {
-            CreateReAddReplicaSimplifyOP(name, pid, endpoint);
+            CreateReAddReplicaSimplifyOP(name, pid, endpoint, 0);
         } else {
-            CreateReAddReplicaWithDropOP(name, pid, endpoint);
+            CreateReAddReplicaWithDropOP(name, pid, endpoint, 0);
         }
     } else {
         if (ret_code == 0 && offset >= manifest.offset()) {
-            CreateReAddReplicaNoSendOP(name, pid, endpoint);
+            CreateReAddReplicaNoSendOP(name, pid, endpoint, 0);
         } else {
-            CreateReAddReplicaOP(name, pid, endpoint);
+            CreateReAddReplicaOP(name, pid, endpoint, 0);
         }
     }
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
@@ -2821,14 +2822,19 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                 ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
 
-int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, uint64_t offset_delta) {
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return -1;
     }
     std::shared_ptr<OPData> op_data;
-    std::string value = endpoint;
+    RecoverTableData recover_table_data;
+    recover_table_data.set_endpoint(endpoint);
+    recover_table_data.set_offset_delta(offset_delta);
+    std::string value;
+    recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kReAddReplicaOP, value, op_data, name, pid) < 0) {
         PDLOG(WARNING, "create ReAddReplicaOP data error. table[%s] pid[%u] endpoint[%s]",
                         name.c_str(), pid, endpoint.c_str());
@@ -2852,9 +2858,15 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
 }
 
 int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
+    RecoverTableData recover_table_data;
+    if (!recover_table_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse recover_table_data failed. data[%s]", op_data->op_info_.data().c_str());
+        return -1;
+    }
     std::string name = op_data->op_info_.name();
+    std::string endpoint = recover_table_data.endpoint();
+    uint64_t offset_delta = recover_table_data.offset_delta();
     uint32_t pid = op_data->op_info_.pid();
-    std::string endpoint = op_data->op_info_.data();
     auto pos = table_info_.find(name);
     if (pos == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
@@ -2905,6 +2917,13 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index, 
+                ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, pid, endpoint, offset_delta);
+    if (!task) {
+        PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
     task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, true, 
                 op_index, ::rtidb::api::OPType::kReAddReplicaOP);
     if (!task) {
@@ -2918,9 +2937,14 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     return 0;
 }
 
-int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, 
+        const std::string& endpoint, uint64_t offset_delta) {
     std::shared_ptr<OPData> op_data;
-    std::string value = endpoint;
+    RecoverTableData recover_table_data;
+    recover_table_data.set_endpoint(endpoint);
+    recover_table_data.set_offset_delta(offset_delta);
+    std::string value;
+    recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kReAddReplicaWithDropOP, value, op_data, name, pid) < 0) {
         PDLOG(WARNING, "create ReAddReplicaWithDropOP data error. table[%s] pid[%u] endpoint[%s]",
                         name.c_str(), pid, endpoint.c_str());
@@ -2942,9 +2966,15 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
 }
 
 int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_data) { 
+    RecoverTableData recover_table_data;
+    if (!recover_table_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse recover_table_data failed. data[%s]", op_data->op_info_.data().c_str());
+        return -1;
+    }
     std::string name = op_data->op_info_.name();
+    std::string endpoint = recover_table_data.endpoint();
+    uint64_t offset_delta = recover_table_data.offset_delta();
     uint32_t pid = op_data->op_info_.pid();
-    std::string endpoint = op_data->op_info_.data();
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
@@ -3006,6 +3036,13 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index, 
+                ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, pid, endpoint, offset_delta);
+    if (!task) {
+        PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
     task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, true, 
                 op_index, ::rtidb::api::OPType::kReAddReplicaWithDropOP);
     if (!task) {
@@ -3019,14 +3056,19 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     return 0;
 }
 
-int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, uint64_t offset_delta) {
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
         return -1;
     }
     std::shared_ptr<OPData> op_data;
-    std::string value = endpoint;
+    RecoverTableData recover_table_data;
+    recover_table_data.set_endpoint(endpoint);
+    recover_table_data.set_offset_delta(offset_delta);
+    std::string value;
+    recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kReAddReplicaNoSendOP, value, op_data, name, pid) < 0) {
         PDLOG(WARNING, "create ReAddReplicaNoSendOP data failed. table[%s] pid[%u] endpoint[%s]",
                         name.c_str(), pid, endpoint.c_str());
@@ -3050,9 +3092,15 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
 }
 
 int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data) { 
+    RecoverTableData recover_table_data;
+    if (!recover_table_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse recover_table_data failed. data[%s]", op_data->op_info_.data().c_str());
+        return -1;
+    }
     std::string name = op_data->op_info_.name();
+    std::string endpoint = recover_table_data.endpoint();
+    uint64_t offset_delta = recover_table_data.offset_delta();
     uint32_t pid = op_data->op_info_.pid();
-    std::string endpoint = op_data->op_info_.data();
     auto pos = table_info_.find(name);
     if (pos == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
@@ -3093,6 +3141,13 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
                 ::rtidb::api::OPType::kReAddReplicaNoSendOP, tid, pid);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index, 
+                ::rtidb::api::OPType::kReAddReplicaNoSendOP, name, pid, endpoint, offset_delta);
+    if (!task) {
+        PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
@@ -3197,9 +3252,14 @@ int NameServerImpl::GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> ta
     return -1;
 }
 
-int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, 
+            const std::string& endpoint, uint64_t offset_delta) {
     std::shared_ptr<OPData> op_data;
-    std::string value = endpoint;
+    RecoverTableData recover_table_data;
+    recover_table_data.set_endpoint(endpoint);
+    recover_table_data.set_offset_delta(offset_delta);
+    std::string value;
+    recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kReAddReplicaSimplifyOP, value, op_data, name, pid) < 0) {
         PDLOG(WARNING, "create ReAddReplicaSimplifyOP data error. table[%s] pid[%u] endpoint[%s]",
                         name.c_str(), pid, endpoint.c_str());
@@ -3222,9 +3282,15 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
 }
 
 int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_data) {
+    RecoverTableData recover_table_data;
+    if (!recover_table_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse recover_table_data failed. data[%s]", op_data->op_info_.data().c_str());
+        return -1;
+    }
     std::string name = op_data->op_info_.name();
+    std::string endpoint = recover_table_data.endpoint();
+    uint64_t offset_delta = recover_table_data.offset_delta();
     uint32_t pid = op_data->op_info_.pid();
-    std::string endpoint = op_data->op_info_.data();
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
@@ -3246,6 +3312,13 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
                 ::rtidb::api::OPType::kReAddReplicaSimplifyOP, tid, pid, endpoint);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index, 
+                ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, pid, endpoint, offset_delta);
+    if (!task) {
+        PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
@@ -3637,14 +3710,14 @@ std::shared_ptr<Task> NameServerImpl::CreateDropTableTask(const std::string& end
 
 std::shared_ptr<Task> NameServerImpl::CreateCheckBinlogSyncProgressTask(uint64_t op_index, 
         ::rtidb::api::OPType op_type, const std::string& name, uint32_t pid, 
-    const std::string& follower, uint64_t delta) {
+        const std::string& follower, uint64_t offset_delta) {
     std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kCheckBinlogSyncProgress);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->fun_ = boost::bind(&NameServerImpl::CheckBinlogSyncProgress, this, name, pid, 
-        follower, delta, task->task_info_);
+        follower, offset_delta, task->task_info_);
     return task;
 }
 
@@ -3662,7 +3735,7 @@ std::shared_ptr<Task> NameServerImpl::CreateUpdateTableInfoTask(const std::strin
 }
 
 void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t pid,
-                const std::string& follower, uint64_t delta, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+                const std::string& follower, uint64_t offset_delta, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     if (task_info->status() != ::rtidb::api::TaskStatus::kDoing) {
         PDLOG(WARNING, "task status is[%s], exit task. op_id[%lu], task_type[%s]",
                         ::rtidb::api::TaskStatus_Name(task_info->status()).c_str(),
@@ -3695,7 +3768,7 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
                 follower_offset = meta.offset();
             }
         }
-        if (leader_offset <= follower_offset + delta) {
+        if (leader_offset <= follower_offset + offset_delta) {
             task_info->set_status(::rtidb::api::TaskStatus::kDone);
             PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s], leader_offset[%lu], follower_offset[%lu]",
                         task_info->op_id(), 
@@ -3715,7 +3788,7 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
     }
     if (running_.load(std::memory_order_acquire)) {
         task_thread_pool_.DelayTask(FLAGS_get_table_status_interval,
-                boost::bind(&NameServerImpl::CheckBinlogSyncProgress, this, name, pid, follower, delta, task_info));
+                boost::bind(&NameServerImpl::CheckBinlogSyncProgress, this, name, pid, follower, offset_delta, task_info));
     }
 }
 

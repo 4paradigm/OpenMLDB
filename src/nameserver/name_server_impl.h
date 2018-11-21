@@ -326,7 +326,7 @@ private:
 
     std::shared_ptr<Task> CreateCheckBinlogSyncProgressTask(uint64_t op_index, 
                     ::rtidb::api::OPType op_type, const std::string& name, uint32_t pid,
-                    const std::string& follower, uint64_t delta);
+                    const std::string& follower, uint64_t offset_delta);
 
 	std::shared_ptr<Task> CreateDropTableTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
@@ -353,10 +353,14 @@ private:
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
-    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, const std::string& endpoint);
-    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, const std::string& endpoint);
+    int CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
+                    const std::string& endpoint, uint64_t offset_delta);
+    int CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid,
+                    const std::string& endpoint, uint64_t offset_delta);
+    int CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, 
+                    const std::string& endpoint, uint64_t offset_delta);
+    int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, 
+                    const std::string& endpoint, uint64_t offset_delta);
     int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
     int CreateReLoadTableOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, const std::string& endpoint,
@@ -369,7 +373,7 @@ private:
     void UpdateTableStatus();
     int DropTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info);
     void CheckBinlogSyncProgress(const std::string& name, uint32_t pid,
-                                 const std::string& follower, uint64_t delta, 
+                                 const std::string& follower, uint64_t offset_delta, 
                                  std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
     void WrapTaskFun(const boost::function<bool ()>& fun, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
