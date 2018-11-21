@@ -244,7 +244,7 @@ class TestAutoFailover(TestCaseBase):
         self.multidimension_scan_vk = {'k1': 'ccard1'}
         rs5 = self.put(new_tb_leader2, tid, pid, "testkey1", self.now() + 9999, "ccard1")
         self.assertIn("ok", rs5)
-        time.sleep(0.1)
+        time.sleep(4)
         rs_scan = self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1)
         self.assertTrue(
             'ccard1' in rs_scan)
