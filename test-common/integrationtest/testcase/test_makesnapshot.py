@@ -5,6 +5,7 @@ import threading
 from libs.test_loader import load
 from libs.logger import infoLogger
 import libs.utils as utils
+from libs.deco import multi_dimension
 
 
 class TestMakeSnapshot(TestCaseBase):
@@ -210,15 +211,16 @@ class TestMakeSnapshot(TestCaseBase):
 
         # 5个线程并发loadtable，最后只有1个线程是load ok的
         threads = [threading.Thread(
-            target=loadtable, args=(self.slave1,)), threading.Thread(
-            target=makesnapshot, args=(self.slave1,))]
+                target=loadtable, args=(self.slave1,)), threading.Thread(
+                target=makesnapshot, args=(self.slave1,))]
+
 
         for t in threads:
             time.sleep(0.0001)
             t.start()
         for t in threads:
             t.join()
-        print rs_list
+        infoLogger.error(rs_list)
         self.assertIn('LoadTable ok', rs_list)
         self.assertIn('Fail to MakeSnapshot', rs_list)
 
@@ -417,7 +419,7 @@ class TestMakeSnapshot(TestCaseBase):
         self.multidimension_scan_vk = {'card': 'testkey11'}  # for multidimension test
         self.assertIn('testvalue11', self.scan(self.slave1, self.tid, self.pid, 'testkey11', self.now(), 1))
 
-
+    @multi_dimension(True)
     def test_makesnapshot_after_restart_while_putting(self):
         """
         写数据过程中节点挂掉，造成binlog不完整
