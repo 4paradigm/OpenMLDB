@@ -374,8 +374,8 @@ private:
                     const std::string& endpoint, uint64_t parent_id, uint32_t concurrency);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, bool is_leader, bool is_alive, uint64_t parent_id, uint32_t concurrency);
-
-    int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);                
+    int CreateOfflineReplicaOP(const std::string& name, uint32_t pid, 
+                    const std::string& endpoint, uint32_t concurrency = FLAGS_name_server_task_concurrency);
 
     void NotifyTableChanged();
     void DeleteDoneOP();
@@ -390,7 +390,6 @@ private:
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
     std::shared_ptr<OPData> FindRunningOP(uint64_t op_id);
-    void SetOPStatus(const std::shared_ptr<OPData>& op_data, OPStatus* op_status);
 
     // update ttl for partition
     bool UpdateTTLOnTablet(const std::string& endpoint,

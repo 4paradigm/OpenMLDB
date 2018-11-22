@@ -117,7 +117,8 @@ message ChangeLeaderRequest {
 }
 
 message OfflineEndpointRequest {
-	required string endpoint = 1;
+    required string endpoint = 1;
+    optional uint32 concurrency = 2;
 }
 
 message RecoverEndpointRequest {
@@ -241,8 +242,8 @@ message ShowOPStatusResponse {
 }
 
 service NameServer {
-	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
-	rpc DropTable(DropTableRequest) returns (GeneralResponse);
+    rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+    rpc DropTable(DropTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
     rpc ShowTable(ShowTableRequest) returns (ShowTableResponse);
     rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);

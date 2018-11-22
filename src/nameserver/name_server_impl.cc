@@ -926,6 +926,7 @@ void NameServerImpl::ProcessTask() {
                         op_data->op_info_.task_status() == ::rtidb::api::kFailed) {
                     continue;
                 }
+                op_data->op_info_.set_task_status(::rtidb::api::kDoing);
                 std::shared_ptr<Task> task = op_data->task_list_.front();
                 if (task->task_info_->status() == ::rtidb::api::kFailed) {
                     PDLOG(WARNING, "task[%s] run failed, terminate op[%s]. op_id[%lu]",
@@ -1436,6 +1437,17 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    uint32_t concurrency = FLAGS_name_server_task_concurrency;
+    if (request->has_concurrency()) {
+        if (request->concurrency() > FLAGS_name_server_task_max_concurrency) {
+            response->set_code(-1);
+            response->set_msg("concurrency is greater than the max value " + std::to_string(FLAGS_name_server_task_max_concurrency));
+            PDLOG(WARNING, "concurrency is greater than the max value %u", FLAGS_name_server_task_max_concurrency);
+            return;
+        } else {
+            concurrency = request->concurrency();
+        }
+    }
     std::string endpoint = request->endpoint();
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = tablets_.find(endpoint);
@@ -1444,46 +1456,48 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         response->set_msg("endpoint is not exist");
         PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
         return;
-    } else if (iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-        PDLOG(WARNING, "endpoint[%s] is healthy", endpoint.c_str());
     }
     for (const auto& kv : table_info_) {
-        std::set<uint32_t> leader_pid;
-        std::set<uint32_t> follower_pid;
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
+            uint32_t pid = kv.second->table_partition(idx).pid();
+            if (kv.second->table_partition(idx).partition_meta_size() == 1 && 
+                    kv.second->table_partition(idx).partition_meta(0).endpoint() == endpoint) {
+                PDLOG(INFO, "table[%s] pid[%u] has no followers", kv.first.c_str(), pid);
+                if (kv.second->table_partition(idx).partition_meta(0).is_alive()) {
+                    CreateUpdatePartitionStatusOP(kv.first, pid, endpoint, true, false, INVALID_PARENT_ID, concurrency);
+                } else {
+                    PDLOG(INFO, "table[%s] pid[%u] is_alive status is no, need not offline", 
+                                kv.first.c_str(), pid);
+                }
+                continue;
+            }
+            std::string alive_leader;
+            int endpoint_index = -1;
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                // tackle the alive partition only
-                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
-                    if (kv.second->table_partition(idx).partition_meta_size() == 1) {
-                        PDLOG(INFO, "table[%s] pid[%u] has no followers. need not to do offline task", 
-                                    kv.first.c_str(), kv.second->table_partition(idx).pid());
-                        break;
-                    }
-                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                        response->set_code(-1);
-                        std::string err_msg = "partition " + std::to_string(kv.second->table_partition(idx).pid()) + 
-                                        " is alive";
-                        response->set_msg(err_msg);
-                        PDLOG(WARNING, "partition[%u] is alive. name[%s] endpoint[%s]", 
-                                        kv.second->table_partition(idx).pid(),
-                                        kv.first.c_str(), endpoint.c_str());
-                        return;
-                    }
-                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                        leader_pid.insert(kv.second->table_partition(idx).pid());
-                    } else {
-                        follower_pid.insert(kv.second->table_partition(idx).pid());
-                    }
+                const ::rtidb::nameserver::PartitionMeta& partition_meta = 
+                    kv.second->table_partition(idx).partition_meta(meta_idx);  
+                if (partition_meta.is_leader() && partition_meta.is_alive()) {
+                    alive_leader = partition_meta.endpoint();
+                }
+                if (partition_meta.endpoint() == endpoint) {
+                    endpoint_index = meta_idx;
                 }
             }
-        }
-        for (auto pid : leader_pid) {
-            PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
-            CreateChangeLeaderOP(kv.first, pid, "", false);
-        }
-        // delete replica
-        for (auto pid : follower_pid) {
-            CreateOfflineReplicaOP(kv.first, pid, endpoint);
+            if (endpoint_index < 0) {
+                continue;
+            }
+            const ::rtidb::nameserver::PartitionMeta& partition_meta = 
+                    kv.second->table_partition(idx).partition_meta(endpoint_index);  
+            if (partition_meta.is_leader()) {
+                if (alive_leader.empty() || alive_leader == endpoint) {
+                    PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
+                    CreateChangeLeaderOP(kv.first, pid, "", false, concurrency);
+                } else {
+                    PDLOG(INFO, "table[%s] pid[%u] need not change leader", kv.first.c_str(), pid);
+                }
+            } else {
+                CreateOfflineReplicaOP(kv.first, pid, endpoint, concurrency);
+            }
         }
     }
     response->set_code(0);
@@ -1619,6 +1633,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    std::map<uint64_t, std::shared_ptr<OPData>> op_map;
     std::lock_guard<std::mutex> lock(mu_);
     DeleteDoneOP();
     for (const auto& op_data : done_op_list_) {
@@ -1628,8 +1643,7 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
         if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
             continue;
         }
-        OPStatus* op_status = response->add_op_status();
-        SetOPStatus(op_data, op_status);
+        op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
     }
     for (const auto& op_list : task_vec_) {
         if (op_list.empty()) {
@@ -1642,28 +1656,27 @@ void NameServerImpl::ShowOPStatus(RpcController* controller,
             if (request->has_pid() && op_data->op_info_.pid() != request->pid()) {
                 continue;
             }
-            OPStatus* op_status = response->add_op_status();
-            SetOPStatus(op_data, op_status);
+            op_map.insert(std::make_pair(op_data->op_info_.op_id(), op_data));
         }
+    }
+    for (const auto& kv : op_map) {
+        OPStatus* op_status = response->add_op_status();
+        op_status->set_op_id(kv.second->op_info_.op_id());
+        op_status->set_op_type(::rtidb::api::OPType_Name(kv.second->op_info_.op_type()));
+        op_status->set_name(kv.second->op_info_.name());
+        op_status->set_pid(kv.second->op_info_.pid());
+        op_status->set_status(::rtidb::api::TaskStatus_Name(kv.second->op_info_.task_status()));
+        if (kv.second->task_list_.empty() || kv.second->op_info_.task_status() == ::rtidb::api::kInited) {
+            op_status->set_task_type("-");
+        } else {
+            std::shared_ptr<Task> task = kv.second->task_list_.front();
+            op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
+        }
+        op_status->set_start_time(kv.second->op_info_.start_time());
+        op_status->set_end_time(kv.second->op_info_.end_time());
     }
     response->set_code(0);
     response->set_msg("ok");
-}
-
-void NameServerImpl::SetOPStatus(const std::shared_ptr<OPData>& op_data, OPStatus* op_status) {
-    op_status->set_op_id(op_data->op_info_.op_id());
-    op_status->set_op_type(::rtidb::api::OPType_Name(op_data->op_info_.op_type()));
-    op_status->set_name(op_data->op_info_.name());
-    op_status->set_pid(op_data->op_info_.pid());
-    op_status->set_status(::rtidb::api::TaskStatus_Name(op_data->op_info_.task_status()));
-    if (op_data->task_list_.empty()) {
-        op_status->set_task_type("-");
-    } else { 
-        std::shared_ptr<Task> task = op_data->task_list_.front();
-        op_status->set_task_type(::rtidb::api::TaskType_Name(task->task_info_->task_type()));
-    }
-    op_status->set_start_time(op_data->op_info_.start_time());
-    op_status->set_end_time(op_data->op_info_.end_time());
 }
 
 void NameServerImpl::ShowTable(RpcController* controller,
@@ -2263,7 +2276,7 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
     op_data->op_info_.set_op_type(op_type);
     op_data->op_info_.set_task_index(0);
     op_data->op_info_.set_data(value);
-    op_data->op_info_.set_task_status(::rtidb::api::kDoing);
+    op_data->op_info_.set_task_status(::rtidb::api::kInited);
     op_data->op_info_.set_name(name);
     op_data->op_info_.set_pid(pid);
     op_data->op_info_.set_parent_id(parent_id);
@@ -2288,7 +2301,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t c
     uint64_t parent_id = op_data->op_info_.parent_id();
     if (parent_id != INVALID_PARENT_ID) {
         std::list<std::shared_ptr<OPData>>::iterator iter = task_vec_[idx].begin();
-        for ( ; iter != task_vec_[idx].end(); iter ++) {
+        for ( ; iter != task_vec_[idx].end(); iter++) {
             if ((*iter)->op_info_.op_id() == parent_id) {
                 break;
             }
@@ -2315,6 +2328,20 @@ void NameServerImpl::DeleteDoneOP() {
         return;
     }
     while (done_op_list_.size() > (uint32_t)FLAGS_max_op_num) {
+        std::shared_ptr<OPData> op_data = done_op_list_.front();
+		if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+            std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+            if (zk_client_->DeleteNode(node)) {
+                PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
+                op_data->task_list_.clear();
+            } else {
+                PDLOG(WARNING, "delete zk op_node failed. op_id[%lu] node[%s]", 
+                                op_data->op_info_.op_id(), node.c_str()); 
+                break;
+            }
+        }
+        PDLOG(INFO, "done_op_list size[%u] is greater than the max_op_num[%u], delete op[%lu]", 
+                    done_op_list_.size(), (uint32_t)FLAGS_max_op_num, op_data->op_info_.op_id()); 
         done_op_list_.pop_front();
     }
 }
@@ -2443,7 +2470,8 @@ int NameServerImpl::CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data) {
     return 0;
 }    
 
-int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint) {
+int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid, 
+                const std::string& endpoint, uint32_t concurrency) {
     std::string value = endpoint;
     std::shared_ptr<OPData> op_data;
     if (CreateOPData(::rtidb::api::OPType::kOfflineReplicaOP, value, op_data, name, pid) < 0) {
@@ -2454,7 +2482,7 @@ int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid
         PDLOG(WARNING, "create offline replica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -3498,8 +3526,8 @@ int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, uint3
         return -1;
     }
     PDLOG(INFO, "create UpdatePartitionStatusOP op ok."
-                 "op_id[%lu] name[%s] pid[%u] endpoint[%s] is_leader[%d] is_alive[%d]", 
-                 op_data->op_info_.op_id(), name.c_str(), pid, endpoint.c_str(), is_leader, is_alive);
+                 "op_id[%lu] name[%s] pid[%u] endpoint[%s] is_leader[%d] is_alive[%d] concurrency[%u]", 
+                 op_data->op_info_.op_id(), name.c_str(), pid, endpoint.c_str(), is_leader, is_alive, concurrency);
     return 0;
 }
 

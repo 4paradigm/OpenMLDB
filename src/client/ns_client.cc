@@ -208,10 +208,13 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& 
     return false;
 }
 
-bool NsClient::OfflineEndpoint(const std::string& endpoint, std::string& msg) {
+bool NsClient::OfflineEndpoint(const std::string& endpoint, uint32_t concurrency, std::string& msg) {
     ::rtidb::nameserver::OfflineEndpointRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
+    if (concurrency > 0) {
+        request.set_concurrency(concurrency);
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::OfflineEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
