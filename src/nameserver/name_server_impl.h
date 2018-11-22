@@ -340,9 +340,8 @@ private:
     std::shared_ptr<TableInfo> GetTableInfo(const std::string& name);
 
     int CreateOPData(::rtidb::api::OPType op_type, const std::string& value, std::shared_ptr<OPData>& op_data,
-                    const std::string& name, uint32_t pid);
-    int AddOPData(const std::shared_ptr<OPData>& op_data, uint64_t parent_id, 
-                    uint32_t concurrency = FLAGS_name_server_task_concurrency);
+                    const std::string& name, uint32_t pid, uint64_t parent_id = INVALID_PARENT_ID);
+    int AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency = FLAGS_name_server_task_concurrency);
     int CreateDelReplicaOP(const std::string& name, uint32_t pid, const std::string& endpoint);
     int CreateChangeLeaderOP(const std::string& name, uint32_t pid, 
                     const std::string& candidate_leader, bool need_restore, 
