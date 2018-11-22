@@ -39,6 +39,8 @@ DECLARE_uint32(check_binlog_sync_progress_delta);
 namespace rtidb {
 namespace nameserver {
 
+const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
+
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
     table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
     task_thread_pool_(FLAGS_name_server_task_pool_size), cv_(),
@@ -554,7 +556,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
                 if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
                     if (kv.second->table_partition(idx).partition_meta_size() == 1) {
                         CreateUpdatePartitionStatusOP(kv.first, kv.second->table_partition(idx).pid(), 
-                                endpoint, true, false, FLAGS_name_server_task_concurrency);
+                                endpoint, true, false, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency);
                         break;
                     }
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
@@ -568,7 +570,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         for (auto pid : leader_pid) {
             // change leader
             PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
-            CreateChangeLeaderOP(kv.first, pid, "");
+            CreateChangeLeaderOP(kv.first, pid, "", false);
         }
         // delete replica
         for (auto pid : follower_pid) {
@@ -630,10 +632,12 @@ void NameServerImpl::RecoverEndpoint(const std::string& endpoint, bool need_rest
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
                         is_leader = true;
                     }
-                    CreateRecoverTableOP(kv.first, pid, endpoint, is_leader, concurrency);
+                    uint64_t offset_delta = need_restore ? 0 : FLAGS_check_binlog_sync_progress_delta;
+                    CreateRecoverTableOP(kv.first, pid, endpoint, is_leader, offset_delta, concurrency);
                     if (need_restore && is_leader) {
-                        CreateChangeLeaderOP(kv.first, pid, endpoint, concurrency);
-                        CreateRecoverTableOP(kv.first, pid, "LEADER", true, concurrency);
+                        CreateChangeLeaderOP(kv.first, pid, endpoint, need_restore, concurrency);
+                        CreateRecoverTableOP(kv.first, pid, OFFLINE_LEADER_ENDPOINT, true, 
+                                FLAGS_check_binlog_sync_progress_delta, concurrency);
                     }
                 }
             }
@@ -1090,7 +1094,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                         request->name().c_str(), request->pid());
         return;
     }
-    if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID) < 0) {
         response->set_code(-1);
         response->set_msg("add op data failed");
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u]",
@@ -1415,7 +1419,7 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
     if (request->has_candidate_leader() && request->candidate_leader() != "auto") {
         candidate_leader = request->candidate_leader();
     }
-    if (CreateChangeLeaderOP(name, pid, candidate_leader) < 0) {
+    if (CreateChangeLeaderOP(name, pid, candidate_leader, false) < 0) {
         response->set_code(-1);
         response->set_msg("change leader failed");
         PDLOG(WARNING, "change leader failed. name[%s] pid[%u]", name.c_str(), pid);
@@ -1479,7 +1483,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         }
         for (auto pid : leader_pid) {
             PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
-            CreateChangeLeaderOP(kv.first, pid, "");
+            CreateChangeLeaderOP(kv.first, pid, "", false);
         }
         // delete replica
         for (auto pid : follower_pid) {
@@ -1601,7 +1605,8 @@ void NameServerImpl::RecoverTable(RpcController* controller,
         response->set_msg("has not found table partition in this endpoint");
         return;
     }
-    CreateRecoverTableOP(name, pid, endpoint, is_leader, FLAGS_name_server_task_concurrency);
+    CreateRecoverTableOP(name, pid, endpoint, is_leader, 
+            FLAGS_check_binlog_sync_progress_delta, FLAGS_name_server_task_concurrency);
     PDLOG(INFO, "recover table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
     response->set_code(0);
     response->set_msg("ok");
@@ -1897,7 +1902,7 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         response->set_msg("create AddReplicaOP task failed");
         return;
     }
-    if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID) < 0) {
         response->set_code(-1);
         response->set_msg("add op data failed");
         PDLOG(WARNING, "add op data failed. table[%s] pid[%u]",
@@ -2108,7 +2113,7 @@ int NameServerImpl::CreateMigrateOP(const std::string& src_endpoint, const std::
                         src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID) < 0) {
         PDLOG(WARNING, "add migrate op data failed. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
                         src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
         return -1;
@@ -2268,7 +2273,7 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
     return 0;
 }
 
-int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t concurrency) {
+int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint64_t parent_id, uint32_t concurrency) {
     uint32_t idx = op_data->op_info_.pid() % task_vec_.size();
     if (concurrency < task_vec_.size() && concurrency > 0) {
         idx = op_data->op_info_.pid() % concurrency;
@@ -2283,7 +2288,25 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t c
                         ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
         return -1;
     }
-    task_vec_[idx].push_back(op_data);
+    if (parent_id != INVALID_PARENT_ID) {
+        std::list<std::shared_ptr<OPData>>::iterator iter = task_vec_[idx].begin();
+        for ( ; iter != task_vec_[idx].end(); iter ++) {
+            if ((*iter)->op_info_.op_id() == parent_id) {
+                break;
+            }
+        }
+        if (iter != task_vec_[idx].end()) {
+            iter++;
+            task_vec_[idx].insert(iter, op_data);
+        } else {
+            PDLOG(WARNING, "cannot found parent_id[%lu] with index[%u]. add op[%lu] failed op_type[%s]", 
+                            parent_id, idx, op_data->op_info_.op_id(),
+                            ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
+            return -1;
+        }
+    } else {
+        task_vec_[idx].push_back(op_data);
+    }
     DeleteDoneOP();
     cv_.notify_one();
     return 0;
@@ -2365,7 +2388,7 @@ int NameServerImpl::CreateDelReplicaOP(const std::string& name, uint32_t pid, co
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -2433,7 +2456,7 @@ int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid
         PDLOG(WARNING, "create offline replica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -2485,7 +2508,7 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
 }
 
 int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid, 
-            const std::string& candidate_leader, uint32_t concurrency) {
+            const std::string& candidate_leader, bool need_restore, uint32_t concurrency) {
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
@@ -2513,6 +2536,10 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
             }
         }
         break;
+    }
+    if (need_restore && !candidate_leader.empty() 
+            && std::find(follower_endpoint.begin(), follower_endpoint.end(), candidate_leader) == follower_endpoint.end()) {
+        follower_endpoint.push_back(candidate_leader);
     }
     if (follower_endpoint.empty()) {
         PDLOG(INFO, "table not found follower. name[%s] pid[%u]", name.c_str(), pid);
@@ -2545,7 +2572,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
                         name.c_str(), pid);
         return -1;
     }
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
@@ -2553,6 +2580,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
                 op_data->op_info_.op_id(), name.c_str(), pid);
     return 0;
 }
+
 
 int NameServerImpl::CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data) {
     ChangeLeaderData change_leader_data;
@@ -2616,11 +2644,12 @@ void NameServerImpl::OnLostLock() {
 }
 
 int NameServerImpl::CreateRecoverTableOP(const std::string& name, uint32_t pid, 
-            const std::string& endpoint, bool is_leader, uint32_t concurrency) {
+            const std::string& endpoint, bool is_leader, uint64_t offset_delta, uint32_t concurrency) {
     std::shared_ptr<OPData> op_data;
     RecoverTableData recover_table_data;
     recover_table_data.set_endpoint(endpoint);
     recover_table_data.set_is_leader(is_leader);
+    recover_table_data.set_offset_delta(offset_delta);
     std::string value;
     recover_table_data.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kRecoverTableOP, value, op_data, name, pid) < 0) {
@@ -2633,7 +2662,7 @@ int NameServerImpl::CreateRecoverTableOP(const std::string& name, uint32_t pid,
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -2652,6 +2681,7 @@ int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     std::string endpoint = recover_table_data.endpoint();
+    uint64_t offset_delta = recover_table_data.offset_delta();
     bool is_leader = recover_table_data.is_leader();
     if (!is_leader) {
         std::string leader_endpoint;
@@ -2679,7 +2709,7 @@ int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
         op_data->task_list_.push_back(task);
     }
     std::shared_ptr<Task> task = CreateRecoverTableTask(op_data->op_info_.op_id(), 
-            ::rtidb::api::OPType::kRecoverTableOP, name, pid, endpoint, FLAGS_name_server_task_concurrency);
+            ::rtidb::api::OPType::kRecoverTableOP, name, pid, endpoint, offset_delta, FLAGS_name_server_task_concurrency);
     if (!task) {
         PDLOG(WARNING, "create RecoverTable task failed. table[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
@@ -2692,19 +2722,20 @@ int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateRecoverTableTask(uint64_t op_index, ::rtidb::api::OPType op_type,
-                const std::string& name, uint32_t pid, const std::string& endpoint, uint32_t concurrency) {
+                const std::string& name, uint32_t pid, const std::string& endpoint, 
+                uint64_t offset_delta, uint32_t concurrency) {
     std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
     task->task_info_->set_op_id(op_index);
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kRecoverTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->fun_ = boost::bind(&NameServerImpl::RecoverEndpointTable, this, name, pid, 
-            endpoint, concurrency, task->task_info_);
+            endpoint, offset_delta, concurrency, task->task_info_);
     return task;
 }
 
-void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid, const std::string& endpoint,
-            uint32_t concurrency, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid, std::string& endpoint,
+            uint64_t offset_delta, uint32_t concurrency, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
@@ -2727,24 +2758,30 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                 continue;
             }
             for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                if (iter->second->table_partition(idx).partition_meta(meta_idx).is_leader() &&
-                        iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                    std::string leader_endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();    
-                    auto tablet_iter = tablets_.find(leader_endpoint);
-                    if (tablet_iter == tablets_.end()) {
-                        PDLOG(WARNING, "can not find the leader endpoint[%s]'s client", leader_endpoint.c_str());
-                        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-                        return;
-                    }
-                    leader_tablet_ptr = tablet_iter->second;
-                    if (leader_tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                        PDLOG(WARNING, "leader endpoint [%s] is offline", leader_endpoint.c_str());
-                        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-                        return;
+                const PartitionMeta& partition_meta = iter->second->table_partition(idx).partition_meta(meta_idx);
+                if (partition_meta.is_leader()) {
+                    if (partition_meta.is_alive()) {
+                        std::string leader_endpoint = partition_meta.endpoint();    
+                        auto tablet_iter = tablets_.find(leader_endpoint);
+                        if (tablet_iter == tablets_.end()) {
+                            PDLOG(WARNING, "can not find the leader endpoint[%s]'s client", leader_endpoint.c_str());
+                            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                            return;
+                        }
+                        leader_tablet_ptr = tablet_iter->second;
+                        if (leader_tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                            PDLOG(WARNING, "leader endpoint [%s] is offline", leader_endpoint.c_str());
+                            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                            return;
+                        }
+                    } else if (endpoint == OFFLINE_LEADER_ENDPOINT) {
+                        endpoint = partition_meta.endpoint();
+                        PDLOG(INFO, "use endpoint[%s] to replace[%s], tid[%u] pid[%u]", 
+                                        endpoint.c_str(), OFFLINE_LEADER_ENDPOINT.c_str(), tid, pid);
                     }
                 }
-                if (iter->second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
-                    if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                if (partition_meta.endpoint() == endpoint) {
+                    if (partition_meta.is_alive()) {
                         PDLOG(INFO, "endpoint[%s] is alive, need not recover. name[%s] pid[%u]", 
                                         endpoint.c_str(), name.c_str(), pid);
                         task_info->set_status(::rtidb::api::TaskStatus::kDone);
@@ -2790,9 +2827,9 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     if (!has_follower) {
         std::lock_guard<std::mutex> lock(mu_);
         if (has_table) {
-            CreateUpdatePartitionStatusOP(name, pid, endpoint, true, true, concurrency);
+            CreateUpdatePartitionStatusOP(name, pid, endpoint, true, true, task_info->op_id(), concurrency);
         } else {
-            CreateReLoadTableOP(name, pid, endpoint, concurrency);
+            CreateReLoadTableOP(name, pid, endpoint, task_info->op_id(), concurrency);
         }
         task_info->set_status(::rtidb::api::TaskStatus::kDone);
         PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
@@ -2839,15 +2876,15 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                  offset,  manifest.offset(), name.c_str(), tid, pid);
     if (has_table) {
         if (ret_code == 0 && offset >= manifest.offset()) {
-            CreateReAddReplicaSimplifyOP(name, pid, endpoint, 0, concurrency);
+            CreateReAddReplicaSimplifyOP(name, pid, endpoint, offset_delta, task_info->op_id(), concurrency);
         } else {
-            CreateReAddReplicaWithDropOP(name, pid, endpoint, 0, concurrency);
+            CreateReAddReplicaWithDropOP(name, pid, endpoint, offset_delta, task_info->op_id(), concurrency);
         }
     } else {
         if (ret_code == 0 && offset >= manifest.offset()) {
-            CreateReAddReplicaNoSendOP(name, pid, endpoint, 0, concurrency);
+            CreateReAddReplicaNoSendOP(name, pid, endpoint, offset_delta, task_info->op_id(), concurrency);
         } else {
-            CreateReAddReplicaOP(name, pid, endpoint, 0, concurrency);
+            CreateReAddReplicaOP(name, pid, endpoint, offset_delta, task_info->op_id(), concurrency);
         }
     }
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
@@ -2859,7 +2896,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
 }
 
 int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
-            const std::string& endpoint, uint64_t offset_delta, uint32_t concurrency) {
+            const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency) {
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
@@ -2883,7 +2920,7 @@ int NameServerImpl::CreateReAddReplicaOP(const std::string& name, uint32_t pid,
         return -1;
 
     }
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, parent_id, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -2974,7 +3011,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
 }
 
 int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32_t pid, 
-        const std::string& endpoint, uint64_t offset_delta, uint32_t concurrency) {
+        const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency) {
     std::shared_ptr<OPData> op_data;
     RecoverTableData recover_table_data;
     recover_table_data.set_endpoint(endpoint);
@@ -2991,7 +3028,7 @@ int NameServerImpl::CreateReAddReplicaWithDropOP(const std::string& name, uint32
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, parent_id, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -3093,7 +3130,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
 }
 
 int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, 
-            const std::string& endpoint, uint64_t offset_delta, uint32_t concurrency) {
+            const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency) {
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         PDLOG(WARNING, "tablet[%s] is not online", endpoint.c_str());
@@ -3117,7 +3154,7 @@ int NameServerImpl::CreateReAddReplicaNoSendOP(const std::string& name, uint32_t
         return -1;
     }
 
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, parent_id, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -3229,7 +3266,7 @@ int NameServerImpl::CreateUpdateTableAliveOP(const std::string& name,
         return -1;
     }
 
-    if (AddOPData(op_data) < 0) {
+    if (AddOPData(op_data, INVALID_PARENT_ID) < 0) {
         PDLOG(WARNING, "add UpdateTableAliveOP data failed. name[%s] endpoint[%s]", 
                         name.c_str(), endpoint.c_str());
         return -1;
@@ -3289,7 +3326,7 @@ int NameServerImpl::GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> ta
 }
 
 int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32_t pid, 
-            const std::string& endpoint, uint64_t offset_delta, uint32_t concurrency) {
+            const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency) {
     std::shared_ptr<OPData> op_data;
     RecoverTableData recover_table_data;
     recover_table_data.set_endpoint(endpoint);
@@ -3306,7 +3343,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyOP(const std::string& name, uint32
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, parent_id, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -3372,7 +3409,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
 }
 
 int NameServerImpl::CreateReLoadTableOP(const std::string& name, uint32_t pid, 
-            const std::string& endpoint, uint32_t concurrency) {
+            const std::string& endpoint, uint64_t parent_id, uint32_t concurrency) {
     std::shared_ptr<OPData> op_data;
     std::string value = endpoint;
     if (CreateOPData(::rtidb::api::OPType::kReLoadTableOP, value, op_data, name, pid) < 0) {
@@ -3385,7 +3422,7 @@ int NameServerImpl::CreateReLoadTableOP(const std::string& name, uint32_t pid,
                         name.c_str(), pid, endpoint.c_str());
         return -1;
     }
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, parent_id, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
@@ -3434,7 +3471,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
 }
 
 int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, 
-                const std::string& endpoint, bool is_leader, bool is_alive, uint32_t concurrency) {
+                const std::string& endpoint, bool is_leader, bool is_alive, uint64_t parent_id, uint32_t concurrency) {
     auto pos = table_info_.find(name);
     if (pos == table_info_.end()) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
@@ -3458,7 +3495,7 @@ int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, uint3
         return -1;
     }
 
-    if (AddOPData(op_data, concurrency) < 0) {
+    if (AddOPData(op_data, parent_id, concurrency) < 0) {
         PDLOG(WARNING, "add op data failed. name[%s] pid[%u] endpoint[%s]", 
                         name.c_str(), pid, endpoint.c_str());
         return -1;
