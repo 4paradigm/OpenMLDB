@@ -538,18 +538,18 @@ class TestCaseBase(unittest.TestCase):
     def check_re_add_replica_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_no_send_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_with_drop_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kDropTable', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_simplify_op(self, op_id):
         self.check_tasks(op_id,
-                         ['kAddReplica', 'kUpdatePartitionStatus'])
+                         ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
