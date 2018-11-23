@@ -2785,7 +2785,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
             if (endpoint == OFFLINE_LEADER_ENDPOINT) {
                 for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
                     const PartitionMeta& partition_meta = iter->second->table_partition(idx).partition_meta(meta_idx);
-                    if (partition_meta.is_leader() && !partition_meta.is_aliver()) {
+                    if (partition_meta.is_leader() && !partition_meta.is_alive()) {
                         endpoint = partition_meta.endpoint();
                         PDLOG(INFO, "use endpoint[%s] to replace[%s], tid[%u] pid[%u]", 
                                         endpoint.c_str(), OFFLINE_LEADER_ENDPOINT.c_str(), tid, pid);
