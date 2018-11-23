@@ -117,12 +117,17 @@ class TestOfflineEndpoint(TestCaseBase):
 
 
     @ddt.data(
-        ('127.0.0.1:80', 'failed to offline endpoint'),
+        ('127.0.0.1:80', '', 'failed to offline endpoint'),
+        (conf.tb_endpoints[0][1], '-1', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0][1], '0', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0][1], '10', 'failed to offline endpoint'),
+        (conf.tb_endpoints[0][1], 'abc', 'Invalid args. concurrency should be uint32_t'),
+        (conf.tb_endpoints[0][1], '5', 'offline endpoint ok'),
     )
     @ddt.unpack
-    def test_offlineendpoint_failed(self, endpoint, exp_msg):
+    def test_offlineendpoint_failed(self, endpoint, concurrency, exp_msg):
         """
-        offlineendpoint传入不正确的节点，执行失败
+        offlineendpoint 参数校验
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -136,7 +141,7 @@ class TestOfflineEndpoint(TestCaseBase):
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
 
-        rs2 = self.offlineendpoint(self.ns_leader, endpoint)
+        rs2 = self.offlineendpoint(self.ns_leader, endpoint, concurrency)
         self.assertIn(exp_msg, rs2)
 
     def test_offlineendpoint_alive(self):

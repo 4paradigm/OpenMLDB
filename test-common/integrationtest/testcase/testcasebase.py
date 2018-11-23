@@ -325,11 +325,11 @@ class TestCaseBase(unittest.TestCase):
     def confget(self, endpoint, conf):
         return self.run_client(endpoint, 'confget {}'.format(conf), 'ns_client')
 
-    def offlineendpoint(self, endpoint, offline_endpoint):
-        return self.run_client(endpoint, 'offlineendpoint {}'.format(offline_endpoint), 'ns_client')
+    def offlineendpoint(self, endpoint, offline_endpoint, concurrency=''):
+        return self.run_client(endpoint, 'offlineendpoint {} {}'.format(offline_endpoint, concurrency), 'ns_client')
 
-    def recoverendpoint(self, endpoint, offline_endpoint):
-        return self.run_client(endpoint, 'recoverendpoint {}'.format(offline_endpoint), 'ns_client')
+    def recoverendpoint(self, endpoint, offline_endpoint, need_restore='', concurrency=''):
+        return self.run_client(endpoint, 'recoverendpoint {} {} {}'.format(offline_endpoint, need_restore, concurrency), 'ns_client')
 
     def changeleader(self, endpoint, tname, pid, candidate_leader=''):
         if candidate_leader != '':
