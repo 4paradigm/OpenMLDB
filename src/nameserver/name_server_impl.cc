@@ -2782,6 +2782,23 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
             if (iter->second->table_partition(idx).pid() != pid) {
                 continue;
             }
+            if (endpoint == OFFLINE_LEADER_ENDPOINT) {
+                for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    const PartitionMeta& partition_meta = iter->second->table_partition(idx).partition_meta(meta_idx);
+                    if (partition_meta.is_leader() && !partition_meta.is_aliver()) {
+                        endpoint = partition_meta.endpoint();
+                        PDLOG(INFO, "use endpoint[%s] to replace[%s], tid[%u] pid[%u]", 
+                                        endpoint.c_str(), OFFLINE_LEADER_ENDPOINT.c_str(), tid, pid);
+                        break;
+                    }
+                }
+                if (endpoint == OFFLINE_LEADER_ENDPOINT) {
+                    PDLOG(WARNING, "not found endpoint to replace[%s], tid[%u] pid[%u]", 
+                                    OFFLINE_LEADER_ENDPOINT.c_str(), tid, pid);
+                    task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                    return;
+                }
+            }
             for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
                 const PartitionMeta& partition_meta = iter->second->table_partition(idx).partition_meta(meta_idx);
                 if (partition_meta.is_leader()) {
@@ -2799,10 +2816,6 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                             return;
                         }
-                    } else if (endpoint == OFFLINE_LEADER_ENDPOINT) {
-                        endpoint = partition_meta.endpoint();
-                        PDLOG(INFO, "use endpoint[%s] to replace[%s], tid[%u] pid[%u]", 
-                                        endpoint.c_str(), OFFLINE_LEADER_ENDPOINT.c_str(), tid, pid);
                     }
                 }
                 if (partition_meta.endpoint() == endpoint) {
