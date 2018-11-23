@@ -1970,6 +1970,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
+    int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     MockClosure closure;
     {
@@ -2044,13 +2045,14 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(0, pair_response.offset());
-    FLAGS_make_snapshot_threshold_offset = 100000;
+    FLAGS_make_snapshot_threshold_offset = offset;
 }
 
 TEST_F(TabletImplTest, MakeSnapshotThreshold) {
     TabletImpl tablet;
     tablet.Init();
     MockClosure closure;
+    int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     // create table
     uint32_t id = counter++;
@@ -2138,7 +2140,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_EQ(1, manifest.offset());
         std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
         unlink(snapshot_file.c_str());
-        FLAGS_make_snapshot_threshold_offset = 100000;
+        FLAGS_make_snapshot_threshold_offset = offset;
     }
 }
 
