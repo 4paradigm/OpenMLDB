@@ -283,7 +283,6 @@ TEST_F(TabletImplTest, Get) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(1, response.code());
     }
-
     // create latest ttl table
     id = counter++;
     {
@@ -339,7 +338,6 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ("test7", response.value());
     }
-
 }
 
 TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
@@ -387,7 +385,6 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-1, response.code());
     }
-
     // ttl type mismatch
     {
         ::rtidb::api::UpdateTTLRequest request;
@@ -460,7 +457,6 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-1, response.code());
     }
-
     // reach the max ttl
     {
         ::rtidb::api::UpdateTTLRequest request;
@@ -513,7 +509,6 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
 }
 
 TEST_F(TabletImplTest, CreateTableWithSchema) {
-
     TabletImpl tablet;
     tablet.Init();
     {
@@ -1458,7 +1453,6 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
                 &closure);
         ASSERT_EQ(0, response.code());
     }
-
     // version 1
     //
     uint64_t now1 = ::baidu::common::timer::get_micros() / 1000;
@@ -1581,7 +1575,6 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         //ASSERT_EQ("Not Found", response.msg());
     }
     FLAGS_gc_interval = old_ttl;
-
 }
 
 TEST_F(TabletImplTest, DropTableFollower) {
@@ -1650,7 +1643,6 @@ TEST_F(TabletImplTest, TestGetType) {
     table_meta->set_ttl(4);
     table_meta->set_wal(true);
     table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1978,6 +1970,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
+    FLAGS_make_snapshot_threshold_offset = 0;
     MockClosure closure;
     {
         TabletImpl tablet;
@@ -2051,6 +2044,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(0, pair_response.offset());
+    FLAGS_make_snapshot_threshold_offset = 100000;
 }
 
 TEST_F(TabletImplTest, MakeSnapshotThreshold) {
@@ -2103,8 +2097,6 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ::rtidb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
         ASSERT_EQ(1, manifest.offset());
-        std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
-        unlink(snapshot_file.c_str());
     }
     FLAGS_make_snapshot_threshold_offset = 5;
     {
@@ -2146,6 +2138,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         ASSERT_EQ(1, manifest.offset());
         std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
         unlink(snapshot_file.c_str());
+        FLAGS_make_snapshot_threshold_offset = 100000;
     }
 }
 
