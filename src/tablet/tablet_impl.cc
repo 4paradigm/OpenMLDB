@@ -1016,10 +1016,10 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
         }
         table->SetTableStat(::rtidb::storage::kMakingSnapshot);
     }
-    uint64_t last_offset = replicator->GetOffset();
-    uint64_t cur_offset = snapshot->GetOffset();
-    if (last_offset < cur_offset + FLAGS_make_snapshot_threshold_offset){
-        PDLOG(WARNING, "offset can't reach the threshold");
+    uint64_t cur_offset = replicator->GetOffset();
+    uint64_t snapshot_offset = snapshot->GetOffset();
+    if (snapshot_offset == cur_offset || cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
+        PDLOG(WARNING, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%u], snapshot_offset[%u]", tid, pid, cur_offset, snapshot_offset);
         return;
     }
     uint64_t offset = 0;
@@ -1028,7 +1028,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         if (replicator) {
             replicator->SetSnapshotLogPartIndex(offset);
-        }    
+        }
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
