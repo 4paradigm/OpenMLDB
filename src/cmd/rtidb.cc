@@ -640,8 +640,8 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtid
     uint32_t concurrency = 0;
     if (parts.size() > 2) {
         try {
-            if (boost::lexical_cast<int32_t>(parts[2]) < 0) {
-                std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
+            if (boost::lexical_cast<int32_t>(parts[2]) <= 0) {
+                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
                 return;
             }
             concurrency = boost::lexical_cast<uint32_t>(parts[2]);
