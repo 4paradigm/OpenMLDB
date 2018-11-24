@@ -643,6 +643,28 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& end
 
 bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
             std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::GetTableFollowerRequest get_follower_request;
+    ::rtidb::api::GetTableFollowerResponse get_follower_response;
+    get_follower_request.set_tid(tid);
+    get_follower_request.set_pid(pid);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableFollower,
+            &get_follower_request, &get_follower_response, FLAGS_request_timeout_ms, 1);
+    if (ok) {
+        if (get_follower_response.code() < 0 && get_follower_response.msg() == "has no follower") {
+            return true;
+        }
+        if (get_follower_response.code() == 0) {
+            bool has_replica = false;
+            for (int idx = 0; idx < get_follower_response.follower_info_size(); idx++) {
+                if (get_follower_response.follower_info(idx).endpoint() == endpoint) {
+                    has_replica = true;
+                }
+            }
+            if (!has_replica) {
+                return true;
+            }
+        }
+    }
     ::rtidb::api::ReplicaRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
@@ -651,7 +673,7 @@ bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& end
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
-    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DelReplica,
+    ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DelReplica,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ok || response.code()  != 0) {
         return false;
