@@ -24,8 +24,6 @@ import io.brpc.client.EndPoint;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
@@ -45,7 +43,6 @@ public class CompressTest {
   private static TableSyncClient tableSyncClient = null;
   private static TableAsyncClient tableAsyncClient = null;
   private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
-  private final static Logger logger = LoggerFactory.getLogger(CompressTest.class);
   static {
     try {
       nsc.init();
@@ -232,8 +229,6 @@ public class CompressTest {
       Boolean okT2 = null;
       String name = createSchemaTable(cType, isIndex1, type1, isIndex2, type2);
       try {
-        logger.info("type1 = "+type1+";  type2 = "+ type2+";");
-        logger.info("value1 = "+value1+";  value2 = "+ value2+";");
         ok = tableSyncClient.put(name, 1555555555555L, new Object[]{value1, value2, "value3"});
         okT1 = tableSyncClient.put(name, 1666666666666L, new Object[]{"t1", value2, "amt2"});
         okT2 = tableSyncClient.put(name, 1777777777777L, new Object[]{"t2", value2, "amt3"});
@@ -252,8 +247,6 @@ public class CompressTest {
           Assert.assertTrue(it.valid());
           Assert.assertTrue(it.getCount() == 1);
           Object[] rowScan = it.getDecodedValue();
-          logger.info("value1 = "+value1+";");
-          logger.info("value2 = "+value2+";");
           Assert.assertEquals(rowScan[0], value1);
           Assert.assertEquals(rowScan[1], value2);
           Assert.assertEquals(rowScan[2], "value3");
