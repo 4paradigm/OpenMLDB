@@ -371,6 +371,17 @@ bool NameServerImpl::RecoverOPTask() {
         PDLOG(INFO, "recover op[%s] success. op_id[%lu]", 
                 ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.op_id());
     }
+    for (auto& op_list : task_vec_) {
+        op_list.sort([](const std::shared_ptr<OPData>& a, const std::shared_ptr<OPData>& b) {
+            if (a->op_info_.parent_id() < b->op_info_.parent_id()) {
+                return true;
+            } else if (a->op_info_.parent_id() > b->op_info_.parent_id()) {
+                return false;
+            } else {
+                return a->op_info_.op_id() < b->op_info_.op_id();
+            }
+        });
+    }
     return true;
 }
 
@@ -407,6 +418,11 @@ int NameServerImpl::CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data) {
 bool NameServerImpl::SkipDoneTask(std::shared_ptr<OPData> op_data) {
     uint64_t op_id = op_data->op_info_.op_id();
     std::string op_type = ::rtidb::api::OPType_Name(op_data->op_info_.op_type());
+    if (op_data->op_info_.task_status() == ::rtidb::api::kInited) {
+        PDLOG(INFO, "op_id[%lu] op_type[%s] status is kInited, need not skip",
+                    op_id, op_type.c_str());
+        return true;
+    }
     uint32_t task_index = op_data->op_info_.task_index();
     if (op_data->task_list_.empty()) {
         PDLOG(WARNING, "skip task failed, task_list is empty. op_id[%lu] op_type[%s]", 
@@ -438,6 +454,7 @@ bool NameServerImpl::SkipDoneTask(std::shared_ptr<OPData> op_data) {
             case ::rtidb::api::TaskType::kUpdateTableInfo:
             case ::rtidb::api::TaskType::kRecoverTable:
             case ::rtidb::api::TaskType::kAddTableInfo:
+            case ::rtidb::api::TaskType::kCheckBinlogSyncProgress:
                 // execute the task again
                 task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
                 break;
@@ -622,6 +639,12 @@ void NameServerImpl::RecoverEndpoint(const std::string& endpoint, bool need_rest
             uint32_t pid =  kv.second->table_partition(idx).pid();
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
                 if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
+                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
+                        !auto_recover_table_.load(std::memory_order_relaxed)) {
+                        PDLOG(INFO, "table[%s] pid[%u] endpoint[%s] is alive, need not recover", 
+                                    kv.first.c_str(), pid, endpoint.c_str());
+                        break;            
+                    }
                     PDLOG(INFO, "recover table[%s] pid[%u] endpoint[%s]", kv.first.c_str(), pid, endpoint.c_str());
                     bool is_leader = false;
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
@@ -635,6 +658,7 @@ void NameServerImpl::RecoverEndpoint(const std::string& endpoint, bool need_rest
                         CreateRecoverTableOP(kv.first, pid, OFFLINE_LEADER_ENDPOINT, true, 
                                 FLAGS_check_binlog_sync_progress_delta, concurrency);
                     }
+                    break;
                 }
             }
         }
@@ -926,7 +950,18 @@ void NameServerImpl::ProcessTask() {
                         op_data->op_info_.task_status() == ::rtidb::api::kFailed) {
                     continue;
                 }
-                op_data->op_info_.set_task_status(::rtidb::api::kDoing);
+                if (op_data->op_info_.task_status() == ::rtidb::api::kInited) {
+                    op_data->op_info_.set_task_status(::rtidb::api::kDoing);
+                    std::string value;
+                    op_data->op_info_.SerializeToString(&value);
+                    std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+                    if (!zk_client_->SetNodeValue(node, value)) {
+                        PDLOG(WARNING, "set zk op status value failed. node[%s] value[%s]",
+                                        node.c_str(), value.c_str());
+                        op_data->op_info_.set_task_status(::rtidb::api::kInited);
+                        continue;
+                    }
+                }
                 std::shared_ptr<Task> task = op_data->task_list_.front();
                 if (task->task_info_->status() == ::rtidb::api::kFailed) {
                     PDLOG(WARNING, "task[%s] run failed, terminate op[%s]. op_id[%lu]",
@@ -3851,12 +3886,12 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
+    uint64_t leader_offset = 0;
+    uint64_t follower_offset = 0;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() != pid) {
             continue;
         }
-        uint64_t leader_offset = 0;
-        uint64_t follower_offset = 0;
         for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
             std::string endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
             const PartitionMeta& meta = iter->second->table_partition(idx).partition_meta(meta_idx);
@@ -3887,6 +3922,10 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
         }
         break;
     }
+    PDLOG(INFO, "op_id[%lu], task_type[%s],leader_offset[%lu], follower_offset[%lu] offset_delta[%lu]",
+                    task_info->op_id(), 
+                    ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(),
+                    leader_offset, follower_offset, offset_delta);
     if (running_.load(std::memory_order_acquire)) {
         task_thread_pool_.DelayTask(FLAGS_get_table_status_interval,
                 boost::bind(&NameServerImpl::CheckBinlogSyncProgress, this, name, pid, follower, offset_delta, task_info));
