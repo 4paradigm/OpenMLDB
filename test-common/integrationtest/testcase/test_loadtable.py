@@ -575,6 +575,7 @@ class TestLoadTable(TestCaseBase):
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
+        time.sleep(1)
 
         rs7 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertIn('LoadTable ok', rs7)
@@ -620,6 +621,7 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertIn('MakeSnapshot ok', rs4)
+        time.sleep(1)
         mf = self.get_manifest(self.slave1path, self.tid, self.pid)
         self.assertEqual(mf['offset'], '0')
         self.assertTrue(mf['name'])
