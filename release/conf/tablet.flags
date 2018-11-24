@@ -45,6 +45,7 @@
 # 每天23点做snapshot
 --make_snapshot_time=23
 #--make_snapshot_check_interval=600000
+#--make_snapshot_threshold_offset=100000
 
 # garbage collection conf
 # 60m

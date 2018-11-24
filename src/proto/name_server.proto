@@ -19,6 +19,7 @@ message PartitionMeta {
     required string endpoint = 1;
     required bool is_leader = 2;
     optional bool is_alive = 3 [default = true];
+    optional uint64 offset = 4;
 }
 
 message TermPair {
@@ -116,16 +117,19 @@ message ChangeLeaderRequest {
 }
 
 message OfflineEndpointRequest {
-	required string endpoint = 1;
+    required string endpoint = 1;
+    optional uint32 concurrency = 2;
 }
 
 message RecoverEndpointRequest {
-	required string endpoint = 1;
+    required string endpoint = 1;
+    optional bool need_restore = 2;
+    optional uint32 concurrency = 3;
 }
 
 message GeneralResponse {
-	required int32 code = 1;
-	optional string msg = 2;
+    required int32 code = 1;
+    optional string msg = 2;
 }
 
 message ShowTabletRequest {}
@@ -170,6 +174,13 @@ message EndpointStatusData {
     optional string endpoint = 1;
     optional bool is_leader = 2;
     optional bool is_alive = 3;
+}
+
+message RecoverTableData {
+    optional string endpoint = 1;
+    optional uint64 offset_delta = 2;
+    optional bool is_leader = 3;
+    optional uint32 concurrency = 4;
 }
 
 message ChangeLeaderData {
@@ -232,8 +243,8 @@ message ShowOPStatusResponse {
 }
 
 service NameServer {
-	rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
-	rpc DropTable(DropTableRequest) returns (GeneralResponse);
+    rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+    rpc DropTable(DropTableRequest) returns (GeneralResponse);
     rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
     rpc ShowTable(ShowTableRequest) returns (ShowTableResponse);
     rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);

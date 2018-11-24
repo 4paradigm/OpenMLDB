@@ -24,6 +24,7 @@ DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
+DECLARE_int32(make_snapshot_threshold_offset);
 
 namespace rtidb {
 namespace tablet {
@@ -231,7 +232,7 @@ TEST_F(TabletImplTest, Get) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    {        
+    {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
@@ -247,7 +248,7 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ("test10", response.value());
     }
-    {        
+    {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
@@ -258,7 +259,7 @@ TEST_F(TabletImplTest, Get) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(1, response.code());
     }
-    {        
+    {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
@@ -270,7 +271,7 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ("test9", response.value());
     }
-    {        
+    {
         // get expired key
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
@@ -282,7 +283,6 @@ TEST_F(TabletImplTest, Get) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(1, response.code());
     }
-
     // create latest ttl table
     id = counter++;
     {
@@ -314,8 +314,8 @@ TEST_F(TabletImplTest, Get) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
         num--;
-    }    
-    {        
+    }
+    {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
         request.set_pid(1);
@@ -338,7 +338,6 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ("test7", response.value());
     }
-
 }
 
 TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
@@ -386,7 +385,6 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-1, response.code());
     }
-
     // ttl type mismatch
     {
         ::rtidb::api::UpdateTTLRequest request;
@@ -399,7 +397,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-2, response.code());
     }
-    // normal case 
+    // normal case
     {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
@@ -424,11 +422,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         }
         ASSERT_TRUE(checked);
     }
-
-
-
-
 }
+
 TEST_F(TabletImplTest, UpdateTTLLatest) {
     TabletImpl tablet;
     tablet.Init();
@@ -462,7 +457,6 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-1, response.code());
     }
-
     // reach the max ttl
     {
         ::rtidb::api::UpdateTTLRequest request;
@@ -487,7 +481,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-2, response.code());
     }
-    // normal case 
+    // normal case
     {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
@@ -515,7 +509,6 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
 }
 
 TEST_F(TabletImplTest, CreateTableWithSchema) {
-    
     TabletImpl tablet;
     tablet.Init();
     {
@@ -532,7 +525,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
-        
+
 
         //get schema
         ::rtidb::api::GetTableSchemaRequest request0;
@@ -541,7 +534,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         ::rtidb::api::GetTableSchemaResponse response0;
         tablet.GetTableSchema(NULL, &request0, &response0, &closure);
         ASSERT_EQ("", response0.schema());
-        
+
     }
     {
         std::vector<::rtidb::base::ColumnDesc> columns;
@@ -598,7 +591,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
         ASSERT_EQ(::rtidb::base::ColType::kInt32, ncolumns[2].type);
         ASSERT_EQ("apprv_cde", ncolumns[2].name);
     }
-    
+
 }
 
 TEST_F(TabletImplTest, MultiGet) {
@@ -644,7 +637,7 @@ TEST_F(TabletImplTest, MultiGet) {
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response, &closure);
     ASSERT_EQ(0, response.code());
-    
+
 	// put
     for (int i = 0; i < 5; i++) {
         std::vector<std::string> input;
@@ -677,7 +670,7 @@ TEST_F(TabletImplTest, MultiGet) {
     get_request.set_key("abcd2");
     get_request.set_ts(1100);
     get_request.set_idx_name("amt");
-	
+
 	tablet.Get(NULL, &get_request, &get_response, &closure);
   	ASSERT_EQ(0, get_response.code());
   	ASSERT_EQ(1100, get_response.ts());
@@ -688,7 +681,7 @@ TEST_F(TabletImplTest, MultiGet) {
 	ASSERT_STREQ("test2", vec[0].c_str());
 	ASSERT_STREQ("abcd2", vec[1].c_str());
 	ASSERT_STREQ("12122", vec[2].c_str());
-}    
+}
 
 TEST_F(TabletImplTest, TTL) {
     uint32_t id = counter++;
@@ -763,7 +756,7 @@ TEST_F(TabletImplTest, CreateTable) {
 		google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
 		ASSERT_EQ(table_meta_test.tid(), id);
 		ASSERT_STREQ(table_meta_test.name().c_str(), "t0");
-		
+
         table_meta->set_name("");
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -1130,7 +1123,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
                 &closure);
     }
 
-    // version 2 
+    // version 2
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
@@ -1145,7 +1138,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
                 &closure);
     }
 
-    // version 3 
+    // version 3
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
@@ -1160,7 +1153,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
                 &closure);
     }
 
-    // get version 1 
+    // get version 1
     {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
@@ -1460,7 +1453,6 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
                 &closure);
         ASSERT_EQ(0, response.code());
     }
-
     // version 1
     //
     uint64_t now1 = ::baidu::common::timer::get_micros() / 1000;
@@ -1515,7 +1507,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
                 &closure);
     }
 
-    // get now3  
+    // get now3
     {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
@@ -1542,7 +1534,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ASSERT_EQ(0, response.code());
     }
 
-    // get now3  
+    // get now3
     {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
@@ -1583,7 +1575,6 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         //ASSERT_EQ("Not Found", response.msg());
     }
     FLAGS_gc_interval = old_ttl;
-
 }
 
 TEST_F(TabletImplTest, DropTableFollower) {
@@ -1652,7 +1643,6 @@ TEST_F(TabletImplTest, TestGetType) {
     table_meta->set_ttl(4);
     table_meta->set_wal(true);
     table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
-
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1671,7 +1661,7 @@ TEST_F(TabletImplTest, TestGetType) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    // 2 
+    // 2
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test");
@@ -1684,7 +1674,7 @@ TEST_F(TabletImplTest, TestGetType) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    // 3 
+    // 3
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test");
@@ -1697,7 +1687,7 @@ TEST_F(TabletImplTest, TestGetType) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
-    //6 
+    //6
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test");
@@ -1727,7 +1717,7 @@ TEST_F(TabletImplTest, TestGetType) {
         ASSERT_EQ("test", response.key());
         ASSERT_EQ("test1", response.value());
     }
-    // le 
+    // le
     {
         ::rtidb::api::GetRequest request;
         request.set_tid(id);
@@ -1980,6 +1970,8 @@ TEST_F(TabletImplTest, GetTermPair) {
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
+    int offset = FLAGS_make_snapshot_threshold_offset;
+    FLAGS_make_snapshot_threshold_offset = 0;
     MockClosure closure;
     {
         TabletImpl tablet;
@@ -2053,6 +2045,103 @@ TEST_F(TabletImplTest, GetTermPair) {
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
     ASSERT_EQ(0, pair_response.offset());
+    FLAGS_make_snapshot_threshold_offset = offset;
+}
+
+TEST_F(TabletImplTest, MakeSnapshotThreshold) {
+    TabletImpl tablet;
+    tablet.Init();
+    MockClosure closure;
+    int offset = FLAGS_make_snapshot_threshold_offset;
+    FLAGS_make_snapshot_threshold_offset = 0;
+    // create table
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(1);
+        table_meta->set_wal(true);
+        table_meta->set_ttl(1);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9527);
+        prequest.set_value("test0");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+
+    {
+        ::rtidb::api::GeneralRequest grq;
+        grq.set_tid(id);
+        grq.set_pid(1);
+        ::rtidb::api::GeneralResponse grp;
+        grp.set_code(-1);
+        tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
+        ASSERT_EQ(0, grp.code());
+        sleep(1);
+        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        int fd = open(manifest_file.c_str(), O_RDONLY);
+        ASSERT_GT(fd, 0);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        ::rtidb::api::Manifest manifest;
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+        ASSERT_EQ(1, manifest.offset());
+    }
+    FLAGS_make_snapshot_threshold_offset = 5;
+    {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test2");
+        prequest.set_time(9527);
+        prequest.set_value("test1");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+        prequest.set_pk("test3");
+        prequest.set_time(9527);
+        prequest.set_value("test2");
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+        ::rtidb::api::GeneralRequest grq;
+        grq.set_tid(id);
+        grq.set_pid(1);
+        ::rtidb::api::GeneralResponse grp;
+        grp.set_code(-1);
+        tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
+        ASSERT_EQ(0, grp.code());
+        sleep(1);
+        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
+        int fd = open(manifest_file.c_str(), O_RDONLY);
+        ASSERT_GT(fd, 0);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        ::rtidb::api::Manifest manifest;
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+        ASSERT_EQ(1, manifest.offset());
+        std::string snapshot_file = FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/" + manifest.name();
+        unlink(snapshot_file.c_str());
+        FLAGS_make_snapshot_threshold_offset = offset;
+    }
 }
 
 

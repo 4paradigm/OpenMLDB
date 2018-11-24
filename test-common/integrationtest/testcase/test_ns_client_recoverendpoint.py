@@ -7,6 +7,7 @@ import libs.utils as utils
 from libs.logger import infoLogger
 from libs.deco import multi_dimension
 import libs.ddt as ddt
+import libs.conf as conf
 
 
 @ddt.ddt
@@ -159,9 +160,9 @@ class TestRecoverEndpoint(TestCaseBase):
         print(self.get_table_status(self.leader, self.tid, self.pid))
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[1], "kTableLeader")
 
-    def test_recoversnapshot_offline_master_failed(self):
+    def test_recoverendpoint_offline_master_failed(self):
         """
-        主节点挂掉未启动，不可以手工recoversnapshot成功
+        主节点挂掉未启动，不可以手工recoverendpoint成功
         :return:
         """
         self.start_client(self.leader)
@@ -239,6 +240,84 @@ class TestRecoverEndpoint(TestCaseBase):
         self.assertEqual(rs5[(name, tid, '0', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs5[(name, tid, '1', self.leader)], ['follower',  '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs5[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+
+    @ddt.data(
+        ('127.0.0.1:80', '', '', 'failed to recover endpoint. error msg: endpoint is not exist'),
+        (conf.tb_endpoints[0][1], 'abc', '', 'Invalid args. need_restore should be true or false'),
+        (conf.tb_endpoints[0][1], 'false', '-1', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0][1], 'false', '0', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0][1], 'false', '10', 'concurrency is greater than the max value 8'),
+        (conf.tb_endpoints[0][1], 'false', 'abc', 'Invalid args. concurrency should be uint32_t'),
+    )
+    @ddt.unpack
+    def test_recoverendpoint_failed(self, endpoint, need_restore, concurrency, exp_msg):
+        """
+        recoverendpoint 参数校验
+        :return:
+        """
+        rs2 = self.recoverendpoint(self.ns_leader, endpoint, need_restore, concurrency)
+        self.assertIn(exp_msg, rs2)
+
+    def test_recoverendpoint_need_restore(self):
+        """
+        recoverendpoint恢复最初的表结构
+        :return:
+        """
+        self.start_client(self.leader)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = 'tname{}'.format(time.time())
+        m = utils.gen_table_metadata(
+            '"{}"'.format(name), None, 144000, 2,
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"3"', 'true'),
+            ('table_partition', '"{}"'.format(self.leader), '"3"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false')
+        )
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs0 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs0)
+        self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string', 'testvalue0'),
+                                  'k3': ('string', 'testvalue0')}
+        self.multidimension_scan_vk = {'k1': 'testvalue0'}
+
+        rs1 = self.showtable(self.ns_leader)
+        tid = rs1.keys()[0][1]
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.confset(self.ns_leader, 'auto_recover_table', 'false')
+
+        rs = self.put(self.leader, tid, 0, '', self.now(), 'pk1' ,'v1', 'w1')
+        self.assertIn('Put ok', rs)
+        rs = self.put(self.leader, tid, 1, '', self.now(), 'pk2' ,'v2', 'w2')
+        self.assertIn('Put ok', rs)
+        time.sleep(1)
+
+        self.stop_client(self.leader)
+        time.sleep(10)
+        self.offlineendpoint(self.ns_leader, self.leader)
+        self.start_client(self.leader)
+        time.sleep(3)
+        self.recoverendpoint(self.ns_leader, self.leader, 'true')
+        time.sleep(10)
+
+        rs5 = self.showtable(self.ns_leader)
+        self.assertEqual(rs5[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs5[(name, tid, '1', self.leader)], ['leader',  '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs5[(name, tid, '3', self.leader)], ['follower',  '144000min', 'yes', 'kNoCompress'])
+
+        rs = self.put(self.leader, tid, 0, '', self.now(), 'pk3' ,'v3', 'w5')
+        self.assertIn('Put ok', rs)
+        rs = self.put(self.leader, tid, 1, '', self.now(), 'pk4' ,'v4', 'w4')
+        self.assertIn('Put ok', rs)
+        time.sleep(1)
+
+        self.assertIn('v1', self.scan(self.slave1, tid, 0, {'k1': 'pk1'}, self.now(), 1))
+        self.assertIn('v4', self.scan(self.slave1, tid, 1, {'k1': 'pk4'}, self.now(), 1))
 
 
 if __name__ == "__main__":

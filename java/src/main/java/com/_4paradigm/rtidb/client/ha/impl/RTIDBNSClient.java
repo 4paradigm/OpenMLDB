@@ -26,6 +26,7 @@ import io.brpc.client.RpcProxy;
 import io.brpc.client.SingleEndpointRpcClient;
 import rtidb.api.TabletServer;
 
+@Deprecated
 public class RTIDBNSClient implements RTIDBClient{
 
     private static Set<String> localIpAddr = new HashSet<String>();
@@ -51,7 +52,7 @@ public class RTIDBNSClient implements RTIDBClient{
         List<TableInfo> tables = ns.showTable(null);
         refreshRouteTable(tables);
     }
-    
+
     public TableHandler getHandler(String name) {
         return name2tables.get(name);
     }
@@ -59,7 +60,7 @@ public class RTIDBNSClient implements RTIDBClient{
     public TableHandler getHandler(int id) {
         return id2tables.get(id);
     }
-    
+
     @Override
     public RTIDBClientConfig getConfig() {
         return config;
