@@ -86,6 +86,7 @@ enum TaskType {
     kSelectLeader = 15;
     kUpdateLeaderInfo = 16;
     kRecoverTable = 17;
+    kCheckBinlogSyncProgress = 18;
 }
 
 enum TaskStatus {

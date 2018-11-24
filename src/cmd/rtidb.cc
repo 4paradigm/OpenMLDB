@@ -640,8 +640,8 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtid
     uint32_t concurrency = 0;
     if (parts.size() > 2) {
         try {
-            if (boost::lexical_cast<int32_t>(parts[2]) < 0) {
-                std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
+            if (boost::lexical_cast<int32_t>(parts[2]) <= 0) {
+                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
                 return;
             }
             concurrency = boost::lexical_cast<uint32_t>(parts[2]);
@@ -720,8 +720,34 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::rtid
         std::cout << "Bad format" << std::endl;
         return;
     }
+    bool need_restore = false;
+    if (parts.size() > 2) {
+        std::string value = parts[2];
+        std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+        if (value == "true") {
+            need_restore = true;
+        } else if (value == "false") {
+            need_restore = false;
+        } else {
+            std::cout << "Invalid args. need_restore should be true or false" << std::endl;
+            return;
+        }
+    }
+	uint32_t concurrency = 0;
+    if (parts.size() > 3) {
+        try {
+            if (boost::lexical_cast<int32_t>(parts[3]) <= 0) {
+                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
+                return;
+            }
+            concurrency = boost::lexical_cast<uint32_t>(parts[3]);
+        } catch (const std::exception& e) {
+            std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
+            return;
+        }
+    }
     std::string msg;
-    bool ret = client->RecoverEndpoint(parts[1], msg);
+    bool ret = client->RecoverEndpoint(parts[1], need_restore, concurrency, msg);
     if (!ret) {
         std::cout << "failed to recover endpoint. error msg: " << msg << std::endl;
         return;
@@ -1577,8 +1603,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: recovertable table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "recoverendpoint") {
             printf("desc: recover all tables in endpoint when online\n");
-            printf("usage: recoverendpoint endpoint\n");
+            printf("usage: recoverendpoint endpoint [need_restore] [concurrency]\n");
             printf("ex: recoverendpoint 172.27.128.31:9527\n");
+            printf("ex: recoverendpoint 172.27.128.31:9527 false\n");
+            printf("ex: recoverendpoint 172.27.128.31:9527 true 2\n");
         } else if (parts[1] == "migrate") {
             printf("desc: migrate partition form one endpoint to another\n");
             printf("usage: migrate src_endpoint table_name partition des_endpoint\n");
