@@ -3912,14 +3912,6 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
                         leader_offset, follower_offset);
             return;
         }
-        if (leader_offset < follower_offset) {
-            PDLOG(WARNING, "update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s],leader_offset[%lu], follower_offset[%lu]",
-                            task_info->op_id(), 
-                            ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(),
-                            leader_offset, follower_offset);
-                            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-            return;
-        }
         break;
     }
     PDLOG(INFO, "op_id[%lu], task_type[%s],leader_offset[%lu], follower_offset[%lu] offset_delta[%lu]",
