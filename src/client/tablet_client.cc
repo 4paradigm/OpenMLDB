@@ -645,6 +645,7 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& end
 bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
             std::shared_ptr<TaskInfo> task_info) {
     if (task_info) {        
+        // fix the bug FEX-439
         ::rtidb::api::GetTableFollowerRequest get_follower_request;
         ::rtidb::api::GetTableFollowerResponse get_follower_response;
         get_follower_request.set_tid(tid);
