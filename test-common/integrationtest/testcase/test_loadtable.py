@@ -621,11 +621,6 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertIn('MakeSnapshot ok', rs4)
-        time.sleep(1)
-        mf = self.get_manifest(self.slave1path, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '0')
-        self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '0')
 
 
     def test_loadtable_snapshot_deleted(self):
