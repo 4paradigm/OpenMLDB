@@ -2021,6 +2021,12 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index, ::rtidb::api::OPType::kAddReplicaOP,
+                request.name(), pid, request.endpoint(), 0);
+    if (!task) {
+        PDLOG(WARNING, "create checkbinlogsyncprogress task failed. tid[%u] pid[%u]", tid, pid);
+    }
+    op_data->task_list_.push_back(task);
     task = CreateAddTableInfoTask(request.name(), pid, request.endpoint(),
                 op_index, ::rtidb::api::OPType::kAddReplicaOP);
     if (!task) {
