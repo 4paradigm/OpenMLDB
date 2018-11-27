@@ -3802,6 +3802,12 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() == pid) {
             ::rtidb::nameserver::TablePartition* table_partition = iter->second->mutable_table_partition(idx);
+            for (int meta_idx = 0; meta_idx< table_partition->partition_meta_size(); meta_idx++) {
+                if (table_partition->partition_meta(meta_idx).endpoint() == endpoint) {
+                    PDLOG(WARNING, "follower already exists pid[%u] table[%s] endpoint[%s]", pid, name.c_str(), endpoint.c_str());
+                    return;
+                }
+            }
             ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
             partition_meta->set_endpoint(endpoint);
             partition_meta->set_is_leader(false);
