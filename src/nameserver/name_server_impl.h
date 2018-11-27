@@ -183,6 +183,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void CancelOP(RpcController* controller,
+            const CancelOPRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);

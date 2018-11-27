@@ -359,7 +359,8 @@ bool NameServerImpl::RecoverOPTask() {
                             op_data->op_info_.op_id(), op_data->op_info_.task_index());
             continue;
         }
-        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed || 
+                op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kCanceled) {
             done_op_list_.push_back(op_data);
         } else {
             uint32_t idx = op_data->op_info_.pid() % task_vec_.size();
@@ -841,11 +842,12 @@ int NameServerImpl::DeleteTask() {
                 done_task_vec.push_back(op_data->op_info_.op_id());
             } else {
                 std::shared_ptr<Task> task = op_data->task_list_.front();
-                if (task->task_info_->status() == ::rtidb::api::kFailed) {
+                if (task->task_info_->status() == ::rtidb::api::kFailed ||
+                        op_data->op_info_.task_status() == ::rtidb::api::kCanceled) {
                     done_task_vec.push_back(op_data->op_info_.op_id());
                 }
             }
-        }    
+        }
         if (done_task_vec.empty()) {
             return 0;
         }
@@ -947,10 +949,12 @@ void NameServerImpl::ProcessTask() {
                 }
                 std::shared_ptr<OPData> op_data = op_list.front();
                 if (op_data->task_list_.empty() || 
-                        op_data->op_info_.task_status() == ::rtidb::api::kFailed) {
+                        op_data->op_info_.task_status() == ::rtidb::api::kFailed ||
+                        op_data->op_info_.task_status() == ::rtidb::api::kCanceled) {
                     continue;
                 }
                 if (op_data->op_info_.task_status() == ::rtidb::api::kInited) {
+                    op_data->op_info_.set_start_time(::baidu::common::timer::now_time());
                     op_data->op_info_.set_task_status(::rtidb::api::kDoing);
                     std::string value;
                     op_data->op_info_.SerializeToString(&value);
@@ -1657,6 +1661,45 @@ void NameServerImpl::RecoverTable(RpcController* controller,
     response->set_msg("ok");
 }
 
+void NameServerImpl::CancelOP(RpcController* controller,
+            const CancelOPRequest* request,
+            GeneralResponse* response,
+            Closure* done) {
+    brpc::ClosureGuard done_guard(done);    
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    for (auto& op_list : task_vec_) {
+        if (op_list.empty()) {
+            continue;
+        }
+        auto iter = op_list.begin();
+        for ( ; iter != op_list.end(); iter++) {
+            if ((*iter)->op_info_.op_id() == request->op_id()) {
+                break;
+            }
+        }
+        if (iter != op_list.end()) {
+            (*iter)->op_info_.set_task_status(::rtidb::api::kCanceled);
+            for (auto& task : (*iter)->task_list_) {
+                task->task_info_->set_status(::rtidb::api::kCanceled);
+            }                
+            response->set_code(0);
+            response->set_msg("ok");
+            PDLOG(INFO, "op[%lu] is canceled! op_type[%s]", 
+                        request->op_id(), ::rtidb::api::OPType_Name((*iter)->op_info_.op_type()).c_str());
+            return;
+        }
+    }
+    response->set_code(-1);
+    response->set_msg("Not found op_id " + std::to_string(request->op_id()));
+    return;
+}
+
 void NameServerImpl::ShowOPStatus(RpcController* controller,
         const ShowOPStatusRequest* request,
         ShowOPStatusResponse* response,
@@ -2306,7 +2349,6 @@ int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string
     }
     op_index_++;
     op_data = std::make_shared<OPData>();
-    op_data->op_info_.set_start_time(::baidu::common::timer::now_time());
     op_data->op_info_.set_op_id(op_index_);
     op_data->op_info_.set_op_type(op_type);
     op_data->op_info_.set_task_index(0);
