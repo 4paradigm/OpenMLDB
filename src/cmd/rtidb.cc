@@ -429,13 +429,12 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::rtidb::clie
         bool ok = client->CancelOP(op_id, err);
         if (ok) {
             std::cout << "Cancel op ok!" << std::endl;
-        }else {
+        } else {
             std::cout << "Cancel op failed! "<< err << std::endl; 
         }
     } catch(std::exception const& e) {
         std::cout << "Invalid args. op_id should be uint64_t" << std::endl;
     }
-
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {

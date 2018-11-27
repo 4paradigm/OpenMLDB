@@ -1697,6 +1697,7 @@ void NameServerImpl::CancelOP(RpcController* controller,
     }
     response->set_code(-1);
     response->set_msg("Not found op_id " + std::to_string(request->op_id()));
+    PDLOG(WARNING, "not found op[%lu]", request->op_id());
     return;
 }
 

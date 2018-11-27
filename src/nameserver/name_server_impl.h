@@ -64,7 +64,11 @@ struct OPData {
     std::list<std::shared_ptr<Task>> task_list_;
 };
 
+class NameServerImplTest;
+
 class NameServerImpl : public NameServer {
+    // used for ut
+    friend class NameServerImplTest;
 
 public:
 
