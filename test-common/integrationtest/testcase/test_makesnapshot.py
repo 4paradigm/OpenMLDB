@@ -486,9 +486,7 @@ class TestMakeSnapshot(TestCaseBase):
         self.assertEqual(mf['offset'], str(offset + 1))
 
         # 新节点loadtable
-        # self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        utils.exe_shell('cp -r {from_node}/db/ {to_node}/db/'.format(
-            from_node=self.leaderpath, to_node=self.slave1path))
+        self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         rs6 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertIn('LoadTable ok', rs6)
         for i in range(0, offset):
