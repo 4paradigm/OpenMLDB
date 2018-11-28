@@ -3805,6 +3805,7 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
             for (int meta_idx = 0; meta_idx< table_partition->partition_meta_size(); meta_idx++) {
                 if (table_partition->partition_meta(meta_idx).endpoint() == endpoint) {
                     PDLOG(WARNING, "follower already exists pid[%u] table[%s] endpoint[%s]", pid, name.c_str(), endpoint.c_str());
+                    task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                     return;
                 }
             }
@@ -3915,7 +3916,6 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
         }
         for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
             const PartitionMeta& meta = iter->second->table_partition(idx).partition_meta(meta_idx);
-            std::cout << "meta.has_offset() " << meta.has_offset() << " meta.is_leader() " << meta.is_leader() <<" meta.is_alive() " << meta.is_alive() << std::endl;
             if (!meta.has_offset()) {
                 continue;
             }
