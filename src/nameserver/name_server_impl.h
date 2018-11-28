@@ -254,7 +254,9 @@ private:
 
     void OnTabletOnline(const std::string& endpoint);
 
-    void RecoverEndpoint(const std::string& endpoint, bool need_restore, uint32_t concurrency);
+    void OfflineEndpointInternal(const std::string& endpoint, uint32_t concurrency);
+
+    void RecoverEndpointInternal(const std::string& endpoint, bool need_restore, uint32_t concurrency);
 
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 

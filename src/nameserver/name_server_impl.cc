@@ -524,77 +524,43 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    auto tit = tablets_.find(endpoint);
-    if (tit == tablets_.end()) {
-        PDLOG(WARNING, "cannot find endpoint %s in tablet map", endpoint.c_str());
-        return;
-    }
-    auto iter = offline_endpoint_map_.find(endpoint);
-    if (iter == offline_endpoint_map_.end()) {
-        PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map", endpoint.c_str());
-        return;
-    }
-    if (!startup_flag && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-        PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
-        // offline_endpoint_map_.erase(iter);
-        return;
-    }
-    if (table_info_.empty()) {
-        PDLOG(INFO, "endpoint %s has no table, need not offline endpoint", endpoint.c_str());
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto tit = tablets_.find(endpoint);
+        if (tit == tablets_.end()) {
+            PDLOG(WARNING, "cannot find endpoint %s in tablet map", endpoint.c_str());
+            return;
+        }
+        auto iter = offline_endpoint_map_.find(endpoint);
+        if (iter == offline_endpoint_map_.end()) {
+            PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map", endpoint.c_str());
+            return;
+        }
+        if (!startup_flag && tit->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+            PDLOG(INFO, "endpoint %s is healthy, need not offline endpoint", endpoint.c_str());
+            return;
+        }
+        if (table_info_.empty()) {
+            PDLOG(INFO, "endpoint %s has no table, need not offline endpoint", endpoint.c_str());
+            offline_endpoint_map_.erase(iter);
+            return;
+        }
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        if (!startup_flag && cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
+            thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
+            return;
+        }
         offline_endpoint_map_.erase(iter);
-        return;
-    }
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    if (!startup_flag && cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
-        thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
-        return;
-    }
-    if (auto_failover_.load(std::memory_order_acquire) && 
-            zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) == 0) {
-        PDLOG(WARNING, "offline endpoint lock node is exist! endpoint %s", endpoint.c_str());
-        return;
-    }
-    if (auto_failover_.load(std::memory_order_acquire) && 
-            !zk_client_->CreateNode(zk_offline_endpoint_lock_node_ + "/" + endpoint, "1")) {
-        PDLOG(WARNING, "create offline endpoint lock node failed! endpoint %s", endpoint.c_str());
-        return;
-    }
-    for (const auto& kv : table_info_) {
         if (!auto_failover_.load(std::memory_order_acquire)) {
-            CreateUpdateTableAliveOP(kv.second->name(), endpoint, false);
-            continue;
-        }
-        std::set<uint32_t> leader_pid;
-        std::set<uint32_t> follower_pid;
-        for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
-            for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                // tackle the alive partition only
-                if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
-                    if (kv.second->table_partition(idx).partition_meta_size() == 1) {
-                        CreateUpdatePartitionStatusOP(kv.first, kv.second->table_partition(idx).pid(), 
-                                endpoint, true, false, INVALID_PARENT_ID, FLAGS_name_server_task_concurrency);
-                        break;
-                    }
-                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                        leader_pid.insert(kv.second->table_partition(idx).pid());
-                    } else {
-                        follower_pid.insert(kv.second->table_partition(idx).pid());
-                    }
-                }
+            for (const auto& kv : table_info_) {
+                CreateUpdateTableAliveOP(kv.second->name(), endpoint, false);
+                continue;
             }
-        }
-        for (auto pid : leader_pid) {
-            // change leader
-            PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
-            CreateChangeLeaderOP(kv.first, pid, "", false);
-        }
-        // delete replica
-        for (auto pid : follower_pid) {
-            CreateOfflineReplicaOP(kv.first, pid, endpoint);
-        }
+        }    
     }
-    offline_endpoint_map_.erase(iter);
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        OfflineEndpointInternal(endpoint, FLAGS_name_server_task_concurrency);
+    }
 }
 
 void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
@@ -615,24 +581,11 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         OnTabletOffline(endpoint, true);
     }
     if (auto_recover_table_.load(std::memory_order_acquire)) {
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (zk_client_->IsExistNode(zk_offline_endpoint_lock_node_ + "/" + endpoint) != 0) {
-                PDLOG(WARNING, "offline endpoint lock node is not exist, need not recover. endpoint %s", endpoint.c_str());
-                return;
-            }
-        }
-        RecoverEndpoint(endpoint, false, FLAGS_name_server_task_concurrency);
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (!zk_client_->DeleteNode(zk_offline_endpoint_lock_node_ + "/" + endpoint)) {
-                PDLOG(WARNING, "offline endpoint lock node delete failed. endpoint[%s]", endpoint.c_str());
-            }
-        }
+        RecoverEndpointInternal(endpoint, false, FLAGS_name_server_task_concurrency);
     }
 }
 
-void NameServerImpl::RecoverEndpoint(const std::string& endpoint, bool need_restore, uint32_t concurrency) {
+void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool need_restore, uint32_t concurrency) {
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
@@ -1398,6 +1351,12 @@ void NameServerImpl::ChangeLeader(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
+        return;
+    }
     std::string name = request->name();
     uint32_t pid = request->pid();
     std::lock_guard<std::mutex> lock(mu_);
@@ -1472,6 +1431,12 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
+        return;
+    }
     uint32_t concurrency = FLAGS_name_server_task_concurrency;
     if (request->has_concurrency()) {
         if (request->concurrency() > FLAGS_name_server_task_max_concurrency) {
@@ -1484,14 +1449,23 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
         }
     }
     std::string endpoint = request->endpoint();
-    std::lock_guard<std::mutex> lock(mu_);
-    auto iter = tablets_.find(endpoint);
-    if (iter == tablets_.end()) {
-        response->set_code(-1);
-        response->set_msg("endpoint is not exist");
-        PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
-        return;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = tablets_.find(endpoint);
+        if (iter == tablets_.end()) {
+            response->set_code(-1);
+            response->set_msg("endpoint is not exist");
+            PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
+            return;
+        }
     }
+    OfflineEndpointInternal(endpoint, concurrency);
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32_t concurrency) {
+    std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
             uint32_t pid = kv.second->table_partition(idx).pid();
@@ -1535,9 +1509,7 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller,
             }
         }
     }
-    response->set_code(0);
-    response->set_msg("ok");
-}
+}            
 
 void NameServerImpl::RecoverEndpoint(RpcController* controller,
             const RecoverEndpointRequest* request,
@@ -1548,6 +1520,12 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         response->set_code(-1);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
         return;
     }
     uint32_t concurrency = FLAGS_name_server_task_concurrency;
@@ -1581,7 +1559,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
     if (request->has_need_restore() && request->need_restore()) {
         need_restore = true;
     }
-    RecoverEndpoint(endpoint, need_restore, concurrency);
+    RecoverEndpointInternal(endpoint, need_restore, concurrency);
     response->set_code(0);
     response->set_msg("ok");
 }
@@ -1595,6 +1573,12 @@ void NameServerImpl::RecoverTable(RpcController* controller,
         response->set_code(-1);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
         return;
     }
     std::string name = request->name();
