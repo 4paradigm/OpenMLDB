@@ -42,6 +42,8 @@ public:
     bool ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response, 
                 const std::string& name, uint32_t pid, std::string& msg);
 
+    bool CancelOP(uint64_t op_id, std::string& msg);
+
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg);
 
     bool DropTable(const std::string& name, std::string& msg);

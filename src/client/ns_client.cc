@@ -91,6 +91,19 @@ bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
     return false;
 }
 
+bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
+    ::rtidb::nameserver::CancelOPRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_op_id(op_id);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CancelOP,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg) {
     ::rtidb::nameserver::CreateTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;

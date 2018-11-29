@@ -413,7 +413,28 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client
     } catch(std::exception const& e) {
         std::cout << "Invalid args ttl which should be uint64_t" << std::endl;
     }
+}
 
+void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "bad cancelop format, eg cancelop 1002" <<std::endl;
+        return;
+    }
+    try {
+        std::string err;
+        if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
+
+        }
+        uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
+        bool ok = client->CancelOP(op_id, err);
+        if (ok) {
+            std::cout << "Cancel op ok!" << std::endl;
+        } else {
+            std::cout << "Cancel op failed! "<< err << std::endl; 
+        }
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. op_id should be uint64_t" << std::endl;
+    }
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -1498,6 +1519,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("settablepartition - update partition info\n");
         printf("updatetablealive - update table alive status\n");
         printf("setttl - set table ttl\n");
+        printf("cancelop - cancel the op\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
         printf("help - get cmd info\n");
@@ -1637,6 +1659,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: setttl table_name ttl_type ttl\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
+        } else if (parts[1] == "cancelop") {
+            printf("desc: cancel the op\n");
+            printf("usage: cancelop op_id\n");
+            printf("ex: cancelop 5\n");
         } else if (parts[1] == "updatetablealive") {
             printf("desc: update table alive status\n");
             printf("usage: updatetablealive table_name pid endppoint is_alive\n");
@@ -1831,21 +1857,27 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).status());
-        time_t rawtime = (time_t)response.op_status(idx).start_time();
-        tm* timeinfo = localtime(&rawtime);
-        char buf[20];
-        strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
-        row.push_back(buf);
-        if (response.op_status(idx).end_time() != 0) {
-            row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
-            rawtime = (time_t)response.op_status(idx).end_time();
-            timeinfo = localtime(&rawtime);
-            buf[0] = '\0';
+        if (response.op_status(idx).start_time() > 0) {
+            time_t rawtime = (time_t)response.op_status(idx).start_time();
+            tm* timeinfo = localtime(&rawtime);
+            char buf[20];
             strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
             row.push_back(buf);
+            if (response.op_status(idx).end_time() != 0) {
+                row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
+                rawtime = (time_t)response.op_status(idx).end_time();
+                timeinfo = localtime(&rawtime);
+                buf[0] = '\0';
+                strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+                row.push_back(buf);
+            } else {
+                uint64_t cur_time = ::baidu::common::timer::now_time();
+                row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
+                row.push_back("-");
+            }
         } else {
-            uint64_t cur_time = ::baidu::common::timer::now_time();
-            row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
+            row.push_back("-");
+            row.push_back("-");
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).task_type());
@@ -3271,6 +3303,8 @@ void StartNsClient() {
             HandleNSClientUpdateTableAlive(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleNSClientSetTTL(parts, &client);
+        } else if (parts[0] == "cancelop") {
+            HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

@@ -64,7 +64,11 @@ struct OPData {
     std::list<std::shared_ptr<Task>> task_list_;
 };
 
+class NameServerImplTest;
+
 class NameServerImpl : public NameServer {
+    // used for ut
+    friend class NameServerImplTest;
 
 public:
 
@@ -180,6 +184,11 @@ public:
 
     void UpdateTableAliveStatus(RpcController* controller,
             const UpdateTableAliveRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
+    void CancelOP(RpcController* controller,
+            const CancelOPRequest* request,
             GeneralResponse* response,
             Closure* done);
 
