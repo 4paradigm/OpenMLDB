@@ -242,6 +242,10 @@ message ShowOPStatusResponse {
     repeated OPStatus op_status = 3;
 }
 
+message CancelOPRequest {
+    optional uint64 op_id = 1;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -251,6 +255,7 @@ service NameServer {
     rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
     rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
     rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);

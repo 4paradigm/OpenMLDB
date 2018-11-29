@@ -94,6 +94,7 @@ enum TaskStatus {
     kDoing = 2;
     kDone = 3;
     kFailed = 4;
+    kCanceled = 5;
 }
 
 message TaskInfo {
