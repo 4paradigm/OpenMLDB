@@ -51,6 +51,7 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info('*'*88)
         infoLogger.info([i[1] for i in conf.ns_endpoints]) 
         infoLogger.info(cls.ns_slaver)
+        infoLogger.info(conf.cluster_mode)
 
     @classmethod
     def tearDownClass(cls):
@@ -68,12 +69,11 @@ class TestCaseBase(unittest.TestCase):
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
             self.tid = random.randint(1, 1000)
             self.pid = random.randint(1, 1000)
-            self.clear_ns_table(self.ns_leader)
+            if conf.cluster_mode == "cluster":
+                self.clear_ns_table(self.ns_leader)
             for edp_tuple in conf.tb_endpoints:
                 edp = edp_tuple[1]
                 self.clear_tb_table(edp)
-            self.confset(self.ns_leader, 'auto_failover', 'true')
-            self.confset(self.ns_leader, 'auto_recover_table', 'true')
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' SETUP FINISHED ' + '=' * 50 + '\n')
@@ -81,9 +81,6 @@ class TestCaseBase(unittest.TestCase):
     def tearDown(self):
         infoLogger.info('\n\n' + '|' * 50 + ' TEARDOWN STARTED ' + '|' * 50 + '\n')
         try:
-            self.confset(self.ns_leader, 'auto_failover', 'true')
-            self.confset(self.ns_leader, 'auto_recover_table', 'true')
-            self.clear_ns_table(self.ns_leader)
             rs = self.showtablet(self.ns_leader)
 
             for edp_tuple in conf.tb_endpoints:

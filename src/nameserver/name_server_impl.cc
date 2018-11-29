@@ -27,7 +27,6 @@ DECLARE_int32(max_op_num);
 DECLARE_uint32(partition_num);
 DECLARE_uint32(replica_num);
 DECLARE_bool(auto_failover);
-DECLARE_bool(auto_recover_table);
 DECLARE_uint32(tablet_heartbeat_timeout);
 DECLARE_uint32(tablet_offline_check_interval);
 DECLARE_uint32(absolute_ttl_max);
@@ -35,6 +34,7 @@ DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(get_table_status_interval);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(check_binlog_sync_progress_delta);
+DECLARE_uint32(name_server_op_execute_timeout);
 
 namespace rtidb {
 namespace nameserver {
@@ -55,11 +55,9 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     zk_offline_endpoint_lock_node_ = FLAGS_zk_root_path + "/offline_endpoint_lock";
     std::string zk_config_path = FLAGS_zk_root_path + "/config";
     zk_auto_failover_node_ = zk_config_path + "/auto_failover";
-    zk_auto_recover_table_node_ = zk_config_path + "/auto_recover_table";
     zk_table_changed_notify_node_ = zk_table_path + "/notify";
     running_.store(false, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
-    auto_recover_table_.store(FLAGS_auto_recover_table, std::memory_order_release);
 }
 
 NameServerImpl::~NameServerImpl() {
@@ -134,20 +132,6 @@ bool NameServerImpl::Recover() {
         value == "true" ? auto_failover_.store(true, std::memory_order_release) :
                        auto_failover_.store(false, std::memory_order_release);
         PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
-    }
-    value.clear();
-    if (!zk_client_->GetNodeValue(zk_auto_recover_table_node_, value)) {
-        auto_recover_table_.load(std::memory_order_acquire) ? value = "true" : value = "false";
-        if (!zk_client_->CreateNode(zk_auto_recover_table_node_, value)) {
-            PDLOG(WARNING, "create auto recover table node failed!");
-            return false;
-        }
-        PDLOG(INFO, "set zk_auto_recover_table_node[%s]", value.c_str());
-    } else {
-        value == "true" ? auto_recover_table_.store(true, std::memory_order_release) :
-                       auto_recover_table_.store(false, std::memory_order_release);
-        PDLOG(INFO, "get zk_auto_recover_table_node[%s]", value.c_str());
-
     }
 
     if (!RecoverTableInfo()) {
@@ -581,7 +565,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
         OnTabletOffline(endpoint, true);
     }
-    if (auto_recover_table_.load(std::memory_order_acquire)) {
+    if (auto_failover_.load(std::memory_order_acquire)) {
         RecoverEndpointInternal(endpoint, false, FLAGS_name_server_task_concurrency);
     }
 }
@@ -594,7 +578,7 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
                 if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
-                        !auto_recover_table_.load(std::memory_order_relaxed)) {
+                        !auto_failover_.load(std::memory_order_relaxed)) {
                         PDLOG(INFO, "table[%s] pid[%u] endpoint[%s] is alive, need not recover", 
                                     kv.first.c_str(), pid, endpoint.c_str());
                         break;            
@@ -931,6 +915,18 @@ void NameServerImpl::ProcessTask() {
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str()); 
                     task_thread_pool_.AddTask(task->fun_);
                     task->task_info_->set_status(::rtidb::api::kDoing);;
+				} else if (task->task_info_->status() == ::rtidb::api::kDoing) {
+                    if (::baidu::common::timer::now_time() - op_data->op_info_.start_time() > 
+                            FLAGS_name_server_op_execute_timeout / 1000) {
+                        PDLOG(INFO, "The executeion time of op is too long. "
+                                    "opid[%lu] op_type[%s] cur task_type[%s] start_time[%lu] cur_time[%lu]", 
+                                    task->task_info_->op_id(), 
+                                    ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
+                                    ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                                    op_data->op_info_.start_time(),
+                                    ::baidu::common::timer::now_time());
+                        cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
+					}
                 }
             }
         }
@@ -1297,18 +1293,6 @@ void NameServerImpl::ConfSet(RpcController* controller,
         } else {
             auto_failover_.store(false, std::memory_order_release);
         }
-    } else if (key == "auto_recover_table") {
-        if (!zk_client_->SetNodeValue(zk_auto_recover_table_node_, value)) {
-            PDLOG(WARNING, "set auto_recover_table_node failed!");
-            response->set_code(-1);
-            response->set_msg("set auto_recover_table_node failed");
-            return;
-        }
-        if (value == "true") {
-            auto_recover_table_.store(true, std::memory_order_release);
-        } else {
-            auto_recover_table_.store(false, std::memory_order_release);
-        }
     } else {
         response->set_code(-1);
         response->set_msg("unsupport set this key");
@@ -1335,10 +1319,6 @@ void NameServerImpl::ConfGet(RpcController* controller,
     ::rtidb::nameserver::Pair* conf = response->add_conf();
     conf->set_key("auto_failover");
     auto_failover_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
-
-    conf = response->add_conf();
-    conf->set_key("auto_recover_table");
-    auto_recover_table_.load(std::memory_order_acquire) ? conf->set_value("true") : conf->set_value("false");
 
     response->set_code(0);
     response->set_msg("ok");
@@ -1513,7 +1493,7 @@ void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32
             }
         }
     }
-}            
+}
 
 void NameServerImpl::RecoverEndpoint(RpcController* controller,
             const RecoverEndpointRequest* request,

@@ -433,7 +433,6 @@ private:
     std::vector<std::list<std::shared_ptr<OPData>>> task_vec_;
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
-    std::atomic<bool> auto_recover_table_;
     std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
     uint64_t session_term_;
