@@ -171,8 +171,6 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
         self.put(self.leader, tid, 0, 'testkey0', self.now(), 'testvalue0')
 
         self.stop_client(self.leader)

@@ -26,6 +26,7 @@
 #--name_server_task_concurrency=2
 #--name_server_task_max_concurrency=8
 #--name_server_task_wait_time=1000
+#--name_server_op_execute_timeout=7200000
 #--get_task_status_interval=2000
 #--get_table_status_interval=2000
 #--check_binlog_sync_progress_delta=100000
