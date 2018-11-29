@@ -36,20 +36,15 @@ class TestOfflineEndpoint(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
-
         self.stop_client(self.leader)
-        time.sleep(10)
+        time.sleep(5)
 
         self.offlineendpoint(self.ns_leader, self.leader)
         time.sleep(10)
 
         rs2 = self.showtable(self.ns_leader)
-        self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'true')
         self.start_client(self.leader)
-        time.sleep(10)
+        time.sleep(1)
 
         # showtable ok
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
@@ -96,9 +91,6 @@ class TestOfflineEndpoint(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
-
         self.stop_client(self.slave1)
         time.sleep(5)
 
@@ -122,7 +114,6 @@ class TestOfflineEndpoint(TestCaseBase):
         (conf.tb_endpoints[0][1], '0', 'Invalid args. concurrency should be greater than 0'),
         (conf.tb_endpoints[0][1], '10', 'failed to offline endpoint'),
         (conf.tb_endpoints[0][1], 'abc', 'Invalid args. concurrency should be uint32_t'),
-        (conf.tb_endpoints[0][1], '5', 'offline endpoint ok'),
     )
     @ddt.unpack
     def test_offlineendpoint_failed(self, endpoint, concurrency, exp_msg):
@@ -130,17 +121,6 @@ class TestOfflineEndpoint(TestCaseBase):
         offlineendpoint 参数校验
         :return:
         """
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        m = utils.gen_table_metadata(
-            '"{}"'.format('tname{}'.format(time.time())), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"1-2"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
-        rs1 = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs1)
-
         rs2 = self.offlineendpoint(self.ns_leader, endpoint, concurrency)
         self.assertIn(exp_msg, rs2)
 

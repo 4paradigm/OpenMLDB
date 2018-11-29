@@ -91,8 +91,6 @@ class TestCaseBase(unittest.TestCase):
                     time.sleep(1)
                     self.start_client(edp)
                     time.sleep(10)
-                    self.recoverendpoint(self.ns_leader, edp)
-                    time.sleep(3)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n' * 5)

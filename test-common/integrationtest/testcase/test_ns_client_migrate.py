@@ -16,8 +16,6 @@ class TestNameserverMigrate(TestCaseBase):
     leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
 
     def createtable_put(self, tname, data_count):
-        self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'true')
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(tname), '"kAbsoluteTime"', 144000, 8,
@@ -135,6 +133,7 @@ class TestNameserverMigrate(TestCaseBase):
         原leader故障恢复成follower之后，可以被迁移成功
         :return:
         """
+        self.confset(self.ns_leader, 'auto_failover', 'true')
         tname = str(time.time())
         self.createtable_put(tname, 100)
         time.sleep(2)
@@ -164,6 +163,7 @@ class TestNameserverMigrate(TestCaseBase):
             self.assertIn((tname, str(self.tid), str(i), self.slave2), rs4)
         self.assertEqual(rs0[0], rs5[0])
         self.assertEqual(rs0[0], rs6[0])
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
     def test_ns_client_migrate_no_leader(self):
         """
@@ -171,7 +171,6 @@ class TestNameserverMigrate(TestCaseBase):
         :return:
         """
         tname = str(time.time())
-        self.confset(self.ns_leader, 'auto_failover', 'false')
         self.createtable_put(tname, 500)
         self.stop_client(self.leader)
         time.sleep(2)
@@ -182,7 +181,6 @@ class TestNameserverMigrate(TestCaseBase):
         self.start_client(self.leader)
         time.sleep(10)
         self.showtable(self.ns_leader)
-        self.confset(self.ns_leader, 'auto_failover', 'true')
         self.assertIn('partition migrate ok', rs1)
         for i in range(4, 7):
             self.assertIn((tname, str(self.tid), str(i), self.slave1), rs2)

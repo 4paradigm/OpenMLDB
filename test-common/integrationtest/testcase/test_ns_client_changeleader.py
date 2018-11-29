@@ -40,11 +40,8 @@ class TestChangeLeader(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
-
         self.disconnectzk(self.leader)
-        time.sleep(10)
+        time.sleep(3)
 
         self.changeleader(self.ns_leader, name, 0)
         time.sleep(1)
@@ -101,17 +98,14 @@ class TestChangeLeader(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
-
         self.stop_client(self.leader)
-        time.sleep(10)
+        time.sleep(5)
 
         self.changeleader(self.ns_leader, name, 0)
-        time.sleep(1)
+        time.sleep(3)
         rs2 = self.showtable(self.ns_leader)
         self.start_client(self.leader)
-        time.sleep(3)
+        time.sleep(1)
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
@@ -131,8 +125,6 @@ class TestChangeLeader(TestCaseBase):
         self.assertIn('Put ok', rs4)
         time.sleep(1)
         self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
-        self.recoverendpoint(self.ns_leader, self.leader)
-        time.sleep(10)
 
 
     def test_changeleader_master_alive(self):
