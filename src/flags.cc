@@ -68,7 +68,6 @@ DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024, "the limit bandwidth. Byt
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
-DEFINE_int32(make_snapshot_threshold_offset, 1000, "config the offset to reach the threshold")
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 
