@@ -571,9 +571,7 @@ class TestCaseBase(unittest.TestCase):
                           'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_simplify_op(self, op_id):
-        self.check_tasks(op_id,
-<<<<<<< HEAD
-                         ['kAddReplica', 'kUpdatePartitionStatus'])
+        self.check_tasks(op_id, ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_setlimit(self, endpoint, command, method, limit):
         cmd = '{} {} {}'.format(command, method, limit)
@@ -587,6 +585,3 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
         return self.run_client(endpoint, cmd)
 
-=======
-                         ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
->>>>>>> origin/develop
