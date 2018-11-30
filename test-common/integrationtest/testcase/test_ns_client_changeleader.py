@@ -44,7 +44,7 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(3)
 
         self.changeleader(self.ns_leader, name, 0)
-        time.sleep(1)
+        time.sleep(5)
         rs2 = self.showtable(self.ns_leader)
         self.connectzk(self.leader)
 
@@ -102,7 +102,7 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(5)
 
         self.changeleader(self.ns_leader, name, 0)
-        time.sleep(3)
+        time.sleep(5)
         rs2 = self.showtable(self.ns_leader)
         self.start_client(self.leader)
         time.sleep(1)

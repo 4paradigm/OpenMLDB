@@ -1012,6 +1012,12 @@ void NameServerImpl::SetTablePartition(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
+        return;
+    }
     std::string name = request->name();
     uint32_t pid = request->table_partition().pid();
     std::lock_guard<std::mutex> lock(mu_);
@@ -2050,6 +2056,12 @@ void NameServerImpl::Migrate(RpcController* controller,
         response->set_code(-1);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
@@ -4149,6 +4161,12 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
         response->set_code(-1);
         response->set_msg("nameserver is not leader");
         PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);

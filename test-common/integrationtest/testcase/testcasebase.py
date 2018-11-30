@@ -319,11 +319,20 @@ class TestCaseBase(unittest.TestCase):
     def recoverendpoint(self, endpoint, offline_endpoint, need_restore='', concurrency=''):
         return self.run_client(endpoint, 'recoverendpoint {} {} {}'.format(offline_endpoint, need_restore, concurrency), 'ns_client')
 
+    def recovertable(self, endpoint, name, pid, offline_endpoint):
+        return self.run_client(endpoint, 'recovertable {} {} {}'.format(name, pid, offline_endpoint), 'ns_client')
+
     def changeleader(self, endpoint, tname, pid, candidate_leader=''):
         if candidate_leader != '':
             return self.run_client(endpoint, 'changeleader {} {} {}'.format(tname, pid, candidate_leader), 'ns_client')
         else:
             return self.run_client(endpoint, 'changeleader {} {}'.format(tname, pid), 'ns_client')
+
+    def settablepartition(self, endpoint, name, partition_file):
+        return self.run_client(endpoint, 'settablepartition {} {}'.format(name, partition_file), 'ns_client')
+
+    def updatetablealive(self, endpoint, name, pid, des_endpint, is_alive):
+        return self.run_client(endpoint, 'updatetablealive {} {} {} {}'.format(name, pid, des_endpint, is_alive), 'ns_client')
 
     def connectzk(self, endpoint, role='client'):
         return self.run_client(endpoint, 'connectzk', role)

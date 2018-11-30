@@ -248,6 +248,26 @@ class TestAutoFailover(TestCaseBase):
         self.assertTrue(
             'ccard1' in self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1))
 
+    def test_enable_auto_failover(self):
+        """
+        auto_failover开启时不能执行手动恢复命令
+        :return:
+        """
+        msg = "auto_failover is enabled, cannot execute this cmd"
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        rs = self.offlineendpoint(self.ns_leader, self.leader)
+        self.assertIn(msg, rs)
+        rs = self.recoverendpoint(self.ns_leader, self.leader)
+        self.assertIn(msg, rs)
+        rs = self.changeleader(self.ns_leader, "test", 0)
+        self.assertIn(msg, rs)
+        rs = self.recovertable(self.ns_leader, "test", 0, self.leader)
+        self.assertIn(msg, rs)
+        rs = self.migrate(self.ns_leader, self.slave1, "test", "4-6", self.slave2)
+        self.assertIn(msg, rs)
+        rs = self.updatetablealive(self.ns_leader, "test", "0", self.slave1, "yes")
+        self.assertIn(msg, rs)
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
 if __name__ == "__main__":
     load(TestAutoFailover)
