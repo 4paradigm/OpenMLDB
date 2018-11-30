@@ -220,7 +220,6 @@ class TestMakeSnapshot(TestCaseBase):
             t.start()
         for t in threads:
             t.join()
-        infoLogger.error(rs_list)
         self.assertIn('LoadTable ok', rs_list)
         self.assertIn('Fail to MakeSnapshot', rs_list)
 

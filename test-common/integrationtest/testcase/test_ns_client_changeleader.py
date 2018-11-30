@@ -219,7 +219,7 @@ class TestChangeLeader(TestCaseBase):
     @ddt.unpack
     def test_changeleader_auto_without_offline(self, pid, switch,rsp_msg):
         """
-        不当机更新leader, auto模式（1 leader 2 follower
+        不当机更新leader, auto模式（1 leader 2 follower)。在三个副本的情况下，进行changeleader 参数是auto，测试自动切换是否成功
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -362,7 +362,7 @@ class TestChangeLeader(TestCaseBase):
     @ddt.unpack
     def test_changeleader_with_illegal_parameter(self, pid, switch, rsp_msg):
         """
-        不当机更新leader,测试不合法的参数值
+        不当机更新leader,针对changeleader的函数，测试不合法的参数值
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -468,7 +468,7 @@ class TestChangeLeader(TestCaseBase):
     @ddt.unpack
     def test_changeleader_endpoint_without_offline_with_one_follower_and_endpoint(self, pid, switch,rsp_msg):
         """
-        不当机更新leader,指定endpoint模式。一个leader和一个follower
+        不当机更新leader,指定endpoint模式。一个leader和一个follower，测试changeleader的结果
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -517,7 +517,7 @@ class TestChangeLeader(TestCaseBase):
     @ddt.unpack
     def test_changeleader_endpoint_without_offline_with_one_follower_and_auto(self, pid, switch,rsp_msg):
         """
-        不当机更新leader,auto模式。一个leader和一个follower
+        不当机更新leader,auto模式。一个leader和一个follower,测试changeleader的结果
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)

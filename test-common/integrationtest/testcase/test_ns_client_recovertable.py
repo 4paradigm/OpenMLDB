@@ -12,7 +12,7 @@ class TestRecoverTable(TestCaseBase):
     @multi_dimension(False)
     def test_recover_table_normal(self):
         """
-        测试recovertable函数。put数据之后是否会同步
+        测试recovertable函数。put数据之后是否会同步,先changleader，然后向新leader中put数据，再恢复之前的leader，测试是否恢复数据成功
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)

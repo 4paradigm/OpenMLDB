@@ -259,7 +259,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
 }
 
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
-            uint64_t& count, uint64_t& expired_key_num) {
+                          uint64_t& count, uint64_t& expired_key_num) {
 	std::string full_path = snapshot_path_ + manifest.name();
 	FILE* fd = fopen(full_path.c_str(), "rb");
 	if (fd == NULL) {

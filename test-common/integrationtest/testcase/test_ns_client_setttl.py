@@ -14,7 +14,7 @@ class TestSetTTL(TestCaseBase):
 
     def test_set_ttl_normal(self):
         """
-        正常修改ttl值
+        测试setttl函数，正常修改ttl值，查看返回值
         :return:
         """
         rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')

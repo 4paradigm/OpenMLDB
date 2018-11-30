@@ -14,7 +14,7 @@ class TestUpdateTableAlive(TestCaseBase):
 
     def test_update_table_alive_normal(self):
         """
-        正常修改ttl值
+        测试updatetable函数，设置参数为no和yes
         :return:
         """
         rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
