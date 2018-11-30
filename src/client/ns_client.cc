@@ -91,6 +91,19 @@ bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
     return false;
 }
 
+bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
+    ::rtidb::nameserver::CancelOPRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_op_id(op_id);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CancelOP,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg) {
     ::rtidb::nameserver::CreateTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;
@@ -208,10 +221,13 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& 
     return false;
 }
 
-bool NsClient::OfflineEndpoint(const std::string& endpoint, std::string& msg) {
+bool NsClient::OfflineEndpoint(const std::string& endpoint, uint32_t concurrency, std::string& msg) {
     ::rtidb::nameserver::OfflineEndpointRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
+    if (concurrency > 0) {
+        request.set_concurrency(concurrency);
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::OfflineEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -240,10 +256,15 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
     return false;
 }    
 
-bool NsClient::RecoverEndpoint(const std::string& endpoint, std::string& msg) {
+bool NsClient::RecoverEndpoint(const std::string& endpoint, bool need_restore, 
+            uint32_t concurrency, std::string& msg) {
     ::rtidb::nameserver::RecoverEndpointRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
+    if (concurrency > 0) {
+        request.set_concurrency(concurrency);
+    }
+    request.set_need_restore(need_restore);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RecoverEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();

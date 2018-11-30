@@ -47,6 +47,7 @@ DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_string(recycle_bin_root_path);
+DECLARE_int32(make_snapshot_threshold_offset);
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
@@ -807,9 +808,10 @@ void TabletImpl::DelReplica(RpcController* controller,
             response->set_msg("replicator role is not leader");
             break;
         } else {
-            response->set_code(-4);
-            PDLOG(WARNING, "fail to del endpoint for table %u pid %u", request->tid(), request->pid());
-            response->set_msg("fail to del endpoint");
+            response->set_code(0);
+            PDLOG(WARNING, "fail to del endpoint for table %u pid %u. replica does not exist", 
+                            request->tid(), request->pid());
+            response->set_msg("replica does not exist");
         }
         if (task_ptr) {
             std::lock_guard<std::mutex> lock(mu_);
@@ -979,6 +981,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
+    std::shared_ptr<LogReplicator> replicator;
     {
         std::lock_guard<std::mutex> lock(mu_);
         table = GetTableUnLock(tid, pid);
@@ -998,6 +1001,11 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
                 PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
                 break;
             }
+            replicator = GetReplicatorUnLock(tid, pid);
+            if (!replicator) {
+                PDLOG(WARNING, "replicator is not exist. tid[%u] pid[%u]", tid, pid);
+                break;
+            }
             has_error = false;
         } while (0);
         if (has_error) {
@@ -1007,14 +1015,21 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
             return;
         }
         table->SetTableStat(::rtidb::storage::kMakingSnapshot);
-    }    
-    uint64_t offset = 0;
-    int ret = snapshot->MakeSnapshot(table, offset);
-    if (ret == 0) {
-        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-        if (replicator) {
-            replicator->SetSnapshotLogPartIndex(offset);
-        }    
+    }
+    uint64_t cur_offset = replicator->GetOffset();
+    uint64_t snapshot_offset = snapshot->GetOffset();
+    int ret = 0;
+    if (cur_offset <= snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
+        PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", tid, pid, cur_offset, snapshot_offset);
+    }else {
+		uint64_t offset = 0;
+		ret = snapshot->MakeSnapshot(table, offset);
+		if (ret == 0) {
+			std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+			if (replicator) {
+				replicator->SetSnapshotLogPartIndex(offset);
+			}
+		}
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -1067,7 +1082,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
                          table->GetTableStat(), tid, pid);
             break;
         }
-        if (task_ptr) {       
+        if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
         task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
