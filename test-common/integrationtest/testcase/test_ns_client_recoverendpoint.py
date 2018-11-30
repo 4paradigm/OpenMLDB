@@ -223,7 +223,7 @@ class TestRecoverEndpoint(TestCaseBase):
         self.changeleader(self.ns_leader, name, 0)
         self.changeleader(self.ns_leader, name, 1)
         self.start_client(self.leader)
-        time.sleep(3)
+        time.sleep(5)
         self.recoverendpoint(self.ns_leader, self.leader)
         time.sleep(10)
 
