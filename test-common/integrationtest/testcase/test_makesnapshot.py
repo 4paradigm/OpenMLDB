@@ -487,7 +487,6 @@ class TestMakeSnapshot(TestCaseBase):
 
         # 新节点loadtable
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
-        self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
         rs6 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertIn('LoadTable ok', rs6)
         for i in range(0, offset):
