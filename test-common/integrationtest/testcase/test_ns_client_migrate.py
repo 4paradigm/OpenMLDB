@@ -133,18 +133,20 @@ class TestNameserverMigrate(TestCaseBase):
         原leader故障恢复成follower之后，可以被迁移成功
         :return:
         """
-        self.confset(self.ns_leader, 'auto_failover', 'true')
         tname = str(time.time())
         self.createtable_put(tname, 100)
         time.sleep(2)
         rs0 = self.get_table_status(self.leader, self.tid, self.pid)  # get offset leader
         self.stop_client(self.leader)
         time.sleep(2)
+        self.offlineendpoint(self.ns_leader, self.leader)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, '4-6', self.slave2)
         time.sleep(8)
         rs2 = self.showtable(self.ns_leader)
 
         self.start_client(self.leader)  # recover table
+        time.sleep(5)
+        self.recoverendpoint(self.ns_leader, self.leader)
         time.sleep(10)
         self.showtable(self.ns_leader)
         rs6 = self.get_table_status(self.slave1, self.tid, self.pid)  # get offset slave1
@@ -163,7 +165,6 @@ class TestNameserverMigrate(TestCaseBase):
             self.assertIn((tname, str(self.tid), str(i), self.slave2), rs4)
         self.assertEqual(rs0[0], rs5[0])
         self.assertEqual(rs0[0], rs6[0])
-        self.confset(self.ns_leader, 'auto_failover', 'false')
 
     def test_ns_client_migrate_no_leader(self):
         """
