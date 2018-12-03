@@ -4,10 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
@@ -383,42 +383,42 @@ public class TableSyncClientTest {
             // equal
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 13, Tablet.GetType.kSubKeyEq);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // le
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 11, Tablet.GetType.kSubKeyLe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
 
             // ge
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 12, Tablet.GetType.kSubKeyGe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // ge
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 13, Tablet.GetType.kSubKeyGe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 12, Tablet.GetType.kSubKeyGt);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 11, Tablet.GetType.kSubKeyGt);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
              // le
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 12, Tablet.GetType.kSubKeyLe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
         } catch (Exception e) {
             Assert.fail();
