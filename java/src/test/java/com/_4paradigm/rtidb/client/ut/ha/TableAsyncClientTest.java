@@ -325,48 +325,48 @@ public class TableAsyncClientTest {
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 13, Tablet.GetType.kSubKeyEq);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // le
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 11, Tablet.GetType.kSubKeyLe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
 
             // ge
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyGe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // ge
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 13, Tablet.GetType.kSubKeyGe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyGt);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 11, Tablet.GetType.kSubKeyGt);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
              // le
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyLe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
         } catch (Exception e) {
             Assert.fail();

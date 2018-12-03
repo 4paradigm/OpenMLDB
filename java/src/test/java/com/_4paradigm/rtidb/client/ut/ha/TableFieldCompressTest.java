@@ -24,8 +24,7 @@ import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS;
 import com.google.protobuf.ByteString;
-import org.junit.Assert;
-import org.junit.Test;
+
 
 import java.nio.ByteBuffer;
 
