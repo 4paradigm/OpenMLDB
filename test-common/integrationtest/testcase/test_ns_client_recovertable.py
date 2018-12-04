@@ -38,9 +38,6 @@ class TestRecoverTable(TestCaseBase):
         tid = rs1.keys()[0][1]
         pid = 1
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
-
         rs_old_leader_put = self.put(self.leader, tid, pid, 'testkey0', self.now(), 'testvalue0')
         self.assertIn('Put ok', rs_old_leader_put)
         time.sleep(1)

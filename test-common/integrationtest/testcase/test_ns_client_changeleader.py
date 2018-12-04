@@ -233,9 +233,6 @@ class TestChangeLeader(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
-
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
@@ -291,8 +288,6 @@ class TestChangeLeader(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
@@ -376,9 +371,6 @@ class TestChangeLeader(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
-
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
@@ -424,9 +416,6 @@ class TestChangeLeader(TestCaseBase):
                                   'k2': ('string', 'testvalue0'),
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
-
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
 
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
@@ -481,8 +470,6 @@ class TestChangeLeader(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
@@ -530,8 +517,6 @@ class TestChangeLeader(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 

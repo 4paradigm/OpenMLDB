@@ -536,12 +536,6 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
             return;
         }
         offline_endpoint_map_.erase(iter);
-        if (!auto_failover_.load(std::memory_order_acquire)) {
-            for (const auto& kv : table_info_) {
-                CreateUpdateTableAliveOP(kv.second->name(), endpoint, false);
-                continue;
-            }
-        }    
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
         OfflineEndpointInternal(endpoint, FLAGS_name_server_task_concurrency);
