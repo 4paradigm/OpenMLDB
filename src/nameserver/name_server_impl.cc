@@ -2042,6 +2042,21 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index, ::rtidb::api::OPType::kAddReplicaOP,
+                request.name(), pid, request.endpoint(), FLAGS_check_binlog_sync_progress_delta);
+    if (!task) {
+        PDLOG(WARNING, "create checkbinlogsyncprogress task failed. tid[%u] pid[%u]", tid, pid);
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateUpdatePartitionStatusTask(request.name(), pid, request.endpoint(), false, true,
+                op_index, ::rtidb::api::OPType::kAddReplicaOP);
+    if (!task) {
+        PDLOG(WARNING, "create update table alive status task failed. table[%s] pid[%u] endpoint[%s]",
+                        request.name().c_str(), pid, request.endpoint().c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
     PDLOG(INFO, "create AddReplicaOP task ok. tid[%u] pid[%u] endpoint[%s]", 
                     tid, pid, request.endpoint().c_str());
     return 0;
@@ -3806,9 +3821,17 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() == pid) {
             ::rtidb::nameserver::TablePartition* table_partition = iter->second->mutable_table_partition(idx);
+            for (int meta_idx = 0; meta_idx< table_partition->partition_meta_size(); meta_idx++) {
+                if (table_partition->partition_meta(meta_idx).endpoint() == endpoint) {
+                    PDLOG(WARNING, "follower already exists pid[%u] table[%s] endpoint[%s]", pid, name.c_str(), endpoint.c_str());
+                    task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                    return;
+                }
+            }
             ::rtidb::nameserver::PartitionMeta* partition_meta = table_partition->add_partition_meta();
             partition_meta->set_endpoint(endpoint);
             partition_meta->set_is_leader(false);
+            partition_meta->set_is_alive(false);
             break;
         }
     }
@@ -3823,8 +3846,7 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
     task_info->set_status(::rtidb::api::TaskStatus::kDone);
-    NotifyTableChanged();
-    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", 
+    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
                 task_info->op_id(), 
                 ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
 }
@@ -3912,7 +3934,6 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
             continue;
         }
         for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            std::string endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
             const PartitionMeta& meta = iter->second->table_partition(idx).partition_meta(meta_idx);
             if (!meta.has_offset()) {
                 continue;

@@ -174,6 +174,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
 
+    @multi_dimension(True)
     def test_select_leader(self):
         """
         slave1改为leader role，put数据后改回follower role，leader发生故障后，新主会切换到slave1，数据同步正确
@@ -245,8 +246,8 @@ class TestAutoFailover(TestCaseBase):
         rs5 = self.put(new_tb_leader2, tid, pid, "testkey1", self.now() + 9999, "ccard1")
         self.assertIn("ok", rs5)
         time.sleep(1)
-        self.assertTrue(
-            'ccard1' in self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1))
+        rs_scan = self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1)
+        self.assertTrue('ccard1' in rs_scan)
 
     def test_enable_auto_failover(self):
         """
