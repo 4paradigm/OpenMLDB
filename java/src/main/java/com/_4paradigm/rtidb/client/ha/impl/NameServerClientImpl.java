@@ -46,7 +46,8 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
     }
-    
+
+    @Deprecated
     public NameServerClientImpl(String endpoint) {
         EndPoint addr = new EndPoint(endpoint);
         RpcBaseClient bs = new RpcBaseClient();
@@ -137,7 +138,9 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }catch(Exception e) {
             logger.error("fail to close zookeeper", e);
         }
-        
+        if (rpcClient != null) {
+            rpcClient.stop();
+        }
     }
 
     @Override

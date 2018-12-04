@@ -228,6 +228,7 @@ class TestCreateTableByNsClient(TestCaseBase):
                 infoLogger.info(pids)
                 for pid in range(pid_group_start, pid_group_end):
                     self.assertIn(pid, pids)
+            time.sleep(1)
             rs1 = self.ns_drop(self.ns_leader, name[1:-1])
             self.assertIn('drop ok', rs1)
 

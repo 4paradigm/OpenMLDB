@@ -215,8 +215,28 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'create ' + name + ' ' + ttl + ' ' + partition_num + ' ' + replica_num + ' ' + schema
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_scan_kv_cmd(self, endpoint, scan, name, pk, start_time, end_time, limit):
+        cmd = scan + ' ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_get_kv_cmd(self, endpoint, get, name, key, ts):
+        cmd = get + ' ' + name + ' ' + key+ ' ' + ts
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_put_kv_cmd(self, endpoint, put, name, pk, ts, value):
+        cmd = put + ' ' + name + ' ' + pk+ ' ' + ts + ' ' + value
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     def ns_drop(self, endpoint, tname):
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
+
+    def ns_update_table_alive_cmd(self, ns_endpoint, updatetablealive, table_name, pid, endpoint, is_alive):
+        cmd = '{} {} {} {} {}'.format(updatetablealive, table_name, pid, endpoint, is_alive)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_recover_table_cmd(self, ns_endpoint, recovertable, table_name, pid, endpoint):
+        cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
 
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
@@ -325,11 +345,11 @@ class TestCaseBase(unittest.TestCase):
     def confget(self, endpoint, conf):
         return self.run_client(endpoint, 'confget {}'.format(conf), 'ns_client')
 
-    def offlineendpoint(self, endpoint, offline_endpoint):
-        return self.run_client(endpoint, 'offlineendpoint {}'.format(offline_endpoint), 'ns_client')
+    def offlineendpoint(self, endpoint, offline_endpoint, concurrency=''):
+        return self.run_client(endpoint, 'offlineendpoint {} {}'.format(offline_endpoint, concurrency), 'ns_client')
 
-    def recoverendpoint(self, endpoint, offline_endpoint):
-        return self.run_client(endpoint, 'recoverendpoint {}'.format(offline_endpoint), 'ns_client')
+    def recoverendpoint(self, endpoint, offline_endpoint, need_restore='', concurrency=''):
+        return self.run_client(endpoint, 'recoverendpoint {} {} {}'.format(offline_endpoint, need_restore, concurrency), 'ns_client')
 
     def changeleader(self, endpoint, tname, pid, candidate_leader=''):
         if candidate_leader != '':
@@ -539,18 +559,30 @@ class TestCaseBase(unittest.TestCase):
     def check_re_add_replica_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_no_send_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_with_drop_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kDropTable', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_simplify_op(self, op_id):
-        self.check_tasks(op_id,
-                         ['kAddReplica', 'kUpdatePartitionStatus'])
+        self.check_tasks(op_id, ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
+
+    def check_setlimit(self, endpoint, command, method, limit):
+        cmd = '{} {} {}'.format(command, method, limit)
+        return self.run_client(endpoint, cmd)
+
+    def check_setttl_ns_client(self, endpoint, setttl, table_name, ttl_type, ttl):
+        cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def check_setttl(self, endpoint, setttl, table_name, ttl_type, ttl):
+        cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
+        return self.run_client(endpoint, cmd)
+

@@ -86,6 +86,7 @@ enum TaskType {
     kSelectLeader = 15;
     kUpdateLeaderInfo = 16;
     kRecoverTable = 17;
+    kCheckBinlogSyncProgress = 18;
 }
 
 enum TaskStatus {
@@ -93,6 +94,7 @@ enum TaskStatus {
     kDoing = 2;
     kDone = 3;
     kFailed = 4;
+    kCanceled = 5;
 }
 
 message TaskInfo {
@@ -113,6 +115,7 @@ message OPInfo {
     optional string name = 8;
     optional uint32 pid = 9;
     optional uint64 parent_id = 10;
+    optional uint32 vec_idx = 11;   // the index in task_vec
 }
 
 message Manifest {

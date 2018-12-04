@@ -1,8 +1,8 @@
 package com._4paradigm.rtidb.client.ut;
 
 import com._4paradigm.rtidb.utils.Compress;
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 public class CompressTest {
     @Test

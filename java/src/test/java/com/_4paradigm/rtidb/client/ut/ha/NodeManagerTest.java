@@ -2,8 +2,8 @@ package com._4paradigm.rtidb.client.ut.ha;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.ha.NodeManager;
 
