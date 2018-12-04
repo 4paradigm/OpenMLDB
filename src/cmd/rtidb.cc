@@ -836,8 +836,7 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     row.push_back("ttl");
     row.push_back("is_alive");
     row.push_back("compress_type");
-    row.push_back("record_cnt");
-    row.push_back("record_byte_size");
+    row.push_back("offset");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -868,13 +867,8 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
                 } else {
                     row.push_back("kNoCompress");
                 }
-                if (value.table_partition(idx).has_record_cnt()) {
-                    row.push_back(std::to_string(value.table_partition(idx).record_cnt()));
-                } else {
-                    row.push_back("-");
-                }
-                if (value.table_partition(idx).has_record_byte_size()) {
-                    row.push_back(std::to_string(value.table_partition(idx).record_byte_size()));
+                if (value.table_partition(idx).partition_meta(meta_idx).has_offset()) {
+                    row.push_back(std::to_string(value.table_partition(idx).partition_meta(meta_idx).offset()));
                 } else {
                     row.push_back("-");
                 }

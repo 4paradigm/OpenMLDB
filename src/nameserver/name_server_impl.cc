@@ -1769,30 +1769,6 @@ void NameServerImpl::ShowTable(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        for (const auto& tablet : tablets_) {
-            auto endpoint = tablet.first;
-            auto tablet_ptr = tablet.second;
-            if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                PDLOG(WARNING, "endpoint[%s] is offline", endpoint.c_str());
-                continue;
-            }
-            tablet_ptr_map.insert(std::make_pair(endpoint, tablet_ptr));
-        }
-    }
-    std::map<std::string, ::rtidb::api::GetTableStatusResponse> tablet_status_response_map;
-    for (const auto& tablet : tablet_ptr_map) {
-        auto tablet_ptr = tablet.second;
-        auto endpoint = tablet.first;
-        ::rtidb::api::GetTableStatusResponse tablet_status_response;
-        if (!tablet_ptr->client_->GetTableStatus(tablet_status_response)) {
-            PDLOG(WARNING, "[%s]  can not get table_status", request->name().c_str());
-            continue;
-        }
-        tablet_status_response_map.insert(std::make_pair(endpoint, tablet_status_response));
-    }
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& kv : table_info_) {
         if (request->has_name() && request->name() != kv.first) {
@@ -1800,34 +1776,6 @@ void NameServerImpl::ShowTable(RpcController* controller,
         }
         ::rtidb::nameserver::TableInfo* table_info = response->add_table_info();
         table_info->CopyFrom(*(kv.second));
-        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-            uint32_t tid = table_info->tid();
-            uint32_t pid = table_info->table_partition(idx).pid();
-            ::rtidb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
-            for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-                auto endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-                if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                    continue;
-                }
-                if (!table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                    continue;
-                }
-                auto tablet_status_response_iter = tablet_status_response_map.find(endpoint);
-                if (tablet_status_response_iter == tablet_status_response_map.end()) {
-                    continue;
-                }
-                auto tablet_status_response = tablet_status_response_iter->second;
-                for (int tidx = 0; tidx < tablet_status_response.all_table_status_size(); tidx++) {
-                     if (tablet_status_response.all_table_status(tidx).tid() == tid &&
-                         tablet_status_response.all_table_status(tidx).pid() == pid) {
-                         table_partition->set_record_cnt(tablet_status_response.all_table_status(tidx).record_cnt());
-                         table_partition->set_record_byte_size(tablet_status_response.all_table_status(tidx).record_byte_size());
-                         break;
-                     }
-                }
-                break;
-            }
-        }
     }
     response->set_code(0);
     response->set_msg("ok");
@@ -2520,6 +2468,12 @@ void NameServerImpl::UpdateTableStatus() {
                         tablet_status_response.all_table_status(pos).pid() == pid) {
                         ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
                         partition_meta->set_offset(tablet_status_response.all_table_status(pos).offset());
+                        if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
+                                kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                            table_partition->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
+                            table_partition->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
+                                tablet_status_response.all_table_status(pos).record_idx_byte_size());
+                        }
                         break;
                      }
                 }
