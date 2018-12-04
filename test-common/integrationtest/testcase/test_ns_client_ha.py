@@ -147,6 +147,7 @@ class TestNameserverHa(TestCaseBase):
             eval(steps_dict[i])
         rs2 = self.showtable(self.ns_leader)
         self.stop_client(self.leader)
+        self.updatetablealive(self.ns_leader, self.tname, '*', self.leader, 'no')
         time.sleep(10)
         rs3 = self.showtablet(self.ns_leader)
         rs4 = self.showtable(self.ns_leader)

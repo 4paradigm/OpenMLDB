@@ -175,6 +175,7 @@ class TestDelReplicaNs(TestCaseBase):
         tid = rs2.keys()[0][1]
 
         self.stop_client(self.slave1)
+        self.updatetablealive(self.ns_leader, name, '*', self.slave1, 'no')
         time.sleep(10)
 
         self.showtable(self.ns_leader)

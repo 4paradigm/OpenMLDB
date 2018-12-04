@@ -174,6 +174,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.put(self.leader, tid, 0, 'testkey0', self.now(), 'testvalue0')
 
         self.stop_client(self.leader)
+        self.updatetablealive(self.ns_leader, name, '*', self.leader, 'no')
         time.sleep(10)
 
         self.changeleader(self.ns_leader, name, 0)
