@@ -7,8 +7,8 @@ import java.util.List;
 
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;

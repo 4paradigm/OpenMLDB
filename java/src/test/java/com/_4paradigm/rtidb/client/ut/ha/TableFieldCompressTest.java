@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
@@ -24,8 +24,7 @@ import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS;
 import com.google.protobuf.ByteString;
-import org.junit.Assert;
-import org.junit.Test;
+
 
 import java.nio.ByteBuffer;
 
