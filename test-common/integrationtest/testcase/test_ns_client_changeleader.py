@@ -39,6 +39,7 @@ class TestChangeLeader(TestCaseBase):
         tid = rs1.keys()[0][1]
 
         self.disconnectzk(self.leader)
+        self.updatetablealive(self.ns_leader, name, '*', self.leader, 'no')
         time.sleep(3)
 
         self.changeleader(self.ns_leader, name, 0)
@@ -97,6 +98,7 @@ class TestChangeLeader(TestCaseBase):
         tid = rs1.keys()[0][1]
 
         self.stop_client(self.leader)
+        self.updatetablealive(self.ns_leader, name, '*', self.leader, 'no')
         time.sleep(5)
 
         self.changeleader(self.ns_leader, name, 0)
