@@ -1636,6 +1636,12 @@ void NameServerImpl::CancelOP(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    if (auto_failover_.load(std::memory_order_acquire)) {
+        response->set_code(-1);
+        response->set_msg("auto_failover is enabled, cannot execute this cmd");
+        PDLOG(WARNING, "auto_failover is enabled, cannot execute this cmd");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mu_);
     for (auto& op_list : task_vec_) {
         if (op_list.empty()) {
@@ -1660,8 +1666,8 @@ void NameServerImpl::CancelOP(RpcController* controller,
         }
     }
     response->set_code(-1);
-    response->set_msg("Not found op_id " + std::to_string(request->op_id()));
-    PDLOG(WARNING, "not found op[%lu]", request->op_id());
+    response->set_msg("op status is not kDoing or kInited");
+    PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
     return;
 }
 

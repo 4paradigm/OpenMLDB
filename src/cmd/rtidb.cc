@@ -423,7 +423,8 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::rtidb::clie
     try {
         std::string err;
         if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
-
+            std::cout << "Invalid args. op_id should be large than zero" << std::endl;
+            return;
         }
         uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
         bool ok = client->CancelOP(op_id, err);
@@ -1617,7 +1618,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
-            printf("usage: confset auto_recover_table true/false\n");
             printf("ex: confset auto_failover true\n");
         } else if (parts[1] == "confget") {
             printf("desc: get conf\n");
@@ -1625,7 +1625,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: confget conf_name\n");
             printf("ex: confget\n");
             printf("ex: confget auto_failover\n");
-            printf("ex: confget auto_recover_table\n");
         } else if (parts[1] == "changeleader") {
             printf("desc: select leader again when the endpoint of leader offline\n");
             printf("usage: changeleader table_name pid [candidate_leader]\n");
