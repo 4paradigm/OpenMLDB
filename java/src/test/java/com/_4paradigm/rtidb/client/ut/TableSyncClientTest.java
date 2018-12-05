@@ -21,7 +21,6 @@ import com.google.protobuf.ByteString;
 import io.brpc.client.EndPoint;
 
 public class TableSyncClientTest {
-
     private AtomicInteger id = new AtomicInteger(7000);
     private static TableSyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;

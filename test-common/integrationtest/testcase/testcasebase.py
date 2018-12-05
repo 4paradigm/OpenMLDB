@@ -436,6 +436,7 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
 
+
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
         table_meta = {}
