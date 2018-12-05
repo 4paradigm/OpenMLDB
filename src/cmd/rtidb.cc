@@ -838,7 +838,7 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     row.push_back("compress_type");
     row.push_back("offset");
     row.push_back("record_cnt");
-    row.push_back("record_byte_size");
+    row.push_back("memused");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
