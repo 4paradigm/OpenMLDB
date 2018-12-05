@@ -423,7 +423,8 @@ void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::rtidb::clie
     try {
         std::string err;
         if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
-
+            std::cout << "Invalid args. op_id should be large than zero" << std::endl;
+            return;
         }
         uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
         bool ok = client->CancelOP(op_id, err);
