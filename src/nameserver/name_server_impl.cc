@@ -2483,11 +2483,15 @@ void NameServerImpl::UpdateTableStatus() {
                         tablet_status_response.all_table_status(pos).pid() == pid) {
                         ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
                         partition_meta->set_offset(tablet_status_response.all_table_status(pos).offset());
-                        if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
-                                kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                            table_partition->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
-                            table_partition->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
+                        if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                            partition_meta->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
+                            partition_meta->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
                                 tablet_status_response.all_table_status(pos).record_idx_byte_size());
+                            if (kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                                table_partition->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
+                                table_partition->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
+                                    tablet_status_response.all_table_status(pos).record_idx_byte_size());
+                            }
                         }
                         break;
                      }
