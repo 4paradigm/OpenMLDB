@@ -1666,7 +1666,7 @@ void NameServerImpl::CancelOP(RpcController* controller,
         }
     }
     response->set_code(-1);
-    response->set_msg("op status is not kDoing or kInited" + std::to_string(request->op_id()));
+    response->set_msg("op status is not kDoing or kInited");
     PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
     return;
 }
