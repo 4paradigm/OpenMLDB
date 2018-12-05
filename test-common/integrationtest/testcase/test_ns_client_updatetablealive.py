@@ -39,5 +39,5 @@ class TestUpdateTableAlive(TestCaseBase):
         self.assertIn('Fail to update table alive. error msg: table is not exist', rs_absolute2)
         self.assertIn('Fail to update table alive. error msg: no pid has update', rs_absolute3)
 
-
-
+if __name__ == "__main__":
+    load(TestUpdateTableAlive)
