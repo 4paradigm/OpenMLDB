@@ -549,7 +549,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         return;
     }
     std::string value;
-    uint64_t offline_time = 0
+    uint64_t offline_time = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/nodes/" + endpoint, value)) {
