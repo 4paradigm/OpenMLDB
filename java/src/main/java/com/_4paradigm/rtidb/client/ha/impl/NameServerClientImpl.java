@@ -181,7 +181,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             return null;
         }
         Collections.sort(node);
-        List<String> nodeSet = new LinkedList<>();
         int i = 0;
         Map<String,String> nsEndpoint = new HashMap<>();
         for (String e: node) {
