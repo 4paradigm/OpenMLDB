@@ -3,6 +3,7 @@ package com._4paradigm.rtidb.client.ha.impl;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedList;;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -176,19 +177,27 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     public Map<String,String> showNs() throws Exception{
         List<String> node = zookeeper.getChildren(leaderPath,false);
+        if (node.isEmpty()) {
+            return null;
+        }
         Collections.sort(node);
+        List<String> nodeSet = new LinkedList<>();
+        for (String e : node) {
+            if (!nodeSet.contains(e)) {
+                nodeSet.add(e);
+            }
+        }
         int i = 0;
         Map<String,String> nsEndpoint = new HashMap<>();
-        for (String e: node){
+        for (String e: nodeSet) {
             byte[] bytes = zookeeper.getData(leaderPath + "/" + e, false, null);
-            if(i == 0){
+            if (i == 0) {
                 nsEndpoint.put(new String(bytes), "leader");
                 i++;
-            }else {
+            } else {
                 nsEndpoint.put(new String(bytes), "standby");
             }
         }
         return nsEndpoint;
     }
-
 }
