@@ -175,29 +175,25 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         return tablets;
     }
 
-    public Map<String,String> showNs() throws Exception{
+    public Map<String,String> showNs() throws Exception {
         List<String> node = zookeeper.getChildren(leaderPath,false);
         if (node.isEmpty()) {
             return null;
         }
         Collections.sort(node);
         List<String> nodeSet = new LinkedList<>();
+        int i = 0;
+        Map<String,String> nsEndpoint = new HashMap<>();
         for (String e: node) {
             byte[] bytes = zookeeper.getData(leaderPath + "/" + e, false, null);
             String endpoint = new String(bytes);
-            if (!nodeSet.contains(endpoint)) {
-                nodeSet.add(endpoint);
-            }
-        }
-        int i = 0;
-        Map<String,String> nsEndpoint = new HashMap<>();
-        for (String e: nodeSet) {
-            System.out.println("node : " + e);
-            if (i == 0) {
-                nsEndpoint.put(e, "leader");
-                i++;
-            } else {
-                nsEndpoint.put(e, "standby");
+            if (!nsEndpoint.containsKey(endpoint)) {
+                if (i == 0) {
+                    nsEndpoint.put(endpoint, "leader");
+                    i++;
+                } else {
+                    nsEndpoint.put(endpoint, "standby");
+                }
             }
         }
         return nsEndpoint;
