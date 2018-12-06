@@ -177,12 +177,12 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     public Map<String,String> showNs() throws Exception {
         List<String> node = zookeeper.getChildren(leaderPath,false);
+        Map<String,String> nsEndpoint = new HashMap<>();
+        int i = 0;
         if (node.isEmpty()) {
-            return null;
+            return nsEndpoint;
         }
         Collections.sort(node);
-        int i = 0;
-        Map<String,String> nsEndpoint = new HashMap<>();
         for (String e: node) {
             byte[] bytes = zookeeper.getData(leaderPath + "/" + e, false, null);
             String endpoint = new String(bytes);
