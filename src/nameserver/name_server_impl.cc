@@ -566,6 +566,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
             return;
         }
         offline_time = iter->second;
+        offline_endpoint_map_.erase(iter);
     }
     if (boost::starts_with(value, "startup_")) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
