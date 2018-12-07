@@ -241,8 +241,6 @@ private:
 
     int CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_data);
 
-    int CreateUpdateTableAliveOPTask(std::shared_ptr<OPData> op_data);
-
     int CreateReLoadTableTask(std::shared_ptr<OPData> op_data);
 
     int CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data);
@@ -275,8 +273,7 @@ private:
     void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
                     bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    void UpdateTableAlive(const std::string& name, const std::string& endpoint, 
-                    bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
@@ -321,10 +318,6 @@ private:
 
     std::shared_ptr<Task> CreateUpdatePartitionStatusTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, bool is_leader, bool is_alive, 
-                    uint64_t op_index, ::rtidb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateUpdateTableAliveTask(const std::string& name, 
-                    const std::string& endpoint, bool is_alive, 
                     uint64_t op_index, ::rtidb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateSelectLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
@@ -380,7 +373,6 @@ private:
                     const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
     int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
-    int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
     int CreateReLoadTableOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, uint64_t parent_id, uint32_t concurrency);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, 
