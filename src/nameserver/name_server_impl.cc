@@ -546,6 +546,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         return;
     }
     if (!auto_failover_.load(std::memory_order_acquire)) {
+        offline_endpoint_map_.erase(endpoint);
         return;
     }
     std::string value;
