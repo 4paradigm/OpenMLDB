@@ -74,71 +74,74 @@ bool NameServerImpl::Recover() {
         PDLOG(WARNING, "get endpoints node failed!");
         return false;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    UpdateTablets(endpoints);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        UpdateTablets(endpoints);
 
-    std::string value;
-    if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
-        if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
-            PDLOG(WARNING, "create table index node failed!");
-            return false;
+        std::string value;
+        if (!zk_client_->GetNodeValue(zk_table_index_node_, value)) {
+            if (!zk_client_->CreateNode(zk_table_index_node_, "1")) {
+                PDLOG(WARNING, "create table index node failed!");
+                return false;
+            }
+            table_index_ = 1;
+            PDLOG(INFO, "init table_index[%u]", table_index_);
+        } else {
+            table_index_ = std::stoull(value);
+            PDLOG(INFO, "recover table_index[%u]", table_index_);
         }
-        table_index_ = 1;
-        PDLOG(INFO, "init table_index[%u]", table_index_);
-    } else {
-        table_index_ = std::stoull(value);
-        PDLOG(INFO, "recover table_index[%u]", table_index_);
-    }
-    value.clear();
-    if (!zk_client_->GetNodeValue(zk_term_node_, value)) {
-        if (!zk_client_->CreateNode(zk_term_node_, "1")) {
-            PDLOG(WARNING, "create term node failed!");
-            return false;
+        value.clear();
+        if (!zk_client_->GetNodeValue(zk_term_node_, value)) {
+            if (!zk_client_->CreateNode(zk_term_node_, "1")) {
+                PDLOG(WARNING, "create term node failed!");
+                return false;
+            }
+            term_ = 1;
+            PDLOG(INFO, "init term[%lu]", term_);
+        } else {
+            term_ = std::stoull(value);
+            PDLOG(INFO, "recover term[%u]", term_);
         }
-        term_ = 1;
-        PDLOG(INFO, "init term[%lu]", term_);
-    } else {
-        term_ = std::stoull(value);
-        PDLOG(INFO, "recover term[%u]", term_);
-    }
-    value.clear();
-    if (!zk_client_->GetNodeValue(zk_op_index_node_, value)) {
-        if (!zk_client_->CreateNode(zk_op_index_node_, "1")) {
-            PDLOG(WARNING, "create op index node failed!");
-            return false;
+        value.clear();
+        if (!zk_client_->GetNodeValue(zk_op_index_node_, value)) {
+            if (!zk_client_->CreateNode(zk_op_index_node_, "1")) {
+                PDLOG(WARNING, "create op index node failed!");
+                return false;
+            }
+            op_index_ = 1;
+            PDLOG(INFO, "init op_index[%u]", op_index_);
+        } else {
+            op_index_ = std::stoull(value);
+            PDLOG(INFO, "recover op_index[%u]", op_index_);
         }
-        op_index_ = 1;
-        PDLOG(INFO, "init op_index[%u]", op_index_);
-    } else {
-        op_index_ = std::stoull(value);
-        PDLOG(INFO, "recover op_index[%u]", op_index_);
-    }
-    value.clear();
-    if (!zk_client_->GetNodeValue(zk_table_changed_notify_node_, value)) {
-        if (!zk_client_->CreateNode(zk_table_changed_notify_node_, "1")) {
-            PDLOG(WARNING, "create zk table changed notify node failed");
-            return false;
+        value.clear();
+        if (!zk_client_->GetNodeValue(zk_table_changed_notify_node_, value)) {
+            if (!zk_client_->CreateNode(zk_table_changed_notify_node_, "1")) {
+                PDLOG(WARNING, "create zk table changed notify node failed");
+                return false;
+            }
         }
-    }
-    value.clear();
-    if (!zk_client_->GetNodeValue(zk_auto_failover_node_, value)) {
-        auto_failover_.load(std::memory_order_acquire) ? value = "true" : value = "false";
-        if (!zk_client_->CreateNode(zk_auto_failover_node_, value)) {
-            PDLOG(WARNING, "create auto failover node failed!");
-            return false;
+        value.clear();
+        if (!zk_client_->GetNodeValue(zk_auto_failover_node_, value)) {
+            auto_failover_.load(std::memory_order_acquire) ? value = "true" : value = "false";
+            if (!zk_client_->CreateNode(zk_auto_failover_node_, value)) {
+                PDLOG(WARNING, "create auto failover node failed!");
+                return false;
+            }
+            PDLOG(INFO, "set zk_auto_failover_node[%s]", value.c_str());
+        } else {
+            value == "true" ? auto_failover_.store(true, std::memory_order_release) :
+                           auto_failover_.store(false, std::memory_order_release);
+            PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
         }
-        PDLOG(INFO, "set zk_auto_failover_node[%s]", value.c_str());
-    } else {
-        value == "true" ? auto_failover_.store(true, std::memory_order_release) :
-                       auto_failover_.store(false, std::memory_order_release);
-        PDLOG(INFO, "get zk_auto_failover_node[%s]", value.c_str());
-    }
 
-    if (!RecoverTableInfo()) {
-        PDLOG(WARNING, "recover table info failed!");
-        return false;
-    }
+        if (!RecoverTableInfo()) {
+            PDLOG(WARNING, "recover table info failed!");
+            return false;
+        }
+    }    
     UpdateTableStatus();
+    std::lock_guard<std::mutex> lock(mu_);
     if (!RecoverOPTask()) {
         PDLOG(WARNING, "recover task failed!");
         return false;
