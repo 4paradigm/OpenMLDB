@@ -2416,9 +2416,6 @@ void NameServerImpl::DeleteDoneOP() {
 }
 
 void NameServerImpl::UpdateTableStatus() {
-    if (!running_.load(std::memory_order_acquire)) {
-        return;
-    }
     std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2734,7 +2731,7 @@ int NameServerImpl::CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data) {
 
 void NameServerImpl::OnLocked() {
     PDLOG(INFO, "become the leader name server");
-    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
+    UpdateTableStatus();
     bool ok = Recover();
     if (!ok) {
         PDLOG(WARNING, "recover failed");
@@ -2742,6 +2739,7 @@ void NameServerImpl::OnLocked() {
     }
     running_.store(true, std::memory_order_release);
     task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this));
+    task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
 }
 
