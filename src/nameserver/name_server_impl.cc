@@ -518,7 +518,6 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         }
         if (table_info_.empty()) {
             PDLOG(INFO, "endpoint %s has no table, need not offline endpoint", endpoint.c_str());
-            offline_endpoint_map_.erase(iter);
             return;
         }
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
@@ -526,7 +525,6 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
             thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, endpoint, false));
             return;
         }
-        offline_endpoint_map_.erase(iter);
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
         UpdateEndpointTableAlive(endpoint, false);
@@ -539,21 +537,48 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    if (!auto_failover_.load(std::memory_order_acquire)) {
+        std::lock_guard<std::mutex> lock(mu_);
+        offline_endpoint_map_.erase(endpoint);
+        return;
+    }
     std::string value;
     {
         std::lock_guard<std::mutex> lock(mu_);
+        auto iter = offline_endpoint_map_.find(endpoint);
+        if (iter == offline_endpoint_map_.end()) {
+            PDLOG(WARNING, "cannot find endpoint %s in offline endpoint map. need not recover", endpoint.c_str());
+            return;
+        }
         if (!zk_client_->GetNodeValue(FLAGS_zk_root_path + "/nodes/" + endpoint, value)) {
             PDLOG(WARNING, "get tablet node value failed");
+            offline_endpoint_map_.erase(iter);
             return;
+        }
+        if (table_info_.empty()) {
+            PDLOG(INFO, "endpoint %s has no table, need not recover endpoint", endpoint.c_str());
+            offline_endpoint_map_.erase(iter);
+            return;
+        }
+        if (!boost::starts_with(value, "startup_")) {
+            uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+            if (cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
+                PDLOG(INFO, "need not recover. endpoint[%s] cur_time[%lu] offline_time[%lu]", 
+                            endpoint.c_str(), cur_time, iter->second);
+                offline_endpoint_map_.erase(iter);
+                return;
+            }
         }
     }
     if (boost::starts_with(value, "startup_")) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
         OnTabletOffline(endpoint, true);
-    }
-    if (auto_failover_.load(std::memory_order_acquire)) {
-        RecoverEndpointInternal(endpoint, false, FLAGS_name_server_task_concurrency);
-    }
+    }    
+    RecoverEndpointInternal(endpoint, false, FLAGS_name_server_task_concurrency);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        offline_endpoint_map_.erase(endpoint);
+    }    
 }
 
 void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool need_restore, uint32_t concurrency) {
