@@ -138,7 +138,7 @@ bool NameServerImpl::Recover() {
         PDLOG(WARNING, "recover table info failed!");
         return false;
     }
-
+    UpdateTableStatus();
     if (!RecoverOPTask()) {
         PDLOG(WARNING, "recover task failed!");
         return false;
@@ -2441,9 +2441,6 @@ void NameServerImpl::DeleteDoneOP() {
 }
 
 void NameServerImpl::UpdateTableStatus() {
-    if (!running_.load(std::memory_order_acquire)) {
-        return;
-    }
     std::map<std::string, std::shared_ptr<TabletInfo>> tablet_ptr_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -2474,15 +2471,17 @@ void NameServerImpl::UpdateTableStatus() {
                 table_partition->mutable_partition_meta();
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
                 std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
+                bool tablet_has_partition = false;
+                ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
                 auto tablet_status_response_iter = tablet_status_response_map.find(endpoint);
                 if (tablet_status_response_iter == tablet_status_response_map.end()) {
+                    partition_meta->set_tablet_has_partition(tablet_has_partition);
                     continue;
                 }
                 ::rtidb::api::GetTableStatusResponse tablet_status_response = tablet_status_response_iter->second;
                 for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
                     if (tablet_status_response.all_table_status(pos).tid() == tid &&
                         tablet_status_response.all_table_status(pos).pid() == pid) {
-                        ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
                         partition_meta->set_offset(tablet_status_response.all_table_status(pos).offset());
                         partition_meta->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
                         partition_meta->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
@@ -2493,9 +2492,11 @@ void NameServerImpl::UpdateTableStatus() {
                             table_partition->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
                                 tablet_status_response.all_table_status(pos).record_idx_byte_size());
                         }
+                        tablet_has_partition = true;
                         break;
                      }
                 }
+                partition_meta->set_tablet_has_partition(tablet_has_partition);
             }
         }
     }
@@ -3969,6 +3970,12 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
         }
         for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
             const PartitionMeta& meta = iter->second->table_partition(idx).partition_meta(meta_idx);
+            if (!meta.tablet_has_partition()) {
+                task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                PDLOG(WARNING, "tablet has not partition, update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
+                                task_info->op_id(), ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                return;
+            }
             if (!meta.has_offset()) {
                 continue;
             }
