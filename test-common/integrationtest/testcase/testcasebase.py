@@ -200,7 +200,7 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
 
     def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema):
-        cmd = 'create ' + name + ' ' + ttl + ' ' + partition_num + ' ' + replica_num + ' ' + schema
+        cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_scan_kv_cmd(self, endpoint, scan, name, pk, start_time, end_time, limit):
@@ -208,11 +208,11 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_get_kv_cmd(self, endpoint, get, name, key, ts):
-        cmd = get + ' ' + name + ' ' + key+ ' ' + ts
+        cmd = '{} {} {} {}'.format(get, name, key, ts)
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_put_kv_cmd(self, endpoint, put, name, pk, ts, value):
-        cmd = put + ' ' + name + ' ' + pk+ ' ' + ts + ' ' + value
+        cmd = '{} {} {} {} {}'.format(put, name, pk, ts, value)
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_drop(self, endpoint, tname):
@@ -224,6 +224,18 @@ class TestCaseBase(unittest.TestCase):
 
     def ns_recover_table_cmd(self, ns_endpoint, recovertable, table_name, pid, endpoint):
         cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_addreplica(self, ns_endpoint, addreplica, name, pid, replica_endpoint):
+        cmd = '{} {} {} {}'.format(addreplica, name, pid, replica_endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_gettablepartition(self, ns_endpoint, gettablepartition, name, pid):
+        cmd = '{} {} {}'.format(gettablepartition, name, pid)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+        
+    def ns_showns(self, ns_endpoint, showns):
+        cmd '{}'.format(showns)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
 
     def put(self, endpoint, tid, pid, key, ts, *values):
@@ -411,6 +423,10 @@ class TestCaseBase(unittest.TestCase):
             traceback.print_exc(file=sys.stdout)
             infoLogger.error('table {} is not exist!'.format(e))
 
+    def gettablestatus(self, endpoint, tid='', pid=''):
+        rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
+        return rs
+
     def showschema(self, endpoint, tid='', pid=''):
         try:
             rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
@@ -432,7 +448,9 @@ class TestCaseBase(unittest.TestCase):
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
-
+    
+    def showtable_with_all_columns(self, endpoint):
+         return self.run_client(endpoint, 'showtable', 'ns_client')
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
@@ -582,4 +600,3 @@ class TestCaseBase(unittest.TestCase):
     def check_setttl(self, endpoint, setttl, table_name, ttl_type, ttl):
         cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
         return self.run_client(endpoint, cmd)
-
