@@ -568,7 +568,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
             offline_endpoint_map_.erase(iter);
             return;
         }
-        if (boost::starts_with(value, "startup_")) {
+        if (!boost::starts_with(value, "startup_")) {
             uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
             if (cur_time < iter->second + FLAGS_tablet_heartbeat_timeout) {
                 PDLOG(INFO, "need not recover. endpoint[%s] cur_time[%lu] offline_time[%lu]", 
