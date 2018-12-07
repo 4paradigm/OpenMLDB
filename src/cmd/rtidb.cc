@@ -2320,7 +2320,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         } else if (parts[1] == "setlimit") {
             printf("desc: setlimit for tablet interface\n");
             printf("usage: setlimit method limit\n");
-            printf("ex:setlimit server 10, limit the server max concurrency to 10\n");
+            printf("ex:setlimit Server 10, limit the server max concurrency to 10\n");
             printf("ex:setlimit Put 10, limit the server put  max concurrency to 10\n");
             printf("ex:setlimit Get 10, limit the server get  max concurrency to 10\n");
             printf("ex:setlimit Scan 10, limit the server scan  max concurrency to 10\n");
