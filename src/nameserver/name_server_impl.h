@@ -64,7 +64,11 @@ struct OPData {
     std::list<std::shared_ptr<Task>> task_list_;
 };
 
+class NameServerImplTest;
+
 class NameServerImpl : public NameServer {
+    // used for ut
+    friend class NameServerImplTest;
 
 public:
 
@@ -183,6 +187,11 @@ public:
             GeneralResponse* response,
             Closure* done);
 
+    void CancelOP(RpcController* controller,
+            const CancelOPRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     int CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
             bool is_leader, const std::vector<::rtidb::base::ColumnDesc>& columns,
             std::map<uint32_t, std::vector<std::string>>& endpoint_map, uint64_t term);
@@ -232,8 +241,6 @@ private:
 
     int CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_data);
 
-    int CreateUpdateTableAliveOPTask(std::shared_ptr<OPData> op_data);
-
     int CreateReLoadTableTask(std::shared_ptr<OPData> op_data);
 
     int CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op_data);
@@ -254,7 +261,9 @@ private:
 
     void OnTabletOnline(const std::string& endpoint);
 
-    void RecoverEndpoint(const std::string& endpoint, bool need_restore, uint32_t concurrency);
+    void OfflineEndpointInternal(const std::string& endpoint, uint32_t concurrency);
+
+    void RecoverEndpointInternal(const std::string& endpoint, bool need_restore, uint32_t concurrency);
 
     void UpdateTabletsLocked(const std::vector<std::string>& endpoints);
 
@@ -264,8 +273,7 @@ private:
     void UpdatePartitionStatus(const std::string& name, const std::string& endpoint, uint32_t pid,
                     bool is_leader, bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
 
-    void UpdateTableAlive(const std::string& name, const std::string& endpoint, 
-                    bool is_alive, std::shared_ptr<::rtidb::api::TaskInfo> task_info);
+    int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
     std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid);
@@ -310,10 +318,6 @@ private:
 
     std::shared_ptr<Task> CreateUpdatePartitionStatusTask(const std::string& name, uint32_t pid,
                     const std::string& endpoint, bool is_leader, bool is_alive, 
-                    uint64_t op_index, ::rtidb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateUpdateTableAliveTask(const std::string& name, 
-                    const std::string& endpoint, bool is_alive, 
                     uint64_t op_index, ::rtidb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateSelectLeaderTask(uint64_t op_index, ::rtidb::api::OPType op_type,
@@ -369,7 +373,6 @@ private:
                     const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
     int CreateReAddReplicaNoSendOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);
-    int CreateUpdateTableAliveOP(const std::string& name, const std::string& endpoint, bool is_alive);
     int CreateReLoadTableOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, uint64_t parent_id, uint32_t concurrency);
     int CreateUpdatePartitionStatusOP(const std::string& name, uint32_t pid, 
@@ -422,7 +425,6 @@ private:
     std::vector<std::list<std::shared_ptr<OPData>>> task_vec_;
     std::condition_variable cv_;
     std::atomic<bool> auto_failover_;
-    std::atomic<bool> auto_recover_table_;
     std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
     uint64_t session_term_;

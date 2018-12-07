@@ -1,13 +1,14 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
@@ -23,7 +24,6 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
 public class TableSyncClientTest {
-
     private static String zkEndpoints = "127.0.0.1:6181";
     private static String leaderPath  = "/onebox/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
@@ -125,6 +125,11 @@ public class TableSyncClientTest {
             bs = tableSyncClient.get(name, "test2");
             value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value1");
+            Thread.sleep(1000 * 5);
+            List<TableInfo> tables = nsc.showTable(name);
+            Assert.assertTrue(tables.get(0).getTablePartition(0).getRecordCnt() == 1);
+            Assert.assertEquals(tables.get(0).getTablePartition(0).getRecordByteSize(), 243);
+
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -183,13 +188,13 @@ public class TableSyncClientTest {
             value = new String(buffer);
             Assert.assertEquals(value, "value1");
             it.next();
-            
+
             Assert.assertTrue(it.valid());
             it.getValue().get(buffer);
             value = new String(buffer);
             Assert.assertEquals(value, "value0");
             it.next();
-            
+
             Assert.assertFalse(it.valid());
         } catch (Exception e) {
             e.printStackTrace();
@@ -383,42 +388,42 @@ public class TableSyncClientTest {
             // equal
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 13, Tablet.GetType.kSubKeyEq);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // le
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 11, Tablet.GetType.kSubKeyLe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
 
             // ge
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 12, Tablet.GetType.kSubKeyGe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // ge
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 13, Tablet.GetType.kSubKeyGe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 12, Tablet.GetType.kSubKeyGt);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 11, Tablet.GetType.kSubKeyGt);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
              // le
             {
                 Object[] row = tableSyncClient.getRow(name, "card0", 12, Tablet.GetType.kSubKeyLe);
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
         } catch (Exception e) {
             Assert.fail();

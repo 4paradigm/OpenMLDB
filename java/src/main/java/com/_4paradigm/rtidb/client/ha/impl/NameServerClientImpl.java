@@ -3,7 +3,11 @@ package com._4paradigm.rtidb.client.ha.impl;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedList;;
+import java.util.Map;
+import java.util.HashMap;
 
+import com._4paradigm.rtidb.client.schema.Table;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -86,7 +90,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         logger.info("connect leader path {} endpoint {} ok", children.get(0), endpoint);
 
     }
-
+    
     @Override
     public boolean createTable(TableInfo tableInfo) {
         CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
@@ -120,7 +124,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         ShowTableResponse response = ns.showTable(request);
         return response.getTableInfoList();
     }
-
+    
     @Override
     public void process(WatchedEvent event) {
         
@@ -170,6 +174,27 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         return tablets;
     }
-    
 
+    public Map<String,String> showNs() throws Exception {
+        List<String> node = zookeeper.getChildren(leaderPath,false);
+        Map<String,String> nsEndpoint = new HashMap<>();
+        int i = 0;
+        if (node.isEmpty()) {
+            return nsEndpoint;
+        }
+        Collections.sort(node);
+        for (String e: node) {
+            byte[] bytes = zookeeper.getData(leaderPath + "/" + e, false, null);
+            String endpoint = new String(bytes);
+            if (!nsEndpoint.containsKey(endpoint)) {
+                if (i == 0) {
+                    nsEndpoint.put(endpoint, "leader");
+                    i++;
+                } else {
+                    nsEndpoint.put(endpoint, "standby");
+                }
+            }
+        }
+        return nsEndpoint;
+    }
 }

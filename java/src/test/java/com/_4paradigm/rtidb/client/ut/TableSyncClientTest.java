@@ -5,10 +5,10 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
@@ -21,7 +21,6 @@ import com.google.protobuf.ByteString;
 import io.brpc.client.EndPoint;
 
 public class TableSyncClientTest {
-
     private AtomicInteger id = new AtomicInteger(7000);
     private static TableSyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;

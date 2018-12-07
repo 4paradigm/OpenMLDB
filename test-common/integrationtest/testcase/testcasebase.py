@@ -51,6 +51,7 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info('*'*88)
         infoLogger.info([i[1] for i in conf.ns_endpoints]) 
         infoLogger.info(cls.ns_slaver)
+        infoLogger.info(conf.cluster_mode)
 
     @classmethod
     def tearDownClass(cls):
@@ -68,15 +69,11 @@ class TestCaseBase(unittest.TestCase):
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
             self.tid = random.randint(1, 1000)
             self.pid = random.randint(1, 1000)
-            self.clear_ns_table(self.ns_leader)
+            if conf.cluster_mode == "cluster":
+                self.clear_ns_table(self.ns_leader)
             for edp_tuple in conf.tb_endpoints:
                 edp = edp_tuple[1]
                 self.clear_tb_table(edp)
-            self.confset(self.ns_leader, 'auto_failover', 'true')
-            self.confset(self.ns_leader, 'auto_recover_table', 'true')
-            self.clear_lock(self.leader)
-            self.clear_lock(self.slave1)
-            self.clear_lock(self.slave2)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' SETUP FINISHED ' + '=' * 50 + '\n')
@@ -84,9 +81,6 @@ class TestCaseBase(unittest.TestCase):
     def tearDown(self):
         infoLogger.info('\n\n' + '|' * 50 + ' TEARDOWN STARTED ' + '|' * 50 + '\n')
         try:
-            self.confset(self.ns_leader, 'auto_failover', 'true')
-            self.confset(self.ns_leader, 'auto_recover_table', 'true')
-            self.clear_ns_table(self.ns_leader)
             rs = self.showtablet(self.ns_leader)
 
             for edp_tuple in conf.tb_endpoints:
@@ -97,8 +91,6 @@ class TestCaseBase(unittest.TestCase):
                     time.sleep(1)
                     self.start_client(edp)
                     time.sleep(10)
-                    self.recoverendpoint(self.ns_leader, edp)
-                    time.sleep(3)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n' * 5)
@@ -138,10 +130,6 @@ class TestCaseBase(unittest.TestCase):
             infoLogger.error('Kill failed because of CLOSE_WAIT !!!!!!!!!!!!!!!!')
             cmd = "lsof -i:{}".format(port) + "|grep '(CLOSE_WAIT)'|awk '{print $2}'|xargs kill -9"
             utils.exe_shell(cmd)
-
-    def clear_lock(self, endpoint):
-        infoLogger.info('\n ' + 'clear lock ' + endpoint + '\n')
-        utils.exe_shell("sh {}/bin/zkCli.sh -server {} delete /onebox/offline_endpoint_lock/{}".format(os.getenv('zkpath'), conf.zk_endpoint, endpoint))
 
     def get_new_ns_leader(self):
         nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
@@ -215,8 +203,28 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'create ' + name + ' ' + ttl + ' ' + partition_num + ' ' + replica_num + ' ' + schema
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_scan_kv_cmd(self, endpoint, scan, name, pk, start_time, end_time, limit):
+        cmd = scan + ' ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_get_kv_cmd(self, endpoint, get, name, key, ts):
+        cmd = get + ' ' + name + ' ' + key+ ' ' + ts
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_put_kv_cmd(self, endpoint, put, name, pk, ts, value):
+        cmd = put + ' ' + name + ' ' + pk+ ' ' + ts + ' ' + value
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     def ns_drop(self, endpoint, tname):
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
+
+    def ns_update_table_alive_cmd(self, ns_endpoint, updatetablealive, table_name, pid, endpoint, is_alive):
+        cmd = '{} {} {} {} {}'.format(updatetablealive, table_name, pid, endpoint, is_alive)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_recover_table_cmd(self, ns_endpoint, recovertable, table_name, pid, endpoint):
+        cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
 
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
@@ -331,11 +339,20 @@ class TestCaseBase(unittest.TestCase):
     def recoverendpoint(self, endpoint, offline_endpoint, need_restore='', concurrency=''):
         return self.run_client(endpoint, 'recoverendpoint {} {} {}'.format(offline_endpoint, need_restore, concurrency), 'ns_client')
 
+    def recovertable(self, endpoint, name, pid, offline_endpoint):
+        return self.run_client(endpoint, 'recovertable {} {} {}'.format(name, pid, offline_endpoint), 'ns_client')
+
     def changeleader(self, endpoint, tname, pid, candidate_leader=''):
         if candidate_leader != '':
             return self.run_client(endpoint, 'changeleader {} {} {}'.format(tname, pid, candidate_leader), 'ns_client')
         else:
             return self.run_client(endpoint, 'changeleader {} {}'.format(tname, pid), 'ns_client')
+
+    def settablepartition(self, endpoint, name, partition_file):
+        return self.run_client(endpoint, 'settablepartition {} {}'.format(name, partition_file), 'ns_client')
+
+    def updatetablealive(self, endpoint, name, pid, des_endpint, is_alive):
+        return self.run_client(endpoint, 'updatetablealive {} {} {} {}'.format(name, pid, des_endpint, is_alive), 'ns_client')
 
     def connectzk(self, endpoint, role='client'):
         return self.run_client(endpoint, 'connectzk', role)
@@ -415,6 +432,7 @@ class TestCaseBase(unittest.TestCase):
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
+
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
@@ -551,5 +569,17 @@ class TestCaseBase(unittest.TestCase):
                           'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_simplify_op(self, op_id):
-        self.check_tasks(op_id,
-                         ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
+        self.check_tasks(op_id, ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
+
+    def check_setlimit(self, endpoint, command, method, limit):
+        cmd = '{} {} {}'.format(command, method, limit)
+        return self.run_client(endpoint, cmd)
+
+    def check_setttl_ns_client(self, endpoint, setttl, table_name, ttl_type, ttl):
+        cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def check_setttl(self, endpoint, setttl, table_name, ttl_type, ttl):
+        cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
+        return self.run_client(endpoint, cmd)
+

@@ -20,6 +20,9 @@ message PartitionMeta {
     required bool is_leader = 2;
     optional bool is_alive = 3 [default = true];
     optional uint64 offset = 4;
+    optional uint64 record_cnt = 5;
+    optional uint64 record_byte_size = 6;
+    optional bool tablet_has_partition = 7 [default = true];
 }
 
 message TermPair {
@@ -31,6 +34,8 @@ message TablePartition {
     required uint32 pid = 1;
     repeated PartitionMeta partition_meta = 2;
     repeated TermPair term_offset = 3;
+    optional uint64 record_cnt = 4;
+    optional uint64 record_byte_size = 5;
 }
 
 message UpdateTTLRequest {
@@ -56,6 +61,7 @@ message TableInfo {
     optional uint32 replica_num = 9; // contain the leader
     optional CompressType compress_type = 10 [default = kNoCompress];
     optional uint32 key_entry_max_height = 11;
+
 }
 
 message CreateTableRequest {
@@ -242,6 +248,10 @@ message ShowOPStatusResponse {
     repeated OPStatus op_status = 3;
 }
 
+message CancelOPRequest {
+    optional uint64 op_id = 1;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -251,6 +261,7 @@ service NameServer {
     rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
     rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
     rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
     rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
     rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
     rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);

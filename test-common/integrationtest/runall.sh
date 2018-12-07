@@ -18,6 +18,13 @@ if [ $1 = 1 ]; then
 else
     sed -i 's/multidimension\ =\ true/multidimension\ =\ false/g' ${testconfpath}
 fi
+
+if [ $2 = "ns_client" ]; then
+    sed -i 's/cluster_mode\ \=.*/cluster_mode\ \=\ cluster/g' ${testconfpath}
+else    
+    sed -i 's/cluster_mode\ \=.*/cluster_mode\ \=\ single/g' ${testconfpath}
+fi  
+
 python ${testpath}/runall.py -R="${runlist}" -N="${norunlist}"
 
 # teardown kill services

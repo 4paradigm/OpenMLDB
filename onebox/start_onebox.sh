@@ -1,5 +1,6 @@
 #! /bin/sh
 #
+ulimit -c unlimited
 # start_onebox.sh
 
 # first start zookeeper

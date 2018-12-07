@@ -19,8 +19,6 @@ class TestTtl(TestCaseBase):
         self.tid = random.randint(1, 1000)
         self.pid = random.randint(1, 1000)
         self.clear_ns_table(self.ns_leader)
-        self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'true')
         infoLogger.info('\n\n' + '|' * 50 + ' SETUP FINISHED ' + '|' * 50 + '\n')
 
     @multi_dimension(False)

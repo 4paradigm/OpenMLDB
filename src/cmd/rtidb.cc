@@ -413,7 +413,29 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client
     } catch(std::exception const& e) {
         std::cout << "Invalid args ttl which should be uint64_t" << std::endl;
     }
+}
 
+void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "bad cancelop format, eg cancelop 1002" <<std::endl;
+        return;
+    }
+    try {
+        std::string err;
+        if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
+            std::cout << "Invalid args. op_id should be large than zero" << std::endl;
+            return;
+        }
+        uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
+        bool ok = client->CancelOP(op_id, err);
+        if (ok) {
+            std::cout << "Cancel op ok!" << std::endl;
+        } else {
+            std::cout << "Cancel op failed! "<< err << std::endl; 
+        }
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. op_id should be uint64_t" << std::endl;
+    }
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -815,6 +837,9 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     row.push_back("ttl");
     row.push_back("is_alive");
     row.push_back("compress_type");
+    row.push_back("offset");
+    row.push_back("record_cnt");
+    row.push_back("memused");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -844,6 +869,21 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
                     row.push_back(::rtidb::nameserver::CompressType_Name(value.compress_type()));
                 } else {
                     row.push_back("kNoCompress");
+                }
+                if (value.table_partition(idx).partition_meta(meta_idx).has_offset()) {
+                    row.push_back(std::to_string(value.table_partition(idx).partition_meta(meta_idx).offset()));
+                } else {
+                    row.push_back("-");
+                }
+                if (value.table_partition(idx).partition_meta(meta_idx).has_record_cnt()) {
+                    row.push_back(std::to_string(value.table_partition(idx).partition_meta(meta_idx).record_cnt()));
+                } else {
+                    row.push_back("-");
+                }
+                if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size()) {
+                    row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).record_byte_size()));
+                } else {
+                    row.push_back("-");
                 }
                 tp.AddRow(row);
             }
@@ -1498,6 +1538,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("settablepartition - update partition info\n");
         printf("updatetablealive - update table alive status\n");
         printf("setttl - set table ttl\n");
+        printf("cancelop - cancel the op\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
         printf("help - get cmd info\n");
@@ -1577,7 +1618,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
-            printf("usage: confset auto_recover_table true/false\n");
             printf("ex: confset auto_failover true\n");
         } else if (parts[1] == "confget") {
             printf("desc: get conf\n");
@@ -1585,7 +1625,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: confget conf_name\n");
             printf("ex: confget\n");
             printf("ex: confget auto_failover\n");
-            printf("ex: confget auto_recover_table\n");
         } else if (parts[1] == "changeleader") {
             printf("desc: select leader again when the endpoint of leader offline\n");
             printf("usage: changeleader table_name pid [candidate_leader]\n");
@@ -1637,6 +1676,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: setttl table_name ttl_type ttl\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
+        } else if (parts[1] == "cancelop") {
+            printf("desc: cancel the op\n");
+            printf("usage: cancelop op_id\n");
+            printf("ex: cancelop 5\n");
         } else if (parts[1] == "updatetablealive") {
             printf("desc: update table alive status\n");
             printf("usage: updatetablealive table_name pid endppoint is_alive\n");
@@ -1831,21 +1874,27 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).status());
-        time_t rawtime = (time_t)response.op_status(idx).start_time();
-        tm* timeinfo = localtime(&rawtime);
-        char buf[20];
-        strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
-        row.push_back(buf);
-        if (response.op_status(idx).end_time() != 0) {
-            row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
-            rawtime = (time_t)response.op_status(idx).end_time();
-            timeinfo = localtime(&rawtime);
-            buf[0] = '\0';
+        if (response.op_status(idx).start_time() > 0) {
+            time_t rawtime = (time_t)response.op_status(idx).start_time();
+            tm* timeinfo = localtime(&rawtime);
+            char buf[20];
             strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
             row.push_back(buf);
+            if (response.op_status(idx).end_time() != 0) {
+                row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
+                rawtime = (time_t)response.op_status(idx).end_time();
+                timeinfo = localtime(&rawtime);
+                buf[0] = '\0';
+                strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+                row.push_back(buf);
+            } else {
+                uint64_t cur_time = ::baidu::common::timer::now_time();
+                row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
+                row.push_back("-");
+            }
         } else {
-            uint64_t cur_time = ::baidu::common::timer::now_time();
-            row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
+            row.push_back("-");
+            row.push_back("-");
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).task_type());
@@ -2271,7 +2320,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         } else if (parts[1] == "setlimit") {
             printf("desc: setlimit for tablet interface\n");
             printf("usage: setlimit method limit\n");
-            printf("ex:setlimit server 10, limit the server max concurrency to 10\n");
+            printf("ex:setlimit Server 10, limit the server max concurrency to 10\n");
             printf("ex:setlimit Put 10, limit the server put  max concurrency to 10\n");
             printf("ex:setlimit Get 10, limit the server get  max concurrency to 10\n");
             printf("ex:setlimit Scan 10, limit the server scan  max concurrency to 10\n");
@@ -2490,8 +2539,19 @@ void HandleClientSetLimit(const std::vector<std::string> parts, ::rtidb::client:
         return;
     }
     try {
-
         std::string key = parts[1];
+        if (std::isupper(key[0])) {
+            std::string subname = key.substr(1);
+            for (char e : subname) {
+                if (std::isupper(e)) {
+                    std::cout<<"Invalid args name which should be Put , Scan , Get or Server"<<std::endl;
+                    return;
+                }
+            }
+        } else {
+            std::cout<<"Invalid args name which should be Put , Scan , Get or Server"<<std::endl;
+            return;
+        }
         int32_t limit = boost::lexical_cast<int32_t> (parts[2]);
         bool ok = client->SetMaxConcurrency(key, limit);
         if (ok) {
@@ -3271,6 +3331,8 @@ void StartNsClient() {
             HandleNSClientUpdateTableAlive(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleNSClientSetTTL(parts, &client);
+        } else if (parts[0] == "cancelop") {
+            HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;
