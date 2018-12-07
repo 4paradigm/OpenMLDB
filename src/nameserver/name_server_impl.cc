@@ -138,7 +138,7 @@ bool NameServerImpl::Recover() {
         PDLOG(WARNING, "recover table info failed!");
         return false;
     }
-
+    UpdateTableStatus();
     if (!RecoverOPTask()) {
         PDLOG(WARNING, "recover task failed!");
         return false;
@@ -2731,7 +2731,6 @@ int NameServerImpl::CreateChangeLeaderOPTask(std::shared_ptr<OPData> op_data) {
 
 void NameServerImpl::OnLocked() {
     PDLOG(INFO, "become the leader name server");
-    UpdateTableStatus();
     bool ok = Recover();
     if (!ok) {
         PDLOG(WARNING, "recover failed");
