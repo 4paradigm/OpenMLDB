@@ -198,7 +198,7 @@ public:
 
     void CheckZkClient();
 
-    int UpdateTaskStatus();
+    int UpdateTaskStatus(bool is_recover_op);
 
     int DeleteTask();
 
@@ -428,6 +428,7 @@ private:
     std::map<std::string, uint64_t> offline_endpoint_map_;
     ::rtidb::base::Random rand_;
     uint64_t session_term_;
+    std::atomic<uint64_t> task_rpc_version_;
 };
 
 }

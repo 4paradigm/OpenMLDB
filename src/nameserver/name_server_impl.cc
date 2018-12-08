@@ -58,6 +58,7 @@ NameServerImpl::NameServerImpl():mu_(), tablets_(),
     zk_table_changed_notify_node_ = zk_table_path + "/notify";
     running_.store(false, std::memory_order_release);
     auto_failover_.store(FLAGS_auto_failover, std::memory_order_release);
+    task_rpc_version_.store(0, std::memory_order_relaxed);
 }
 
 NameServerImpl::~NameServerImpl() {
@@ -141,12 +142,15 @@ bool NameServerImpl::Recover() {
         }
     }    
     UpdateTableStatus();
-    std::lock_guard<std::mutex> lock(mu_);
-    if (!RecoverOPTask()) {
-        PDLOG(WARNING, "recover task failed!");
-        return false;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!RecoverOPTask()) {
+            PDLOG(WARNING, "recover task failed!");
+            return false;
+        }
+        RecoverOfflineTablet();
     }
-    RecoverOfflineTablet();
+    UpdateTaskStatus(true);
     return true;
 }
 
@@ -689,27 +693,54 @@ void NameServerImpl::CheckZkClient() {
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
 }
 
-int NameServerImpl::UpdateTaskStatus() {
-    if (!running_.load(std::memory_order_acquire)) {
-        PDLOG(DEBUG, "cur name_server is not running. return");
-        return 0;
-    }
+int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
     std::map<std::string, std::shared_ptr<TabletClient>> client_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
             if (iter->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
-                continue;
+                uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+                if (cur_time < iter->second->ctime_ + FLAGS_tablet_heartbeat_timeout) {
+                    continue;
+                }
+                // clear the task in offline tablet
+                for (const auto& op_list : task_vec_) {
+                    if (op_list.empty()) {
+                        continue;
+                    }
+                    std::shared_ptr<OPData> op_data = op_list.front();
+                    if (op_data->task_list_.empty()) {
+                        continue;
+                    }
+                    // update task status
+                    std::shared_ptr<Task> task = op_data->task_list_.front();
+                    if (task->task_info_->status() != ::rtidb::api::kDoing) {
+                        continue;
+                    }
+                    if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first) {
+                        PDLOG(WARNING, "tablet is offline. update task status from[kDoing] to[kFailed]. " 
+                                       "op_id[%lu], task_type[%s] endpoint[%s]", 
+                                        op_data->op_info_.op_id(),
+                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                                        iter->first.c_str());
+                        task->task_info_->set_status(::rtidb::api::kFailed);
+                    }
+                }
+            } else {
+                client_map.insert(std::make_pair(iter->first, iter->second->client_));
             }
-            client_map.insert(std::make_pair(iter->first, iter->second->client_));
         }
     }
+    uint64_t last_task_rpc_version = task_rpc_version_.load(std::memory_order_acquire);
     for (auto iter = client_map.begin(); iter != client_map.end(); ++iter) {
         ::rtidb::api::TaskStatusResponse response;
         // get task status from tablet
         if (iter->second->GetTaskStatus(response)) {
             std::lock_guard<std::mutex> lock(mu_);
+            if (last_task_rpc_version != task_rpc_version_.load(std::memory_order_acquire)) {
+                break;
+            }
             for (const auto& op_list : task_vec_) {
                 if (op_list.empty()) {
                     continue;
@@ -725,12 +756,11 @@ int NameServerImpl::UpdateTaskStatus() {
                 }
                 bool has_op_task = false;
                 for (int idx = 0; idx < response.task_size(); idx++) {
-                    if (op_data->op_info_.op_id() != response.task(idx).op_id()) {
-                        continue;
-                    }
-                    if (task->task_info_->task_type() == response.task(idx).task_type()) {
+                    if (op_data->op_info_.op_id() == response.task(idx).op_id() &&
+                           task->task_info_->task_type() == response.task(idx).task_type()) {
                         has_op_task = true;
-                        if (task->task_info_->status() != response.task(idx).status()) {
+                        if (response.task(idx).status() != ::rtidb::api::kInited &&
+                                task->task_info_->status() != response.task(idx).status()) {
                             PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
                                         ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
                                         ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
@@ -741,20 +771,21 @@ int NameServerImpl::UpdateTaskStatus() {
                         break;
                     }
                 }
-                if (task->task_info_->is_rpc_send() && task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first && 
-                        task->task_info_->status() == ::rtidb::api::kDoing && !has_op_task) {
-                    PDLOG(WARNING, "not found op in tablet. update task status from[kDoing] to[kFailed]. " 
-                                   "op_id[%lu], task_type[%s] endpoint[%s]", 
-                                    op_data->op_info_.op_id(),
-                                    ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
-                                    iter->first.c_str());
-                    task->task_info_->set_status(::rtidb::api::kFailed);
+                if (!has_op_task && (is_recover_op || task->task_info_->is_rpc_send())) {
+                    if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first) {
+                        PDLOG(WARNING, "not found op in tablet. update task status from[kDoing] to[kFailed]. " 
+                                       "op_id[%lu], task_type[%s] endpoint[%s]", 
+                                        op_data->op_info_.op_id(),
+                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                                        iter->first.c_str());
+                        task->task_info_->set_status(::rtidb::api::kFailed);
+                    }
                 }
             }
         }
     }
     if (running_.load(std::memory_order_acquire)) {
-        task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this));
+        task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
     }
     return 0;
 }
@@ -2771,7 +2802,7 @@ void NameServerImpl::OnLocked() {
         //TODO fail to recover discard the lock
     }
     running_.store(true, std::memory_order_release);
-    task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this));
+    task_thread_pool_.DelayTask(FLAGS_get_task_status_interval, boost::bind(&NameServerImpl::UpdateTaskStatus, this, false));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::UpdateTableStatus, this));
     task_thread_pool_.AddTask(boost::bind(&NameServerImpl::ProcessTask, this));
 }
@@ -3666,6 +3697,7 @@ void NameServerImpl::WrapTaskFun(const boost::function<bool ()>& fun, std::share
         PDLOG(WARNING, "task[%s] run failed. op_id[%lu]", 
                     ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(), task_info->op_id());
     }
+    task_rpc_version_.fetch_add(1, std::memory_order_acq_rel);
     task_info->set_is_rpc_send(true);
 }
 
