@@ -694,7 +694,7 @@ int NameServerImpl::UpdateTaskStatus() {
         PDLOG(DEBUG, "cur name_server is not running. return");
         return 0;
     }
-    std::vector<std::shared_ptr<TabletClient>> vec;
+    std::map<std::string, std::shared_ptr<TabletClient>> client_map;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto iter = tablets_.begin(); iter != tablets_.end(); ++iter) {
@@ -702,38 +702,53 @@ int NameServerImpl::UpdateTaskStatus() {
                 PDLOG(DEBUG, "tablet[%s] is not Healthy", iter->first.c_str());
                 continue;
             }
-            vec.push_back(iter->second->client_);
-        }    
+            client_map.insert(std::make_pair(iter->first, iter->second->client_));
+        }
     }
-    for (auto iter = vec.begin(); iter != vec.end(); ++iter) {
+    for (auto iter = client_map.begin(); iter != client_map.end(); ++iter) {
         ::rtidb::api::TaskStatusResponse response;
         // get task status from tablet
-        if ((*iter)->GetTaskStatus(response)) {
+        if (iter->second->GetTaskStatus(response)) {
             std::lock_guard<std::mutex> lock(mu_);
-            for (int idx = 0; idx < response.task_size(); idx++) {
-                for (const auto& op_list : task_vec_) {
-                    if (op_list.empty()) {
+            for (const auto& op_list : task_vec_) {
+                if (op_list.empty()) {
+                    continue;
+                }
+                std::shared_ptr<OPData> op_data = op_list.front();
+                if (op_data->task_list_.empty()) {
+                    continue;
+                }
+                // update task status
+                std::shared_ptr<Task> task = op_data->task_list_.front();
+                if (task->task_info_->status() != ::rtidb::api::kDoing) {
+                    continue;
+                }
+                bool has_op_task = false;
+                for (int idx = 0; idx < response.task_size(); idx++) {
+                    if (op_data->op_info_.op_id() != response.task(idx).op_id()) {
                         continue;
                     }
-                    std::shared_ptr<OPData> op_data = op_list.front();
-                    if (op_data->op_info_.op_id() != response.task(idx).op_id() || op_data->task_list_.empty()) {
-                        continue;
+                    if (task->task_info_->task_type() == response.task(idx).task_type()) {
+                        has_op_task = true;
+                        if (task->task_info_->status() != response.task(idx).status()) {
+                            PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
+                                        ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
+                                        ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
+                                        response.task(idx).op_id(), 
+                                        ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                            task->task_info_->set_status(response.task(idx).status());
+                        }
+                        break;
                     }
-                    // update task status
-                    std::shared_ptr<Task> task = op_data->task_list_.front();
-                    if (task->task_info_->status() == ::rtidb::api::kFailed) {
-                        continue;
-                    }
-                    if (task->task_info_->task_type() == response.task(idx).task_type() && 
-                            task->task_info_->status() != response.task(idx).status()) {
-                        PDLOG(INFO, "update task status from[%s] to[%s]. op_id[%lu], task_type[%s]", 
-                                    ::rtidb::api::TaskStatus_Name(task->task_info_->status()).c_str(), 
-                                    ::rtidb::api::TaskStatus_Name(response.task(idx).status()).c_str(), 
-                                    response.task(idx).op_id(), 
-                                    ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                        task->task_info_->set_status(response.task(idx).status());
-                    }
-                    break;
+                }
+                if (task->task_info_->is_rpc_send() && task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first && 
+                        task->task_info_->status() == ::rtidb::api::kDoing && !has_op_task) {
+                    PDLOG(WARNING, "not found op in tablet. update task status from[kDoing] to[kFailed]. " 
+                                   "op_id[%lu], task_type[%s] endpoint[%s]", 
+                                    op_data->op_info_.op_id(),
+                                    ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                                    iter->first.c_str());
+                    task->task_info_->set_status(::rtidb::api::kFailed);
                 }
             }
         }
@@ -3651,6 +3666,7 @@ void NameServerImpl::WrapTaskFun(const boost::function<bool ()>& fun, std::share
         PDLOG(WARNING, "task[%s] run failed. op_id[%lu]", 
                     ::rtidb::api::TaskType_Name(task_info->task_type()).c_str(), task_info->op_id());
     }
+    task_info->set_is_rpc_send(true);
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& endpoint,
@@ -3664,6 +3680,7 @@ std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& 
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kMakeSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -3680,6 +3697,7 @@ std::shared_ptr<Task> NameServerImpl::CreatePauseSnapshotTask(const std::string&
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kPauseSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::PauseSnapshot, it->second->client_, tid, pid, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -3696,6 +3714,7 @@ std::shared_ptr<Task> NameServerImpl::CreateRecoverSnapshotTask(const std::strin
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kRecoverSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::RecoverSnapshot, it->second->client_, tid, pid, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
@@ -3713,6 +3732,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kSendSnapshot);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::SendSnapshot, it->second->client_, tid, pid, 
                 des_endpoint, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
@@ -3731,6 +3751,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::LoadTable, it->second->client_, name, tid, pid, 
                 ttl, is_leader, std::vector<std::string>(),
                 seg_cnt, task->task_info_);
@@ -3750,6 +3771,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaTask(const std::string& en
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kAddReplica);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, 
                 des_endpoint, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
@@ -3821,6 +3843,7 @@ std::shared_ptr<Task> NameServerImpl::CreateDelReplicaTask(const std::string& en
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kDelReplica);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::DelReplica, it->second->client_, tid, pid, 
                 follower_endpoint, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
@@ -3838,6 +3861,7 @@ std::shared_ptr<Task> NameServerImpl::CreateDropTableTask(const std::string& end
     task->task_info_->set_op_type(op_type);
     task->task_info_->set_task_type(::rtidb::api::TaskType::kDropTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
+    task->task_info_->set_endpoint(endpoint);
     boost::function<bool ()> fun = boost::bind(&TabletClient::DropTable, it->second->client_, tid, pid, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
