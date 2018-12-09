@@ -2661,20 +2661,21 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
             return -1;
         }
         op_data->task_list_.push_back(task);
+    }else {
+        if (leader_endpoint == endpoint) {
+            PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
+            return -1;
+        }
+        uint64_t op_index = op_data->op_info_.op_id();
+        std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index, 
+                    ::rtidb::api::OPType::kOfflineReplicaOP, tid, pid, endpoint);
+        if (!task) {
+            PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", 
+                            name.c_str(), pid, endpoint.c_str());
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
     }
-    if (leader_endpoint == endpoint) {
-        PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
-        return -1;
-    }
-    uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kOfflineReplicaOP, tid, pid, endpoint);
-    if (!task) {
-        PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", 
-                        name.c_str(), pid, endpoint.c_str());
-        return -1;
-    }
-    op_data->task_list_.push_back(task);
     task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
                 op_index, ::rtidb::api::OPType::kOfflineReplicaOP);
     if (!task) {
@@ -2685,6 +2686,7 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     PDLOG(INFO, "create OfflineReplica task ok. table[%s] pid[%u] endpoint[%s]", 
                  name.c_str(), pid, endpoint.c_str());
+
     return 0;
 }
 
