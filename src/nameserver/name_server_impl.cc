@@ -2640,6 +2640,7 @@ int NameServerImpl::CreateOfflineReplicaOP(const std::string& name, uint32_t pid
 int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     std::string name = op_data->op_info_.name();
     uint32_t pid = op_data->op_info_.pid();
+    uint64_t op_index = op_data->op_info_.op_id();
     std::string endpoint = op_data->op_info_.data();
     std::string leader_endpoint;
     auto iter = table_info_.find(name);
@@ -2662,6 +2663,7 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
                      name.c_str(), pid, endpoint.c_str());
         // if this leads leader endpoint is wrong , let it go
         std::vector<std::string> healthy_follower_endpoints;
+        GetHealthyFollower(name, pid, healthy_follower_endpoints);
         task = CreateSelectLeaderTask(
                 op_data->op_info_.op_id(), 
                 ::rtidb::api::OPType::kOfflineReplicaOP, 
@@ -2676,7 +2678,6 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
             PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
             return -1;
         }
-        uint64_t op_index = op_data->op_info_.op_id();
         std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index, 
                     ::rtidb::api::OPType::kOfflineReplicaOP, tid, pid, endpoint);
         if (!task) {
@@ -2700,11 +2701,11 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     return 0;
 }
 
-int NameServerImpl::GetHealthyFollower(const std::string& tname, uint32_t pid, std::vector<std::string>& endpoints){
+void NameServerImpl::GetHealthyFollower(const std::string& name, uint32_t pid, std::vector<std::string>& endpoints){
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
-        return -1;
+        return ;
     }
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() != pid) {
