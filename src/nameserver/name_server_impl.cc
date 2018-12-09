@@ -1555,12 +1555,6 @@ void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32
                     PDLOG(INFO, "table[%s] pid[%u] need not change leader", kv.first.c_str(), pid);
                 }
             } else {
-                // follower partition lost
-                if (alive_leader.empty()) {
-                    // make sure we have alive leader partition
-                    PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
-                    CreateChangeLeaderOP(kv.first, pid, "", false, concurrency);
-                }
                 CreateOfflineReplicaOP(kv.first, pid, endpoint, concurrency);
             }
         }
@@ -2655,8 +2649,18 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t tid = iter->second->tid();
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
+        // if this leads leader endpoint is wrong , let it go
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
-        return -1;
+        std::vector<std::string> healthy_follower_endpoints;
+        std::shared_ptr<Task> task = CreateSelectLeaderTask(
+                op_data->op_info_.op_id(), 
+                ::rtidb::api::OPType::kOfflineReplicaOP, 
+                name, tid, pid, healthy_follower_endpoints);
+        if (!task) {
+            PDLOG(WARNING, "fail to create select leader task. table[%s] pid[%u]", name.c_str(), pid);
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
     }
     if (leader_endpoint == endpoint) {
         PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
@@ -2684,15 +2688,12 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     return 0;
 }
 
-int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid, 
-            const std::string& candidate_leader, bool need_restore, uint32_t concurrency) {
+int NameServerImpl::GetHealthyFollower(const std::string& tname, uint32_t pid, std::vector<std::string>& endpoints){
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
         return -1;
     }
-    uint32_t tid = iter->second->tid();
-    std::vector<std::string> follower_endpoint;
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
         if (iter->second->table_partition(idx).pid() != pid) {
             continue;
@@ -2704,6 +2705,39 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
                     auto tablets_iter = tablets_.find(endpoint);
                     if (tablets_iter != tablets_.end() && 
                             tablets_iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                        endpoints.push_back(endpoint);
+                    } else {
+                        PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]", 
+                                        endpoint.c_str(), name.c_str(), pid);
+                    }
+                }
+            }
+        }
+        break;
+    }
+}
+
+int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid, 
+            const std::string& candidate_leader, bool need_restore, uint32_t concurrency) {
+    auto iter = table_info_.find(name);
+    if (iter == table_info_.end()) {
+        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        return -1;
+    }
+    uint32_t tid = iter->second->tid();
+    //TODO use get healthy follower method
+    std::vector<std::string> follower_endpoint;
+    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+        if (iter->second->table_partition(idx).pid() != pid) {
+            continue;
+        }
+        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                std::string endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
+                if (!iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
+                    auto tablets_iter = tablets_.find(endpoint);
+                    if (tablets_iter != tablets_.end() && 
+                        tablets_iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
                         follower_endpoint.push_back(endpoint);
                     } else {
                         PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]", 
@@ -2714,6 +2748,7 @@ int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid,
         }
         break;
     }
+
     if (need_restore && !candidate_leader.empty() 
             && std::find(follower_endpoint.begin(), follower_endpoint.end(), candidate_leader) == follower_endpoint.end()) {
         follower_endpoint.push_back(candidate_leader);
