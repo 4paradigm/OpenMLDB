@@ -2649,10 +2649,20 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t tid = iter->second->tid();
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
-        // if this leads leader endpoint is wrong , let it go
         PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
+        std::shared_ptr<Task> task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
+                    op_index, ::rtidb::api::OPType::kOfflineReplicaOP);
+        if (!task) {
+            PDLOG(WARNING, "create update table alive status task failed. table[%s] pid[%u] endpoint[%s]", 
+                            name.c_str(), pid, endpoint.c_str());
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
+        PDLOG(INFO, "create OfflineReplica task ok. table[%s] pid[%u] endpoint[%s]", 
+                     name.c_str(), pid, endpoint.c_str());
+        // if this leads leader endpoint is wrong , let it go
         std::vector<std::string> healthy_follower_endpoints;
-        std::shared_ptr<Task> task = CreateSelectLeaderTask(
+        task = CreateSelectLeaderTask(
                 op_data->op_info_.op_id(), 
                 ::rtidb::api::OPType::kOfflineReplicaOP, 
                 name, tid, pid, healthy_follower_endpoints);
@@ -2675,18 +2685,18 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
             return -1;
         }
         op_data->task_list_.push_back(task);
+        task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
+                    op_index, ::rtidb::api::OPType::kOfflineReplicaOP);
+        if (!task) {
+            PDLOG(WARNING, "create update table alive status task failed. table[%s] pid[%u] endpoint[%s]", 
+                            name.c_str(), pid, endpoint.c_str());
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
+        PDLOG(INFO, "create OfflineReplica task ok. table[%s] pid[%u] endpoint[%s]", 
+                     name.c_str(), pid, endpoint.c_str());
     }
-    task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
-                op_index, ::rtidb::api::OPType::kOfflineReplicaOP);
-    if (!task) {
-        PDLOG(WARNING, "create update table alive status task failed. table[%s] pid[%u] endpoint[%s]", 
-                        name.c_str(), pid, endpoint.c_str());
-        return -1;
-    }
-    op_data->task_list_.push_back(task);
-    PDLOG(INFO, "create OfflineReplica task ok. table[%s] pid[%u] endpoint[%s]", 
-                 name.c_str(), pid, endpoint.c_str());
-
+    
     return 0;
 }
 
