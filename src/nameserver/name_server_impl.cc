@@ -1546,6 +1546,7 @@ void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32
             }
             const ::rtidb::nameserver::PartitionMeta& partition_meta = 
                     kv.second->table_partition(idx).partition_meta(endpoint_index);  
+            // leader partition lost
             if (partition_meta.is_leader()) {
                 if (alive_leader.empty() || alive_leader == endpoint) {
                     PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
@@ -1554,6 +1555,12 @@ void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32
                     PDLOG(INFO, "table[%s] pid[%u] need not change leader", kv.first.c_str(), pid);
                 }
             } else {
+                // follower partition lost
+                if (alive_leader.empty()) {
+                    // make sure we have alive leader partition
+                    PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
+                    CreateChangeLeaderOP(kv.first, pid, "", false, concurrency);
+                }
                 CreateOfflineReplicaOP(kv.first, pid, endpoint, concurrency);
             }
         }
