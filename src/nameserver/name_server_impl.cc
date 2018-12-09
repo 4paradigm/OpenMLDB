@@ -1546,8 +1546,8 @@ void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32
             }
             const ::rtidb::nameserver::PartitionMeta& partition_meta = 
                     kv.second->table_partition(idx).partition_meta(endpoint_index);  
-            // leader partition lost
-            if (partition_meta.is_leader()) {
+            if (partition_meta.is_leader() || alive_leader.empty()) {
+                // leader partition lost
                 if (alive_leader.empty() || alive_leader == endpoint) {
                     PDLOG(INFO, "table[%s] pid[%u] change leader", kv.first.c_str(), pid);
                     CreateChangeLeaderOP(kv.first, pid, "", false, concurrency);
@@ -2650,29 +2650,8 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t tid = iter->second->tid();
     if (GetLeader(iter->second, pid, leader_endpoint) < 0 || leader_endpoint.empty()) {
-        PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
-        std::shared_ptr<Task> task = CreateUpdatePartitionStatusTask(name, pid, endpoint, false, false,
-                    op_index, ::rtidb::api::OPType::kOfflineReplicaOP);
-        if (!task) {
-            PDLOG(WARNING, "create update table alive status task failed. table[%s] pid[%u] endpoint[%s]", 
-                            name.c_str(), pid, endpoint.c_str());
-            return -1;
-        }
-        op_data->task_list_.push_back(task);
-        PDLOG(INFO, "create OfflineReplica task ok. table[%s] pid[%u] endpoint[%s]", 
-                     name.c_str(), pid, endpoint.c_str());
-        // if this leads leader endpoint is wrong , let it go
-        std::vector<std::string> healthy_follower_endpoints;
-        GetHealthyFollower(name, pid, healthy_follower_endpoints);
-        task = CreateSelectLeaderTask(
-                op_data->op_info_.op_id(), 
-                ::rtidb::api::OPType::kOfflineReplicaOP, 
-                name, tid, pid, healthy_follower_endpoints);
-        if (!task) {
-            PDLOG(WARNING, "fail to create select leader task. table[%s] pid[%u]", name.c_str(), pid);
-            return -1;
-        }
-        op_data->task_list_.push_back(task);
+        PDLOG(WARNING, "no alive leader for table %s pid %u", name.c_str(), pid);
+        return -1;
     }else {
         if (leader_endpoint == endpoint) {
             PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
