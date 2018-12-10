@@ -364,7 +364,6 @@ private:
                     uint64_t offset_delta, uint32_t concurrency,
                     std::shared_ptr<::rtidb::api::TaskInfo> task_info);
     int GetLeader(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info, uint32_t pid, std::string& leader_endpoint);
-    void GetHealthyFollower(const std::string& tname, uint32_t pid, std::vector<std::string>& endpoints);
     int MatchTermOffset(const std::string& name, uint32_t pid, bool has_table, uint64_t term, uint64_t offset);
     int CreateReAddReplicaOP(const std::string& name, uint32_t pid, 
                     const std::string& endpoint, uint64_t offset_delta, uint64_t parent_id, uint32_t concurrency);

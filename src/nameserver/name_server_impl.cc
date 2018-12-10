@@ -580,12 +580,12 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
     if (boost::starts_with(value, "startup_")) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
         OnTabletOffline(endpoint, true);
-    }    
+    }
     RecoverEndpointInternal(endpoint, false, FLAGS_name_server_task_concurrency);
     {
         std::lock_guard<std::mutex> lock(mu_);
         offline_endpoint_map_.erase(endpoint);
-    }    
+    }
 }
 
 void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool need_restore, uint32_t concurrency) {
@@ -598,7 +598,7 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
                     if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
                         PDLOG(INFO, "table[%s] pid[%u] endpoint[%s] is alive, need not recover", 
                                     kv.first.c_str(), pid, endpoint.c_str());
-                        break;            
+                        break; 
                     }
                     PDLOG(INFO, "recover table[%s] pid[%u] endpoint[%s]", kv.first.c_str(), pid, endpoint.c_str());
                     bool is_leader = false;
@@ -2678,35 +2678,6 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     
     return 0;
-}
-
-void NameServerImpl::GetHealthyFollower(const std::string& name, uint32_t pid, std::vector<std::string>& endpoints){
-    auto iter = table_info_.find(name);
-    if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
-        return ;
-    }
-    for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
-        if (iter->second->table_partition(idx).pid() != pid) {
-            continue;
-        }
-        for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
-            if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                std::string endpoint = iter->second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                if (!iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
-                    auto tablets_iter = tablets_.find(endpoint);
-                    if (tablets_iter != tablets_.end() && 
-                            tablets_iter->second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-                        endpoints.push_back(endpoint);
-                    } else {
-                        PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]", 
-                                        endpoint.c_str(), name.c_str(), pid);
-                    }
-                }
-            }
-        }
-        break;
-    }
 }
 
 int NameServerImpl::CreateChangeLeaderOP(const std::string& name, uint32_t pid, 
