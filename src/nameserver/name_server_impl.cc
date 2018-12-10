@@ -975,7 +975,7 @@ void NameServerImpl::ProcessTask() {
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str()); 
                     task_thread_pool_.AddTask(task->fun_);
                     task->task_info_->set_status(::rtidb::api::kDoing);;
-				} else if (task->task_info_->status() == ::rtidb::api::kDoing) {
+                } else if (task->task_info_->status() == ::rtidb::api::kDoing) {
                     if (::baidu::common::timer::now_time() - op_data->op_info_.start_time() > 
                             FLAGS_name_server_op_execute_timeout / 1000) {
                         PDLOG(INFO, "The executeion time of op is too long. "
@@ -986,7 +986,7 @@ void NameServerImpl::ProcessTask() {
                                     op_data->op_info_.start_time(),
                                     ::baidu::common::timer::now_time());
                         cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
-					}
+                    }
                 }
             }
         }
@@ -1575,7 +1575,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         return;
     }
     uint32_t concurrency = FLAGS_name_server_task_concurrency;
-	if (request->has_concurrency()) {
+    if (request->has_concurrency()) {
         if (request->concurrency() > FLAGS_name_server_task_max_concurrency) {
             response->set_code(-1);
             response->set_msg("concurrency is greater than the max value " + std::to_string(FLAGS_name_server_task_max_concurrency));
@@ -2308,6 +2308,14 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::rtidb::api::OPType::kMigrateOP, 
                  name, tid, pid, table_info->ttl(), table_info->seg_cnt(), false);
     if (!task) {
@@ -2324,11 +2332,10 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kMigrateOP, tid, pid);
+    task = CreateCheckBinlogSyncProgressTask(op_index, 
+                ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, pid, endpoint, offset_delta);
     if (!task) {
-        PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
-                        tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
@@ -2340,6 +2347,14 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateUpdateTableInfoTask(src_endpoint, name, pid, des_endpoint, 
+                op_index, ::rtidb::api::OPType::kMigrateOP);
+    if (!task) {
+        PDLOG(WARNING, "create update table info task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, src_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
     task = CreateDropTableTask(src_endpoint, op_index, 
                 ::rtidb::api::OPType::kMigrateOP, tid, pid);
     if (!task) {
@@ -2348,18 +2363,10 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateUpdateTableInfoTask(src_endpoint, name, pid, des_endpoint, 
-                op_index, ::rtidb::api::OPType::kMigrateOP);
-    if (!task) {
-        PDLOG(WARNING, "create migrate table info task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
-                        tid, pid, src_endpoint.c_str(), des_endpoint.c_str());
-        return -1;
-    }
-    op_data->task_list_.push_back(task);
     PDLOG(INFO, "create migrate op task ok. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
                  src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
     return 0;
-}            
+}
 
 void NameServerImpl::DelReplicaNS(RpcController* controller,
        const DelReplicaNSRequest* request,
@@ -2460,7 +2467,7 @@ void NameServerImpl::DeleteDoneOP() {
     }
     while (done_op_list_.size() > (uint32_t)FLAGS_max_op_num) {
         std::shared_ptr<OPData> op_data = done_op_list_.front();
-		if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
             std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
             if (zk_client_->DeleteNode(node)) {
                 PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
