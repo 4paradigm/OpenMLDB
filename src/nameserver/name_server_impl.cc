@@ -2333,7 +2333,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateCheckBinlogSyncProgressTask(op_index, 
-                ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, pid, endpoint, offset_delta);
+                ::rtidb::api::OPType::kMigrateOP, name, pid, des_endpoint, FLAGS_check_binlog_sync_progress_delta);
     if (!task) {
         PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
@@ -3170,7 +3170,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateCheckBinlogSyncProgressTask(op_index, 
-                ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, pid, endpoint, offset_delta);
+                ::rtidb::api::OPType::kReAddReplicaOP, name, pid, endpoint, offset_delta);
     if (!task) {
         PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
