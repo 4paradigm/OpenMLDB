@@ -595,7 +595,8 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
             uint32_t pid =  kv.second->table_partition(idx).pid();
             for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
                 if (kv.second->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
-                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
+                            kv.second->table_partition(idx).partition_meta_size() > 1) {
                         PDLOG(INFO, "table[%s] pid[%u] endpoint[%s] is alive, need not recover", 
                                     kv.first.c_str(), pid, endpoint.c_str());
                         break;            
@@ -1521,12 +1522,7 @@ void NameServerImpl::OfflineEndpointInternal(const std::string& endpoint, uint32
             if (kv.second->table_partition(idx).partition_meta_size() == 1 && 
                     kv.second->table_partition(idx).partition_meta(0).endpoint() == endpoint) {
                 PDLOG(INFO, "table[%s] pid[%u] has no followers", kv.first.c_str(), pid);
-                if (kv.second->table_partition(idx).partition_meta(0).is_alive()) {
-                    CreateUpdatePartitionStatusOP(kv.first, pid, endpoint, true, false, INVALID_PARENT_ID, concurrency);
-                } else {
-                    PDLOG(INFO, "table[%s] pid[%u] is_alive status is no, need not offline", 
-                                kv.first.c_str(), pid);
-                }
+                CreateUpdatePartitionStatusOP(kv.first, pid, endpoint, true, false, INVALID_PARENT_ID, concurrency);
                 continue;
             }
             std::string alive_leader;
