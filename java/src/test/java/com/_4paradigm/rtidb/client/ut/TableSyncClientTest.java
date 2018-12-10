@@ -5,8 +5,10 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
@@ -19,21 +21,27 @@ import com.google.protobuf.ByteString;
 import io.brpc.client.EndPoint;
 
 public class TableSyncClientTest {
-
     private AtomicInteger id = new AtomicInteger(7000);
     private static TableSyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    static {
-        try {
+
+    @BeforeClass
+    public static void setUp() {
+         try {
             snc.init();
         } catch (Exception e) {
             e.printStackTrace();
         }
         tableClient = new TableSyncClientImpl(snc);
         tabletClient = new TabletClientImpl(snc);
+
+    }
+    @AfterClass
+    public static void tearDown() {
+        snc.close();
     }
 
     @Test
@@ -57,7 +65,6 @@ public class TableSyncClientTest {
     @Test
     public void test1Put() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
-        Assert.assertFalse(tableClient.put(tid, 0, "pk", 9527, "test0"));
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
         ok = tableClient.put(tid, 0, "pk", 9527, "test0");

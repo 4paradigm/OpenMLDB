@@ -16,12 +16,15 @@ DEFINE_string(zk_cluster,"", "config the zookeeper cluster eg ip:2181,ip2:2181,i
 DEFINE_string(zk_root_path, "/rtidb", "config the root path of zookeeper");
 DEFINE_int32(zk_keep_alive_check_interval, 15000, "config the interval of keep alive check");
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status");
+DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get task status");
 DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
+DEFINE_uint32(name_server_task_concurrency, 2, "config the concurrency of name_server_task");
+DEFINE_uint32(name_server_task_max_concurrency, 8, "config the max concurrency of name_server_task");
 DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
+DEFINE_uint32(name_server_op_execute_timeout, 2*60*60*1000, "config the timeout of nameserver op");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
-DEFINE_bool(auto_recover_table, false, "enable or disable auto recover table");
 DEFINE_int32(max_op_num, 10000, "config the max op num");
-DEFINE_uint32(partition_num, 16, "config the default partition_num");
+DEFINE_uint32(partition_num, 8, "config the default partition_num");
 DEFINE_uint32(replica_num, 3, "config the default replica_num. if set 3, there is one leader and two followers");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
@@ -46,6 +49,7 @@ DEFINE_int32(binlog_sync_to_disk_interval, 20000, "config the interval of sync b
 DEFINE_int32(binlog_delete_interval, 60000, "config the interval of delete binlog");
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
 DEFINE_int32(binlog_name_length, 8, "binlog name length");
+DEFINE_uint32(check_binlog_sync_progress_delta, 100000, "config the delta of check binlog sync progress");
 
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
@@ -68,10 +72,14 @@ DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024, "the limit bandwidth. Byt
 // if set 23, the task will execute 23:00 every day
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
+DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach the threshold");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 
-DEFINE_uint32(latest_ttl_max, 1000 , "the max ttl of latest");
+DEFINE_uint32(latest_ttl_max, 1000, "the max ttl of latest");
 DEFINE_uint32(absolute_ttl_max, 60*24*365*30 , "the max ttl of absolute time");
-
+DEFINE_uint32(skiplist_max_height, 12, "the max height of skiplist");
+DEFINE_uint32(key_entry_max_height, 8, "the max height of key entry");
+DEFINE_uint32(latest_default_skiplist_height, 1, "the default height of skiplist for latest table");
+DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skiplist for absolute table");
 DEFINE_bool(enable_show_tp, false, "enable show tp");

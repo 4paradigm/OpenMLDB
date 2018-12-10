@@ -2,8 +2,8 @@ package com._4paradigm.rtidb.client.ut.ha;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.ha.NodeManager;
 
@@ -61,6 +61,7 @@ public class NodeManagerTest {
         BrpcChannelGroup bcg6 = nm.getChannel(endPoint3);
         Assert.assertTrue(bcg6.getIp().equals("127.0.0.1"));
         Assert.assertEquals(bcg6.getPort(), 12347);
+        nm.close(); 
     }
 
 }

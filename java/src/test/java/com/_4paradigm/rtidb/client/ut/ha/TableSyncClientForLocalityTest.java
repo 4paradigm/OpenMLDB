@@ -4,8 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
@@ -30,7 +32,9 @@ public class TableSyncClientForLocalityTest {
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
-    static {
+    
+    @BeforeClass
+    public static void setup() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
@@ -44,6 +48,11 @@ public class TableSyncClientForLocalityTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+    @AfterClass
+    public static void tearDown() {
+        nsc.close();
+        client.close();
     }
     
     private String createKvTable() {
@@ -101,6 +110,7 @@ public class TableSyncClientForLocalityTest {
             value = new String(bs.toByteArray());
             Assert.assertEquals(value, "value1");
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }finally {
             nsc.dropTable(name);

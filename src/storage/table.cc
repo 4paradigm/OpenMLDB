@@ -19,6 +19,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_string(db_root_path);
+DECLARE_uint32(skiplist_max_height);
 
 
 namespace rtidb {
@@ -33,13 +34,15 @@ Table::Table(const std::string& name,
         const std::map<std::string, uint32_t>& mapping,
         uint64_t ttl,
         bool is_leader,
-        const std::vector<std::string>& replicas):name_(name), id_(id),
+        const std::vector<std::string>& replicas,
+        uint32_t key_entry_max_height):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
-    ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
+    enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
+    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(key_entry_max_height)
 {}
 
 Table::Table(const std::string& name,
@@ -50,10 +53,11 @@ Table::Table(const std::string& name,
         uint64_t ttl):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
-    ref_(0), enable_gc_(false), ttl_(ttl * 60 * 1000),
+    enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
     replicas_(), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime)
+    mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(FLAGS_skiplist_max_height)
 {}
 
 Table::~Table() {
@@ -72,8 +76,8 @@ void Table::Init() {
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            segments_[i][j] = new Segment();
-            PDLOG(DEBUG, "init %u, %u segment", i, j);
+            segments_[i][j] = new Segment(key_entry_max_height_);
+            PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
         }
     }
     if (ttl_ > 0) {
@@ -81,6 +85,14 @@ void Table::Init() {
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
             id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+}
+
+void Table::SetCompressType(::rtidb::api::CompressType compress_type) {
+    compress_type_ = compress_type;
+}
+
+::rtidb::api::CompressType Table::GetCompressType() {
+    return compress_type_;
 }
 
 bool Table::Put(const std::string& pk, 
@@ -172,9 +184,9 @@ uint64_t Table::SchedGc() {
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
-            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_); 
+            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
+    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
@@ -187,7 +199,7 @@ uint64_t Table::SchedGc() {
                 segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 break;
             case ::rtidb::api::TTLType::kLatestTime:
-                segment->Gc4Head(ttl_ / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                segment->Gc4Head(ttl_.load(std::memory_order_relaxed) / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 break;
             default:
                 PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
@@ -205,16 +217,16 @@ uint64_t Table::SchedGc() {
 }
 
 uint64_t Table::GetExpireTime() {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0 
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0 
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_;
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_.load(std::memory_order_relaxed);
 }
 
 bool Table::IsExpire(const LogEntry& entry) {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) { 
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0) { 
         return false;
     }
     uint64_t expired_time = 0;

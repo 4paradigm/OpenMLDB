@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -41,6 +42,10 @@ public class SPutTest {
       client = new TabletSyncClientImpl(snc);
   }
 
+  @AfterClass
+  public void close() {
+      snc.close();
+  }
 
   public static String genLongString(int len) {
     String str = "";
@@ -165,10 +170,10 @@ public class SPutTest {
         Assert.assertTrue(row.length == 2);
         System.out.println(row[1]);
         Assert.assertEquals("9527", row[0]);
-        if (type.equals(ColumnType.kNull) || value == "") {
+        if (type.equals(ColumnType.kNull) ) {
           Assert.assertEquals(null, row[1]);
         } else {
-          System.out.println(value);
+          System.out.println("value = "+value+";");
           Assert.assertEquals(value, row[1]);
         }
         it.next();

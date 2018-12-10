@@ -5,8 +5,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
@@ -28,8 +30,9 @@ public class TableAsyncClientTest {
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    static {
-        try {
+    @BeforeClass
+    public static void setUp() {
+         try {
             snc.init();
         } catch (Exception e) {
             // TODO Auto-generated catch block
@@ -37,6 +40,11 @@ public class TableAsyncClientTest {
         }
         tableClient = new TableAsyncClientImpl(snc);
         tabletClient = new TabletClientImpl(snc);
+
+    }
+    @AfterClass
+    public static void tearDown() {
+        snc.close();
     }
 
     @Test

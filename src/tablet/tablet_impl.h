@@ -108,6 +108,11 @@ public:
             ::rtidb::api::AddReplicaResponse* response,
             Closure* done);
 
+    void SetConcurrency(RpcController* ctrl,
+            const ::rtidb::api::SetConcurrencyRequest* request,
+            ::rtidb::api::SetConcurrencyResponse* response,
+            Closure* done);
+
     void DelReplica(RpcController* controller, 
             const ::rtidb::api::ReplicaRequest* request,
             ::rtidb::api::GeneralResponse* response,
@@ -178,6 +183,11 @@ public:
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
     
+    void UpdateTTL(RpcController* controller, 
+            const ::rtidb::api::UpdateTTLRequest* request,
+            ::rtidb::api::UpdateTTLResponse* response,
+            Closure* done);
+
     void ShowMemPool(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,
@@ -186,6 +196,11 @@ public:
     void GetTermPair(RpcController* controller,
             const ::rtidb::api::GetTermPairRequest* request,
             ::rtidb::api::GetTermPairResponse* response,
+            Closure* done);
+
+    void GetTableFollower(RpcController* controller,
+            const ::rtidb::api::GetTableFollowerRequest* request,
+            ::rtidb::api::GetTableFollowerResponse* response,
             Closure* done);
 
     void GetManifest(RpcController* controller,
@@ -212,6 +227,10 @@ public:
             const ::rtidb::api::CheckFileRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done);
+
+    inline void SetServer(brpc::Server* server) {
+        server_ = server;
+    }
 
 private:
     // Get table by table id , no need external synchronization
@@ -285,6 +304,7 @@ private:
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
+    brpc::Server* server_;
 };
 
 

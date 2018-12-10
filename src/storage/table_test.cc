@@ -200,6 +200,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     ASSERT_EQ(0, table->GetRecordCnt());
     ASSERT_EQ(0, table->GetRecordIdxCnt());
 }
+
 TEST_F(TableTest, SchedGcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));

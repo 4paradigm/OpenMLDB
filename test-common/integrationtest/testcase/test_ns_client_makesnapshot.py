@@ -171,26 +171,26 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
-        self.confset(self.ns_leader, 'auto_failover', 'false')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
         self.put(self.leader, tid, 0, 'testkey0', self.now(), 'testvalue0')
 
         self.stop_client(self.leader)
+        self.updatetablealive(self.ns_leader, name, '*', self.leader, 'no')
         time.sleep(10)
 
         self.changeleader(self.ns_leader, name, 0)
+        time.sleep(2)
 
         rs2 = self.showtable(self.ns_leader)
         rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
         rs4 = self.makesnapshot(self.ns_leader, name, 1, 'ns_client')
         self.start_client(self.leader)
         time.sleep(10)
-        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
 
         self.assertIn('MakeSnapshot ok', rs3)
         self.assertIn('Fail to makesnapshot', rs4)

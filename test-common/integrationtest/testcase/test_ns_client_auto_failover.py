@@ -39,7 +39,6 @@ class TestAutoFailover(TestCaseBase):
         tid = rs1.keys()[0][1]
 
         self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
 
         if failover_reason == 'killed':
             self.stop_client(self.leader)
@@ -55,21 +54,22 @@ class TestAutoFailover(TestCaseBase):
             self.connectzk(self.leader)
         time.sleep(10)
         self.assertIn('kTabletOffline', rs2[self.leader])
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
         # leader to offline
-        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'no'])  # RTIDB-203
-        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '3', self.leader)], ['leader', '2', '144000', 'no'])
+        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])  # RTIDB-203
+        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '3', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
 
         # slave to leader
-        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
         act1 = rs3[(name, tid, '2', self.slave1)]
         act2 = rs3[(name, tid, '2', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
-        self.assertEqual(rs3[(name, tid, '3', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '3', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
 
     @ddt.data(
@@ -98,7 +98,6 @@ class TestAutoFailover(TestCaseBase):
         tid = rs1.keys()[0][1]
 
         self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
 
         if failover_reason == 'killed':
             self.stop_client(self.slave1)
@@ -112,15 +111,17 @@ class TestAutoFailover(TestCaseBase):
             self.start_client(self.slave1)
         elif failover_reason == 'network_failure':
             self.connectzk(self.slave1)
+        time.sleep(10)
         self.assertIn('kTabletOffline', rs2[self.slave1])
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
-        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'no'])
-        self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
 
     def test_auto_failover_slave_network_flashbreak(self):
         """
@@ -144,7 +145,6 @@ class TestAutoFailover(TestCaseBase):
         tid = rs1.keys()[0][1]
 
         self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'true')
 
         self.connectzk(self.leader)  # flashbreak
         self.showtable(self.ns_leader)
@@ -157,29 +157,30 @@ class TestAutoFailover(TestCaseBase):
         rs4 = self.showtablet(self.ns_leader)
         self.assertIn('kTabletHealthy', rs4[self.leader])
         self.assertIn('kTabletHealthy', rs4[self.slave1])
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
-        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs2[(name, tid, '0', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '0', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '1', self.slave1)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
-        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '2', '144000', 'yes'])
-        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '2', '144000', 'yes'])
+        self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
 
 
+    @multi_dimension(True)
     def test_select_leader(self):
         """
         slave1改为leader role，put数据后改回follower role，leader发生故障后，新主会切换到slave1，数据同步正确
         :return:
         """
         self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'false')
 
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
@@ -232,6 +233,7 @@ class TestAutoFailover(TestCaseBase):
         self.connectzk(new_tb_leader1)
         time.sleep(10)
         self.showtable(self.ns_leader)
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
         self.assertEqual(new_tb_leader1, self.slave1)
         self.assertEqual(new_tb_leader2, self.slave2)
@@ -243,10 +245,30 @@ class TestAutoFailover(TestCaseBase):
         self.multidimension_scan_vk = {'k1': 'ccard1'}
         rs5 = self.put(new_tb_leader2, tid, pid, "testkey1", self.now() + 9999, "ccard1")
         self.assertIn("ok", rs5)
-        time.sleep(0.1)
-        self.assertTrue(
-            'ccard1' in self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1))
+        time.sleep(1)
+        rs_scan = self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1)
+        self.assertTrue('ccard1' in rs_scan)
 
+    def test_enable_auto_failover(self):
+        """
+        auto_failover开启时不能执行手动恢复命令
+        :return:
+        """
+        msg = "auto_failover is enabled, cannot execute this cmd"
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        rs = self.offlineendpoint(self.ns_leader, self.leader)
+        self.assertIn(msg, rs)
+        rs = self.recoverendpoint(self.ns_leader, self.leader)
+        self.assertIn(msg, rs)
+        rs = self.changeleader(self.ns_leader, "test", 0)
+        self.assertIn(msg, rs)
+        rs = self.recovertable(self.ns_leader, "test", 0, self.leader)
+        self.assertIn(msg, rs)
+        rs = self.migrate(self.ns_leader, self.slave1, "test", "4-6", self.slave2)
+        self.assertIn(msg, rs)
+        rs = self.updatetablealive(self.ns_leader, "test", "0", self.slave1, "yes")
+        self.assertIn(msg, rs)
+        self.confset(self.ns_leader, 'auto_failover', 'false')
 
 if __name__ == "__main__":
     load(TestAutoFailover)

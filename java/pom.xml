@@ -3,27 +3,27 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com._4paradigm</groupId>
 	<artifactId>rtidb-client</artifactId>
-	<version>1.3.2-SNAPSHOT</version>
+	<version>1.3.9-SNAPSHOT</version>
 	<packaging>jar</packaging>
-
+	<!--<properties>-->
+		<!--<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>-->
+		<!--<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>-->
+	<!--</properties>-->
 
 	<dependencies>
 
-		<!-- https://mvnrepository.com/artifact/junit/junit -->
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.12</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.testng</groupId>
-			<artifactId>testng</artifactId>
-			<version>6.9.10</version>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+  <dependency>
+    <groupId>org.testng</groupId>
+    <artifactId>testng</artifactId>
+    <version>6.9.4</version>
+    <scope>test</scope>
+  </dependency>
+  <dependency>
+    <groupId>junit</groupId>
+    <artifactId>junit</artifactId>
+    <version>4.10</version>
+    <scope>test</scope>
+  </dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
@@ -62,7 +62,14 @@
 		<dependency>
 			<groupId>io.brpc</groupId>
 			<artifactId>brpc-java</artifactId>
-			<version>1.1.0-RTIDB-SNAPSHOT</version>
+			<version>1.3.6-RELEASE</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.xerial.snappy/snappy-java -->
+		<dependency>
+		    <groupId>org.xerial.snappy</groupId>
+		    <artifactId>snappy-java</artifactId>
+		    <version>1.1.7.2</version>
 		</dependency>
 
 		<dependency>
@@ -80,19 +87,15 @@
 				<configuration>
 					<source>1.7</source>
 					<target>1.7</target>
+					<encoding>UTF-8</encoding>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.20.1</version>
-			</plugin>
+            </plugin>
 			<plugin>
 				<groupId>org.xolstice.maven.plugins</groupId>
 				<artifactId>protobuf-maven-plugin</artifactId>
 				<version>0.5.0</version>
 				<configuration>
-          <protocExecutable>/usr/local/bin/protoc</protocExecutable>
+<protocExecutable>/vagrant/rtidb/thirdparty/bin/protoc</protocExecutable>
 				</configuration>
 				<executions>
 					<execution>
@@ -103,6 +106,34 @@
 					</execution>
 				</executions>
 			</plugin>
+<plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.0</version>
+        <configuration>
+		  <forkMode>once</forkMode>
+		  <argLine>-Dfile.encoding=UTF-8</argLine>
+          <properties>
+            <property>
+              <name>junit</name>
+              <value>false</value>
+            </property>
+          </properties>
+           <threadCount>1</threadCount>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit47</artifactId>
+            <version>2.22.0</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-testng</artifactId>
+            <version>2.22.0</version>
+          </dependency>
+        </dependencies>
+      </plugin>
 		</plugins>
 	</build>
 	<distributionManagement>

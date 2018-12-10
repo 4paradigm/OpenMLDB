@@ -11,6 +11,11 @@ enum TableMode {
     kTableFollower = 2;
 }
 
+enum CompressType {
+    kNoCompress = 0;
+    kSnappy = 1;
+}
+
 enum TableState {
     kTableUndefined = 0;
     kTableNormal = 1;
@@ -56,7 +61,7 @@ enum OPType {
     kReAddReplicaNoSendOP = 7;     // need not send snapshot
     kReAddReplicaWithDropOP = 8;   // should droptable before loadtable
     kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
-    kUpdateTableAliveOP = 10;
+    kUpdateTableAliveOP = 10;      // deleted
     kMigrateOP = 11;
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
@@ -81,6 +86,7 @@ enum TaskType {
     kSelectLeader = 15;
     kUpdateLeaderInfo = 16;
     kRecoverTable = 17;
+    kCheckBinlogSyncProgress = 18;
 }
 
 enum TaskStatus {
@@ -88,6 +94,7 @@ enum TaskStatus {
     kDoing = 2;
     kDone = 3;
     kFailed = 4;
+    kCanceled = 5;
 }
 
 message TaskInfo {
@@ -95,6 +102,8 @@ message TaskInfo {
     required OPType op_type = 2;
     required TaskType task_type = 3;
     required TaskStatus status = 4;
+    optional string endpoint = 5;
+    optional bool is_rpc_send = 6 [default=false];
 }
 
 message OPInfo {
@@ -108,6 +117,7 @@ message OPInfo {
     optional string name = 8;
     optional uint32 pid = 9;
     optional uint64 parent_id = 10;
+    optional uint32 vec_idx = 11;   // the index in task_vec
 }
 
 message Manifest {
@@ -250,6 +260,8 @@ message TableMeta {
     optional uint64 term = 10 [default = 0];
     optional bytes schema = 11;
     repeated string dimensions = 12;
+    optional CompressType compress_type = 13;
+    optional uint32 key_entry_max_height = 14;
 }
 
 message CreateTableRequest {
@@ -298,6 +310,28 @@ message GetTableSchemaResponse {
     optional int32 code = 1;
     optional string msg = 2;
     optional bytes schema = 3;
+}
+
+message UpdateTTLRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional TTLType type = 3;
+    optional uint64 value = 4;
+}
+
+message UpdateTTLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message SetConcurrencyRequest {
+    optional string key = 1;
+    optional int32 max_concurrency = 2;
+}
+
+message SetConcurrencyResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
 }
 
 // raft protocol
@@ -382,6 +416,8 @@ message TableStatus {
     optional uint64 record_idx_byte_size = 14;
     optional uint64 record_pk_cnt = 15;
     optional TTLType ttl_type = 16;
+    optional CompressType compress_type = 17;
+    optional uint32 skiplist_height = 18;
 }
 
 message GetTableStatusResponse {
@@ -432,6 +468,23 @@ message GetManifestResponse {
     optional Manifest manifest = 3;
 }
 
+message GetTableFollowerRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message FollowerInfo {
+    optional string endpoint = 1;
+    optional uint64 offset = 2;
+}
+
+message GetTableFollowerResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 offset = 3;
+    repeated FollowerInfo follower_info = 4;
+}
+
 message CheckFileRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
@@ -459,6 +512,9 @@ service TabletServer {
 	rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
+    rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
+    rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
+    rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
 
     // replication api for master
 	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);

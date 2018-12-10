@@ -21,20 +21,25 @@ spec:
           value: {{.zk_cluster}}
         - name: zk_root_path
           value: "/rtidb"
-        - name: port
-          value: {{.nameserver_port}}
+        - name: nameserver_port
+          value: "{{.nameserver_port}}"
         - name: MY_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: {{.registry}}/nameserver:v3.1.0
+        image: {{.registry}}/{{.image}}
         name: rtidb
         imagePullPolicy: Always
       imagePullSecrets:
       - name: docker-secret
+      volumes:
+      - name: logs
+        hostPath:
+          path: {{.hostpath}}/rtidb/ns_logs
+          type: DirectoryOrCreate
       securityContext: {}
       securityContext: 
         runAsUser: 0
       nodeSelector:
-        rtidb-nameserver: "true"
+        prophet.4paradigm.com/rtidb-nameserver: "true"
 

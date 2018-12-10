@@ -134,8 +134,8 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
             table->Put(entry.ts(), entry.value(), entry.dimensions());
         }else {
             // the legend way
-            table->Put(entry.pk(), entry.ts(), 
-                       entry.value().c_str(), 
+            table->Put(entry.pk(), entry.ts(),
+                       entry.value().c_str(),
                        entry.value().size());
         }
         cur_offset = entry.log_index();
@@ -180,7 +180,7 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
     std::atomic<uint64_t> g_succ_cnt(0);
     std::atomic<uint64_t> g_failed_cnt(0);
     RecoverSingleSnapshot(full_path, table, &g_succ_cnt, &g_failed_cnt);
-    PDLOG(INFO, "[Recover] progress done stat: success count %lu, failed count %lu", 
+    PDLOG(INFO, "[Recover] progress done stat: success count %lu, failed count %lu",
                     g_succ_cnt.load(std::memory_order_relaxed),
                     g_failed_cnt.load(std::memory_order_relaxed));
     if (g_succ_cnt.load(std::memory_order_relaxed) != expect_cnt) {
@@ -190,7 +190,7 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 }
 
 
-void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table, 
+void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
     do {
@@ -233,17 +233,17 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 continue;
             }
             succ_cnt++;
-            if (succ_cnt % 100000 == 0) { 
+            if (succ_cnt % 100000 == 0) {
                 PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
                         succ_cnt, failed_cnt);
             }
             if (entry.dimensions_size() > 0) {
                 table->Put(entry.ts(), entry.value(), entry.dimensions());
-                
+
             }else {
                 // the legend way
-                table->Put(entry.pk(), entry.ts(), 
-                           entry.value().c_str(), 
+                table->Put(entry.pk(), entry.ts(),
+                           entry.value().c_str(),
                            entry.value().size());
             }
         }
@@ -259,7 +259,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
 }
 
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
-            uint64_t& count, uint64_t& expired_key_num) {
+                          uint64_t& count, uint64_t& expired_key_num) {
+
 	std::string full_path = snapshot_path_ + manifest.name();
 	FILE* fd = fopen(full_path.c_str(), "rb");
 	if (fd == NULL) {
@@ -280,13 +281,13 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 		}
 		if (!status.ok()) {
 			PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
-			has_error = true;        
+			has_error = true;
 			break;
 		}
 		if (!entry.ParseFromString(record.ToString())) {
 			PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
 					::rtidb::base::DebugString(record.ToString()).c_str());
-			has_error = true;        
+			has_error = true;
 			break;
 		}
 		// delete timeout key
@@ -296,13 +297,13 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
 		}
 		status = wh->Write(record);
 		if (!status.ok()) {
-			PDLOG(WARNING, "fail to write snapshot. status[%s]", 
+			PDLOG(WARNING, "fail to write snapshot. status[%s]",
 			              status.ToString().c_str());
-			has_error = true;        
+			has_error = true;
 			break;
 		}
         if ((count + expired_key_num) % KEY_NUM_DISPLAY == 0) {
-			PDLOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count()); 
+			PDLOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count());
         }
 		count++;
 	}
@@ -314,8 +315,8 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
     }
 	if (has_error) {
 		return -1;
-	}	
-	PDLOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num); 
+	}
+	PDLOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num);
 	return 0;
 }
 
@@ -356,7 +357,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
         // parse manifest error
         has_error = true;
     }
-    
+
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
@@ -368,9 +369,9 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
         if (status.ok()) {
             ::rtidb::api::LogEntry entry;
             if (!entry.ParseFromString(record.ToString())) {
-                PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]", 
+                PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]",
                         ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
-                has_error = true;        
+                has_error = true;
                 break;
             }
             if (entry.log_index() <= cur_offset) {
@@ -391,9 +392,9 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             }
             ::rtidb::base::Status status = wh->Write(record);
             if (!status.ok()) {
-                PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]", 
+                PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]",
                 tmp_file_path.c_str(), status.ToString().c_str());
-                has_error = true;        
+                has_error = true;
                 break;
             }
             write_count++;
@@ -407,7 +408,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             break;
         } else {
             PDLOG(WARNING, "fail to get record. status is %s", status.ToString().c_str());
-            has_error = true;        
+            has_error = true;
             break;
         }
     }
@@ -425,11 +426,11 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             if (RecordOffset(snapshot_name, write_count, cur_offset, last_term) == 0) {
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
-                    PDLOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str()); 
+                    PDLOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str());
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
                 uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
-                PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second. write key %lu expired key %lu", 
+                PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second. write key %lu expired key %lu",
                           snapshot_name.c_str(), offset_, cur_offset, consumed, write_count, expired_key_num);
                 offset_ = cur_offset;
                 out_offset = cur_offset;
@@ -503,6 +504,3 @@ int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count,
 
 }
 }
-
-
-

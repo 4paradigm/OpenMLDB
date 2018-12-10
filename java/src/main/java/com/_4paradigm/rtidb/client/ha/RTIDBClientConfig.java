@@ -5,6 +5,10 @@ import java.util.Map;
 
 import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 
+/**
+ * @author wangtaize
+ *
+ */
 public class RTIDBClientConfig {
 
     public enum Mode {
@@ -27,8 +31,24 @@ public class RTIDBClientConfig {
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	private String nsEndpoint;
 	private int traverseLimit = 100;
+	private int timerBucketSize = 16;
+	
 
-	public void disableMetrics() {
+    /**
+     * @return the timerBucketSize
+     */
+    public int getTimerBucketSize() {
+        return timerBucketSize;
+    }
+
+    /**
+     * @param timerBucketSize the timerBucketSize to set
+     */
+    public void setTimerBucketSize(int timerBucketSize) {
+        this.timerBucketSize = timerBucketSize;
+    }
+
+    public void disableMetrics() {
 	    enableMetrics = false;
 	}
 
@@ -44,6 +64,10 @@ public class RTIDBClientConfig {
      */
     public void setNsEndpoint(String nsEndpoint) {
         this.nsEndpoint = nsEndpoint;
+    }
+
+    @Deprecated
+    public void setTableInfoCompressed(boolean tableInfoCompressed) {
     }
 
     public boolean isRemoveDuplicateByTime() {
@@ -176,6 +200,4 @@ public class RTIDBClientConfig {
     public void setReadStrategies(Map<String, ReadStrategy> readStrategies) {
         this.readStrategies = readStrategies;
     }
-
-    
 }

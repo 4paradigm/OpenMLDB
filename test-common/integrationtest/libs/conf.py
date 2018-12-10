@@ -27,3 +27,5 @@ table_meta_ele = {
 }
 
 rtidb_log_info = cf.get("rtidb", "log_level")
+
+cluster_mode = cf.get("mode", "cluster_mode")

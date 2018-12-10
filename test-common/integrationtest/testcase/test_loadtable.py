@@ -129,8 +129,10 @@ class TestLoadTable(TestCaseBase):
         从节点loadtable后可以同步主节点后写入的数据
         :return:
         """
-        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true', self.slave1)
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 8, 'true')
         self.assertIn('Create table ok', rs1)
+        rs = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
+        self.assertIn('AddReplica ok', rs)
         self.put(self.leader,
                  self.tid,
                  self.pid,
@@ -573,6 +575,7 @@ class TestLoadTable(TestCaseBase):
 
         # 将table目录拷贝到新节点
         self.cp_db(self.leaderpath, self.slave1path, self.tid, self.pid)
+        time.sleep(1)
 
         rs7 = self.loadtable(self.slave1, 't', self.tid, self.pid)
         self.assertIn('LoadTable ok', rs7)
@@ -618,10 +621,6 @@ class TestLoadTable(TestCaseBase):
 
         rs4 = self.makesnapshot(self.slave1, self.tid, self.pid)
         self.assertIn('MakeSnapshot ok', rs4)
-        mf = self.get_manifest(self.slave1path, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '0')
-        self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '0')
 
 
     def test_loadtable_snapshot_deleted(self):
@@ -731,7 +730,7 @@ class TestLoadTable(TestCaseBase):
                      'testvalue{}'.format(i))
         rs1 = self.loadtable(self.slave1, 't', self.tid, self.pid, 1, 8, 'false', self.slave1)
         self.assertIn('Fail', rs1)
-        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 1, 8, 'false', self.slave1)
+        rs0 = self.create(self.slave1, 't', self.tid, self.pid, 1, 8, 'false')
         self.assertIn('Create table ok', rs0)
         rs2 = self.addreplica(self.leader, self.tid, self.pid, 'client', self.slave1)
         self.assertIn('AddReplica ok', rs2)

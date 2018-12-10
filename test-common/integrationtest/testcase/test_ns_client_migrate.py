@@ -16,8 +16,6 @@ class TestNameserverMigrate(TestCaseBase):
     leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
 
     def createtable_put(self, tname, data_count):
-        self.confset(self.ns_leader, 'auto_failover', 'true')
-        self.confset(self.ns_leader, 'auto_recover_table', 'true')
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
             '"{}"'.format(tname), '"kAbsoluteTime"', 144000, 8,
@@ -141,11 +139,14 @@ class TestNameserverMigrate(TestCaseBase):
         rs0 = self.get_table_status(self.leader, self.tid, self.pid)  # get offset leader
         self.stop_client(self.leader)
         time.sleep(2)
+        self.offlineendpoint(self.ns_leader, self.leader)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, '4-6', self.slave2)
         time.sleep(8)
         rs2 = self.showtable(self.ns_leader)
 
         self.start_client(self.leader)  # recover table
+        time.sleep(5)
+        self.recoverendpoint(self.ns_leader, self.leader)
         time.sleep(10)
         self.showtable(self.ns_leader)
         rs6 = self.get_table_status(self.slave1, self.tid, self.pid)  # get offset slave1
@@ -171,7 +172,6 @@ class TestNameserverMigrate(TestCaseBase):
         :return:
         """
         tname = str(time.time())
-        self.confset(self.ns_leader, 'auto_failover', 'false')
         self.createtable_put(tname, 500)
         self.stop_client(self.leader)
         time.sleep(2)
@@ -182,7 +182,6 @@ class TestNameserverMigrate(TestCaseBase):
         self.start_client(self.leader)
         time.sleep(10)
         self.showtable(self.ns_leader)
-        self.confset(self.ns_leader, 'auto_failover', 'true')
         self.assertIn('partition migrate ok', rs1)
         for i in range(4, 7):
             self.assertIn((tname, str(self.tid), str(i), self.slave1), rs2)

@@ -91,6 +91,19 @@ bool NsClient::ShowOPStatus(::rtidb::nameserver::ShowOPStatusResponse& response,
     return false;
 }
 
+bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
+    ::rtidb::nameserver::CancelOPRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_op_id(op_id);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::CancelOP,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg) {
     ::rtidb::nameserver::CreateTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;
@@ -191,11 +204,14 @@ bool NsClient::ConfGet(const std::string& key, std::map<std::string, std::string
     return false;
 }
 
-bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& msg) {
+bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& candidate_leader, std::string& msg) {
     ::rtidb::nameserver::ChangeLeaderRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
     request.set_pid(pid);
+    if (!candidate_leader.empty()) {
+        request.set_candidate_leader(candidate_leader);
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ChangeLeader,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -205,10 +221,13 @@ bool NsClient::ChangeLeader(const std::string& name, uint32_t pid, std::string& 
     return false;
 }
 
-bool NsClient::OfflineEndpoint(const std::string& endpoint, std::string& msg) {
+bool NsClient::OfflineEndpoint(const std::string& endpoint, uint32_t concurrency, std::string& msg) {
     ::rtidb::nameserver::OfflineEndpointRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
+    if (concurrency > 0) {
+        request.set_concurrency(concurrency);
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::OfflineEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -237,10 +256,15 @@ bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name,
     return false;
 }    
 
-bool NsClient::RecoverEndpoint(const std::string& endpoint, std::string& msg) {
+bool NsClient::RecoverEndpoint(const std::string& endpoint, bool need_restore, 
+            uint32_t concurrency, std::string& msg) {
     ::rtidb::nameserver::RecoverEndpointRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_endpoint(endpoint);
+    if (concurrency > 0) {
+        request.set_concurrency(concurrency);
+    }
+    request.set_need_restore(need_restore);
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::RecoverEndpoint,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -321,6 +345,47 @@ bool NsClient::GetTablePartition(const std::string& name, uint32_t pid,
     }
     return false;
 }            
+
+bool NsClient::UpdateTableAliveStatus(const std::string& endpoint, std::string& name, 
+                    uint32_t pid, bool is_alive, std::string& msg) {
+    ::rtidb::nameserver::UpdateTableAliveRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_endpoint(endpoint);
+    request.set_name(name);
+    request.set_is_alive(is_alive);
+    if (pid < UINT32_MAX) {
+        request.set_pid(pid);
+    }
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTableAliveStatus,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::UpdateTTL(const std::string& name, 
+                         const std::string& ttl_type,
+                         uint64_t ttl,
+                         std::string& msg) {
+    ::rtidb::nameserver::UpdateTTLRequest request;
+    ::rtidb::nameserver::UpdateTTLResponse response;
+    request.set_name(name);
+    if (ttl_type == "absolute") {
+        request.set_ttl_type("kAbsoluteTime");
+    }else {
+        request.set_ttl_type("kLatestTime");
+    }
+    request.set_value(ttl);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::UpdateTTL,
+                                  &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
 
 }
 }

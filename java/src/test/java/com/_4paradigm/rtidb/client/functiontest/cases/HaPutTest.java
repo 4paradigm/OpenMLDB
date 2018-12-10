@@ -1,15 +1,14 @@
 package com._4paradigm.rtidb.client.functiontest.cases;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
-import com._4paradigm.utils.MurmurHash;
+import com._4paradigm.rtidb.utils.MurmurHash;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
@@ -17,7 +16,6 @@ import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
@@ -34,7 +32,7 @@ public class HaPutTest {
   private static RTIDBClusterClient client = null;
   private static TableSyncClient tableSyncClient = null;
   private static String[] nodes = new String[] {"127.0.0.1:37770", "127.0.0.1:37771", "127.0.0.1:37772"};
-
+  private final static Logger logger = LoggerFactory.getLogger(HaPutTest.class);
   static {
     try {
       nsc.init();
@@ -58,7 +56,11 @@ public class HaPutTest {
     }
     return str;
   }
-
+  @AfterClass
+  public void tearDown() {
+      nsc.close();
+      client.close();
+  }
   private String createKvTable() {
     String name = String.valueOf(System.currentTimeMillis());
     PartitionMeta pm0_0 = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
@@ -219,7 +221,7 @@ public class HaPutTest {
         Object[] row = tableSyncClient.getRow(name, value1.toString(), 1555555555555L);
         Assert.assertEquals(row[0], value1);
         if (value2 != null && value2.equals("")) {
-          value2 = null;
+          value2 = "";
         }
         Assert.assertEquals(row[2], "value3");
 

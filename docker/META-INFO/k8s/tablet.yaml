@@ -21,15 +21,15 @@ spec:
           value: {{.zk_cluster}}
         - name: zk_root_path
           value: "/rtidb"
-        - name: port
-          value: {{.tablet_port}}
+        - name: tablet_port
+          value: "{{.tablet_port}}"
         - name: metric_port
-          value: {{.metric_port}}
+          value: "{{.metric_port}}"
         - name: MY_NODE_NAME
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: {{.registry}}/tablet:v3.1.0
+        image: {{.registry}}/{{.image}}
         name: rtidb
         imagePullPolicy: Always
         volumeMounts:
@@ -49,7 +49,11 @@ spec:
         hostPath:
           path: {{.hostpath}}/rtidb/recycle
           type: DirectoryOrCreate
+      - name: logs
+        hostPath:
+          path: {{.hostpath}}/rtidb/tablet_logs
+          type: DirectoryOrCreate
       securityContext:
         runAsUser: 0
       nodeSelector:
-        rtidb-tablet: "true"
+        prophet.4paradigm.com/rtidb-tablet: "true"

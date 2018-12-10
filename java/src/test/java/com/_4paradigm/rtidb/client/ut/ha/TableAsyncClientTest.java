@@ -4,9 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com._4paradigm.rtidb.tablet.Tablet;
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
@@ -14,7 +15,6 @@ import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TableAsyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
@@ -22,6 +22,7 @@ import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.rtidb.tablet.Tablet;
 
 public class TableAsyncClientTest {
 
@@ -33,7 +34,8 @@ public class TableAsyncClientTest {
     private static RTIDBClusterClient client = null;
     private static TableAsyncClient tableAsyncClient = null;
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
-    static {
+    @BeforeClass
+    public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
@@ -47,6 +49,11 @@ public class TableAsyncClientTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+    @AfterClass
+    public static void closeResource() {
+        nsc.close();
+        client.close();
     }
     
     private String createKvTable() {
@@ -318,48 +325,48 @@ public class TableAsyncClientTest {
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 13, Tablet.GetType.kSubKeyEq);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // le
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 11, Tablet.GetType.kSubKeyLe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
 
             // ge
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyGe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // ge
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 13, Tablet.GetType.kSubKeyGe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyGt);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
 
             // gt
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 11, Tablet.GetType.kSubKeyGt);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 3.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 3.0 }, row);
             }
              // le
             {
                 GetFuture gf = tableAsyncClient.get(name, "card0", 12, Tablet.GetType.kSubKeyLe);
                 Object[] row = gf.getRow();
-                Assert.assertArrayEquals(new Object[] { "card0", "1224", 2.0 }, row);
+                Assert.assertEquals(new Object[] { "card0", "1224", 2.0 }, row);
             }
         } catch (Exception e) {
             Assert.fail();

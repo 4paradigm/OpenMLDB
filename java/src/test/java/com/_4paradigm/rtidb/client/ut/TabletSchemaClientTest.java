@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
@@ -29,7 +31,9 @@ public class TabletSchemaClientTest {
     private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    static {
+    
+    @BeforeClass
+    public static void setUp() {
         try {
             snc.init();
         } catch (Exception e) {
@@ -38,6 +42,12 @@ public class TabletSchemaClientTest {
         }
         tabletClient = new TabletClientImpl(snc);
         tableClient = new TableSyncClientImpl(snc);
+
+    }
+    
+    @AfterClass
+    public static void tearDown() {
+        snc.close();
     }
     @Test
     public void testEmptyTableNameCreate() {
@@ -73,6 +83,25 @@ public class TabletSchemaClientTest {
         schema.add(desc2);
         boolean ok = tabletClient.createTable("latest ttl", tid, 0, 0, TTLType.kLatestTime, 8, schema);
         Assert.assertTrue(ok);
+    }
+
+    @Test
+    public void testTTL() {
+        int tid = id.incrementAndGet();
+        boolean ok = tabletClient.createTable("ttl", tid, 0, 1000, TTLType.kLatestTime, 8);
+        Assert.assertTrue(ok);
+        Assert.assertTrue(tabletClient.dropTable(tid, 0));
+        tid = id.incrementAndGet();
+        ok = tabletClient.createTable("ttl1", tid, 0, 1001, TTLType.kLatestTime, 8);
+        Assert.assertFalse(ok);
+        int max_ttl = 60*24*365*30;
+        tid = id.incrementAndGet();
+        ok = tabletClient.createTable("ttl2", tid, 0, max_ttl + 1, TTLType.kAbsoluteTime, 8);
+        Assert.assertFalse(ok);
+        tid = id.incrementAndGet();
+        ok = tabletClient.createTable("ttl3", tid, 0, max_ttl, TTLType.kAbsoluteTime, 8);
+        Assert.assertTrue(ok);
+        Assert.assertTrue(tabletClient.dropTable(tid, 0));
     }
 
     @Test

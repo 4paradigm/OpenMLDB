@@ -78,7 +78,8 @@ public:
           const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl,
           bool is_leader,
-          const std::vector<std::string>& replicas);
+          const std::vector<std::string>& replicas,
+          uint32_t key_entry_max_height);
 
     Table(const std::string& name,
           uint32_t id,
@@ -119,13 +120,16 @@ public:
     uint64_t SchedGc();
 
     uint64_t GetTTL() const {
-        return ttl_ / (60 * 1000);
+        return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
     }
 
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
     uint64_t GetRecordIdxByteSize();
     uint64_t GetRecordPkCnt();
+
+    void SetCompressType(::rtidb::api::CompressType compress_type);
+    ::rtidb::api::CompressType GetCompressType();
 
     inline uint64_t GetRecordByteSize() const {
         return record_byte_size_.load(std::memory_order_relaxed);    
@@ -228,6 +232,19 @@ public:
         return ttl_type_;
     }
 
+    inline void SetTTL(uint64_t ttl) {
+        ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+        if (ttl > 0) {
+            enable_gc_.store(true, std::memory_order_relaxed);
+        }else {
+            enable_gc_.store(false, std::memory_order_relaxed);
+        }
+    }
+
+    inline uint32_t GetKeyEntryHeight() {
+        return key_entry_max_height_;
+    }
+
 private:
     std::string const name_;
     uint32_t const id_;
@@ -236,9 +253,8 @@ private:
     uint32_t const idx_cnt_;
     // Segments is readonly
     Segment*** segments_;
-    std::atomic<uint32_t> ref_;
     std::atomic<bool> enable_gc_;
-    uint64_t const ttl_;
+    std::atomic<uint64_t> ttl_;
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
@@ -250,6 +266,8 @@ private:
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
+    ::rtidb::api::CompressType compress_type_;
+    uint32_t key_entry_max_height_;
 };
 
 }

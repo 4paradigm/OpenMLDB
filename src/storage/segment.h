@@ -78,6 +78,7 @@ private:
 class KeyEntry {
 public:
     KeyEntry(const char* data, uint32_t size):key(data, size, true), entries(12, 4, tcmp), refs_(0){}
+    KeyEntry(const char* data, uint32_t size, uint8_t height):key(data, size, true), entries(height, 4, tcmp), refs_(0){}
     ~KeyEntry() {}
 
     // just return the count of datablock
@@ -128,6 +129,7 @@ class Segment {
 
 public:
     Segment();
+    Segment(uint8_t height);
     ~Segment();
 
     // Put time data 
@@ -182,6 +184,7 @@ private:
     std::atomic<uint64_t> idx_cnt_;
     std::atomic<uint64_t> idx_byte_size_;
     std::atomic<uint64_t> pk_cnt_;
+    uint8_t key_entry_max_height_;
 };
 
 }// namespace storage

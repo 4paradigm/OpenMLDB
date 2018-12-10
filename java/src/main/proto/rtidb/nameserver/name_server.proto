@@ -4,6 +4,11 @@ option cc_generic_services = true;
 option java_package = "com._4paradigm.rtidb.ns";
 option java_outer_classname = "NS";
 
+enum CompressType {
+    kNoCompress = 0;
+    kSnappy = 1;
+}
+
 message ColumnDesc {
     required string name = 1;
     required string type = 2;
@@ -25,18 +30,34 @@ message TablePartition {
     required uint32 pid = 1;
     repeated PartitionMeta partition_meta = 2;
     repeated TermPair term_offset = 3;
+    optional uint64 record_cnt = 4;
+    optional uint64 record_byte_size = 5;
+}
+
+message UpdateTTLRequest {
+    optional string name = 1;
+    optional string ttl_type = 2;
+    optional uint64 value = 3;
+}
+
+message UpdateTTLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
 }
 
 message TableInfo {
-	required string name = 1;
-	optional uint64 ttl = 2 [default = 0];
-	optional uint32 seg_cnt = 3 [default = 8];
+    optional string name = 1;
+    optional uint64 ttl = 2 [default = 0];
+    optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
-	optional uint32 tid = 5;
+    optional uint32 tid = 5;
     repeated ColumnDesc column_desc = 6;
     optional string ttl_type = 7 [default = "kAbsoluteTime"];
-	optional uint32 partition_num = 8;
-	optional uint32 replica_num = 9; // contain the leader
+    optional uint32 partition_num = 8;
+    optional uint32 replica_num = 9; // contain the leader
+    optional CompressType compress_type = 10 [default = kNoCompress];
+    optional uint32 key_entry_max_height = 11;
+
 }
 
 message CreateTableRequest {
@@ -94,6 +115,7 @@ message ConfGetResponse {
 message ChangeLeaderRequest {
 	required string name = 1;
     required uint32 pid = 2;
+    optional string candidate_leader = 3;
 }
 
 message OfflineEndpointRequest {
@@ -161,6 +183,7 @@ message ChangeLeaderData {
     optional uint64 offset = 5;
     optional string leader = 6;
     repeated string follower = 7;
+    optional string candidate_leader = 8;
 }
 
 message OPStatus {
@@ -188,6 +211,13 @@ message GetTablePartitionResponse {
 message SetTablePartitionRequest {
     optional string name = 1;
     optional TablePartition table_partition = 2;
+}
+
+message UpdateTableAliveRequest {
+    optional string name = 1;
+    optional string endpoint = 2;
+    optional uint32 pid = 3;
+    optional bool is_alive = 4;
 }
 
 message ShowOPStatusRequest{
@@ -224,4 +254,7 @@ service NameServer {
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
     rpc SetTablePartition(SetTablePartitionRequest) returns (GeneralResponse);
     rpc GetTablePartition(GetTablePartitionRequest) returns (GetTablePartitionResponse);
+    rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
+    rpc UpdateTableAliveStatus(UpdateTableAliveRequest) returns (GeneralResponse);
+
 }

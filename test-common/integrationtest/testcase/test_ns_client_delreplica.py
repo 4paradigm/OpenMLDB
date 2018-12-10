@@ -175,6 +175,7 @@ class TestDelReplicaNs(TestCaseBase):
         tid = rs2.keys()[0][1]
 
         self.stop_client(self.slave1)
+        self.updatetablealive(self.ns_leader, name, '*', self.slave1, 'no')
         time.sleep(10)
 
         self.showtable(self.ns_leader)
@@ -184,7 +185,7 @@ class TestDelReplicaNs(TestCaseBase):
         self.start_client(self.slave1)
         time.sleep(10)
         self.assertIn('Fail to delreplica', rs3)
-        self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '8', '100', 'no'])
+        self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '100', 'no', 'kNoCompress'])
 
 
 if __name__ == "__main__":
