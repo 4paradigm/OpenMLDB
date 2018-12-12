@@ -4365,6 +4365,29 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
     uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
+        if (auto_failover_.load(std::memory_order_acquire)) {
+            auto iter = table_info_.find(name);
+            if (iter == table_info_.end()) {
+                task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+                return;
+            }
+            for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+                if (iter->second->table_partition(idx).pid() != pid) {
+                    continue;
+                }
+                for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
+                            iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
+                        PDLOG(WARNING, "leader is alive, need not changeleader. table name[%s] pid[%u]", 
+                                        name.c_str(), pid);
+                        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                        return;
+                    }
+                }
+                break;
+            }
+        }
         if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 2))) {
             PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u]", name.c_str(), pid);
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
