@@ -494,7 +494,9 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             if (offline_endpoint_map_.find(tit->first) == offline_endpoint_map_.end()) {
                 offline_endpoint_map_.insert(std::make_pair(tit->first, tit->second->ctime_));
-                thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first, false));
+                if (running_.load(std::memory_order_acquire)) {
+                    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first, false));
+                }
             } else {
                 offline_endpoint_map_[tit->first] = tit->second->ctime_;
             }
@@ -3163,7 +3165,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateCheckBinlogSyncProgressTask(op_index, 
-                ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, pid, endpoint, offset_delta);
+                ::rtidb::api::OPType::kReAddReplicaOP, name, pid, endpoint, offset_delta);
     if (!task) {
         PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
