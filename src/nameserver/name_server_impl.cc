@@ -536,6 +536,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         }
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
+        PDLOG(INFO, "Run OfflineEndpoint. endpoint is %s", endpoint.c_str());
         UpdateEndpointTableAlive(endpoint, false);
         OfflineEndpointInternal(endpoint, FLAGS_name_server_task_concurrency);
     }
@@ -583,6 +584,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
         OnTabletOffline(endpoint, true);
     }
+    PDLOG(INFO, "Run RecoverEndpoint. endpoint is %s", endpoint.c_str());
     RecoverEndpointInternal(endpoint, false, FLAGS_name_server_task_concurrency);
     {
         std::lock_guard<std::mutex> lock(mu_);
