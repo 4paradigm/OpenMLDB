@@ -14,7 +14,7 @@
 
 #--thread_pool_size=16
 #--request_max_retry=3
---request_timeout_ms=5000
+#--request_timeout_ms=12000
 #--request_sleep_time=1000
 
 --zk_session_timeout=10000
