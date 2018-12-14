@@ -70,6 +70,8 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
         self.assertEqual(rs3[(name, tid, '3', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.get_new_ns_leader()
+        self.ns_drop(self.ns_leader, name)
 
 
     @ddt.data(
@@ -122,6 +124,8 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '1', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.get_new_ns_leader()
+        self.ns_drop(self.ns_leader, name)
 
     def test_auto_failover_slave_network_flashbreak(self):
         """
@@ -172,6 +176,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '0', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '1', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '2', self.slave2)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        rs = self.ns_drop(self.ns_leader, name)
 
 
     @multi_dimension(True)
@@ -248,14 +253,28 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(1)
         rs_scan = self.scan(self.leader, tid, pid, 'testkey1', self.now() + 19999, 1)
         self.assertTrue('ccard1' in rs_scan)
+        rs = self.ns_drop(self.ns_leader, name)
 
     def test_enable_auto_failover(self):
         """
         auto_failover开启时不能执行手动恢复命令
         :return:
         """
+        name = 't{}'.format(time.time())
+        rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 8, 3, '')
+        self.assertIn('Create table ok', rs1)
+        number = 2
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
         msg = "auto_failover is enabled, cannot execute this cmd"
         self.confset(self.ns_leader, 'auto_failover', 'true')
+        rs = self.ns_gettablepartition(self.ns_leader, 'gettablepartition', name, 0)
+        self.assertIn('get table partition ok', rs)
+        partition_file = '{}_{}.txt'.format(name, 0)
+        rs = self.settablepartition(self.ns_leader, name, partition_file)
+        self.assertIn(msg, rs)
+        os.remove(partition_file)
         rs = self.offlineendpoint(self.ns_leader, self.leader)
         self.assertIn(msg, rs)
         rs = self.recoverendpoint(self.ns_leader, self.leader)
@@ -269,6 +288,379 @@ class TestAutoFailover(TestCaseBase):
         rs = self.updatetablealive(self.ns_leader, "test", "0", self.slave1, "yes")
         self.assertIn(msg, rs)
         self.confset(self.ns_leader, 'auto_failover', 'false')
+        rs = self.ns_drop(self.ns_leader, name)
+
+    def test_unable_auto_failover(self):
+        """
+        auto_failover关闭时，可以手动执行恢复相关命名
+        :return:
+        """
+        name = 't{}'.format(time.time())
+        rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 8, 3, '')
+        self.assertIn('Create table ok', rs1)
+        number = 2
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+
+        rs = self.ns_gettablepartition(self.ns_leader, 'gettablepartition', name, 0)
+        self.assertIn('get table partition ok', rs)
+        partition_file = '{}_{}.txt'.format(name, 0)
+        rs = self.settablepartition(self.ns_leader, name, partition_file)
+        self.assertIn('set table partition ok', rs)
+        os.remove(partition_file)
+
+        rs = self.offlineendpoint(self.ns_leader, self.leader)
+        self.assertIn("offline endpoint ok", rs)
+        time.sleep(3)
+        rs = self.changeleader(self.ns_leader, name, 0, 'auto')
+        self.assertIn('change leader ok', rs)
+        rs = self.recovertable(self.ns_leader, name, 0, self.leader)
+        self.assertIn('recover table ok', rs)
+
+        # rs = self.migrate(self.ns_leader, self.slave1, name, "2-3", self.slave2)
+        # self.assertIn(msg, rs)
+
+        rs = self.recoverendpoint(self.ns_leader, self.leader)
+        self.assertIn("recover endpoint ok", rs)
+        rs = self.updatetablealive(self.ns_leader, name, "0", self.slave1, "yes")
+        self.assertIn('update ok', rs)
+        # self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.get_new_ns_leader()
+        rs = self.ns_drop(self.ns_leader, name)
+
+    def test_auto_failover_kill_tablet(self):
+        """
+        auto_failover打开后，下线一个tablet，自动恢复数据后，follower追平leader的offset
+        :return:
+        """
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        name = 't{}'.format(time.time())
+        rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 3, '')
+        self.assertIn('Create table ok', rs1)
+
+        rs = self.stop_client(self.slave1)
+
+        number = 2
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+        time.sleep(1)
+        rs_before = self.gettablestatus(self.leader)
+        rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        rs = self.start_client(self.slave1)
+        time.sleep(1)
+        rs_after = self.gettablestatus(self.slave1)
+        rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        for i in range(20):
+            time.sleep(2)
+            rs_after = self.gettablestatus(self.slave1)
+            rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+            if '{}'.format(rs_after) == '{}':
+                continue
+
+            if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
+                self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
+                break
+
+        self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.get_new_ns_leader()
+        self.ns_drop(self.ns_leader, name)
+
+    def test_auto_failover_kill_ns(self):
+        """
+        auto_failover打开后，下线一个tablet和nameserver,在超时时间内，tablet自动恢复，leader和下线的节点的offset保持一致
+        :return:
+        """
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        name = 't{}'.format(time.time())
+        rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 3, '')
+        self.assertIn('Create table ok', rs1)
+
+        number = 3
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+        time.sleep(1)
+        rs_before = self.gettablestatus(self.leader)
+        rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+
+        self.stop_client(self.slave1)
+        self.stop_client(self.ns_leader)
+        self.start_client(self.slave1)
+        rs_after = self.gettablestatus(self.slave1)
+        rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        for i in range(20):
+            time.sleep(2)
+            rs_after = self.gettablestatus(self.slave1)
+            rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+            if '{}'.format(rs_after) == '{}':
+                continue
+            if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
+                self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
+                break
+
+        self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.start_client(self.ns_leader, 'nameserver')
+        self.get_new_ns_leader()
+        self.ns_drop(self.ns_leader, name)
+
+    def test_auto_failover_disconnectzk(self):
+        """
+        auto_failover打开后，然后put数据，disconnectzk的所有tablet。最后一个节点状态应该不变
+        :return:
+        """
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        name = 't{}'.format(time.time())
+        rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 3, '')
+        self.assertIn('Create table ok', rs1)
+
+        number = 3
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+        time.sleep(1)
+
+        rs = self.disconnectzk(self.slave1)
+        self.assertIn('disconnect zk ok', rs)
+        time.sleep(1)
+        rs = self.disconnectzk(self.slave2)
+        self.assertIn('disconnect zk ok', rs)
+        time.sleep(1)
+        rs = self.disconnectzk(self.leader)
+        self.assertIn('disconnect zk ok', rs)
+        time.sleep(1)
+        flag_yes = 0
+        flag_no = 0
+        for repeat in range(10):
+            time.sleep(2)
+            result = ['']
+            rs_show = self.showtable(self.ns_leader)
+            row = 0
+            for i in rs_show:
+                result.append(rs_show.values()[row][2])
+                row = row + 1
+            flag_yes = 0
+            flag_no = 0
+            for i in result:
+                if i == 'yes':
+                    flag_yes = flag_yes + 1
+                if i == 'no':
+                    flag_no = flag_no + 1
+            if flag_no == 2 and flag_yes == 1:
+                break
+        self.assertEqual(flag_no, 2)
+        self.assertEqual(flag_yes, 1)
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+
+        self.connectzk(self.leader)
+        self.connectzk(self.slave1)
+        self.connectzk(self.slave2)
+        self.get_new_ns_leader()
+        self.ns_drop(self.ns_leader, name)
+
+    # def test_auto_failover_task_executeion_too_long(self):
+    #     """
+    #     任务执行超时后会打印nameserver日志，说明任务已经超时了
+    #     :return:
+    #     """
+    #     self.confset(self.ns_leader, 'auto_failover', 'true')
+    #     endponints = set()
+    #     endponints.add('127.0.0.1:37770')
+    #     endponints.add('127.0.0.1:37771')
+    #     endponints.add('127.0.0.1:37772')
+    #     name = 't{}'.format(time.time())
+    #     rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
+    #     self.assertIn('Create table ok', rs1)
+    #     number = 100
+    #     for i in range(number):
+    #         rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+    #         self.assertIn('Put ok', rs_put)
+
+    #     tables = self.showtable(self.ns_leader)
+    #     tid = tables.keys()[0][1]
+    #     pid = tables.keys()[0][2]
+    #     table_endpoints = set()
+    #     table_endpoints.add(tables.keys()[0][3])
+    #     table_endpoints.add(tables.keys()[1][3])
+    #     replica_endpoint = endponints - table_endpoints
+    #     slave = replica_endpoint.pop()
+
+    #     self.ns_addreplica(self.ns_leader, 'addreplica', name, pid, slave)
+    #     time.sleep(10)
+
+    #     rs = self.showopstatus(self.ns_leader)
+    #     infoLogger.error('{}'.format(rs))
+    #     self.ns_drop(self.ns_leader, name)
+
+    # def test_auto_failover_kill_tablet_suddenly(self):
+    #     """
+    #     闪断一个tablet,没有做故障恢复，主从关系仍然保持正常
+    #     """
+    #     self.confset(self.ns_leader, 'auto_failover', 'true')
+    #     name = 't{}'.format(time.time())
+    #     rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 8, 3, '')
+    #     self.assertIn('Create table ok', rs1)
+
+    #     number = 3
+    #     for i in range(number):
+    #         rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+    #         self.assertIn('Put ok', rs_put)
+
+    #     rs_before = self.showtable(self.ns_leader)
+    #     self.disconnectzk(self.slave1)
+    #     self.connectzk(self.slave1)
+    #     time.sleep(1)
+
+    #     rs_after = self.showtable(self.ns_leader)
+    #     self.assertIn(str(rs_before), str(rs_after))
+    #     self.ns_drop(self.ns_leader, name)
+
+    #     self.confset(self.ns_leader, 'auto_failover', 'false')
+
+    def test_auto_failover_restart_tablet_twice(self):
+        """
+        重启两次tablet,kill掉一个tablet,然后重启，数据恢复后，再次重启
+        ；return:
+        """
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        name = 't{}'.format(time.time())
+        pid_number = 8
+        endpoint_number = 3
+        ttl = 144000
+        rs1 = self.ns_create_cmd(self.ns_leader, name, ttl, pid_number, endpoint_number, '')
+        self.assertIn('Create table ok', rs1)
+
+        number = 3
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+
+        time.sleep(2)
+        rs = self.showtable_with_tablename(self.ns_leader, name)
+        rs_before = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+
+        self.stop_client(self.slave1)
+        time.sleep(1)
+        self.start_client(self.slave1)
+        time.sleep(1)
+
+        row = 0
+        for times in range(10):
+            time.sleep(2)
+            row = 0
+            index = 0
+            rs = self.ns_showopstatus(self.ns_leader)
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
+            for i in tablestatus:
+                if tablestatus.values()[index][0] == 'kDone':
+                    row = row + 1
+                index = index + 1
+            if row == len(tablestatus):
+                break
+        self.assertEqual(row, len(tablestatus))
+
+        self.start_client(self.slave1)
+        time.sleep(1)
+
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+
+        rs = self.showtable_with_tablename(self.ns_leader, name)
+        rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        for i in range(10):
+            time.sleep(1)
+            offset_number = 0
+            rs = self.showtable_with_tablename(self.ns_leader, name)
+            rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+            for table_info in rs_after:
+                if rs_after[table_info][4] == '2':
+                    offset_number = offset_number + 1
+            if offset_number == 9:
+                break
+        diff = 1
+        for table_info in rs_after:
+            if rs_after[table_info][4] == '0':
+                continue
+            self.assertEqual(diff, int(rs_after[table_info][4]) - int(rs_before[table_info][4]))
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.ns_drop(self.ns_leader, name)
+
+    def test_auto_failover_restart_tablet_twice_continuously(self):
+        """
+        重启两次tablet,kill掉一个tablet,然后重启，数据正在恢复中，再次重启
+        ；return:
+        """
+        self.confset(self.ns_leader, 'auto_failover', 'true')
+        name = 't{}'.format(time.time())
+        pid_number = 8
+        endpoint_number = 3
+        ttl = 144000
+        rs1 = self.ns_create_cmd(self.ns_leader, name, ttl, pid_number, endpoint_number, '')
+        self.assertIn('Create table ok', rs1)
+
+        number = 3
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+
+        time.sleep(2)
+        rs = self.showtable_with_tablename(self.ns_leader, name)
+        rs_before = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+
+        self.stop_client(self.slave1)
+        time.sleep(1)
+        self.start_client(self.slave1)
+        time.sleep(1)
+        self.start_client(self.slave1)
+        time.sleep(1)
+
+        row = 0
+        for times in range(10):
+            time.sleep(2)
+            row = 0
+            index = 0
+            rs = self.ns_showopstatus(self.ns_leader)
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
+            for i in tablestatus:
+                if tablestatus.values()[index][0] == 'kDone':
+                    row = row + 1
+                index = index + 1
+            if row == len(tablestatus):
+                break
+        self.assertEqual(row, len(tablestatus))
+
+        for i in range(number):
+            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            self.assertIn('Put ok', rs_put)
+
+        rs = self.showtable_with_tablename(self.ns_leader, name)
+        rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        for i in range(10):
+            time.sleep(1)
+            offset_number = 0
+            rs = self.showtable_with_tablename(self.ns_leader, name)
+            rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+            for table_info in rs_after:
+                if rs_after[table_info][4] == '2':
+                    offset_number = offset_number + 1
+            if offset_number == 9:
+                break
+        diff = 1
+        for table_info in rs_after:
+            if rs_after[table_info][4] == '0':
+                continue
+            self.assertEqual(diff, int(rs_after[table_info][4]) - int(rs_before[table_info][4]))
+
+        self.confset(self.ns_leader, 'auto_failover', 'false')
+        self.ns_drop(self.ns_leader, name)
 
 if __name__ == "__main__":
     load(TestAutoFailover)

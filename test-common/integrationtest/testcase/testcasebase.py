@@ -235,8 +235,12 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(ns_endpoint, cmd, 'ns_client')
         
     def ns_showns(self, ns_endpoint, showns):
-        cmd '{}'.format(showns)
+        cmd = '{}'.format(showns)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_showopstatus(self, endpoint):
+        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+        return rs
 
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
@@ -451,6 +455,10 @@ class TestCaseBase(unittest.TestCase):
     
     def showtable_with_all_columns(self, endpoint):
          return self.run_client(endpoint, 'showtable', 'ns_client')
+
+    def showtable_with_tablename(self, endpoint, table):
+        cmd = 'showtable {}'.format(table)
+        return self.run_client(endpoint, cmd, 'ns_client')
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
