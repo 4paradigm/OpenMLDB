@@ -61,7 +61,7 @@ enum OPType {
     kReAddReplicaNoSendOP = 7;     // need not send snapshot
     kReAddReplicaWithDropOP = 8;   // should droptable before loadtable
     kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
-    kUpdateTableAliveOP = 10;
+    kUpdateTableAliveOP = 10;      // deleted
     kMigrateOP = 11;
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
@@ -102,6 +102,8 @@ message TaskInfo {
     required OPType op_type = 2;
     required TaskType task_type = 3;
     required TaskStatus status = 4;
+    optional string endpoint = 5;
+    optional bool is_rpc_send = 6 [default=false];
 }
 
 message OPInfo {
