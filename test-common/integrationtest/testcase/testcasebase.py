@@ -82,7 +82,6 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info('\n\n' + '|' * 50 + ' TEARDOWN STARTED ' + '|' * 50 + '\n')
         try:
             rs = self.showtablet(self.ns_leader)
-
             for edp_tuple in conf.tb_endpoints:
                 edp = edp_tuple[1]
                 if rs[edp][0] != 'kTabletHealthy':
@@ -452,7 +451,7 @@ class TestCaseBase(unittest.TestCase):
     def showtable(self, endpoint):
         rs = self.run_client(endpoint, 'showtable', 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
-    
+
     def showtable_with_all_columns(self, endpoint):
          return self.run_client(endpoint, 'showtable', 'ns_client')
 

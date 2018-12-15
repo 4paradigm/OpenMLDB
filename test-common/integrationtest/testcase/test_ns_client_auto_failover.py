@@ -336,18 +336,23 @@ class TestAutoFailover(TestCaseBase):
         auto_failover打开后，下线一个tablet，自动恢复数据后，follower追平leader的offset
         :return:
         """
+        self.start_client(self.ns_leader, 'nameserver')
+        time.sleep(1)
+        self.start_client(self.ns_slaver, 'nameserver')
+        time.sleep(1)
+        self.get_new_ns_leader()
         self.confset(self.ns_leader, 'auto_failover', 'true')
         name = 't{}'.format(time.time())
         rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 3, '')
         self.assertIn('Create table ok', rs1)
-
-        rs = self.stop_client(self.slave1)
 
         number = 2
         for i in range(number):
             rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
         time.sleep(1)
+
+        rs = self.stop_client(self.slave1)
         rs_before = self.gettablestatus(self.leader)
         rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
         rs = self.start_client(self.slave1)
@@ -385,8 +390,13 @@ class TestAutoFailover(TestCaseBase):
             rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
         time.sleep(1)
-        rs_before = self.gettablestatus(self.leader)
-        rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        for i in range(20):
+            time.sleep(1)
+            rs_before = self.gettablestatus(self.leader)
+            rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+            if '{}'.format(rs_before) == 'gettablestatus failed':
+                continue
+            break
 
         self.stop_client(self.slave1)
         self.stop_client(self.ns_leader)
@@ -397,8 +407,9 @@ class TestAutoFailover(TestCaseBase):
             time.sleep(2)
             rs_after = self.gettablestatus(self.slave1)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-            if '{}'.format(rs_after) == '{}':
+            if '{}'.format(rs_after) == 'gettablestatus failed':
                 continue
+
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
@@ -495,7 +506,6 @@ class TestAutoFailover(TestCaseBase):
     #     time.sleep(10)
 
     #     rs = self.showopstatus(self.ns_leader)
-    #     infoLogger.error('{}'.format(rs))
     #     self.ns_drop(self.ns_leader, name)
 
     # def test_auto_failover_kill_tablet_suddenly(self):
