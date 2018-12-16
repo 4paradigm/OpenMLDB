@@ -319,15 +319,10 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('change leader ok', rs)
         rs = self.recovertable(self.ns_leader, name, 0, self.leader)
         self.assertIn('recover table ok', rs)
-
-        # rs = self.migrate(self.ns_leader, self.slave1, name, "2-3", self.slave2)
-        # self.assertIn(msg, rs)
-
         rs = self.recoverendpoint(self.ns_leader, self.leader)
         self.assertIn("recover endpoint ok", rs)
         rs = self.updatetablealive(self.ns_leader, name, "0", self.slave1, "yes")
         self.assertIn('update ok', rs)
-        # self.confset(self.ns_leader, 'auto_failover', 'false')
         self.get_new_ns_leader()
         rs = self.ns_drop(self.ns_leader, name)
 
@@ -389,28 +384,28 @@ class TestAutoFailover(TestCaseBase):
         for i in range(number):
             rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
-        time.sleep(1)
+        rs = self.showtable_with_tablename(self.ns_leader, name)
+        rs = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+        tid = rs.keys()[0][1]
+        pid = rs.keys()[0][2]
         for i in range(20):
-            time.sleep(1)
-            rs_before = self.gettablestatus(self.leader)
+            time.sleep(2)
+            rs_before = self.gettablestatus(self.slave1, tid, pid)
             rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
             if '{}'.format(rs_before) == 'gettablestatus failed':
                 continue
             break
-
         self.stop_client(self.slave1)
         self.stop_client(self.ns_leader)
         self.start_client(self.slave1)
-        rs_after = self.gettablestatus(self.slave1)
+        rs_after = self.gettablestatus(self.slave1, tid, pid)
         rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
         for i in range(20):
             time.sleep(2)
-            rs_after = self.gettablestatus(self.slave1)
+            rs_after = self.gettablestatus(self.slave1, tid, pid)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
             if '{}'.format(rs_after) == 'gettablestatus failed':
                 continue
-            infoLogger.error(rs_before)
-            infoLogger.error(rs_after)
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break

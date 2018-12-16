@@ -72,9 +72,17 @@ class TestDelReplicaNs(TestCaseBase):
         # delreplica by ns_client and put
         rs8 = self.delreplica(self.ns_leader, name, pid, 'ns_client', self.slave1)
         self.assertIn('DelReplica ok', rs8)
-        time.sleep(3)
-        rs13 = self.showtable(self.ns_leader)
-        edps = [x[3] for x in rs13]
+        for repeat in range(10):
+            time.sleep(2)
+            rs13 = self.showtable(self.ns_leader)
+            flag = False
+            for x in rs13:
+                if x[3] == self.slave1:
+                    flag = True
+                    break
+            if flag == False:
+                edps = [x[3] for x in rs13]
+                break
         self.assertFalse(self.slave1 in edps)
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue2'), 'amt': ('double', 1.1)}
@@ -116,11 +124,6 @@ class TestDelReplicaNs(TestCaseBase):
         tid = tid = int(rs3.keys()[0][1])
         rs4 = self.delreplica(self.ns_leader, name, 0, 'ns_client', self.slave1)
         time.sleep(10)
-        infoLogger.error(' ')
-        rs_show = self.showtable(self.ns_leader)
-        for table_info in rs_show:
-            infoLogger.info('{} =  {}'.format(table_info, rs_show[table_info]))
-        infoLogger.error(' ')
         rs5 = self.showtable(self.ns_leader)
         rs6 = self.get_table_status(self.slave1)
         self.assertIn((name, str(tid), str(0), self.slave1), rs3)
