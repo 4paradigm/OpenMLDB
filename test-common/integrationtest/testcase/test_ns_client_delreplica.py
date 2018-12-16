@@ -72,6 +72,7 @@ class TestDelReplicaNs(TestCaseBase):
         # delreplica by ns_client and put
         rs8 = self.delreplica(self.ns_leader, name, pid, 'ns_client', self.slave1)
         self.assertIn('DelReplica ok', rs8)
+        edps = ''
         for repeat in range(10):
             time.sleep(2)
             rs13 = self.showtable(self.ns_leader)
