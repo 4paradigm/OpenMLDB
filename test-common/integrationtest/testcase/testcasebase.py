@@ -232,7 +232,7 @@ class TestCaseBase(unittest.TestCase):
     def ns_gettablepartition(self, ns_endpoint, gettablepartition, name, pid):
         cmd = '{} {} {}'.format(gettablepartition, name, pid)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
-        
+
     def ns_showns(self, ns_endpoint, showns):
         cmd = '{}'.format(showns)
         return self.run_client(ns_endpoint, cmd, 'ns_client')

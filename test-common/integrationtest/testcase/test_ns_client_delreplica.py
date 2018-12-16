@@ -95,6 +95,7 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn('testvalue1', rs12)
         self.assertIn('testvalue2', rs12)
         self.assertIn('testvalue3', rs12)
+        self.ns_drop(self.ns_leader, name)
 
     def test_delreplica_drop_table(self):
         """
@@ -115,12 +116,18 @@ class TestDelReplicaNs(TestCaseBase):
         tid = tid = int(rs3.keys()[0][1])
         rs4 = self.delreplica(self.ns_leader, name, 0, 'ns_client', self.slave1)
         time.sleep(10)
+        infoLogger.error(' ')
+        rs_show = self.showtable(self.ns_leader)
+        for table_info in rs_show:
+            infoLogger.info('{} =  {}'.format(table_info, rs_show[table_info]))
+        infoLogger.error(' ')
         rs5 = self.showtable(self.ns_leader)
         rs6 = self.get_table_status(self.slave1)
         self.assertIn((name, str(tid), str(0), self.slave1), rs3)
         self.assertNotIn((name, str(tid), str(0), self.slave1), rs5)
         self.assertIn((tid, 0), rs2.keys())
         self.assertNotIn((tid, 0), rs6.keys())
+        self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
         ('notexsit', None, None, 'Fail to delreplica'),
@@ -136,7 +143,8 @@ class TestDelReplicaNs(TestCaseBase):
         """
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+        name = '"{}"'.format(name)
+        m = utils.gen_table_metadata(name, '"kLatestTime"', 100, 8,
                                      ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
                                      ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
                                      ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
@@ -150,6 +158,7 @@ class TestDelReplicaNs(TestCaseBase):
         self.showtable(self.ns_leader)
         rs3 = self.delreplica(self.ns_leader, table_name, tpid, 'ns_client', tendpoint)
         self.assertIn(exp_msg, rs3)
+        self.ns_drop(self.ns_leader, name)
 
 
     def test_delreplica_not_alive(self):  # RTIDB-201
@@ -186,7 +195,7 @@ class TestDelReplicaNs(TestCaseBase):
         time.sleep(10)
         self.assertIn('Fail to delreplica', rs3)
         self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '100', 'no', 'kNoCompress'])
-
+        self.ns_drop(self.ns_leader, name)
 
 if __name__ == "__main__":
     load(TestDelReplicaNs)

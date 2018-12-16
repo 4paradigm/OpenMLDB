@@ -44,9 +44,16 @@ class TestChangeLeader(TestCaseBase):
 
         self.changeleader(self.ns_leader, name, 0)
         time.sleep(5)
-        rs2 = self.showtable(self.ns_leader)
         self.connectzk(self.leader)
-
+        
+        rs2 = self.showtable(self.ns_leader)
+        for repeat in range(10):
+            time.sleep(2)
+            act1 = rs2[(name, tid, '0', self.slave1)]
+            act2 = rs2[(name, tid, '0', self.slave2)]
+            roles = [x[0] for x in [act1, act2]]
+            if roles.count('leader') == 1 and roles.count('follower') == 1:
+                break
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
@@ -66,6 +73,7 @@ class TestChangeLeader(TestCaseBase):
         self.assertIn('Put ok', rs4)
         time.sleep(1)
         self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
+        self.ns_drop(self.ns_leader, name)
 
 
     def test_changeleader_master_killed(self):
@@ -125,6 +133,7 @@ class TestChangeLeader(TestCaseBase):
         self.assertIn('Put ok', rs4)
         time.sleep(1)
         self.assertIn('testvalue0', self.scan(follower, tid, 0, 'testkey0', self.now(), 1))
+        self.ns_drop(self.ns_leader, name)
 
 
     def test_changeleader_master_alive(self):
@@ -148,12 +157,14 @@ class TestChangeLeader(TestCaseBase):
 
         rs3 = self.changeleader(self.ns_leader, name, 0, 'auto')
         self.assertIn('change leader ok', rs3)
+        self.ns_drop(self.ns_leader, name)
 
     def test_changeleader_candidate_leader(self):
         """
         指定candidate_leader
         :return:
         """
+        self.get_new_ns_leader()
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
@@ -186,6 +197,7 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(1)
         self.multidimension_scan_vk = {'k1': 'testvalue1'}
         self.assertIn('testvalue1', self.scan(self.slave2, tid, 0, 'testkey1', self.now(), 1))
+        self.ns_drop(self.ns_leader, name)
 
     def test_changeleader_tname_notexist(self):
         """
@@ -193,8 +205,9 @@ class TestChangeLeader(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = '"{}"'.format('tname{}'.format(time.time()))
         m = utils.gen_table_metadata(
-            '"{}"'.format('tname{}'.format(time.time())), None, 144000, 2,
+            name, None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
         )
@@ -204,6 +217,7 @@ class TestChangeLeader(TestCaseBase):
 
         rs2 = self.changeleader(self.ns_leader, 'nullnullnull', 0)
         self.assertIn('failed to change leader', rs2)
+        self.ns_drop(self.ns_leader, name)
 
 
     @ddt.data(
@@ -255,6 +269,7 @@ class TestChangeLeader(TestCaseBase):
             rs2[(name, tid,  str(pid), self.slave2)] == ['leader', '144000min', 'yes', 'kNoCompress']):
             flag = 'true'
         self.assertEqual(flag, 'true')
+        self.ns_drop(self.ns_leader, name)
 
     @multi_dimension(False)
     @ddt.data(
@@ -338,6 +353,7 @@ class TestChangeLeader(TestCaseBase):
             self.assertTrue('newleadervalue' in put_rsslave)
             put_rsslave = self.scan(self.slave2, tid, str(pid), 'newleader', self.now(), 1)
             self.assertTrue('newleadervalue' in put_rsslave)
+        self.ns_drop(self.ns_leader, name)
 
 
     @ddt.data(
@@ -388,6 +404,7 @@ class TestChangeLeader(TestCaseBase):
 
         rs = self.changeleader(self.ns_leader, name, pid, '199.199.233.21:21')
         self.assertTrue('failed to change leader. error msg: change leader failed' in rs)
+        self.ns_drop(self.ns_leader, name)
 
 
     @ddt.data(
@@ -440,7 +457,7 @@ class TestChangeLeader(TestCaseBase):
         self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change5)
         rs_change6 = self.changeleader(self.ns_leader, name, pid, self.leader)
         self.assertTrue('failed to change leader. error msg: no alive follower' in rs_change6)
-
+        self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
             (0, '127.0.0.1:37771', 'no'),
@@ -486,8 +503,7 @@ class TestChangeLeader(TestCaseBase):
             rs2 = self.showtable(self.ns_leader)
             self.assertEqual(rs2[(name, tid, str(pid), self.leader)], ['leader', '144000min', rsp_msg, 'kNoCompress'])
             self.assertEqual(rs2[(name, tid, str(pid), switch)], ['leader', '144000min', 'yes', 'kNoCompress'])
-
-
+        self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
         (0, 'auto', 'no'),
@@ -533,8 +549,7 @@ class TestChangeLeader(TestCaseBase):
             rs2 = self.showtable(self.ns_leader)
             self.assertEqual(rs2[(name, tid, str(pid), self.leader)], ['leader', '144000min', rsp_msg, 'kNoCompress'])
             self.assertEqual(rs2[(name, tid, str(pid), '127.0.0.1:37771')], ['leader', '144000min', 'yes', 'kNoCompress'])
-
-
+        self.ns_drop(self.ns_leader, name)
 
 if __name__ == "__main__":
     load(TestChangeLeader)
