@@ -110,13 +110,13 @@ class TestAutoRecoverTable(TestCaseBase):
         rs = self.showtable(self.ns_leader)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-2] for k, v in rs.items()]
-        for index in range(10):
-            time.sleep(2)
+        for repeat in range(10):
             rs = self.showtable(self.ns_leader)
             role_x = [v[0] for k, v in rs.items()]
             is_alive_x = [v[-2] for k, v in rs.items()]
             if role_x.count('leader') == 10 and role_x.count('follower') == 18:
                 break
+            time.sleep(2)
         self.assertEqual(role_x.count('leader'), 10)
         self.assertEqual(role_x.count('follower'), 18)
         self.assertEqual(is_alive_x.count('yes'), 28)

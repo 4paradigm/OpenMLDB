@@ -413,8 +413,6 @@ class TestAutoFailover(TestCaseBase):
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
 
-        infoLogger.error(rs_after)
-        infoLogger.error(rs_before)
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.start_client(self.ns_leader, 'nameserver')
@@ -536,7 +534,8 @@ class TestAutoFailover(TestCaseBase):
 
     def test_auto_failover_restart_tablet_twice(self):
         """
-        重启两次tablet,kill掉一个tablet,然后重启，数据恢复后，再次重启
+        重启两次tablet,kill掉一个tablet,然后重启，数据恢复后，再次重启。
+        判断逻辑，通过put数据前后之差是否一致。如果一致，说明主从关系正常
         ；return:
         """
         self.confset(self.ns_leader, 'auto_failover', 'true')
@@ -560,21 +559,21 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(1)
         self.start_client(self.slave1)
         time.sleep(1)
-
         row = 0
         for times in range(10):
-            time.sleep(2)
             row = 0
             index = 0
             rs = self.ns_showopstatus(self.ns_leader)
             tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
-            for i in tablestatus:
-                if tablestatus.values()[index][0] == 'kDone':
-                    row = row + 1
-                index = index + 1
-            if row == len(tablestatus):
+            for status in tablestatus:
+                if status[2] == name:
+                    index = index + 1
+                    if tablestatus[status][0] == 'kDone':
+                        row = row + 1
+            if row == index:
                 break
-        self.assertEqual(row, len(tablestatus))
+            time.sleep(2)
+        self.assertEqual(row, index)
 
         self.start_client(self.slave1)
         time.sleep(1)
@@ -585,8 +584,7 @@ class TestAutoFailover(TestCaseBase):
 
         rs = self.showtable_with_tablename(self.ns_leader, name)
         rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-        for i in range(10):
-            time.sleep(1)
+        for repeat in range(20):
             offset_number = 0
             rs = self.showtable_with_tablename(self.ns_leader, name)
             rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
@@ -595,6 +593,7 @@ class TestAutoFailover(TestCaseBase):
                     offset_number = offset_number + 1
             if offset_number == 9:
                 break
+            time.sleep(2)
         diff = 1
         for table_info in rs_after:
             if rs_after[table_info][4] == '0':
@@ -607,6 +606,7 @@ class TestAutoFailover(TestCaseBase):
     def test_auto_failover_restart_tablet_twice_continuously(self):
         """
         重启两次tablet,kill掉一个tablet,然后重启，数据正在恢复中，再次重启
+        判断逻辑，通过put数据前后之差是否一致。如果一致，说明主从关系正常
         ；return:
         """
         self.confset(self.ns_leader, 'auto_failover', 'true')
