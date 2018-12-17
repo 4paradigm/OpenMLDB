@@ -397,6 +397,8 @@ class TestAutoFailover(TestCaseBase):
                 time.sleep(2)
                 continue
             break
+        infoLogger.info(rs_before)
+        self.assertFalse('gettablestatus failed' in '{}'.format(rs_before))
         self.stop_client(self.slave1)
         self.stop_client(self.ns_leader)
         self.start_client(self.slave1)
@@ -412,7 +414,7 @@ class TestAutoFailover(TestCaseBase):
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
-        infoLogger.info(rs_before)
+        
         infoLogger.info(rs_after)
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
         self.confset(self.ns_leader, 'auto_failover', 'false')

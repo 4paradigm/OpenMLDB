@@ -59,7 +59,7 @@ class TestChangeLeader(TestCaseBase):
                 self.assertIn('change leader ok', rs)
             time.sleep(2)
             rs = self.showtable_with_tablename(self.ns_leader, name)
-            rs2 = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+            rs2 = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
             act1 = rs2[(name, tid, '0', self.slave1)]
             act2 = rs2[(name, tid, '0', self.slave2)]
             roles = [x[0] for x in [act1, act2]]
