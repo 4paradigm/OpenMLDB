@@ -2329,9 +2329,17 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateAddReplicaTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kMigrateOP, tid, pid, des_endpoint.c_str());
+                ::rtidb::api::OPType::kMigrateOP, tid, pid, des_endpoint);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateAddTableInfoTask(name, pid, des_endpoint,
+                op_index, ::rtidb::api::OPType::kMigrateOP);
+    if (!task) {
+        PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]",
                         tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
         return -1;
     }

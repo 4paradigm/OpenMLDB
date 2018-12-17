@@ -574,8 +574,8 @@ class TestCaseBase(unittest.TestCase):
 
     def check_migrate_op(self, op_id):
         self.check_tasks(op_id, ['kPauseSnapshot', 'kSendSnapshot', 'kRecoverSnapshot', 'kLoadTable', 
-                                 'kAddReplica', 'kCheckBinlogSyncProgress', 'kDelReplica', 'kUpdateTableInfo',
-                                 'kDropTable'])
+                                 'kAddReplica', 'kAddTableInfo', 'kCheckBinlogSyncProgress', 'kDelReplica',
+                                 'kUpdateTableInfo', 'kDropTable'])
 
     def check_setlimit(self, endpoint, command, method, limit):
         cmd = '{} {} {}'.format(command, method, limit)
