@@ -574,6 +574,7 @@ class TestAutoFailover(TestCaseBase):
                     # infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
                     index = index + 1
                     if tablestatus[status][0] == 'kFailed':
+                        infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
                         self.assertEqual(row, index)
                         break
                     if tablestatus[status][0] == 'kDone':
