@@ -45,10 +45,13 @@ class TestChangeLeader(TestCaseBase):
         self.changeleader(self.ns_leader, name, 0)
         time.sleep(5)
         self.connectzk(self.leader)
-        
         rs2 = self.showtable(self.ns_leader)
+        act1 = rs2[(name, tid, '0', self.slave1)]
+        act2 = rs2[(name, tid, '0', self.slave2)]
+        roles = [x[0] for x in [act1, act2]]
         for repeat in range(10):
             time.sleep(2)
+            rs2 = self.showtable(self.ns_leader)
             act1 = rs2[(name, tid, '0', self.slave1)]
             act2 = rs2[(name, tid, '0', self.slave2)]
             roles = [x[0] for x in [act1, act2]]
@@ -57,9 +60,6 @@ class TestChangeLeader(TestCaseBase):
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
-        act1 = rs2[(name, tid, '0', self.slave1)]
-        act2 = rs2[(name, tid, '0', self.slave2)]
-        roles = [x[0] for x in [act1, act2]]
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
 
