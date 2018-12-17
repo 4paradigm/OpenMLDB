@@ -38,20 +38,28 @@ class TestChangeLeader(TestCaseBase):
         rs1 = self.showtable(self.ns_leader)
         tid = rs1.keys()[0][1]
 
-        self.disconnectzk(self.leader)
-        self.updatetablealive(self.ns_leader, name, '*', self.leader, 'no')
+        rs = self.disconnectzk(self.leader)
+        self.assertIn('disconnect zk ok', rs)
+        rs = self.updatetablealive(self.ns_leader, name, '*', self.leader, 'no')
+        self.assertIn('update ok', rs)
         time.sleep(3)
 
-        self.changeleader(self.ns_leader, name, 0)
-        time.sleep(5)
-        self.connectzk(self.leader)
+        rs = self.changeleader(self.ns_leader, name, 0, 'auto')
+        self.assertIn('change leader ok', rs)
+        time.sleep(2)
+        rs = self.connectzk(self.leader)
+        infoLogger.error(rs)
         rs2 = self.showtable(self.ns_leader)
         act1 = rs2[(name, tid, '0', self.slave1)]
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
-        for repeat in range(10):
+        for repeat in range(20):
+            if repeat == 10:
+                rs = self.changeleader(self.ns_leader, name, 0, 'auto')
+                self.assertIn('change leader ok', rs)
             time.sleep(2)
-            rs2 = self.showtable(self.ns_leader)
+            rs = self.showtable_with_tablename(self.ns_leader, name)
+            rs2 = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
             act1 = rs2[(name, tid, '0', self.slave1)]
             act2 = rs2[(name, tid, '0', self.slave2)]
             roles = [x[0] for x in [act1, act2]]

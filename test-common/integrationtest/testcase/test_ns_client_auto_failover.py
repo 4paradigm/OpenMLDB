@@ -566,6 +566,7 @@ class TestAutoFailover(TestCaseBase):
             rs = self.ns_showopstatus(self.ns_leader)
             tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
             for status in tablestatus:
+                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
                 if status[2] == name:
                     index = index + 1
                     if tablestatus[status][0] == 'kDone':
