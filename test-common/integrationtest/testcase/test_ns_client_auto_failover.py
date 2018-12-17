@@ -388,7 +388,9 @@ class TestAutoFailover(TestCaseBase):
         rs = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
         tid = rs.keys()[0][1]
         pid = rs.keys()[0][2]
-        for i in range(20):
+        rs_before = self.gettablestatus(self.slave1, tid, pid)
+        rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        for i in range(30):
             time.sleep(2)
             rs_before = self.gettablestatus(self.slave1, tid, pid)
             rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
