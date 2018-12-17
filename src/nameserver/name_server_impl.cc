@@ -977,8 +977,8 @@ void NameServerImpl::ProcessTask() {
                     PDLOG(DEBUG, "run task. opid[%lu] op_type[%s] task_type[%s]", task->task_info_->op_id(), 
                                 ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str()); 
-                    task->task_info_->set_status(::rtidb::api::kDoing);;
                     task_thread_pool_.AddTask(task->fun_);
+                    task->task_info_->set_status(::rtidb::api::kDoing);;
 				} else if (task->task_info_->status() == ::rtidb::api::kDoing) {
                     if (::baidu::common::timer::now_time() - op_data->op_info_.start_time() > 
                             FLAGS_name_server_op_execute_timeout / 1000) {
