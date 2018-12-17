@@ -391,10 +391,10 @@ class TestAutoFailover(TestCaseBase):
         rs_before = self.gettablestatus(self.slave1, tid, pid)
         rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
         for i in range(30):
-            time.sleep(2)
             rs_before = self.gettablestatus(self.slave1, tid, pid)
             rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
             if '{}'.format(rs_before) == 'gettablestatus failed':
+                time.sleep(2)
                 continue
             break
         self.stop_client(self.slave1)
@@ -403,7 +403,7 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(2)
         rs_after = self.gettablestatus(self.slave1, tid, pid)
         rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-        for i in range(30):
+        for i in range(50):
             time.sleep(2)
             rs_after = self.gettablestatus(self.slave1, tid, pid)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
@@ -412,7 +412,8 @@ class TestAutoFailover(TestCaseBase):
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
-
+        infoLogger.info(rs_before)
+        infoLogger.info(rs_after)
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.start_client(self.ns_leader, 'nameserver')
@@ -554,28 +555,36 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(2)
         rs = self.showtable_with_tablename(self.ns_leader, name)
         rs_before = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-
+        tid = rs_before.keys()[0][1]
+        pid = rs_before.keys()[0][2]
         self.stop_client(self.slave1)
         time.sleep(1)
         self.start_client(self.slave1)
         time.sleep(1)
         row = 0
-        for times in range(10):
+        for times in range(20):
             row = 0
             index = 0
             rs = self.ns_showopstatus(self.ns_leader)
             tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
             for status in tablestatus:
-                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
                 if status[2] == name:
+                    # infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
                     index = index + 1
+                    if tablestatus[status][0] == 'kFailed':
+                        self.assertEqual(row, index)
+                        break
                     if tablestatus[status][0] == 'kDone':
                         row = row + 1
             if row == index:
+                self.assertEqual(row, index)
                 break
             time.sleep(2)
-        self.assertEqual(row, index)
+        infoLogger.info(name)
+        infoLogger.info(row)
+        infoLogger.info(index)
 
+        self.assertEqual(row, index)
         self.start_client(self.slave1)
         time.sleep(1)
 
@@ -635,19 +644,21 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(1)
 
         row = 0
+        index = 0
         for times in range(10):
             time.sleep(2)
             row = 0
             index = 0
             rs = self.ns_showopstatus(self.ns_leader)
             tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
-            for i in tablestatus:
-                if tablestatus.values()[index][0] == 'kDone':
-                    row = row + 1
-                index = index + 1
-            if row == len(tablestatus):
+            for status in tablestatus:
+                if status[2] == name:
+                    if tablestatus.values()[index][0] == 'kDone':
+                        row = row + 1
+                    index = index + 1
+            if row == index:
                 break
-        self.assertEqual(row, len(tablestatus))
+        self.assertEqual(row, index)
 
         for i in range(number):
             rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
@@ -656,7 +667,7 @@ class TestAutoFailover(TestCaseBase):
         rs = self.showtable_with_tablename(self.ns_leader, name)
         rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
         for i in range(10):
-            time.sleep(1)
+            time.sleep(2)
             offset_number = 0
             rs = self.showtable_with_tablename(self.ns_leader, name)
             rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
