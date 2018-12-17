@@ -450,7 +450,8 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable_with_tablename(self.ns_leader, tname)
+        rs1 = self.parse_tb(rs1, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
         tid = rs1.keys()[0][1]
         infoLogger.info(rs1)
         self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
