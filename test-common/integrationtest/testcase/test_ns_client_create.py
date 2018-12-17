@@ -451,7 +451,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
         rs1 = self.showtable_with_tablename(self.ns_leader, tname)
-        rs1 = self.parse_tb(rs1, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+        rs1 = self.parse_tb(rs1, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
         tid = rs1.keys()[0][1]
         infoLogger.info(rs1)
         self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
@@ -522,7 +522,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         table_info = self.showtable(self.ns_leader)
         if len(table_info) > 0:
             tid = table_info.keys()[0][1]
-            for pid in xrange(3):
+            for pid in range(3):
                 table_meta = self.get_table_meta(self.leaderpath, tid, pid)
                 self.assertEqual(table_meta['key_entry_max_height'], height)
         self.ns_drop(self.ns_leader, name)

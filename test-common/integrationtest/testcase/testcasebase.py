@@ -448,8 +448,9 @@ class TestCaseBase(unittest.TestCase):
         tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
 
-    def showtable(self, endpoint):
-        rs = self.run_client(endpoint, 'showtable', 'ns_client')
+    def showtable(self, endpoint, table_name = ' '):
+        cmd = 'showtable {}'.format(table_name)
+        rs = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
 
     def showtable_with_all_columns(self, endpoint):

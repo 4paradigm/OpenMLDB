@@ -18,6 +18,7 @@ class TestChangeLeader(TestCaseBase):
         self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
+        infoLogger.info(name)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
@@ -48,15 +49,12 @@ class TestChangeLeader(TestCaseBase):
         self.assertIn('change leader ok', rs)
         time.sleep(2)
         rs = self.connectzk(self.leader)
-        infoLogger.error(rs)
+        self.assertIn('connect zk ok', rs)
         rs2 = self.showtable(self.ns_leader)
         act1 = rs2[(name, tid, '0', self.slave1)]
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         for repeat in range(20):
-            if repeat == 10:
-                rs = self.changeleader(self.ns_leader, name, 0, 'auto')
-                self.assertIn('change leader ok', rs)
             time.sleep(2)
             rs = self.showtable_with_tablename(self.ns_leader, name)
             rs2 = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
@@ -64,6 +62,8 @@ class TestChangeLeader(TestCaseBase):
             act2 = rs2[(name, tid, '0', self.slave2)]
             roles = [x[0] for x in [act1, act2]]
             if roles.count('leader') == 1 and roles.count('follower') == 1:
+                self.assertEqual(roles.count('leader'), 1)
+                self.assertEqual(roles.count('follower'), 1)
                 break
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
