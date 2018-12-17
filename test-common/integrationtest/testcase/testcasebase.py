@@ -423,8 +423,8 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
         return self.parse_tb(rs, ' ', [0], [1, 2])
 
-    def showopstatus(self, endpoint):
-        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+    def showopstatus(self, endpoint, name='', pid=''):
+        rs = self.run_client(endpoint, 'showopstatus {} {}'.format(name, pid), 'ns_client')
         tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
         tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
@@ -520,8 +520,9 @@ class TestCaseBase(unittest.TestCase):
         return opid_x
 
     def get_latest_opid_by_tname_pid(self, tname, pid):
-        latest_opid = self.get_opid_by_tname_pid(tname, pid)[-1]
-        self.latest_opid = int(latest_opid)
+        rs = self.run_client(self.ns_leader, 'showopstatus {} {}'.format(tname, pid), 'ns_client')
+        tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
+        self.latest_opid = int(sorted(tablestatus.keys())[-1])
         return self.latest_opid
 
     def get_op_by_opid(self, op_id):
@@ -570,6 +571,11 @@ class TestCaseBase(unittest.TestCase):
 
     def check_re_add_replica_simplify_op(self, op_id):
         self.check_tasks(op_id, ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
+
+    def check_migrate_op(self, op_id):
+        self.check_tasks(op_id, ['kPauseSnapshot', 'kSendSnapshot', 'kRecoverSnapshot', 'kLoadTable', 
+                                 'kAddReplica', 'kCheckBinlogSyncProgress', 'kDelReplica', 'kUpdateTableInfo',
+                                 'kDropTable'])
 
     def check_setlimit(self, endpoint, command, method, limit):
         cmd = '{} {} {}'.format(command, method, limit)
