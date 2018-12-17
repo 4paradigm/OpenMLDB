@@ -494,7 +494,9 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             if (offline_endpoint_map_.find(tit->first) == offline_endpoint_map_.end()) {
                 offline_endpoint_map_.insert(std::make_pair(tit->first, tit->second->ctime_));
-                thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first, false));
+                if (running_.load(std::memory_order_acquire)) {
+                    thread_pool_.DelayTask(FLAGS_tablet_offline_check_interval, boost::bind(&NameServerImpl::OnTabletOffline, this, tit->first, false));
+                }
             } else {
                 offline_endpoint_map_[tit->first] = tit->second->ctime_;
             }
@@ -534,6 +536,7 @@ void NameServerImpl::OnTabletOffline(const std::string& endpoint, bool startup_f
         }
     }
     if (auto_failover_.load(std::memory_order_acquire)) {
+        PDLOG(INFO, "Run OfflineEndpoint. endpoint is %s", endpoint.c_str());
         UpdateEndpointTableAlive(endpoint, false);
         OfflineEndpointInternal(endpoint, FLAGS_name_server_task_concurrency);
     }
@@ -581,6 +584,7 @@ void NameServerImpl::OnTabletOnline(const std::string& endpoint) {
         PDLOG(INFO, "endpoint %s is startup, exe tablet offline", endpoint.c_str());
         OnTabletOffline(endpoint, true);
     }
+    PDLOG(INFO, "Run RecoverEndpoint. endpoint is %s", endpoint.c_str());
     RecoverEndpointInternal(endpoint, false, FLAGS_name_server_task_concurrency);
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -4370,6 +4374,29 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
     uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
+        if (auto_failover_.load(std::memory_order_acquire)) {
+            auto iter = table_info_.find(name);
+            if (iter == table_info_.end()) {
+                task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+                return;
+            }
+            for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
+                if (iter->second->table_partition(idx).pid() != pid) {
+                    continue;
+                }
+                for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
+                            iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
+                        PDLOG(WARNING, "leader is alive, need not changeleader. table name[%s] pid[%u]", 
+                                        name.c_str(), pid);
+                        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+                        return;
+                    }
+                }
+                break;
+            }
+        }
         if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 2))) {
             PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u]", name.c_str(), pid);
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
