@@ -3932,6 +3932,7 @@ std::shared_ptr<Task> NameServerImpl::CreateUpdateTableInfoTask(const std::strin
 
 void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t pid,
                 const std::string& follower, uint64_t offset_delta, std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
+    std::lock_guard<std::mutex> lock(mu_);
     if (task_info->status() != ::rtidb::api::TaskStatus::kDoing) {
         PDLOG(WARNING, "task status is[%s], exit task. op_id[%lu], task_type[%s]",
                         ::rtidb::api::TaskStatus_Name(task_info->status()).c_str(),
@@ -3939,7 +3940,6 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
                         ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
