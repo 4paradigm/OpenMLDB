@@ -4086,7 +4086,6 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
                 std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     if (!running_.load(std::memory_order_acquire)) {
         PDLOG(WARNING, "cur nameserver is not leader");
-        task_info->set_status(::rtidb::api::TaskStatus::kCanceled);
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
