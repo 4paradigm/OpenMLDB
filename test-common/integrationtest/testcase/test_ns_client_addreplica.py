@@ -12,7 +12,7 @@ import libs.conf as conf
 @ddt.ddt
 class TestAddReplicaNs(TestCaseBase):
 
-    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
+    leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     @multi_dimension(False)
     def test_addreplica_scenario(self):  # RTIDB-250
