@@ -13,8 +13,8 @@ if __name__ == '__main__':
     ap.add_argument('-C', '--clear', default=False, help='clear all logs and db')
     args = ap.parse_args()
 
-    nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
-    tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints])
+    nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
+    tbc = TbCluster(conf.zk_endpoint, [i for i in conf.tb_endpoints])
 
     nsc.stop_zk()
     nsc.clear_zk()
