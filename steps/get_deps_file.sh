@@ -11,7 +11,7 @@ if [ ! -d ${DEPS_PREFIX} ];then
     tar -zxvf thirdparty.tar.gz
 fi
 
-if [ ! -d ${DEPS_PREFIX} ];then
+if [ ! -d ${DEPS_SOURCE} ];then
     mkdir -p ${DEPS_SOURCE}
     cd ${DEPS_SOURCE}
     wget http://pkg.4paradigm.com/rtidb/dev/zookeeper-3.4.10.tar.gz
