@@ -4107,6 +4107,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
     for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
@@ -4629,6 +4630,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
     auto table_iter = table_info_.find(name);
     if (table_iter == table_info_.end()) {
         PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
     int old_leader_index = -1;
@@ -4683,7 +4685,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
         return;
     }
     PDLOG(WARNING, "partition[%u] is not exist. name[%s]", pid, name.c_str());
-    task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+    task_info->set_status(::rtidb::api::TaskStatus::kFailed);
 }
 
 void NameServerImpl::NotifyTableChanged() {

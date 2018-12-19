@@ -15,6 +15,7 @@ import libs.conf as conf
 import libs.utils as utils
 from libs.clients.ns_cluster import NsCluster
 import traceback
+import copy
 
 
 class TestCaseBase(unittest.TestCase):
@@ -32,14 +33,14 @@ class TestCaseBase(unittest.TestCase):
         cls.conf_path = os.getenv('confpath')
         cls.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(cls.testpath))
         cls.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))
-        cls.ns_slaver = [i[1] for i in conf.ns_endpoints if i[1] != cls.ns_leader][0]
-        cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
+        cls.ns_slaver = [i for i in conf.ns_endpoints if i != cls.ns_leader][0]
+        cls.leader, cls.slave1, cls.slave2 = (i for i in conf.tb_endpoints)
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
         cls.failfast = conf.failfast
-        cls.ns_path_dict = {conf.ns_endpoints[0][1]: cls.testpath + '/ns1',
-                            conf.ns_endpoints[1][1]: cls.testpath + '/ns2'}
+        cls.ns_path_dict = {conf.ns_endpoints[0]: cls.testpath + '/ns1',
+                            conf.ns_endpoints[1]: cls.testpath + '/ns2'}
         cls.node_path_dict = {cls.leader: cls.testpath + '/tablet1',
                               cls.slave1: cls.testpath + '/tablet2',
                               cls.slave2: cls.testpath + '/tablet3',
@@ -49,14 +50,13 @@ class TestCaseBase(unittest.TestCase):
         cls.slave1path = cls.node_path_dict[cls.slave1]
         cls.slave2path = cls.node_path_dict[cls.slave2]
         infoLogger.info('*'*88)
-        infoLogger.info([i[1] for i in conf.ns_endpoints]) 
+        infoLogger.info([i for i in conf.ns_endpoints]) 
         infoLogger.info(cls.ns_slaver)
         infoLogger.info(conf.cluster_mode)
 
     @classmethod
     def tearDownClass(cls):
-        for edp_tuple in conf.tb_endpoints:
-            edp = edp_tuple[1]
+        for edp in conf.tb_endpoints:
             utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict[edp]))
             utils.exe_shell('rm -rf {}/db/*'.format(cls.node_path_dict[edp]))
         infoLogger.info('\n' + '=' * 50 + ' TEST {} FINISHED '.format(cls) + '=' * 50 + '\n' * 5)
@@ -71,8 +71,7 @@ class TestCaseBase(unittest.TestCase):
             self.pid = random.randint(1, 1000)
             if conf.cluster_mode == "cluster":
                 self.clear_ns_table(self.ns_leader)
-            for edp_tuple in conf.tb_endpoints:
-                edp = edp_tuple[1]
+            for edp in conf.tb_endpoints:
                 self.clear_tb_table(edp)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
@@ -83,8 +82,7 @@ class TestCaseBase(unittest.TestCase):
         try:
             rs = self.showtablet(self.ns_leader)
 
-            for edp_tuple in conf.tb_endpoints:
-                edp = edp_tuple[1]
+            for edp in conf.tb_endpoints:
                 if rs[edp][0] != 'kTabletHealthy':
                     infoLogger.info("Endpoint offline !!!! " * 10 + edp)
                     self.stop_client(edp)
@@ -132,10 +130,10 @@ class TestCaseBase(unittest.TestCase):
             utils.exe_shell(cmd)
 
     def get_new_ns_leader(self):
-        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.get_ns_leader()
-        infoLogger.info([x[1] for x in conf.ns_endpoints])
-        nss = [x[1] for x in conf.ns_endpoints]
+        infoLogger.info(conf.ns_endpoints)
+        nss = copy.deepcopy(conf.ns_endpoints)
         self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
         self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
         self.node_path_dict[self.ns_leader] = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
