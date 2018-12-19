@@ -412,7 +412,7 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(2)
         rs_after = self.gettablestatus(self.slave1, tid, pid)
         rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-        for i in range(50):
+        for i in range(20):
             time.sleep(2)
             rs_after = self.gettablestatus(self.slave1, tid, pid)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
@@ -421,15 +421,10 @@ class TestAutoFailover(TestCaseBase):
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
-        
         infoLogger.info(rs_after)
         if '{}'.format(rs_after) == 'gettablestatus failed':
-            infoLogger.error(' ')
-            rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
-            for status in tablestatus:
-                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
-            infoLogger.error(' ')
+            self.print_op_all(self.ns_slaver)
+            self.print_op_all(name, self.ns_slaver)
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.start_client(self.ns_leader, 'nameserver')
@@ -582,17 +577,13 @@ class TestAutoFailover(TestCaseBase):
             row = 0
             index = 0
             rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
             for status in tablestatus:
                 if status[2] == name:
                     index = index + 1
                     if tablestatus[status][0] == 'kFailed':
-                        infoLogger.error(' ')
-                        rs = self.ns_showopstatus(self.ns_leader)
-                        tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
-                        for status in tablestatus:
-                            infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
-                        infoLogger.error(' ')
+                        self.print_op_all()
+                        self.print_op_table(name)
                         infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
                         self.assertEqual(row, index)
                         break

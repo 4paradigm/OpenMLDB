@@ -50,12 +50,12 @@ class TestDelReplicaNs(TestCaseBase):
         rs4 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 10000, 'testvalue0')
         if rs4 == 'Put failed':
             infoLogger.error(' ')
-            rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
+            rs = self.showtable(self.ns_leader)
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8])
             for status in tablestatus:
                 infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
             infoLogger.error(' ')
-            
+
             rs4 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 10000, 'testvalue0')
             self.assertIn('Put ok', rs4)
         self.assertIn('Put ok', rs4)
