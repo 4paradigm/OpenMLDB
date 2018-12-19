@@ -7,6 +7,7 @@ import libs.utils as utils
 from libs.logger import infoLogger
 from libs.deco import multi_dimension
 import libs.ddt as ddt
+import libs.conf as conf
 
 @ddt.ddt
 class TestChangeLeader(TestCaseBase):
@@ -258,10 +259,10 @@ class TestChangeLeader(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        (0, '127.0.0.1:37771', 'no'),
-        (0, '127.0.0.1:37772', 'no'),
-        (1, '127.0.0.1:37771', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
+        (0, conf.tb_endpoints[1], 'no'),
+        (0, conf.tb_endpoints[2], 'no'),
+        (1, conf.tb_endpoints[1], 'no'),
+        (1, conf.tb_endpoints[2], 'no'),
         (0, '', 'no'),
         (1, '', 'no')
     )
@@ -341,10 +342,10 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, '127.0.0.1:37771', 'no'),
-        (0, '127.0.0.1:37772', 'no'),
-        (1, '127.0.0.1:37771', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
+        (0, conf.tb_endpoints[1], 'no'),
+        (0, conf.tb_endpoints[2], 'no'),
+        (1, conf.tb_endpoints[1], 'no'),
+        (1, conf.tb_endpoints[2], 'no'),
         (0, '', 'no'),
         (1, '', 'no')
     )
@@ -391,8 +392,8 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, '127.0.0.1:37771', '127.0.0.1:37772', 'no'),
-        (1, '127.0.0.1:37771', '127.0.0.1:37772', 'no')
+        (0, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no'),
+        (1, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no')
     )
     @ddt.unpack
     def test_changeleader_with_many_times(self, pid, switch, switch1, rsp_msg):
@@ -443,8 +444,8 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-            (0, '127.0.0.1:37771', 'no'),
-            (1, '127.0.0.1:37771', 'no'),
+            (0, conf.tb_endpoints[1], 'no'),
+            (1, conf.tb_endpoints[1], 'no'),
             (0, '', 'no'),
             (1, '', 'no')
         )
@@ -532,7 +533,7 @@ class TestChangeLeader(TestCaseBase):
         else:
             rs2 = self.showtable(self.ns_leader)
             self.assertEqual(rs2[(name, tid, str(pid), self.leader)], ['leader', '144000min', rsp_msg, 'kNoCompress'])
-            self.assertEqual(rs2[(name, tid, str(pid), '127.0.0.1:37771')], ['leader', '144000min', 'yes', 'kNoCompress'])
+            self.assertEqual(rs2[(name, tid, str(pid), conf.tb_endpoints[1])], ['leader', '144000min', 'yes', 'kNoCompress'])
 
 
 
