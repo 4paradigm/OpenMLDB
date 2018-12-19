@@ -13,7 +13,7 @@ import collections
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
-    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
+    leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,

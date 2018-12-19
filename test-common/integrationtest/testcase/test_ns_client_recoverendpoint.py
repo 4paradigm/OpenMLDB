@@ -235,11 +235,11 @@ class TestRecoverEndpoint(TestCaseBase):
 
     @ddt.data(
         ('127.0.0.1:80', '', '', 'failed to recover endpoint. error msg: endpoint is not exist'),
-        (conf.tb_endpoints[0][1], 'abc', '', 'Invalid args. need_restore should be true or false'),
-        (conf.tb_endpoints[0][1], 'false', '-1', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0][1], 'false', '0', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0][1], 'false', '10', 'concurrency is greater than the max value 8'),
-        (conf.tb_endpoints[0][1], 'false', 'abc', 'Invalid args. concurrency should be uint32_t'),
+        (conf.tb_endpoints[0], 'abc', '', 'Invalid args. need_restore should be true or false'),
+        (conf.tb_endpoints[0], 'false', '-1', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0], 'false', '0', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0], 'false', '10', 'concurrency is greater than the max value 8'),
+        (conf.tb_endpoints[0], 'false', 'abc', 'Invalid args. concurrency should be uint32_t'),
     )
     @ddt.unpack
     def test_recoverendpoint_failed(self, endpoint, need_restore, concurrency, exp_msg):

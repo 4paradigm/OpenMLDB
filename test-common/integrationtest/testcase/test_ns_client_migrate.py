@@ -13,7 +13,7 @@ import libs.conf as conf
 @ddt.ddt
 class TestNameserverMigrate(TestCaseBase):
 
-    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
+    leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     def createtable_put(self, tname, data_count):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
