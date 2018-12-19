@@ -36,7 +36,7 @@ class TestChangeLeader(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, name)
         tid = rs1.keys()[0][1]
 
         rs = self.disconnectzk(self.leader)
@@ -50,12 +50,36 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(2)
         rs = self.connectzk(self.leader)
         self.assertIn('connect zk ok', rs)
+        self.print_op_all()
+
+        for repeat in range(50):
+            time.sleep(2)
+            rs = self.ns_showopstatus(self.ns_leader)
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
+            kDone_cnt = 0
+            cnt = 0
+            flag = False
+            for status in tablestatus:
+                if status[2] == name:
+                    cnt = cnt + 1
+                    infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+                    if tablestatus[status][0] == 'kFailed':
+                        infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
+                        flag = True
+                        break
+                    if tablestatus[status][0] == 'kDone':
+                        infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+                        kDone_cnt = kDone_cnt + 1
+            if flag == True:
+                break
+            if kDone_cnt == cnt:
+                break
+
         rs2 = self.showtable(self.ns_leader)
         act1 = rs2[(name, tid, '0', self.slave1)]
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         for repeat in range(20):
-            time.sleep(2)
             rs = self.showtable_with_tablename(self.ns_leader, name)
             rs2 = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
             act1 = rs2[(name, tid, '0', self.slave1)]
@@ -65,9 +89,15 @@ class TestChangeLeader(TestCaseBase):
                 self.assertEqual(roles.count('leader'), 1)
                 self.assertEqual(roles.count('follower'), 1)
                 break
+            time.sleep(2)
         self.assertEqual(rs2[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
+        if roles.count('leader') != 1:
+            self.print_op_all()
+            self.print_op_table(name)
+
+            self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
 
@@ -110,7 +140,7 @@ class TestChangeLeader(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, name)
         tid = rs1.keys()[0][1]
 
         self.stop_client(self.leader)
@@ -165,6 +195,7 @@ class TestChangeLeader(TestCaseBase):
 
         rs3 = self.changeleader(self.ns_leader, name, 0, 'auto')
         self.assertIn('change leader ok', rs3)
+        time.sleep(3)
         self.ns_drop(self.ns_leader, name)
 
     def test_changeleader_candidate_leader(self):

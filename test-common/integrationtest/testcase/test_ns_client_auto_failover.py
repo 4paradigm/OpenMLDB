@@ -398,6 +398,13 @@ class TestAutoFailover(TestCaseBase):
                 continue
             break
         infoLogger.info(rs_before)
+        if '{}'.format(rs_before) == 'gettablestatus failed':
+            infoLogger.error(' ')
+            rs = self.ns_showopstatus(self.ns_leader)
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
+            for status in tablestatus:
+                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+            infoLogger.error(' ')
         self.assertFalse('gettablestatus failed' in '{}'.format(rs_before))
         self.stop_client(self.slave1)
         self.stop_client(self.ns_leader)
@@ -416,6 +423,13 @@ class TestAutoFailover(TestCaseBase):
                 break
         
         infoLogger.info(rs_after)
+        if '{}'.format(rs_after) == 'gettablestatus failed':
+            infoLogger.error(' ')
+            rs = self.ns_showopstatus(self.ns_leader)
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
+            for status in tablestatus:
+                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+            infoLogger.error(' ')
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.start_client(self.ns_leader, 'nameserver')
@@ -571,9 +585,14 @@ class TestAutoFailover(TestCaseBase):
             tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
             for status in tablestatus:
                 if status[2] == name:
-                    # infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
                     index = index + 1
                     if tablestatus[status][0] == 'kFailed':
+                        infoLogger.error(' ')
+                        rs = self.ns_showopstatus(self.ns_leader)
+                        tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
+                        for status in tablestatus:
+                            infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+                        infoLogger.error(' ')
                         infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
                         self.assertEqual(row, index)
                         break

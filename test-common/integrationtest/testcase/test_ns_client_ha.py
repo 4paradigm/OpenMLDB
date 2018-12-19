@@ -98,8 +98,16 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
+        infoLogger.info(self.ns_slaver)
         rs = self.showtable(self.ns_slaver)
+        for repeat in range(10):
+            if rs == 'failed to showtable:':
+                time.sleep(2)
+                rs = self.showtable(self.ns_slaver)
+                continue
+            break
         self.assertIn('nameserver is not leader', rs)
+        self.ns_drop(self.ns_leader, self.tname)
 
 
     @ddt.data(
@@ -126,7 +134,6 @@ class TestNameserverHa(TestCaseBase):
         self.get_new_ns_leader()
         self.assertEqual(rs[self.leader][0], 'kTabletOffline')
 
-
     @ddt.data(
         (16,9,3,8,0,9,17),  # ns_leader断网重启后，新的ns_leader可以正确判断节点状态
         (16,9,2,7,0,9,17),  # ns_leader重启后，新的ns_leader可以正确判断节点状态
@@ -140,17 +147,17 @@ class TestNameserverHa(TestCaseBase):
         :return:
         """
         self.confset_createtable_put()
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, self.tname)
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, self.tname)
         self.stop_client(self.leader)
         self.updatetablealive(self.ns_leader, self.tname, '*', self.leader, 'no')
         time.sleep(10)
         rs3 = self.showtablet(self.ns_leader)
-        rs4 = self.showtable(self.ns_leader)
+        rs4 = self.showtable(self.ns_leader, self.tname)
         self.start_client(self.leader)
         self.stop_client(self.ns_leader)
         self.start_client(self.ns_leader, 'nameserver')
@@ -159,6 +166,7 @@ class TestNameserverHa(TestCaseBase):
         self.assertEqual(rs1, rs2)
         self.assertEqual(rs3[self.leader][0], 'kTabletOffline')
         self.assertEqual([v[-2] for k, v in rs4.items() if k[-1] == self.leader], ['no'] * 4)
+        self.ns_drop(self.ns_leader, self.tname)
 
 
     @ddt.data(
@@ -185,6 +193,7 @@ class TestNameserverHa(TestCaseBase):
         self.confset(self.ns_leader, 'auto_failover', 'false')
         self.assertIn('nameserver is not leader', rs)
         self.assertIn('true', rs1)
+        self.ns_drop(self.ns_leader, self.tname)
 
 
     #@TestCaseBase.skip('FIXME')
@@ -228,6 +237,7 @@ class TestNameserverHa(TestCaseBase):
         self.get_new_ns_leader()
         rs2 = self.showtable(self.ns_leader)
         self.assertEqual(rs1.keys(), rs2.keys())
+        self.ns_drop(self.ns_leader, self.tname)
 
 
 if __name__ == "__main__":

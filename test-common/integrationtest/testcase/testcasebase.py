@@ -608,3 +608,20 @@ class TestCaseBase(unittest.TestCase):
     def check_setttl(self, endpoint, setttl, table_name, ttl_type, ttl):
         cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
         return self.run_client(endpoint, cmd)
+
+    def print_op_table(self, name):
+        infoLogger.error(' ')
+        rs = self.ns_showopstatus(self.ns_leader)
+        tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8])
+        for status in tablestatus:
+            if status[2] == name:
+                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+        infoLogger.error(' ')
+
+    def print_op_all(self):
+        infoLogger.error(' ')
+        rs = self.ns_showopstatus(self.ns_leader)
+        tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8])
+        for status in tablestatus:
+            infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+        infoLogger.error(' ')

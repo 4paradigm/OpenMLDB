@@ -26,7 +26,7 @@ class TestAutoRecoverTable(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
         self.put_large_datas(data_count, data_thread)
@@ -107,11 +107,11 @@ class TestAutoRecoverTable(TestCaseBase):
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
 
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-2] for k, v in rs.items()]
         for repeat in range(10):
-            rs = self.showtable(self.ns_leader)
+            rs = self.showtable(self.ns_leader, self.tname)
             role_x = [v[0] for k, v in rs.items()]
             is_alive_x = [v[-2] for k, v in rs.items()]
             if role_x.count('leader') == 10 and role_x.count('follower') == 18:
@@ -153,7 +153,7 @@ class TestAutoRecoverTable(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-1] for k, v in rs.items()]
         self.get_table_status(self.leader)
@@ -186,7 +186,7 @@ class TestAutoRecoverTable(TestCaseBase):
         steps_dict = self.get_steps_dict()
         for i in steps:
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         self.assertIn(self.tname, rs.keys()[0])
         time.sleep(10)
         self.ns_drop(self.ns_leader, self.tname)
@@ -216,7 +216,7 @@ class TestAutoRecoverTable(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 1
         for _ in range(10):
@@ -225,7 +225,7 @@ class TestAutoRecoverTable(TestCaseBase):
         steps_dict = self.get_steps_dict()
         for i in steps:
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         self.assertEqual(rs[(self.tname, str(self.tid), str(self.pid), self.leader)],
                          ['leader', '144000min', 'yes', 'kNoCompress'])
         self.ns_drop(self.ns_leader, self.tname)
