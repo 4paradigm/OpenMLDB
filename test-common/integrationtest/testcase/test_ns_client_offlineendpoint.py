@@ -110,10 +110,10 @@ class TestOfflineEndpoint(TestCaseBase):
 
     @ddt.data(
         ('127.0.0.1:80', '', 'failed to offline endpoint'),
-        (conf.tb_endpoints[0][1], '-1', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0][1], '0', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0][1], '10', 'failed to offline endpoint'),
-        (conf.tb_endpoints[0][1], 'abc', 'Invalid args. concurrency should be uint32_t'),
+        (conf.tb_endpoints[0], '-1', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0], '0', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0], '10', 'failed to offline endpoint'),
+        (conf.tb_endpoints[0], 'abc', 'Invalid args. concurrency should be uint32_t'),
     )
     @ddt.unpack
     def test_offlineendpoint_failed(self, endpoint, concurrency, exp_msg):

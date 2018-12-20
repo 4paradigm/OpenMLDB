@@ -74,7 +74,7 @@ class TestNameserverHa(TestCaseBase):
             16: 'self.confset(self.ns_leader, "auto_failover", "true")',
             17: 'self.confset(self.ns_leader, "auto_failover", "false")',
             20: 'self.stop_client(self.ns_slaver)',
-            21: 'self.start_client(self.ns_slaver)',
+            21: 'self.start_client(self.ns_slaver, "nameserver")',
         }
 
     @ddt.data(
@@ -118,11 +118,11 @@ class TestNameserverHa(TestCaseBase):
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
         self.stop_client(self.leader)
-        time.sleep(10)
+        time.sleep(5)
         rs = self.showtablet(self.ns_leader)
         self.start_client(self.leader)
-        self.start_client(self.ns_slaver)
-        time.sleep(10)
+        self.start_client(self.ns_slaver, "nameserver")
+        time.sleep(5)
         self.get_new_ns_leader()
         self.assertEqual(rs[self.leader][0], 'kTabletOffline')
 
@@ -177,7 +177,7 @@ class TestNameserverHa(TestCaseBase):
             eval(steps_dict[i])
         rs = self.showtable(self.ns_slaver)
         rs1 = self.confget(self.ns_leader, "auto_failover")
-        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
         nsc.start(*nsc.endpoints)
         # time.sleep(5)
@@ -203,7 +203,7 @@ class TestNameserverHa(TestCaseBase):
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
         rs = self.showtable(self.ns_slaver)
-        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
         nsc.start(*nsc.endpoints)
         time.sleep(3)
@@ -218,8 +218,8 @@ class TestNameserverHa(TestCaseBase):
         """
         self.confset_createtable_put()
         rs1 = self.showtable(self.ns_leader)
-        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
-        tbc = TbCluster(conf.zk_endpoint, [i[1] for i in conf.tb_endpoints])
+        nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
+        tbc = TbCluster(conf.zk_endpoint, conf.tb_endpoints)
         nsc.kill(*nsc.endpoints)
         tbc.kill(*tbc.endpoints)
         nsc.start(*nsc.endpoints)
