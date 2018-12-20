@@ -149,6 +149,7 @@ class TestChangeLeader(TestCaseBase):
 
         rs3 = self.changeleader(self.ns_leader, name, 0, 'auto')
         self.assertIn('change leader ok', rs3)
+        time.sleep(3)
 
     def test_changeleader_candidate_leader(self):
         """
