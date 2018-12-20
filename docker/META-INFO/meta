@@ -3,7 +3,7 @@ template:
 - key: zk_cluster
   type: file
   desc: zookeeper address
-  value: "m7-common-svr02:2181,m7-common-svr04:2181,m7-cube-k8s01:2181"
+  value: "172.27.128.33:8090,172.27.128.32:8090,172.27.128.31:8090"
 - key: hostpath
   type: file
   desc: hostpath
