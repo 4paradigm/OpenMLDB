@@ -11,7 +11,7 @@ template:
 - key: metric_port
   type: file
   desc: metric port
-  value: "8000"
+  value: "8012"
 - key: tablet_port
   type: file
   desc: tablet port
