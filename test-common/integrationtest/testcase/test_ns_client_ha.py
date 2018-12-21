@@ -74,7 +74,7 @@ class TestNameserverHa(TestCaseBase):
             16: 'self.confset(self.ns_leader, "auto_failover", "true")',
             17: 'self.confset(self.ns_leader, "auto_failover", "false")',
             20: 'self.stop_client(self.ns_slaver)',
-            21: 'self.start_client(self.ns_slaver)',
+            21: 'self.start_client(self.ns_slaver, "nameserver")',
         }
 
     @ddt.data(
@@ -118,11 +118,11 @@ class TestNameserverHa(TestCaseBase):
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
         self.stop_client(self.leader)
-        time.sleep(10)
+        time.sleep(5)
         rs = self.showtablet(self.ns_leader)
         self.start_client(self.leader)
-        self.start_client(self.ns_slaver)
-        time.sleep(10)
+        self.start_client(self.ns_slaver, "nameserver")
+        time.sleep(5)
         self.get_new_ns_leader()
         self.assertEqual(rs[self.leader][0], 'kTabletOffline')
 
