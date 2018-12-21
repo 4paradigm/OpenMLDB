@@ -8,7 +8,6 @@ import libs.ddt as ddt
 import libs.utils as utils
 from libs.logger import infoLogger
 import collections
-import libs.conf as conf
 
 
 @ddt.ddt
@@ -243,17 +242,17 @@ class TestCreateTableByNsClient(TestCaseBase):
 
 
     @ddt.data(
-        (('"{}"'.format(conf.tb_endpoints[0]), '"{}"'.format(conf.tb_endpoints[0])), 'pid 0 leader and follower at same endpoint'),
-        (('"{}"'.format(conf.tb_endpoints[0]), '"172.27.128.35:37770"'), 'Fail to create table'),
+        (('"127.0.0.1:37770"', '"127.0.0.1:37770"'), 'pid 0 leader and follower at same endpoint'),
+        (('"127.0.0.1:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
         (('"0.0.0.0:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
-        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1:47771"'), 'Fail to create table'),
-        (('""', '"{}"'.format(conf.tb_endpoints[0])), 'Fail to create table'),
-        (('"{}"'.format(conf.tb_endpoints[0]), '""'), 'Fail to create table'),
-        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1:44444"'), 'Fail to create table'),
-        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1"'), 'Fail to create table'),
-        (('"{}"'.format(conf.tb_endpoints[0]), '"abc"'), 'Fail to create table'),
-        ((None, '"{}"'.format(conf.tb_endpoints[0])), 'missing required fields: table_partition[0].endpoint'),
-        (('"000"', '"{}"'.format(conf.tb_endpoints[0])), 'Fail to create table'),
+        (('"127.0.0.1:37770"', '"127.0.0.1:47771"'), 'Fail to create table'),
+        (('""', '"127.0.0.1:37770"'), 'Fail to create table'),
+        (('"127.0.0.1:37770"', '""'), 'Fail to create table'),
+        (('"127.0.0.1:37770"', '"127.0.0.1:44444"'), 'Fail to create table'),
+        (('"127.0.0.1:37770"', '"127.0.0.1"'), 'Fail to create table'),
+        (('"127.0.0.1:37770"', '"abc"'), 'Fail to create table'),
+        ((None, '"127.0.0.1:37770"'), 'missing required fields: table_partition[0].endpoint'),
+        (('"000"', '"127.0.0.1:37770"'), 'Fail to create table'),
     )
     @ddt.unpack
     def test_create_endpoint(self, ep, exp_msg):
@@ -453,8 +452,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
-        rs1 = self.showtable_with_tablename(self.ns_leader, tname)
-        rs1 = self.parse_tb(rs1, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
+        rs1 = self.showtable(self.ns_leader, tname)
         tid = rs1.keys()[0][1]
         infoLogger.info(rs1)
         self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])

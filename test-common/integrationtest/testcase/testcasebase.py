@@ -452,9 +452,6 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
 
-    def showtable_with_all_columns(self, endpoint):
-         return self.run_client(endpoint, 'showtable', 'ns_client')
-
     def showtable_with_tablename(self, endpoint, table = ''):
         cmd = 'showtable {}'.format(table)
         return self.run_client(endpoint, cmd, 'ns_client')
@@ -617,7 +614,7 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, cmd)
 
     def print_op_table(self, name, endpoint = ''):
-        infoLogger.error(' ')
+        infoLogger.info('*' * 50)
         rs = ''
         if endpoint != '':
             rs = self.ns_showopstatus(endpoint)
@@ -628,10 +625,10 @@ class TestCaseBase(unittest.TestCase):
         for status in tablestatus:
             if status[2] == name:
                 infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
-        infoLogger.error(' ')
+        infoLogger.info('*' * 50)
 
     def print_op_all(self, endpoint = ''):
-        infoLogger.error(' ')
+        infoLogger.info('*' * 50)
         rs = ''
         if endpoint != '':
             rs = self.ns_showopstatus(endpoint)
@@ -641,18 +638,18 @@ class TestCaseBase(unittest.TestCase):
         tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8])
         for status in tablestatus:
             infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
-        infoLogger.error(' ')
+        infoLogger.info('*' * 50)
 
     def print_table(self, endpoint = '',  name = ''):
-        infoLogger.error(' ')
+        infoLogger.info('*' * 50)
         rs_show = ''
         if endpoint != '':
             rs_show = self.showtable_with_tablename(endpoint, name)
         else:
             rs_show = self.showtable_with_tablename(self.ns_leader, name)
         infoLogger.info(rs_show)
-        rs_show = self.parse_tb(rs_show, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9])
+        rs_show = self.parse_tb(rs_show, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
         for table_info in rs_show:
             infoLogger.info('{} =  {}'.format(table_info, rs_show[table_info]))
-        infoLogger.error(' ')
+        infoLogger.info('*' * 50)
         

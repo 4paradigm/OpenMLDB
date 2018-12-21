@@ -365,8 +365,6 @@ class TestAutoFailover(TestCaseBase):
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
-        self.print_op_all()
-        self.print_op_table(name)
         infoLogger.info('{}'.format(rs_before))
         infoLogger.info('{}'.format(rs_after))
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
@@ -405,17 +403,10 @@ class TestAutoFailover(TestCaseBase):
             break
         infoLogger.info(rs_before)
         if '{}'.format(rs_before) == 'gettablestatus failed':
-            infoLogger.error(' ')
-            rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
-            for status in tablestatus:
-                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
-            infoLogger.error(' ')
+            self.print_op_all(self.ns_leader)
+            self.print_op_table(name, self.ns_leader)
         self.assertFalse('gettablestatus failed' in '{}'.format(rs_before))
-        self.print_op_all(self.ns_leader)
         rs = self.ns_showopstatus(self.ns_leader)
-        infoLogger.info(rs)
-        self.print_op_table(name, self.ns_leader)
         self.stop_client(self.slave1)
         self.stop_client(self.ns_leader)
         time.sleep(10)
@@ -432,11 +423,7 @@ class TestAutoFailover(TestCaseBase):
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
-        infoLogger.info(rs_after)
         rs = self.ns_showopstatus(self.ns_slaver)
-        infoLogger.info(rs)
-        self.print_op_all(self.ns_slaver)
-        self.print_op_table(name, self.ns_slaver)
         if '{}'.format(rs_after) == 'gettablestatus failed':
             self.print_op_all(self.ns_slaver)
             self.print_op_table(name, self.ns_slaver)
@@ -601,7 +588,6 @@ class TestAutoFailover(TestCaseBase):
                         self.print_op_all()
                         self.print_op_table(name)
                         infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
-                        # self.assertEqual(row, index)
                         row = index
                         break
                     if tablestatus[status][0] == 'kDone':
@@ -610,10 +596,10 @@ class TestAutoFailover(TestCaseBase):
                 self.assertEqual(row, index)
                 break
             time.sleep(2)
-        infoLogger.info(name)
-        infoLogger.info(row)
-        infoLogger.info(index)
-
+        if row != index:
+            infoLogger.info(name)
+            infoLogger.info(row)
+            infoLogger.info(index)
         self.assertEqual(row, index)
         self.start_client(self.slave1)
         time.sleep(1)
@@ -664,10 +650,9 @@ class TestAutoFailover(TestCaseBase):
 
         time.sleep(2)
         rs = self.showtable_with_tablename(self.ns_leader, name)
-        rs_before = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        rs_before = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9,10])
 
         self.stop_client(self.slave1)
-        time.sleep(1)
         self.start_client(self.slave1)
         time.sleep(1)
         self.start_client(self.slave1)
@@ -689,18 +674,17 @@ class TestAutoFailover(TestCaseBase):
             if row == index:
                 break
         # self.assertEqual(row, index)
-
         for i in range(number):
             rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
         rs = self.showtable_with_tablename(self.ns_leader, name)
-        rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
         for i in range(10):
             time.sleep(2)
             offset_number = 0
             rs = self.showtable_with_tablename(self.ns_leader, name)
-            rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+            rs_after = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
             for table_info in rs_after:
                 if rs_after[table_info][4] == '2':
                     offset_number = offset_number + 1

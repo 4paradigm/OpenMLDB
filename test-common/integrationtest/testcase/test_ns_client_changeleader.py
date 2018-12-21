@@ -80,8 +80,7 @@ class TestChangeLeader(TestCaseBase):
         act2 = rs2[(name, tid, '0', self.slave2)]
         roles = [x[0] for x in [act1, act2]]
         for repeat in range(20):
-            rs = self.showtable_with_tablename(self.ns_leader, name)
-            rs2 = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
+            rs = self.showtable(self.ns_leader, name)
             act1 = rs2[(name, tid, '0', self.slave1)]
             act2 = rs2[(name, tid, '0', self.slave2)]
             roles = [x[0] for x in [act1, act2]]
