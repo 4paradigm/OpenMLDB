@@ -242,17 +242,17 @@ class TestCreateTableByNsClient(TestCaseBase):
 
 
     @ddt.data(
-        (('"127.0.0.1:37770"', '"127.0.0.1:37770"'), 'pid 0 leader and follower at same endpoint'),
-        (('"127.0.0.1:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"{}"'.format(conf.tb_endpoints[0])), 'pid 0 leader and follower at same endpoint'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"172.27.128.35:37770"'), 'Fail to create table'),
         (('"0.0.0.0:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"127.0.0.1:47771"'), 'Fail to create table'),
-        (('""', '"127.0.0.1:37770"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '""'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"127.0.0.1:44444"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"127.0.0.1"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"abc"'), 'Fail to create table'),
-        ((None, '"127.0.0.1:37770"'), 'missing required fields: table_partition[0].endpoint'),
-        (('"000"', '"127.0.0.1:37770"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1:47771"'), 'Fail to create table'),
+        (('""', '"{}"'.format(conf.tb_endpoints[0])), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '""'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1:44444"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"abc"'), 'Fail to create table'),
+        ((None, '"{}"'.format(conf.tb_endpoints[0])), 'missing required fields: table_partition[0].endpoint'),
+        (('"000"', '"{}"'.format(conf.tb_endpoints[0])), 'Fail to create table'),
     )
     @ddt.unpack
     def test_create_endpoint(self, ep, exp_msg):

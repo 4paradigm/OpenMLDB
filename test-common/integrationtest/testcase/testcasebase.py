@@ -566,12 +566,7 @@ class TestCaseBase(unittest.TestCase):
         self.task_dict = task_dict
 
     def get_tablet_endpoints(self):
-        endponints = set()
-        endponints.add(conf.tb_endpoints[0])
-        endponints.add(conf.tb_endpoints[1])
-        endponints.add(conf.tb_endpoints[2])
-        return endponints
-
+        return set(conf.tb_endpoints)
 
     def check_tasks(self, op_id, exp_task_list):
         self.get_task_dict_by_opid(self.tname, op_id)

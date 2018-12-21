@@ -98,12 +98,12 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        infoLogger.info(self.ns_slaver)
+        infoLogger.info(self.ns_slaver, self.tname)
         rs = self.showtable(self.ns_slaver)
         for repeat in range(10):
             if rs == 'failed to showtable:':
                 time.sleep(2)
-                rs = self.showtable(self.ns_slaver)
+                rs = self.showtable(self.ns_slaver, self.tname)
                 continue
             break
         self.assertIn('nameserver is not leader', rs)
@@ -183,7 +183,7 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_slaver)
+        rs = self.showtable(self.ns_slaver, self.tname)
         rs1 = self.confget(self.ns_leader, "auto_failover")
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
@@ -211,13 +211,14 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_slaver)
+        rs = self.showtable(self.ns_slaver, self.tname)
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
         nsc.start(*nsc.endpoints)
         time.sleep(3)
         nsc.get_ns_leader()
         self.assertIn('nameserver is not leader', rs)
+        self.ns_drop(self.ns_leader, self.tname)
 
 
     def test_ha_cluster(self):
@@ -226,7 +227,7 @@ class TestNameserverHa(TestCaseBase):
         :return:
         """
         self.confset_createtable_put()
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, self.tname)
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         tbc = TbCluster(conf.zk_endpoint, conf.tb_endpoints)
         nsc.kill(*nsc.endpoints)
@@ -235,7 +236,7 @@ class TestNameserverHa(TestCaseBase):
         tbc.start(tbc.endpoints)
         time.sleep(3)
         self.get_new_ns_leader()
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, self.tname)
         self.assertEqual(rs1.keys(), rs2.keys())
         self.ns_drop(self.ns_leader, self.tname)
 
