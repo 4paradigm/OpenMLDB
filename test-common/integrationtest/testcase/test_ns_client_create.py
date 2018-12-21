@@ -13,7 +13,7 @@ import collections
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
-    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
+    leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
@@ -213,6 +213,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"tname{}"'.format(time.time())
+        infoLogger.info(name)
         table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
         table_partition2 = ('table_partition', '"{}"'.format(self.slave1), pid_group2[0], pid_group2[1])
         m = utils.gen_table_metadata(name, None, 144000, 2, table_partition1, table_partition2)
@@ -236,7 +237,7 @@ class TestCreateTableByNsClient(TestCaseBase):
                 for pid in range(pid_group_start, pid_group_end):
                     self.assertIn(pid, pids)
             time.sleep(1)
-            rs1 = self.ns_drop(self.ns_leader, name[1:-1])
+            rs1 = self.ns_drop(self.ns_leader, name)
             self.assertIn('drop ok', rs1)
 
 

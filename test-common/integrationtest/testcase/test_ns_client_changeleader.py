@@ -7,7 +7,7 @@ import libs.utils as utils
 from libs.logger import infoLogger
 from libs.deco import multi_dimension
 import libs.ddt as ddt
-
+import libs.conf as conf
 @ddt.ddt
 class TestChangeLeader(TestCaseBase):
     def test_changeleader_master_disconnect(self):
@@ -312,21 +312,22 @@ class TestChangeLeader(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        (0, '127.0.0.1:37771', 'no'),
-        (0, '127.0.0.1:37772', 'no'),
-        (1, '127.0.0.1:37771', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
+        (0, conf.tb_endpoints[1], 'no'),
+        (0, conf.tb_endpoints[2], 'no'),
+        (1, conf.tb_endpoints[1], 'no'),
+        (1, conf.tb_endpoints[2], 'no'),
         (0, '', 'no'),
         (1, '', 'no')
     )
     @ddt.unpack
-    def test_changeleader_endpoint_without_offline(self, pid, switch,rsp_msg):
+    def test_changeleader_endpoint_without_offline(self, pid, switch, rsp_msg):
         """
         不当机更新leader,指定endpoint模式,同时测试原leader在put数据的时候，是否会同步到其他节点的问题
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
+        infoLogger.info(name)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
@@ -396,10 +397,10 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, '127.0.0.1:37771', 'no'),
-        (0, '127.0.0.1:37772', 'no'),
-        (1, '127.0.0.1:37771', 'no'),
-        (1, '127.0.0.1:37772', 'no'),
+        (0, conf.tb_endpoints[1], 'no'),
+        (0, conf.tb_endpoints[2], 'no'),
+        (1, conf.tb_endpoints[1], 'no'),
+        (1, conf.tb_endpoints[2], 'no'),
         (0, '', 'no'),
         (1, '', 'no')
     )
@@ -447,8 +448,8 @@ class TestChangeLeader(TestCaseBase):
 
 
     @ddt.data(
-        (0, '127.0.0.1:37771', '127.0.0.1:37772', 'no'),
-        (1, '127.0.0.1:37771', '127.0.0.1:37772', 'no')
+        (0, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no'),
+        (1, conf.tb_endpoints[1], conf.tb_endpoints[2], 'no')
     )
     @ddt.unpack
     def test_changeleader_with_many_times(self, pid, switch, switch1, rsp_msg):
@@ -499,8 +500,8 @@ class TestChangeLeader(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-            (0, '127.0.0.1:37771', 'no'),
-            (1, '127.0.0.1:37771', 'no'),
+            (0, conf.tb_endpoints[1], 'no'),
+            (1, conf.tb_endpoints[1], 'no'),
             (0, '', 'no'),
             (1, '', 'no')
         )
@@ -587,7 +588,7 @@ class TestChangeLeader(TestCaseBase):
         else:
             rs2 = self.showtable(self.ns_leader)
             self.assertEqual(rs2[(name, tid, str(pid), self.leader)], ['leader', '144000min', rsp_msg, 'kNoCompress'])
-            self.assertEqual(rs2[(name, tid, str(pid), '127.0.0.1:37771')], ['leader', '144000min', 'yes', 'kNoCompress'])
+            self.assertEqual(rs2[(name, tid, str(pid), conf.tb_endpoints[1])], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.ns_drop(self.ns_leader, name)
 
 if __name__ == "__main__":

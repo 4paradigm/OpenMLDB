@@ -13,7 +13,7 @@ import libs.conf as conf
 @ddt.ddt
 class TestNameserverMigrate(TestCaseBase):
 
-    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
+    leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     def createtable_put(self, tname, data_count):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -28,7 +28,7 @@ class TestNameserverMigrate(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 4
         self.put_large_datas(data_count, 7)
@@ -74,7 +74,7 @@ class TestNameserverMigrate(TestCaseBase):
         self.stop_client(self.slave1)
         time.sleep(10)
         self.showtablet(self.ns_leader)
-        self.showtable(self.ns_leader)
+        self.showtable(self.ns_leader, tname)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, '4-6', self.slave2)
         rs2 = self.migrate(self.ns_leader, self.slave2, tname, '0-2', self.slave1)
         self.start_client(self.slave1)
@@ -125,6 +125,7 @@ class TestNameserverMigrate(TestCaseBase):
         else:
             rs2 = self.migrate(self.ns_leader, src, 'table_not_exists_', pid_group, des)
         self.assertIn(exp_msg, rs2)
+        self.ns_drop(self.ns_leader, tname)
 
 
     def test_ns_client_migrate_failover_and_recover(self):  # RTIDB-252
@@ -140,21 +141,25 @@ class TestNameserverMigrate(TestCaseBase):
         self.stop_client(self.leader)
         time.sleep(2)
         self.offlineendpoint(self.ns_leader, self.leader)
+        self.print_op_all()
+        self.print_op_table(tname)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, '4-6', self.slave2)
         time.sleep(8)
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, tname)
 
         self.start_client(self.leader)  # recover table
         time.sleep(5)
         self.recoverendpoint(self.ns_leader, self.leader)
         time.sleep(10)
-        self.showtable(self.ns_leader)
+        self.showtable(self.ns_leader, tname)
         rs6 = self.get_table_status(self.slave1, self.tid, self.pid)  # get offset slave1
         rs3 = self.migrate(self.ns_leader, self.leader, tname, '4-6', self.slave2)
         time.sleep(2)
-        rs4 = self.showtable(self.ns_leader)
+        rs4 = self.showtable(self.ns_leader, tname)
         rs5 = self.get_table_status(self.slave2, self.tid, self.pid)  # get offset slave2
         self.showopstatus(self.ns_leader)
+        self.print_op_all()
+        self.print_op_table(tname)
 
         self.assertIn('partition migrate ok', rs1)
         self.assertIn('partition migrate ok', rs3)
@@ -165,6 +170,7 @@ class TestNameserverMigrate(TestCaseBase):
             self.assertIn((tname, str(self.tid), str(i), self.slave2), rs4)
         self.assertEqual(rs0[0], rs5[0])
         self.assertEqual(rs0[0], rs6[0])
+        self.ns_drop(self.ns_leader, tname)
 
     def test_ns_client_migrate_no_leader(self):
         """
@@ -177,15 +183,16 @@ class TestNameserverMigrate(TestCaseBase):
         time.sleep(2)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, "4-6", self.slave2)
         time.sleep(2)
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, tname)
 
         self.start_client(self.leader)
         time.sleep(10)
-        self.showtable(self.ns_leader)
+        self.showtable(self.ns_leader, tname)
         self.assertIn('partition migrate ok', rs1)
         for i in range(4, 7):
             self.assertIn((tname, str(self.tid), str(i), self.slave1), rs2)
             self.assertNotIn((tname, str(self.tid), str(i), self.slave2), rs2)
+        self.ns_drop(self.ns_leader, tname)
 
 
 if __name__ == "__main__":
