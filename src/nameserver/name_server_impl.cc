@@ -1223,8 +1223,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         partition_meta->set_is_leader(true);
         for (uint32_t idx = 1; idx < replica_num; idx++) {
             PartitionMeta* partition_meta = table_partition->add_partition_meta();
-            endpoint_pos = (pos + idx) % endpoint_vec.size();
-            partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
+            partition_meta->set_endpoint(endpoint_vec[(endpoint_pos + idx) % endpoint_vec.size()]);
             partition_meta->set_is_leader(false);
         }
         pos++;
