@@ -185,7 +185,7 @@ class TestAddReplicaNs(TestCaseBase):
             rs = self.ns_showopstatus(self.ns_leader)
             ops = self.parse_tb(rs, ' ', [0], [1, 2, 3, 4, 5, 6])
             row = ''
-            self.print_op_all()
+            infoLogger.debug('{}'.format(rs))
             for status in ops:
                 if ops[status][1] == name and ops[status][3] == 'kDone':
                     row = status

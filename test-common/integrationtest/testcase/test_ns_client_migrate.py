@@ -141,8 +141,6 @@ class TestNameserverMigrate(TestCaseBase):
         self.stop_client(self.leader)
         time.sleep(2)
         self.offlineendpoint(self.ns_leader, self.leader)
-        self.print_op_all()
-        self.print_op_table(tname)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, '4-6', self.slave2)
         time.sleep(8)
         rs2 = self.showtable(self.ns_leader, tname)
@@ -158,8 +156,6 @@ class TestNameserverMigrate(TestCaseBase):
         rs4 = self.showtable(self.ns_leader, tname)
         rs5 = self.get_table_status(self.slave2, self.tid, self.pid)  # get offset slave2
         self.showopstatus(self.ns_leader)
-        self.print_op_all()
-        self.print_op_table(tname)
 
         self.assertIn('partition migrate ok', rs1)
         self.assertIn('partition migrate ok', rs3)

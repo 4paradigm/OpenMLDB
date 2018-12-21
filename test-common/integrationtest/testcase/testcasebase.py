@@ -613,33 +613,6 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
         return self.run_client(endpoint, cmd)
 
-    def print_op_table(self, name, endpoint = ''):
-        infoLogger.info('*' * 50)
-        rs = ''
-        if endpoint != '':
-            rs = self.ns_showopstatus(endpoint)
-        else:
-            rs = self.ns_showopstatus(self.ns_leader)
-        infoLogger.info(rs)
-        tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8])
-        for status in tablestatus:
-            if status[2] == name:
-                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
-        infoLogger.info('*' * 50)
-
-    def print_op_all(self, endpoint = ''):
-        infoLogger.info('*' * 50)
-        rs = ''
-        if endpoint != '':
-            rs = self.ns_showopstatus(endpoint)
-        else:
-            rs = self.ns_showopstatus(self.ns_leader)
-        infoLogger.info(rs)
-        tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8])
-        for status in tablestatus:
-            infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
-        infoLogger.info('*' * 50)
-
     def print_table(self, endpoint = '',  name = ''):
         infoLogger.info('*' * 50)
         rs_show = ''

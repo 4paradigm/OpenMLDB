@@ -402,9 +402,6 @@ class TestAutoFailover(TestCaseBase):
                 continue
             break
         infoLogger.info(rs_before)
-        if '{}'.format(rs_before) == 'gettablestatus failed':
-            self.print_op_all(self.ns_leader)
-            self.print_op_table(name, self.ns_leader)
         self.assertFalse('gettablestatus failed' in '{}'.format(rs_before))
         rs = self.ns_showopstatus(self.ns_leader)
         self.stop_client(self.slave1)
@@ -425,8 +422,7 @@ class TestAutoFailover(TestCaseBase):
                 break
         rs = self.ns_showopstatus(self.ns_slaver)
         if '{}'.format(rs_after) == 'gettablestatus failed':
-            self.print_op_all(self.ns_slaver)
-            self.print_op_table(name, self.ns_slaver)
+            infoLogger.debug('{}'.format(rs))
         self.print_table(self.ns_slaver, '')
         self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
         self.confset(self.ns_leader, 'auto_failover', 'false')
@@ -491,61 +487,6 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(3)
         self.ns_drop(self.ns_leader, name)
 
-    # def test_auto_failover_task_executeion_too_long(self):
-    #     """
-    #     任务执行超时后会打印nameserver日志，说明任务已经超时了
-    #     :return:
-    #     """
-    #     self.confset(self.ns_leader, 'auto_failover', 'true')
-    #     endponints = set()
-    #     name = 't{}'.format(time.time())
-    #     rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
-    #     self.assertIn('Create table ok', rs1)
-    #     number = 100
-    #     for i in range(number):
-    #         rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
-    #         self.assertIn('Put ok', rs_put)
-
-    #     tables = self.showtable(self.ns_leader)
-    #     tid = tables.keys()[0][1]
-    #     pid = tables.keys()[0][2]
-    #     table_endpoints = set()
-    #     table_endpoints.add(tables.keys()[0][3])
-    #     table_endpoints.add(tables.keys()[1][3])
-    #     replica_endpoint = endponints - table_endpoints
-    #     slave = replica_endpoint.pop()
-
-    #     self.ns_addreplica(self.ns_leader, 'addreplica', name, pid, slave)
-    #     time.sleep(10)
-
-    #     rs = self.showopstatus(self.ns_leader)
-    #     self.ns_drop(self.ns_leader, name)
-
-    # def test_auto_failover_kill_tablet_suddenly(self):
-    #     """
-    #     闪断一个tablet,没有做故障恢复，主从关系仍然保持正常
-    #     """
-    #     self.confset(self.ns_leader, 'auto_failover', 'true')
-    #     name = 't{}'.format(time.time())
-    #     rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 8, 3, '')
-    #     self.assertIn('Create table ok', rs1)
-
-    #     number = 3
-    #     for i in range(number):
-    #         rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
-    #         self.assertIn('Put ok', rs_put)
-
-    #     rs_before = self.showtable(self.ns_leader)
-    #     self.disconnectzk(self.slave1)
-    #     self.connectzk(self.slave1)
-    #     time.sleep(1)
-
-    #     rs_after = self.showtable(self.ns_leader)
-    #     self.assertIn(str(rs_before), str(rs_after))
-    #     self.ns_drop(self.ns_leader, name)
-
-    #     self.confset(self.ns_leader, 'auto_failover', 'false')
-
     def test_auto_failover_restart_tablet_twice(self):
         """
         重启两次tablet,kill掉一个tablet,然后重启，数据恢复后，再次重启。
@@ -585,9 +526,8 @@ class TestAutoFailover(TestCaseBase):
                 if status[2] == name:
                     index = index + 1
                     if tablestatus[status][0] == 'kFailed':
-                        self.print_op_all()
-                        self.print_op_table(name)
-                        infoLogger.error('{} =  {}'.format(status, tablestatus[status]))
+                        infoLogger.debug('{}'.format(rs))
+                        infoLogger.debug('{} =  {}'.format(status, tablestatus[status]))
                         row = index
                         break
                     if tablestatus[status][0] == 'kDone':

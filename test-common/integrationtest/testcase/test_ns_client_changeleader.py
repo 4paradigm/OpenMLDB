@@ -50,9 +50,7 @@ class TestChangeLeader(TestCaseBase):
         time.sleep(2)
         rs = self.connectzk(self.leader)
         self.assertIn('connect zk ok', rs)
-        self.print_op_all()
-
-        for repeat in range(50):
+        for repeat in range(20):
             time.sleep(2)
             rs = self.ns_showopstatus(self.ns_leader)
             tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
@@ -93,9 +91,8 @@ class TestChangeLeader(TestCaseBase):
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         if roles.count('leader') != 1:
-            self.print_op_all()
-            self.print_op_table(name)
-
+            rs = self.ns_showopstatus(self.ns_leader)
+            infoLogger.debug(rs)
             self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('leader'), 1)
         self.assertEqual(roles.count('follower'), 1)
