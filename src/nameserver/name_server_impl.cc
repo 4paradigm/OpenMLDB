@@ -1168,33 +1168,63 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         partition_num = table_info.partition_num();
     }
     std::vector<std::string> endpoint_vec;
+    std::map<std::string, uint64_t> endpoint_pid_bucked;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
             if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-                endpoint_vec.push_back(kv.first);
+                endpoint_pid_bucked.insert(std::make_pair(kv.first, 0));
             }
         }
     }
-    uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_vec.size());
+    endpoint_vec.reserve(endpoint_pid_bucked.size());
+    uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_pid_bucked.size());
     if (table_info.has_replica_num() && table_info.replica_num() > 0) {
         replica_num = table_info.replica_num();
     }
-    if (endpoint_vec.size() < replica_num) {
+    if (endpoint_pid_bucked.size() < replica_num) {
         PDLOG(WARNING, "healthy endpoint num[%u] is less than replica_num[%u]",
-                        endpoint_vec.size(), replica_num);
+                        endpoint_pid_bucked.size(), replica_num);
         return -1;
+    }
+    for (const auto& iter: table_info_) {
+        auto table_info = iter.second;
+        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+            for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+                std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                if (endpoint_pid_bucked.find(endpoint) == endpoint_pid_bucked.end() || 
+                    !table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                    continue;
+                }
+                endpoint_pid_bucked[endpoint] = endpoint_pid_bucked[endpoint] + 1;
+            }
+        }
+    }
+    int index = 0;
+    int pos = 0;
+    uint64_t max = 0;
+    for (const auto& iter: endpoint_pid_bucked) {
+        endpoint_vec.push_back(iter.first);
+        if (max < iter.second) {
+            max = iter.second;
+            pos = index;
+        }
+        index++;
     }
     for (uint32_t pid = 0; pid < partition_num; pid++) {
         TablePartition* table_partition = table_info.add_table_partition();
         table_partition->set_pid(pid);
         PartitionMeta* partition_meta = table_partition->add_partition_meta();
-        uint32_t endpoint_pos = rand_.Next() % endpoint_vec.size();
+        int cur_pos = pos;
+        pos++;
+        uint32_t endpoint_pos =  cur_pos % endpoint_vec.size();
         partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
         partition_meta->set_is_leader(true);
         for (uint32_t idx = 1; idx < replica_num; idx++) {
             PartitionMeta* partition_meta = table_partition->add_partition_meta();
-            partition_meta->set_endpoint(endpoint_vec[(endpoint_pos + idx) % endpoint_vec.size()]);
+            cur_pos++;
+            endpoint_pos = cur_pos % endpoint_vec.size();
+            partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
             partition_meta->set_is_leader(false);
         }
     }
