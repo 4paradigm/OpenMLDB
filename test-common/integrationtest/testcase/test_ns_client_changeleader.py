@@ -192,7 +192,6 @@ class TestChangeLeader(TestCaseBase):
 
         rs2 = self.changeleader(self.ns_leader, name, 0)
         self.assertIn('failed to change leader', rs2)
-
         rs3 = self.changeleader(self.ns_leader, name, 0, 'auto')
         self.assertIn('change leader ok', rs3)
         time.sleep(3)
@@ -590,6 +589,7 @@ class TestChangeLeader(TestCaseBase):
             self.assertEqual(rs2[(name, tid, str(pid), self.leader)], ['leader', '144000min', rsp_msg, 'kNoCompress'])
             self.assertEqual(rs2[(name, tid, str(pid), conf.tb_endpoints[1])], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.ns_drop(self.ns_leader, name)
+
 
 if __name__ == "__main__":
     load(TestChangeLeader)
