@@ -1187,26 +1187,29 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
                         endpoint_pid_bucked.size(), replica_num);
         return -1;
     }
-    for (const auto& iter: table_info_) {
-        auto table_info = iter.second;
-        for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-            for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-                std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-                if (endpoint_pid_bucked.find(endpoint) == endpoint_pid_bucked.end() || 
-                    !table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
-                    continue;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& iter: table_info_) {
+            auto table_info = iter.second;
+            for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+                for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    if (endpoint_pid_bucked.find(endpoint) == endpoint_pid_bucked.end() || 
+                        !table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                        continue;
+                    }
+                    endpoint_pid_bucked[endpoint]++;
                 }
-                endpoint_pid_bucked[endpoint] = endpoint_pid_bucked[endpoint] + 1;
             }
         }
     }
     int index = 0;
     int pos = 0;
-    uint64_t max = 0;
+    uint64_t min = 4294967295;
     for (const auto& iter: endpoint_pid_bucked) {
         endpoint_vec.push_back(iter.first);
-        if (max < iter.second) {
-            max = iter.second;
+        if (min > iter.second) {
+            min = iter.second;
             pos = index;
         }
         index++;
@@ -1215,18 +1218,16 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         TablePartition* table_partition = table_info.add_table_partition();
         table_partition->set_pid(pid);
         PartitionMeta* partition_meta = table_partition->add_partition_meta();
-        int cur_pos = pos;
-        pos++;
-        uint32_t endpoint_pos =  cur_pos % endpoint_vec.size();
+        uint32_t endpoint_pos =  pos % endpoint_vec.size();
         partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
         partition_meta->set_is_leader(true);
         for (uint32_t idx = 1; idx < replica_num; idx++) {
             PartitionMeta* partition_meta = table_partition->add_partition_meta();
-            cur_pos++;
-            endpoint_pos = cur_pos % endpoint_vec.size();
+            endpoint_pos = (pos + idx) % endpoint_vec.size();
             partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
             partition_meta->set_is_leader(false);
         }
+        pos++;
     }
     PDLOG(INFO, "set table partition ok. name[%s] partition_num[%u] replica_num[%u]", 
                  table_info.name().c_str(), partition_num, replica_num);
