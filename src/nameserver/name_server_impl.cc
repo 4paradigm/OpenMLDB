@@ -2517,8 +2517,6 @@ void NameServerImpl::UpdateTableStatus() {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : table_info_) {
             uint32_t tid = kv.second->tid();
-            std::vector<int> tablet_status_response_pos;
-            tablet_status_response_pos.reserve(kv.second->table_partition_size());
             for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
                 uint32_t pid = kv.second->table_partition(idx).pid();
                 ::rtidb::nameserver::TablePartition* table_partition =
