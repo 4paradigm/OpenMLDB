@@ -2507,12 +2507,13 @@ void NameServerImpl::UpdateTableStatus() {
         tablet_status_response_map.insert(std::make_pair(kv.first, tablet_status_response));
         for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
             std::string key = std::to_string(tablet_status_response.all_table_status(pos).tid()) + "_" +
-                              std::to_string(tablet_status_response.all_table_status(pos).pid());
+                              std::to_string(tablet_status_response.all_table_status(pos).pid()) + "_" +
+                              kv.first;
             response_pos.insert(std::make_pair(key, pos));
         }
     }
     if (response_pos.empty()) {
-        PDLOG(WARNING, "response_pos is empty");
+        PDLOG(DEBUG, "response_pos is empty");
     } else {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : table_info_) {
@@ -2523,7 +2524,6 @@ void NameServerImpl::UpdateTableStatus() {
                     kv.second->mutable_table_partition(idx);
                 ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta_field = 
                     table_partition->mutable_partition_meta();
-                std::string pos_key = std::to_string(tid) + "_" + std::to_string(pid);
                 for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
                     std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
                     bool tablet_has_partition = false;
@@ -2533,6 +2533,7 @@ void NameServerImpl::UpdateTableStatus() {
                         partition_meta->set_tablet_has_partition(tablet_has_partition);
                         continue;
                     }
+                    std::string pos_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + endpoint;
                     ::rtidb::api::GetTableStatusResponse tablet_status_response = tablet_status_response_iter->second;
                     auto response_pos_iter = response_pos.find(pos_key);
                     if (response_pos_iter != response_pos.end()) {
