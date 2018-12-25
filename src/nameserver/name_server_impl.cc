@@ -2495,25 +2495,23 @@ void NameServerImpl::UpdateTableStatus() {
             tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
         }
     }
-    std::map<std::string, ::rtidb::api::GetTableStatusResponse> tablet_status_response_map;
-    std::unordered_map<std::string, int> response_pos;
-    response_pos.reserve(16);
+    std::unordered_map<std::string, ::rtidb::api::TableStatus> pos_response;
+    pos_response.reserve(16);
     for (const auto& kv : tablet_ptr_map) {
         ::rtidb::api::GetTableStatusResponse tablet_status_response;
         if (!kv.second->client_->GetTableStatus(tablet_status_response)) {
             PDLOG(WARNING, "get table status failed! endpoint[%s]", kv.first.c_str());
             continue;
         }
-        tablet_status_response_map.insert(std::make_pair(kv.first, tablet_status_response));
         for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
             std::string key = std::to_string(tablet_status_response.all_table_status(pos).tid()) + "_" +
                               std::to_string(tablet_status_response.all_table_status(pos).pid()) + "_" +
                               kv.first;
-            response_pos.insert(std::make_pair(key, pos));
+            pos_response.insert(std::make_pair(key, tablet_status_response.all_table_status(pos)));
         }
     }
-    if (response_pos.empty()) {
-        PDLOG(DEBUG, "response_pos is empty");
+    if (pos_response.empty()) {
+        PDLOG(DEBUG, "pos_response is empty");
     } else {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : table_info_) {
@@ -2528,25 +2526,19 @@ void NameServerImpl::UpdateTableStatus() {
                     std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
                     bool tablet_has_partition = false;
                     ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
-                    auto tablet_status_response_iter = tablet_status_response_map.find(endpoint);
-                    if (tablet_status_response_iter == tablet_status_response_map.end()) {
-                        partition_meta->set_tablet_has_partition(tablet_has_partition);
-                        continue;
-                    }
                     std::string pos_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + endpoint;
-                    ::rtidb::api::GetTableStatusResponse tablet_status_response = tablet_status_response_iter->second;
-                    auto response_pos_iter = response_pos.find(pos_key);
-                    if (response_pos_iter != response_pos.end()) {
-                        int pos = response_pos_iter->second;
-                        partition_meta->set_offset(tablet_status_response.all_table_status(pos).offset());
-                        partition_meta->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
-                        partition_meta->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
-                                    tablet_status_response.all_table_status(pos).record_idx_byte_size());
+                    auto pos_response_iter = pos_response.find(pos_key);
+                    if (pos_response_iter != pos_response.end()) {
+                        auto table_status = pos_response_iter->second;
+                        partition_meta->set_offset(table_status.offset());
+                        partition_meta->set_record_cnt(table_status.record_cnt());
+                        partition_meta->set_record_byte_size(table_status.record_byte_size() + 
+                                    table_status.record_idx_byte_size());
                         if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() && 
                                 kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                                table_partition->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
-                                table_partition->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
-                                    tablet_status_response.all_table_status(pos).record_idx_byte_size());
+                                table_partition->set_record_cnt(table_status.record_cnt());
+                                table_partition->set_record_byte_size(table_status.record_byte_size() + 
+                                    table_status.record_idx_byte_size());
                         }
                         tablet_has_partition = true;
                     }
