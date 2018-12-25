@@ -237,6 +237,14 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
         std::string col;
         if (fit.GetType() == ::rtidb::base::ColType::kString) {
             fit.GetString(&col);
+        }else if (fit.GetType() == ::rtidb::base::ColType::kUInt16) {
+            uint16_t uint16_col = 0;
+            fit.GetUInt16(&uint16_col);
+            col = boost::lexical_cast<std::string>(uint16_col);
+        }else if (fit.GetType() == ::rtidb::base::ColType::kInt16) {
+            int16_t int16_col = 0;
+            fit.GetInt16(&int16_col);
+            col = boost::lexical_cast<std::string>(int16_col);
         }else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
             int32_t int32_col = 0;
             fit.GetInt32(&int32_col);
@@ -265,6 +273,18 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
             uint64_t ts = 0;
             fit.GetTimestamp(&ts);
             col = boost::lexical_cast<std::string>(ts);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kDate) {
+            uint64_t dt = 0;
+            fit.GetDate(&dt);
+            col = boost::lexical_cast<std::string>(dt);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kBool) {
+            bool value = false;
+            fit.GetBool(&value);
+            if (value) {
+                col = "true";
+            } else {
+                col = "false";
+            }
         }
         fit.Next();
         vrow.push_back(col);
@@ -349,6 +369,18 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
                 codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kUInt16) {
                 codec_ok = codec.Append(boost::lexical_cast<uint16_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kBool) {
+                bool value = false;
+                std::string raw_value = data[i];
+                std::transform(raw_value.begin(), raw_value.end(), raw_value.begin(), ::tolower);
+                if (raw_value == "true") {
+                    value = true;
+                } else if (raw_value == "false") {
+                    value = false;
+                } else {
+                    return -1;
+                }
+                codec_ok = codec.Append(value);
             } else {
                 codec_ok = codec.AppendNull();
             }
