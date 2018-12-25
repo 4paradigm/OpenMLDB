@@ -1205,7 +1205,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     }
     int index = 0;
     int pos = 0;
-    uint64_t min = 4294967295;
+    uint64_t min = UINT64_MAX;
     for (const auto& iter: endpoint_pid_bucked) {
         endpoint_vec.push_back(iter.first);
         if (min > iter.second) {
