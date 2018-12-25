@@ -2529,7 +2529,7 @@ void NameServerImpl::UpdateTableStatus() {
                     std::string pos_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + endpoint;
                     auto pos_response_iter = pos_response.find(pos_key);
                     if (pos_response_iter != pos_response.end()) {
-                        auto table_status = pos_response_iter->second;
+                        const ::rtidb::api::TableStatus& table_status = pos_response_iter->second;
                         partition_meta->set_offset(table_status.offset());
                         partition_meta->set_record_cnt(table_status.record_cnt());
                         partition_meta->set_record_byte_size(table_status.record_byte_size() + 
