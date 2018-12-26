@@ -14,6 +14,7 @@
 #include "zk/zk_client.h"
 #include <atomic>
 #include <map>
+#include <unordered_map>
 #include <list>
 #include <brpc/server.h>
 #include <mutex>

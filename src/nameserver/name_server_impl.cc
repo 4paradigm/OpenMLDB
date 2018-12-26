@@ -1927,6 +1927,15 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_info_.find(table_info->name()) != table_info_.end()) {
+            response->set_code(-1);
+            response->set_msg("table is already exist!");
+            PDLOG(WARNING, "table[%s] is already exist!", table_info->name().c_str());
+            return;
+        }
+    }
     if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max) 
             || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
         response->set_code(-1);
@@ -1961,12 +1970,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
     uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (table_info_.find(table_info->name()) != table_info_.end()) {
-            response->set_code(-1);
-            response->set_msg("table is already exist!");
-            PDLOG(WARNING, "table[%s] is already exist!", table_info->name().c_str());
-            return;
-        }
         if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
             response->set_code(-1);
             response->set_msg("set table index node failed");
@@ -2522,52 +2525,55 @@ void NameServerImpl::UpdateTableStatus() {
             tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
         }
     }
-    std::map<std::string, ::rtidb::api::GetTableStatusResponse> tablet_status_response_map;
+    std::unordered_map<std::string, ::rtidb::api::TableStatus> pos_response;
+    pos_response.reserve(16);
     for (const auto& kv : tablet_ptr_map) {
         ::rtidb::api::GetTableStatusResponse tablet_status_response;
         if (!kv.second->client_->GetTableStatus(tablet_status_response)) {
             PDLOG(WARNING, "get table status failed! endpoint[%s]", kv.first.c_str());
             continue;
         }
-        tablet_status_response_map.insert(std::make_pair(kv.first, tablet_status_response));
+        for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
+            std::string key = std::to_string(tablet_status_response.all_table_status(pos).tid()) + "_" +
+                              std::to_string(tablet_status_response.all_table_status(pos).pid()) + "_" +
+                              kv.first;
+            pos_response.insert(std::make_pair(key, tablet_status_response.all_table_status(pos)));
+        }
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& kv : table_info_) {
-        uint32_t tid = kv.second->tid();
-        for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
-            uint32_t pid = kv.second->table_partition(idx).pid();
-            ::rtidb::nameserver::TablePartition* table_partition =
-                kv.second->mutable_table_partition(idx);
-            ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta_field = 
-                table_partition->mutable_partition_meta();
-            for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                bool tablet_has_partition = false;
-                ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
-                auto tablet_status_response_iter = tablet_status_response_map.find(endpoint);
-                if (tablet_status_response_iter == tablet_status_response_map.end()) {
-                    partition_meta->set_tablet_has_partition(tablet_has_partition);
-                    continue;
-                }
-                ::rtidb::api::GetTableStatusResponse tablet_status_response = tablet_status_response_iter->second;
-                for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
-                    if (tablet_status_response.all_table_status(pos).tid() == tid &&
-                        tablet_status_response.all_table_status(pos).pid() == pid) {
-                        partition_meta->set_offset(tablet_status_response.all_table_status(pos).offset());
-                        partition_meta->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
-                        partition_meta->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
-                                tablet_status_response.all_table_status(pos).record_idx_byte_size());
+    if (pos_response.empty()) {
+        PDLOG(DEBUG, "pos_response is empty");
+    } else {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& kv : table_info_) {
+            uint32_t tid = kv.second->tid();
+            for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
+                uint32_t pid = kv.second->table_partition(idx).pid();
+                ::rtidb::nameserver::TablePartition* table_partition =
+                    kv.second->mutable_table_partition(idx);
+                ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta_field = 
+                    table_partition->mutable_partition_meta();
+                for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    bool tablet_has_partition = false;
+                    ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
+                    std::string pos_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + endpoint;
+                    auto pos_response_iter = pos_response.find(pos_key);
+                    if (pos_response_iter != pos_response.end()) {
+                        const ::rtidb::api::TableStatus& table_status = pos_response_iter->second;
+                        partition_meta->set_offset(table_status.offset());
+                        partition_meta->set_record_cnt(table_status.record_cnt());
+                        partition_meta->set_record_byte_size(table_status.record_byte_size() + 
+                                    table_status.record_idx_byte_size());
                         if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() && 
-                            kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                            table_partition->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
-                            table_partition->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
-                                tablet_status_response.all_table_status(pos).record_idx_byte_size());
+                                kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                                table_partition->set_record_cnt(table_status.record_cnt());
+                                table_partition->set_record_byte_size(table_status.record_byte_size() + 
+                                    table_status.record_idx_byte_size());
                         }
                         tablet_has_partition = true;
-                        break;
-                     }
+                    }
+                    partition_meta->set_tablet_has_partition(tablet_has_partition);
                 }
-                partition_meta->set_tablet_has_partition(tablet_has_partition);
             }
         }
     }
