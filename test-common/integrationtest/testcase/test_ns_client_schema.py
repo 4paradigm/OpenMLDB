@@ -16,7 +16,7 @@ class TestSchema(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
-    @multi_dimension(True)
+    @multi_dimension(False)
     def test_schema(self):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
