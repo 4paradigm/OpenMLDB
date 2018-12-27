@@ -321,6 +321,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('recover table ok', rs)
         rs = self.recoverendpoint(self.ns_leader, self.leader)
         self.assertIn("recover endpoint ok", rs)
+        time.sleep(1)
         rs = self.updatetablealive(self.ns_leader, name, "0", self.slave1, "yes")
         self.assertIn('update ok', rs)
         self.get_new_ns_leader()
