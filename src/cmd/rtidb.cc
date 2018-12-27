@@ -38,6 +38,7 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <random>
+#include <regex>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -276,7 +277,11 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
         }else if(fit.GetType() == ::rtidb::base::ColType::kDate) {
             uint64_t dt = 0;
             fit.GetDate(&dt);
-            col = boost::lexical_cast<std::string>(dt);
+            time_t rawtime = (time_t)dt / 1000;
+            tm* timeinfo = localtime(&rawtime);
+            char buf[20];
+            strftime(buf, 20, "%Y-%m-%d", timeinfo);
+            col.assign(buf);
         }else if(fit.GetType() == ::rtidb::base::ColType::kBool) {
             bool value = false;
             fit.GetBool(&value);
@@ -364,7 +369,20 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
             } else if (columns[i].type == ::rtidb::base::ColType::kTimestamp) {
                 codec_ok = codec.AppendTimestamp(boost::lexical_cast<uint64_t>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kDate) {
-                codec_ok = codec.AppendDate(boost::lexical_cast<uint64_t>(data[i]));
+                std::regex r("^[0-9]{4}-[0-9]{2}-[0-9]{2}$");
+                if (!regex_match(data[i], r)) {
+                    printf("regex_match error! date format is YY-MM-DD. ex: 2018-06-01\n");
+                    return -1;
+                }
+                std::string date = data[i] + " 00:00:00";
+                tm tm_s;
+                time_t time;
+                char buf[20]= {0};
+                strcpy(buf, date.c_str());
+                strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
+                tm_s.tm_isdst = -1;
+                time = mktime(&tm_s) * 1000;
+                codec_ok = codec.AppendDate(uint64_t(time));
             } else if (columns[i].type == ::rtidb::base::ColType::kInt16) {
                 codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kUInt16) {

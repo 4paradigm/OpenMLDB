@@ -16,7 +16,6 @@ class TestSchema(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
-    @multi_dimension(False)
     def test_schema(self):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
@@ -42,7 +41,7 @@ class TestSchema(TestCaseBase):
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
 
-        row = ['testvalue0', '-100', '100','-1000', '1000', '-10000', '10000', 'true', '1.5', '1123.65', '1545724145000', '1545724145001']
+        row = ['testvalue0', '-100', '100','-1000', '1000', '-10000', '10000', 'true', '1.5', '1123.65', '1545724145000', '2018-12-25']
         self.ns_put_multi(self.ns_leader, name, self.now(), row)
         time.sleep(0.5)
         rs = self.ns_scan_multi(self.ns_leader, name, 'testvalue0', 'k1', self.now() + 100, 0)
@@ -57,7 +56,7 @@ class TestSchema(TestCaseBase):
         self.assertAlmostEqual(float(rs[0]['k9']), float('1.5'))
         self.assertAlmostEqual(float(rs[0]['k10']), float('1123.65'))
         self.assertEqual(rs[0]['k11'], '1545724145000')
-        self.assertEqual(rs[0]['k12'], '1545724145001')
+        self.assertEqual(rs[0]['k12'], '2018-12-25')
 
         rs1 = self.ns_get_multi(self.ns_leader, name, 'testvalue0', 'k1', 0)
         self.assertEqual(rs1['k1'], 'testvalue0')
@@ -71,7 +70,7 @@ class TestSchema(TestCaseBase):
         self.assertAlmostEqual(float(rs1['k9']), float('1.5'))
         self.assertAlmostEqual(float(rs1['k10']), float('1123.65'))
         self.assertEqual(rs1['k11'], '1545724145000')
-        self.assertEqual(rs1['k12'], '1545724145001')
+        self.assertEqual(rs1['k12'], '2018-12-25')
         
 if __name__ == "__main__":
     load(TestSchema)
