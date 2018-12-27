@@ -4116,7 +4116,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         if (!has_found) {
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             PDLOG(INFO, "not found endpoint[%s] in partition_meta. name[%s] pid[%u] op_id[%lu]",
-                         endpoint.c_str(), name.c_str(), pid), task_info->op_id();
+                         endpoint.c_str(), name.c_str(), pid, task_info->op_id());
             return;
         }
         std::string table_value;
