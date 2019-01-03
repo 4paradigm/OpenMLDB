@@ -519,8 +519,12 @@ class TestCaseBase(unittest.TestCase):
 
     def get_latest_opid_by_tname_pid(self, tname, pid):
         rs = self.run_client(self.ns_leader, 'showopstatus {} {}'.format(tname, pid), 'ns_client')
-        tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
-        self.latest_opid = int(sorted(tablestatus.keys())[-1])
+        opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
+        op_id_arr = []
+        for op_id in opstatus.keys():
+            op_id_arr.append(int(op_id))
+        self.latest_opid = sorted(op_id_arr)[-1]
+        infoLogger.debug('------latest_opid:' + str(self.latest_opid) + '---------------')
         return self.latest_opid
 
     def get_op_by_opid(self, op_id):
