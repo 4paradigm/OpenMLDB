@@ -166,7 +166,7 @@ class TestAddReplicaNs(TestCaseBase):
         self.assertIn('Create table ok' ,rs1)
         number = 200
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
 
 
         tables = self.showtable(self.ns_leader, name)
@@ -229,7 +229,7 @@ class TestAddReplicaNs(TestCaseBase):
         time.sleep(1)
         number = 20
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
         time.sleep(1)

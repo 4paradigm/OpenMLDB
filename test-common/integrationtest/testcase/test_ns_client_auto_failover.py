@@ -265,7 +265,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('Create table ok', rs1)
         number = 2
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
         msg = "auto_failover is enabled, cannot execute this cmd"
         self.confset(self.ns_leader, 'auto_failover', 'true')
@@ -300,7 +300,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertIn('Create table ok', rs1)
         number = 2
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
         self.confset(self.ns_leader, 'auto_failover', 'false')
@@ -345,7 +345,7 @@ class TestAutoFailover(TestCaseBase):
 
         number = 2
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
         time.sleep(1)
 
@@ -386,7 +386,7 @@ class TestAutoFailover(TestCaseBase):
 
         number = 3
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
         rs = self.showtable_with_tablename(self.ns_leader, name)
         rs = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
@@ -444,7 +444,7 @@ class TestAutoFailover(TestCaseBase):
 
         number = 3
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
         time.sleep(1)
 
@@ -505,7 +505,7 @@ class TestAutoFailover(TestCaseBase):
 
         number = 3
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
         time.sleep(2)
@@ -546,7 +546,7 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(1)
 
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
         rs = self.showtable_with_tablename(self.ns_leader, name)
@@ -586,7 +586,7 @@ class TestAutoFailover(TestCaseBase):
 
         number = 3
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
         time.sleep(2)
@@ -616,7 +616,7 @@ class TestAutoFailover(TestCaseBase):
                 break
         # self.assertEqual(row, index)
         for i in range(number):
-            rs_put = self.ns_put_kv_cmd(self.ns_leader, 'put', name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
+            rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
 
         rs = self.showtable_with_tablename(self.ns_leader, name)
