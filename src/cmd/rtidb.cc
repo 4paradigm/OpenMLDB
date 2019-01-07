@@ -237,6 +237,14 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
         std::string col;
         if (fit.GetType() == ::rtidb::base::ColType::kString) {
             fit.GetString(&col);
+        }else if (fit.GetType() == ::rtidb::base::ColType::kUInt16) {
+            uint16_t uint16_col = 0;
+            fit.GetUInt16(&uint16_col);
+            col = boost::lexical_cast<std::string>(uint16_col);
+        }else if (fit.GetType() == ::rtidb::base::ColType::kInt16) {
+            int16_t int16_col = 0;
+            fit.GetInt16(&int16_col);
+            col = boost::lexical_cast<std::string>(int16_col);
         }else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
             int32_t int32_col = 0;
             fit.GetInt32(&int32_col);
@@ -265,6 +273,22 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
             uint64_t ts = 0;
             fit.GetTimestamp(&ts);
             col = boost::lexical_cast<std::string>(ts);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kDate) {
+            uint64_t dt = 0;
+            fit.GetDate(&dt);
+            time_t rawtime = (time_t)dt / 1000;
+            tm* timeinfo = localtime(&rawtime);
+            char buf[20];
+            strftime(buf, 20, "%Y-%m-%d", timeinfo);
+            col.assign(buf);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kBool) {
+            bool value = false;
+            fit.GetBool(&value);
+            if (value) {
+                col = "true";
+            } else {
+                col = "false";
+            }
         }
         fit.Next();
         vrow.push_back(col);
@@ -344,11 +368,35 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
             } else if (columns[i].type == ::rtidb::base::ColType::kTimestamp) {
                 codec_ok = codec.AppendTimestamp(boost::lexical_cast<uint64_t>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kDate) {
-                codec_ok = codec.AppendDate(boost::lexical_cast<uint64_t>(data[i]));
+                std::string date = data[i] + " 00:00:00";
+                tm tm_s;
+                time_t time;
+                char buf[20]= {0};
+                strcpy(buf, date.c_str());
+                char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
+                if (result == NULL) {
+                    printf("date format is YY-MM-DD. ex: 2018-06-01\n");
+                    return -1;
+                }
+                tm_s.tm_isdst = -1;
+                time = mktime(&tm_s) * 1000;
+                codec_ok = codec.AppendDate(uint64_t(time));
             } else if (columns[i].type == ::rtidb::base::ColType::kInt16) {
                 codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kUInt16) {
                 codec_ok = codec.Append(boost::lexical_cast<uint16_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kBool) {
+                bool value = false;
+                std::string raw_value = data[i];
+                std::transform(raw_value.begin(), raw_value.end(), raw_value.begin(), ::tolower);
+                if (raw_value == "true") {
+                    value = true;
+                } else if (raw_value == "false") {
+                    value = false;
+                } else {
+                    return -1;
+                }
+                codec_ok = codec.Append(value);
             } else {
                 codec_ok = codec.AppendNull();
             }

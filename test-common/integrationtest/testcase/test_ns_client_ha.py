@@ -118,7 +118,7 @@ class TestNameserverHa(TestCaseBase):
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
         self.stop_client(self.leader)
-        time.sleep(5)
+        time.sleep(10)
         rs = self.showtablet(self.ns_leader)
         self.start_client(self.leader)
         self.start_client(self.ns_slaver, "nameserver")

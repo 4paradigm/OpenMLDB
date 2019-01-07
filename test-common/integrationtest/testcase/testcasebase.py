@@ -16,6 +16,7 @@ import libs.utils as utils
 from libs.clients.ns_cluster import NsCluster
 import traceback
 import copy
+import re
 
 
 class TestCaseBase(unittest.TestCase):
@@ -201,16 +202,45 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'create ' + name + ' ' + ttl + ' ' + partition_num + ' ' + replica_num + ' ' + schema
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_scan_kv_cmd(self, endpoint, scan, name, pk, start_time, end_time, limit):
-        cmd = scan + ' ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
+    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
+        cmd = 'scan ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_get_kv_cmd(self, endpoint, get, name, key, ts):
-        cmd = get + ' ' + name + ' ' + key+ ' ' + ts
+    def ns_scan_multi(self, endpoint, name, pk, idx_name, start_time, end_time, limit = ''):
+        cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = []
+        for i in range(2, len(arr)):
+            record = re.sub(' +', ' ', arr[i]).strip().split(" ")
+            cur_map = {}
+            for idx in range(len(key_arr)):
+                cur_map[key_arr[idx]] = record[idx+2]
+            value.append(cur_map)    
+        return value
+
+    def ns_get_kv(self, endpoint, name, key, ts):
+        cmd = 'get ' + name + ' ' + key+ ' ' + ts
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_put_kv_cmd(self, endpoint, put, name, pk, ts, value):
-        cmd = put + ' ' + name + ' ' + pk+ ' ' + ts + ' ' + value
+    def ns_get_multi(self, endpoint, name, key, idx_name, ts):
+        cmd = 'get {} {} {} {}'.format(name, key, idx_name, ts)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = {}
+        record = re.sub(' +', ' ', arr[2]).strip().split(" ")
+        for idx in range(len(key_arr)):
+            value[key_arr[idx]] = record[idx+2]
+        return value
+
+    def ns_put_kv(self, endpoint, name, pk, ts, value):
+        cmd = 'put {} {} {} {}'.format(name, pk, ts, value)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_put_multi(self, endpoint, name, ts, row):
+        cmd = 'put {} {} {}'.format(name, ts, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_drop(self, endpoint, tname):
