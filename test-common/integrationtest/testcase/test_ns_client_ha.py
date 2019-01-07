@@ -34,7 +34,7 @@ class TestNameserverHa(TestCaseBase):
                                   'k2': ('string', 'testvalue1'),
                                   'k3': ('string', 1.1)}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
         for _ in range(10):
@@ -211,14 +211,13 @@ class TestNameserverHa(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_slaver, self.tname)
+        rs = self.showtable(self.ns_slaver)
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.kill(*nsc.endpoints)
         nsc.start(*nsc.endpoints)
         time.sleep(3)
         nsc.get_ns_leader()
         self.assertIn('nameserver is not leader', rs)
-        self.ns_drop(self.ns_leader, self.tname)
 
 
     def test_ha_cluster(self):
