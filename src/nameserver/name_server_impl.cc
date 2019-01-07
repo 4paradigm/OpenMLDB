@@ -979,7 +979,7 @@ void NameServerImpl::ProcessTask() {
                                 ::rtidb::api::TaskType_Name(task->task_info_->task_type()).c_str()); 
                     task_thread_pool_.AddTask(task->fun_);
                     task->task_info_->set_status(::rtidb::api::kDoing);;
-				} else if (task->task_info_->status() == ::rtidb::api::kDoing) {
+                } else if (task->task_info_->status() == ::rtidb::api::kDoing) {
                     if (::baidu::common::timer::now_time() - op_data->op_info_.start_time() > 
                             FLAGS_name_server_op_execute_timeout / 1000) {
                         PDLOG(INFO, "The executeion time of op is too long. "
@@ -990,7 +990,7 @@ void NameServerImpl::ProcessTask() {
                                     op_data->op_info_.start_time(),
                                     ::baidu::common::timer::now_time());
                         cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
-					}
+                    }
                 }
             }
         }
@@ -1168,28 +1168,57 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         partition_num = table_info.partition_num();
     }
     std::vector<std::string> endpoint_vec;
+    std::map<std::string, uint64_t> endpoint_pid_bucked;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : tablets_) {
             if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-                endpoint_vec.push_back(kv.first);
+                endpoint_pid_bucked.insert(std::make_pair(kv.first, 0));
             }
         }
     }
-    uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_vec.size());
+    endpoint_vec.reserve(endpoint_pid_bucked.size());
+    uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_pid_bucked.size());
     if (table_info.has_replica_num() && table_info.replica_num() > 0) {
         replica_num = table_info.replica_num();
     }
-    if (endpoint_vec.size() < replica_num) {
+    if (endpoint_pid_bucked.size() < replica_num) {
         PDLOG(WARNING, "healthy endpoint num[%u] is less than replica_num[%u]",
-                        endpoint_vec.size(), replica_num);
+                        endpoint_pid_bucked.size(), replica_num);
         return -1;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& iter: table_info_) {
+            auto table_info = iter.second;
+            for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+                for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    if (endpoint_pid_bucked.find(endpoint) == endpoint_pid_bucked.end() || 
+                        !table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+                        continue;
+                    }
+                    endpoint_pid_bucked[endpoint]++;
+                }
+            }
+        }
+    }
+    int index = 0;
+    int pos = 0;
+    uint64_t min = UINT64_MAX;
+    for (const auto& iter: endpoint_pid_bucked) {
+        endpoint_vec.push_back(iter.first);
+        if (min > iter.second) {
+            min = iter.second;
+            pos = index;
+        }
+        index++;
     }
     for (uint32_t pid = 0; pid < partition_num; pid++) {
         TablePartition* table_partition = table_info.add_table_partition();
         table_partition->set_pid(pid);
         PartitionMeta* partition_meta = table_partition->add_partition_meta();
-        uint32_t endpoint_pos = rand_.Next() % endpoint_vec.size();
+        uint32_t endpoint_pos =  pos % endpoint_vec.size();
         partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
         partition_meta->set_is_leader(true);
         for (uint32_t idx = 1; idx < replica_num; idx++) {
@@ -1197,6 +1226,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
             partition_meta->set_endpoint(endpoint_vec[(endpoint_pos + idx) % endpoint_vec.size()]);
             partition_meta->set_is_leader(false);
         }
+        pos++;
     }
     PDLOG(INFO, "set table partition ok. name[%s] partition_num[%u] replica_num[%u]", 
                  table_info.name().c_str(), partition_num, replica_num);
@@ -1579,7 +1609,7 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller,
         return;
     }
     uint32_t concurrency = FLAGS_name_server_task_concurrency;
-	if (request->has_concurrency()) {
+    if (request->has_concurrency()) {
         if (request->concurrency() > FLAGS_name_server_task_max_concurrency) {
             response->set_code(-1);
             response->set_msg("concurrency is greater than the max value " + std::to_string(FLAGS_name_server_task_max_concurrency));
@@ -1897,6 +1927,15 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_info_.find(table_info->name()) != table_info_.end()) {
+            response->set_code(-1);
+            response->set_msg("table is already exist!");
+            PDLOG(WARNING, "table[%s] is already exist!", table_info->name().c_str());
+            return;
+        }
+    }
     if ((table_info->ttl_type() == "kAbsoluteTime" && table_info->ttl() > FLAGS_absolute_ttl_max) 
             || (table_info->ttl_type() == "kLatestTime" && table_info->ttl() > FLAGS_latest_ttl_max)) {
         response->set_code(-1);
@@ -1931,12 +1970,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
     uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (table_info_.find(table_info->name()) != table_info_.end()) {
-            response->set_code(-1);
-            response->set_msg("table is already exist!");
-            PDLOG(WARNING, "table[%s] is already exist!", table_info->name().c_str());
-            return;
-        }
         if (!zk_client_->SetNodeValue(zk_table_index_node_, std::to_string(table_index_ + 1))) {
             response->set_code(-1);
             response->set_msg("set table index node failed");
@@ -2312,6 +2345,14 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, 
+                ::rtidb::api::OPType::kMigrateOP, tid, pid);
+    if (!task) {
+        PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::rtidb::api::OPType::kMigrateOP, 
                  name, tid, pid, table_info->ttl(), table_info->seg_cnt(), false);
     if (!task) {
@@ -2321,18 +2362,25 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateAddReplicaTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kMigrateOP, tid, pid, des_endpoint.c_str());
+                ::rtidb::api::OPType::kMigrateOP, tid, pid, des_endpoint);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
                         tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, 
-                ::rtidb::api::OPType::kMigrateOP, tid, pid);
+    task = CreateAddTableInfoTask(name, pid, des_endpoint,
+                op_index, ::rtidb::api::OPType::kMigrateOP);
     if (!task) {
-        PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+        PDLOG(WARNING, "create addtableinfo task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]",
                         tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
+    task = CreateCheckBinlogSyncProgressTask(op_index, 
+                ::rtidb::api::OPType::kMigrateOP, name, pid, des_endpoint, FLAGS_check_binlog_sync_progress_delta);
+    if (!task) {
+        PDLOG(WARNING, "create CheckBinlogSyncProgressTask failed. name[%s] pid[%u]", name.c_str(), pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
@@ -2344,6 +2392,14 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
+    task = CreateUpdateTableInfoTask(src_endpoint, name, pid, des_endpoint, 
+                op_index, ::rtidb::api::OPType::kMigrateOP);
+    if (!task) {
+        PDLOG(WARNING, "create update table info task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
+                        tid, pid, src_endpoint.c_str(), des_endpoint.c_str());
+        return -1;
+    }
+    op_data->task_list_.push_back(task);
     task = CreateDropTableTask(src_endpoint, op_index, 
                 ::rtidb::api::OPType::kMigrateOP, tid, pid);
     if (!task) {
@@ -2352,18 +2408,10 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateUpdateTableInfoTask(src_endpoint, name, pid, des_endpoint, 
-                op_index, ::rtidb::api::OPType::kMigrateOP);
-    if (!task) {
-        PDLOG(WARNING, "create migrate table info task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]", 
-                        tid, pid, src_endpoint.c_str(), des_endpoint.c_str());
-        return -1;
-    }
-    op_data->task_list_.push_back(task);
     PDLOG(INFO, "create migrate op task ok. src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]", 
                  src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
     return 0;
-}            
+}
 
 void NameServerImpl::DelReplicaNS(RpcController* controller,
        const DelReplicaNSRequest* request,
@@ -2464,7 +2512,7 @@ void NameServerImpl::DeleteDoneOP() {
     }
     while (done_op_list_.size() > (uint32_t)FLAGS_max_op_num) {
         std::shared_ptr<OPData> op_data = done_op_list_.front();
-		if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
+        if (op_data->op_info_.task_status() == ::rtidb::api::TaskStatus::kFailed) {
             std::string node = zk_op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
             if (zk_client_->DeleteNode(node)) {
                 PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
@@ -2492,52 +2540,55 @@ void NameServerImpl::UpdateTableStatus() {
             tablet_ptr_map.insert(std::make_pair(kv.first, kv.second));
         }
     }
-    std::map<std::string, ::rtidb::api::GetTableStatusResponse> tablet_status_response_map;
+    std::unordered_map<std::string, ::rtidb::api::TableStatus> pos_response;
+    pos_response.reserve(16);
     for (const auto& kv : tablet_ptr_map) {
         ::rtidb::api::GetTableStatusResponse tablet_status_response;
         if (!kv.second->client_->GetTableStatus(tablet_status_response)) {
             PDLOG(WARNING, "get table status failed! endpoint[%s]", kv.first.c_str());
             continue;
         }
-        tablet_status_response_map.insert(std::make_pair(kv.first, tablet_status_response));
+        for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
+            std::string key = std::to_string(tablet_status_response.all_table_status(pos).tid()) + "_" +
+                              std::to_string(tablet_status_response.all_table_status(pos).pid()) + "_" +
+                              kv.first;
+            pos_response.insert(std::make_pair(key, tablet_status_response.all_table_status(pos)));
+        }
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    for (const auto& kv : table_info_) {
-        uint32_t tid = kv.second->tid();
-        for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
-            uint32_t pid = kv.second->table_partition(idx).pid();
-            ::rtidb::nameserver::TablePartition* table_partition =
-                kv.second->mutable_table_partition(idx);
-            ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta_field = 
-                table_partition->mutable_partition_meta();
-            for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
-                std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
-                bool tablet_has_partition = false;
-                ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
-                auto tablet_status_response_iter = tablet_status_response_map.find(endpoint);
-                if (tablet_status_response_iter == tablet_status_response_map.end()) {
-                    partition_meta->set_tablet_has_partition(tablet_has_partition);
-                    continue;
-                }
-                ::rtidb::api::GetTableStatusResponse tablet_status_response = tablet_status_response_iter->second;
-                for (int pos = 0; pos < tablet_status_response.all_table_status_size(); pos++) {
-                    if (tablet_status_response.all_table_status(pos).tid() == tid &&
-                        tablet_status_response.all_table_status(pos).pid() == pid) {
-                        partition_meta->set_offset(tablet_status_response.all_table_status(pos).offset());
-                        partition_meta->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
-                        partition_meta->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
-                                tablet_status_response.all_table_status(pos).record_idx_byte_size());
+    if (pos_response.empty()) {
+        PDLOG(DEBUG, "pos_response is empty");
+    } else {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& kv : table_info_) {
+            uint32_t tid = kv.second->tid();
+            for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
+                uint32_t pid = kv.second->table_partition(idx).pid();
+                ::rtidb::nameserver::TablePartition* table_partition =
+                    kv.second->mutable_table_partition(idx);
+                ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::PartitionMeta >* partition_meta_field = 
+                    table_partition->mutable_partition_meta();
+                for (int meta_idx = 0; meta_idx < kv.second->table_partition(idx).partition_meta_size(); meta_idx++) {
+                    std::string endpoint = kv.second->table_partition(idx).partition_meta(meta_idx).endpoint();
+                    bool tablet_has_partition = false;
+                    ::rtidb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(meta_idx);
+                    std::string pos_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + endpoint;
+                    auto pos_response_iter = pos_response.find(pos_key);
+                    if (pos_response_iter != pos_response.end()) {
+                        const ::rtidb::api::TableStatus& table_status = pos_response_iter->second;
+                        partition_meta->set_offset(table_status.offset());
+                        partition_meta->set_record_cnt(table_status.record_cnt());
+                        partition_meta->set_record_byte_size(table_status.record_byte_size() + 
+                                    table_status.record_idx_byte_size());
                         if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() && 
-                            kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                            table_partition->set_record_cnt(tablet_status_response.all_table_status(pos).record_cnt());
-                            table_partition->set_record_byte_size(tablet_status_response.all_table_status(pos).record_byte_size() + 
-                                tablet_status_response.all_table_status(pos).record_idx_byte_size());
+                                kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                                table_partition->set_record_cnt(table_status.record_cnt());
+                                table_partition->set_record_byte_size(table_status.record_byte_size() + 
+                                    table_status.record_idx_byte_size());
                         }
                         tablet_has_partition = true;
-                        break;
-                     }
+                    }
+                    partition_meta->set_tablet_has_partition(tablet_has_partition);
                 }
-                partition_meta->set_tablet_has_partition(tablet_has_partition);
             }
         }
     }

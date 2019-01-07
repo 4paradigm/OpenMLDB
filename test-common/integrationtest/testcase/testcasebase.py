@@ -16,6 +16,7 @@ import libs.utils as utils
 from libs.clients.ns_cluster import NsCluster
 import traceback
 import copy
+import re
 
 
 class TestCaseBase(unittest.TestCase):
@@ -200,20 +201,49 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_scan_kv_cmd(self, endpoint, scan, name, pk, start_time, end_time, limit):
-        cmd = scan + ' ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
+    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
+        cmd = 'scan ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_get_kv_cmd(self, endpoint, get, name, key, ts):
-        cmd = '{} {} {} {}'.format(get, name, key, ts)
+    def ns_scan_multi(self, endpoint, name, pk, idx_name, start_time, end_time, limit = ''):
+        cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = []
+        for i in range(2, len(arr)):
+            record = re.sub(' +', ' ', arr[i]).strip().split(" ")
+            cur_map = {}
+            for idx in range(len(key_arr)):
+                cur_map[key_arr[idx]] = record[idx+2]
+            value.append(cur_map)    
+        return value
+
+    def ns_get_kv(self, endpoint, name, key, ts):
+        cmd = 'get ' + name + ' ' + key+ ' ' + ts
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_put_kv_cmd(self, endpoint, put, name, pk, ts, value):
-        cmd = '{} {} {} {} {}'.format(put, name, pk, ts, value)
+    def ns_get_multi(self, endpoint, name, key, idx_name, ts):
+        cmd = 'get {} {} {} {}'.format(name, key, idx_name, ts)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = {}
+        record = re.sub(' +', ' ', arr[2]).strip().split(" ")
+        for idx in range(len(key_arr)):
+            value[key_arr[idx]] = record[idx+2]
+        return value
+
+    def ns_put_kv(self, endpoint, name, pk, ts, value):
+        cmd = 'put {} {} {} {}'.format(name, pk, ts, value)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_put_multi(self, endpoint, name, ts, row):
+        cmd = 'put {} {} {}'.format(name, ts, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_drop(self, endpoint, tname):
-        infoLogger.info(tname)
+        infoLogger.debug(tname)
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
 
     def ns_update_table_alive_cmd(self, ns_endpoint, updatetablealive, table_name, pid, endpoint, is_alive):
@@ -441,8 +471,8 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
         return self.parse_tb(rs, ' ', [0], [1, 2])
 
-    def showopstatus(self, endpoint):
-        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+    def showopstatus(self, endpoint, name='', pid=''):
+        rs = self.run_client(endpoint, 'showopstatus {} {}'.format(name, pid), 'ns_client')
         tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
         tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
@@ -542,8 +572,13 @@ class TestCaseBase(unittest.TestCase):
         return opid_x
 
     def get_latest_opid_by_tname_pid(self, tname, pid):
-        latest_opid = self.get_opid_by_tname_pid(tname, pid)[-1]
-        self.latest_opid = int(latest_opid)
+        rs = self.run_client(self.ns_leader, 'showopstatus {} {}'.format(tname, pid), 'ns_client')
+        opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
+        op_id_arr = []
+        for op_id in opstatus.keys():
+            op_id_arr.append(int(op_id))
+        self.latest_opid = sorted(op_id_arr)[-1]
+        infoLogger.debug('------latest_opid:' + str(self.latest_opid) + '---------------')
         return self.latest_opid
 
     def get_op_by_opid(self, op_id):
@@ -595,6 +630,11 @@ class TestCaseBase(unittest.TestCase):
 
     def check_re_add_replica_simplify_op(self, op_id):
         self.check_tasks(op_id, ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
+
+    def check_migrate_op(self, op_id):
+        self.check_tasks(op_id, ['kPauseSnapshot', 'kSendSnapshot', 'kRecoverSnapshot', 'kLoadTable', 
+                                 'kAddReplica', 'kAddTableInfo', 'kCheckBinlogSyncProgress', 'kDelReplica',
+                                 'kUpdateTableInfo', 'kDropTable'])
 
     def check_setlimit(self, endpoint, command, method, limit):
         cmd = '{} {} {}'.format(command, method, limit)

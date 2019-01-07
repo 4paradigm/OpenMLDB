@@ -50,27 +50,27 @@ class TestSetTTL(TestCaseBase):
         self.assertIn('Set ttl ok !', rs_latest2)
 
         rs_time = self.now()
-        rs_absolute3 = self.ns_put_kv_cmd(self.ns_leader, 'put', 't1', 'testkey0', str(rs_time), 'testvalue0')
-        rs_latest3 = self.ns_put_kv_cmd(self.ns_leader, 'put', 'latest1', 'testkey0', str(rs_time), 'testvalue0')
+        rs_absolute3 = self.ns_put_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), 'testvalue0')
+        rs_latest3 = self.ns_put_kv(self.ns_leader, 'latest1', 'testkey0', str(rs_time), 'testvalue0')
         self.assertIn('Put ok', rs_absolute3)
         self.assertIn('Put ok', rs_latest3)
 
-        rs_absolute4 = self.ns_get_kv_cmd(self.ns_leader, 'get', 't1', 'testkey0', str(rs_time))
-        rs_latest4 = self.ns_get_kv_cmd(self.ns_leader, 'get', 'latest1', 'testkey0', str(rs_time))
+        rs_absolute4 = self.ns_get_kv(self.ns_leader, 't1', 'testkey0', str(rs_time))
+        rs_latest4 = self.ns_get_kv(self.ns_leader, 'latest1', 'testkey0', str(rs_time))
         self.assertIn('testvalue0', rs_absolute4)
         self.assertIn('testvalue0', rs_latest4)
 
-        rs_latest5 = self.ns_put_kv_cmd(self.ns_leader, 'put', 'latest1', 'testkey0', str(rs_time), 'testvalue1')
+        rs_latest5 = self.ns_put_kv(self.ns_leader, 'latest1', 'testkey0', str(rs_time), 'testvalue1')
         self.assertIn('Put ok', rs_latest5)
         time.sleep(1)
 
-        rs_latest6 = self.ns_get_kv_cmd(self.ns_leader, 'get', 'latest1', 'testkey0', str(rs_time))
+        rs_latest6 = self.ns_get_kv(self.ns_leader, 'latest1', 'testkey0', str(rs_time))
         self.assertFalse('testvalue0' in rs_latest6)
-        rs_absolute5 = self.ns_scan_kv_cmd(self.ns_leader, 'scan', 't1', 'testkey0', str(rs_time), '0', ' ')
+        rs_absolute5 = self.ns_scan_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), '0', ' ')
         self.assertTrue('testvalue0' in rs_absolute5)
         time.sleep(61)
 
-        rs_absolute5 = self.ns_scan_kv_cmd(self.ns_leader, 'scan', 't1', 'testkey0', str(rs_time), '0', ' ')
+        rs_absolute5 = self.ns_scan_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), '0', ' ')
         self.assertFalse('testvalue0' in rs_absolute5)
 
 

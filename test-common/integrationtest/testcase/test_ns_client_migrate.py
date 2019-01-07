@@ -47,12 +47,13 @@ class TestNameserverMigrate(TestCaseBase):
         :return:
         """
         tname = str(time.time())
+        self.tname = tname
         self.createtable_put(tname, 500)
         time.sleep(2)
         rs1 = self.get_table_status(self.slave1)
         rs2 = self.get_table_status(self.slave2)
         rs3 = self.migrate(self.ns_leader, self.slave1, tname, pid_group, self.slave2)
-        time.sleep(2)
+        time.sleep(10)
         rs4 = self.showtable(self.ns_leader)
         rs5 = self.get_table_status(self.slave1)
         rs6 = self.get_table_status(self.slave2)
@@ -64,6 +65,8 @@ class TestNameserverMigrate(TestCaseBase):
             self.assertNotIn((self.tid, i), rs2.keys())
             self.assertNotIn((self.tid, i), rs5.keys())
             self.assertIn((self.tid, i), rs6.keys())
+            self.get_latest_opid_by_tname_pid(tname, i)
+            self.check_migrate_op(self.latest_opid)
 
     def test_ns_client_migrate_endpoint_offline(self):
         """
