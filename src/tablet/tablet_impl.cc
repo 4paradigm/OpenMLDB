@@ -213,6 +213,16 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
                         ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
         return;
     }
+    uint64_t old_ttl = table->GetTTL();
+    if (old_ttl == 0 && ttl > 0) {
+        response->set_code(-1);
+        response->set_msg("cannot update ttl form zero to nonzero");
+        return;
+    } else if (old_ttl > 0 && ttl == 0) {
+        response->set_code(-1);
+        response->set_msg("cannot update ttl form nonzero to zero");
+        return;
+    }
 
     table->SetTTL(ttl);
     response->set_code(0);

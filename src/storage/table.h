@@ -204,11 +204,6 @@ public:
 
     inline void SetTTL(uint64_t ttl) {
         ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
-        if (ttl > 0) {
-            enable_gc_.store(true, std::memory_order_relaxed);
-        }else {
-            enable_gc_.store(false, std::memory_order_relaxed);
-        }
     }
 
     inline uint32_t GetKeyEntryHeight() {
@@ -225,6 +220,7 @@ private:
     Segment*** segments_;
     std::atomic<bool> enable_gc_;
     std::atomic<uint64_t> ttl_;
+    uint64_t last_ttl_;
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;

@@ -13,6 +13,7 @@
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
+#include <thread>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -43,7 +44,9 @@ Table::Table(const std::string& name,
     replicas_(replicas), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(key_entry_max_height)
-{}
+{
+    last_ttl_ = ttl_;
+}
 
 Table::Table(const std::string& name,
         uint32_t id,
@@ -58,7 +61,9 @@ Table::Table(const std::string& name,
     replicas_(), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(FLAGS_skiplist_max_height)
-{}
+{
+    last_ttl_ = ttl_;
+}
 
 Table::~Table() {
     Release();
@@ -187,6 +192,12 @@ uint64_t Table::SchedGc() {
             id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
+    if (last_ttl_ != ttl_.load(std::memory_order_acquire)) {
+        last_ttl_ = ttl_.load(std::memory_order_acquire);
+        PDLOG(INFO, "ttl has modified, sleep a moment before gc. tid %u, pid %u with type %s ttl %lu", 
+                    id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
+        std::this_thread::sleep_for(std::chrono::milliseconds(ttl_offset_));
+    }
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;

@@ -397,6 +397,19 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(-2, response.code());
     }
+    // ttl update to zero
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_value(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        MockClosure closure;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(-1, response.code());
+	    ASSERT_STREQ("cannot update ttl form nonzero to zero", response.msg().c_str());
+    }
     // normal case
     {
         ::rtidb::api::UpdateTTLRequest request;
@@ -1194,8 +1207,8 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         ASSERT_EQ("Not Found", response.msg());
     }
 
-    // sleep 70s
-    sleep(70);
+    // sleep 130s
+    sleep(130);
 
     // revert ttl
     {
@@ -1531,25 +1544,10 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         request.set_value(1);
         ::rtidb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(-1, response.code());
     }
 
-    // get now3
-    {
-        ::rtidb::api::GetRequest request;
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_key("test1");
-        request.set_ts(now3);
-        ::rtidb::api::GetResponse response;
-        tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(1, response.code());
-        ASSERT_EQ("Not Found", response.msg());
-    }
-    // sleep 70
-    sleep(70);
-
-    // revert ttl
+    // reset ttl
     {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
@@ -1561,19 +1559,6 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ASSERT_EQ(0, response.code());
     }
 
-    // try get now3 again
-    {
-        ::rtidb::api::GetRequest request;
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_key("test1");
-        request.set_ts(now3);
-        ::rtidb::api::GetResponse response;
-        tablet.Get(NULL, &request, &response, &closure);
-        //TODO bugs need to fix
-        //ASSERT_EQ(1, response.code());
-        //ASSERT_EQ("Not Found", response.msg());
-    }
     FLAGS_gc_interval = old_ttl;
 }
 
