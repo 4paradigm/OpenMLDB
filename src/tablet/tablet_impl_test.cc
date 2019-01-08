@@ -341,6 +341,9 @@ TEST_F(TabletImplTest, Get) {
 }
 
 TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
+    int32_t old_gc_interval = FLAGS_gc_interval;
+    // 1 minute
+    FLAGS_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init();
     // create table
@@ -421,6 +424,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
+        sleep(70);
         ::rtidb::api::GetTableStatusRequest gr;
         ::rtidb::api::GetTableStatusResponse gres;
         tablet.GetTableStatus(NULL, &gr, &gres, &closure);
@@ -435,9 +439,13 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         }
         ASSERT_TRUE(checked);
     }
+    FLAGS_gc_interval = old_gc_interval;
 }
 
 TEST_F(TabletImplTest, UpdateTTLLatest) {
+    int32_t old_gc_interval = FLAGS_gc_interval;
+    // 1 minute
+    FLAGS_gc_interval = 1;
     TabletImpl tablet;
     tablet.Init();
     // create table
@@ -505,6 +513,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
+        sleep(70);
         ::rtidb::api::GetTableStatusRequest gr;
         ::rtidb::api::GetTableStatusResponse gres;
         tablet.GetTableStatus(NULL, &gr, &gres, &closure);
@@ -519,6 +528,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         }
         ASSERT_TRUE(checked);
     }
+    FLAGS_gc_interval = old_gc_interval;
 }
 
 TEST_F(TabletImplTest, CreateTableWithSchema) {
@@ -1099,7 +1109,7 @@ TEST_F(TabletImplTest, Scan) {
 
 
 TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
-    int32_t old_ttl = FLAGS_gc_interval;
+    int32_t old_gc_interval = FLAGS_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
@@ -1203,13 +1213,24 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         request.set_ts(1);
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+
+    // sleep 70s
+    sleep(70);
+
+    // get version 1 again
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test1");
+        request.set_ts(1);
+        ::rtidb::api::GetResponse response;
+        tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(1, response.code());
         ASSERT_EQ("Not Found", response.msg());
     }
-
-    // sleep 130s
-    sleep(130);
-
     // revert ttl
     {
         ::rtidb::api::UpdateTTLRequest request;
@@ -1235,7 +1256,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         ASSERT_EQ("Not Found", response.msg());
     }
 
-    FLAGS_gc_interval = old_ttl;
+    FLAGS_gc_interval = old_gc_interval;
 }
 
 TEST_F(TabletImplTest, GC) {
@@ -1444,7 +1465,7 @@ TEST_F(TabletImplTest, Recover) {
 }
 
 TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
-     int32_t old_ttl = FLAGS_gc_interval;
+     int32_t old_gc_interval = FLAGS_gc_interval;
     // 1 minute
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
@@ -1459,7 +1480,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         table_meta->set_tid(id);
         table_meta->set_pid(1);
         // 3 minutes
-        table_meta->set_ttl(0);
+        table_meta->set_ttl(3);
         table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
@@ -1544,22 +1565,23 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         request.set_value(1);
         ::rtidb::api::UpdateTTLResponse response;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(-1, response.code());
-    }
-
-    // reset ttl
-    {
-        ::rtidb::api::UpdateTTLRequest request;
-        request.set_tid(id);
-        request.set_pid(1);
-        request.set_type(::rtidb::api::kAbsoluteTime);
-        request.set_value(0);
-        ::rtidb::api::UpdateTTLResponse response;
-        tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
     }
 
-    FLAGS_gc_interval = old_ttl;
+    sleep(70);
+    // get now3
+    {
+        ::rtidb::api::GetRequest request;
+        request.set_tid(id);
+        request.set_pid(1);
+        request.set_key("test1");
+        request.set_ts(now3);
+        ::rtidb::api::GetResponse response;
+        tablet.Get(NULL, &request, &response, &closure);
+        ASSERT_EQ(1, response.code());
+        ASSERT_EQ("Not Found", response.msg());
+    }
+    FLAGS_gc_interval = old_gc_interval;
 }
 
 TEST_F(TabletImplTest, DropTableFollower) {

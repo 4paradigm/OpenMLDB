@@ -12,27 +12,25 @@
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
-#include <thread>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_uint32(skiplist_max_height);
-DECLARE_uint32(gc_wait_time);
 
 namespace rtidb {
 namespace storage {
 
 const static SliceComparator scmp;
 
-Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), ttl_version_(0){
+Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0){
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
-		ttl_version_(0), key_entry_max_height_(height) {
+		key_entry_max_height_(height) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
 }
 
@@ -131,7 +129,6 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
         PDLOG(WARNING, "[Gc4Head] segment gc4head is disabled");
         return;
     }
-    uint32_t old_version = ttl_version_.load(std::memory_order_acquire);
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt;
     KeyEntries::Iterator* it = entries_->NewIterator();
@@ -145,16 +142,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
                 node = entry->entries.SplitByPos(keep_cnt);
             }
         }
-        bool ttl_modified = false;
-        if (old_version != ttl_version_.load(std::memory_order_acquire)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_gc_wait_time));
-            ttl_modified = true;
-        }
         FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        if (ttl_modified) {
-            PDLOG(INFO, "[Gc4TTL] ttl has modified. stop gc pk %s", entry->key.data());
-            break;
-        }
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4Head] segment gc keep cnt %lu consumed %lld, count %lld", keep_cnt,
@@ -172,7 +160,6 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64
 
 // fast gc with no global pause
 void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
-    uint32_t old_version = ttl_version_.load(std::memory_order_acquire);
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt; 
     KeyEntries::Iterator* it = entries_->NewIterator();
@@ -190,16 +177,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
         }
-        bool ttl_modified = false;
-        if (old_version != ttl_version_.load(std::memory_order_acquire)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_gc_wait_time));
-            ttl_modified = true;
-        }
         FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        if (ttl_modified) {
-            PDLOG(INFO, "[Gc4TTL] ttl has modified. stop gc pk %s", entry->key.data());
-            break;
-        }
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,

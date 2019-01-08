@@ -165,10 +165,6 @@ public:
         return pk_cnt_.load(std::memory_order_relaxed);
     }
 
-    inline void IncrTTLVersion() {
-        ttl_version_.fetch_add(1, std::memory_order_acq_rel);    
-    }
-
 private:
     void FreeList(const Slice& pk, 
                   ::rtidb::base::Node<uint64_t, DataBlock*>* node,
@@ -184,7 +180,6 @@ private:
     std::atomic<uint64_t> idx_cnt_;
     std::atomic<uint64_t> idx_byte_size_;
     std::atomic<uint64_t> pk_cnt_;
-    std::atomic<uint32_t> ttl_version_;
     uint8_t key_entry_max_height_;
 };
 

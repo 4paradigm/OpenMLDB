@@ -13,7 +13,6 @@
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
-#include <thread>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -21,7 +20,6 @@ using ::baidu::common::DEBUG;
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
-DECLARE_uint32(gc_wait_time);
 
 
 namespace rtidb {
@@ -40,13 +38,13 @@ Table::Table(const std::string& name,
         uint32_t key_entry_max_height):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
-    enable_gc_(false), ttl_(ttl * 60 * 1000),
+    enable_gc_(false), ttl_(ttl * 60 * 1000), 
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(key_entry_max_height)
 {
-    last_ttl_ = ttl_;
+    new_ttl_.store(ttl_.load());
 }
 
 Table::Table(const std::string& name,
@@ -63,7 +61,7 @@ Table::Table(const std::string& name,
     mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(FLAGS_skiplist_max_height)
 {
-    last_ttl_ = ttl_;
+    new_ttl_.store(ttl_.load());
 }
 
 Table::~Table() {
@@ -184,15 +182,6 @@ void Table::SetGcSafeOffset(uint64_t offset) {
     ttl_offset_ = offset;
 }
 
-void Table::SetTTL(uint64_t ttl) {
-    for (uint32_t i = 0; i < idx_cnt_; i++) {
-        for (uint32_t j = 0; j < seg_cnt_; j++) {
-            segments_[i][j]->IncrTTLVersion();
-        }
-    }
-    ttl_.store(ttl * 60 * 1000, std::memory_order_release);
-}
-
 uint64_t Table::SchedGc() {
     if (!enable_gc_.load(std::memory_order_relaxed)) {
         return 0;
@@ -202,21 +191,11 @@ uint64_t Table::SchedGc() {
             id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
-    if (last_ttl_ != ttl_.load(std::memory_order_acquire)) {
-        last_ttl_ = ttl_.load(std::memory_order_acquire);
-        PDLOG(INFO, "ttl has modified, sleep a moment before gc. tid %u, pid %u with type %s ttl %lu", 
-                    id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
-        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_gc_wait_time));
-    }
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            if (last_ttl_ != ttl_.load(std::memory_order_acquire)) {
-                PDLOG(INFO, "ttl has modified. stop gc segment[%u][%u],  table %s tid %u pid %u", i, j, name_.c_str(), id_, pid_);
-                break;
-            }
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
             switch (ttl_type_) {
@@ -238,6 +217,13 @@ uint64_t Table::SchedGc() {
     record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
     PDLOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
             gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
+    if (ttl_.load(std::memory_order_relaxed) != new_ttl_.load(std::memory_order_relaxed)) {
+        PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u", 
+                    ttl_.load(std::memory_order_relaxed), 
+                    new_ttl_.load(std::memory_order_relaxed), 
+                    name_.c_str(), id_, pid_);
+        ttl_.store(new_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
     return gc_record_cnt;
 }
 

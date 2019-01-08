@@ -89,8 +89,6 @@ public:
 
     uint64_t SchedGc();
 
-    void SetTTL(uint64_t ttl);
-    
     uint64_t GetTTL() const {
         return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
     }
@@ -204,6 +202,10 @@ public:
         return ttl_type_;
     }
 
+    inline void SetTTL(uint64_t ttl) {
+        new_ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+    }
+
     inline uint32_t GetKeyEntryHeight() {
         return key_entry_max_height_;
     }
@@ -218,7 +220,7 @@ private:
     Segment*** segments_;
     std::atomic<bool> enable_gc_;
     std::atomic<uint64_t> ttl_;
-    uint64_t last_ttl_;
+    std::atomic<uint64_t> new_ttl_;
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
