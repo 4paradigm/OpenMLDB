@@ -89,6 +89,8 @@ public:
 
     uint64_t SchedGc();
 
+    void SetTTL(uint64_t ttl);
+    
     uint64_t GetTTL() const {
         return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
     }
@@ -200,10 +202,6 @@ public:
 
     inline ::rtidb::api::TTLType& GetTTLType() {
         return ttl_type_;
-    }
-
-    inline void SetTTL(uint64_t ttl) {
-        ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
     }
 
     inline uint32_t GetKeyEntryHeight() {

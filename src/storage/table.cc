@@ -21,6 +21,7 @@ using ::baidu::common::DEBUG;
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(gc_wait_time);
 
 
 namespace rtidb {
@@ -183,6 +184,15 @@ void Table::SetGcSafeOffset(uint64_t offset) {
     ttl_offset_ = offset;
 }
 
+void Table::SetTTL(uint64_t ttl) {
+    for (uint32_t i = 0; i < idx_cnt_; i++) {
+        for (uint32_t j = 0; j < seg_cnt_; j++) {
+            segments_[i][j]->IncrTTLVersion();
+        }
+    }
+    ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+}
+
 uint64_t Table::SchedGc() {
     if (!enable_gc_.load(std::memory_order_relaxed)) {
         return 0;
@@ -196,13 +206,17 @@ uint64_t Table::SchedGc() {
         last_ttl_ = ttl_.load(std::memory_order_acquire);
         PDLOG(INFO, "ttl has modified, sleep a moment before gc. tid %u, pid %u with type %s ttl %lu", 
                     id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
-        std::this_thread::sleep_for(std::chrono::milliseconds(ttl_offset_));
+        std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_gc_wait_time));
     }
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
+            if (last_ttl_ != ttl_.load(std::memory_order_acquire)) {
+                PDLOG(INFO, "ttl has modified. stop gc segment[%u][%u],  table %s tid %u pid %u", i, j, name_.c_str(), id_, pid_);
+                break;
+            }
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
             switch (ttl_type_) {
