@@ -190,7 +190,7 @@ void Table::SetTTL(uint64_t ttl) {
             segments_[i][j]->IncrTTLVersion();
         }
     }
-    ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+    ttl_.store(ttl * 60 * 1000, std::memory_order_release);
 }
 
 uint64_t Table::SchedGc() {
