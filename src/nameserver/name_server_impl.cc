@@ -885,7 +885,7 @@ int NameServerImpl::DeleteTask() {
                 }
             }    
             if (!op_data) {
-                PDLOG(WARNING, "has not found op_id[%lu] in running op", op_id); 
+                PDLOG(WARNING, "has not found op[%lu] in running op", op_id); 
                 continue;
             }
             std::string node = zk_op_data_path_ + "/" + std::to_string(op_id);
@@ -904,7 +904,7 @@ int NameServerImpl::DeleteTask() {
                 }
                 done_op_list_.push_back(op_data);
                 task_vec_[index].pop_front();
-                PDLOG(INFO, "delete op_id[%lu] in running op", op_id); 
+                PDLOG(INFO, "delete op[%lu] in running op", op_id); 
             } else {
                 if (zk_client_->DeleteNode(node)) {
                     PDLOG(INFO, "delete zk op node[%s] success.", node.c_str()); 
@@ -915,7 +915,7 @@ int NameServerImpl::DeleteTask() {
                     }
                     done_op_list_.push_back(op_data);
                     task_vec_[index].pop_front();
-                    PDLOG(INFO, "delete op_id[%lu] in running op", op_id); 
+                    PDLOG(INFO, "delete op[%lu] in running op", op_id); 
                 } else {
                     PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str()); 
                 }
@@ -1756,14 +1756,14 @@ void NameServerImpl::CancelOP(RpcController* controller,
             }                
             response->set_code(0);
             response->set_msg("ok");
-            PDLOG(INFO, "op_id[%lu] is canceled! op_type[%s]", 
+            PDLOG(INFO, "op[%lu] is canceled! op_type[%s]", 
                         request->op_id(), ::rtidb::api::OPType_Name((*iter)->op_info_.op_type()).c_str());
             return;
         }
     }
     response->set_code(-1);
     response->set_msg("op status is not kDoing or kInited");
-    PDLOG(WARNING, "op_id[%lu] status is not kDoing or kInited", request->op_id());
+    PDLOG(WARNING, "op[%lu] status is not kDoing or kInited", request->op_id());
     return;
 }
 
@@ -2523,7 +2523,7 @@ void NameServerImpl::DeleteDoneOP() {
                 break;
             }
         }
-        PDLOG(INFO, "done_op_list size[%u] is greater than the max_op_num[%u], delete op_id[%lu]", 
+        PDLOG(INFO, "done_op_list size[%u] is greater than the max_op_num[%u], delete op[%lu]", 
                     done_op_list_.size(), (uint32_t)FLAGS_max_op_num, op_data->op_info_.op_id()); 
         done_op_list_.pop_front();
     }
@@ -4486,7 +4486,7 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
     }
     std::shared_ptr<OPData> op_data = FindRunningOP(task_info->op_id());
     if (!op_data) {
-        PDLOG(WARNING, "cannot find op_id[%lu] in running op", task_info->op_id());
+        PDLOG(WARNING, "cannot find op[%lu] in running op", task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4528,7 +4528,7 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
 void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     std::shared_ptr<OPData> op_data = FindRunningOP(task_info->op_id());
     if (!op_data) {
-        PDLOG(WARNING, "cannot find op_id[%lu] in running op", task_info->op_id());
+        PDLOG(WARNING, "cannot find op[%lu] in running op", task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
         return;
     }
@@ -4647,7 +4647,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
 void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> task_info) {
     std::shared_ptr<OPData> op_data = FindRunningOP(task_info->op_id());
     if (!op_data) {
-        PDLOG(WARNING, "cannot find op_id[%lu] in running op", task_info->op_id());
+        PDLOG(WARNING, "cannot find op[%lu] in running op", task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
