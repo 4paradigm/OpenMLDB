@@ -200,6 +200,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     if (request->type() != table->GetTTLType()) {
         response->set_code(-2);
         response->set_msg("ttl type mismatch");
+        PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
 
@@ -217,10 +218,12 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     if (old_ttl == 0 && ttl > 0) {
         response->set_code(-1);
         response->set_msg("cannot update ttl form zero to nonzero");
+        PDLOG(WARNING, "cannot update ttl form zero to nonzero. tid %u pid %u", request->tid(), request->pid());
         return;
     } else if (old_ttl > 0 && ttl == 0) {
         response->set_code(-1);
         response->set_msg("cannot update ttl form nonzero to zero");
+        PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
         return;
     }
 

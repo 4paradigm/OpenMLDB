@@ -4776,9 +4776,9 @@ bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
     }
     bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl);
     if (!ok) {
-        PDLOG(WARNING, "fail to update ttl with tid %d, pid %d , ttl %ld", tid, pid, ttl);
+        PDLOG(WARNING, "fail to update ttl with tid %d, pid %d, ttl %lu, endpoint %s", tid, pid, ttl, endpoint.c_str());
     }else {
-        PDLOG(INFO, "update ttl with tid %d pid %d ttl %ld ok", tid, pid, ttl);
+        PDLOG(INFO, "update ttl with tid %d pid %d ttl %lu endpoint %s ok", tid, pid, ttl, endpoint.c_str());
     }
     return ok;
 }
