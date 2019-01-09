@@ -2493,7 +2493,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t c
             iter++;
             task_vec_[idx].insert(iter, op_data);
         } else {
-            PDLOG(WARNING, "not found parent_id[%lu] with index[%u]. add op_id[%lu] failed, op_type[%s]", 
+            PDLOG(WARNING, "not found parent_id[%lu] with index[%u]. add op[%lu] failed, op_type[%s]", 
                             parent_id, idx, op_data->op_info_.op_id(),
                             ::rtidb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
             return -1;
