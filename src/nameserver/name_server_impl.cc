@@ -2975,7 +2975,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(name);
         if (iter == table_info_.end()) {
-            PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+            PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
@@ -2988,16 +2988,16 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                 const PartitionMeta& partition_meta = iter->second->table_partition(idx).partition_meta(meta_idx);
                 if (partition_meta.is_leader()) {
                     if (partition_meta.is_alive()) {
-                        std::string leader_endpoint = partition_meta.endpoint();    
+                        std::string leader_endpoint = partition_meta.endpoint();
                         auto tablet_iter = tablets_.find(leader_endpoint);
                         if (tablet_iter == tablets_.end()) {
-                            PDLOG(WARNING, "can not find the leader endpoint[%s]'s client", leader_endpoint.c_str());
+                            PDLOG(WARNING, "can not find the leader endpoint[%s]'s client. op_id[%lu]", leader_endpoint.c_str(), task_info->op_id());
                             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                             return;
                         }
                         leader_tablet_ptr = tablet_iter->second;
                         if (leader_tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                            PDLOG(WARNING, "leader endpoint [%s] is offline", leader_endpoint.c_str());
+                            PDLOG(WARNING, "leader endpoint [%s] is offline. op_id[%lu]", leader_endpoint.c_str(), task_info->op_id());
                             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                             return;
                         }
@@ -3016,18 +3016,18 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                     }
                     auto tablet_iter = tablets_.find(endpoint);
                     if (tablet_iter == tablets_.end()) {
-                        PDLOG(WARNING, "can not find the endpoint[%s]'s client", endpoint.c_str());
+                        PDLOG(WARNING, "can not find the endpoint[%s]'s client. op_id[%lu]", endpoint.c_str(), task_info->op_id());
                         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                         return;
                     }
                     tablet_ptr = tablet_iter->second;
                     if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-                        PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
+                        PDLOG(WARNING, "endpoint [%s] is offline. op_id[%lu]", endpoint.c_str(), task_info->op_id());
                         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                         return;
                     }
                     if (iter->second->table_partition(idx).partition_meta_size() == 1) {
-                        has_follower = false;           
+                        has_follower = false;
                         break;
                     }
                 }
@@ -3036,8 +3036,8 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         }
     }
     if ((has_follower && !leader_tablet_ptr) || !tablet_ptr) {
-        PDLOG(WARNING, "not has tablet. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-                        name.c_str(), tid, pid, endpoint.c_str());
+        PDLOG(WARNING, "not has tablet. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
+                        name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -3046,8 +3046,8 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     uint64_t term = 0;
     uint64_t offset = 0;
     if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
-        PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-                        name.c_str(), tid, pid, endpoint.c_str());
+        PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
+                        name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -3066,8 +3066,8 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     }
     if (has_table && is_leader) {
         if (!tablet_ptr->client_->ChangeRole(tid, pid, false)) {
-            PDLOG(WARNING, "change role failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-                            name.c_str(), tid, pid, endpoint.c_str());
+            PDLOG(WARNING, "change role failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
+                            name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
@@ -3076,8 +3076,8 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     }
     if (!has_table) {
         if (!tablet_ptr->client_->DeleteBinlog(tid, pid)) {
-            PDLOG(WARNING, "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-                            name.c_str(), tid, pid, endpoint.c_str());
+            PDLOG(WARNING, "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
+                            name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
@@ -3086,15 +3086,15 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     }
     int ret_code = MatchTermOffset(name, pid, has_table, term, offset);
     if (ret_code < 0) {
-        PDLOG(WARNING, "match error. name[%s] tid[%u] pid[%u] endpoint[%s]", 
-                        name.c_str(), tid, pid, endpoint.c_str());
+        PDLOG(WARNING, "match error. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
+                        name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
     ::rtidb::api::Manifest manifest;
     if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
-        PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u]", 
-                name.c_str(), tid, pid);
+        PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u] op_id[%lu]", 
+                name.c_str(), tid, pid, task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -3882,7 +3882,7 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -3891,7 +3891,7 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
             ::rtidb::nameserver::TablePartition* table_partition = iter->second->mutable_table_partition(idx);
             for (int meta_idx = 0; meta_idx< table_partition->partition_meta_size(); meta_idx++) {
                 if (table_partition->partition_meta(meta_idx).endpoint() == endpoint) {
-                    PDLOG(WARNING, "follower already exists pid[%u] table[%s] endpoint[%s]", pid, name.c_str(), endpoint.c_str());
+                    PDLOG(WARNING, "follower already exists pid[%u] table[%s] endpoint[%s] op_id[%lu]", pid, name.c_str(), endpoint.c_str(), task_info->op_id());
                     task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                     return;
                 }
@@ -3906,8 +3906,8 @@ void NameServerImpl::AddTableInfo(const std::string& name, const std::string& en
     std::string table_value;
     iter->second->SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]", 
+                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
         return;         
     }
@@ -3993,7 +3993,7 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, uint32_t p
     }
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
+        PDLOG(WARNING, "not found table %s in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4045,7 +4045,7 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table %s in table_info map", name.c_str());
+        PDLOG(WARNING, "not found table %s in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4064,8 +4064,8 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
             }
         }
         if (src_endpoint_index < 0) {
-            PDLOG(WARNING, "has not found src_endpoint[%s]. name[%s] pid[%u]", 
-                            src_endpoint.c_str(), name.c_str(), pid);
+            PDLOG(WARNING, "has not found src_endpoint[%s]. name[%s] pid[%u] op_id[%lu]", 
+                            src_endpoint.c_str(), name.c_str(), pid, task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
@@ -4095,9 +4095,9 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
     std::string table_value;
     iter->second->SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]", 
+                        zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
+        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;         
     }
     PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
@@ -4142,7 +4142,7 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4166,15 +4166,15 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& en
         }
         if (!has_found) {
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-            PDLOG(INFO, "not found endpoint[%s] in partition_meta. name [%s] pid[%u]",
-                         endpoint.c_str(), name.c_str(), pid);
+            PDLOG(INFO, "not found endpoint[%s] in partition_meta. name[%s] pid[%u] op_id[%lu]",
+                         endpoint.c_str(), name.c_str(), pid, task_info->op_id());
             return;
         }
         std::string table_value;
         iter->second->SerializeToString(&table_value);
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]",
-                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]",
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
@@ -4198,7 +4198,7 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
     std::lock_guard<std::mutex> lock(mu_);
     auto iter = table_info_.find(name);
     if (iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4217,8 +4217,8 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
                 std::string table_value;
                 iter->second->SerializeToString(&table_value);
                 if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-                    PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                                    zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
+                    PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]", 
+                                    zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
                     task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                     return;         
                 }
@@ -4235,8 +4235,8 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
         break;
     }
     task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-    PDLOG(WARNING, "name[%s] endpoint[%s] pid[%u] is not exist",
-                    name.c_str(), endpoint.c_str(), pid);
+    PDLOG(WARNING, "name[%s] endpoint[%s] pid[%u] is not exist. op_id[%lu]",
+                    name.c_str(), endpoint.c_str(), pid, task_info->op_id());
 }
 
 void NameServerImpl::UpdateTableAliveStatus(RpcController* controller,
@@ -4423,7 +4423,7 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
             auto iter = table_info_.find(name);
             if (iter == table_info_.end()) {
                 task_info->set_status(::rtidb::api::TaskStatus::kFailed);
-                PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+                PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
                 return;
             }
             for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
@@ -4433,8 +4433,8 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
                 for (int meta_idx = 0; meta_idx < iter->second->table_partition(idx).partition_meta_size(); meta_idx++) {
                     if (iter->second->table_partition(idx).partition_meta(meta_idx).is_alive() &&
                             iter->second->table_partition(idx).partition_meta(meta_idx).is_leader()) { 
-                        PDLOG(WARNING, "leader is alive, need not changeleader. table name[%s] pid[%u]", 
-                                        name.c_str(), pid);
+                        PDLOG(WARNING, "leader is alive, need not changeleader. table name[%s] pid[%u] op_id[%lu]", 
+                                        name.c_str(), pid, task_info->op_id());
                         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                         return;
                     }
@@ -4443,7 +4443,7 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
             }
         }
         if (!zk_client_->SetNodeValue(zk_term_node_, std::to_string(term_ + 2))) {
-            PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u]", name.c_str(), pid);
+            PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u] op_id[%lu]", name.c_str(), pid, task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
@@ -4460,18 +4460,18 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
             auto it = tablets_.find(endpoint);
             if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
 
-                PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]", 
-                                endpoint.c_str(), name.c_str(), pid);
-                task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+                PDLOG(WARNING, "endpoint[%s] is offline. table[%s] pid[%u]  op_id[%lu]", 
+                                endpoint.c_str(), name.c_str(), pid, task_info->op_id());
+                task_info->set_status(::rtidb::api::TaskStatus::kFailed);
                 return;
             }
             tablet_ptr = it->second;
         }
         uint64_t offset = 0;
         if (!tablet_ptr->client_->FollowOfNoOne(tid, pid, cur_term, offset)) {
-            PDLOG(WARNING, "followOfNoOne failed. tid[%u] pid[%u] endpoint[%s]", 
-                            tid, pid, endpoint.c_str());
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            PDLOG(WARNING, "followOfNoOne failed. tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
+                            tid, pid, endpoint.c_str(), task_info->op_id());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
         PDLOG(INFO, "FollowOfNoOne ok. term[%lu] offset[%lu] name[%s] tid[%u] pid[%u] endpoint[%s]", 
@@ -4492,8 +4492,8 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
     }
     ChangeLeaderData change_leader_data;
     if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
-        PDLOG(WARNING, "parse change leader data failed. name[%s] pid[%u] data[%s]", 
-                        name.c_str(), pid, op_data->op_info_.data().c_str());
+        PDLOG(WARNING, "parse change leader data failed. name[%s] pid[%u] data[%s] op_id[%lu]", 
+                        name.c_str(), pid, op_data->op_info_.data().c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4503,9 +4503,9 @@ void NameServerImpl::SelectLeader(const std::string& name, uint32_t tid, uint32_
         if (std::find(leader_endpoint_vec.begin(), leader_endpoint_vec.end(), candidate_leader) != leader_endpoint_vec.end()) {
             leader_endpoint = candidate_leader;
         } else {
-            PDLOG(WARNING, "select leader failed, candidate_leader[%s] is not in leader_endpoint_vec. tid[%u] pid[%u]", 
-                            candidate_leader.c_str(), tid, pid);
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            PDLOG(WARNING, "select leader failed, candidate_leader[%s] is not in leader_endpoint_vec. tid[%u] pid[%u] op_id[%lu]", 
+                            candidate_leader.c_str(), tid, pid, task_info->op_id());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
     } else {
@@ -4559,9 +4559,9 @@ void NameServerImpl::ChangeLeader(std::shared_ptr<::rtidb::api::TaskInfo> task_i
     }
     if (!tablet_ptr->client_->ChangeRole(change_leader_data.tid(), change_leader_data.pid(), true, 
                         follower_endpoint, cur_term)) {
-        PDLOG(WARNING, "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s]", 
+        PDLOG(WARNING, "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
                         change_leader_data.name().c_str(), change_leader_data.tid(), 
-                        change_leader_data.pid(), leader_endpoint.c_str());
+                        change_leader_data.pid(), leader_endpoint.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4665,7 +4665,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
     std::lock_guard<std::mutex> lock(mu_);
     auto table_iter = table_info_.find(name);
     if (table_iter == table_info_.end()) {
-        PDLOG(WARNING, "not found table[%s] in table_info map", name.c_str());
+        PDLOG(WARNING, "not found table[%s] in table_info map. op_id[%lu]", name.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
         return;
     }
@@ -4691,9 +4691,9 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
             old_leader_meta->set_is_alive(false);
         }
         if (new_leader_index < 0) {
-            PDLOG(WARNING, "endpoint[%s] is not exist. name[%s] pid[%u]", 
-                            leader_endpoint.c_str(),  name.c_str(), pid);
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            PDLOG(WARNING, "endpoint[%s] is not exist. name[%s] pid[%u] op_id[%lu]", 
+                            leader_endpoint.c_str(),  name.c_str(), pid, task_info->op_id());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return;
         }
         ::rtidb::nameserver::PartitionMeta* new_leader_meta = 
@@ -4705,9 +4705,9 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
         std::string table_value;
         table_iter->second->SerializeToString(&table_value);
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + name, table_value)) {
-            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str());
-            task_info->set_status(::rtidb::api::TaskStatus::kFailed);                
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s] op_id[%lu]", 
+                            zk_table_data_path_.c_str(), name.c_str(), table_value.c_str(), task_info->op_id());
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
             return; 
         }
         PDLOG(INFO, "change leader success. name[%s] pid[%u] new leader[%s]", 
@@ -4720,7 +4720,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
         NotifyTableChanged();
         return;
     }
-    PDLOG(WARNING, "partition[%u] is not exist. name[%s]", pid, name.c_str());
+    PDLOG(WARNING, "partition[%u] is not exist. name[%s] op_id[%lu]", pid, name.c_str(), task_info->op_id());
     task_info->set_status(::rtidb::api::TaskStatus::kFailed);
 }
 
