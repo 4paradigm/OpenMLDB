@@ -91,7 +91,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                     }
                 }
             }
-
         };
         connectZk();
         connectNS();
@@ -100,12 +99,11 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             @Override
             public void run() {
                 checkWatchStatus();
-
             }
         }, 1, TimeUnit.MINUTES);
     }
 
-    private void connectZk() throws TabletException,IOException {
+    private void connectZk() throws TabletException, IOException {
         ZooKeeper localZk = new ZooKeeper(zkEndpoints, 10000, this);
         int tryCnt = 10;
         while (!localZk.getState().isConnected() && tryCnt > 0) {
