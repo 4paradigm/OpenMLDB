@@ -12,7 +12,7 @@ case $1 in
                 exit 0
             fi
         fi
-        ./bin/mon ./bin/boot_ns.sh -d -l ./logs/rtidb_ns_mon.log -m $RTIDBPIDFILE
+        ./bin/mon ./bin/boot_ns.sh -d -s 10 -l ./logs/rtidb_ns_mon.log -m $RTIDBPIDFILE
         if [ $? -eq 0 ]
         then
             sleep 1
