@@ -27,7 +27,7 @@ class TestRecoverEndpoint(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
         self.put_large_datas(data_count, 7)
@@ -45,7 +45,7 @@ class TestRecoverEndpoint(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
         self.put_large_datas(data_count, 7)
@@ -119,7 +119,7 @@ class TestRecoverEndpoint(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-2] for k, v in rs.items()]
         print self.showopstatus(self.ns_leader)
@@ -130,6 +130,7 @@ class TestRecoverEndpoint(TestCaseBase):
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
+        self.ns_drop(self.ns_leader, self.tname)
 
     @ddt.data(
         (35, 3, -2, 26, -1, 6, 15, -2, 25, 0, 33, 36, 27),  # 没有从节点的情况下主节点断网后恢复，手动恢复后仍为主节点
@@ -148,14 +149,15 @@ class TestRecoverEndpoint(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-2] for k, v in rs.items()]
-        print self.showopstatus(self.ns_leader)
+        infoLogger.info('{}'.format(self.showopstatus(self.ns_leader)))
         self.assertEqual(role_x.count('leader'), 4)
         self.assertEqual(is_alive_x.count('yes'), 4)
-        print(self.get_table_status(self.leader, self.tid, self.pid))
+        infoLogger.info(self.get_table_status(self.leader, self.tid, self.pid))
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[1], "kTableLeader")
+        self.ns_drop(self.ns_leader, self.tname)
 
     def test_recoverendpoint_offline_master_failed(self):
         """
@@ -186,6 +188,7 @@ class TestRecoverEndpoint(TestCaseBase):
         time.sleep(10)
         rs = self.recoverendpoint(self.ns_leader, self.leader)
         self.assertIn('failed', rs)
+        self.ns_drop(self.ns_leader, name)
 
 
     def test_recoversnapshot_offline_master_after_changeleader(self):
@@ -215,7 +218,7 @@ class TestRecoverEndpoint(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, name)
         tid = rs1.keys()[0][1]
 
         self.stop_client(self.leader)
@@ -228,10 +231,11 @@ class TestRecoverEndpoint(TestCaseBase):
         self.recoverendpoint(self.ns_leader, self.leader)
         time.sleep(10)
 
-        rs5 = self.showtable(self.ns_leader)
+        rs5 = self.showtable(self.ns_leader, name)
         self.assertEqual(rs5[(name, tid, '0', self.leader)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs5[(name, tid, '1', self.leader)], ['follower',  '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs5[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
         ('127.0.0.1:80', '', '', 'failed to recover endpoint. error msg: endpoint is not exist'),
@@ -277,7 +281,7 @@ class TestRecoverEndpoint(TestCaseBase):
                                   'k3': ('string', 'testvalue0')}
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, name)
         tid = rs1.keys()[0][1]
 
         rs = self.put(self.leader, tid, 0, '', self.now(), 'pk1' ,'v1', 'w1')
@@ -294,7 +298,7 @@ class TestRecoverEndpoint(TestCaseBase):
         self.recoverendpoint(self.ns_leader, self.leader, 'true')
         time.sleep(10)
 
-        rs5 = self.showtable(self.ns_leader)
+        rs5 = self.showtable(self.ns_leader, name)
         self.assertEqual(rs5[(name, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs5[(name, tid, '1', self.leader)], ['leader',  '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs5[(name, tid, '3', self.leader)], ['follower',  '144000min', 'yes', 'kNoCompress'])
@@ -307,6 +311,7 @@ class TestRecoverEndpoint(TestCaseBase):
 
         self.assertIn('v1', self.scan(self.slave1, tid, 0, {'k1': 'pk1'}, self.now(), 1))
         self.assertIn('v4', self.scan(self.slave1, tid, 1, {'k1': 'pk4'}, self.now(), 1))
+        self.ns_drop(self.ns_leader, name)
 
 
 if __name__ == "__main__":
