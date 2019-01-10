@@ -33,7 +33,7 @@ class TestOfflineEndpoint(TestCaseBase):
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
 
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, name)
         tid = rs1.keys()[0][1]
 
         self.stop_client(self.leader)
@@ -42,7 +42,7 @@ class TestOfflineEndpoint(TestCaseBase):
         self.offlineendpoint(self.ns_leader, self.leader)
         time.sleep(10)
 
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, name)
         self.start_client(self.leader)
         time.sleep(1)
 
@@ -69,6 +69,7 @@ class TestOfflineEndpoint(TestCaseBase):
         self.assertIn('Put ok', rs4)
         time.sleep(1)
         self.assertIn('v2', self.scan(follower, tid, 2, {'k1': 'pk1'}, self.now(), 1))
+        self.ns_drop(self.ns_leader, name)
 
 
     def test_offlineendpoint_slave_killed(self):
@@ -78,6 +79,7 @@ class TestOfflineEndpoint(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
+        infoLogger.info(name)
         m = utils.gen_table_metadata(
             '"{}"'.format(name), None, 144000, 2,
             ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
@@ -88,7 +90,7 @@ class TestOfflineEndpoint(TestCaseBase):
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
 
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, name)
         tid = rs1.keys()[0][1]
 
         self.stop_client(self.slave1)
@@ -97,7 +99,7 @@ class TestOfflineEndpoint(TestCaseBase):
         self.offlineendpoint(self.ns_leader, self.slave1)
         time.sleep(10)
 
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, name)
         # showtable ok
         self.assertEqual(rs2[(name, tid, '1', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '2', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
@@ -106,14 +108,15 @@ class TestOfflineEndpoint(TestCaseBase):
         self.assertEqual(rs2[(name, tid, '2', self.slave1)], ['follower', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs2[(name, tid, '3', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
+        self.ns_drop(self.ns_leader, name)
 
 
     @ddt.data(
         ('127.0.0.1:80', '', 'failed to offline endpoint'),
-        (conf.tb_endpoints[0][1], '-1', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0][1], '0', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0][1], '10', 'failed to offline endpoint'),
-        (conf.tb_endpoints[0][1], 'abc', 'Invalid args. concurrency should be uint32_t'),
+        (conf.tb_endpoints[0], '-1', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0], '0', 'Invalid args. concurrency should be greater than 0'),
+        (conf.tb_endpoints[0], '10', 'failed to offline endpoint'),
+        (conf.tb_endpoints[0], 'abc', 'Invalid args. concurrency should be uint32_t'),
     )
     @ddt.unpack
     def test_offlineendpoint_failed(self, endpoint, concurrency, exp_msg):
@@ -145,7 +148,7 @@ class TestOfflineEndpoint(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, name)
         tid = rs.keys()[0][1]
 
         rs = self.put(self.leader, tid, 1, '', self.now(), 'pk1' ,'v2', 'v3')
@@ -158,7 +161,7 @@ class TestOfflineEndpoint(TestCaseBase):
         self.assertIn("offline endpoint ok", rs2)
         time.sleep(10)
 
-        rs3 = self.showtable(self.ns_leader)
+        rs3 = self.showtable(self.ns_leader, name)
         self.assertEqual(rs3[(name, tid, '0', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '1', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
         self.assertEqual(rs3[(name, tid, '2', self.leader)], ['leader', '144000min', 'no', 'kNoCompress'])
@@ -168,6 +171,7 @@ class TestOfflineEndpoint(TestCaseBase):
         self.assertEqual(rs3[(name, tid, '4', self.leader)], ['follower', '144000min', 'no', 'kNoCompress'])
         self.assertIn('v2', self.scan(self.slave1, tid, 1, {'k1': 'pk1'}, self.now(), 1))
         self.assertIn('v5', self.scan(self.slave1, tid, 2, {'k1': 'pk2'}, self.now(), 1))
+        self.ns_drop(self.ns_leader, name)
 
 
 if __name__ == "__main__":

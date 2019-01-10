@@ -11,7 +11,7 @@ import libs.conf as conf
 @ddt.ddt
 class TestDelReplicaNs(TestCaseBase):
 
-    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
+    leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     def test_delreplica_scenario(self):
         """
@@ -39,7 +39,7 @@ class TestDelReplicaNs(TestCaseBase):
         rs2 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs2)
 
-        rs3 = self.showtable(self.ns_leader)
+        rs3 = self.showtable(self.ns_leader, name)
         tid = rs3.keys()[0][1]
         pid = 0
 
@@ -48,6 +48,16 @@ class TestDelReplicaNs(TestCaseBase):
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue0'), 'amt': ('double', 1.1)}
         rs4 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 10000, 'testvalue0')
+        if rs4 == 'Put failed':
+            infoLogger.error(' ')
+            rs = self.showtable(self.ns_leader)
+            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8])
+            for status in tablestatus:
+                infoLogger.info('{} =  {}'.format(status, tablestatus[status]))
+            infoLogger.error(' ')
+
+            rs4 = self.put(self.leader, tid, pid, 'testkey0', self.now() + 10000, 'testvalue0')
+            self.assertIn('Put ok', rs4)
         self.assertIn('Put ok', rs4)
 
         # makesnapshot
@@ -72,9 +82,18 @@ class TestDelReplicaNs(TestCaseBase):
         # delreplica by ns_client and put
         rs8 = self.delreplica(self.ns_leader, name, pid, 'ns_client', self.slave1)
         self.assertIn('DelReplica ok', rs8)
-        time.sleep(3)
-        rs13 = self.showtable(self.ns_leader)
-        edps = [x[3] for x in rs13]
+        edps = ''
+        for repeat in range(10):
+            time.sleep(2)
+            rs13 = self.showtable(self.ns_leader, name)
+            flag = False
+            for x in rs13:
+                if x[3] == self.slave1:
+                    flag = True
+                    break
+            if flag == False:
+                edps = [x[3] for x in rs13]
+                break
         self.assertFalse(self.slave1 in edps)
         self.multidimension_vk = {'card': ('string:index', 'testkey0'),
                                   'merchant': ('string:index', 'testvalue2'), 'amt': ('double', 1.1)}
@@ -95,6 +114,7 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn('testvalue1', rs12)
         self.assertIn('testvalue2', rs12)
         self.assertIn('testvalue3', rs12)
+        self.ns_drop(self.ns_leader, name)
 
     def test_delreplica_drop_table(self):
         """
@@ -111,16 +131,17 @@ class TestDelReplicaNs(TestCaseBase):
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
         rs2 = self.get_table_status(self.slave1)
-        rs3 = self.showtable(self.ns_leader)
+        rs3 = self.showtable(self.ns_leader, name)
         tid = tid = int(rs3.keys()[0][1])
         rs4 = self.delreplica(self.ns_leader, name, 0, 'ns_client', self.slave1)
         time.sleep(10)
-        rs5 = self.showtable(self.ns_leader)
+        rs5 = self.showtable(self.ns_leader, name)
         rs6 = self.get_table_status(self.slave1)
         self.assertIn((name, str(tid), str(0), self.slave1), rs3)
         self.assertNotIn((name, str(tid), str(0), self.slave1), rs5)
         self.assertIn((tid, 0), rs2.keys())
         self.assertNotIn((tid, 0), rs6.keys())
+        self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
         ('notexsit', None, None, 'Fail to delreplica'),
@@ -136,7 +157,8 @@ class TestDelReplicaNs(TestCaseBase):
         """
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+        name = '"{}"'.format(name)
+        m = utils.gen_table_metadata(name, '"kLatestTime"', 100, 8,
                                      ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
                                      ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
                                      ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
@@ -147,9 +169,10 @@ class TestDelReplicaNs(TestCaseBase):
         table_name = name if tname is None else tname
         tpid = 0 if pid is None else pid
         tendpoint = self.slave1 if endpoint is None else endpoint
-        self.showtable(self.ns_leader)
+        self.showtable(self.ns_leader, name)
         rs3 = self.delreplica(self.ns_leader, table_name, tpid, 'ns_client', tendpoint)
         self.assertIn(exp_msg, rs3)
+        self.ns_drop(self.ns_leader, name)
 
 
     def test_delreplica_not_alive(self):  # RTIDB-201
@@ -171,22 +194,22 @@ class TestDelReplicaNs(TestCaseBase):
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
 
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, name)
         tid = rs2.keys()[0][1]
 
         self.stop_client(self.slave1)
         self.updatetablealive(self.ns_leader, name, '*', self.slave1, 'no')
         time.sleep(10)
 
-        self.showtable(self.ns_leader)
+        self.showtable(self.ns_leader, name)
         rs3 = self.delreplica(self.ns_leader, name, 0, 'ns_client', self.slave1)
         time.sleep(5)
-        rs4 = self.showtable(self.ns_leader)
+        rs4 = self.showtable(self.ns_leader, name)
         self.start_client(self.slave1)
         time.sleep(10)
         self.assertIn('Fail to delreplica', rs3)
         self.assertEqual(rs4[(name, tid, '1', self.slave1)], ['follower', '100', 'no', 'kNoCompress'])
-
+        self.ns_drop(self.ns_leader, name)
 
 if __name__ == "__main__":
     load(TestDelReplicaNs)

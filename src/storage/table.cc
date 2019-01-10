@@ -38,12 +38,14 @@ Table::Table(const std::string& name,
         uint32_t key_entry_max_height):name_(name), id_(id),
     pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
     segments_(NULL), 
-    enable_gc_(false), ttl_(ttl * 60 * 1000),
+    enable_gc_(false), ttl_(ttl * 60 * 1000), 
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
     replicas_(replicas), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(key_entry_max_height)
-{}
+{
+    new_ttl_.store(ttl_.load());
+}
 
 Table::Table(const std::string& name,
         uint32_t id,
@@ -58,7 +60,9 @@ Table::Table(const std::string& name,
     replicas_(), table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(FLAGS_skiplist_max_height)
-{}
+{
+    new_ttl_.store(ttl_.load());
+}
 
 Table::~Table() {
     Release();
@@ -213,6 +217,13 @@ uint64_t Table::SchedGc() {
     record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
     PDLOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
             gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
+    if (ttl_.load(std::memory_order_relaxed) != new_ttl_.load(std::memory_order_relaxed)) {
+        PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u", 
+                    ttl_.load(std::memory_order_relaxed), 
+                    new_ttl_.load(std::memory_order_relaxed), 
+                    name_.c_str(), id_, pid_);
+        ttl_.store(new_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
     return gc_record_cnt;
 }
 
