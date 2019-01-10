@@ -155,7 +155,7 @@ class TestNameserverMigrate(TestCaseBase):
         self.showtable(self.ns_leader, tname)
         rs6 = self.get_table_status(self.slave1, self.tid, self.pid)  # get offset slave1
         rs3 = self.migrate(self.ns_leader, self.leader, tname, '4-6', self.slave2)
-        time.sleep(2)
+        time.sleep(10)
         rs4 = self.showtable(self.ns_leader, tname)
         rs5 = self.get_table_status(self.slave2, self.tid, self.pid)  # get offset slave2
         self.showopstatus(self.ns_leader)
