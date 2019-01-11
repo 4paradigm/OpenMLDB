@@ -48,7 +48,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private NameServer ns;
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
-    private final ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
+    private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
             t.setDaemon(true);
