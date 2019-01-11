@@ -50,7 +50,8 @@ public:
           const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl,
           bool is_leader,
-          const std::vector<std::string>& replicas);
+          const std::vector<std::string>& replicas,
+          uint32_t key_entry_max_height);
 
     Table(const std::string& name,
           uint32_t id,
@@ -202,12 +203,11 @@ public:
     }
 
     inline void SetTTL(uint64_t ttl) {
-        ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
-        if (ttl > 0) {
-            enable_gc_.store(true, std::memory_order_relaxed);
-        }else {
-            enable_gc_.store(false, std::memory_order_relaxed);
-        }
+        new_ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
+    }
+
+    inline uint32_t GetKeyEntryHeight() {
+        return key_entry_max_height_;
     }
 
 private:
@@ -218,9 +218,9 @@ private:
     uint32_t const idx_cnt_;
     // Segments is readonly
     Segment*** segments_;
-    std::atomic<uint32_t> ref_;
     std::atomic<bool> enable_gc_;
     std::atomic<uint64_t> ttl_;
+    std::atomic<uint64_t> new_ttl_;
     uint64_t ttl_offset_;
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
@@ -233,6 +233,7 @@ private:
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
+    uint32_t key_entry_max_height_;
 };
 
 }

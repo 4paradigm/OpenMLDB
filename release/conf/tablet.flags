@@ -45,11 +45,12 @@
 # 每天23点做snapshot
 --make_snapshot_time=23
 #--make_snapshot_check_interval=600000
+#--make_snapshot_threshold_offset=100000
 
 # garbage collection conf
 # 60m
 --gc_interval=60
-#--gc_pool_size=2
+--gc_pool_size=2
 # 1m
 #--gc_safe_offset=1
 
@@ -62,3 +63,7 @@
 #--request_timeout_ms=5000
 #--request_sleep_time=1000
 #--retry_send_file_wait_time_ms=3000
+#
+# table conf
+#--skiplist_max_height=12
+#--key_entry_max_height=8

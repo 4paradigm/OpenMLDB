@@ -13,7 +13,7 @@ import collections
 @ddt.ddt
 class TestCreateTableByNsClient(TestCaseBase):
 
-    leader, slave1, slave2 = (i[1] for i in conf.tb_endpoints)
+    leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     @ddt.data(
         ('"t{}"'.format(time.time()), None, 144000, 8,
@@ -75,13 +75,14 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
 
         if exp_msg == 'Create table ok':
-            table_info = self.showtable(self.ns_leader)
+            table_info = self.showtable(self.ns_leader, name)
             tid = table_info.keys()[0][1]
             pid = 1
             self.put(self.leader, tid, pid, 'testkey0', self.now() + 100, 'testvalue0')
             time.sleep(0.5)
             self.assertIn(
                 'testvalue0', self.scan(self.slave1, tid, pid, 'testkey0', self.now(), 1))
+        self.ns_drop(self.ns_leader, name)
 
 
     @multi_dimension(False)
@@ -110,12 +111,13 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
 
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, name)
         tid = table_info.keys()[0][1]
         pid = 1
         ts = self.now() + 1000
         for _ in range(10):
             self.put(self.leader, tid, pid, 'testkey0', ts, 'testvalue0')
+        time.sleep(2)
         self.assertIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', ts))
         for _ in range(10):
             self.put(self.leader, tid, pid, 'testkey0', 1999999999999, 'testvalue1')
@@ -128,6 +130,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertIn('Get failed', self.get(self.slave1, tid, pid, 'testkey0', ts))
         self.assertNotIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', 0))
         self.assertIn('testvalue1', self.get(self.slave1, tid, pid, 'testkey0', 0))
+        self.ns_drop(self.ns_leader, name)
 
 
     def test_create_name_repeat(self):
@@ -136,8 +139,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = '"naysatest"'
         m = utils.gen_table_metadata(
-            '"naysatest"', None, 144000, 8,
+            name, None, 144000, 8,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
@@ -146,6 +150,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertIn('Create table ok', rs1)
         rs2 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertIn('Fail to create table', rs2)
+        self.ns_drop(self.ns_leader, name)
 
     def test_create_name_too_many_field(self):
         """
@@ -153,8 +158,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = '"large_table"'
         m = utils.gen_table_metadata(
-            '"large_table"', None, 144000, 8,
+            name, None, 144000, 8,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
@@ -170,6 +176,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertIn('Create table ok', rs1)
+        self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
         (('"0-9"', 'true'), ('"1-3"', 'false'), 'Create table ok'),
@@ -206,6 +213,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"tname{}"'.format(time.time())
+        infoLogger.info(name)
         table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
         table_partition2 = ('table_partition', '"{}"'.format(self.slave1), pid_group2[0], pid_group2[1])
         m = utils.gen_table_metadata(name, None, 144000, 2, table_partition1, table_partition2)
@@ -213,7 +221,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
-        self.showtable(self.ns_leader)
+        self.showtable(self.ns_leader, name)
         if exp_msg == 'Create table ok':
             for x in [(self.leader, pid_group1), (self.slave1, pid_group2)]:
                 table_status = self.get_table_status(x[0])
@@ -228,22 +236,23 @@ class TestCreateTableByNsClient(TestCaseBase):
                 infoLogger.info(pids)
                 for pid in range(pid_group_start, pid_group_end):
                     self.assertIn(pid, pids)
-            rs1 = self.ns_drop(self.ns_leader, name[1:-1])
+            time.sleep(1)
+            rs1 = self.ns_drop(self.ns_leader, name)
             self.assertIn('drop ok', rs1)
 
 
     @ddt.data(
-        (('"127.0.0.1:37770"', '"127.0.0.1:37770"'), 'pid 0 leader and follower at same endpoint'),
-        (('"127.0.0.1:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"{}"'.format(conf.tb_endpoints[0])), 'pid 0 leader and follower at same endpoint'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"172.27.128.35:37770"'), 'Fail to create table'),
         (('"0.0.0.0:37770"', '"172.27.128.35:37770"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"127.0.0.1:47771"'), 'Fail to create table'),
-        (('""', '"127.0.0.1:37770"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '""'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"127.0.0.1:44444"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"127.0.0.1"'), 'Fail to create table'),
-        (('"127.0.0.1:37770"', '"abc"'), 'Fail to create table'),
-        ((None, '"127.0.0.1:37770"'), 'missing required fields: table_partition[0].endpoint'),
-        (('"000"', '"127.0.0.1:37770"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1:47771"'), 'Fail to create table'),
+        (('""', '"{}"'.format(conf.tb_endpoints[0])), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '""'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1:44444"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"127.0.0.1"'), 'Fail to create table'),
+        (('"{}"'.format(conf.tb_endpoints[0]), '"abc"'), 'Fail to create table'),
+        ((None, '"{}"'.format(conf.tb_endpoints[0])), 'missing required fields: table_partition[0].endpoint'),
+        (('"000"', '"{}"'.format(conf.tb_endpoints[0])), 'Fail to create table'),
     )
     @ddt.unpack
     def test_create_endpoint(self, ep, exp_msg):
@@ -302,12 +311,13 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertIn(exp_msg, rs)
         if exp_msg == 'Create table ok':
-            rs = self.showtable(self.ns_leader)
+            rs = self.showtable(self.ns_leader, name)
             for k, v in rs.items():
                 if k[3] == self.leader:
                     self.assertEqual(v[0], 'leader')
                 elif k[3] == self.slave1:
                     self.assertEqual(v[0], 'follower')
+        self.ns_drop(self.ns_leader, name)
 
 
     @multi_dimension(True)
@@ -368,8 +378,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = '"tname{}"'.format(time.time())
         m = utils.gen_table_metadata(
-            '"tname{}"'.format(time.time()), '"kAbsoluteTime"', 144000, 8,
+            name, '"kAbsoluteTime"', 144000, 8,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"0-2"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
@@ -379,7 +390,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
         if exp_msg == 'Create table ok':
-            rs1 = self.showtable(self.ns_leader)
+            rs1 = self.showtable(self.ns_leader, name)
             tid = rs1.keys()[0][1]
             for edp in (self.leader, self.slave1, self.slave2):
                 schema = self.showschema(edp, tid, 2)
@@ -390,6 +401,7 @@ class TestCreateTableByNsClient(TestCaseBase):
                     type = i[2][1:-1]
                     index = 'yes' if i[3] == 'true' else 'no'
                     self.assertEqual(schema[key], [type, index])
+        self.ns_drop(self.ns_leader, name)
 
 
     @ddt.data(
@@ -440,7 +452,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, tname)
         tid = rs1.keys()[0][1]
         infoLogger.info(rs1)
         self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
@@ -452,6 +464,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(schema['k1'], ['string', 'yes'])
         self.assertEqual(schema['k2'], ['double', 'no'])
         self.assertEqual(schema['k3'], ['int32', 'yes'])
+        self.ns_drop(self.ns_leader, tname)
 
     @ddt.data(
         ('Create table ok', '0', '8', '3', ''),
@@ -471,7 +484,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertIn(exp_msg, rs)
         if (schema != ''):
             self.assertIn(exp_msg, rs)
-            rs1 = self.showtable(self.ns_leader)
+            rs1 = self.showtable(self.ns_leader, tname)
             tid = rs1.keys()[0][1]
             infoLogger.info(rs1)
             schema = self.showschema(self.slave1, tid, 0)
@@ -480,7 +493,40 @@ class TestCreateTableByNsClient(TestCaseBase):
             self.assertEqual(schema['k1'], ['string', 'yes'])
             self.assertEqual(schema['k2'], ['double', 'no'])
             self.assertEqual(schema['k3'], ['int32', 'yes'])
+        self.ns_drop(self.ns_leader, tname)
 
-
+    @ddt.data(
+        ('Fail to create table. key_entry_max_height must be greater than 0', '0'),
+        ('Create table ok', '1'),
+        ('Create table ok', '5'),
+        ('Create table ok', '12'),
+        ('Fail to create table. key_entry_max_height 13 is greater than the max heght 12', '13'),
+    )
+    @ddt.unpack
+    def test_create_key_entry_max_height(self, exp_msg, height):
+        self.tname = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        name = '"{}"'.format(self.tname)
+        m = utils.gen_table_metadata(
+            name, '"kAbsoluteTime"', 144000, 8,
+            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false'))
+        m[0].append(("key_entry_max_height", height))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
+        table_info = self.showtable(self.ns_leader, name)
+        if len(table_info) > 0:
+            tid = table_info.keys()[0][1]
+            for pid in range(3):
+                table_meta = self.get_table_meta(self.leaderpath, tid, pid)
+                self.assertEqual(table_meta['key_entry_max_height'], height)
+        self.ns_drop(self.ns_leader, name)
+        
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)

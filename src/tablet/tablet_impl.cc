@@ -47,6 +47,7 @@ DECLARE_int32(io_pool_size);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_string(recycle_bin_root_path);
+DECLARE_int32(make_snapshot_threshold_offset);
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
@@ -67,6 +68,10 @@ DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(key_entry_max_height);
+DECLARE_uint32(latest_default_skiplist_height);
+DECLARE_uint32(absolute_default_skiplist_height);
 
 namespace rtidb {
 namespace tablet {
@@ -195,9 +200,34 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     if (request->type() != table->GetTTLType()) {
         response->set_code(-2);
         response->set_msg("ttl type mismatch");
+        PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
-    table->SetTTL(request->value());
+
+    uint64_t ttl = request->value();
+    if ((table->GetTTLType() == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+            (table->GetTTLType() == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+        response->set_code(-1);
+        uint32_t max_ttl = table->GetTTLType() == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
+        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
+                        ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
+        return;
+    }
+    uint64_t old_ttl = table->GetTTL();
+    if (old_ttl == 0 && ttl > 0) {
+        response->set_code(-1);
+        response->set_msg("cannot update ttl form zero to nonzero");
+        PDLOG(WARNING, "cannot update ttl form zero to nonzero. tid %u pid %u", request->tid(), request->pid());
+        return;
+    } else if (old_ttl > 0 && ttl == 0) {
+        response->set_code(-1);
+        response->set_msg("cannot update ttl form nonzero to zero");
+        PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
+        return;
+    }
+
+    table->SetTTL(ttl);
     response->set_code(0);
     response->set_msg("ok");
     PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
@@ -546,6 +576,10 @@ void TabletImpl::Scan(RpcController* controller,
     uint64_t last_time = 0;
     end_time = std::max(end_time, table->GetExpireTime());
     PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
+    uint32_t limit = 0;
+    if (request->has_limit()) {
+        limit = request->limit();
+    }
     while (it->Valid()) {
         scount ++;
         PDLOG(DEBUG, "scan key %lld", it->GetKey());
@@ -563,21 +597,21 @@ void TabletImpl::Scan(RpcController* controller,
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
         total_block_size += it->GetValue()->size;
         it->Next();
-        if (request->limit() > 0 && request->limit() <= scount) {
-            PDLOG(DEBUG, "reache the limit %u ", request->limit());
+        if (limit > 0 && scount >= limit) {
+            PDLOG(DEBUG, "reach the limit %u", limit);
             break;
+        }
+        // check reach the max bytes size
+        if (total_block_size > FLAGS_scan_max_bytes_size) {
+            response->set_code(31);
+            response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
+            done->Run();
+            return;
         }
     }
     delete it;
     metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
-    // check reach the max bytes size
-    if (total_size > FLAGS_scan_max_bytes_size) {
-        response->set_code(31);
-        response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_size));
-        done->Run();
-        return;
-    }
     std::string* pairs = response->mutable_pairs();
     if (tmp.size() <= 0) {
         pairs->resize(0);
@@ -787,9 +821,10 @@ void TabletImpl::DelReplica(RpcController* controller,
             response->set_msg("replicator role is not leader");
             break;
         } else {
-            response->set_code(-4);
-            PDLOG(WARNING, "fail to del endpoint for table %u pid %u", request->tid(), request->pid());
-            response->set_msg("fail to del endpoint");
+            response->set_code(0);
+            PDLOG(WARNING, "fail to del endpoint for table %u pid %u. replica does not exist", 
+                            request->tid(), request->pid());
+            response->set_msg("replica does not exist");
         }
         if (task_ptr) {
             std::lock_guard<std::mutex> lock(mu_);
@@ -887,6 +922,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_record_byte_size(table->GetRecordByteSize());
             status->set_record_idx_byte_size(table->GetRecordIdxByteSize());
             status->set_record_pk_cnt(table->GetRecordPkCnt());
+            status->set_skiplist_height(table->GetKeyEntryHeight());
             uint64_t record_idx_cnt = 0;
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
             for (;iit != table->GetMapping().end(); ++iit) {
@@ -958,6 +994,7 @@ void TabletImpl::SetTTLClock(RpcController* controller,
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task) {
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
+    std::shared_ptr<LogReplicator> replicator;
     {
         std::lock_guard<std::mutex> lock(mu_);
         table = GetTableUnLock(tid, pid);
@@ -977,6 +1014,11 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
                 PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
                 break;
             }
+            replicator = GetReplicatorUnLock(tid, pid);
+            if (!replicator) {
+                PDLOG(WARNING, "replicator is not exist. tid[%u] pid[%u]", tid, pid);
+                break;
+            }
             has_error = false;
         } while (0);
         if (has_error) {
@@ -986,14 +1028,21 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
             return;
         }
         table->SetTableStat(::rtidb::storage::kMakingSnapshot);
-    }    
-    uint64_t offset = 0;
-    int ret = snapshot->MakeSnapshot(table, offset);
-    if (ret == 0) {
-        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-        if (replicator) {
-            replicator->SetSnapshotLogPartIndex(offset);
-        }    
+    }
+    uint64_t cur_offset = replicator->GetOffset();
+    uint64_t snapshot_offset = snapshot->GetOffset();
+    int ret = 0;
+    if (cur_offset <= snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
+        PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", tid, pid, cur_offset, snapshot_offset);
+    }else {
+		uint64_t offset = 0;
+		ret = snapshot->MakeSnapshot(table, offset);
+		if (ret == 0) {
+			std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+			if (replicator) {
+				replicator->SetSnapshotLogPartIndex(offset);
+			}
+		}
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -1046,7 +1095,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
                          table->GetTableStat(), tid, pid);
             break;
         }
-        if (task_ptr) {       
+        if (task_ptr) {
             task_ptr->set_status(::rtidb::api::TaskStatus::kDoing);
         }    
         task_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, task_ptr));
@@ -2043,12 +2092,24 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         mapping.insert(std::make_pair("idx0", 0));
         PDLOG(INFO, "no index specified with default");
     }
+    uint32_t key_entry_max_height = FLAGS_key_entry_max_height;
+    if (table_meta->has_key_entry_max_height() && table_meta->key_entry_max_height() <= FLAGS_skiplist_max_height 
+            && table_meta->key_entry_max_height() > 0) {
+        key_entry_max_height = table_meta->key_entry_max_height();
+    }else {
+        if (table_meta->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+            key_entry_max_height = FLAGS_latest_default_skiplist_height;
+        }else if (table_meta->ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
+            key_entry_max_height = FLAGS_absolute_default_skiplist_height;
+        }
+    }
     std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
                                                            table_meta->tid(),
                                                            table_meta->pid(), seg_cnt, 
                                                            mapping,
                                                            table_meta->ttl(), is_leader,
-                                                           endpoints);
+                                                           endpoints,
+                                                           key_entry_max_height);
     table->Init();
     table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
     table->SetSchema(table_meta->schema());

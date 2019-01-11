@@ -3,8 +3,12 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com._4paradigm</groupId>
 	<artifactId>rtidb-client</artifactId>
-	<version>1.3.5-SNAPSHOT</version>
+	<version>1.3.9-SNAPSHOT</version>
 	<packaging>jar</packaging>
+	<!--<properties>-->
+		<!--<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>-->
+		<!--<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>-->
+	<!--</properties>-->
 
 	<dependencies>
 
@@ -83,6 +87,7 @@
 				<configuration>
 					<source>1.7</source>
 					<target>1.7</target>
+					<encoding>UTF-8</encoding>
 				</configuration>
             </plugin>
 			<plugin>
@@ -106,6 +111,8 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.0</version>
         <configuration>
+		  <forkMode>once</forkMode>
+		  <argLine>-Dfile.encoding=UTF-8</argLine>
           <properties>
             <property>
               <name>junit</name>

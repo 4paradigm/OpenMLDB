@@ -10,23 +10,27 @@
 --log_file_size=1024
 --log_level=info
 
---auto_failover=false
---auto_recover_table=false
+--auto_failover=true
 
 #--thread_pool_size=16
 #--request_max_retry=3
---request_timeout_ms=5000
+#--request_timeout_ms=12000
 #--request_sleep_time=1000
 
 --zk_session_timeout=10000
 #--zk_keep_alive_check_interval=15000
---tablet_heartbeat_timeout=300000
+--tablet_heartbeat_timeout=60000
 #--tablet_offline_check_interval=1000
 
 #--name_server_task_pool_size=8
+#--name_server_task_concurrency=2
+#--name_server_task_max_concurrency=8
 #--name_server_task_wait_time=1000
+#--name_server_op_execute_timeout=7200000
 #--get_task_status_interval=2000
+#--get_table_status_interval=2000
+#--check_binlog_sync_progress_delta=100000
 #--max_op_num=10000
 
 #--replica_num=3
-#--partition_num=16
+#--partition_num=8

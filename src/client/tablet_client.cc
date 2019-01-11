@@ -9,6 +9,7 @@
 #include "base/codec.h"
 #include "timer.h"
 #include <iostream>
+#include "logging.h"
 
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
@@ -126,6 +127,19 @@ bool TabletClient::CreateTable(const std::string& name,
         table_meta->add_replicas(endpoints[i]);
     }
     table_meta->set_ttl_type(type);
+    ::rtidb::api::CreateTableResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
+    ::rtidb::api::CreateTableRequest request;
+    ::rtidb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();
+    table_meta_ptr->CopyFrom(table_meta);
     ::rtidb::api::CreateTableResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
@@ -630,6 +644,37 @@ bool TabletClient::AddReplica(uint32_t tid, uint32_t pid, const std::string& end
 
 bool TabletClient::DelReplica(uint32_t tid, uint32_t pid, const std::string& endpoint,
             std::shared_ptr<TaskInfo> task_info) {
+    if (task_info) {        
+        // fix the bug FEX-439
+        ::rtidb::api::GetTableFollowerRequest get_follower_request;
+        ::rtidb::api::GetTableFollowerResponse get_follower_response;
+        get_follower_request.set_tid(tid);
+        get_follower_request.set_pid(pid);
+        bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableFollower,
+                &get_follower_request, &get_follower_response, FLAGS_request_timeout_ms, 1);
+        if (ok) {
+            if (get_follower_response.code() < 0 && get_follower_response.msg() == "has no follower") {
+                task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
+                                task_info->op_id(), ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                return true;
+            }
+            if (get_follower_response.code() == 0) {
+                bool has_replica = false;
+                for (int idx = 0; idx < get_follower_response.follower_info_size(); idx++) {
+                    if (get_follower_response.follower_info(idx).endpoint() == endpoint) {
+                        has_replica = true;
+                    }
+                }
+                if (!has_replica) {
+                    task_info->set_status(::rtidb::api::TaskStatus::kDone);
+                    PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
+                                    task_info->op_id(), ::rtidb::api::TaskType_Name(task_info->task_type()).c_str());
+                    return true;
+                }
+            }
+        }
+    }
     ::rtidb::api::ReplicaRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);

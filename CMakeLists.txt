@@ -5,7 +5,7 @@ project(rtidb)
 set(CMAKE_BUILD_TYPE Release)
 set(RTIDB_VERSION_MAJOR 1)
 set(RTIDB_VERSION_MINOR 3)
-set(RTIDB_VERSION_BUG 7)
+set(RTIDB_VERSION_BUG 10)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"
@@ -27,7 +27,7 @@ if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
-option(LOG_FILE_PATH_ENABLE "Enable LOG FILE PATH ENABLE" OFF) 
+option(LOG_FILE_PATH_ENABLE "Enable LOG FILE PATH ENABLE" ON) 
 message("LOG_FILE_PATH_ENABLE option is ${LOG_FILE_PATH_ENABLE}")
 if (LOG_FILE_PATH_ENABLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILE__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"' -Wno-builtin-macro-redefined")

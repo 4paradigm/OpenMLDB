@@ -61,6 +61,9 @@ DEFINE_int32(log_file_count, 24, "Config the log count");
 DEFINE_string(log_level, "debug", "Set the rtidb log level, eg: debug or info");
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
+DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(latest_default_skiplist_height);
+DECLARE_uint32(absolute_default_skiplist_height);
 
 void SetupLog() {
     // Config log 
@@ -234,6 +237,14 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
         std::string col;
         if (fit.GetType() == ::rtidb::base::ColType::kString) {
             fit.GetString(&col);
+        }else if (fit.GetType() == ::rtidb::base::ColType::kUInt16) {
+            uint16_t uint16_col = 0;
+            fit.GetUInt16(&uint16_col);
+            col = boost::lexical_cast<std::string>(uint16_col);
+        }else if (fit.GetType() == ::rtidb::base::ColType::kInt16) {
+            int16_t int16_col = 0;
+            fit.GetInt16(&int16_col);
+            col = boost::lexical_cast<std::string>(int16_col);
         }else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
             int32_t int32_col = 0;
             fit.GetInt32(&int32_col);
@@ -262,6 +273,22 @@ void ShowTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
             uint64_t ts = 0;
             fit.GetTimestamp(&ts);
             col = boost::lexical_cast<std::string>(ts);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kDate) {
+            uint64_t dt = 0;
+            fit.GetDate(&dt);
+            time_t rawtime = (time_t)dt / 1000;
+            tm* timeinfo = localtime(&rawtime);
+            char buf[20];
+            strftime(buf, 20, "%Y-%m-%d", timeinfo);
+            col.assign(buf);
+        }else if(fit.GetType() == ::rtidb::base::ColType::kBool) {
+            bool value = false;
+            fit.GetBool(&value);
+            if (value) {
+                col = "true";
+            } else {
+                col = "false";
+            }
         }
         fit.Next();
         vrow.push_back(col);
@@ -341,11 +368,35 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
             } else if (columns[i].type == ::rtidb::base::ColType::kTimestamp) {
                 codec_ok = codec.AppendTimestamp(boost::lexical_cast<uint64_t>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kDate) {
-                codec_ok = codec.AppendDate(boost::lexical_cast<uint64_t>(data[i]));
+                std::string date = data[i] + " 00:00:00";
+                tm tm_s;
+                time_t time;
+                char buf[20]= {0};
+                strcpy(buf, date.c_str());
+                char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
+                if (result == NULL) {
+                    printf("date format is YY-MM-DD. ex: 2018-06-01\n");
+                    return -1;
+                }
+                tm_s.tm_isdst = -1;
+                time = mktime(&tm_s) * 1000;
+                codec_ok = codec.AppendDate(uint64_t(time));
             } else if (columns[i].type == ::rtidb::base::ColType::kInt16) {
                 codec_ok = codec.Append(boost::lexical_cast<int16_t>(data[i]));
             } else if (columns[i].type == ::rtidb::base::ColType::kUInt16) {
                 codec_ok = codec.Append(boost::lexical_cast<uint16_t>(data[i]));
+            } else if (columns[i].type == ::rtidb::base::ColType::kBool) {
+                bool value = false;
+                std::string raw_value = data[i];
+                std::transform(raw_value.begin(), raw_value.end(), raw_value.begin(), ::tolower);
+                if (raw_value == "true") {
+                    value = true;
+                } else if (raw_value == "false") {
+                    value = false;
+                } else {
+                    return -1;
+                }
+                codec_ok = codec.Append(value);
             } else {
                 codec_ok = codec.AppendNull();
             }
@@ -410,7 +461,29 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client
     } catch(std::exception const& e) {
         std::cout << "Invalid args ttl which should be uint64_t" << std::endl;
     }
+}
 
+void HandleNSClientCancelOP(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "bad cancelop format, eg cancelop 1002" <<std::endl;
+        return;
+    }
+    try {
+        std::string err;
+        if (boost::lexical_cast<int64_t>(parts[1]) <= 0) {
+            std::cout << "Invalid args. op_id should be large than zero" << std::endl;
+            return;
+        }
+        uint64_t op_id = boost::lexical_cast<uint64_t>(parts[1]);
+        bool ok = client->CancelOP(op_id, err);
+        if (ok) {
+            std::cout << "Cancel op ok!" << std::endl;
+        } else {
+            std::cout << "Cancel op failed! "<< err << std::endl; 
+        }
+    } catch(std::exception const& e) {
+        std::cout << "Invalid args. op_id should be uint64_t" << std::endl;
+    }
 }
 
 void HandleNSShowTablet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -634,7 +707,20 @@ void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::rtid
         return;
     }
     std::string msg;
-    bool ret = client->OfflineEndpoint(parts[1], msg);
+    uint32_t concurrency = 0;
+    if (parts.size() > 2) {
+        try {
+            if (boost::lexical_cast<int32_t>(parts[2]) <= 0) {
+                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
+                return;
+            }
+            concurrency = boost::lexical_cast<uint32_t>(parts[2]);
+        } catch (const std::exception& e) {
+            std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
+            return;
+        }
+    }
+    bool ret = client->OfflineEndpoint(parts[1], concurrency, msg);
     if (!ret) {
         std::cout << "failed to offline endpoint. error msg: " << msg << std::endl;
         return;
@@ -704,8 +790,34 @@ void HandleNSClientRecoverEndpoint(const std::vector<std::string>& parts, ::rtid
         std::cout << "Bad format" << std::endl;
         return;
     }
+    bool need_restore = false;
+    if (parts.size() > 2) {
+        std::string value = parts[2];
+        std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+        if (value == "true") {
+            need_restore = true;
+        } else if (value == "false") {
+            need_restore = false;
+        } else {
+            std::cout << "Invalid args. need_restore should be true or false" << std::endl;
+            return;
+        }
+    }
+	uint32_t concurrency = 0;
+    if (parts.size() > 3) {
+        try {
+            if (boost::lexical_cast<int32_t>(parts[3]) <= 0) {
+                std::cout << "Invalid args. concurrency should be greater than 0" << std::endl;
+                return;
+            }
+            concurrency = boost::lexical_cast<uint32_t>(parts[3]);
+        } catch (const std::exception& e) {
+            std::cout << "Invalid args. concurrency should be uint32_t" << std::endl;
+            return;
+        }
+    }
     std::string msg;
-    bool ret = client->RecoverEndpoint(parts[1], msg);
+    bool ret = client->RecoverEndpoint(parts[1], need_restore, concurrency, msg);
     if (!ret) {
         std::cout << "failed to recover endpoint. error msg: " << msg << std::endl;
         return;
@@ -773,6 +885,9 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     row.push_back("ttl");
     row.push_back("is_alive");
     row.push_back("compress_type");
+    row.push_back("offset");
+    row.push_back("record_cnt");
+    row.push_back("memused");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -802,6 +917,21 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
                     row.push_back(::rtidb::nameserver::CompressType_Name(value.compress_type()));
                 } else {
                     row.push_back("kNoCompress");
+                }
+                if (value.table_partition(idx).partition_meta(meta_idx).has_offset()) {
+                    row.push_back(std::to_string(value.table_partition(idx).partition_meta(meta_idx).offset()));
+                } else {
+                    row.push_back("-");
+                }
+                if (value.table_partition(idx).partition_meta(meta_idx).has_record_cnt()) {
+                    row.push_back(std::to_string(value.table_partition(idx).partition_meta(meta_idx).record_cnt()));
+                } else {
+                    row.push_back("-");
+                }
+                if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size()) {
+                    row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).record_byte_size()));
+                } else {
+                    row.push_back("-");
                 }
                 tp.AddRow(row);
             }
@@ -1162,10 +1292,12 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     ns_table_info.set_name(table_info.name());
     std::string ttl_type = table_info.ttl_type();
     std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
+    uint32_t default_skiplist_height = FLAGS_absolute_default_skiplist_height;
     if (ttl_type == "kabsolutetime") {
         ns_table_info.set_ttl_type("kAbsoluteTime");
     } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
         ns_table_info.set_ttl_type("kLatestTime");
+        default_skiplist_height = FLAGS_latest_default_skiplist_height;
     } else {
         printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
         return -1;
@@ -1180,6 +1312,21 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     } else {
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
+    }
+    if (table_info.has_key_entry_max_height()) {
+        if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
+            printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n", 
+                        table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
+            return -1;
+        }
+        if (table_info.key_entry_max_height() == 0) {
+            printf("Fail to create table. key_entry_max_height must be greater than 0\n"); 
+            return -1;
+        }
+        ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
+    }else {
+        // config default height
+        ns_table_info.set_key_entry_max_height(default_skiplist_height);
     }
     ns_table_info.set_seg_cnt(table_info.seg_cnt());
     if (table_info.table_partition_size() > 0) {
@@ -1439,6 +1586,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("settablepartition - update partition info\n");
         printf("updatetablealive - update table alive status\n");
         printf("setttl - set table ttl\n");
+        printf("cancelop - cancel the op\n");
         printf("exit - exit client\n");
         printf("quit - exit client\n");
         printf("help - get cmd info\n");
@@ -1518,7 +1666,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
-            printf("usage: confset auto_recover_table true/false\n");
             printf("ex: confset auto_failover true\n");
         } else if (parts[1] == "confget") {
             printf("desc: get conf\n");
@@ -1526,7 +1673,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: confget conf_name\n");
             printf("ex: confget\n");
             printf("ex: confget auto_failover\n");
-            printf("ex: confget auto_recover_table\n");
         } else if (parts[1] == "changeleader") {
             printf("desc: select leader again when the endpoint of leader offline\n");
             printf("usage: changeleader table_name pid [candidate_leader]\n");
@@ -1535,16 +1681,19 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: changeleader table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "offlineendpoint") {
             printf("desc: select leader and delete replica when endpoint offline\n");
-            printf("usage: offlineendpoint endpoint\n");
+            printf("usage: offlineendpoint endpoint [concurrency]\n");
             printf("ex: offlineendpoint 172.27.128.31:9527\n");
+            printf("ex: offlineendpoint 172.27.128.31:9527 2\n");
         } else if (parts[1] == "recovertable") {
             printf("desc: recover only one table partition\n");
             printf("usage: recovertable table_name pid endpoint\n");
             printf("ex: recovertable table1 0 172.27.128.31:9527\n");
         } else if (parts[1] == "recoverendpoint") {
             printf("desc: recover all tables in endpoint when online\n");
-            printf("usage: recoverendpoint endpoint\n");
+            printf("usage: recoverendpoint endpoint [need_restore] [concurrency]\n");
             printf("ex: recoverendpoint 172.27.128.31:9527\n");
+            printf("ex: recoverendpoint 172.27.128.31:9527 false\n");
+            printf("ex: recoverendpoint 172.27.128.31:9527 true 2\n");
         } else if (parts[1] == "migrate") {
             printf("desc: migrate partition form one endpoint to another\n");
             printf("usage: migrate src_endpoint table_name partition des_endpoint\n");
@@ -1575,6 +1724,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: setttl table_name ttl_type ttl\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
+        } else if (parts[1] == "cancelop") {
+            printf("desc: cancel the op\n");
+            printf("usage: cancelop op_id\n");
+            printf("ex: cancelop 5\n");
         } else if (parts[1] == "updatetablealive") {
             printf("desc: update table alive status\n");
             printf("usage: updatetablealive table_name pid endppoint is_alive\n");
@@ -1769,21 +1922,27 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).status());
-        time_t rawtime = (time_t)response.op_status(idx).start_time();
-        tm* timeinfo = localtime(&rawtime);
-        char buf[20];
-        strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
-        row.push_back(buf);
-        if (response.op_status(idx).end_time() != 0) {
-            row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
-            rawtime = (time_t)response.op_status(idx).end_time();
-            timeinfo = localtime(&rawtime);
-            buf[0] = '\0';
+        if (response.op_status(idx).start_time() > 0) {
+            time_t rawtime = (time_t)response.op_status(idx).start_time();
+            tm* timeinfo = localtime(&rawtime);
+            char buf[20];
             strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
             row.push_back(buf);
+            if (response.op_status(idx).end_time() != 0) {
+                row.push_back(std::to_string(response.op_status(idx).end_time() - response.op_status(idx).start_time()) + "s");
+                rawtime = (time_t)response.op_status(idx).end_time();
+                timeinfo = localtime(&rawtime);
+                buf[0] = '\0';
+                strftime(buf, 20, "%Y%m%d%H%M%S", timeinfo);
+                row.push_back(buf);
+            } else {
+                uint64_t cur_time = ::baidu::common::timer::now_time();
+                row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
+                row.push_back("-");
+            }
         } else {
-            uint64_t cur_time = ::baidu::common::timer::now_time();
-            row.push_back(std::to_string(cur_time - response.op_status(idx).start_time()) + "s");
+            row.push_back("-");
+            row.push_back("-");
             row.push_back("-");
         }
         row.push_back(response.op_status(idx).task_type());
@@ -2209,7 +2368,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         } else if (parts[1] == "setlimit") {
             printf("desc: setlimit for tablet interface\n");
             printf("usage: setlimit method limit\n");
-            printf("ex:setlimit server 10, limit the server max concurrency to 10\n");
+            printf("ex:setlimit Server 10, limit the server max concurrency to 10\n");
             printf("ex:setlimit Put 10, limit the server put  max concurrency to 10\n");
             printf("ex:setlimit Get 10, limit the server get  max concurrency to 10\n");
             printf("ex:setlimit Scan 10, limit the server scan  max concurrency to 10\n");
@@ -2273,6 +2432,7 @@ void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common:
     row.push_back(std::to_string(table_status.time_offset()) + "s");
     row.push_back(::rtidb::base::HumanReadableString(table_status.record_byte_size() + table_status.record_idx_byte_size()));
     row.push_back(::rtidb::api::CompressType_Name(table_status.compress_type()));
+    row.push_back(std::to_string(table_status.skiplist_height()));
     tp.AddRow(row);
 }
 
@@ -2288,6 +2448,7 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
     row.push_back("ttl_offset");
     row.push_back("memused");
     row.push_back("compress_type");
+    row.push_back("skiplist_height");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     if (parts.size() == 3) {
@@ -2426,8 +2587,19 @@ void HandleClientSetLimit(const std::vector<std::string> parts, ::rtidb::client:
         return;
     }
     try {
-
         std::string key = parts[1];
+        if (std::isupper(key[0])) {
+            std::string subname = key.substr(1);
+            for (char e : subname) {
+                if (std::isupper(e)) {
+                    std::cout<<"Invalid args name which should be Put , Scan , Get or Server"<<std::endl;
+                    return;
+                }
+            }
+        } else {
+            std::cout<<"Invalid args name which should be Put , Scan , Get or Server"<<std::endl;
+            return;
+        }
         int32_t limit = boost::lexical_cast<int32_t> (parts[2]);
         bool ok = client->SetMaxConcurrency(key, limit);
         if (ok) {
@@ -3015,8 +3187,10 @@ void StartClient() {
         std::cout << "Start failed! not set endpoint" << std::endl;
         return;
     }
-    std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
-        << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
+    if (FLAGS_interactive) {
+        std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+            << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
+    }
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
     client.Init();
     while (true) {
@@ -3205,6 +3379,8 @@ void StartNsClient() {
             HandleNSClientUpdateTableAlive(parts, &client);
         } else if (parts[0] == "setttl") {
             HandleNSClientSetTTL(parts, &client);
+        } else if (parts[0] == "cancelop") {
+            HandleNSClientCancelOP(parts, &client);
         } else if (parts[0] == "exit" || parts[0] == "quit") {
             std::cout << "bye" << std::endl;
             return;

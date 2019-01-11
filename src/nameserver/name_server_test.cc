@@ -27,6 +27,7 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
+DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 
 using ::rtidb::zk::ZkClient;
@@ -52,6 +53,15 @@ class NameServerImplTest : public ::testing::Test {
 public:
     NameServerImplTest() {}
     ~NameServerImplTest() {}
+    void Start(NameServerImpl* nameserver) {
+        nameserver->running_ = true;
+    }
+    std::vector<std::list<std::shared_ptr<OPData>>>& GetTaskVec(NameServerImpl* nameserver) {
+        return nameserver->task_vec_;
+    }
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>& GetTableInfo(NameServerImpl* nameserver) {
+        return nameserver->table_info_;
+    }
 };
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
@@ -526,6 +536,41 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     delete nameserver;
     delete tablet;
 }
+
+TEST_F(NameServerImplTest, CancelOP) {
+    NameServerImpl* nameserver = new NameServerImpl();
+    Start(nameserver);
+
+    CancelOPRequest request;
+    GeneralResponse response;
+    MockClosure closure;
+    request.set_op_id(11);
+    nameserver->CancelOP(NULL, &request, &response,
+                &closure);
+    ASSERT_EQ(-1, response.code());
+
+    std::vector<std::list<std::shared_ptr<OPData>>>& task_vec = GetTaskVec(nameserver);
+    task_vec.resize(FLAGS_name_server_task_max_concurrency);
+    std::shared_ptr<OPData> op_data = std::make_shared<OPData>();
+    uint64_t op_id = 10;
+    op_data->op_info_.set_op_id(op_id);
+    op_data->op_info_.set_op_type(::rtidb::api::OPType::kDelReplicaOP);
+    op_data->op_info_.set_task_index(0);
+    op_data->op_info_.set_data("");
+    op_data->op_info_.set_task_status(::rtidb::api::kInited);
+    op_data->op_info_.set_name("test");
+    op_data->op_info_.set_pid(0);
+    op_data->op_info_.set_parent_id(UINT64_MAX);
+    task_vec[0].push_back(op_data);
+
+    request.set_op_id(10);
+    response.Clear();
+    nameserver->CancelOP(NULL, &request, &response,
+                &closure);
+    ASSERT_EQ(0, response.code());
+    ASSERT_TRUE(op_data->op_info_.task_status() == ::rtidb::api::kCanceled);
+    delete nameserver;
+}    
 
 }
 }

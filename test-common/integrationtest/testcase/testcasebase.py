@@ -15,6 +15,8 @@ import libs.conf as conf
 import libs.utils as utils
 from libs.clients.ns_cluster import NsCluster
 import traceback
+import copy
+import re
 
 
 class TestCaseBase(unittest.TestCase):
@@ -32,14 +34,14 @@ class TestCaseBase(unittest.TestCase):
         cls.conf_path = os.getenv('confpath')
         cls.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(cls.testpath))
         cls.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(cls.testpath))
-        cls.ns_slaver = [i[1] for i in conf.ns_endpoints if i[1] != cls.ns_leader][0]
-        cls.leader, cls.slave1, cls.slave2 = (i[1] for i in conf.tb_endpoints)
+        cls.ns_slaver = [i for i in conf.ns_endpoints if i != cls.ns_leader][0]
+        cls.leader, cls.slave1, cls.slave2 = (i for i in conf.tb_endpoints)
         cls.multidimension = conf.multidimension
         cls.multidimension_vk = conf.multidimension_vk
         cls.multidimension_scan_vk = conf.multidimension_scan_vk
         cls.failfast = conf.failfast
-        cls.ns_path_dict = {conf.ns_endpoints[0][1]: cls.testpath + '/ns1',
-                            conf.ns_endpoints[1][1]: cls.testpath + '/ns2'}
+        cls.ns_path_dict = {conf.ns_endpoints[0]: cls.testpath + '/ns1',
+                            conf.ns_endpoints[1]: cls.testpath + '/ns2'}
         cls.node_path_dict = {cls.leader: cls.testpath + '/tablet1',
                               cls.slave1: cls.testpath + '/tablet2',
                               cls.slave2: cls.testpath + '/tablet3',
@@ -49,13 +51,13 @@ class TestCaseBase(unittest.TestCase):
         cls.slave1path = cls.node_path_dict[cls.slave1]
         cls.slave2path = cls.node_path_dict[cls.slave2]
         infoLogger.info('*'*88)
-        infoLogger.info([i[1] for i in conf.ns_endpoints]) 
+        infoLogger.info([i for i in conf.ns_endpoints]) 
         infoLogger.info(cls.ns_slaver)
+        infoLogger.info(conf.cluster_mode)
 
     @classmethod
     def tearDownClass(cls):
-        for edp_tuple in conf.tb_endpoints:
-            edp = edp_tuple[1]
+        for edp in conf.tb_endpoints:
             utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict[edp]))
             utils.exe_shell('rm -rf {}/db/*'.format(cls.node_path_dict[edp]))
         infoLogger.info('\n' + '=' * 50 + ' TEST {} FINISHED '.format(cls) + '=' * 50 + '\n' * 5)
@@ -68,15 +70,10 @@ class TestCaseBase(unittest.TestCase):
             self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
             self.tid = random.randint(1, 1000)
             self.pid = random.randint(1, 1000)
-            self.clear_ns_table(self.ns_leader)
-            for edp_tuple in conf.tb_endpoints:
-                edp = edp_tuple[1]
+            if conf.cluster_mode == "cluster":
+                self.clear_ns_table(self.ns_leader)
+            for edp in conf.tb_endpoints:
                 self.clear_tb_table(edp)
-            self.confset(self.ns_leader, 'auto_failover', 'true')
-            self.confset(self.ns_leader, 'auto_recover_table', 'true')
-            self.clear_lock(self.leader)
-            self.clear_lock(self.slave1)
-            self.clear_lock(self.slave2)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' SETUP FINISHED ' + '=' * 50 + '\n')
@@ -84,21 +81,14 @@ class TestCaseBase(unittest.TestCase):
     def tearDown(self):
         infoLogger.info('\n\n' + '|' * 50 + ' TEARDOWN STARTED ' + '|' * 50 + '\n')
         try:
-            self.confset(self.ns_leader, 'auto_failover', 'true')
-            self.confset(self.ns_leader, 'auto_recover_table', 'true')
-            self.clear_ns_table(self.ns_leader)
             rs = self.showtablet(self.ns_leader)
-
-            for edp_tuple in conf.tb_endpoints:
-                edp = edp_tuple[1]
+            for edp in conf.tb_endpoints:
                 if rs[edp][0] != 'kTabletHealthy':
                     infoLogger.info("Endpoint offline !!!! " * 10 + edp)
                     self.stop_client(edp)
                     time.sleep(1)
                     self.start_client(edp)
                     time.sleep(10)
-                    self.recoverendpoint(self.ns_leader, edp)
-                    time.sleep(3)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         infoLogger.info('\n\n' + '=' * 50 + ' TEARDOWN FINISHED ' + '=' * 50 + '\n' * 5)
@@ -139,15 +129,11 @@ class TestCaseBase(unittest.TestCase):
             cmd = "lsof -i:{}".format(port) + "|grep '(CLOSE_WAIT)'|awk '{print $2}'|xargs kill -9"
             utils.exe_shell(cmd)
 
-    def clear_lock(self, endpoint):
-        infoLogger.info('\n ' + 'clear lock ' + endpoint + '\n')
-        utils.exe_shell("sh {}/bin/zkCli.sh -server {} delete /onebox/offline_endpoint_lock/{}".format(os.getenv('zkpath'), conf.zk_endpoint, endpoint))
-
     def get_new_ns_leader(self):
-        nsc = NsCluster(conf.zk_endpoint, *(i[1] for i in conf.ns_endpoints))
+        nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         nsc.get_ns_leader()
-        infoLogger.info([x[1] for x in conf.ns_endpoints])
-        nss = [x[1] for x in conf.ns_endpoints]
+        infoLogger.info(conf.ns_endpoints)
+        nss = copy.deepcopy(conf.ns_endpoints)
         self.ns_leader = utils.exe_shell('head -n 1 {}/ns_leader'.format(self.testpath))
         self.ns_leader_path = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
         self.node_path_dict[self.ns_leader] = utils.exe_shell('tail -n 1 {}/ns_leader'.format(self.testpath))
@@ -179,6 +165,21 @@ class TestCaseBase(unittest.TestCase):
                     manifest_dict['term'] = l.split(':')[1].strip()
         return manifest_dict
 
+    @staticmethod
+    def get_table_meta(nodepath, tid, pid):
+        table_meta_dict = {}
+        with open('{}/db/{}_{}/table_meta.txt'.format(nodepath, tid, pid)) as f:
+            for l in f:
+                if 'tid: ' in l:
+                    table_meta_dict['tid'] = l.split(':')[1].strip()
+                elif 'name: ' in l:
+                    table_meta_dict['name'] = l.split(':')[1][2:-2].strip()
+                elif 'compress_type: ' in l:
+                    table_meta_dict['compress_type'] = l.split(':')[1].strip()
+                elif 'key_entry_max_height: ' in l:
+                    table_meta_dict['key_entry_max_height'] = l.split(':')[1].strip()
+        return table_meta_dict
+
     def create(self, endpoint, tname, tid, pid, ttl=144000, segment=8, isleader='true', *slave_endpoints, **schema):
         if not schema:
             if self.multidimension:
@@ -197,11 +198,77 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
 
     def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema):
-        cmd = 'create ' + name + ' ' + ttl + ' ' + partition_num + ' ' + replica_num + ' ' + schema
+        cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
+        cmd = 'scan ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_scan_multi(self, endpoint, name, pk, idx_name, start_time, end_time, limit = ''):
+        cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = []
+        for i in range(2, len(arr)):
+            record = re.sub(' +', ' ', arr[i]).strip().split(" ")
+            cur_map = {}
+            for idx in range(len(key_arr)):
+                cur_map[key_arr[idx]] = record[idx+2]
+            value.append(cur_map)    
+        return value
+
+    def ns_get_kv(self, endpoint, name, key, ts):
+        cmd = 'get ' + name + ' ' + key+ ' ' + ts
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_get_multi(self, endpoint, name, key, idx_name, ts):
+        cmd = 'get {} {} {} {}'.format(name, key, idx_name, ts)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = {}
+        record = re.sub(' +', ' ', arr[2]).strip().split(" ")
+        for idx in range(len(key_arr)):
+            value[key_arr[idx]] = record[idx+2]
+        return value
+
+    def ns_put_kv(self, endpoint, name, pk, ts, value):
+        cmd = 'put {} {} {} {}'.format(name, pk, ts, value)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_put_multi(self, endpoint, name, ts, row):
+        cmd = 'put {} {} {}'.format(name, ts, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_drop(self, endpoint, tname):
+        infoLogger.debug(tname)
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
+
+    def ns_update_table_alive_cmd(self, ns_endpoint, updatetablealive, table_name, pid, endpoint, is_alive):
+        cmd = '{} {} {} {} {}'.format(updatetablealive, table_name, pid, endpoint, is_alive)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_recover_table_cmd(self, ns_endpoint, recovertable, table_name, pid, endpoint):
+        cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_addreplica(self, ns_endpoint, addreplica, name, pid, replica_endpoint):
+        cmd = '{} {} {} {}'.format(addreplica, name, pid, replica_endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_gettablepartition(self, ns_endpoint, gettablepartition, name, pid):
+        cmd = '{} {} {}'.format(gettablepartition, name, pid)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_showns(self, ns_endpoint, showns):
+        cmd = '{}'.format(showns)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_showopstatus(self, endpoint):
+        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+        return rs
 
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
@@ -310,17 +377,26 @@ class TestCaseBase(unittest.TestCase):
     def confget(self, endpoint, conf):
         return self.run_client(endpoint, 'confget {}'.format(conf), 'ns_client')
 
-    def offlineendpoint(self, endpoint, offline_endpoint):
-        return self.run_client(endpoint, 'offlineendpoint {}'.format(offline_endpoint), 'ns_client')
+    def offlineendpoint(self, endpoint, offline_endpoint, concurrency=''):
+        return self.run_client(endpoint, 'offlineendpoint {} {}'.format(offline_endpoint, concurrency), 'ns_client')
 
-    def recoverendpoint(self, endpoint, offline_endpoint):
-        return self.run_client(endpoint, 'recoverendpoint {}'.format(offline_endpoint), 'ns_client')
+    def recoverendpoint(self, endpoint, offline_endpoint, need_restore='', concurrency=''):
+        return self.run_client(endpoint, 'recoverendpoint {} {} {}'.format(offline_endpoint, need_restore, concurrency), 'ns_client')
+
+    def recovertable(self, endpoint, name, pid, offline_endpoint):
+        return self.run_client(endpoint, 'recovertable {} {} {}'.format(name, pid, offline_endpoint), 'ns_client')
 
     def changeleader(self, endpoint, tname, pid, candidate_leader=''):
         if candidate_leader != '':
             return self.run_client(endpoint, 'changeleader {} {} {}'.format(tname, pid, candidate_leader), 'ns_client')
         else:
             return self.run_client(endpoint, 'changeleader {} {}'.format(tname, pid), 'ns_client')
+
+    def settablepartition(self, endpoint, name, partition_file):
+        return self.run_client(endpoint, 'settablepartition {} {}'.format(name, partition_file), 'ns_client')
+
+    def updatetablealive(self, endpoint, name, pid, des_endpint, is_alive):
+        return self.run_client(endpoint, 'updatetablealive {} {} {} {}'.format(name, pid, des_endpint, is_alive), 'ns_client')
 
     def connectzk(self, endpoint, role='client'):
         return self.run_client(endpoint, 'connectzk', role)
@@ -379,6 +455,10 @@ class TestCaseBase(unittest.TestCase):
             traceback.print_exc(file=sys.stdout)
             infoLogger.error('table {} is not exist!'.format(e))
 
+    def gettablestatus(self, endpoint, tid='', pid=''):
+        rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
+        return rs
+
     def showschema(self, endpoint, tid='', pid=''):
         try:
             rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
@@ -391,15 +471,20 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
         return self.parse_tb(rs, ' ', [0], [1, 2])
 
-    def showopstatus(self, endpoint):
-        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+    def showopstatus(self, endpoint, name='', pid=''):
+        rs = self.run_client(endpoint, 'showopstatus {} {}'.format(name, pid), 'ns_client')
         tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
         tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
 
-    def showtable(self, endpoint):
-        rs = self.run_client(endpoint, 'showtable', 'ns_client')
+    def showtable(self, endpoint, table_name = ''):
+        cmd = 'showtable {}'.format(table_name)
+        rs = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
+
+    def showtable_with_tablename(self, endpoint, table = ''):
+        cmd = 'showtable {}'.format(table)
+        return self.run_client(endpoint, cmd, 'ns_client')
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
@@ -487,8 +572,13 @@ class TestCaseBase(unittest.TestCase):
         return opid_x
 
     def get_latest_opid_by_tname_pid(self, tname, pid):
-        latest_opid = self.get_opid_by_tname_pid(tname, pid)[-1]
-        self.latest_opid = int(latest_opid)
+        rs = self.run_client(self.ns_leader, 'showopstatus {} {}'.format(tname, pid), 'ns_client')
+        opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
+        op_id_arr = []
+        for op_id in opstatus.keys():
+            op_id_arr.append(int(op_id))
+        self.latest_opid = sorted(op_id_arr)[-1]
+        infoLogger.debug('------latest_opid:' + str(self.latest_opid) + '---------------')
         return self.latest_opid
 
     def get_op_by_opid(self, op_id):
@@ -510,6 +600,9 @@ class TestCaseBase(unittest.TestCase):
             task_dict[(int(x[1]), x[2])] = x[0]
         self.task_dict = task_dict
 
+    def get_tablet_endpoints(self):
+        return set(conf.tb_endpoints)
+
     def check_tasks(self, op_id, exp_task_list):
         self.get_task_dict_by_opid(self.tname, op_id)
         tasks = [k[1] for k, v in self.task_dict.items() if k[0] == int(op_id) and v == 'kDone']
@@ -523,18 +616,48 @@ class TestCaseBase(unittest.TestCase):
     def check_re_add_replica_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_no_send_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_with_drop_op(self, op_id):
         self.check_tasks(op_id,
                          ['kPauseSnapshot', 'kDropTable', 'kSendSnapshot', 'kLoadTable', 'kAddReplica',
-                          'kRecoverSnapshot', 'kUpdatePartitionStatus'])
+                          'kRecoverSnapshot', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
     def check_re_add_replica_simplify_op(self, op_id):
-        self.check_tasks(op_id,
-                         ['kAddReplica', 'kUpdatePartitionStatus'])
+        self.check_tasks(op_id, ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
+
+    def check_migrate_op(self, op_id):
+        self.check_tasks(op_id, ['kPauseSnapshot', 'kSendSnapshot', 'kRecoverSnapshot', 'kLoadTable', 
+                                 'kAddReplica', 'kAddTableInfo', 'kCheckBinlogSyncProgress', 'kDelReplica',
+                                 'kUpdateTableInfo', 'kDropTable'])
+
+    def check_setlimit(self, endpoint, command, method, limit):
+        cmd = '{} {} {}'.format(command, method, limit)
+        return self.run_client(endpoint, cmd)
+
+    def check_setttl_ns_client(self, endpoint, setttl, table_name, ttl_type, ttl):
+        cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def check_setttl(self, endpoint, setttl, table_name, ttl_type, ttl):
+        cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
+        return self.run_client(endpoint, cmd)
+
+    def print_table(self, endpoint = '',  name = ''):
+        infoLogger.info('*' * 50)
+        rs_show = ''
+        if endpoint != '':
+            rs_show = self.showtable_with_tablename(endpoint, name)
+        else:
+            rs_show = self.showtable_with_tablename(self.ns_leader, name)
+        infoLogger.info(rs_show)
+        rs_show = self.parse_tb(rs_show, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+        for table_info in rs_show:
+            infoLogger.info('{} =  {}'.format(table_info, rs_show[table_info]))
+        infoLogger.info('*' * 50)
+        
