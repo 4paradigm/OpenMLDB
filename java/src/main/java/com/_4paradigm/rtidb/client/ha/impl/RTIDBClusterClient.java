@@ -61,6 +61,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private RTIDBClientConfig config;
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
+    private AtomicBoolean isClose = new AtomicBoolean(false);
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
@@ -96,6 +97,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             }
             
         };
+        isClose.set(false);
         connectToZk();
         onZkConnected();
         tryWatch();
@@ -181,6 +183,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     }
 
     private void checkWatchStatus() {
+        if (isClose.get()) {
+            return;
+        }
         if (!watching.get()) {
             tryWatch();
         }
@@ -317,7 +322,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     @Override
     public void close() {
-        clusterGuardThread.shutdown();
+        // static members need not shutdown
+        // clusterGuardThread.shutdown();
         if (nodeManager != null) {
             nodeManager.close();
         }
@@ -331,6 +337,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         if (baseClient != null) {
             baseClient.stop();
         }
+        isClose.set(true);
     }
 
     @Override

@@ -48,6 +48,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private volatile NameServer ns;
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
+    private AtomicBoolean isClose = new AtomicBoolean(false);
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -73,6 +74,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
 
     public void init() throws Exception {
+        isClose.set(false);
         notifyWatcher = new Watcher() {
             @Override
             public void process(WatchedEvent event) {
@@ -165,6 +167,9 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
 
     private void checkWatchStatus() {
+        if (isClose.get()) {
+            return;
+        }
         if (!watching.get()) {
             tryWatch();
         }
@@ -228,6 +233,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         if (rpcClient != null) {
             rpcClient.stop();
         }
+        isClose.set(true);
     }
 
     @Override

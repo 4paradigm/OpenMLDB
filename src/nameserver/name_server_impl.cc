@@ -982,7 +982,7 @@ void NameServerImpl::ProcessTask() {
                 } else if (task->task_info_->status() == ::rtidb::api::kDoing) {
                     if (::baidu::common::timer::now_time() - op_data->op_info_.start_time() > 
                             FLAGS_name_server_op_execute_timeout / 1000) {
-                        PDLOG(INFO, "The executeion time of op is too long. "
+                        PDLOG(INFO, "The execution time of op is too long. "
                                     "opid[%lu] op_type[%s] cur task_type[%s] start_time[%lu] cur_time[%lu]", 
                                     task->task_info_->op_id(), 
                                     ::rtidb::api::OPType_Name(task->task_info_->op_type()).c_str(), 
