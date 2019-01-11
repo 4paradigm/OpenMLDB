@@ -322,11 +322,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     @Override
     public void close() {
+        isClose.set(true);
         // static members need not shutdown
         // clusterGuardThread.shutdown();
-        if (nodeManager != null) {
-            nodeManager.close();
-        }
         if (zookeeper != null) {
             try {
                 zookeeper.close();
@@ -334,10 +332,12 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 logger.error("fail to close zk", e);
             }
         }
+        if (nodeManager != null) {
+            nodeManager.close();
+        }
         if (baseClient != null) {
             baseClient.stop();
         }
-        isClose.set(true);
     }
 
     @Override

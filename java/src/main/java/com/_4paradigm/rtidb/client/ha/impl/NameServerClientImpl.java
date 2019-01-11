@@ -223,6 +223,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
     
     public void close() {
+        isClose.set(true);
         try {
             if (zookeeper != null) {
                 zookeeper.close();
@@ -233,7 +234,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         if (rpcClient != null) {
             rpcClient.stop();
         }
-        isClose.set(true);
     }
 
     @Override
