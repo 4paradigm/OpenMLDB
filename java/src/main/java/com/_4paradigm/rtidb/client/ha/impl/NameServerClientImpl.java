@@ -43,9 +43,9 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private final static Logger logger = LoggerFactory.getLogger(NameServerClientImpl.class);
     private String zkEndpoints;
     private String leaderPath;
-    private ZooKeeper zookeeper;
+    private volatile ZooKeeper zookeeper;
     private SingleEndpointRpcClient rpcClient;
-    private NameServer ns;
+    private volatile NameServer ns;
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
