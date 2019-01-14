@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.ns.NS.ChangeLeaderRequest;
 import com._4paradigm.rtidb.ns.NS.CreateTableRequest;
 import com._4paradigm.rtidb.ns.NS.DropTableRequest;
@@ -31,12 +32,14 @@ import com._4paradigm.rtidb.ns.NS.ShowTabletRequest;
 import com._4paradigm.rtidb.ns.NS.ShowTabletResponse;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TabletStatus;
+import com.sun.org.apache.regexp.internal.recompile;
 
 import io.brpc.client.BrpcChannelGroup;
 import io.brpc.client.EndPoint;
 import io.brpc.client.RpcBaseClient;
 import io.brpc.client.RpcProxy;
 import io.brpc.client.SingleEndpointRpcClient;
+import io.brpc.client.RpcClientOptions;
 import rtidb.nameserver.NameServer;
 
 public class NameServerClientImpl implements NameServerClient, Watcher {
@@ -49,6 +52,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
     private AtomicBoolean isClose = new AtomicBoolean(false);
+    private RTIDBClientConfig config;
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -57,9 +61,21 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
     });
 
+    public NameServerClientImpl(String zkEndpoints, String leaderPath, RTIDBClientConfig config) {
+        this.zkEndpoints = zkEndpoints;
+        this.leaderPath = leaderPath;
+        this.config = config;
+    }
+
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
+        this.config = null;
+    }
+
+    public void setConfig(RTIDBClientConfig config) {
+        this.config = config;
+        return;
     }
 
     @Deprecated
@@ -75,6 +91,15 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     public void init() throws Exception {
         isClose.set(false);
+        if (config != null) {
+            RpcClientOptions options = new RpcClientOptions();
+            options.setIoThreadNum(config.getIoThreadNum());
+            options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
+            options.setReadTimeoutMillis(config.getReadTimeout());
+            options.setWriteTimeoutMillis(config.getWriteTimeout());
+            options.setMaxTryTimes(config.getMaxRetryCnt());
+            options.setTimerBucketSize(config.getTimerBucketSize());
+        }
         notifyWatcher = new Watcher() {
             @Override
             public void process(WatchedEvent event) {
