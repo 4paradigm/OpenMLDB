@@ -61,9 +61,9 @@ int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
 }
 
 bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, 
-			uint32_t& binlog_index, uint64_t offset, bool set_end = true) {
+			uint32_t& binlog_index, uint64_t offset, bool append_end = true) {
     if (*wh != NULL) {
-        if (set_end) {
+        if (append_end) {
             (*wh)->EndLog();
         }
         delete *wh;
@@ -78,7 +78,6 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
         return false;
     }
     logs->Insert(binlog_index, offset);
-    PDLOG(INFO, "create file %s", full_path.c_str());
     *wh = new WriteHandle(name, fd);
     binlog_index++;
     return true;

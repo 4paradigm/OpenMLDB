@@ -224,7 +224,8 @@ void LogReplicator::SetSnapshotLogPartIndex(uint64_t offset) {
     snapshot_last_offset_.store(offset, std::memory_order_relaxed);
     ::rtidb::log::LogReader log_reader(logs_, log_path_);
     log_reader.SetOffset(offset);
-    int log_part_index = log_reader.RollRLogFile();
+    log_reader.RollRLogFile();
+    int log_part_index = log_reader.GetLogIndex();
     snapshot_log_part_index_.store(log_part_index, std::memory_order_relaxed);
 }
 
