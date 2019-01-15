@@ -412,8 +412,8 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
         } else if (status.IsWaitRecord()) {
             int end_log_index = log_reader.GetEndLogIndex();
             int cur_log_index = log_reader.GetLogIndex();
-            // judge end_log_index greater than cur_log_index + 1
-            if (end_log_index >= 0 && end_log_index > cur_log_index + 1) {
+            // judge end_log_index greater than cur_log_index
+            if (end_log_index >= 0 && end_log_index > cur_log_index) {
                 log_reader.RollRLogFile();
                 PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
                                 tid_, pid_, cur_log_index, end_log_index, cur_offset);
