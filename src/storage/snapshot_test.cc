@@ -783,7 +783,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     }
     wh->Sync();
     // not set end falg
-    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
     // no record binlog
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
     // empty binlog

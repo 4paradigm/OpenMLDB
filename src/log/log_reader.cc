@@ -407,7 +407,7 @@ int LogReader::RollRLogFile() {
     }
     it->SeekToFirst();
     // use log entry offset to find the log part file
-    int ret = -1;
+    int index = -1;
     if (log_part_index_ < 0) {
         while (it->Valid()) {
             PDLOG(DEBUG, "log index[%u] and start offset %lld", it->GetKey(),
@@ -421,7 +421,7 @@ int LogReader::RollRLogFile() {
             std::string full_path = log_path_ + "/" + 
                 ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
             if (OpenSeqFile(full_path) == 0) {
-                ret = (int)it->GetKey();
+                index = (int)it->GetKey();
             }
         } else {
             PDLOG(WARNING, "no log part matched! start_offset[%lu]", start_offset_); 
@@ -435,7 +435,7 @@ int LogReader::RollRLogFile() {
                 std::string full_path = log_path_ + "/" + 
                     ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
                 if (OpenSeqFile(full_path) == 0) {
-                    ret = (int)it->GetKey();
+                    index = (int)it->GetKey();
                 }
                 break;
             } else if (it->GetKey() == current_index) {
@@ -446,10 +446,10 @@ int LogReader::RollRLogFile() {
         }
     }
     delete it;
-    if (ret >= 0) {
+    if (index >= 0) {
         delete reader_;
         // roll a new log part file, reset status
-        log_part_index_ = ret;
+        log_part_index_ = index;
         reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
         return 0;
     } 
