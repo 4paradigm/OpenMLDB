@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.ns.NS.ChangeLeaderRequest;
 import com._4paradigm.rtidb.ns.NS.CreateTableRequest;
 import com._4paradigm.rtidb.ns.NS.DropTableRequest;
@@ -37,6 +38,7 @@ import io.brpc.client.EndPoint;
 import io.brpc.client.RpcBaseClient;
 import io.brpc.client.RpcProxy;
 import io.brpc.client.SingleEndpointRpcClient;
+import io.brpc.client.RpcClientOptions;
 import rtidb.nameserver.NameServer;
 
 public class NameServerClientImpl implements NameServerClient, Watcher {
@@ -49,6 +51,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
     private AtomicBoolean isClose = new AtomicBoolean(false);
+    private RTIDBClientConfig config;
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -57,9 +60,16 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
     });
 
+    public NameServerClientImpl(RTIDBClientConfig config) {
+        this.zkEndpoints = config.getZkEndpoints();
+        this.leaderPath = config.getZkRootPath() + "/leader";
+        this.config = config;
+    }
+
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
+        this.config = null;
     }
 
     @Deprecated
@@ -140,7 +150,19 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
         EndPoint endpoint = new EndPoint(new String(bytes));
-        RpcBaseClient bs = new RpcBaseClient();
+        RpcBaseClient bs = null;
+        if (config != null) {
+            RpcClientOptions options = new RpcClientOptions();
+            options.setIoThreadNum(config.getIoThreadNum());
+            options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
+            options.setReadTimeoutMillis(config.getReadTimeout());
+            options.setWriteTimeoutMillis(config.getWriteTimeout());
+            options.setMaxTryTimes(config.getMaxRetryCnt());
+            options.setTimerBucketSize(config.getTimerBucketSize());
+            bs = new RpcBaseClient(options);
+        } else {
+            bs = new RpcBaseClient();
+        }
         if (rpcClient != null) {
             rpcClient.stop();
         }
