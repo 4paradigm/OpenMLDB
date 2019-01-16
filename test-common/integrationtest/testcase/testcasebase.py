@@ -254,8 +254,8 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
 
-    def ns_addreplica(self, ns_endpoint, addreplica, name, pid, replica_endpoint):
-        cmd = '{} {} {} {}'.format(addreplica, name, pid, replica_endpoint)
+    def ns_addreplica(self, ns_endpoint, name, pid, replica_endpoint):
+        cmd = 'addreplica {} {} {}'.format(name, pid, replica_endpoint)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
 
     def ns_gettablepartition(self, ns_endpoint, gettablepartition, name, pid):
