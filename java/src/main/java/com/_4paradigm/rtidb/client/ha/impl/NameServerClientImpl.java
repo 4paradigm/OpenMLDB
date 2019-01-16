@@ -32,7 +32,6 @@ import com._4paradigm.rtidb.ns.NS.ShowTabletRequest;
 import com._4paradigm.rtidb.ns.NS.ShowTabletResponse;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TabletStatus;
-import com.sun.org.apache.regexp.internal.recompile;
 
 import io.brpc.client.BrpcChannelGroup;
 import io.brpc.client.EndPoint;
@@ -61,9 +60,9 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
     });
 
-    public NameServerClientImpl(String zkEndpoints, String leaderPath, RTIDBClientConfig config) {
-        this.zkEndpoints = zkEndpoints;
-        this.leaderPath = leaderPath;
+    public NameServerClientImpl(RTIDBClientConfig config) {
+        this.zkEndpoints = config.getZkEndpoints();
+        this.leaderPath = config.getZkRootPath() + "/leader";
         this.config = config;
     }
 
@@ -71,11 +70,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
         this.config = null;
-    }
-
-    public void setConfig(RTIDBClientConfig config) {
-        this.config = config;
-        return;
     }
 
     @Deprecated
@@ -91,15 +85,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     public void init() throws Exception {
         isClose.set(false);
-        if (config != null) {
-            RpcClientOptions options = new RpcClientOptions();
-            options.setIoThreadNum(config.getIoThreadNum());
-            options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
-            options.setReadTimeoutMillis(config.getReadTimeout());
-            options.setWriteTimeoutMillis(config.getWriteTimeout());
-            options.setMaxTryTimes(config.getMaxRetryCnt());
-            options.setTimerBucketSize(config.getTimerBucketSize());
-        }
         notifyWatcher = new Watcher() {
             @Override
             public void process(WatchedEvent event) {
@@ -165,7 +150,19 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
         EndPoint endpoint = new EndPoint(new String(bytes));
-        RpcBaseClient bs = new RpcBaseClient();
+        RpcBaseClient bs = null;
+        if (config != null) {
+            RpcClientOptions options = new RpcClientOptions();
+            options.setIoThreadNum(config.getIoThreadNum());
+            options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
+            options.setReadTimeoutMillis(config.getReadTimeout());
+            options.setWriteTimeoutMillis(config.getWriteTimeout());
+            options.setMaxTryTimes(config.getMaxRetryCnt());
+            options.setTimerBucketSize(config.getTimerBucketSize());
+            bs = new RpcBaseClient(options);
+        } else {
+            bs = new RpcBaseClient();
+        }
         if (rpcClient != null) {
             rpcClient.stop();
         }
