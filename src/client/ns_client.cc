@@ -131,13 +131,21 @@ bool NsClient::DropTable(const std::string& name, std::string& msg) {
     return false;
 }
 
-bool NsClient::AddReplica(const std::string& name, uint32_t pid, 
+bool NsClient::AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, 
             const std::string& endpoint, std::string& msg) {
+    if (pid_set.empty()) {
+        return false;
+    }
     ::rtidb::nameserver::AddReplicaNSRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
-    request.set_pid(pid);
+    request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
+    if (pid_set.size() > 1) {
+        for (auto pid : pid_set) {
+            request.add_pid_group(pid);
+        }
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddReplicaNS,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -147,13 +155,21 @@ bool NsClient::AddReplica(const std::string& name, uint32_t pid,
     return false;
 }
 
-bool NsClient::DelReplica(const std::string& name, uint32_t pid, 
+bool NsClient::DelReplica(const std::string& name, const std::set<uint32_t>& pid_set, 
             const std::string& endpoint, std::string& msg) {
+    if (pid_set.empty()) {
+        return false;
+    }
     ::rtidb::nameserver::DelReplicaNSRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_name(name);
-    request.set_pid(pid);
+    request.set_pid(*(pid_set.begin()));
     request.set_endpoint(endpoint);
+    if (pid_set.size() > 1) {
+        for (auto pid : pid_set) {
+            request.add_pid_group(pid);
+        }
+    }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DelReplicaNS,
             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -238,13 +254,13 @@ bool NsClient::OfflineEndpoint(const std::string& endpoint, uint32_t concurrency
 }
 
 bool NsClient::Migrate(const std::string& src_endpoint, const std::string& name, 
-            const std::vector<uint32_t>& pid_vec, const std::string& des_endpoint, std::string& msg) {
+            const std::set<uint32_t>& pid_set, const std::string& des_endpoint, std::string& msg) {
     ::rtidb::nameserver::MigrateRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_src_endpoint(src_endpoint);
     request.set_name(name);
     request.set_des_endpoint(des_endpoint);
-    for (auto pid : pid_vec) {
+    for (auto pid : pid_set) {
         request.add_pid(pid);       
     }
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::Migrate,

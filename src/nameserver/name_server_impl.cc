@@ -2033,6 +2033,14 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
+    std::set<uint32_t> pid_group;
+    if (request->pid_group_size() > 0) {
+        for (int idx = 0; idx < request->pid_group_size(); idx++) {
+            pid_group.insert(request->pid_group(idx));
+        }
+    } else {
+        pid_group.insert(request->pid());
+    }
     std::lock_guard<std::mutex> lock(mu_);
     auto it = tablets_.find(request->endpoint());
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -2041,33 +2049,68 @@ void NameServerImpl::AddReplicaNS(RpcController* controller,
         PDLOG(WARNING, "tablet[%s] is not online", request->endpoint().c_str());
         return;
     }
-    std::shared_ptr<OPData> op_data;
-    std::string value;
-    request->SerializeToString(&value);
-    if (CreateOPData(::rtidb::api::OPType::kAddReplicaOP, value, op_data, 
-                    request->name(), request->pid()) < 0) {
-        PDLOG(WARNING, "create AddReplicaOP data failed. table[%s] pid[%u]",
-                        request->name().c_str(), request->pid());
+    auto iter = table_info_.find(request->name());
+    if (iter == table_info_.end()) {
         response->set_code(-1);
-        response->set_msg("create AddReplicaOP data failed");
+        response->set_msg("table is not exist");
+        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
         return;
     }
-    if (CreateAddReplicaOPTask(op_data) < 0) {
-        PDLOG(WARNING, "create AddReplicaOP task failed. table[%s] pid[%u] endpoint[%s]",
-                        request->name().c_str(), request->pid(), request->endpoint().c_str());
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    if (*(pid_group.rbegin()) > (uint32_t)table_info->table_partition_size() - 1) {
         response->set_code(-1);
-        response->set_msg("create AddReplicaOP task failed");
+        response->set_msg("max pid is greater than partition size");
+        PDLOG(WARNING, "max pid is greater than partition size. table[%s]", request->name().c_str());
         return;
     }
-    if (AddOPData(op_data) < 0) {
-        response->set_code(-1);
-        response->set_msg("add op data failed");
-        PDLOG(WARNING, "add op data failed. table[%s] pid[%u]",
-                        request->name().c_str(), request->pid());
-        return;
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        if (pid_group.find(table_info->table_partition(idx).pid()) == pid_group.end()) {
+            continue;
+        }
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == request->endpoint()) {
+                response->set_code(-1);
+                char msg[100];
+                sprintf(msg, "pid %u is exist in %s", 
+                             table_info->table_partition(idx).pid(), request->endpoint().c_str());
+                response->set_msg(msg);
+                PDLOG(WARNING, "table %s %s", request->name().c_str(), msg);
+                return;
+            }
+        }
+    }        
+    for (auto pid : pid_group) {
+        std::shared_ptr<OPData> op_data;
+        AddReplicaNSRequest cur_request;
+        cur_request.CopyFrom(*request);
+        cur_request.set_pid(pid);
+        std::string value;
+        cur_request.SerializeToString(&value);
+        if (CreateOPData(::rtidb::api::OPType::kAddReplicaOP, value, op_data, 
+                        request->name(), pid) < 0) {
+            PDLOG(WARNING, "create AddReplicaOP data failed. table[%s] pid[%u]",
+                            request->name().c_str(), pid);
+            response->set_code(-1);
+            response->set_msg("create AddReplicaOP data failed");
+            return;
+        }
+        if (CreateAddReplicaOPTask(op_data) < 0) {
+            PDLOG(WARNING, "create AddReplicaOP task failed. table[%s] pid[%u] endpoint[%s]",
+                            request->name().c_str(), pid, request->endpoint().c_str());
+            response->set_code(-1);
+            response->set_msg("create AddReplicaOP task failed");
+            return;
+        }
+        if (AddOPData(op_data, 1) < 0) {
+            response->set_code(-1);
+            response->set_msg("add op data failed");
+            PDLOG(WARNING, "add op data failed. table[%s] pid[%u]",
+                            request->name().c_str(), pid);
+            return;
+        }
+        PDLOG(INFO, "add addreplica op ok. op_id[%lu] table[%s] pid[%u]", 
+                    op_data->op_info_.op_id(), request->name().c_str(), pid);
     }
-    PDLOG(INFO, "add addreplica op ok. op_id[%lu] table[%s] pid[%u]", 
-                op_data->op_info_.op_id(), request->name().c_str(), request->pid());
     response->set_code(0);
     response->set_msg("ok");
 }
@@ -2424,13 +2467,15 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    if (table_info_.find(request->name()) == table_info_.end()) {
-        response->set_code(-1);
-        response->set_msg("table is not  exist!");
-        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
-        return;
+    std::set<uint32_t> pid_group;
+    if (request->pid_group_size() > 0) {
+        for (int idx = 0; idx < request->pid_group_size(); idx++) {
+            pid_group.insert(request->pid_group(idx));
+        }
+    } else {
+        pid_group.insert(request->pid());
     }
+    std::lock_guard<std::mutex> lock(mu_);
     auto it = tablets_.find(request->endpoint());
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
         response->set_code(-1);
@@ -2438,13 +2483,63 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         PDLOG(WARNING, "tablet[%s] is not online", request->endpoint().c_str());
         return;
     }
-    if (CreateDelReplicaOP(request->name(), request->pid(), request->endpoint()) < 0) {
+    auto iter = table_info_.find(request->name());
+    if (iter == table_info_.end()) {
         response->set_code(-1);
-        response->set_msg("create op failed");
-    } else {
-        response->set_code(0);
-        response->set_msg("ok");
+        response->set_msg("table is not exist");
+        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        return;
     }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    if (*(pid_group.rbegin()) > (uint32_t)table_info->table_partition_size() - 1) {
+        response->set_code(-1);
+        response->set_msg("max pid is greater than partition size");
+        PDLOG(WARNING, "max pid is greater than partition size. table[%s]", request->name().c_str());
+        return;
+    }
+    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
+        if (pid_group.find(table_info->table_partition(idx).pid()) == pid_group.end()) {
+            continue;
+        }
+        bool pid_in_endpoint = false;
+        bool is_leader = false;
+        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
+            if (table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == request->endpoint()) {
+                pid_in_endpoint = true;
+                if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                    is_leader = true;
+                }
+                break;
+            }
+        }
+        if (!pid_in_endpoint) {
+            char msg[100];
+            response->set_code(-1);
+            sprintf(msg, "pid %u is not in %s", 
+                         table_info->table_partition(idx).pid(), request->endpoint().c_str());
+            response->set_msg(msg);
+            PDLOG(WARNING, "table %s %s", request->name().c_str(), msg);
+            return;
+        } else if (is_leader) {
+            char msg[100];
+            response->set_code(-1);
+            sprintf(msg, "can not del leader. pid %u endpoint %s" , 
+                         table_info->table_partition(idx).pid(), request->endpoint().c_str());
+            response->set_msg(msg);
+            PDLOG(WARNING, "table %s %s", request->name().c_str(), msg);
+            return;
+        }
+        
+    }    
+    for (auto pid : pid_group) {
+        if (CreateDelReplicaOP(request->name(), pid, request->endpoint()) < 0) {
+            response->set_code(-1);
+            response->set_msg("create op failed");
+            return;
+        }
+    }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 int NameServerImpl::CreateOPData(::rtidb::api::OPType op_type, const std::string& value, 
