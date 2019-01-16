@@ -2476,18 +2476,18 @@ void NameServerImpl::DelReplicaNS(RpcController* controller,
         pid_group.insert(request->pid());
     }
     std::lock_guard<std::mutex> lock(mu_);
-    auto it = tablets_.find(request->endpoint());
-    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-        response->set_code(-1);
-        response->set_msg("tablet is not online");
-        PDLOG(WARNING, "tablet[%s] is not online", request->endpoint().c_str());
-        return;
-    }
     auto iter = table_info_.find(request->name());
     if (iter == table_info_.end()) {
         response->set_code(-1);
         response->set_msg("table is not exist");
         PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        return;
+    }
+    auto it = tablets_.find(request->endpoint());
+    if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        response->set_code(-1);
+        response->set_msg("tablet is not online");
+        PDLOG(WARNING, "tablet[%s] is not online", request->endpoint().c_str());
         return;
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
