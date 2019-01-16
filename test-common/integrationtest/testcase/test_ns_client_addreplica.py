@@ -284,9 +284,8 @@ class TestAddReplicaNs(TestCaseBase):
         self.ns_addreplica(self.ns_leader, name, pid, slave)
         for i in range(10):
             time.sleep(2)
-            rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0], [1, 2, 3, 4, 5, 6])
-            op_id = tablestatus.keys()[0][0]
+            rs = self.showopstatus(self.ns_leader, name, pid)
+            op_id = rs.keys()[0]
             ops = self.showopstatus(self.ns_leader)
             if ops[int(op_id)][1] != 'kDone':
                 continue
