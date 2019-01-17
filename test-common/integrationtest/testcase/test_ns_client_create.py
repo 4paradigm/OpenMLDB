@@ -527,6 +527,33 @@ class TestCreateTableByNsClient(TestCaseBase):
                 table_meta = self.get_table_meta(self.leaderpath, tid, pid)
                 self.assertEqual(table_meta['key_entry_max_height'], height)
         self.ns_drop(self.ns_leader, name)
+
+    def test_create_pid_leader_distribute(self):
+        self.clear_ns_table(self.ns_leader);
+        name1 = 'tname1{}'.format(time.time())
+        name2 = 'tname2{}'.format(time.time())
+        rs = self.ns_create_cmd(self.ns_leader, name1, '0', '32', '3')
+        self.assertIn('Create table ok', rs)
+        rs = self.ns_create_cmd(self.ns_leader, name2, '0', '32', '2')
+        self.assertIn('Create table ok', rs)
+        table_info = self.showtable(self.ns_leader)
+        leader_map = {}
+        pid_map = {}
+        for (k, v) in table_info.items():
+            endpoint = k[3]
+            leader_map.setdefault(endpoint, 0)
+            pid_map.setdefault(endpoint, 0)
+            pid_map[endpoint] += 1
+            if v[0] == 'leader':
+                leader_map[endpoint] += 1
+        self.assertEqual(leader_map[self.leader], 22)
+        self.assertEqual(leader_map[self.slave1], 21)
+        self.assertEqual(leader_map[self.slave2], 21)
+        self.assertEqual(pid_map[self.leader], 54)
+        self.assertEqual(pid_map[self.slave1], 53)
+        self.assertEqual(pid_map[self.slave2], 53)
+        self.ns_drop(self.ns_leader, name1)
+        self.ns_drop(self.ns_leader, name2)
         
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)
