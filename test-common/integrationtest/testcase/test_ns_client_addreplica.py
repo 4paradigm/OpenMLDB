@@ -246,6 +246,7 @@ class TestAddReplicaNs(TestCaseBase):
         infoLogger.info(name)
         self.stop_client(self.ns_leader)
         self.stop_client(self.ns_slaver)
+        time.sleep(1)
         endponints = self.get_tablet_endpoints()
         conf = 'nameserver'
 
@@ -259,7 +260,7 @@ class TestAddReplicaNs(TestCaseBase):
         self.start_client(self.ns_leader,'nameserver')
         time.sleep(1)
         self.start_client(self.ns_slaver,'nameserver')
-        time.sleep(1)
+        time.sleep(5)
         self.get_new_ns_leader()
 
         rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
