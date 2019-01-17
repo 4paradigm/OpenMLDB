@@ -8,13 +8,11 @@
 #include "nameserver/name_server_impl.h"
 
 #include <gflags/gflags.h>
-#include "gflags/gflags.h"
 #include "timer.h"
 #include <strings.h>
 #include "base/strings.h"
 #include <chrono>
 #include <boost/algorithm/string.hpp>
-#include <random>
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -1178,7 +1176,6 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
             }
         }
     }
-    std::map<std::string, uint64_t> endpoint_leader = endpoint_pid_bucked;
     endpoint_vec.reserve(endpoint_pid_bucked.size());
     uint32_t replica_num = std::min(FLAGS_replica_num, (uint32_t)endpoint_pid_bucked.size());
     if (table_info.has_replica_num() && table_info.replica_num() > 0) {
@@ -1189,6 +1186,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
                         endpoint_pid_bucked.size(), replica_num);
         return -1;
     }
+    std::map<std::string, uint64_t> endpoint_leader = endpoint_pid_bucked;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& iter: table_info_) {
@@ -1213,7 +1211,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     uint64_t min = UINT64_MAX;
     for (const auto& iter: endpoint_pid_bucked) {
         endpoint_vec.push_back(iter.first);
-        if (min > iter.second) {
+        if (iter.second < min) {
             min = iter.second;
             pos = index;
         }
