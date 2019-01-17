@@ -374,6 +374,7 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
+        PDLOG(WARNING, "reach the end of file. index %d", log_part_index_);
         if (RollRLogFile() < 0) {
             // reache the latest log part
             return status;
@@ -418,39 +419,43 @@ int LogReader::RollRLogFile() {
             it->Next();
         }
         if (it->Valid()) {
-            std::string full_path = log_path_ + "/" + 
-                ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
-            if (OpenSeqFile(full_path) == 0) {
-                index = (int)it->GetKey();
-            }
+            index = (int)it->GetKey();
         } else {
             PDLOG(WARNING, "no log part matched! start_offset[%lu]", start_offset_); 
         }
     } else {
-        uint32_t current_index = (uint32_t)log_part_index_;
+        uint32_t log_part_index = (uint32_t)log_part_index_;
         while (it->Valid()) {
+            PDLOG(DEBUG, "log index[%u] and start offset %lu", it->GetKey(), it->GetValue());
             // find the next of current index log file part
-            if (it->GetKey() == current_index + 1) {
-                // open a new log part file
-                std::string full_path = log_path_ + "/" + 
-                    ::rtidb::base::FormatToString(it->GetKey(), FLAGS_binlog_name_length) + ".log";
-                if (OpenSeqFile(full_path) == 0) {
-                    index = (int)it->GetKey();
-                }
+            if (it->GetKey() == log_part_index + 1) {
+                index = (int)it->GetKey();
                 break;
-            } else if (it->GetKey() == current_index) {
-                PDLOG(WARNING, "reach the end of file. cur index %d", current_index);
+            } else if (it->GetKey() == log_part_index) {
+                PDLOG(DEBUG, "no new file. log_part_index %d", log_part_index);
                 break;
             }
+            uint32_t cur_index = it->GetKey();
             it->Next();
+            if (it->Valid() && it->GetKey() <= log_part_index && cur_index > log_part_index) {
+                index = (int)cur_index;
+                break;
+            }
         }
     }
     delete it;
     if (index >= 0) {
+        // open a new log part file
+        std::string full_path = log_path_ + "/" + 
+            ::rtidb::base::FormatToString(index, FLAGS_binlog_name_length) + ".log";
+        if (OpenSeqFile(full_path) != 0) {
+            return -1;
+        }
         delete reader_;
         // roll a new log part file, reset status
-        log_part_index_ = index;
         reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+        PDLOG(INFO, "roll log file from index[%d] to index[%d]", log_part_index_, index);
+        log_part_index_ = index;
         return 0;
     } 
     return -1;
