@@ -851,7 +851,6 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     ASSERT_EQ(20, manifest.count());
 }
 
-
 }
 }
 
@@ -863,5 +862,3 @@ int main(int argc, char** argv) {
     FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();
 }
-
-
