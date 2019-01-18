@@ -45,8 +45,8 @@ public:
     ~SnapshotTest() {}
 };
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
+inline uint32_t GenRand() {
+    return rand() % 10000000 + 1;
 }
 
 int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
@@ -61,9 +61,11 @@ int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
 }
 
 bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, 
-			uint32_t& binlog_index, uint64_t offset) {
+			uint32_t& binlog_index, uint64_t offset, bool append_end = true) {
     if (*wh != NULL) {
-        (*wh)->EndLog();
+        if (append_end) {
+            (*wh)->EndLog();
+        }
         delete *wh;
         *wh = NULL;
     }
@@ -755,6 +757,99 @@ TEST_F(SnapshotTest, RecordOffset) {
     ASSERT_EQ(term, manifest.term());
 }
 
+TEST_F(SnapshotTest, Recover_empty_binlog) {
+    uint32_t tid = GenRand();
+    std::string snapshot_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/";
+    std::string binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    int count = 0;
+    for (; count < 10; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    // not set end falg
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    // no record binlog
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    // empty binlog
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    count = 0;
+    for (; count < 10; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key_new";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value_new" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    delete wh;
+
+    std::vector<std::string> fakes;
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", tid, 0, 8, mapping, 0, true, fakes, 12);
+    table->Init();
+    Snapshot snapshot(tid, 0, log_part);
+    snapshot.Init();
+    ASSERT_TRUE(snapshot.Recover(table, offset));
+    ASSERT_EQ(20, offset);
+    Ticket ticket;
+    Iterator* it = table->NewIterator("key_new", ticket);
+    it->Seek(1);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1, it->GetKey());
+    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value_new1", value2_str);
+    it->Next();
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(0, it->GetKey());
+    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value_new0", value3_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+
+    // check snapshot
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value);
+    ASSERT_EQ(0, ret);
+    std::vector<std::string> vec;
+    ret = ::rtidb::base::GetFileName(snapshot_dir, vec);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(2, vec.size());
+    vec.clear();
+    std::string full_path = snapshot_dir + "MANIFEST";
+    ::rtidb::api::Manifest manifest;
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(20, manifest.offset());
+    ASSERT_EQ(20, manifest.count());
+}
 
 }
 }
@@ -764,8 +859,6 @@ int main(int argc, char** argv) {
     srand (time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::storage::GenRand();
+    FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();
 }
-
-

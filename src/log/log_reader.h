@@ -136,6 +136,7 @@ public:
     int OpenSeqFile(const std::string& path);
     void GoBackToLastBlock();
     int GetLogIndex();
+    int GetEndLogIndex();
     uint64_t GetLastRecordEndOffset();
     void SetOffset(uint64_t start_offset);
     LogReader(const LogReader&) = delete;
