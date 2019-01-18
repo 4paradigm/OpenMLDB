@@ -97,6 +97,7 @@ message AddReplicaNSRequest {
 	required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
+    repeated uint32 pid_group = 4;
 }
 
 message Pair {
@@ -162,6 +163,7 @@ message DelReplicaNSRequest {
     required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
+    repeated uint32 pid_group = 4;
 }
 
 message MigrateRequest {

@@ -174,6 +174,45 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn(exp_msg, rs3)
         self.ns_drop(self.ns_leader, name)
 
+    @ddt.data(
+        ('0', 'DelReplica ok'),
+        ('0-3', 'DelReplica ok'),
+        ('0,2,3', 'DelReplica ok'),
+        ('a-z', 'pid group[a-z] format error'),
+        ('0-10', 'Fail to delreplica'),
+    )
+    @ddt.unpack
+    def test_delreplica_pid_group(self, pid_group, exp_msg):
+        """
+        一次删除好几个副本
+        :return:
+        """
+        name = 't{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+                                     ('table_partition', '"{}"'.format(self.leader), '"0-7"', 'true'),
+                                     ('table_partition', '"{}"'.format(self.slave1), '"0-7"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs1)
+
+        rs2 = self.delreplica(self.ns_leader, name, pid_group, 'ns_client', self.slave1)
+        self.assertIn(exp_msg, rs2)
+        if 'DelReplica ok' in rs2:
+            time.sleep(15)
+            rs3 = self.showtable(self.ns_leader, name)
+            self.tid = int(rs3.keys()[0][1])
+            self.assertIn((name, str(self.tid), '6', self.slave1), rs3)
+            self.assertNotIn((name, str(self.tid), '0', self.slave1), rs3)
+            if pid_group == '0-3':
+                self.assertNotIn((name, str(self.tid), '1', self.slave1), rs3)
+                self.assertNotIn((name, str(self.tid), '2', self.slave1), rs3)
+                self.assertNotIn((name, str(self.tid), '3', self.slave1), rs3)
+            elif pid_group == '0,2,3':
+                self.assertNotIn((name, str(self.tid), '2', self.slave1), rs3)
+                self.assertNotIn((name, str(self.tid), '3', self.slave1), rs3)
+        self.ns_drop(self.ns_leader, name)
+
 
     def test_delreplica_not_alive(self):  # RTIDB-201
         """
