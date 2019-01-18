@@ -8,7 +8,6 @@
 #include "nameserver/name_server_impl.h"
 
 #include <gflags/gflags.h>
-#include "gflags/gflags.h"
 #include "timer.h"
 #include <strings.h>
 #include "base/strings.h"
@@ -1187,6 +1186,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
                         endpoint_pid_bucked.size(), replica_num);
         return -1;
     }
+    std::map<std::string, uint64_t> endpoint_leader = endpoint_pid_bucked;
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& iter: table_info_) {
@@ -1199,6 +1199,9 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
                         continue;
                     }
                     endpoint_pid_bucked[endpoint]++;
+                    if (table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
+                        endpoint_leader[endpoint]++;
+                    }
                 }
             }
         }
@@ -1208,7 +1211,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     uint64_t min = UINT64_MAX;
     for (const auto& iter: endpoint_pid_bucked) {
         endpoint_vec.push_back(iter.first);
-        if (min > iter.second) {
+        if (iter.second < min) {
             min = iter.second;
             pos = index;
         }
@@ -1217,16 +1220,21 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     for (uint32_t pid = 0; pid < partition_num; pid++) {
         TablePartition* table_partition = table_info.add_table_partition();
         table_partition->set_pid(pid);
-        PartitionMeta* partition_meta = table_partition->add_partition_meta();
-        uint32_t endpoint_pos =  pos % endpoint_vec.size();
-        partition_meta->set_endpoint(endpoint_vec[endpoint_pos]);
-        partition_meta->set_is_leader(true);
-        for (uint32_t idx = 1; idx < replica_num; idx++) {
+        uint32_t min_leader_num = UINT32_MAX;
+        PartitionMeta* leader_partition_meta = NULL;
+        for (uint32_t idx = 0; idx < replica_num; idx++) {
             PartitionMeta* partition_meta = table_partition->add_partition_meta();
-            partition_meta->set_endpoint(endpoint_vec[(endpoint_pos + idx) % endpoint_vec.size()]);
+            std::string endpoint = endpoint_vec[pos % endpoint_vec.size()];
+            partition_meta->set_endpoint(endpoint);
             partition_meta->set_is_leader(false);
+            if (endpoint_leader[endpoint] < min_leader_num) {
+                min_leader_num = endpoint_leader[endpoint];
+                leader_partition_meta = partition_meta;
+            }
+            pos++;
         }
-        pos++;
+        leader_partition_meta->set_is_leader(true);
+        endpoint_leader[leader_partition_meta->endpoint()]++;
     }
     PDLOG(INFO, "set table partition ok. name[%s] partition_num[%u] replica_num[%u]", 
                  table_info.name().c_str(), partition_num, replica_num);

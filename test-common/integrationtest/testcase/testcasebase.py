@@ -197,7 +197,7 @@ class TestCaseBase(unittest.TestCase):
     def ns_create(self, endpoint, metadata_path):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
 
-    def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema):
+    def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema = ''):
         cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
         return self.run_client(endpoint, cmd, 'ns_client')
 
