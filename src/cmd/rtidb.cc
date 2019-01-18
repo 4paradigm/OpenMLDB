@@ -1670,12 +1670,16 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: makesnapshot table1 0\n");
         } else if (parts[1] == "addreplica") {
             printf("desc: add replica to leader\n");
-            printf("usage: addreplica name pid endpoint\n");
+            printf("usage: addreplica name pid_group endpoint\n");
             printf("ex: addreplica table1 0 172.27.128.31:9527\n");
+            printf("ex: addreplica table1 0,3,5 172.27.128.31:9527\n");
+            printf("ex: addreplica table1 1-5 172.27.128.31:9527\n");
         } else if (parts[1] == "delreplica") {
             printf("desc: delete replica from leader\n\n");
-            printf("usage: delreplica name pid endpoint\n");
+            printf("usage: delreplica name pid_group endpoint\n");
             printf("ex: delreplica table1 0 172.27.128.31:9527\n");
+            printf("ex: delreplica table1 0,3,5 172.27.128.31:9527\n");
+            printf("ex: delreplica table1 1-5 172.27.128.31:9527\n");
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
@@ -1709,9 +1713,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: recoverendpoint 172.27.128.31:9527 true 2\n");
         } else if (parts[1] == "migrate") {
             printf("desc: migrate partition form one endpoint to another\n");
-            printf("usage: migrate src_endpoint table_name partition des_endpoint\n");
-            printf("ex: migrate 172.27.2.52:9991 table1 1-10 172.27.2.52:9992\n");
-            printf("ex: migrate 172.27.2.52:9991 table1 15 172.27.2.52:9992\n");
+            printf("usage: migrate src_endpoint table_name pid_group des_endpoint\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1 172.27.2.52:9992\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1,3,5 172.27.2.52:9992\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1-5 172.27.2.52:9992\n");
         } else if (parts[1] == "gettablepartition") {
             printf("desc: get partition info\n");
             printf("usage: gettablepartition table_name pid\n");
