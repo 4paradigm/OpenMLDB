@@ -383,7 +383,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_wal(true);
-        table_meta->set_ttl(1);
+        table_meta->set_ttl(100);
         table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
@@ -442,17 +442,43 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
 	    ASSERT_STREQ("cannot update ttl form nonzero to zero", response.msg().c_str());
     }
     // normal case
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    ::rtidb::api::PutRequest prequest;
+    prequest.set_pk("test");
+    prequest.set_time(now - 60*60*1000);
+    prequest.set_value("test9");
+    prequest.set_tid(id);
+    prequest.set_pid(0);
+    ::rtidb::api::PutResponse presponse;
+    MockClosure closure;
+    tablet.Put(NULL, &prequest, &presponse,
+            &closure);
+    ASSERT_EQ(0, presponse.code());
+    ::rtidb::api::GetRequest grequest;
+    grequest.set_tid(id);
+    grequest.set_pid(0);
+    grequest.set_key("test");
+    grequest.set_ts(0);
+    ::rtidb::api::GetResponse gresponse;
+    tablet.Get(NULL, &grequest, &gresponse, &closure);
+    ASSERT_EQ(0, gresponse.code());
+    ASSERT_EQ("test9", gresponse.value());
+
     {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_type(::rtidb::api::kAbsoluteTime);
-        request.set_value(2);
+        request.set_value(50);
         ::rtidb::api::UpdateTTLResponse response;
-        MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        sleep(70);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
         ::rtidb::api::GetTableStatusRequest gr;
         ::rtidb::api::GetTableStatusResponse gres;
         tablet.GetTableStatus(NULL, &gr, &gres, &closure);
@@ -461,7 +487,25 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(2, ts.ttl());
+                ASSERT_EQ(100, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        sleep(80);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(1, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(50, ts.ttl());
                 checked = true;
             }
         }
