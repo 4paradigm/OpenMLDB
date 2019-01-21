@@ -190,6 +190,37 @@ class TestAddReplicaNs(TestCaseBase):
             
         self.ns_drop(self.ns_leader, name)
 
+    @ddt.data(
+        ('pid group[m] format error', 'm', conf.tb_endpoints[1]),
+        ('pid group[-1] format error', '-1', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '1,2,10', conf.tb_endpoints[1]),
+        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1]),
+        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '1-10', conf.tb_endpoints[1]),
+        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1]),
+        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1]),
+        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '5-7', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '5,6,7', conf.tb_endpoints[1]),
+    )
+    @ddt.unpack
+    def test_addreplica_pid_group_error(self, exp_msg, pid_group, endpoint):
+        """
+        添加失败
+        :return:
+        """
+        name = 't{}'.format(time.time())
+        infoLogger.info(name)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+                                     ('table_partition', '"{}"'.format(self.leader), '"0-8"', 'true'),
+                                     ('table_partition', '"{}"'.format(self.slave1), '"0-5"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs1)
+        rs2 = self.ns_addreplica(self.ns_leader, name, pid_group, endpoint)
+        self.assertIn(exp_msg, rs2)
+
     @multi_dimension(False)
     def test_addreplica_check_binlog_sync_progress(self):
         """
