@@ -29,6 +29,7 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
+DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace tablet {
@@ -1538,6 +1539,8 @@ TEST_F(TabletImplTest, Recover) {
 
 TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     int old_offset = FLAGS_make_snapshot_threshold_offset;
+    int old_interval = FLAGS_binlog_delete_interval;
+    FLAGS_binlog_delete_interval = 1000;
     FLAGS_make_snapshot_threshold_offset = 0;
     uint32_t tid = counter++;
     ::rtidb::storage::LogParts* log_part = new ::rtidb::storage::LogParts(12, 4, scmp);
@@ -1585,6 +1588,24 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
+    binlog_index++;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    count = 1;
+    for (; count <= 30; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key_xxx";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value_xxx" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
     delete wh;
     {
         TabletImpl tablet;
@@ -1617,6 +1638,11 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(10, srp.count());
 
+        sr.set_pk("key_xxx");
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(30, srp.count());
+
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
         prequest.set_time(9528);
@@ -1643,9 +1669,20 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         fileInput.SetCloseOnDelete(true);
         ::rtidb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-        ASSERT_EQ(31, manifest.offset());
+        ASSERT_EQ(61, manifest.offset());
+
+        sleep(10);
+        std::vector<std::string> vec;
+        std::string binlog_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        ::rtidb::base::GetFileName(binlog_path, vec);
+        ASSERT_EQ(4, vec.size());
+        std::string file_name = binlog_path + "/00000001.log";
+        ASSERT_STREQ(file_name.c_str(), vec[0].c_str());
+        std::string file_name1 = binlog_path + "/00000007.log";
+        ASSERT_STREQ(file_name1.c_str(), vec[3].c_str());
     }
     FLAGS_make_snapshot_threshold_offset = old_offset;
+    FLAGS_binlog_delete_interval = old_interval;
 }    
 
 TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {

@@ -804,6 +804,24 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
+    binlog_index++;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    count = 0;
+    for (; count < 10; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key_xxx";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value_xxx" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
     delete wh;
 
     std::vector<std::string> fakes;
@@ -814,7 +832,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     Snapshot snapshot(tid, 0, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(20, offset);
+    ASSERT_EQ(30, offset);
     Ticket ticket;
     Iterator* it = table->NewIterator("key_new", ticket);
     it->Seek(1);
@@ -829,6 +847,13 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     ASSERT_EQ("value_new0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
+    delete it;
+    it = table->NewIterator("key_xxx", ticket);
+    it->Seek(1);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1, it->GetKey());
+    std::string value4_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value_xxx1", value4_str);
 
     // check snapshot
     uint64_t offset_value;
@@ -847,8 +872,8 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(20, manifest.offset());
-    ASSERT_EQ(20, manifest.count());
+    ASSERT_EQ(30, manifest.offset());
+    ASSERT_EQ(30, manifest.count());
 }
 
 }
