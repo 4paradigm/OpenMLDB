@@ -3,6 +3,7 @@ package com._4paradigm.rtidb.client.ut.ha;
 import java.util.List;
 import java.util.Map;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -22,7 +23,8 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
 public class NameServerTest {
 
     private static String zkEndpoints = "127.0.0.1:6181";
-    private static String leaderPath  = "/onebox/leader";
+    private static String zkRootPath = "/onebox";
+    private static String leaderPath  = zkRootPath + "/leader";
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
     static {
         String envZkEndpoints = System.getenv("zkEndpoints");
@@ -65,6 +67,29 @@ public class NameServerTest {
             NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
             nsc.init();
             Assert.assertTrue(true);
+            nsc.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testNsInitByConfig() {
+        RTIDBClientConfig config = new RTIDBClientConfig();
+        config.setZkEndpoints(zkEndpoints);
+        config.setZkRootPath(zkRootPath);
+        config.setReadTimeout(3000);
+        config.setWriteTimeout(3000);
+        try {
+            NameServerClientImpl nsc = new NameServerClientImpl(config);
+            nsc.init();
+            Assert.assertTrue(true);
+            TableInfo tableInfo = TableInfo.newBuilder().setName("t1").setSegCnt(8).build();
+            Assert.assertTrue(nsc.createTable(tableInfo));
+            List<TableInfo> tables = nsc.showTable("t1");
+            Assert.assertTrue(tables.size() == 1);
+            Assert.assertTrue( nsc.dropTable("t1"));
             nsc.close();
         } catch(Exception e) {
             e.printStackTrace();

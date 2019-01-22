@@ -554,6 +554,49 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(pid_map[self.slave2], 53)
         self.ns_drop(self.ns_leader, name1)
         self.ns_drop(self.ns_leader, name2)
+
+    def test_create_pid_drop_create(self):
+        self.clear_ns_table(self.ns_leader);
+        name1 = 'tname1{}'.format(time.time())
+        name2 = 'tname2{}'.format(time.time())
+        name3 = 'tname3{}'.format(time.time())
+        name4 = 'tname4{}'.format(time.time())
+        name5 = 'tname5{}'.format(time.time())
+        name6 = 'tname6{}'.format(time.time())
+        name7 = 'tname7{}'.format(time.time())
+        rs = self.ns_create_cmd(self.ns_leader, name1, '0', '8', '3')
+        self.assertIn('Create table ok', rs)
+        rs = self.ns_create_cmd(self.ns_leader, name2, '0', '8', '2')
+        self.assertIn('Create table ok', rs)
+        rs = self.ns_create_cmd(self.ns_leader, name3, '0', '8', '1')
+        self.assertIn('Create table ok', rs)
+        rs = self.ns_create_cmd(self.ns_leader, name4, '0', '8', '3')
+        self.assertIn('Create table ok', rs)
+        rs = self.ns_create_cmd(self.ns_leader, name5, '0', '8', '2')
+        self.assertIn('Create table ok', rs)
+        self.ns_drop(self.ns_leader, name2)
+        rs = self.ns_create_cmd(self.ns_leader, name6, '0', '8', '2')
+        self.assertIn('Create table ok', rs)
+        self.ns_drop(self.ns_leader, name4)
+        rs = self.ns_create_cmd(self.ns_leader, name7, '0', '8', '3')
+        self.assertIn('Create table ok', rs)
+        table_info = self.showtable(self.ns_leader)
+        leader_map = {}
+        pid_map = {}
+        for (k, v) in table_info.items():
+            endpoint = k[3]
+            leader_map.setdefault(endpoint, 0)
+            pid_map.setdefault(endpoint, 0)
+            pid_map[endpoint] += 1
+            if v[0] == 'leader':
+                leader_map[endpoint] += 1
+        self.assertEqual(leader_map[self.leader], 13)
+        self.assertEqual(leader_map[self.slave1], 14)
+        self.assertEqual(leader_map[self.slave2], 13)
+        self.assertEqual(pid_map[self.leader], 30)
+        self.assertEqual(pid_map[self.slave1], 29)
+        self.assertEqual(pid_map[self.slave2], 29)
+        self.clear_ns_table(self.ns_leader);
         
 if __name__ == "__main__":
     load(TestCreateTableByNsClient)
