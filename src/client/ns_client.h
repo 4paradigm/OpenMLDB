@@ -48,9 +48,9 @@ public:
 
     bool DropTable(const std::string& name, std::string& msg);
 
-    bool AddReplica(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);
+    bool AddReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint, std::string& msg);
 
-    bool DelReplica(const std::string& name, uint32_t pid, const std::string& endpoint, std::string& msg);
+    bool DelReplica(const std::string& name, const std::set<uint32_t>& pid_set, const std::string& endpoint, std::string& msg);
 
     bool ConfSet(const std::string& key, const std::string& value, std::string& msg);
 
@@ -60,7 +60,7 @@ public:
 
     bool OfflineEndpoint(const std::string& endpoint, uint32_t concurrency, std::string& msg);
 
-    bool Migrate(const std::string& src_endpoint, const std::string& name, const std::vector<uint32_t>& pid_vec, 
+    bool Migrate(const std::string& src_endpoint, const std::string& name, const std::set<uint32_t>& pid_set, 
                  const std::string& des_endpoint, std::string& msg);
 
     bool RecoverEndpoint(const std::string& endpoint, bool need_restore, uint32_t concurrency, std::string& msg);

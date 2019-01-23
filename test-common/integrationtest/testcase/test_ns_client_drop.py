@@ -33,14 +33,15 @@ class TestNsDropTable(TestCaseBase):
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
 
-        rs1 = self.showtable(self.ns_leader)
+        rs1 = self.showtable(self.ns_leader, name)
         self.ns_drop(self.ns_leader, name)
-        rs2 = self.showtable(self.ns_leader)
+        rs2 = self.showtable(self.ns_leader, name)
         rs3 = self.get_table_status(self.leader)
 
         self.assertEqual(len(rs1), 53)
         self.assertEqual(rs2, {})
         self.assertEqual(rs3, {})
+        
 
 
 if __name__ == "__main__":

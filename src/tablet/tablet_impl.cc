@@ -200,6 +200,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     if (request->type() != table->GetTTLType()) {
         response->set_code(-2);
         response->set_msg("ttl type mismatch");
+        PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
 
@@ -211,6 +212,18 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
                         ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
+        return;
+    }
+    uint64_t old_ttl = table->GetTTL();
+    if (old_ttl == 0 && ttl > 0) {
+        response->set_code(-1);
+        response->set_msg("cannot update ttl form zero to nonzero");
+        PDLOG(WARNING, "cannot update ttl form zero to nonzero. tid %u pid %u", request->tid(), request->pid());
+        return;
+    } else if (old_ttl > 0 && ttl == 0) {
+        response->set_code(-1);
+        response->set_msg("cannot update ttl form nonzero to zero");
+        PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
         return;
     }
 

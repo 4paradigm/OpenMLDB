@@ -26,7 +26,7 @@ class TestAutoRecoverTable(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 3
         self.put_large_datas(data_count, data_thread)
@@ -68,7 +68,6 @@ class TestAutoRecoverTable(TestCaseBase):
             35: 'self.confset(self.ns_leader, "auto_failover", "false")',
         }
 
-
     @ddt.data(
         (34, 1, 3, -1, 6, 15, 0, 33, 20, 24, 35),  # failover not finish and start recover  RTIDB-259
         (34, 1, 2, 0, 6, 13, 0, 33, 17, 21, 35),  # failover not finish and start recover  RTIDB-259
@@ -107,9 +106,17 @@ class TestAutoRecoverTable(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+
+        rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-2] for k, v in rs.items()]
+        for repeat in range(10):
+            rs = self.showtable(self.ns_leader, self.tname)
+            role_x = [v[0] for k, v in rs.items()]
+            is_alive_x = [v[-2] for k, v in rs.items()]
+            if role_x.count('leader') == 10 and role_x.count('follower') == 18:
+                break
+            time.sleep(2)
         self.assertEqual(role_x.count('leader'), 10)
         self.assertEqual(role_x.count('follower'), 18)
         self.assertEqual(is_alive_x.count('yes'), 28)
@@ -117,6 +124,7 @@ class TestAutoRecoverTable(TestCaseBase):
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
+        self.ns_drop(self.ns_leader, self.tname)
 
 
     @TestCaseBase.skip('FIXME')
@@ -145,7 +153,7 @@ class TestAutoRecoverTable(TestCaseBase):
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         role_x = [v[0] for k, v in rs.items()]
         is_alive_x = [v[-1] for k, v in rs.items()]
         self.get_table_status(self.leader)
@@ -165,7 +173,7 @@ class TestAutoRecoverTable(TestCaseBase):
                          self.get_table_status(self.slave1, self.tid, self.pid)[0])
         self.assertEqual(self.get_table_status(self.leader, self.tid, self.pid)[0],
                          self.get_table_status(self.slave2, self.tid, self.pid)[0])
-
+        self.ns_drop(self.ns_leader, self.tname)
 
     @ddt.data((34, 1, 15, 35))
     @ddt.unpack
@@ -178,9 +186,10 @@ class TestAutoRecoverTable(TestCaseBase):
         steps_dict = self.get_steps_dict()
         for i in steps:
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
+        rs = self.showtable(self.ns_leader, self.tname)
         self.assertIn(self.tname, rs.keys()[0])
         time.sleep(10)
+        self.ns_drop(self.ns_leader, self.tname)
 
 
     @ddt.data(
@@ -207,7 +216,7 @@ class TestAutoRecoverTable(TestCaseBase):
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
-        table_info = self.showtable(self.ns_leader)
+        table_info = self.showtable(self.ns_leader, self.tname)
         self.tid = int(table_info.keys()[0][1])
         self.pid = 1
         for _ in range(10):
@@ -216,10 +225,10 @@ class TestAutoRecoverTable(TestCaseBase):
         steps_dict = self.get_steps_dict()
         for i in steps:
             eval(steps_dict[i])
-        rs = self.showtable(self.ns_leader)
-        infoLogger.info(rs)
+        rs = self.showtable(self.ns_leader, self.tname)
         self.assertEqual(rs[(self.tname, str(self.tid), str(self.pid), self.leader)],
                          ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.ns_drop(self.ns_leader, self.tname)
 
 
 if __name__ == "__main__":

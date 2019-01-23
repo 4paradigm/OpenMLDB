@@ -16,6 +16,7 @@ import libs.utils as utils
 from libs.clients.ns_cluster import NsCluster
 import traceback
 import copy
+import re
 
 
 class TestCaseBase(unittest.TestCase):
@@ -81,7 +82,6 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info('\n\n' + '|' * 50 + ' TEARDOWN STARTED ' + '|' * 50 + '\n')
         try:
             rs = self.showtablet(self.ns_leader)
-
             for edp in conf.tb_endpoints:
                 if rs[edp][0] != 'kTabletHealthy':
                     infoLogger.info("Endpoint offline !!!! " * 10 + edp)
@@ -197,23 +197,53 @@ class TestCaseBase(unittest.TestCase):
     def ns_create(self, endpoint, metadata_path):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
 
-    def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema):
-        cmd = 'create ' + name + ' ' + ttl + ' ' + partition_num + ' ' + replica_num + ' ' + schema
+    def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema = ''):
+        cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_scan_kv_cmd(self, endpoint, scan, name, pk, start_time, end_time, limit):
-        cmd = scan + ' ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
+    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
+        cmd = 'scan ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_get_kv_cmd(self, endpoint, get, name, key, ts):
-        cmd = get + ' ' + name + ' ' + key+ ' ' + ts
+    def ns_scan_multi(self, endpoint, name, pk, idx_name, start_time, end_time, limit = ''):
+        cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = []
+        for i in range(2, len(arr)):
+            record = re.sub(' +', ' ', arr[i]).strip().split(" ")
+            cur_map = {}
+            for idx in range(len(key_arr)):
+                cur_map[key_arr[idx]] = record[idx+2]
+            value.append(cur_map)    
+        return value
+
+    def ns_get_kv(self, endpoint, name, key, ts):
+        cmd = 'get ' + name + ' ' + key+ ' ' + ts
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_put_kv_cmd(self, endpoint, put, name, pk, ts, value):
-        cmd = put + ' ' + name + ' ' + pk+ ' ' + ts + ' ' + value
+    def ns_get_multi(self, endpoint, name, key, idx_name, ts):
+        cmd = 'get {} {} {} {}'.format(name, key, idx_name, ts)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = {}
+        record = re.sub(' +', ' ', arr[2]).strip().split(" ")
+        for idx in range(len(key_arr)):
+            value[key_arr[idx]] = record[idx+2]
+        return value
+
+    def ns_put_kv(self, endpoint, name, pk, ts, value):
+        cmd = 'put {} {} {} {}'.format(name, pk, ts, value)
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    def ns_put_multi(self, endpoint, name, ts, row):
+        cmd = 'put {} {} {}'.format(name, ts, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_drop(self, endpoint, tname):
+        infoLogger.debug(tname)
         return self.run_client(endpoint, 'drop {}'.format(tname), 'ns_client')
 
     def ns_update_table_alive_cmd(self, ns_endpoint, updatetablealive, table_name, pid, endpoint, is_alive):
@@ -223,6 +253,22 @@ class TestCaseBase(unittest.TestCase):
     def ns_recover_table_cmd(self, ns_endpoint, recovertable, table_name, pid, endpoint):
         cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_addreplica(self, ns_endpoint, name, pid, replica_endpoint):
+        cmd = 'addreplica {} {} {}'.format(name, pid, replica_endpoint)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_gettablepartition(self, ns_endpoint, gettablepartition, name, pid):
+        cmd = '{} {} {}'.format(gettablepartition, name, pid)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_showns(self, ns_endpoint, showns):
+        cmd = '{}'.format(showns)
+        return self.run_client(ns_endpoint, cmd, 'ns_client')
+
+    def ns_showopstatus(self, endpoint):
+        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+        return rs
 
     def put(self, endpoint, tid, pid, key, ts, *values):
         if len(values) == 1:
@@ -409,6 +455,10 @@ class TestCaseBase(unittest.TestCase):
             traceback.print_exc(file=sys.stdout)
             infoLogger.error('table {} is not exist!'.format(e))
 
+    def gettablestatus(self, endpoint, tid='', pid=''):
+        rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
+        return rs
+
     def showschema(self, endpoint, tid='', pid=''):
         try:
             rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
@@ -421,16 +471,20 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
         return self.parse_tb(rs, ' ', [0], [1, 2])
 
-    def showopstatus(self, endpoint):
-        rs = self.run_client(endpoint, 'showopstatus', 'ns_client')
+    def showopstatus(self, endpoint, name='', pid=''):
+        rs = self.run_client(endpoint, 'showopstatus {} {}'.format(name, pid), 'ns_client')
         tablestatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
         tablestatus_d = {(int(k)): v for k, v in tablestatus.items()}
         return tablestatus_d
 
-    def showtable(self, endpoint):
-        rs = self.run_client(endpoint, 'showtable', 'ns_client')
+    def showtable(self, endpoint, table_name = ''):
+        cmd = 'showtable {}'.format(table_name)
+        rs = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
 
+    def showtable_with_tablename(self, endpoint, table = ''):
+        cmd = 'showtable {}'.format(table)
+        return self.run_client(endpoint, cmd, 'ns_client')
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):
@@ -518,8 +572,13 @@ class TestCaseBase(unittest.TestCase):
         return opid_x
 
     def get_latest_opid_by_tname_pid(self, tname, pid):
-        latest_opid = self.get_opid_by_tname_pid(tname, pid)[-1]
-        self.latest_opid = int(latest_opid)
+        rs = self.run_client(self.ns_leader, 'showopstatus {} {}'.format(tname, pid), 'ns_client')
+        opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
+        op_id_arr = []
+        for op_id in opstatus.keys():
+            op_id_arr.append(int(op_id))
+        self.latest_opid = sorted(op_id_arr)[-1]
+        infoLogger.debug('------latest_opid:' + str(self.latest_opid) + '---------------')
         return self.latest_opid
 
     def get_op_by_opid(self, op_id):
@@ -540,6 +599,9 @@ class TestCaseBase(unittest.TestCase):
             x = x.split(',')
             task_dict[(int(x[1]), x[2])] = x[0]
         self.task_dict = task_dict
+
+    def get_tablet_endpoints(self):
+        return set(conf.tb_endpoints)
 
     def check_tasks(self, op_id, exp_task_list):
         self.get_task_dict_by_opid(self.tname, op_id)
@@ -569,6 +631,11 @@ class TestCaseBase(unittest.TestCase):
     def check_re_add_replica_simplify_op(self, op_id):
         self.check_tasks(op_id, ['kAddReplica', 'kCheckBinlogSyncProgress', 'kUpdatePartitionStatus'])
 
+    def check_migrate_op(self, op_id):
+        self.check_tasks(op_id, ['kPauseSnapshot', 'kSendSnapshot', 'kRecoverSnapshot', 'kLoadTable', 
+                                 'kAddReplica', 'kAddTableInfo', 'kCheckBinlogSyncProgress', 'kDelReplica',
+                                 'kUpdateTableInfo', 'kDropTable'])
+
     def check_setlimit(self, endpoint, command, method, limit):
         cmd = '{} {} {}'.format(command, method, limit)
         return self.run_client(endpoint, cmd)
@@ -581,3 +648,16 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
         return self.run_client(endpoint, cmd)
 
+    def print_table(self, endpoint = '',  name = ''):
+        infoLogger.info('*' * 50)
+        rs_show = ''
+        if endpoint != '':
+            rs_show = self.showtable_with_tablename(endpoint, name)
+        else:
+            rs_show = self.showtable_with_tablename(self.ns_leader, name)
+        infoLogger.info(rs_show)
+        rs_show = self.parse_tb(rs_show, ' ', [0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+        for table_info in rs_show:
+            infoLogger.info('{} =  {}'.format(table_info, rs_show[table_info]))
+        infoLogger.info('*' * 50)
+        
