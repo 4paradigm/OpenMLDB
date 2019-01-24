@@ -1165,8 +1165,13 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
 
 void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
-        std::cout << "get format error. eg: count table_name key | count table_name key idx_name" << std::endl;
+        std::cout << "count format error. eg: count table_name key | count table_name key idx_name" << std::endl;
         return;
+    }
+    std::string idx_name;
+    uint64_t value = 0;
+    if (parts.size() > 3) {
+        idx_name = parts[3];
     }
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
@@ -1187,17 +1192,73 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "failed to count. cannot not found tablet client, pid is " << pid << std::endl;
         return;
     }
-    std::string idx_name;
-    uint64_t value = 0;
-    if (parts.size() > 3) {
-        idx_name = parts[3];
-    }
     bool ok = tablet_client->Count(tid, pid, key, idx_name, value, msg);
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
         std::cout << "Count failed. error msg: " << msg << std::endl; 
     }
+}
+
+void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 2) {
+        std::cout << "preview format error. eg: preview table_name [limit]" << std::endl;
+        return;
+    }
+    uint32_t limit = 100;
+    if (parts.size() > 2) {
+        try {
+            limit = boost::lexical_cast<uint32_t>(parts[2]);
+        } catch (std::exception const& e) {
+            printf("Invalid args. limit should be unsigned int\n");
+        }
+    }
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(parts[1], tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    uint32_t pid = 0;;
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to preview. error msg: " << msg << std::endl;
+        return;
+    }
+    uint32_t count = 0;
+    ::rtidb::base::KvIterator* it = tablet_client->Traverse(tid, pid, "", "", 0, limit, count);
+    if (it == NULL) {
+        std::cout << "Fail to preview table. error msg: " << msg << std::endl;
+    } else if (tables[0].column_desc_size() == 0) {
+        std::cout << "#\tTime\tData" << std::endl;
+        uint32_t index = 1;
+        while (it->Valid()) {
+            std::string value = it->GetValue().ToString();
+            if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
+                std::string uncompressed;
+                ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+                value = uncompressed;
+            }
+            std::cout << index << "\t" << it->GetKey() << "\t" << value << std::endl;
+            index ++;
+            it->Next();
+        }
+    } else {
+        std::vector<::rtidb::base::ColumnDesc> columns;
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
+            std::cout << "convert table column desc failed" << std::endl; 
+            delete it;
+            return;
+        }
+        ShowTableRows(columns, it, tables[0].compress_type());
+    }
+    delete it;
 }
 
 void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -3380,6 +3441,8 @@ void StartNsClient() {
             HandleNSGet(parts, &client);
         } else if (parts[0] == "count") {
             HandleNSCount(parts, &client);
+        } else if (parts[0] == "preview") {
+            HandleNSPreview(parts, &client);
         } else if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
         } else if (parts[0] == "addreplica") {
