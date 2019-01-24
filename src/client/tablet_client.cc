@@ -781,6 +781,28 @@ bool TabletClient::Get(uint32_t tid,
     return true;
 }
 
+bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
+            const std::string& idx_name, uint64_t& value, std::string& msg) {
+    ::rtidb::api::CountRequest request;
+    ::rtidb::api::CountResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Count,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (response.has_msg()) {
+        msg = response.msg();
+    }
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    value = response.count();
+    return true;
+}
+
 bool TabletClient::Get(uint32_t tid, 
              uint32_t pid,
              const std::string& pk,
