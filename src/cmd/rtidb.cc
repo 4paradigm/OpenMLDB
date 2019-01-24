@@ -1221,7 +1221,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
         return;
     }
     if (tables.empty()) {
-        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        printf("preview failed! table %s is not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
