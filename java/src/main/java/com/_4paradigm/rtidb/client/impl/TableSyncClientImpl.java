@@ -199,7 +199,45 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return null;
     }
-    
+
+    @Override
+    public int count(String tname, String key, String idxName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
+        if (pid < 0) {
+            pid = pid * -1;
+        }
+        return count(th.getTableInfo().getTid(), pid, key, idxName, th);
+    }
+
+    private int count(int tid, int pid, String key, String idxName, TableHandler th) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.CountRequest.Builder builder = Tablet.CountRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.CountRequest request = builder.build();
+        Tablet.CountResponse response = ts.count(request);
+        if (response != null && response.getCode() != 0) {
+            return response.getCount();
+        } else {
+            return 0;
+        }
+    }
+
     @Override
     public KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException, TabletException {
         return scan(tid, pid, key, null, st, et, 0);
