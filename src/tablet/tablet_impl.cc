@@ -635,6 +635,72 @@ void TabletImpl::Scan(RpcController* controller,
     done->Run();
 }
 
+void TabletImpl::Count(RpcController* controller,
+              const ::rtidb::api::CountRequest* request,
+              ::rtidb::api::CountResponse* response,
+              Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(10);
+        response->set_msg("table not found");
+        return;
+    }
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+                      request->tid(), request->pid());
+        response->set_code(20);
+        response->set_msg("table is unavailable now");
+        return;
+    }
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = NULL;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(30);
+            response->set_msg("idx name not found");
+            return;
+        }
+        it = table->NewIterator(iit->second,
+                                request->key(), ticket);
+    }else {
+        it = table->NewIterator(request->key(), ticket);
+    }
+    if (it == NULL) {
+        response->set_code(30);
+        response->set_msg("idx name not found");
+        return;
+    }
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+        remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
+    it->SeekToFirst();
+    uint64_t end_time = table->GetExpireTime();
+    PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
+    uint64_t scount = 0;
+    uint64_t last_time = 0;
+    while (it->Valid()) {
+        if (it->GetKey() <= end_time) {
+            break;
+        }
+        // skip duplicate record 
+        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
+            PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", request->key().c_str(), it->GetKey());
+        } else {
+            scount ++;
+        }
+        last_time = it->GetKey();
+        it->Next();
+    }
+    response->set_code(0);
+    response->set_count(scount);
+}
+
 void TabletImpl::Traverse(RpcController* controller,
               const ::rtidb::api::TraverseRequest* request,
               ::rtidb::api::TraverseResponse* response,

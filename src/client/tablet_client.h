@@ -86,6 +86,9 @@ public:
              uint64_t& ts,
              std::string& msg);
 
+    bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
+             const std::string& idx_name, uint64_t& value, std::string& msg);
+
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,

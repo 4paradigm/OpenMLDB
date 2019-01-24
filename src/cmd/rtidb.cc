@@ -1163,6 +1163,43 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
     }
 }
 
+void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "get format error. eg: count table_name key | count table_name key idx_name" << std::endl;
+        return;
+    }
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(parts[1], tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    std::string key = parts[2];
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to count. cannot not found tablet client, pid is " << pid << std::endl;
+        return;
+    }
+    std::string idx_name;
+    uint64_t value = 0;
+    if (parts.size() > 3) {
+        idx_name = parts[3];
+    }
+    bool ok = tablet_client->Count(tid, pid, key, idx_name, value, msg);
+    if (ok) {
+        std::cout << "count: " << value << std::endl;
+    } else {
+        std::cout << "Count failed. error msg: " << msg << std::endl; 
+    }
+}
+
 void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 5) {
         std::cout << "put format error. eg: put table_name pk ts value | put table_name ts key1 key2 ... value1 value2 ..." << std::endl;
@@ -3341,6 +3378,8 @@ void StartNsClient() {
             HandleNSScan(parts, &client);
         } else if (parts[0] == "get") {
             HandleNSGet(parts, &client);
+        } else if (parts[0] == "count") {
+            HandleNSCount(parts, &client);
         } else if (parts[0] == "makesnapshot") {
             HandleNSMakeSnapshot(parts, &client);
         } else if (parts[0] == "addreplica") {
