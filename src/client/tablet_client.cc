@@ -886,6 +886,7 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
         return NULL;
     }
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    count = response->count();
     return kv_it;
 }
 
