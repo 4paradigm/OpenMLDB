@@ -568,7 +568,6 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
     tp.Print(true);
 }
 
-
 void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "bad setttl format, eg settl t1 absolute 10" <<std::endl;

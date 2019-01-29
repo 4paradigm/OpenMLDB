@@ -208,6 +208,7 @@ class TestAddReplicaNs(TestCaseBase):
         infoLogger.info(name)
         self.stop_client(self.ns_leader)
         self.stop_client(self.ns_slaver)
+        sleep(3);
         endponints = self.get_tablet_endpoints()
         conf = 'nameserver'
 
