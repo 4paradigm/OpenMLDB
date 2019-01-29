@@ -1047,7 +1047,6 @@ void TabletImpl::GetTableSchema(RpcController* controller,
         response->set_msg("table not found");
         PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
                 request->pid());
-        done->Run();
         return;
     }
     response->set_code(0);

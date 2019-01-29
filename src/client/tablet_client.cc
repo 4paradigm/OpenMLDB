@@ -469,7 +469,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
             ::rtidb::api::TableStatus& table_status) {
     ::rtidb::api::GetTableStatusRequest request;
     request.set_tid(tid);
-    request.set_tid(tid);
+    request.set_pid(pid);
     request.set_need_schema(need_schema);
     ::rtidb::api::GetTableStatusResponse response;
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,

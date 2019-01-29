@@ -2452,10 +2452,16 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex: sput 1 0 1528858466000 card0 merchant0 1.1\n");
         } else if (parts[1] == "scan") {
             printf("desc: get records for a period of time\n");
+            printf("usage: scan tid pid [limit]\n");
             printf("usage: scan tid pid pk starttime endtime [limit]\n");
+            printf("usage: scan tid pid key key_name starttime endtime [limit]\n");
+            printf("ex: scan 1 0\n");
+            printf("ex: scan 1 0 10\n");
             printf("ex: scan 1 0 key1 1528858466000 1528858300000\n");
             printf("ex: scan 1 0 key1 1528858466000 1528858300000 10\n");
             printf("ex: scan 1 0 key1 0 0 10\n");
+            printf("ex: scan 1 0 card0 card 1528858466000 1528858300000\n");
+            printf("ex: scan 1 0 card0 card 1528858466000 1528858300000 10\n");
         } else if (parts[1] == "sscan") {
             printf("desc: get records for a period of time from multi dimension table\n");
             printf("usage: sscan tid pid key key_name starttime endtime [limit]\n");
