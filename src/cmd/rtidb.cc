@@ -471,7 +471,91 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const ::rtidb::na
     return tablet_client;
 }
 
-void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+void TabletPreview(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    uint32_t limit = FLAGS_preview_default_limit;
+    uint32_t tid, pid;
+    try {
+        tid =  boost::lexical_cast<uint32_t>(parts[1]);
+        pid =  boost::lexical_cast<uint32_t>(parts[2]);
+        if (parts.size() > 3) {
+            limit = boost::lexical_cast<uint32_t>(parts[3]);
+            if (limit > FLAGS_scan_limit_max_num) {
+                printf("scan error. limit is greater than the max num %u\n", FLAGS_scan_limit_max_num);
+                return;
+            } else if (limit == 0) {
+                printf("scan error. limit must be greater than zero\n");
+                return;
+            }
+        }
+    } catch (std::exception const& e) {
+        printf("Invalid args. tid, pid and limit should be unsigned int\n");
+        return;
+    }
+    ::rtidb::api::TableStatus table_status;
+    if (!client->GetTableStatus(tid, pid, true, table_status)) {
+        std::cout << "Fail to get table status" << std::endl;
+        return;
+    }
+    std::string schema = table_status.schema();
+    std::vector<::rtidb::base::ColumnDesc> columns;
+    if (!schema.empty()) {
+        ::rtidb::base::SchemaCodec codec;
+        codec.Decode(schema, columns);
+    }
+    uint32_t column_num = columns.empty() ? 4 : columns.size() + 2;
+    ::baidu::common::TPrinter tp(column_num, 128);
+    std::vector<std::string> row;
+    if (schema.empty()) {
+        row.push_back("#");
+        row.push_back("key");
+        row.push_back("ts");
+        row.push_back("data");
+    } else {
+        row.push_back("#");
+        row.push_back("ts");
+        for (uint32_t i = 0; i < columns.size(); i++) {
+            row.push_back(columns[i].name);
+        }
+    }
+    tp.AddRow(row);
+    uint32_t index = 1;
+    uint32_t count = 0;
+    ::rtidb::base::KvIterator* it = client->Traverse(tid, pid, "", "", 0, limit, count);
+    if (it == NULL) {
+        std::cout << "Fail to preview table" << std::endl;
+        return;
+    }
+    while (it->Valid()) {
+        if (schema.empty()) {
+            row.clear();
+            std::string value = it->GetValue().ToString();
+            if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
+                std::string uncompressed;
+                ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+                value = uncompressed;
+            }
+            row.push_back(std::to_string(index));
+            row.push_back(it->GetPK());
+            row.push_back(std::to_string(it->GetKey()));
+            row.push_back(value);
+            tp.AddRow(row);
+        } else {
+            if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
+                std::string uncompressed;
+                ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &uncompressed);
+                ShowTableRow(columns, uncompressed.c_str(), uncompressed.length(), it->GetKey(), index, tp); 
+            } else {
+                ShowTableRow(columns, it->GetValue().data(), it->GetValue().size(), it->GetKey(), index, tp); 
+            }
+        }
+        index++;
+        it->Next();
+    }
+    delete it;
+    tp.Print(true);
+}
+
+void NSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     uint32_t limit = FLAGS_preview_default_limit;
     if (parts.size() > 2) {
         try {
@@ -482,6 +566,9 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
         }
         if (limit > FLAGS_scan_limit_max_num) {
             printf("scan error. limit is greater than the max num %u\n", FLAGS_scan_limit_max_num);
+            return;
+        } else if (limit == 0) {
+            printf("scan error. limit must be greater than zero\n");
             return;
         }
     }
@@ -533,7 +620,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
         uint32_t count = 0;
         ::rtidb::base::KvIterator* it = tablet_client->Traverse(tid, pid, "", "", 0, limit, count);
         if (it == NULL) {
-            std::cout << "Fail to preview table. error msg: " << msg << std::endl;
+            std::cout << "Fail to preview table" << std::endl;
             return;
         }
         limit -= count;
@@ -1208,7 +1295,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
 
 void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() == 2 || parts.size() == 3) {
-        HandleNSPreview(parts, client);
+        NSPreview(parts, client);
         return;
     } else if (parts.size() < 5) {
         printf("scan format error.\n");
@@ -2826,7 +2913,10 @@ void HandleClientChangeRole(const std::vector<std::string> parts, ::rtidb::clien
 
 // the input format like scan tid pid pk st et
 void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 6) {
+    if (parts.size() == 3 || parts.size() == 4) {
+        TabletPreview(parts, client);
+        return;
+    } else if (parts.size() < 6) {
         std::cout << "Bad scan format" << std::endl;
         return;
     }
