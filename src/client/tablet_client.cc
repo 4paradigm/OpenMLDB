@@ -462,16 +462,24 @@ bool TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response
 
 bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, 
             ::rtidb::api::TableStatus& table_status) {
+    return GetTableStatus(tid, pid, false, table_status);
+}
+
+bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
+            ::rtidb::api::TableStatus& table_status) {
+    ::rtidb::api::GetTableStatusRequest request;
+    request.set_tid(tid);
+    request.set_tid(tid);
+    request.set_need_schema(need_schema);
     ::rtidb::api::GetTableStatusResponse response;
-    if (!GetTableStatus(response)) {
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ret) {
         return false;
     }
-    for (int idx = 0; idx < response.all_table_status_size(); idx++) {
-        if (response.all_table_status(idx).tid() == tid &&
-                response.all_table_status(idx).pid() == pid) {
-            table_status = response.all_table_status(idx);
-            return true;    
-        }
+    if (response.all_table_status_size() > 0) {
+        table_status = response.all_table_status(0);
+        return true;
     }
     return false;
 }
