@@ -19,12 +19,17 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <sys/stat.h> 
 #include <fcntl.h>
+#include "log/log_writer.h"
+#include "log/log_reader.h"
+#include "base/file_util.h"
+#include "base/strings.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
+DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace tablet {
@@ -32,6 +37,7 @@ namespace tablet {
 using ::rtidb::api::TableStatus;
 
 uint32_t counter = 10;
+const static ::rtidb::base::DefaultComparator scmp;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);
@@ -53,6 +59,29 @@ public:
     TabletImplTest() {}
     ~TabletImplTest() {}
 };
+
+bool RollWLogFile(::rtidb::storage::WriteHandle** wh, ::rtidb::storage::LogParts* logs, const std::string& log_path,
+            uint32_t& binlog_index, uint64_t offset, bool append_end = true) {
+    if (*wh != NULL) {
+        if (append_end) {
+            (*wh)->EndLog();
+        }
+        delete *wh;
+        *wh = NULL;
+    }
+    std::string name = ::rtidb::base::FormatToString(binlog_index, 8) + ".log";
+    ::rtidb::base::MkdirRecur(log_path);
+    std::string full_path = log_path + "/" + name;
+    FILE* fd = fopen(full_path.c_str(), "ab+");
+    if (fd == NULL) {
+        PDLOG(WARNING, "fail to create file %s", full_path.c_str());
+        return false;
+    }
+    logs->Insert(binlog_index, offset);
+    *wh = new ::rtidb::storage::WriteHandle(name, fd);
+    binlog_index++;
+    return true;
+}
 
 int MultiDimensionEncode(const std::vector<::rtidb::base::ColumnDesc>& colum_desc, 
             const std::vector<std::string>& input, 
@@ -355,7 +384,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         table_meta->set_tid(id);
         table_meta->set_pid(0);
         table_meta->set_wal(true);
-        table_meta->set_ttl(1);
+        table_meta->set_ttl(100);
         table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
         table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
@@ -414,17 +443,43 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
 	    ASSERT_STREQ("cannot update ttl form nonzero to zero", response.msg().c_str());
     }
     // normal case
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+    ::rtidb::api::PutRequest prequest;
+    prequest.set_pk("test");
+    prequest.set_time(now - 60*60*1000);
+    prequest.set_value("test9");
+    prequest.set_tid(id);
+    prequest.set_pid(0);
+    ::rtidb::api::PutResponse presponse;
+    MockClosure closure;
+    tablet.Put(NULL, &prequest, &presponse,
+            &closure);
+    ASSERT_EQ(0, presponse.code());
+    ::rtidb::api::GetRequest grequest;
+    grequest.set_tid(id);
+    grequest.set_pid(0);
+    grequest.set_key("test");
+    grequest.set_ts(0);
+    ::rtidb::api::GetResponse gresponse;
+    tablet.Get(NULL, &grequest, &gresponse, &closure);
+    ASSERT_EQ(0, gresponse.code());
+    ASSERT_EQ("test9", gresponse.value());
+
     {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
         request.set_pid(0);
         request.set_type(::rtidb::api::kAbsoluteTime);
-        request.set_value(2);
+        request.set_value(50);
         ::rtidb::api::UpdateTTLResponse response;
-        MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        sleep(70);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
         ::rtidb::api::GetTableStatusRequest gr;
         ::rtidb::api::GetTableStatusResponse gres;
         tablet.GetTableStatus(NULL, &gr, &gres, &closure);
@@ -433,7 +488,25 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(2, ts.ttl());
+                ASSERT_EQ(100, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        sleep(80);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(1, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(50, ts.ttl());
                 checked = true;
             }
         }
@@ -1511,6 +1584,154 @@ TEST_F(TabletImplTest, Recover) {
 
 }
 
+TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
+    int old_offset = FLAGS_make_snapshot_threshold_offset;
+    int old_interval = FLAGS_binlog_delete_interval;
+    FLAGS_binlog_delete_interval = 1000;
+    FLAGS_make_snapshot_threshold_offset = 0;
+    uint32_t tid = counter++;
+    ::rtidb::storage::LogParts* log_part = new ::rtidb::storage::LogParts(12, 4, scmp);
+    std::string binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    ::rtidb::storage::WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    int count = 1;
+    for (; count <= 10; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    // not set end falg
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    // no record binlog
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
+    // empty binlog
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    count = 1;
+    for (; count <= 20; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key_new";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value_new" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    binlog_index++;
+    RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset, false);
+    count = 1;
+    for (; count <= 30; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key_xxx";
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value_xxx" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+    }
+    wh->Sync();
+    delete wh;
+    {
+        TabletImpl tablet;
+        tablet.Init();
+        ::rtidb::api::LoadTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(tid);
+        table_meta->set_pid(0);
+        table_meta->set_ttl(0);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::GeneralResponse response;
+        MockClosure closure;
+        tablet.LoadTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        sleep(1);
+        ::rtidb::api::ScanRequest sr;
+        sr.set_tid(tid);
+        sr.set_pid(0);
+        sr.set_pk("key_new");
+        sr.set_st(50);
+        sr.set_et(0);
+        ::rtidb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(20, srp.count());
+
+        sr.set_pk("key");
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(10, srp.count());
+
+        sr.set_pk("key_xxx");
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(30, srp.count());
+
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("test1");
+        prequest.set_time(9528);
+        prequest.set_value("test1");
+        prequest.set_tid(tid);
+        prequest.set_pid(0);
+        ::rtidb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+
+        ::rtidb::api::GeneralRequest grq;
+        grq.set_tid(tid);
+        grq.set_pid(0);
+        ::rtidb::api::GeneralResponse grp;
+        grp.set_code(-1);
+        tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
+        ASSERT_EQ(0, grp.code());
+        sleep(1);
+        std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/MANIFEST";
+        int fd = open(manifest_file.c_str(), O_RDONLY);
+        ASSERT_GT(fd, 0);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        ::rtidb::api::Manifest manifest;
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+        ASSERT_EQ(61, manifest.offset());
+
+        sleep(10);
+        std::vector<std::string> vec;
+        std::string binlog_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
+        ::rtidb::base::GetFileName(binlog_path, vec);
+        ASSERT_EQ(4, vec.size());
+        std::string file_name = binlog_path + "/00000001.log";
+        ASSERT_STREQ(file_name.c_str(), vec[0].c_str());
+        std::string file_name1 = binlog_path + "/00000007.log";
+        ASSERT_STREQ(file_name1.c_str(), vec[3].c_str());
+    }
+    FLAGS_make_snapshot_threshold_offset = old_offset;
+    FLAGS_binlog_delete_interval = old_interval;
+}    
+
 TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
      int32_t old_gc_interval = FLAGS_gc_interval;
     // 1 minute
@@ -2210,6 +2431,3 @@ int main(int argc, char** argv) {
     FLAGS_db_root_path = "/tmp/" + ::rtidb::tablet::GenRand();
     return RUN_ALL_TESTS();
 }
-
-
-

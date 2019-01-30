@@ -46,7 +46,7 @@ import rtidb.api.TabletServer;
 public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private final static Logger logger = LoggerFactory.getLogger(RTIDBClusterClient.class);
     private static Set<String> localIpAddr = new HashSet<String>();
-    private final ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
+    private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
             t.setDaemon(true);
@@ -61,6 +61,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private RTIDBClientConfig config;
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
+    private AtomicBoolean isClose = new AtomicBoolean(false);
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
@@ -96,6 +97,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             }
             
         };
+        isClose.set(false);
         connectToZk();
         onZkConnected();
         tryWatch();
@@ -181,6 +183,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     }
 
     private void checkWatchStatus() {
+        if (isClose.get()) {
+            return;
+        }
         if (!watching.get()) {
             tryWatch();
         }
@@ -317,16 +322,18 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
 
     @Override
     public void close() {
-        clusterGuardThread.shutdown();
-        if (nodeManager != null) {
-            nodeManager.close();
-        }
+        isClose.set(true);
+        // static members need not shutdown
+        // clusterGuardThread.shutdown();
         if (zookeeper != null) {
             try {
                 zookeeper.close();
             } catch (InterruptedException e) {
                 logger.error("fail to close zk", e);
             }
+        }
+        if (nodeManager != null) {
+            nodeManager.close();
         }
         if (baseClient != null) {
             baseClient.stop();

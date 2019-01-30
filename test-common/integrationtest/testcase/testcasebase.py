@@ -197,7 +197,7 @@ class TestCaseBase(unittest.TestCase):
     def ns_create(self, endpoint, metadata_path):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
 
-    def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema):
+    def ns_create_cmd(self, endpoint, name, ttl, partition_num, replica_num, schema = ''):
         cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
         return self.run_client(endpoint, cmd, 'ns_client')
 
@@ -263,8 +263,8 @@ class TestCaseBase(unittest.TestCase):
         cmd = '{} {} {} {}'.format(recovertable, table_name, pid, endpoint)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
 
-    def ns_addreplica(self, ns_endpoint, addreplica, name, pid, replica_endpoint):
-        cmd = '{} {} {} {}'.format(addreplica, name, pid, replica_endpoint)
+    def ns_addreplica(self, ns_endpoint, name, pid, replica_endpoint):
+        cmd = 'addreplica {} {} {}'.format(name, pid, replica_endpoint)
         return self.run_client(ns_endpoint, cmd, 'ns_client')
 
     def ns_gettablepartition(self, ns_endpoint, gettablepartition, name, pid):
