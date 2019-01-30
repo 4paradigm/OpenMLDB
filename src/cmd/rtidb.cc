@@ -2540,20 +2540,20 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("desc: get records for a period of time\n");
             printf("usage: scan tid pid [limit]\n");
             printf("usage: scan tid pid pk starttime endtime [limit]\n");
-            printf("usage: scan tid pid key key_name starttime endtime [limit]\n");
             printf("ex: scan 1 0\n");
             printf("ex: scan 1 0 10\n");
             printf("ex: scan 1 0 key1 1528858466000 1528858300000\n");
             printf("ex: scan 1 0 key1 1528858466000 1528858300000 10\n");
             printf("ex: scan 1 0 key1 0 0 10\n");
-            printf("ex: scan 1 0 card0 card 1528858466000 1528858300000\n");
-            printf("ex: scan 1 0 card0 card 1528858466000 1528858300000 10\n");
         } else if (parts[1] == "sscan") {
             printf("desc: get records for a period of time from multi dimension table\n");
+            printf("usage: sscan tid pid [limit]\n");
             printf("usage: sscan tid pid key key_name starttime endtime [limit]\n");
-            printf("ex: scan 1 0 card0 card 1528858466000 1528858300000\n");
-            printf("ex: scan 1 0 card0 card 1528858466000 1528858300000 10\n");
-            printf("ex: scan 1 0 card0 card 0 0 10\n");
+            printf("ex: sscan 1 0\n");
+            printf("ex: sscan 1 0 10\n");
+            printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000\n");
+            printf("ex: sscan 1 0 card0 card 1528858466000 1528858300000 10\n");
+            printf("ex: sscan 1 0 card0 card 0 0 10\n");
         } else if (parts[1] == "get") {
             printf("desc: get only one record\n");
             printf("usage: get tid pid key ts\n");
@@ -2952,7 +2952,7 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
             delete it;
         }
     } catch (std::exception const& e) {
-        std::cout<< "Invalid args. tid, pid and limit should be uint32_t, st and et should be uint64_t" << std::endl;
+        std::cout<< "Invalid args, tid pid should be uint32_t, st and et should be uint64_t" << std::endl;
     }
 }
 

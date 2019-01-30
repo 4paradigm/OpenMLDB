@@ -318,6 +318,11 @@ class TestCaseBase(unittest.TestCase):
             return self.run_client(endpoint, 'sscan {} {} {} {} {}'.format(
                 tid, pid, ' '.join(value_key), ts_from, ts_to))
 
+    def scan_preview(self, endpoint, tid, pid, limit = ''):
+        cmd = 'scan {} {} {}'.format(tid, pid, limit)
+        result = self.run_client(endpoint, cmd, 'client')
+        return self.parse_scan_result(result)
+
     def get(self, endpoint, tid, pid, vk, ts):
         """
 
