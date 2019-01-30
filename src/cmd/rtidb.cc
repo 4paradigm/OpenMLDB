@@ -2922,79 +2922,34 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
     }
     try {
         uint32_t limit = 0;
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        ::rtidb::api::TableStatus table_status;
-        if (!client->GetTableStatus(tid, pid, true, table_status)) {
-            std::cout << "Fail to get table status" << std::endl;
-            return;
+        if (parts.size() > 6) {
+            limit = boost::lexical_cast<uint32_t>(parts[6]);
         }
-        std::string schema = table_status.schema();
-        if (schema.empty()) {
-            uint32_t limit = 0;
-            if (parts.size() > 6) {
-                limit = boost::lexical_cast<uint32_t>(parts[6]);
-                if (limit > FLAGS_scan_limit_max_num) {
-                    printf("scan error. limit is greater than the max num %u\n", FLAGS_scan_limit_max_num);
-                    return;
-                }
-            } else if (parts.size() < 6) {
-                printf("scan format error\n");
-                printf("usage: scan tid pid key starttime endtime [limit]\n");
-                return;
-            }
-            std::string msg;
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, parts[3],
-                    boost::lexical_cast<uint64_t>(parts[4]), 
-                    boost::lexical_cast<uint64_t>(parts[5]),
-                    limit, msg);
-            if (it == NULL) {
-                std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-            } else {
-                ::rtidb::nameserver::CompressType compress_type = ::rtidb::nameserver::kNoCompress;
-                if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
-                    compress_type = ::rtidb::nameserver::kSnappy;
-                }
-                ShowTableRows(parts[3], it, compress_type);
-                delete it;
-            }
-        } else {
-            ::rtidb::base::KvIterator* it = NULL;
-            std::string msg;
+        std::string msg;
+        ::rtidb::base::KvIterator* it = client->Scan(boost::lexical_cast<uint32_t>(parts[1]), 
+                boost::lexical_cast<uint32_t>(parts[2]),
+                parts[3], boost::lexical_cast<uint64_t>(parts[4]), 
+                boost::lexical_cast<uint64_t>(parts[5]),
+                limit, msg);
+        if (it == NULL) {
+            std::cout << "Fail to scan table. error msg: " << msg << std::endl;
+        }else {
+            bool print = true;
             if (parts.size() >= 7) {
-                limit = parts.size() > 7 ? boost::lexical_cast<uint32_t>(parts[7]) : 0;
-                if (limit > FLAGS_scan_limit_max_num) {
-                    printf("scan error. limit is greater than the max num %u\n", FLAGS_scan_limit_max_num);
-                    return;
+                if (parts[6] == "false") {
+                    print = false;
                 }
-                it = client->Scan(tid, pid, parts[3], 
-                        boost::lexical_cast<uint64_t>(parts[5]), 
-                        boost::lexical_cast<uint64_t>(parts[6]),
-                        parts[4],
-                        limit, msg);
-            } else if (parts.size() == 6) {
-                it = client->Scan(tid, pid, parts[3],
-                        boost::lexical_cast<uint64_t>(parts[4]), 
-                        boost::lexical_cast<uint64_t>(parts[5]),
-                        limit, msg);
-            } else {
-                printf("scan format error\n");
-                printf("usage: scan tid pid key key_name starttime endtime [limit]\n");
-                return;
             }
-            if (it == NULL) {
-                std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-            } else {
-                std::vector<::rtidb::base::ColumnDesc> raw;
-                ::rtidb::base::SchemaCodec codec;
-                codec.Decode(schema, raw);
-                ::rtidb::nameserver::CompressType compress_type = ::rtidb::nameserver::kNoCompress;
-                if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
-                    compress_type = ::rtidb::nameserver::kSnappy;
-                }
-                ShowTableRows(raw, it, compress_type);
-                delete it;
+            std::cout << "#\tTime\tData" << std::endl;
+            uint32_t index = 1;
+            while (it->Valid()) {
+                if (print) {
+                    std::cout << index << "\t" << it->GetKey() << "\t" << it->GetValue().ToString() << std::endl;
+                } 
+                index ++;
+                it->Next();
             }
+            delete it;
         }
     } catch (std::exception const& e) {
         std::cout<< "Invalid args. tid, pid and limit should be uint32_t, st and et should be uint64_t" << std::endl;
@@ -3359,7 +3314,10 @@ void HandleClientSGet(const std::vector<std::string>& parts,
 }
 
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 7) {
+    if (parts.size() == 3 || parts.size() == 4) {
+        TabletPreview(parts, client);
+        return;
+    } else if (parts.size() < 7) {
         std::cout << "Bad scan format" << std::endl;
         return;
     }
