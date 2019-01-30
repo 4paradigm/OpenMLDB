@@ -1,13 +1,17 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.LinkedList;;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import com._4paradigm.rtidb.client.schema.Table;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -16,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.ns.NS.ChangeLeaderRequest;
 import com._4paradigm.rtidb.ns.NS.CreateTableRequest;
 import com._4paradigm.rtidb.ns.NS.DropTableRequest;
@@ -33,19 +38,38 @@ import io.brpc.client.EndPoint;
 import io.brpc.client.RpcBaseClient;
 import io.brpc.client.RpcProxy;
 import io.brpc.client.SingleEndpointRpcClient;
+import io.brpc.client.RpcClientOptions;
 import rtidb.nameserver.NameServer;
 
 public class NameServerClientImpl implements NameServerClient, Watcher {
     private final static Logger logger = LoggerFactory.getLogger(NameServerClientImpl.class);
     private String zkEndpoints;
     private String leaderPath;
-    private ZooKeeper zookeeper;
+    private volatile ZooKeeper zookeeper;
     private SingleEndpointRpcClient rpcClient;
-    private NameServer ns;
+    private volatile NameServer ns;
+    private Watcher notifyWatcher;
+    private AtomicBoolean watching = new AtomicBoolean(true);
+    private AtomicBoolean isClose = new AtomicBoolean(false);
+    private RTIDBClientConfig config;
+    private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
+        public Thread newThread(Runnable r) {
+            Thread t = Executors.defaultThreadFactory().newThread(r);
+            t.setDaemon(true);
+            return t;
+        }
+    });
+
+    public NameServerClientImpl(RTIDBClientConfig config) {
+        this.zkEndpoints = config.getZkEndpoints();
+        this.leaderPath = config.getZkRootPath() + "/leader";
+        this.config = config;
+    }
 
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
+        this.config = null;
     }
 
     @Deprecated
@@ -60,10 +84,41 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
 
     public void init() throws Exception {
+        isClose.set(false);
+        notifyWatcher = new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                logger.info("zookeeper leader node has changed");
+                try {
+                    connectNS();
+                } catch (Exception e) {
+                    logger.error("fail to handle zookeeper node update event", e);
+                } finally {
+                    try {
+                        zookeeper.getChildren(leaderPath, notifyWatcher);
+                        watching.set(true);
+                    } catch (Exception e) {
+                        logger.error("fail to add watch to notify node", e);
+                        watching.set(false);
+                    }
+                }
+            }
+        };
+        connectZk();
+        connectNS();
+        tryWatch();
+        clusterGuardThread.schedule(new Runnable() {
+            @Override
+            public void run() {
+                checkWatchStatus();
+            }
+        }, 1, TimeUnit.MINUTES);
+    }
 
-        zookeeper = new ZooKeeper(zkEndpoints, 10000, this);
+    private void connectZk() throws TabletException, IOException {
+        ZooKeeper localZk = new ZooKeeper(zkEndpoints, 10000, this);
         int tryCnt = 10;
-        while (!zookeeper.getState().isConnected() && tryCnt > 0) {
+        while (!localZk.getState().isConnected() && tryCnt > 0) {
             try {
                 Thread.sleep(1000);
             }catch(InterruptedException e) {
@@ -71,9 +126,23 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             }
             tryCnt --;
         }
-        if (!zookeeper.getState().isConnected()) {
+        if (!localZk.getState().isConnected()) {
             throw new TabletException("fail to connect to zookeeper " + zkEndpoints);
         }
+        ZooKeeper old = zookeeper;
+        if (old != null) {
+            try {
+                old.close();
+                logger.info("close old zookeeper client ok");
+            }catch(Exception e) {
+                logger.error("fail to close old zookeeper client", e);
+            }
+        }
+        zookeeper = localZk;
+        logger.info("switch to new zookeeper client instance ok");
+    }
+
+    private void connectNS() throws Exception {
         List<String> children = zookeeper.getChildren(leaderPath, false);
         if (children.isEmpty()) {
             throw new TabletException("no nameserver avaliable");
@@ -81,14 +150,58 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
         EndPoint endpoint = new EndPoint(new String(bytes));
-        RpcBaseClient bs = new RpcBaseClient();
+        RpcBaseClient bs = null;
+        if (config != null) {
+            RpcClientOptions options = new RpcClientOptions();
+            options.setIoThreadNum(config.getIoThreadNum());
+            options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
+            options.setReadTimeoutMillis(config.getReadTimeout());
+            options.setWriteTimeoutMillis(config.getWriteTimeout());
+            options.setMaxTryTimes(config.getMaxRetryCnt());
+            options.setTimerBucketSize(config.getTimerBucketSize());
+            bs = new RpcBaseClient(options);
+        } else {
+            bs = new RpcBaseClient();
+        }
+        if (rpcClient != null) {
+            rpcClient.stop();
+        }
         rpcClient = new SingleEndpointRpcClient(bs);
         BrpcChannelGroup bcg = new BrpcChannelGroup(endpoint.getIp(), endpoint.getPort(),
                 bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
         rpcClient.updateEndpoint(endpoint, bcg);
         ns = (NameServer) RpcProxy.getProxy(rpcClient, NameServer.class);
         logger.info("connect leader path {} endpoint {} ok", children.get(0), endpoint);
+    }
 
+    private void tryWatch() {
+        try {
+            if (zookeeper == null || !zookeeper.getState().isConnected()) {
+                connectZk();
+                connectNS();
+            }
+            zookeeper.getChildren(leaderPath, notifyWatcher);
+            watching.set(true);
+        } catch (Exception e) {
+            logger.error("fail to add watch to notify node and will retry one minute later", e);
+            watching.set(false);
+        }
+    }
+
+    private void checkWatchStatus() {
+        if (isClose.get()) {
+            return;
+        }
+        if (!watching.get()) {
+            tryWatch();
+        }
+        clusterGuardThread.schedule(new Runnable() {
+
+            @Override
+            public void run() {
+                checkWatchStatus();
+            }
+        }, 1, TimeUnit.MINUTES);
     }
     
     @Override
@@ -132,6 +245,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
     
     public void close() {
+        isClose.set(true);
         try {
             if (zookeeper != null) {
                 zookeeper.close();

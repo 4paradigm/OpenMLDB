@@ -410,7 +410,42 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
     }
     codec.Build();
     return 0;
-}        
+}
+
+int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {
+    try {
+        if (::rtidb::base::IsNumber(pid_group)) {
+            pid_set.insert(boost::lexical_cast<uint32_t>(pid_group));
+        } else if (pid_group.find('-') != std::string::npos) {
+            std::vector<std::string> vec;
+            boost::split(vec, pid_group, boost::is_any_of("-"));
+            if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
+                return -1;
+            }
+            uint32_t start_index = boost::lexical_cast<uint32_t>(vec[0]);
+            uint32_t end_index = boost::lexical_cast<uint32_t>(vec[1]);
+            while (start_index <= end_index) {
+                pid_set.insert(start_index);
+                start_index++;
+            }
+        } else if (pid_group.find(',') != std::string::npos) {
+            std::vector<std::string> vec;
+            boost::split(vec, pid_group, boost::is_any_of(","));
+            for (const auto& pid_str : vec) {
+                if (!::rtidb::base::IsNumber(pid_str)) {
+                    return -1;
+                }
+                pid_set.insert(boost::lexical_cast<uint32_t>(pid_str));
+            }
+        } else {
+            return -1;
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+        return -1;
+    }
+    return 0;
+}
 
 std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const ::rtidb::nameserver::TableInfo& table_info,
             uint32_t pid, std::string& msg) {
@@ -576,18 +611,22 @@ void HandleNSAddReplica(const std::vector<std::string>& parts, ::rtidb::client::
         std::cout << "Bad format" << std::endl;
         return;
     }
-    try {
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        std::string msg;
-        bool ok = client->AddReplica(parts[1], pid, parts[3], msg);
-        if (!ok) {
-            std::cout << "Fail to addreplica. error msg:" << msg  << std::endl;
-            return;
-        }
-        std::cout << "AddReplica ok" << std::endl;
-    } catch(std::exception const& e) {
-        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
-    } 
+    std::set<uint32_t> pid_set;
+    if (SplitPidGroup(parts[2], pid_set) < 0) {
+        printf("pid group[%s] format error\n", parts[2].c_str());
+        return;
+    }
+    if (pid_set.empty()) {
+        std::cout << "has not valid pid" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ok = client->AddReplica(parts[1], pid_set, parts[3], msg);
+    if (!ok) {
+        std::cout << "Fail to addreplica. error msg:" << msg  << std::endl;
+        return;
+    }
+    std::cout << "AddReplica ok" << std::endl;
 }
 
 void HandleNSDelReplica(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -595,18 +634,22 @@ void HandleNSDelReplica(const std::vector<std::string>& parts, ::rtidb::client::
         std::cout << "Bad format" << std::endl;
         return;
     }
-    try {
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        std::string msg;
-        bool ok = client->DelReplica(parts[1], pid, parts[3], msg);
-        if (!ok) {
-            std::cout << "Fail to delreplica. error msg:" << msg << std::endl;
-            return;
-        }
-        std::cout << "DelReplica ok" << std::endl;
-    } catch(std::exception const& e) {
-        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
-    } 
+    std::set<uint32_t> pid_set;
+    if (SplitPidGroup(parts[2], pid_set) < 0) {
+        printf("pid group[%s] format error\n", parts[2].c_str());
+        return;
+    }
+    if (pid_set.empty()) {
+        std::cout << "has not valid pid" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ok = client->DelReplica(parts[1], pid_set, parts[3], msg);
+    if (!ok) {
+        std::cout << "Fail to delreplica. error msg:" << msg << std::endl;
+        return;
+    }
+    std::cout << "DelReplica ok" << std::endl;
 }
     
 void HandleNSClientDropTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
@@ -738,46 +781,16 @@ void HandleNSClientMigrate(const std::vector<std::string>& parts, ::rtidb::clien
         return;
     }
     std::string msg;
-    std::vector<uint32_t> pid_vec;
-    try {
-        if (::rtidb::base::IsNumber(parts[3])) {
-            pid_vec.push_back(boost::lexical_cast<uint32_t>(parts[3]));
-        } else if (parts[3].find('-') != std::string::npos) {
-            std::vector<std::string> vec;
-            boost::split(vec, parts[3], boost::is_any_of("-"));
-            if (vec.size() != 2 || !::rtidb::base::IsNumber(vec[0]) || !::rtidb::base::IsNumber(vec[1])) {
-                printf("pid_group[%s] format error.\n", parts[3].c_str());
-                return;
-            }
-            uint32_t start_index = boost::lexical_cast<uint32_t>(vec[0]);
-            uint32_t end_index = boost::lexical_cast<uint32_t>(vec[1]);
-            while (start_index <= end_index) {
-                pid_vec.push_back(start_index);
-                start_index++;
-            }
-        } else if (parts[3].find(',') != std::string::npos) {
-            std::vector<std::string> vec;
-            boost::split(vec, parts[3], boost::is_any_of(","));
-            for (const auto& pid_str : vec) {
-                if (!::rtidb::base::IsNumber(pid_str)) {
-                    printf("partition[%s] format error.\n", parts[3].c_str());
-                    return;
-                }
-                pid_vec.push_back(boost::lexical_cast<uint32_t>(pid_str));
-            }
-        } else {
-            printf("partition[%s] format error\n", parts[3].c_str());
-            return;
-        }
-    } catch (const std::exception& e) {
-        std::cout << "Invalid args. pid should be uint32_t" << std::endl;
+    std::set<uint32_t> pid_set;
+    if (SplitPidGroup(parts[3], pid_set) < 0) {
+        printf("pid group[%s] format error\n", parts[3].c_str());
         return;
     }
-    if (pid_vec.empty()) {
+    if (pid_set.empty()) {
         std::cout << "has not valid pid" << std::endl;
         return;
     }
-    bool ret = client->Migrate(parts[1], parts[2], pid_vec, parts[4], msg);
+    bool ret = client->Migrate(parts[1], parts[2], pid_set, parts[4], msg);
     if (!ret) {
         std::cout << "failed to migrate partition. error msg: " << msg << std::endl;
         return;
@@ -1755,12 +1768,16 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: makesnapshot table1 0\n");
         } else if (parts[1] == "addreplica") {
             printf("desc: add replica to leader\n");
-            printf("usage: addreplica name pid endpoint\n");
+            printf("usage: addreplica name pid_group endpoint\n");
             printf("ex: addreplica table1 0 172.27.128.31:9527\n");
+            printf("ex: addreplica table1 0,3,5 172.27.128.31:9527\n");
+            printf("ex: addreplica table1 1-5 172.27.128.31:9527\n");
         } else if (parts[1] == "delreplica") {
             printf("desc: delete replica from leader\n\n");
-            printf("usage: delreplica name pid endpoint\n");
+            printf("usage: delreplica name pid_group endpoint\n");
             printf("ex: delreplica table1 0 172.27.128.31:9527\n");
+            printf("ex: delreplica table1 0,3,5 172.27.128.31:9527\n");
+            printf("ex: delreplica table1 1-5 172.27.128.31:9527\n");
         } else if (parts[1] == "confset") {
             printf("desc: update conf\n");
             printf("usage: confset auto_failover true/false\n");
@@ -1794,9 +1811,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: recoverendpoint 172.27.128.31:9527 true 2\n");
         } else if (parts[1] == "migrate") {
             printf("desc: migrate partition form one endpoint to another\n");
-            printf("usage: migrate src_endpoint table_name partition des_endpoint\n");
-            printf("ex: migrate 172.27.2.52:9991 table1 1-10 172.27.2.52:9992\n");
-            printf("ex: migrate 172.27.2.52:9991 table1 15 172.27.2.52:9992\n");
+            printf("usage: migrate src_endpoint table_name pid_group des_endpoint\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1 172.27.2.52:9992\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1,3,5 172.27.2.52:9992\n");
+            printf("ex: migrate 172.27.2.52:9991 table1 1-5 172.27.2.52:9992\n");
         } else if (parts[1] == "gettablepartition") {
             printf("desc: get partition info\n");
             printf("usage: gettablepartition table_name pid\n");

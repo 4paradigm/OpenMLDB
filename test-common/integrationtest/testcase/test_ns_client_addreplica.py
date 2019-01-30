@@ -123,7 +123,7 @@ class TestAddReplicaNs(TestCaseBase):
 
 
     @ddt.data(
-        (None, None, slave1, 'AddReplica ok'),  # 需要log中看是fail的
+        (None, None, slave1, 'Fail to addreplica'), 
         ('notexsit', None, None, 'Fail to addreplica'),
         (None, 10, None, 'Fail to addreplica'),
         (None, None, '127.1.1.1:6666', 'Fail to addreplica'),
@@ -152,6 +152,75 @@ class TestAddReplicaNs(TestCaseBase):
         self.assertIn(exp_msg, rs2)
         self.ns_drop(self.ns_leader, name)
 
+    @ddt.data(
+        ('0', 'AddReplica ok'),
+        ('0-3', 'AddReplica ok'),
+        ('0,2,3', 'AddReplica ok'),
+        ('a-z', 'pid group[a-z] format error'),
+        ('0-10', 'Fail to addreplica'),
+    )
+    @ddt.unpack
+    def test_addreplica_pid_group(self, pid_group, exp_msg):
+        """
+        添加副本一次执行多个分片
+        :return:
+        """
+        name = 't{}'.format(time.time())
+        infoLogger.info(name)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+                                     ('table_partition', '"{}"'.format(self.leader), '"0-5"', 'true'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs1)
+        rs2 = self.ns_addreplica(self.ns_leader, name, pid_group, self.slave1)
+        self.assertIn(exp_msg, rs2)
+        if 'AddReplica ok' in rs2:
+            time.sleep(20)
+            rs3 = self.showtable(self.ns_leader, name)
+            self.tid = int(rs3.keys()[0][1])
+            self.assertIn((name, str(self.tid), '0', self.slave1), rs3)
+            if pid_group == "0-3":
+                self.assertIn((name, str(self.tid), '1', self.slave1), rs3)
+                self.assertIn((name, str(self.tid), '2', self.slave1), rs3)
+                self.assertIn((name, str(self.tid), '3', self.slave1), rs3)
+            elif pid_group == '0,2,3':
+                self.assertIn((name, str(self.tid), '2', self.slave1), rs3)
+                self.assertIn((name, str(self.tid), '3', self.slave1), rs3)
+            
+        self.ns_drop(self.ns_leader, name)
+
+    @ddt.data(
+        ('pid group[m] format error', 'm', conf.tb_endpoints[1]),
+        ('pid group[-1] format error', '-1', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '1,2,10', conf.tb_endpoints[1]),
+        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1]),
+        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '1-10', conf.tb_endpoints[1]),
+        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1]),
+        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1]),
+        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '5-7', conf.tb_endpoints[1]),
+        ('Fail to addreplica', '5,6,7', conf.tb_endpoints[1]),
+    )
+    @ddt.unpack
+    def test_addreplica_pid_group_error(self, exp_msg, pid_group, endpoint):
+        """
+        添加失败
+        :return:
+        """
+        name = 't{}'.format(time.time())
+        infoLogger.info(name)
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+                                     ('table_partition', '"{}"'.format(self.leader), '"0-8"', 'true'),
+                                     ('table_partition', '"{}"'.format(self.slave1), '"0-5"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs1)
+        rs2 = self.ns_addreplica(self.ns_leader, name, pid_group, endpoint)
+        self.assertIn(exp_msg, rs2)
+
     @multi_dimension(False)
     def test_addreplica_check_binlog_sync_progress(self):
         """
@@ -179,7 +248,7 @@ class TestAddReplicaNs(TestCaseBase):
         replica_endpoint = endponints - table_endpoints
         slave = replica_endpoint.pop()
         row = ''
-        self.ns_addreplica(self.ns_leader, 'addreplica', name, pid, slave)
+        self.ns_addreplica(self.ns_leader, name, pid, slave)
         for repeat in range(10):
             time.sleep(2)
             rs = self.ns_showopstatus(self.ns_leader)
@@ -208,6 +277,7 @@ class TestAddReplicaNs(TestCaseBase):
         infoLogger.info(name)
         self.stop_client(self.ns_leader)
         self.stop_client(self.ns_slaver)
+        time.sleep(1)
         endponints = self.get_tablet_endpoints()
         conf = 'nameserver'
 
@@ -221,7 +291,7 @@ class TestAddReplicaNs(TestCaseBase):
         self.start_client(self.ns_leader,'nameserver')
         time.sleep(1)
         self.start_client(self.ns_slaver,'nameserver')
-        time.sleep(1)
+        time.sleep(5)
         self.get_new_ns_leader()
 
         rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
@@ -243,12 +313,11 @@ class TestAddReplicaNs(TestCaseBase):
         replica_endpoint = endponints - table_endpoints
         slave = replica_endpoint.pop()
 
-        self.ns_addreplica(self.ns_leader, 'addreplica', name, pid, slave)
+        self.ns_addreplica(self.ns_leader, name, pid, slave)
         for i in range(10):
             time.sleep(2)
-            rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0], [1, 2, 3, 4, 5, 6])
-            op_id = tablestatus.keys()[0][0]
+            rs = self.showopstatus(self.ns_leader, name, pid)
+            op_id = rs.keys()[0]
             ops = self.showopstatus(self.ns_leader)
             if ops[int(op_id)][1] != 'kDone':
                 continue
