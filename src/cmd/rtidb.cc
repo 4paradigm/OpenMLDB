@@ -2959,24 +2959,29 @@ void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::Ta
                 delete it;
             }
         } else {
-            if (parts.size() > 7) {
-                limit = boost::lexical_cast<uint32_t>(parts[7]);
+            ::rtidb::base::KvIterator* it = NULL;
+            std::string msg;
+            if (parts.size() >= 7) {
+                limit = parts.size() > 7 ? boost::lexical_cast<uint32_t>(parts[7]) : 0;
                 if (limit > FLAGS_scan_limit_max_num) {
                     printf("scan error. limit is greater than the max num %u\n", FLAGS_scan_limit_max_num);
                     return;
                 }
-            } else if (parts.size() < 7) {
+                it = client->Scan(tid, pid, parts[3], 
+                        boost::lexical_cast<uint64_t>(parts[5]), 
+                        boost::lexical_cast<uint64_t>(parts[6]),
+                        parts[4],
+                        limit, msg);
+            } else if (parts.size() == 6) {
+                it = client->Scan(tid, pid, parts[3],
+                        boost::lexical_cast<uint64_t>(parts[4]), 
+                        boost::lexical_cast<uint64_t>(parts[5]),
+                        limit, msg);
+            } else {
                 printf("scan format error\n");
                 printf("usage: scan tid pid key key_name starttime endtime [limit]\n");
                 return;
             }
-            std::string msg;
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid,  
-                    parts[3], 
-                    boost::lexical_cast<uint64_t>(parts[5]), 
-                    boost::lexical_cast<uint64_t>(parts[6]),
-                    parts[4],
-                    limit, msg);
             if (it == NULL) {
                 std::cout << "Fail to scan table. error msg: " << msg << std::endl;
             } else {
