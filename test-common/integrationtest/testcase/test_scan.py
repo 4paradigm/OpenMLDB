@@ -75,8 +75,8 @@ class TestScan(TestCaseBase):
             self.put(self.leader, self.tid, self.pid, 'testkey0', 11, 'testvalue0')
             self.put(self.leader, self.tid, self.pid, 'testkey0', 22, 'testvalue1')
             self.put(self.leader, self.tid, self.pid, 'testkey1', 33, 'testvalue2')
-        rs2 = self.scan_preview(self.leader, self.tid, self.pid)
-        rs3 = self.scan_preview(self.leader, self.tid, self.pid, 2)
+        rs2 = self.preview(self.leader, self.tid, self.pid)
+        rs3 = self.preview(self.leader, self.tid, self.pid, 2)
         infoLogger.info(rs2)
         if self.multidimension:
             self.assertEqual(3, len(rs2))

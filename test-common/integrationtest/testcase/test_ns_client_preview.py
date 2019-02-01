@@ -10,7 +10,7 @@ import libs.utils as utils
 
 
 @ddt.ddt
-class TestScan(TestCaseBase):
+class TestPreview(TestCaseBase):
 
     def test_preview_kv(self):
         """
@@ -27,13 +27,13 @@ class TestScan(TestCaseBase):
         rs3 = self.ns_put_kv(self.ns_leader, 't1', 'testkey1', '33', 'testvalue2')
         self.assertIn('Put ok', rs3)
 
-        rs4 = self.ns_scan_preview(self.ns_leader, 't1', 2)
+        rs4 = self.ns_preview(self.ns_leader, 't1', 2)
         self.assertEqual(2, len(rs4))
         self.assertEqual(rs4[0]['key'], 'testkey0')
         self.assertEqual(rs4[0]['data'], 'testvalue1')
         self.assertEqual(rs4[1]['key'], 'testkey0')
         self.assertEqual(rs4[1]['data'], 'testvalue0')
-        rs5 = self.ns_scan_preview(self.ns_leader, 't1')
+        rs5 = self.ns_preview(self.ns_leader, 't1')
         self.assertEqual(3, len(rs5))
         self.assertEqual(rs5[0]['key'], 'testkey0')
         self.assertEqual(rs5[0]['data'], 'testvalue1')
@@ -69,14 +69,14 @@ class TestScan(TestCaseBase):
         rs3 = self.ns_put_multi(self.ns_leader, name, 33, ['card1', 'mcc2', '20'])
         self.assertIn('Put ok', rs3)
 
-        rs4 = self.ns_scan_preview(self.ns_leader, name, 2)
+        rs4 = self.ns_preview(self.ns_leader, name, 2)
         self.assertEqual(2, len(rs4))
         self.assertEqual(rs4[0]['k1'], 'card1')
         self.assertEqual(rs4[0]['k2'], 'mcc2')
         self.assertEqual(rs4[0]['k3'], '20')
         self.assertEqual(rs4[1]['k1'], 'card0')
         self.assertEqual(rs4[1]['k2'], 'mcc1')
-        rs5 = self.ns_scan_preview(self.ns_leader, name)
+        rs5 = self.ns_preview(self.ns_leader, name)
         self.assertEqual(3, len(rs5))
         self.assertEqual(rs5[0]['k1'], 'card1')
         self.assertEqual(rs5[0]['k2'], 'mcc2')
@@ -87,5 +87,5 @@ class TestScan(TestCaseBase):
         self.assertEqual(rs5[2]['k2'], 'mcc0')
 
 if __name__ == "__main__":
-    load(TestScan)
+    load(TestPreview)
 

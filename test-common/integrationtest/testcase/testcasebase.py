@@ -213,8 +213,8 @@ class TestCaseBase(unittest.TestCase):
             value.append(cur_map)    
         return value
 
-    def ns_scan_preview(self, endpoint, name, limit = ''):
-        cmd = 'scan {} {}'.format(name, limit)
+    def ns_preview(self, endpoint, name, limit = ''):
+        cmd = 'preview {} {}'.format(name, limit)
         result = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_scan_result(result)
 
@@ -318,8 +318,8 @@ class TestCaseBase(unittest.TestCase):
             return self.run_client(endpoint, 'sscan {} {} {} {} {}'.format(
                 tid, pid, ' '.join(value_key), ts_from, ts_to))
 
-    def scan_preview(self, endpoint, tid, pid, limit = ''):
-        cmd = 'scan {} {} {}'.format(tid, pid, limit)
+    def preview(self, endpoint, tid, pid, limit = ''):
+        cmd = 'preview {} {} {}'.format(tid, pid, limit)
         result = self.run_client(endpoint, cmd, 'client')
         return self.parse_scan_result(result)
 
