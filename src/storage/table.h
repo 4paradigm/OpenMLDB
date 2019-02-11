@@ -123,6 +123,8 @@ public:
         return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
     }
 
+    int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
+
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
     uint64_t GetRecordIdxByteSize();

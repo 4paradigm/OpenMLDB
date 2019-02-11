@@ -654,8 +654,7 @@ void TabletImpl::Count(RpcController* controller,
         response->set_msg("table is unavailable now");
         return;
     }
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    uint32_t index = 0;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -665,40 +664,18 @@ void TabletImpl::Count(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewIterator(iit->second,
-                                request->key(), ticket);
-    }else {
-        it = table->NewIterator(request->key(), ticket);
+        index = iit->second;
     }
-    if (it == NULL) {
+    uint64_t count = 0;
+    if (table->GetCount(index, request->key(), count) < 0) {
         response->set_code(30);
-        response->set_msg("idx name not found");
-        return;
+        response->set_msg("key not found");
+    } else {
+        response->set_code(0);
+        response->set_msg("ok");
+        response->set_count(count);
     }
-    bool remove_duplicated_record = false;
-    if (request->has_enable_remove_duplicated_record()) {
-        remove_duplicated_record = request->enable_remove_duplicated_record();
-    }
-    it->SeekToFirst();
-    uint64_t end_time = table->GetExpireTime();
-    PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
-    uint64_t scount = 0;
-    uint64_t last_time = 0;
-    while (it->Valid()) {
-        if (it->GetKey() <= end_time) {
-            break;
-        }
-        // skip duplicate record 
-        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
-            PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", request->key().c_str(), it->GetKey());
-        } else {
-            scount ++;
-        }
-        last_time = it->GetKey();
-        it->Next();
-    }
-    response->set_code(0);
-    response->set_count(scount);
+    return;
 }
 
 void TabletImpl::Traverse(RpcController* controller,

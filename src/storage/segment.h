@@ -110,10 +110,15 @@ public:
         refs_.fetch_sub(1, std::memory_order_relaxed);
     }
 
+    uint64_t GetCount() {
+        return count_.load(std::memory_order_relaxed);
+    }
+
 public:
     rtidb::base::Slice key;
     TimeEntries entries;
     std::atomic<uint64_t> refs_;
+    std::atomic<uint64_t> count_;
     friend Segment;
 };
 
@@ -168,6 +173,8 @@ public:
     KeyEntries* GetKeyEntries() {
         return entries_;
     }
+
+    int GetCount(const Slice& key, uint64_t& count);
 
 private:
     void FreeList(const Slice& pk, 
