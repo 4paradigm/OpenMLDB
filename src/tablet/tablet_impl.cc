@@ -654,7 +654,32 @@ void TabletImpl::Count(RpcController* controller,
         response->set_msg("table is unavailable now");
         return;
     }
-    uint32_t index = 0;
+    if (!request->filter_expired_data()) {
+        uint32_t index = 0;
+        if (request->has_idx_name() && request->idx_name().size() > 0) {
+            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+            if (iit == table->GetMapping().end()) {
+                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                      request->tid(), request->pid());
+                response->set_code(30);
+                response->set_msg("idx name not found");
+                return;
+            }
+            index = iit->second;
+        }
+        uint64_t count = 0;
+        if (table->GetCount(index, request->key(), count) < 0) {
+            response->set_code(30);
+            response->set_msg("key not found");
+        } else {
+            response->set_code(0);
+            response->set_msg("ok");
+            response->set_count(count);
+        }
+        return;
+    }
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -664,18 +689,34 @@ void TabletImpl::Count(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        index = iit->second;
-    }
-    uint64_t count = 0;
-    if (table->GetCount(index, request->key(), count) < 0) {
-        response->set_code(30);
-        response->set_msg("key not found");
+        it = table->NewIterator(iit->second,
+                                request->key(), ticket);
     } else {
-        response->set_code(0);
-        response->set_msg("ok");
-        response->set_count(count);
+        it = table->NewIterator(request->key(), ticket);
     }
-    return;
+    if (it == NULL) {
+        response->set_code(30);
+        response->set_msg("idx name not found");
+        return;
+    }
+    it->SeekToFirst();
+    uint64_t end_time = table->GetExpireTime();
+    PDLOG(DEBUG, "end_time %lu", end_time);
+    uint64_t scount = 0;
+    uint64_t ttl = table->GetTTL();
+    while (it->Valid()) {
+        if (it->GetKey() <= end_time) {
+            break;
+        }
+        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime && scount >= ttl) {
+            break;
+        }
+        scount ++;
+        it->Next();
+    }
+    delete it;
+    response->set_code(0);
+    response->set_count(scount);
 }
 
 void TabletImpl::Traverse(RpcController* controller,

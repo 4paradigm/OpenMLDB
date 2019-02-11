@@ -782,12 +782,14 @@ bool TabletClient::Get(uint32_t tid,
 }
 
 bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
-            const std::string& idx_name, uint64_t& value, std::string& msg) {
+            const std::string& idx_name, bool filter_expired_data,
+            uint64_t& value, std::string& msg) {
     ::rtidb::api::CountRequest request;
     ::rtidb::api::CountResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
+    request.set_filter_expired_data(filter_expired_data);
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
     }

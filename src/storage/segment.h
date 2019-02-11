@@ -77,8 +77,8 @@ private:
 
 class KeyEntry {
 public:
-    KeyEntry(const char* data, uint32_t size):key(data, size, true), entries(12, 4, tcmp), refs_(0){}
-    KeyEntry(const char* data, uint32_t size, uint8_t height):key(data, size, true), entries(height, 4, tcmp), refs_(0){}
+    KeyEntry(): entries(12, 4, tcmp), refs_(0), count_(0){}
+    KeyEntry(uint8_t height): entries(height, 4, tcmp), refs_(0), count_(0){}
     ~KeyEntry() {}
 
     // just return the count of datablock
@@ -115,7 +115,6 @@ public:
     }
 
 public:
-    rtidb::base::Slice key;
     TimeEntries entries;
     std::atomic<uint64_t> refs_;
     std::atomic<uint64_t> count_;
