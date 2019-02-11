@@ -167,6 +167,8 @@ public:
     bool GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     bool GetTableStatus(uint32_t tid, uint32_t pid,
                     ::rtidb::api::TableStatus& table_status);
+    bool GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
+                    ::rtidb::api::TableStatus& table_status);
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term, uint64_t& offset);
 

@@ -391,7 +391,11 @@ message ChangeRoleResponse {
 }
 
 // Get all table status information on tablet
-message GetTableStatusRequest {}
+message GetTableStatusRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional bool need_schema = 3 [default = false];
+}
 
 message TsIdxStatus {
     optional string idx_name = 1;
@@ -418,6 +422,7 @@ message TableStatus {
     optional TTLType ttl_type = 16;
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
+    optional bytes schema = 19;
 }
 
 message GetTableStatusResponse {
