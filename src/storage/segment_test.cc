@@ -27,7 +27,7 @@ public:
 
 TEST_F(SegmentTest, Size) {
     ASSERT_EQ(16, sizeof(DataBlock));
-    ASSERT_EQ(48, sizeof(KeyEntry));
+    ASSERT_EQ(40, sizeof(KeyEntry));
 }
 
 TEST_F(SegmentTest, DataBlock) {
