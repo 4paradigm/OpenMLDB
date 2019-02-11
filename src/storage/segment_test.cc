@@ -82,6 +82,28 @@ TEST_F(SegmentTest, PutAndScan) {
    ASSERT_TRUE(it->Valid());
 }
 
+TEST_F(SegmentTest, GetCount) {
+   Segment segment; 
+   Slice pk("test1");
+   std::string value = "test0";
+   uint64_t count = 0;
+   segment.Put(pk, 9527, value.c_str(), value.size());
+   segment.Put(pk, 9528, value.c_str(), value.size());
+   segment.Put(pk, 9529, value.c_str(), value.size());
+   ASSERT_EQ(0, segment.GetCount(pk, count));
+   ASSERT_EQ(3, count);
+   segment.Put(pk, 9530, value.c_str(), value.size());
+   ASSERT_EQ(0, segment.GetCount(pk, count));
+   ASSERT_EQ(4, count);
+
+   uint64_t gc_idx_cnt = 0;
+   uint64_t gc_record_cnt = 0;
+   uint64_t gc_record_byte_size = 0;
+   segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+   ASSERT_EQ(0, segment.GetCount(pk, count));
+   ASSERT_EQ(2, count);
+}
+
 TEST_F(SegmentTest, Iterator) {
    Segment segment; 
    Slice pk("test1");
