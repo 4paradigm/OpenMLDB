@@ -25,6 +25,11 @@ public:
     ~SegmentTest() {}
 };
 
+TEST_F(SegmentTest, Size) {
+    ASSERT_EQ(16, sizeof(DataBlock));
+    ASSERT_EQ(48, sizeof(KeyEntry));
+}
+
 TEST_F(SegmentTest, DataBlock) {
     const char* test = "test";
     DataBlock* db = new DataBlock(1, test, 4);
@@ -35,7 +40,6 @@ TEST_F(SegmentTest, DataBlock) {
     ASSERT_EQ('t', db->data[3]);
     delete db;
 }
-
 
 TEST_F(SegmentTest, PutAndGet) {
    Segment segment; 

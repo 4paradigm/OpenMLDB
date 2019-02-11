@@ -1040,30 +1040,36 @@ void TabletImpl::GetTableSchema(RpcController* controller,
             const ::rtidb::api::GetTableSchemaRequest* request,
             ::rtidb::api::GetTableSchemaResponse* response,
             Closure* done) {
+    brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         response->set_code(-1);
         response->set_msg("table not found");
         PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
                 request->pid());
-        done->Run();
         return;
     }
     response->set_code(0);
     response->set_msg("ok");
     response->set_schema(table->GetSchema());
-    done->Run();
 }
 
 void TabletImpl::GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,
             Closure* done) {
+    brpc::ClosureGuard done_guard(done);        
     std::lock_guard<std::mutex> lock(mu_);        
     Tables::iterator it = tables_.begin();
     for (; it != tables_.end(); ++it) {
+        if (request->has_tid() && request->tid() != it->first) {
+            continue;
+        }
         auto pit = it->second.begin();
         for (; pit != it->second.end(); ++pit) {
+            if (request->has_pid() && request->pid() != pit->first) {
+                continue;
+            }
             std::shared_ptr<Table> table = pit->second;
             ::rtidb::api::TableStatus* status = response->add_all_table_status();
             status->set_mode(::rtidb::api::TableMode::kTableFollower);
@@ -1107,10 +1113,12 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             if (replicator) {
                 status->set_offset(replicator->GetOffset());
             }
+            if (request->has_need_schema() && request->need_schema()) {
+                status->set_schema(table->GetSchema());
+            }
         }
     }
     response->set_code(0);
-    done->Run();
 }
 
 void TabletImpl::SetExpire(RpcController* controller,

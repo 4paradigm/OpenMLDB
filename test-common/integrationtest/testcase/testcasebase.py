@@ -201,23 +201,32 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
-        cmd = 'scan ' + name + ' ' + pk + ' ' + start_time + ' ' + end_time + ' ' + limit
-        return self.run_client(endpoint, cmd, 'ns_client')
-
-    def ns_scan_multi(self, endpoint, name, pk, idx_name, start_time, end_time, limit = ''):
-        cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
-        result = self.run_client(endpoint, cmd, 'ns_client')
+    def parse_scan_result(self, result):    
         arr = result.split("\n")
-        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        key_arr = re.sub(' +', ' ', arr[0]).strip().split(" ")
         value = []
         for i in range(2, len(arr)):
             record = re.sub(' +', ' ', arr[i]).strip().split(" ")
             cur_map = {}
             for idx in range(len(key_arr)):
-                cur_map[key_arr[idx]] = record[idx+2]
+                cur_map[key_arr[idx]] = record[idx]
             value.append(cur_map)    
         return value
+
+    def ns_preview(self, endpoint, name, limit = ''):
+        cmd = 'preview {} {}'.format(name, limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        return self.parse_scan_result(result)
+
+    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
+        cmd = 'scan {} {} {} {} {}'.format(name, pk, start_time, end_time, limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        return self.parse_scan_result(result)
+
+    def ns_scan_multi(self, endpoint, name, pk, idx_name, start_time, end_time, limit = ''):
+        cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        return self.parse_scan_result(result)
 
     def ns_get_kv(self, endpoint, name, key, ts):
         cmd = 'get ' + name + ' ' + key+ ' ' + ts
@@ -308,6 +317,11 @@ class TestCaseBase(unittest.TestCase):
             value_key = ['{} {}'.format(v, k) for k, v in vk.items()]
             return self.run_client(endpoint, 'sscan {} {} {} {} {}'.format(
                 tid, pid, ' '.join(value_key), ts_from, ts_to))
+
+    def preview(self, endpoint, tid, pid, limit = ''):
+        cmd = 'preview {} {} {}'.format(tid, pid, limit)
+        result = self.run_client(endpoint, cmd, 'client')
+        return self.parse_scan_result(result)
 
     def get(self, endpoint, tid, pid, vk, ts):
         """
