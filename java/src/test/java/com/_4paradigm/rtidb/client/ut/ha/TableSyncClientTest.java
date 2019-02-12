@@ -130,7 +130,7 @@ public class TableSyncClientTest {
             Thread.sleep(1000 * 5);
             List<TableInfo> tables = nsc.showTable(name);
             Assert.assertTrue(tables.get(0).getTablePartition(0).getRecordCnt() == 1);
-            Assert.assertEquals(tables.get(0).getTablePartition(0).getRecordByteSize(), 243);
+            Assert.assertEquals(tables.get(0).getTablePartition(0).getRecordByteSize(), 235);
 
         } catch (Exception e) {
             e.printStackTrace();
