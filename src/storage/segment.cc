@@ -102,6 +102,19 @@ bool Segment::Get(const Slice& key,
     return true;
 }
 
+bool Segment::Delete(const Slice& key) {
+    std::lock_guard<std::mutex> lock(mu_);
+    KeyEntry* entry = entries_->Get(key);
+    if (entry == NULL || key.compare(entry->key) != 0) {
+        return false;
+    }
+    if (entries_->Remove(key) == NULL) {
+        return false;
+    }
+    entry->UnRef();
+    return true;
+}
+
 void Segment::FreeList(const Slice& pk, 
                        ::rtidb::base::Node<uint64_t, DataBlock*>* node,
                        uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
@@ -135,6 +148,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = it->GetValue();
+        entry->Ref();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -142,7 +156,10 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
                 node = entry->entries.SplitByPos(keep_cnt);
             }
         }
-        FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        uint64_t entry_gc_idx_cnt = 0;
+        FreeList(it->GetKey(), node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        gc_idx_cnt += entry_gc_idx_cnt;
+        entry->UnRef();
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4Head] segment gc keep cnt %lu consumed %lld, count %lld", keep_cnt,
@@ -166,10 +183,12 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = it->GetValue();
+        entry->Ref();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
         if (node == NULL || node->GetKey() > time) {
             PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
             it->Next();
+            entry->UnRef();
             continue;
         }
         node = NULL;
@@ -177,7 +196,10 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
         }
-        FreeList(it->GetKey(), node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        uint64_t entry_gc_idx_cnt = 0;
+        FreeList(it->GetKey(), node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        gc_idx_cnt += entry_gc_idx_cnt;
+        entry->UnRef();
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
@@ -185,7 +207,6 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
-
 
 // Iterator
 Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {

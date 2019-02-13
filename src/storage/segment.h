@@ -107,7 +107,12 @@ public:
     }
 
     void UnRef() {
-        refs_.fetch_sub(1, std::memory_order_relaxed);
+        if (refs_.load(std::memory_order_relaxed) <= 0) {
+            Release();
+            delete this;
+        } else {
+            refs_.fetch_sub(1, std::memory_order_relaxed);
+        }
     }
 
 public:
@@ -146,6 +151,8 @@ public:
     bool Get(const Slice& key,
              uint64_t time,
              DataBlock** block);
+
+    bool Delete(const Slice& key);
 
     uint64_t Release();
     // gc with specify time, delete the data before time 

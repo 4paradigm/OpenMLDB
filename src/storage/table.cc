@@ -162,6 +162,21 @@ bool Table::Put(const Slice& pk,
     return true;
 }
 
+bool Table::Delete(const std::string& pk, uint32_t idx) {
+    if (idx >= idx_cnt_) {
+        return false;
+    }
+    Slice spk(pk);
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+    }
+    Segment* segment = segments_[idx][seg_idx];
+    PDLOG(DEBUG, "delete index %u with pk %s for tid %u pid %u ok", idx,
+               spk.data(), id_, pid_);
+    return segment->Delete(spk);
+}
+
 uint64_t Table::Release() {
     if (segment_released_) {
         return 0;

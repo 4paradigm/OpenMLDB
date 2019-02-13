@@ -635,6 +635,50 @@ void TabletImpl::Scan(RpcController* controller,
     done->Run();
 }
 
+void TabletImpl::Delete(RpcController* controller,
+              const ::rtidb::api::DeleteRequest* request,
+              ::rtidb::api::GeneralResponse* response,
+              Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    if (!table) {
+        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(10);
+        response->set_msg("table not found");
+        return;
+    }
+    if (!table->IsLeader()) {
+        PDLOG(DEBUG, "table with tid %u, pid %u is follower and it's readonly", request->tid(),
+                request->pid());
+        response->set_code(20);
+        response->set_msg("table is follower, and it's readonly");
+        return;
+    }
+    if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+                      request->tid(), request->pid());
+        response->set_code(20);
+        response->set_msg("table is unavailable now");
+        return;
+    }
+    uint32_t idx = 0;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(30);
+            response->set_msg("idx name not found");
+            return;
+        }
+        idx = iit->second;
+    }
+    table->Delete(request->key(), idx);
+    response->set_code(0);
+    response->set_msg("ok");
+    return;
+}
+
 void TabletImpl::ChangeRole(RpcController* controller, 
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,

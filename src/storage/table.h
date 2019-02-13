@@ -80,6 +80,8 @@ public:
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
+    bool Delete(const std::string& pk, uint32_t idx);
+
     // use the first demission
     Iterator* NewIterator(const std::string& pk, Ticket& ticket);
 

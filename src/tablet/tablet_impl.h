@@ -83,6 +83,11 @@ public:
               ::rtidb::api::ScanResponse* response,
               Closure* done);
 
+    void Delete(RpcController* controller,
+              const ::rtidb::api::DeleteRequest* request,
+              ::rtidb::api::GeneralResponse* response,
+              Closure* done);
+
     void CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,

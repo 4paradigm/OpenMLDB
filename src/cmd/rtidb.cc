@@ -2252,6 +2252,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         printf("sscan - get records for a period of time from multi dimension table\n");
         printf("get - get only one record\n");
         printf("sget - get only one record from multi dimension table\n");
+        printf("delete - delete pk\n");
         printf("addreplica - add replica to leader\n");
         printf("delreplica - delete replica from leader\n");
         printf("makesnapshot - make snapshot\n");
@@ -2315,6 +2316,11 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("usage: sget tid pid key key_name ts\n");
             printf("ex: sget 1 0 card0 card 1528858466000\n");
             printf("ex: sget 1 0 card0 card 0\n");
+        } else if (parts[1] == "delete") {
+            printf("desc: delete pk\n");
+            printf("usage: delete tid pid key [key_name]\n");
+            printf("ex: delete 1 0 key1\n");
+            printf("ex: delete 1 0 card0 card\n");
         } else if (parts[1] == "addreplica") {
             printf("desc: add replica to leader\n");
             printf("usage: addreplica tid pid endpoint\n");
@@ -3169,6 +3175,30 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
     } 
 }
 
+void HandleClientDelete(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "Bad delete format" << std::endl;
+        return;
+    }
+    try {
+        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        std::string msg;
+        std::string idx_name;
+        if (parts.size() > 4) {
+            idx_name = parts[4];
+        }
+        if (client->Delete(tid, pid, parts[3], idx_name, msg)) {
+            std::cout << "Delete ok" << std::endl;
+        } else {
+            std::cout << "Delete failed" << std::endl; 
+        }
+    } catch (std::exception const& e) {
+        std::cout<< "Invalid args, tid pid should be uint32_t" << std::endl;
+    }
+
+}
+
 void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     uint64_t st = 999;
     uint64_t et = 0;
@@ -3240,6 +3270,8 @@ void StartClient() {
             HandleClientScan(parts, &client);
         } else if (parts[0] == "sscan") {
             HandleClientSScan(parts, &client);
+        } else if (parts[0] == "delete") {
+            HandleClientDelete(parts, &client);
         } else if (parts[0] == "showschema") {
             HandleClientShowSchema(parts, &client);
         } else if (parts[0] == "getfollower") {

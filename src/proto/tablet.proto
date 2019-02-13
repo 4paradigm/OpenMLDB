@@ -149,8 +149,15 @@ message PutResponse {
 	optional string msg = 2;
 }
 
+message DeleteRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string key = 3;
+    optional string idx_name = 4;
+}
+
 message GeneralRequest {
-	required int32 tid = 1;
+    required int32 tid = 1;
     required int32 pid = 2;
     optional TaskInfo task_info = 3;
 }
@@ -483,14 +490,15 @@ message HttpResponse { }
 service TabletServer {
 
     // write and read api for client
-	  rpc Put(PutRequest) returns (PutResponse);
+    rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
-	  rpc Scan(ScanRequest) returns (ScanResponse);
+    rpc Scan(ScanRequest) returns (ScanResponse);
+    rpc Delete(DeleteRequest) returns (GeneralResponse);
 
     // table api for master
-	  rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+    rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
-	  rpc DropTable(DropTableRequest) returns (DropTableResponse);
+    rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
@@ -498,7 +506,7 @@ service TabletServer {
     rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
 
     // replication api for master
-	  rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
+    rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
     rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
     rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);
