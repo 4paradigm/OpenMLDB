@@ -12,7 +12,6 @@
 #include <vector>
 #include <map>
 #include "storage/segment.h"
-#include "storage/ticket.h"
 #include <atomic>
 #include "proto/tablet.pb.h"
 
@@ -83,9 +82,9 @@ public:
     bool Delete(const std::string& pk, uint32_t idx);
 
     // use the first demission
-    Iterator* NewIterator(const std::string& pk, Ticket& ticket);
+    Iterator* NewIterator(const std::string& pk);
 
-    Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
+    Iterator* NewIterator(uint32_t index, const std::string& pk);
     // release all memory allocated
     uint64_t Release();
 

@@ -15,7 +15,7 @@ namespace storage {
 
 const static uint32_t DATA_BLOCK_BYTE_SIZE = sizeof(DataBlock);
 const static uint32_t KEY_ENTRY_BYTE_SIZE = sizeof(KeyEntry);
-const static uint32_t ENTRY_NODE_SIZE = sizeof(::rtidb::base::Node<::rtidb::base::Slice, void*>);
+const static uint32_t ENTRY_NODE_SIZE = sizeof(::rtidb::base::Node<::rtidb::base::Slice, std::shared_ptr<KeyEntry>>);
 const static uint32_t DATA_NODE_SIZE = sizeof(::rtidb::base::Node<uint64_t, void*>);
 
 static inline uint32_t GetRecordSize(uint32_t value_size) {

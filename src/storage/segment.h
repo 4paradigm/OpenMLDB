@@ -15,7 +15,7 @@
 #include "base/slice.h"
 #include <mutex>
 #include <atomic>
-#include "storage/ticket.h"
+#include <memory>
 
 namespace rtidb {
 namespace storage {
@@ -24,7 +24,7 @@ namespace storage {
 using ::rtidb::base::Slice;
 
 class Segment;
-class Ticket;
+class KeyEntry;
 
 struct DataBlock {
     // dimension count down
@@ -60,7 +60,7 @@ typedef ::rtidb::base::Skiplist<uint64_t, DataBlock* , TimeComparator> TimeEntri
 
 class Iterator {
 public:
-    Iterator(TimeEntries::Iterator* it);
+    Iterator(std::shared_ptr<KeyEntry> entry, TimeEntries::Iterator* it);
     ~Iterator();
     void Seek(const uint64_t& time);
     bool Valid() const;
@@ -71,15 +71,18 @@ public:
     void SeekToLast();
     uint32_t GetSize();
 private:
+    std::shared_ptr<KeyEntry> entry_; // hold the reference of KeyEntry
     TimeEntries::Iterator* it_;
 };
 
 
 class KeyEntry {
 public:
-    KeyEntry(const char* data, uint32_t size):key(data, size, true), entries(12, 4, tcmp), refs_(0){}
-    KeyEntry(const char* data, uint32_t size, uint8_t height):key(data, size, true), entries(height, 4, tcmp), refs_(0){}
-    ~KeyEntry() {}
+    KeyEntry(const char* data, uint32_t size):key(data, size, true), entries(12, 4, tcmp){}
+    KeyEntry(const char* data, uint32_t size, uint8_t height):key(data, size, true), entries(height, 4, tcmp){}
+    ~KeyEntry() {
+       Release();
+    }
 
     // just return the count of datablock
     uint64_t Release() {
@@ -102,23 +105,9 @@ public:
         return cnt;
     }
 
-    void Ref() {
-        refs_.fetch_add(1, std::memory_order_relaxed);
-    }
-
-    void UnRef() {
-        if (refs_.load(std::memory_order_relaxed) <= 0) {
-            Release();
-            delete this;
-        } else {
-            refs_.fetch_sub(1, std::memory_order_relaxed);
-        }
-    }
-
 public:
     rtidb::base::Slice key;
     TimeEntries entries;
-    std::atomic<uint64_t> refs_;
     friend Segment;
 };
 
@@ -128,7 +117,7 @@ struct SliceComparator {
     }
 };
 
-typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry*, SliceComparator> KeyEntries;
+typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, std::shared_ptr<KeyEntry>, SliceComparator> KeyEntries;
 
 class Segment {
 
@@ -158,7 +147,7 @@ public:
     // gc with specify time, delete the data before time 
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
-    Iterator* NewIterator(const Slice& key, Ticket& ticket);
+    Iterator* NewIterator(const Slice& key);
 
     inline uint64_t GetIdxCnt() {
         return idx_cnt_.load(std::memory_order_relaxed);
@@ -173,12 +162,11 @@ public:
     }
 
 private:
-    void FreeList(const Slice& pk, 
-                  ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+    void FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, 
                   uint64_t& gc_record_cnt,
                   uint64_t& gc_record_byte_size);
-    void SplitList(KeyEntry* entry, uint64_t ts, 
+    void SplitList(std::shared_ptr<KeyEntry> entry, uint64_t ts, 
                    ::rtidb::base::Node<uint64_t, DataBlock*>** node);
 private:
     KeyEntries* entries_;

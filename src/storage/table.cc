@@ -259,8 +259,7 @@ bool Table::IsExpire(const LogEntry& entry) {
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         if (entry.dimensions_size() > 0) {
             for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
-                ::rtidb::storage::Ticket ticket;
-                ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), iter->key(), ticket);
+                ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), iter->key());
                 it->SeekToLast();
                 if (it->Valid()) {
                     if (expired_time == 0) {
@@ -272,8 +271,7 @@ bool Table::IsExpire(const LogEntry& entry) {
                 delete it;
             }
         } else {
-            ::rtidb::storage::Ticket ticket;
-            ::rtidb::storage::Iterator* it = NewIterator(entry.pk(), ticket);
+            ::rtidb::storage::Iterator* it = NewIterator(entry.pk());
             it->SeekToLast();
             if (it->Valid()) {
                 expired_time = it->GetKey();
@@ -287,11 +285,11 @@ bool Table::IsExpire(const LogEntry& entry) {
 }
 
 
-Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
-    return NewIterator(0, pk, ticket); 
+Iterator* Table::NewIterator(const std::string& pk) {
+    return NewIterator(0, pk); 
 }
 
-Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
+Iterator* Table::NewIterator(uint32_t index, const std::string& pk) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
@@ -302,7 +300,7 @@ Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& tick
     }
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
-    return segment->NewIterator(spk, ticket);
+    return segment->NewIterator(spk);
 }
 
 uint64_t Table::GetRecordIdxByteSize() {

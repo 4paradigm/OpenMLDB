@@ -3196,7 +3196,6 @@ void HandleClientDelete(const std::vector<std::string>& parts, ::rtidb::client::
     } catch (std::exception const& e) {
         std::cout<< "Invalid args, tid pid should be uint32_t" << std::endl;
     }
-
 }
 
 void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {

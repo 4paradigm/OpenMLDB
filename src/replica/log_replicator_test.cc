@@ -19,12 +19,10 @@
 #include <brpc/server.h>
 #include "storage/table.h"
 #include "storage/segment.h"
-#include "storage/ticket.h"
 #include "timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
-using ::rtidb::storage::Ticket;
 using ::rtidb::storage::Iterator;
 using ::rtidb::storage::DataBlock;
 using ::google::protobuf::RpcController;
@@ -243,9 +241,8 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     ASSERT_EQ(3, t8->GetRecordCnt());
     ASSERT_EQ(5, t8->GetRecordIdxCnt());
     {
-        Ticket ticket;
         // check 18527
-        Iterator* it = t8->NewIterator(0, "card0", ticket);
+        Iterator* it = t8->NewIterator(0, "card0");
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         DataBlock* value = it->GetValue();
@@ -264,9 +261,8 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
         ASSERT_FALSE(it->Valid());
     }
     {
-        Ticket ticket;
         // check 18527
-        Iterator* it = t8->NewIterator(1, "merchant0", ticket);
+        Iterator* it = t8->NewIterator(1, "merchant0");
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         DataBlock* value = it->GetValue();
@@ -362,9 +358,8 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     ASSERT_EQ(4, t8->GetRecordCnt());
     ASSERT_EQ(4, t8->GetRecordIdxCnt());
     {
-        Ticket ticket;
         // check 18527
-        Iterator* it = t8->NewIterator("test_pk", ticket);
+        Iterator* it = t8->NewIterator("test_pk");
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         DataBlock* value = it->GetValue();

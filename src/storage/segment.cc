@@ -46,7 +46,7 @@ uint64_t Segment::Release() {
         if (it->GetValue() != NULL) {
             cnt += it->GetValue()->Release();
         }
-        delete it->GetValue();
+        // delete it->GetValue();
         it->Next();
     }
     entries_->Clear();
@@ -63,17 +63,17 @@ void Segment::Put(const Slice& key,
 }
 
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
-    KeyEntry* entry = entries_->Get(key);
+    std::shared_ptr<KeyEntry> entry = entries_->Get(key);
     std::lock_guard<std::mutex> lock(mu_);
     uint32_t byte_size = 0; 
-    if (entry == NULL || scmp(key, entry->key) != 0) {
+    if (!entry || scmp(key, entry->key) != 0) {
         entry = entries_->Get(key);
         // Need a double check
-        if (entry == NULL || scmp(key, entry->key) != 0) {
+        if (!entry || scmp(key, entry->key) != 0) {
             PDLOG(DEBUG, "new pk entry %s", key.data());
             char* pk = new char[key.size()];
             memcpy(pk, key.data(), key.size());
-            entry = new KeyEntry(pk, (uint32_t)key.size(), key_entry_max_height_);
+            entry = std::make_shared<KeyEntry>(pk, (uint32_t)key.size(), key_entry_max_height_);
             uint8_t height = entries_->Insert(entry->key, entry);
             byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
             pk_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -93,8 +93,8 @@ bool Segment::Get(const Slice& key,
         return false;
     }
 
-    KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || key.compare(entry->key) !=0) {
+    std::shared_ptr<KeyEntry> entry = entries_->Get(key);
+    if (!entry || key.compare(entry->key) !=0) {
         return false;
     }
 
@@ -104,19 +104,17 @@ bool Segment::Get(const Slice& key,
 
 bool Segment::Delete(const Slice& key) {
     std::lock_guard<std::mutex> lock(mu_);
-    KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || key.compare(entry->key) != 0) {
+    std::shared_ptr<KeyEntry> entry = entries_->Get(key);
+    if (!entry || key.compare(entry->key) != 0) {
         return false;
     }
     if (entries_->Remove(key) == NULL) {
         return false;
     }
-    entry->UnRef();
     return true;
 }
 
-void Segment::FreeList(const Slice& pk, 
-                       ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+void Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
                        uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
                        uint64_t& gc_record_byte_size) {
     while (node != NULL) {
@@ -147,19 +145,21 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = it->GetValue();
-        entry->Ref();
+        std::shared_ptr<KeyEntry> entry = it->GetValue();
+        if (!entry) {
+            PDLOG(WARNING, "[Gc4Head] entry is null");
+            break;
+        }
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
-            if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+            if (entry.use_count() <= 2) {
                 node = entry->entries.SplitByPos(keep_cnt);
             }
         }
         uint64_t entry_gc_idx_cnt = 0;
-        FreeList(it->GetKey(), node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         gc_idx_cnt += entry_gc_idx_cnt;
-        entry->UnRef();
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4Head] segment gc keep cnt %lu consumed %lld, count %lld", keep_cnt,
@@ -168,9 +168,10 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     delete it;
 }
 
-void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
+void Segment::SplitList(std::shared_ptr<KeyEntry> entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
     // skip entry that ocupied by reader
-    if (entry->refs_.load(std::memory_order_acquire) <= 0) {
+    // skiplist, gc get and this
+    if (entry.use_count() <= 3) {
         *node = entry->entries.Split(ts);
     }
 }
@@ -182,24 +183,34 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = it->GetValue();
-        entry->Ref();
+        std::shared_ptr<KeyEntry> entry = it->GetValue();
+        if (!entry) {
+            PDLOG(WARNING, "[Gc4TTL] entry is null");
+            break;
+        }
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
         if (node == NULL || node->GetKey() > time) {
             PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
             it->Next();
-            entry->UnRef();
             continue;
         }
         node = NULL;
+        uint64_t byte_size = 0;
         {
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
+            if (entry->entries.IsEmpty()) {
+                Slice key = it->GetKey();
+                entries_->Remove(key);
+                byte_size = GetRecordPkIdxSize(it->GetNodeHeight(), key.size(), key_entry_max_height_);
+                idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+                pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
+            }
         }
         uint64_t entry_gc_idx_cnt = 0;
-        FreeList(it->GetKey(), node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         gc_idx_cnt += entry_gc_idx_cnt;
-        entry->UnRef();
+        gc_record_byte_size += byte_size;
         it->Next();
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
@@ -209,16 +220,15 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
 }
 
 // Iterator
-Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
-    KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || key.compare(entry->key) != 0) {
-        return new Iterator(NULL);
+Iterator* Segment::NewIterator(const Slice& key) {
+    std::shared_ptr<KeyEntry> entry = entries_->Get(key);
+    if (!entry || key.compare(entry->key) != 0) {
+        return new Iterator(std::shared_ptr<KeyEntry>(), NULL);
     }
-    ticket.Push(entry);
-    return new Iterator(entry->entries.NewIterator());
+    return new Iterator(entry, entry->entries.NewIterator());
 }
 
-Iterator::Iterator(TimeEntries::Iterator* it): it_(it) {}
+Iterator::Iterator(std::shared_ptr<KeyEntry> entry, TimeEntries::Iterator* it): entry_(entry), it_(it) {}
 
 Iterator::~Iterator() {
     if (it_ != NULL) {
