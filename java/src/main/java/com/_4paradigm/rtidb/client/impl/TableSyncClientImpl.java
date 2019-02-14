@@ -201,6 +201,16 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public int count(String tname, String key) throws TimeoutException, TabletException {
+        return count(tname, key, null, false);
+    }
+
+    @Override
+    public int count(String tname, String key, boolean filter_expired_data) throws TimeoutException, TabletException {
+        return count(tname, key, null, filter_expired_data);
+    }
+
+    @Override
     public int count(String tname, String key, String idxName) throws TimeoutException, TabletException {
         return count(tname, key, idxName, false);
     }
@@ -237,7 +247,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         Tablet.CountRequest request = builder.build();
         Tablet.CountResponse response = ts.count(request);
-        if (response != null && response.getCode() != 0) {
+        if (response != null && response.getCode() == 0) {
             return response.getCount();
         } else {
             throw new TabletException(response.getMsg());
