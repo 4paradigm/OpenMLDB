@@ -87,6 +87,9 @@ public interface TableSyncClient {
 
     KvIterator traverse(String tname) throws TimeoutException, TabletException;
 
+    int count(String tname, String key) throws TimeoutException, TabletException;
+    int count(String tname, String key, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName) throws TimeoutException, TabletException;
+    int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
 
 }

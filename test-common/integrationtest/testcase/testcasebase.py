@@ -218,6 +218,12 @@ class TestCaseBase(unittest.TestCase):
         result = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_scan_result(result)
 
+    def ns_count(self, endpoint, name, key, idx_name, filter_expired_data = 'false'):
+        cmd = 'count {} {} {} {}'.format(name, key, idx_name, filter_expired_data)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        infoLogger.debug(result)
+        return result
+
     def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
         cmd = 'scan {} {} {} {} {}'.format(name, pk, start_time, end_time, limit)
         result = self.run_client(endpoint, cmd, 'ns_client')

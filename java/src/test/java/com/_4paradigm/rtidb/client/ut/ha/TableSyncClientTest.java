@@ -130,7 +130,7 @@ public class TableSyncClientTest {
             Thread.sleep(1000 * 5);
             List<TableInfo> tables = nsc.showTable(name);
             Assert.assertTrue(tables.get(0).getTablePartition(0).getRecordCnt() == 1);
-            Assert.assertEquals(tables.get(0).getTablePartition(0).getRecordByteSize(), 243);
+            Assert.assertEquals(tables.get(0).getTablePartition(0).getRecordByteSize(), 235);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -198,6 +198,58 @@ public class TableSyncClientTest {
             it.next();
 
             Assert.assertFalse(it.valid());
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testCount() {
+        String name = createKvTable();
+        try {
+            boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9528, "value1");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9529, "value2");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test2", 9529, "value3");
+            Assert.assertTrue(ok);
+            Assert.assertEquals(3, tableSyncClient.count(name, "test1"));
+            Assert.assertEquals(3, tableSyncClient.count(name, "test1", true));
+            Assert.assertEquals(1, tableSyncClient.count(name, "test2"));
+            Assert.assertEquals(1, tableSyncClient.count(name, "test2", true));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testCountSchema() {
+        String name = createSchemaTable();
+        try {
+            Map<String, Object> rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc0");
+            rowMap.put("amt", 9.15d);
+            boolean ok = tableSyncClient.put(name, 9527, rowMap);
+            Assert.assertTrue(ok);
+            rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc1");
+            rowMap.put("amt", 9.2d);
+            ok = tableSyncClient.put(name, 9528, rowMap);
+            Assert.assertTrue(ok);
+            Assert.assertEquals(2, tableSyncClient.count(name, "card0", "card"));
+            Assert.assertEquals(2, tableSyncClient.count(name, "card0", "card", true));
+            Assert.assertEquals(1, tableSyncClient.count(name, "mcc1", "mcc"));
+            Assert.assertEquals(1, tableSyncClient.count(name, "mcc1", "mcc", true));
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);

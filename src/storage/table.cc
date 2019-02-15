@@ -271,6 +271,18 @@ bool Table::IsExpire(const LogEntry& entry) {
     return entry.ts() < expired_time;
 }
 
+int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
+    if (index >= idx_cnt_) {
+        return -1;
+    }
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(pk);
+    Segment* segment = segments_[index][seg_idx];
+    return segment->GetCount(spk, count);
+}
 
 Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
     return NewIterator(0, pk, ticket); 

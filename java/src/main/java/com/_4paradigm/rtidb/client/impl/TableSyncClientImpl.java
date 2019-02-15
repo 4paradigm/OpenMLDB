@@ -201,7 +201,22 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public int count(String tname, String key) throws TimeoutException, TabletException {
+        return count(tname, key, null, false);
+    }
+
+    @Override
+    public int count(String tname, String key, boolean filter_expired_data) throws TimeoutException, TabletException {
+        return count(tname, key, null, filter_expired_data);
+    }
+
+    @Override
     public int count(String tname, String key, String idxName) throws TimeoutException, TabletException {
+        return count(tname, key, idxName, false);
+    }
+
+    @Override
+    public int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -210,10 +225,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (pid < 0) {
             pid = pid * -1;
         }
-        return count(th.getTableInfo().getTid(), pid, key, idxName, th);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, filter_expired_data, th);
     }
 
-    private int count(int tid, int pid, String key, String idxName, TableHandler th) throws TabletException {
+    private int count(int tid, int pid, String key, String idxName, boolean filter_expired_data, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
@@ -226,15 +241,16 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setTid(tid);
         builder.setPid(pid);
         builder.setKey(key);
+        builder.setFilterExpiredData(filter_expired_data);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
         Tablet.CountRequest request = builder.build();
         Tablet.CountResponse response = ts.count(request);
-        if (response != null && response.getCode() != 0) {
+        if (response != null && response.getCode() == 0) {
             return response.getCount();
         } else {
-            return 0;
+            throw new TabletException(response.getMsg());
         }
     }
 

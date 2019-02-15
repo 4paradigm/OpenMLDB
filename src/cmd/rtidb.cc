@@ -1197,13 +1197,30 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
 
 void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
-        std::cout << "count format error. eg: count table_name key | count table_name key idx_name" << std::endl;
+        std::cout << "count format error" << std::endl;
         return;
     }
+    bool filter_expired_data = false;
     std::string idx_name;
     uint64_t value = 0;
-    if (parts.size() > 3) {
-        idx_name = parts[3];
+    if (parts.size() == 4) {
+        if (parts[3] == "true") {
+            filter_expired_data = true;
+        } else if (parts[3] == "false") {
+            filter_expired_data = false;
+        } else {
+            idx_name = parts[3];
+        }
+    } else if (parts.size() > 4) {
+        idx_name =  parts[3];
+        if (parts[4] == "true") {
+            filter_expired_data = true;
+        } else if (parts[4] == "false") {
+            filter_expired_data = false;
+        } else {
+            printf("filter_expired_data parameter should be true or false\n");
+            return;
+        }
     }
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
@@ -1224,7 +1241,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "failed to count. cannot not found tablet client, pid is " << pid << std::endl;
         return;
     }
-    bool ok = tablet_client->Count(tid, pid, key, idx_name, value, msg);
+    bool ok = tablet_client->Count(tid, pid, key, idx_name, filter_expired_data, value, msg);
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
@@ -1740,6 +1757,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("put -  insert data into table\n");
         printf("scan - get records for a period of time\n");
         printf("get - get only one record\n");
+        printf("count - count the num of data in specified key\n");
         printf("preview - preview data\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
@@ -1802,6 +1820,14 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: get table1 key1 0\n");
             printf("ex: get table2 card0 card 1528872944000\n");
             printf("ex: get table2 card0 card 0\n");
+        } else if (parts[1] == "count") {
+            printf("desc: count the num of data in specified key\n");
+            printf("usage: count table_name key [filter_expired_data]\n");
+            printf("usage: count table_name key idx_name [filter_expired_data]\n");
+            printf("ex: count table1 key1\n");
+            printf("ex: count table1 key1 true\n");
+            printf("ex: count table2 card0 card\n");
+            printf("ex: count table2 card0 card true\n");
         } else if (parts[1] == "preview") {
             printf("desc: preview data in table\n");
             printf("usage: preview table_name [limit]\n");
@@ -2416,6 +2442,7 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
         printf("sput - insert data into table of multi dimension\n");
         printf("scan - get records for a period of time\n");
         printf("sscan - get records for a period of time from multi dimension table\n");
+        printf("count - count the num of data in specified key\n");
         printf("get - get only one record\n");
         printf("sget - get only one record from multi dimension table\n");
         printf("preview - preview data\n");
@@ -2482,6 +2509,14 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("usage: sget tid pid key key_name ts\n");
             printf("ex: sget 1 0 card0 card 1528858466000\n");
             printf("ex: sget 1 0 card0 card 0\n");
+        } else if (parts[1] == "count") {
+            printf("desc: count the num of data in specified key\n");
+            printf("usage: count tid pid key [filter_expired_data]\n");
+            printf("usage: count tid pid key key_name [filter_expired_data]\n");
+            printf("ex: count 1 0 key1\n");
+            printf("ex: count 1 0 key1 true\n");
+            printf("ex: count 2 0 card0 card\n");
+            printf("ex: count 2 0 card0 card true\n");
         } else if (parts[1] == "preview") {
             printf("desc: preview data in table\n");
             printf("usage: preview tid pid [limit]\n");
@@ -3187,6 +3222,52 @@ void HandleClientGetFollower(const std::vector<std::string>& parts, ::rtidb::cli
     tp.Print(true);
 }
 
+void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    if (parts.size() < 4) {
+        std::cout << "count format error" << std::endl;
+        return;
+    }
+    bool filter_expired_data = false;
+    std::string idx_name;
+    uint64_t value = 0;
+    if (parts.size() == 5) {
+        if (parts[4] == "true") {
+            filter_expired_data = true;
+        } else if (parts[4] == "false") {
+            filter_expired_data = false;
+        } else {
+            idx_name = parts[4];
+        }
+    } else if (parts.size() > 5) {
+        idx_name =  parts[4];
+        if (parts[5] == "true") {
+            filter_expired_data = true;
+        } else if (parts[5] == "false") {
+            filter_expired_data = false;
+        } else {
+            printf("filter_expired_data parameter should be true or false\n");
+            return;
+        }
+    }
+    uint32_t tid = 0;
+    uint32_t pid = 0;
+    try {
+        tid = boost::lexical_cast<uint32_t>(parts[1]);
+        pid = boost::lexical_cast<uint32_t>(parts[2]);
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args. tid and pid should be uint32" << std::endl;
+        return;
+    }
+    std::string msg;
+    std::string key = parts[3];
+    bool ok = client->Count(tid, pid, key, idx_name, filter_expired_data, value, msg);
+    if (ok) {
+        std::cout << "count: " << value << std::endl;
+    } else {
+        std::cout << "Count failed. error msg: " << msg << std::endl; 
+    }
+}    
+
 void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 3) {
         std::cout <<  "Bad show schema format" << std::endl;
@@ -3499,6 +3580,8 @@ void StartClient() {
             HandleClientScan(parts, &client);
         } else if (parts[0] == "sscan") {
             HandleClientSScan(parts, &client);
+        } else if (parts[0] == "count") {
+            HandleClientCount(parts, &client);
         } else if (parts[0] == "preview") {
             HandleClientPreview(parts, &client);
         } else if (parts[0] == "showschema") {

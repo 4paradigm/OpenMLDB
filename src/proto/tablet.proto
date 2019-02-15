@@ -453,7 +453,7 @@ message CountRequest {
     optional uint32 pid = 2;
     optional string idx_name = 3;
     optional string key = 4;
-    optional bool enable_remove_duplicated_record = 5 [default=false];
+    optional bool filter_expired_data = 5 [default = false];
 }    
 
 message CountResponse {
