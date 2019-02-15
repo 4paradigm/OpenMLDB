@@ -10,6 +10,7 @@
 #include "base/file_util.h"
 #include "storage/snapshot.h"
 #include "storage/table.h"
+#include "storage/ticket.h"
 #include "proto/tablet.pb.h"
 #include "log/log_writer.h"
 #include "gflags/gflags.h"
@@ -134,7 +135,8 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
 
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(20, offset);
-    Iterator* it = table->NewIterator("key");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
@@ -147,7 +149,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-    it = table->NewIterator("key2");
+    it = table->NewIterator("key2", ticket);
     it->Seek(11);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(11, it->GetKey());
@@ -202,7 +204,8 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     ASSERT_EQ(10, offset);
 
     {
-        Iterator* it = table->NewIterator(0, "card0");
+        Ticket ticket;
+        Iterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
@@ -218,7 +221,8 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     }
 
     {
-        Iterator* it = table->NewIterator(1, "merchant0");
+        Ticket ticket;
+        Iterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
@@ -268,7 +272,8 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
-    Iterator* it = table->NewIterator("key");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
@@ -376,7 +381,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(2, offset);
     {
-        Iterator* it = table->NewIterator(0, "card0");
+        Ticket ticket;
+        Iterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
@@ -391,7 +397,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         ASSERT_FALSE(it->Valid());
     }
     {
-        Iterator* it = table->NewIterator(1, "merchant0");
+        Ticket ticket;
+        Iterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
@@ -486,7 +493,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(2, offset);
-    Iterator* it = table->NewIterator("test0");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("test0", ticket);
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9528, it->GetKey());
@@ -825,7 +833,8 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(30, offset);
-    Iterator* it = table->NewIterator("key_new");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("key_new", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
@@ -839,7 +848,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
-    it = table->NewIterator("key_xxx");
+    it = table->NewIterator("key_xxx", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());

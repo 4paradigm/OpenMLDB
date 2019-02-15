@@ -304,6 +304,7 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
 
+    ::rtidb::storage::Ticket ticket;
     ::rtidb::storage::Iterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
@@ -314,9 +315,10 @@ void TabletImpl::Get(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewIterator(iit->second, request->key());
+        it = table->NewIterator(iit->second,
+                                request->key(), ticket);
     } else {
-        it = table->NewIterator(request->key());
+        it = table->NewIterator(request->key(), ticket);
     }
     if (it == NULL) {
         response->set_code(30);
@@ -531,6 +533,7 @@ void TabletImpl::Scan(RpcController* controller,
     metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
     // the first seek to find the total size to copy
+    ::rtidb::storage::Ticket ticket;
     ::rtidb::storage::Iterator* it = NULL;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
@@ -542,9 +545,10 @@ void TabletImpl::Scan(RpcController* controller,
             done->Run();
             return;
         }
-        it = table->NewIterator(iit->second, request->pk());
+        it = table->NewIterator(iit->second,
+                                request->pk(), ticket);
     }else {
-        it = table->NewIterator(request->pk());
+        it = table->NewIterator(request->pk(), ticket);
     }
     if (it == NULL) {
         response->set_code(30);

@@ -19,6 +19,7 @@
 #include <brpc/server.h>
 #include "storage/table.h"
 #include "storage/segment.h"
+#include "storage/ticket.h"
 #include "timer.h"
 #include "tablet/tablet_impl.h"
 #include "client/tablet_client.h"
@@ -27,6 +28,7 @@
 
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
+using ::rtidb::storage::Ticket;
 using ::rtidb::storage::DataBlock;
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;

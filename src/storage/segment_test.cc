@@ -25,14 +25,6 @@ public:
     ~SegmentTest() {}
 };
 
-TEST_F(SegmentTest, Size) {
-    ASSERT_EQ(16, sizeof(DataBlock));
-    ASSERT_EQ(40, sizeof(KeyEntry));
-    ASSERT_EQ(48, sizeof(::rtidb::base::Node<::rtidb::base::Slice, std::shared_ptr<KeyEntry>>));
-    ASSERT_EQ(32, sizeof(::rtidb::base::Node<uint64_t, void*>));
-    ASSERT_EQ(161, GetRecordPkIdxSize(1, 1, 4));
-}
-
 TEST_F(SegmentTest, DataBlock) {
     const char* test = "test";
     DataBlock* db = new DataBlock(1, test, 4);
@@ -43,6 +35,7 @@ TEST_F(SegmentTest, DataBlock) {
     ASSERT_EQ('t', db->data[3]);
     delete db;
 }
+
 
 TEST_F(SegmentTest, PutAndGet) {
    Segment segment; 
@@ -68,7 +61,8 @@ TEST_F(SegmentTest, PutAndScan) {
    segment.Put(pk, 9528, value.c_str(), value.size());
    segment.Put(pk, 9529, value.c_str(), value.size());
    ASSERT_EQ(1, segment.GetPkCnt());
-   Iterator* it = segment.NewIterator("test1");
+   Ticket ticket;
+   Iterator* it = segment.NewIterator("test1", ticket);
    ASSERT_EQ(4, it->GetSize());
    it->Seek(9530);
    ASSERT_TRUE(it->Valid());
@@ -92,7 +86,8 @@ TEST_F(SegmentTest, Iterator) {
    segment.Put(pk, 9768, "test1", 5);
    segment.Put(pk, 9769, "test2", 5);
    ASSERT_EQ(1, segment.GetPkCnt());
-   Iterator* it = segment.NewIterator("test1");
+   Ticket ticket;
+   Iterator* it = segment.NewIterator("test1", ticket);
    ASSERT_EQ(4, it->GetSize());
    it->Seek(9769);
    ASSERT_EQ(9769, it->GetKey());
@@ -119,7 +114,8 @@ TEST_F(SegmentTest, TestGc4Head) {
     ASSERT_EQ(1, gc_idx_cnt);
     ASSERT_EQ(1, gc_record_cnt);
     ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
-    Iterator* it = segment.NewIterator(pk);
+    Ticket ticket;
+    Iterator* it = segment.NewIterator(pk, ticket);
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9769, it->GetKey());
@@ -148,7 +144,7 @@ TEST_F(SegmentTest, TestGc4TTL) {
     segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(2, gc_idx_cnt);
     ASSERT_EQ(2, gc_record_cnt);
-    ASSERT_LT(2 * GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(2 * GetRecordSize(5), gc_record_byte_size);
 }
 
 TEST_F(SegmentTest, TestStat) {

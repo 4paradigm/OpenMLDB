@@ -6,6 +6,7 @@
 //
 
 #include "storage/table.h"
+#include "storage/ticket.h"
 #include "gtest/gtest.h"
 #include "timer.h"
 #include "logging.h"
@@ -27,7 +28,8 @@ TEST_F(TableTest, Put) {
     table->Init();
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, table->GetRecordCnt());
-    Iterator* it = table->NewIterator("test");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("test", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9537, it->GetKey());
@@ -126,7 +128,8 @@ TEST_F(TableTest, Iterator) {
     table->Put("pk", 9527, "test", 4);
     table->Put("pk1", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
-    Iterator* it = table->NewIterator("pk");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("pk", ticket);
 
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
@@ -154,7 +157,8 @@ TEST_F(TableTest, Iterator_GetSize) {
     table->Put("pk", 9527, "test", 4);
     table->Put("pk", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
-    Iterator* it = table->NewIterator("pk");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("pk", ticket);
     ASSERT_EQ(3, it->GetSize());
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
@@ -236,7 +240,8 @@ TEST_F(TableTest, SchedGcHead1) {
             count--;
         }
         table->SchedGc();
-        Iterator* it = table->NewIterator("test");
+        Ticket ticket;
+        Iterator* it = table->NewIterator("test", ticket);
 
         it->Seek(ts + 1);
         ASSERT_TRUE(it->Valid());
@@ -279,7 +284,8 @@ TEST_F(TableTest, SchedGc) {
     ASSERT_EQ(bytes, table->GetRecordByteSize());
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
 
-    Iterator* it = table->NewIterator("test");
+    Ticket ticket;
+    Iterator* it = table->NewIterator("test", ticket);
     it->Seek(now);
     ASSERT_TRUE(it->Valid());
     std::string value_str(it->GetValue()->data, it->GetValue()->size);
@@ -311,7 +317,8 @@ TEST_F(TableTest, OffSet) {
     count = table->SchedGc();
     ASSERT_EQ(1, count);
     {
-        Iterator* it = table->NewIterator("test");
+        Ticket ticket;
+        Iterator* it = table->NewIterator("test", ticket);
         it->Seek(now);
         ASSERT_TRUE(it->Valid());
         std::string value_str(it->GetValue()->data, it->GetValue()->size);
