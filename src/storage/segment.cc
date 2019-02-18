@@ -27,15 +27,13 @@ const static SliceComparator scmp;
 Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), gc_version_(0){
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
-    entry_free_list_ = new ::rtidb::base::Skiplist<uint64_t, KeyEntry*, TimeComparator>(
-            (uint8_t)FLAGS_skiplist_max_height, 4, tcmp);
+    entry_free_list_ = new KeyEntryNodeList((uint8_t)FLAGS_skiplist_max_height, 4, tcmp);
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
 		key_entry_max_height_(height), gc_version_(0) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-    entry_free_list_ = new ::rtidb::base::Skiplist<uint64_t, KeyEntry*, TimeComparator>(
-            (uint8_t)FLAGS_skiplist_max_height, 4, tcmp);
+    entry_free_list_ = new KeyEntryNodeList((uint8_t)FLAGS_skiplist_max_height, 4, tcmp);
 }
 
 Segment::~Segment() {
@@ -56,6 +54,16 @@ uint64_t Segment::Release() {
     }
     entries_->Clear();
     delete it;
+
+    KeyEntryNodeList::Iterator* f_it = entry_free_list_->NewIterator();
+    f_it->SeekToFirst();
+    while (f_it->Valid()) {
+        ::rtidb::base::Node<Slice, KeyEntry*>* node = f_it->GetValue();
+        delete node->GetKey().data();
+        node->GetValue()->Release();
+        delete node;
+    }
+    delete f_it;
     entry_free_list_->Clear();
     return cnt;
 }
@@ -70,22 +78,19 @@ void Segment::Put(const Slice& key,
 
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     KeyEntry* entry = NULL;
-    int ret = entries_->Get(key, entry);
-    std::lock_guard<std::mutex> lock(mu_);
     uint32_t byte_size = 0; 
+    std::lock_guard<std::mutex> lock(mu_);
+    int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
-        // Need a double check
-        if (entries_->Get(key, entry) < 0 || entry == NULL) {
-            PDLOG(DEBUG, "new pk entry %s", key.data());
-            char* pk = new char[key.size()];
-            memcpy(pk, key.data(), key.size());
-            // need to delete memory when free node
-            Slice skey(pk, key.size());
-            entry = new KeyEntry(key_entry_max_height_);
-            uint8_t height = entries_->Insert(skey, entry);
-            byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
-            pk_cnt_.fetch_add(1, std::memory_order_relaxed);
-        }
+        PDLOG(DEBUG, "new pk entry %s", key.data());
+        char* pk = new char[key.size()];
+        memcpy(pk, key.data(), key.size());
+        // need to delete memory when free node
+        Slice skey(pk, key.size());
+        entry = new KeyEntry(key_entry_max_height_);
+        uint8_t height = entries_->Insert(skey, entry);
+        byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
+        pk_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
     idx_cnt_.fetch_add(1, std::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
@@ -117,20 +122,21 @@ bool Segment::Delete(const Slice& key) {
     if (ret < 0 || entry == NULL) {
         return false;
     }
+    ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = NULL;
     {
         std::lock_guard<std::mutex> lock(mu_);
         uint64_t byte_size = 0;
-        ::rtidb::base::Node<Slice, KeyEntry*>* node = entries_->Remove(key);
-        if (node == NULL) {
+        entry_node = entries_->Remove(key);
+        if (entry_node == NULL) {
             return false;
         }
-        byte_size = GetRecordPkIdxSize(node->Height(), key.size(), key_entry_max_height_);
+        byte_size = GetRecordPkIdxSize(entry_node->Height(), key.size(), key_entry_max_height_);
         idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
         pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
     }
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
-        entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry);
+        entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
     }
     PDLOG(DEBUG, "delete key %s", key.ToString().c_str());
     return true;
@@ -163,23 +169,27 @@ void Segment::GcFreeList(uint64_t& entry_gc_idx_cnt, uint64_t& gc_record_cnt, ui
         return;
     }
     uint64_t free_list_version = cur_version - 2;
-    ::rtidb::base::Node<uint64_t, KeyEntry*>* node = NULL;
+    ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*>* node = NULL;
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
         node = entry_free_list_->Split(free_list_version);
     }
     while (node != NULL) {
-        KeyEntry* entry = node->GetValue();
+        ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = node->GetValue();
+        // free pk memory
+        delete entry_node->GetKey().data();
+        KeyEntry* entry = entry_node->GetValue();
         TimeEntries::Iterator* it = entry->entries.NewIterator();
         it->SeekToFirst();
         if (it->Valid()) {
             uint64_t ts = it->GetKey();
-            ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.Split(ts);
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-            idx_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
+            ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
+            FreeList(data_node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }
         delete it;
-        ::rtidb::base::Node<uint64_t, KeyEntry*>* tmp = node;
+        delete entry;
+        delete entry_node;
+        ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*>* tmp = node;
         node = node->GetNextNoBarrier(0);
         delete tmp;
     }
@@ -213,7 +223,6 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
-    gc_version_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
@@ -239,34 +248,31 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
             continue;
         }
         node = NULL;
-        uint64_t byte_size = 0;
-        bool has_delete_pk = false;
+        ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
             if (entry->entries.IsEmpty()) {
-                entries_->Remove(key);
-                byte_size = GetRecordPkIdxSize(it->GetNodeHeight(), key.size(), key_entry_max_height_);
+                ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = entries_->Remove(key);
+                uint64_t byte_size = 0;
+                byte_size = GetRecordPkIdxSize(entry_node->Height(), key.size(), key_entry_max_height_);
                 idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
                 pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
-                has_delete_pk = true;
             }
         }
-        if (has_delete_pk) {
+        if (entry_node != NULL) {
             std::lock_guard<std::mutex> lock(gc_mu_);
-            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry);
+            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
         uint64_t entry_gc_idx_cnt = 0;
         FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
-        gc_record_byte_size += byte_size;
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
-    gc_version_.fetch_add(1, std::memory_order_relaxed);
 }
 
 int Segment::GetCount(const Slice& key, uint64_t& count) {

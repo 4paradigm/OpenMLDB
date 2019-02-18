@@ -198,9 +198,6 @@ void Table::SetGcSafeOffset(uint64_t offset) {
 }
 
 uint64_t Table::SchedGc() {
-    if (!enable_gc_.load(std::memory_order_relaxed)) {
-        return 0;
-    }
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
             id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
@@ -213,9 +210,9 @@ uint64_t Table::SchedGc() {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
+            segment->IncrGcVersion();
             segment->GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-            if (ttl_.load(std::memory_order_relaxed) == 0) {
-                PDLOG(DEBUG, "ttl is zero, need not gc data. tid[%u] pid[%u]", id_, pid_);
+            if (!enable_gc_.load(std::memory_order_relaxed)) {
                 continue;
             }
             switch (ttl_type_) {

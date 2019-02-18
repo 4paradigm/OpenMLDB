@@ -347,10 +347,6 @@ public:
         uint32_t GetSize() {
             return list_->GetSize();    
         }
-
-        uint8_t GetNodeHeight() {
-            return node_->Height();
-        }
     private:
         Node<K, V>* node_;
         Skiplist<K, V, Comparator>* const list_;
