@@ -199,7 +199,61 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return null;
     }
-    
+
+    @Override
+    public int count(String tname, String key) throws TimeoutException, TabletException {
+        return count(tname, key, null, false);
+    }
+
+    @Override
+    public int count(String tname, String key, boolean filter_expired_data) throws TimeoutException, TabletException {
+        return count(tname, key, null, filter_expired_data);
+    }
+
+    @Override
+    public int count(String tname, String key, String idxName) throws TimeoutException, TabletException {
+        return count(tname, key, idxName, false);
+    }
+
+    @Override
+    public int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
+        if (pid < 0) {
+            pid = pid * -1;
+        }
+        return count(th.getTableInfo().getTid(), pid, key, idxName, filter_expired_data, th);
+    }
+
+    private int count(int tid, int pid, String key, String idxName, boolean filter_expired_data, TableHandler th) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.CountRequest.Builder builder = Tablet.CountRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        builder.setFilterExpiredData(filter_expired_data);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.CountRequest request = builder.build();
+        Tablet.CountResponse response = ts.count(request);
+        if (response != null && response.getCode() == 0) {
+            return response.getCount();
+        } else {
+            throw new TabletException(response.getMsg());
+        }
+    }
+
     @Override
     public KvIterator scan(int tid, int pid, String key, long st, long et) throws TimeoutException, TabletException {
         return scan(tid, pid, key, null, st, et, 0);
@@ -232,6 +286,19 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public KvIterator scan(int tid, int pid, String key, String idxName, int limit) throws TimeoutException, TabletException {
         return scan(tid, pid, key, idxName, 0, 0, limit);
+    }
+
+    @Override
+    public KvIterator traverse(int tid) throws TimeoutException, TabletException {
+        return traverse(tid, null);
+    }
+
+    @Override
+    public KvIterator traverse(int tid, String idxName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        TraverseKvIterator it = new TraverseKvIterator(client, th, idxName);
+        it.next();
+        return it;
     }
 
     @Override
@@ -272,6 +339,22 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public KvIterator scan(String tname, String key, String idxName, int limit) throws TimeoutException, TabletException {
         return scan(tname, key, idxName, 0, 0, limit);
+    }
+
+    @Override
+    public KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        TraverseKvIterator it = new TraverseKvIterator(client, th, idxName);
+        it.next();
+        return it;
+    }
+
+    @Override
+    public KvIterator traverse(String tname) throws TimeoutException, TabletException {
+        return traverse(tname, null);
     }
 
     private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th)throws TimeoutException, TabletException  {

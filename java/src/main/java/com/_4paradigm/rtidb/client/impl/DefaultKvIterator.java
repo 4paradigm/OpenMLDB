@@ -108,6 +108,11 @@ public class DefaultKvIterator implements KvIterator {
         return time;
     }
 
+    @Override
+    public String getPK() {
+        return null;
+    }
+
     // no copy
     public ByteBuffer getValue() {
         if (compressType == NS.CompressType.kSnappy) {

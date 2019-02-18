@@ -14,6 +14,8 @@ public interface KvIterator {
 
     long getKey();
 
+    String getPK();
+
     // no copy
     ByteBuffer getValue();
     
@@ -21,5 +23,5 @@ public interface KvIterator {
     
     void getDecodedValue(Object[] row, int start, int length) throws TabletException;
 
-    void next(); 
+    void next();
 }

@@ -462,16 +462,24 @@ bool TabletClient::GetTableStatus(::rtidb::api::GetTableStatusResponse& response
 
 bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, 
             ::rtidb::api::TableStatus& table_status) {
+    return GetTableStatus(tid, pid, false, table_status);
+}
+
+bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
+            ::rtidb::api::TableStatus& table_status) {
+    ::rtidb::api::GetTableStatusRequest request;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_need_schema(need_schema);
     ::rtidb::api::GetTableStatusResponse response;
-    if (!GetTableStatus(response)) {
+    bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableStatus,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ret) {
         return false;
     }
-    for (int idx = 0; idx < response.all_table_status_size(); idx++) {
-        if (response.all_table_status(idx).tid() == tid &&
-                response.all_table_status(idx).pid() == pid) {
-            table_status = response.all_table_status(idx);
-            return true;    
-        }
+    if (response.all_table_status_size() > 0) {
+        table_status = response.all_table_status(0);
+        return true;
     }
     return false;
 }
@@ -781,6 +789,30 @@ bool TabletClient::Get(uint32_t tid,
     return true;
 }
 
+bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
+            const std::string& idx_name, bool filter_expired_data,
+            uint64_t& value, std::string& msg) {
+    ::rtidb::api::CountRequest request;
+    ::rtidb::api::CountResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    request.set_filter_expired_data(filter_expired_data);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Count,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (response.has_msg()) {
+        msg = response.msg();
+    }
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    value = response.count();
+    return true;
+}
+
 bool TabletClient::Get(uint32_t tid, 
              uint32_t pid,
              const std::string& pk,
@@ -842,6 +874,30 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
         return false;
     }
     return true;
+}
+
+::rtidb::base::KvIterator* TabletClient::Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name,
+            const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count) {
+    ::rtidb::api::TraverseRequest request;
+    ::rtidb::api::TraverseResponse* response = new ::rtidb::api::TraverseResponse();
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_limit(limit);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    if (!pk.empty()) {
+        request.set_pk(pk);
+        request.set_ts(ts);
+    }
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Traverse,
+            &request, response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response->code()  != 0) {
+        return NULL;
+    }
+    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    count = response->count();
+    return kv_it;
 }
 
 }
