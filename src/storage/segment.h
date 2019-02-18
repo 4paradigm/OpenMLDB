@@ -167,6 +167,8 @@ public:
         return pk_cnt_.load(std::memory_order_relaxed);
     }
 
+    void GcFreeList(uint64_t& entry_gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+
 private:
     void FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, 
@@ -178,10 +180,13 @@ private:
     KeyEntries* entries_;
     // only Put need mutex
     std::mutex mu_;
+    std::mutex gc_mu_;
     std::atomic<uint64_t> idx_cnt_;
     std::atomic<uint64_t> idx_byte_size_;
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;
+    ::rtidb::base::Skiplist<uint64_t, KeyEntry*, TimeComparator>* entry_free_list_;
+    std::atomic<uint64_t> gc_version_;
 };
 
 }// namespace storage

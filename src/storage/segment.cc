@@ -24,18 +24,23 @@ namespace storage {
 
 const static SliceComparator scmp;
 
-Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0){
+Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), gc_version_(0){
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
+    entry_free_list_ = new ::rtidb::base::Skiplist<uint64_t, KeyEntry*, TimeComparator>(
+            (uint8_t)FLAGS_skiplist_max_height, 4, tcmp);
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
-		key_entry_max_height_(height) {
+		key_entry_max_height_(height), gc_version_(0) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
+    entry_free_list_ = new ::rtidb::base::Skiplist<uint64_t, KeyEntry*, TimeComparator>(
+            (uint8_t)FLAGS_skiplist_max_height, 4, tcmp);
 }
 
 Segment::~Segment() {
     delete entries_;
+    delete entry_free_list_;
 }
 
 uint64_t Segment::Release() {
@@ -51,6 +56,7 @@ uint64_t Segment::Release() {
     }
     entries_->Clear();
     delete it;
+    entry_free_list_->Clear();
     return cnt;
 }
 
@@ -103,14 +109,26 @@ bool Segment::Get(const Slice& key,
 }
 
 bool Segment::Delete(const Slice& key) {
-    std::lock_guard<std::mutex> lock(mu_);
     KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || key.compare(entry->key) != 0) {
+    if (entry == NULL || key.compare(entry->key) !=0) {
         return false;
     }
-    if (entries_->Remove(key) == NULL) {
-        return false;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        uint64_t byte_size = 0;
+        ::rtidb::base::Node<Slice, KeyEntry*>* node = entries_->Remove(key);
+        if (node == NULL) {
+            return false;
+        }
+        byte_size = GetRecordPkIdxSize(node->Height(), key.size(), key_entry_max_height_);
+        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
     }
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
+        entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry);
+    }
+    PDLOG(DEBUG, "delete key %s", key.ToString().c_str());
     return true;
 }
 
@@ -131,6 +149,34 @@ void Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
             delete tmp->GetValue();
             gc_record_cnt++;
         }
+        delete tmp;
+    }
+}
+
+void Segment::GcFreeList(uint64_t& entry_gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
+    if (cur_version < 2) {
+        return;
+    }
+    uint64_t free_list_version = cur_version - 2;
+    ::rtidb::base::Node<uint64_t, KeyEntry*>* node = NULL;
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
+        node = entry_free_list_->Split(free_list_version);
+    }
+    while (node != NULL) {
+        KeyEntry* entry = node->GetValue();
+        TimeEntries::Iterator* it = entry->entries.NewIterator();
+        it->SeekToFirst();
+        if (it->Valid()) {
+            uint64_t ts = it->GetKey();
+            ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.Split(ts);
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            idx_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
+        }
+        delete it;
+        ::rtidb::base::Node<uint64_t, KeyEntry*>* tmp = node;
+        node = node->GetNextNoBarrier(0);
         delete tmp;
     }
 }
@@ -162,6 +208,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
+    gc_version_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::rtidb::base::Node<uint64_t, DataBlock*>** node) {
@@ -179,35 +226,41 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry* entry = it->GetValue();
+        Slice key = it->GetKey();
+        it->Next();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
         if (node == NULL || node->GetKey() > time) {
             PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
-            it->Next();
             continue;
         }
         node = NULL;
         uint64_t byte_size = 0;
+        bool has_delete_pk = false;
         {
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
             if (entry->entries.IsEmpty()) {
-                Slice key = it->GetKey();
                 entries_->Remove(key);
-                // byte_size = GetRecordPkIdxSize(it->GetNodeHeight(), key.size(), key_entry_max_height_);
+                byte_size = GetRecordPkIdxSize(it->GetNodeHeight(), key.size(), key_entry_max_height_);
                 idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
                 pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
+                has_delete_pk = true;
             }
+        }
+        if (has_delete_pk) {
+            std::lock_guard<std::mutex> lock(gc_mu_);
+            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry);
         }
         uint64_t entry_gc_idx_cnt = 0;
         FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         gc_idx_cnt += entry_gc_idx_cnt;
         gc_record_byte_size += byte_size;
-        it->Next();
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld ,consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed)/1000, gc_idx_cnt - old);
     idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
+    gc_version_.fetch_add(1, std::memory_order_relaxed);
 }
 
 // Iterator

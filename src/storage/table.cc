@@ -213,6 +213,11 @@ uint64_t Table::SchedGc() {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
+            segment->GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            if (ttl_.load(std::memory_order_relaxed) == 0) {
+                PDLOG(DEBUG, "ttl is zero, need not gc data. tid[%u] pid[%u]", id_, pid_);
+                continue;
+            }
             switch (ttl_type_) {
             case ::rtidb::api::TTLType::kAbsoluteTime:
                 segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);

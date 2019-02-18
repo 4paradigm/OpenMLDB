@@ -1867,10 +1867,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     io_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
             pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
-    if (ttl > 0) {
-        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
-        PDLOG(INFO, "table %s with tid %u pid %u enable ttl %llu", name.c_str(), tid, pid, ttl);
-    }
+    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
 }
 
 void TabletImpl::GetTableFollower(RpcController* controller,
