@@ -69,25 +69,28 @@ void Segment::Put(const Slice& key,
 }
 
 void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
-    KeyEntry* entry = entries_->Get(key);
+    KeyEntry* entry = NULL;
+    int ret = entries_->Get(key, entry);
     std::lock_guard<std::mutex> lock(mu_);
     uint32_t byte_size = 0; 
-    if (entry == NULL || scmp(key, entry->key) != 0) {
-        entry = entries_->Get(key);
+    if (ret < 0 || entry == NULL) {
         // Need a double check
-        if (entry == NULL || scmp(key, entry->key) != 0) {
+        if (entries_->Get(key, entry) < 0 || entry == NULL) {
             PDLOG(DEBUG, "new pk entry %s", key.data());
             char* pk = new char[key.size()];
             memcpy(pk, key.data(), key.size());
-            entry = new KeyEntry(pk, (uint32_t)key.size(), key_entry_max_height_);
-            uint8_t height = entries_->Insert(entry->key, entry);
+            // need to delete memory when free node
+            Slice skey(pk, key.size());
+            entry = new KeyEntry(key_entry_max_height_);
+            uint8_t height = entries_->Insert(skey, entry);
             byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
             pk_cnt_.fetch_add(1, std::memory_order_relaxed);
         }
     }
     idx_cnt_.fetch_add(1, std::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
-    PDLOG(DEBUG, "add ts with height %u", height);
+    entry->count_.fetch_add(1, std::memory_order_relaxed);
+    PDLOG(DEBUG, "add ts %lu with height %u", time, height);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
@@ -99,8 +102,8 @@ bool Segment::Get(const Slice& key,
         return false;
     }
 
-    KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || key.compare(entry->key) !=0) {
+    KeyEntry* entry = NULL;
+    if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return false;
     }
 
@@ -109,8 +112,9 @@ bool Segment::Get(const Slice& key,
 }
 
 bool Segment::Delete(const Slice& key) {
-    KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || key.compare(entry->key) !=0) {
+    KeyEntry* entry = NULL;
+    int ret = entries_->Get(key, entry);
+    if (ret < 0 || entry == NULL) {
         return false;
     }
     {
@@ -201,6 +205,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
         }
         uint64_t entry_gc_idx_cnt = 0;
         FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
         it->Next();
     }
@@ -253,6 +258,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
         }
         uint64_t entry_gc_idx_cnt = 0;
         FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
         gc_idx_cnt += entry_gc_idx_cnt;
         gc_record_byte_size += byte_size;
     }
@@ -263,10 +269,19 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     gc_version_.fetch_add(1, std::memory_order_relaxed);
 }
 
+int Segment::GetCount(const Slice& key, uint64_t& count) {
+    KeyEntry* entry = NULL;
+    if (entries_->Get(key, entry) < 0 || entry == NULL) {
+        return -1;
+    }
+    count = entry->count_.load(std::memory_order_relaxed);
+    return 0;
+}
+
 // Iterator
 Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
-    KeyEntry* entry = entries_->Get(key);
-    if (entry == NULL || key.compare(entry->key) != 0) {
+    KeyEntry* entry = NULL;
+    if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return new Iterator(NULL);
     }
     ticket.Push(entry);

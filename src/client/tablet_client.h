@@ -90,6 +90,10 @@ public:
              const std::string& pk, const std::string& idx_name,
              std::string& msg);
 
+    bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
+             const std::string& idx_name, bool filter_expired_data, 
+             uint64_t& value, std::string& msg);
+
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,
@@ -167,6 +171,8 @@ public:
     bool GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     bool GetTableStatus(uint32_t tid, uint32_t pid,
                     ::rtidb::api::TableStatus& table_status);
+    bool GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
+                    ::rtidb::api::TableStatus& table_status);
 
     bool FollowOfNoOne(uint32_t tid, uint32_t pid, uint64_t term, uint64_t& offset);
 
@@ -177,7 +183,10 @@ public:
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
     bool ConnectZK();
     bool DisConnectZK();
-    
+
+    ::rtidb::base::KvIterator* Traverse(uint32_t tid, uint32_t pid, const std::string& idx_name, 
+                const std::string& pk, uint64_t ts, uint32_t limit, uint32_t& count);
+
     void ShowTp();
 
 private:

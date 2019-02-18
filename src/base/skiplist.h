@@ -220,10 +220,19 @@ public:
         }
         return NULL;
     }
-
+    
     const V& Get(const K& key) {
         Node<K,V>* node = FindEqual(key);
         return node->GetValue();
+    }
+
+    int Get(const K& key, V& v) {
+        Node<K,V>* node = FindEqual(key);
+        if (node != NULL && compare_(node->GetKey(), key) == 0) {
+            v = node->GetValue();
+            return 0;
+        }
+        return -1;
     }
 
     Node<K, V>* GetLast() {

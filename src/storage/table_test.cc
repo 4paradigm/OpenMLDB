@@ -177,8 +177,6 @@ TEST_F(TableTest, Iterator_GetSize) {
     delete table;
 }
 
-
-
 TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -364,6 +362,80 @@ TEST_F(TableTest, TableUnref) {
     table->Put("test", 9527, "test", 4);
     delete table;
 }
+
+TEST_F(TableTest, TableIterator) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
+    table->Init();
+
+    table->Put("pk", 9527, "test1", 5);
+    table->Put("pk1", 9527, "test2", 5);
+    table->Put("pk", 9528, "test3", 5);
+    table->Put("pk1", 100, "test4", 5);
+    table->Put("test", 20, "test5", 5);
+    // Ticket ticket;
+    TableIterator* it = table->NewTableIterator(0);
+    // it->Test();
+    it->SeekToFirst();
+    ASSERT_STREQ("pk", it->GetPK().c_str());
+    ASSERT_EQ(9528, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk", it->GetPK().c_str());
+    ASSERT_EQ(9527, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("test", it->GetPK().c_str());
+    ASSERT_EQ(20, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk1", it->GetPK().c_str());
+    ASSERT_EQ(9527, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk1", it->GetPK().c_str());
+    ASSERT_EQ(100, it->GetKey());
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+
+    it->Seek("none", 11111);
+    ASSERT_FALSE(it->Valid());
+
+    it->Seek("test", 30);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_STREQ("test", it->GetPK().c_str());
+    ASSERT_EQ(20, it->GetKey());
+
+    it->Seek("test", 20);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_STREQ("pk1", it->GetPK().c_str());
+    ASSERT_EQ(9527, it->GetKey());
+    delete it;
+    delete table;
+
+    Table* table1 = new Table("tx_log", 1, 1, 8, mapping, 2);
+    table1->Init();
+    table1->SetTTLType(::rtidb::api::TTLType::kLatestTime);
+
+    table1->Put("pk", 9527, "test1", 5);
+    table1->Put("pk1", 9527, "test2", 5);
+    table1->Put("pk", 9528, "test3", 5);
+    table1->Put("pk1", 100, "test4", 5);
+    table1->Put("test", 20, "test5", 5);
+    table1->Put("pk", 200, "test6", 5);
+    // Ticket ticket;
+    TableIterator* it1 = table1->NewTableIterator(0);
+    it1->Seek("pk", 9528);
+    ASSERT_TRUE(it1->Valid());
+    ASSERT_STREQ("pk", it1->GetPK().c_str());
+    ASSERT_EQ(9527, it1->GetKey());
+    it1->Next();
+    ASSERT_TRUE(it1->Valid());
+    ASSERT_STREQ("test", it1->GetPK().c_str());
+    ASSERT_EQ(20, it1->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk1", it->GetPK().c_str());
+    ASSERT_EQ(9527, it->GetKey());
+
+}
+
 
 }
 }

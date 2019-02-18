@@ -64,6 +64,30 @@ TEST_F(KvIteratorTest, Iterator) {
     ASSERT_FALSE(kv_it.Valid());
 }
 
+TEST_F(KvIteratorTest, HasPK) {
+    ::rtidb::api::TraverseResponse* response = new ::rtidb::api::TraverseResponse();
+
+    std::string* pairs = response->mutable_pairs();
+    pairs->resize(52);
+    char* data = reinterpret_cast<char*>(& ((*pairs)[0]));
+    DataBlock* db1 = new DataBlock(1, "hello", 5);
+    DataBlock* db2 = new DataBlock(1, "hell1", 5);
+    EncodeFull("test1", 9527, db1, data, 0);
+    EncodeFull("test2", 9528, db2, data, 26);
+    KvIterator kv_it(response);
+    ASSERT_TRUE(kv_it.Valid());
+    ASSERT_STREQ("test1", kv_it.GetPK().c_str());
+    ASSERT_EQ(9527, kv_it.GetKey());
+    ASSERT_STREQ("hello", kv_it.GetValue().ToString().c_str());
+    kv_it.Next();
+    ASSERT_TRUE(kv_it.Valid());
+    ASSERT_STREQ("test2", kv_it.GetPK().c_str());
+    ASSERT_EQ(9528, kv_it.GetKey());
+    ASSERT_STREQ("hell1", kv_it.GetValue().ToString().c_str());
+    kv_it.Next();
+    ASSERT_FALSE(kv_it.Valid());
+}
+
 
 }
 }

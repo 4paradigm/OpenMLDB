@@ -61,7 +61,7 @@ enum OPType {
     kReAddReplicaNoSendOP = 7;     // need not send snapshot
     kReAddReplicaWithDropOP = 8;   // should droptable before loadtable
     kReAddReplicaSimplifyOP = 9;   // table is exist, need run addreplica task only
-    kUpdateTableAliveOP = 10;
+    kUpdateTableAliveOP = 10;      // deleted
     kMigrateOP = 11;
     kReLoadTableOP = 12;
     kUpdatePartitionStatusOP = 13;
@@ -86,6 +86,7 @@ enum TaskType {
     kSelectLeader = 15;
     kUpdateLeaderInfo = 16;
     kRecoverTable = 17;
+    kCheckBinlogSyncProgress = 18;
 }
 
 enum TaskStatus {
@@ -93,6 +94,7 @@ enum TaskStatus {
     kDoing = 2;
     kDone = 3;
     kFailed = 4;
+    kCanceled = 5;
 }
 
 message TaskInfo {
@@ -100,6 +102,8 @@ message TaskInfo {
     required OPType op_type = 2;
     required TaskType task_type = 3;
     required TaskStatus status = 4;
+    optional string endpoint = 5;
+    optional bool is_rpc_send = 6 [default=false];
 }
 
 message OPInfo {
@@ -113,6 +117,7 @@ message OPInfo {
     optional string name = 8;
     optional uint32 pid = 9;
     optional uint64 parent_id = 10;
+    optional uint32 vec_idx = 11;   // the index in task_vec
 }
 
 message Manifest {
@@ -200,13 +205,31 @@ message RpcMetric {
 	optional int64 setime = 7;
 }
 
+message TraverseRequest {
+	optional uint32 tid = 1;
+	optional uint32 pid = 2;
+    optional string idx_name = 3;
+	optional uint32 limit = 4 [default=100];
+	optional string pk = 5;
+	optional uint64 ts = 6;
+    optional bool enable_remove_duplicated_record = 7 [default=false];
+}
+
+message TraverseResponse {
+	optional bytes pairs = 1;
+	optional string msg = 2;
+	optional int32 code = 3;
+	optional uint32 count = 4;
+    optional string pk = 5;
+    optional uint64 ts = 6;
+}
+
 message ScanResponse {
 	optional bytes pairs = 1;
 	optional string msg = 2;
 	optional int32 code = 3;
 	optional uint32 count = 4;
 	optional RpcMetric metric = 6;
-    optional bytes schema = 7;
 }
 
 message ReplicaRequest {
@@ -368,7 +391,11 @@ message ChangeRoleResponse {
 }
 
 // Get all table status information on tablet
-message GetTableStatusRequest {}
+message GetTableStatusRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional bool need_schema = 3 [default = false];
+}
 
 message TsIdxStatus {
     optional string idx_name = 1;
@@ -395,6 +422,7 @@ message TableStatus {
     optional TTLType ttl_type = 16;
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
+    optional bytes schema = 19;
 }
 
 message GetTableStatusResponse {
@@ -418,6 +446,20 @@ message GetResponse {
     optional string key = 3;
     optional uint64 ts = 4;
     optional bytes value = 5;
+}
+
+message CountRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
+    optional string key = 4;
+    optional bool filter_expired_data = 5 [default = false];
+}    
+
+message CountResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 count = 3;
 }
 
 message GetTermPairRequest {
@@ -478,14 +520,16 @@ message HttpResponse { }
 service TabletServer {
 
     // write and read api for client
-	  rpc Put(PutRequest) returns (PutResponse);
+	rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
-	  rpc Scan(ScanRequest) returns (ScanResponse);
+	rpc Scan(ScanRequest) returns (ScanResponse);
+	rpc Count(CountRequest) returns (CountResponse);
+	rpc Traverse(TraverseRequest) returns (TraverseResponse);
 
     // table api for master
-	  rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+	rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
     rpc LoadTable(LoadTableRequest) returns(GeneralResponse);
-	  rpc DropTable(DropTableRequest) returns (DropTableResponse);
+	rpc DropTable(DropTableRequest) returns (DropTableResponse);
     rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
     rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
@@ -493,7 +537,7 @@ service TabletServer {
     rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
 
     // replication api for master
-	  rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
+	rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);
     rpc AddReplica(ReplicaRequest) returns(AddReplicaResponse);
     rpc DelReplica(ReplicaRequest) returns(GeneralResponse);
     rpc ChangeRole(ChangeRoleRequest) returns(ChangeRoleResponse);

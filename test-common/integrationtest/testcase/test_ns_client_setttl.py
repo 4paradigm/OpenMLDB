@@ -67,11 +67,11 @@ class TestSetTTL(TestCaseBase):
         rs_latest6 = self.ns_get_kv(self.ns_leader, 'latest1', 'testkey0', str(rs_time))
         self.assertFalse('testvalue0' in rs_latest6)
         rs_absolute5 = self.ns_scan_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), '0', ' ')
-        self.assertTrue('testvalue0' in rs_absolute5)
+        self.assertEqual('testvalue0', rs_absolute5[0]['data'])
         time.sleep(61)
 
         rs_absolute5 = self.ns_scan_kv(self.ns_leader, 't1', 'testkey0', str(rs_time), '0', ' ')
-        self.assertFalse('testvalue0' in rs_absolute5)
+        self.assertEqual(0, len(rs_absolute5))
 
 
 if __name__ == "__main__":

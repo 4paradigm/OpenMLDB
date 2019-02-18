@@ -60,6 +60,51 @@ class TestScan(TestCaseBase):
         infoLogger.info(rs1)
         self.assertIn('card0', rs1)
 
+    def test_scan_preview(self):
+        """
+        预览
+        :return:
+        """
+        rs1 = self.create(self.leader, 't', self.tid, self.pid, 0, 8)
+        self.assertIn('Create table ok', rs1)
+        if self.multidimension:
+            self.put(self.leader, self.tid, self.pid, '', 11, 'mcc0', '1.5', 'card0')
+            self.put(self.leader, self.tid, self.pid, '', 22, 'mcc1', '2.5', 'card0')
+            self.put(self.leader, self.tid, self.pid, '', 33, 'mcc1', '10.2', 'card1')
+        else:
+            self.put(self.leader, self.tid, self.pid, 'testkey0', 11, 'testvalue0')
+            self.put(self.leader, self.tid, self.pid, 'testkey0', 22, 'testvalue1')
+            self.put(self.leader, self.tid, self.pid, 'testkey1', 33, 'testvalue2')
+        rs2 = self.preview(self.leader, self.tid, self.pid)
+        rs3 = self.preview(self.leader, self.tid, self.pid, 2)
+        infoLogger.info(rs2)
+        if self.multidimension:
+            self.assertEqual(3, len(rs2))
+            self.assertEqual(2, len(rs3))
+            self.assertEqual(rs2[0]['card'], 'card0')
+            self.assertEqual(rs2[0]['merchant'], 'mcc0')
+            self.assertEqual(rs2[1]['card'], 'card1')
+            self.assertEqual(rs2[1]['merchant'], 'mcc1')
+            self.assertEqual(rs2[2]['card'], 'card0')
+            self.assertEqual(rs2[2]['merchant'], 'mcc1')
+            self.assertEqual(2, len(rs3))
+            self.assertEqual(rs3[0]['card'], 'card0')
+            self.assertEqual(rs3[0]['merchant'], 'mcc0')
+            self.assertEqual(rs3[1]['card'], 'card1')
+            self.assertEqual(rs3[1]['merchant'], 'mcc1')
+        else:    
+            self.assertEqual(3, len(rs2))
+            self.assertEqual(rs2[0]['key'], 'testkey0')
+            self.assertEqual(rs2[0]['data'], 'testvalue1')
+            self.assertEqual(rs2[1]['key'], 'testkey0')
+            self.assertEqual(rs2[1]['data'], 'testvalue0')
+            self.assertEqual(rs2[2]['key'], 'testkey1')
+            self.assertEqual(rs2[2]['data'], 'testvalue2')
+            self.assertEqual(2, len(rs3))
+            self.assertEqual(rs3[0]['key'], 'testkey0')
+            self.assertEqual(rs3[0]['data'], 'testvalue1')
+            self.assertEqual(rs3[1]['key'], 'testkey0')
+            self.assertEqual(rs3[1]['data'], 'testvalue0')
 
 if __name__ == "__main__":
     load(TestScan)
