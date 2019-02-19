@@ -99,6 +99,15 @@ TEST_F(SegmentTest, Delete) {
    it = segment.NewIterator("test1", ticket);
    ASSERT_EQ(0, it->GetSize());
    delete it;
+   uint64_t gc_idx_cnt = 0;
+   uint64_t gc_record_cnt = 0;
+   uint64_t gc_record_byte_size = 0;
+   segment.IncrGcVersion();
+   segment.IncrGcVersion();
+   segment.GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+   ASSERT_EQ(4, gc_idx_cnt);
+   ASSERT_EQ(4, gc_record_cnt);
+   ASSERT_EQ(84, gc_record_byte_size);
 }
 
 TEST_F(SegmentTest, GetCount) {

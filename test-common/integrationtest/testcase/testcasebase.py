@@ -224,7 +224,7 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.debug(result)
         return result
 
-    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit):
+    def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit = ''):
         cmd = 'scan {} {} {} {} {}'.format(name, pk, start_time, end_time, limit)
         result = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_scan_result(result)
@@ -233,6 +233,10 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
         result = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_scan_result(result)
+
+    def ns_delete(self, endpoint, name, key, idx_name = ''):
+        cmd = 'delete {} {} {}'.format(name, key, idx_name);
+        return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_get_kv(self, endpoint, name, key, ts):
         cmd = 'get ' + name + ' ' + key+ ' ' + ts

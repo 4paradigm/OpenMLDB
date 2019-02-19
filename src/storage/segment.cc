@@ -31,7 +31,7 @@ Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
-		key_entry_max_height_(height), gc_version_(0) {
+        key_entry_max_height_(height), gc_version_(0) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList((uint8_t)FLAGS_skiplist_max_height, 4, tcmp);
 }
@@ -164,7 +164,7 @@ void Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
     }
 }
 
-void Segment::GcFreeList(uint64_t& entry_gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
     if (cur_version < 2) {
         return;
@@ -185,7 +185,7 @@ void Segment::GcFreeList(uint64_t& entry_gc_idx_cnt, uint64_t& gc_record_cnt, ui
         if (it->Valid()) {
             uint64_t ts = it->GetKey();
             ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
-            FreeList(data_node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
         }
         delete it;
         delete entry;
