@@ -62,6 +62,7 @@ uint64_t Segment::Release() {
         delete node->GetKey().data();
         node->GetValue()->Release();
         delete node;
+        f_it->Next();
     }
     delete f_it;
     entry_free_list_->Clear();

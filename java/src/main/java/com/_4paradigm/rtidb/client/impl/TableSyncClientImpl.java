@@ -228,7 +228,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         return count(th.getTableInfo().getTid(), pid, key, idxName, filter_expired_data, th);
     }
 
-    private int count(int tid, int pid, String key, String idxName, boolean filter_expired_data, TableHandler th) throws TabletException {
+    private int count(int tid, int pid, String key, String idxName, boolean filter_expired_data, TableHandler th) throws TimeoutException, TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
         }
@@ -251,6 +251,50 @@ public class TableSyncClientImpl implements TableSyncClient {
             return response.getCount();
         } else {
             throw new TabletException(response.getMsg());
+        }
+    }
+
+    @Override
+    public boolean delete(String tname, String key) throws TimeoutException, TabletException {
+       return delete(tname, key, null);
+    }
+
+    @Override
+    public boolean delete(String tname, String key, String idxName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
+        if (pid < 0) {
+            pid = pid * -1;
+        }
+        return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
+
+    }
+
+    private boolean delete(int tid, int pid, String key, String idxName, TableHandler th) throws TimeoutException, TabletException {
+        if (key == null || key.isEmpty()) {
+            throw new TabletException("key is null or empty");
+        }
+        PartitionHandler ph = th.getHandler(pid);
+        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        if (ts == null) {
+            throw new TabletException("Cannot find available tabletServer with tid " + tid);
+        }
+        Tablet.DeleteRequest.Builder builder = Tablet.DeleteRequest.newBuilder();
+        builder.setTid(tid);
+        builder.setPid(pid);
+        builder.setKey(key);
+        if (idxName != null && !idxName.isEmpty()) {
+            builder.setIdxName(idxName);
+        }
+        Tablet.DeleteRequest request = builder.build();
+        Tablet.GeneralResponse response = ts.delete(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        } else {
+            return false;
         }
     }
 

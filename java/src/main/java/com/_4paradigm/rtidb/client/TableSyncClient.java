@@ -92,4 +92,7 @@ public interface TableSyncClient {
     int count(String tname, String key, String idxName) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
 
+    boolean delete(String tname, String key) throws TimeoutException, TabletException;
+    boolean delete(String tname, String key, String idxName) throws TimeoutException, TabletException;
+
 }

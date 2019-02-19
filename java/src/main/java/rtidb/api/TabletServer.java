@@ -12,6 +12,7 @@ public interface TabletServer {
     Tablet.GetResponse get(Tablet.GetRequest request);
     Tablet.ScanResponse scan(Tablet.ScanRequest request);
     Tablet.CountResponse count(Tablet.CountRequest request);
+    Tablet.GeneralResponse delete(Tablet.DeleteRequest request);
     Tablet.TraverseResponse traverse(Tablet.TraverseRequest request);
     Tablet.CreateTableResponse createTable(Tablet.CreateTableRequest request);
     Tablet.DropTableResponse dropTable(Tablet.DropTableRequest request);
