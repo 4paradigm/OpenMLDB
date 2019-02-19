@@ -854,9 +854,33 @@ void TabletImpl::Delete(RpcController* controller,
         }
         idx = iit->second;
     }
-    table->Delete(request->key(), idx);
-    response->set_code(0);
-    response->set_msg("ok");
+    if (table->Delete(request->key(), idx)) {
+        response->set_code(0);
+        response->set_msg("ok");
+        PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());
+    } else {
+        response->set_code(31);
+        response->set_msg("delete failed");
+    }
+    std::shared_ptr<LogReplicator> replicator;
+    do {
+        replicator = GetReplicator(request->tid(), request->pid());
+        if (!replicator) {
+            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
+                    request->pid());
+            break;
+        }
+        ::rtidb::api::LogEntry entry;
+        entry.set_term(replicator->GetLeaderTerm());
+        entry.set_method_type(::rtidb::api::MethodType::kDelete);
+        ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+        dimension->set_key(request->key());
+        dimension->set_idx(idx);
+        replicator->AppendEntry(entry);
+    } while(false);
+    if (replicator && FLAGS_binlog_notify_on_put) {
+        replicator->Notify(); 
+    }
     return;
 }
 

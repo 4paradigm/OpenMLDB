@@ -97,6 +97,11 @@ enum TaskStatus {
     kCanceled = 5;
 }
 
+enum MethodType {
+    kPut = 1;
+    kDelete = 2;
+}
+
 message TaskInfo {
     required uint64 op_id = 1;
     required OPType op_type = 2;
@@ -351,6 +356,7 @@ message LogEntry {
     optional bytes value = 4;
     optional uint64 ts = 5;
     repeated Dimension dimensions = 6;
+    optional MethodType method_type = 7;
 }
 
 message AppendEntriesRequest {

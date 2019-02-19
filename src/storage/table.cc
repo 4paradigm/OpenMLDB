@@ -171,9 +171,9 @@ bool Table::Delete(const std::string& pk, uint32_t idx) {
     if (seg_cnt_ > 1) {
         seg_idx = ::rtidb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
     }
+    PDLOG(DEBUG, "delete index %u with pk %s for tid %u pid %u", 
+                 idx, pk.c_str(), id_, pid_);
     Segment* segment = segments_[idx][seg_idx];
-    PDLOG(DEBUG, "delete index %u with pk %s for tid %u pid %u ok", idx,
-               spk.data(), id_, pid_);
     return segment->Delete(spk);
 }
 

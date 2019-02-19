@@ -1027,6 +1027,56 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
     tp.Print(true);
 }
 
+void HandleNSDelete(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
+    if (parts.size() < 3) {
+        std::cout << "delete format error. eg: delete table_name key | delete table_name key idx_name" << std::endl;
+        return;
+    }
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    bool ret = client->ShowTable(parts[1], tables, msg);
+    if (!ret) {
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
+        return;
+    }
+    if (tables.empty()) {
+        printf("delete failed! table %s is not exist\n", parts[1].c_str());
+        return;
+    }
+    uint32_t tid = tables[0].tid();
+    std::string key = parts[2];
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
+    if (!tablet_client) {
+        std::cout << "failed to delete. error msg: " << msg << std::endl;
+        return;
+    }
+    std::string idx_name;
+    if (tables[0].column_desc_size() >= 0 && parts.size() > 3) {
+        std::vector<::rtidb::base::ColumnDesc> columns;
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
+            std::cout << "convert table column desc failed" << std::endl; 
+            return;
+        }
+        for (uint32_t i = 0; i < columns.size(); i++) {
+            if (columns[i].name == parts[3]) {
+                idx_name = parts[3];
+                break;
+            }
+        }
+        if (idx_name.empty()) {
+            printf("idx_name %s is not exist\n", parts[3].c_str()); 
+            return;
+        }
+    }
+    msg.clear();
+    if (tablet_client->Delete(tid, pid, key, idx_name, msg)) {
+        std::cout << "delete ok" << std::endl;
+    } else {
+        std::cout << "delete failed. error msg: " << msg << std::endl; 
+    }
+}
+
 void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
         std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts" << std::endl;
@@ -1757,6 +1807,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("put -  insert data into table\n");
         printf("scan - get records for a period of time\n");
         printf("get - get only one record\n");
+        printf("delete - delete pk\n");
         printf("count - count the num of data in specified key\n");
         printf("preview - preview data\n");
         printf("showtable - show table info\n");
@@ -1820,6 +1871,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex: get table1 key1 0\n");
             printf("ex: get table2 card0 card 1528872944000\n");
             printf("ex: get table2 card0 card 0\n");
+        } else if (parts[1] == "delete") {
+            printf("desc: delete pk\n");
+            printf("usage: delete table_name key idx_name\n");
+            printf("ex: delete table1 key1\n");
+            printf("ex: delete table2 card0 card\n");
         } else if (parts[1] == "count") {
             printf("desc: count the num of data in specified key\n");
             printf("usage: count table_name key [filter_expired_data]\n");
@@ -3734,6 +3790,8 @@ void StartNsClient() {
             HandleNSScan(parts, &client);
         } else if (parts[0] == "get") {
             HandleNSGet(parts, &client);
+        } else if (parts[0] == "delete") {
+            HandleNSDelete(parts, &client);
         } else if (parts[0] == "count") {
             HandleNSCount(parts, &client);
         } else if (parts[0] == "preview") {
