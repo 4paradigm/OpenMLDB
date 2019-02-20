@@ -132,9 +132,37 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
+    for (; count < 30; count++) {
+        offset++;
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        std::string key = "key" + std::to_string(count);
+        entry.set_pk(key);
+        entry.set_ts(count);
+        entry.set_value("value" + std::to_string(count));
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        ASSERT_TRUE(status.ok());
+        if (count == 25) {
+            offset++;
+            ::rtidb::api::LogEntry entry1;
+            entry1.set_log_index(offset);
+            entry1.set_method_type(::rtidb::api::MethodType::kDelete);
+            ::rtidb::api::Dimension* dimension = entry1.add_dimensions();
+            dimension->set_key(key);
+            dimension->set_idx(0);
+            entry1.set_term(5);
+            std::string buffer1;
+            entry1.SerializeToString(&buffer1);
+            ::rtidb::base::Slice slice1(buffer1);
+            ::rtidb::base::Status status = wh->Write(slice1);
+        }
+    }
 
     ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(20, offset);
+    ASSERT_EQ(31, offset);
     Ticket ticket;
     Iterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
@@ -149,6 +177,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
+    delete it;
     it = table->NewIterator("key2", ticket);
     it->Seek(11);
     ASSERT_TRUE(it->Valid());
@@ -162,8 +191,17 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_EQ("value10", value5_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-
+    delete it;
+    it = table->NewIterator("key23", ticket);
+    it->Seek(23);
+    ASSERT_TRUE(it->Valid());
+    delete it;
+    it = table->NewIterator("key25", ticket);
+    it->Seek(25);
+    ASSERT_FALSE(it->Valid());
+    delete it;
 }
+
 TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     std::string snapshot_dir = FLAGS_db_root_path + "/4_4/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/4_4/binlog/";
@@ -522,7 +560,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 	std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
 	std::string snapshot_path = FLAGS_db_root_path + "/1_2/snapshot/";
     WriteHandle* wh = NULL;
-    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset++);
     int count = 0;
     for (; count < 10; count++) {
         ::rtidb::api::LogEntry entry;
@@ -537,6 +575,28 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         ::rtidb::base::Slice slice(buffer);
         ::rtidb::base::Status status = wh->Write(slice);
         offset++;
+        if (count % 2 == 0) {
+            ::rtidb::api::LogEntry entry1;
+            entry1.set_log_index(offset);
+            entry1.set_method_type(::rtidb::api::MethodType::kDelete);
+            ::rtidb::api::Dimension* dimension = entry1.add_dimensions();
+            dimension->set_key(key);
+            dimension->set_idx(0);
+            entry1.set_term(5);
+            std::string buffer1;
+            entry1.SerializeToString(&buffer1);
+            ::rtidb::base::Slice slice1(buffer1);
+            ::rtidb::base::Status status = wh->Write(slice1);
+            offset++;
+        }
+        if (count % 4 == 0) {
+            entry.set_log_index(offset);
+            std::string buffer2;
+            entry.SerializeToString(&buffer2);
+            ::rtidb::base::Slice slice2(buffer2);
+            ::rtidb::base::Status status = wh->Write(slice2);
+            offset++;
+        }
     }
     RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
     for (; count < 30; count++) {
@@ -577,8 +637,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(29, manifest.offset());
-    ASSERT_EQ(28, manifest.count());
+    ASSERT_EQ(38, manifest.offset());
+    ASSERT_EQ(27, manifest.count());
     ASSERT_EQ(6, manifest.term());
 
     for (; count < 50; count++) {
@@ -589,6 +649,21 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         entry.set_ts(::baidu::common::timer::get_micros() / 1000);
         entry.set_value("value");
         entry.set_term(7);
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+        offset++;
+    }
+    {
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        entry.set_method_type(::rtidb::api::MethodType::kDelete);
+        ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+        std::string key = "key9";
+        dimension->set_key(key);
+        dimension->set_idx(0);
+        entry.set_term(5);
         std::string buffer;
         entry.SerializeToString(&buffer);
         ::rtidb::base::Slice slice(buffer);
@@ -612,8 +687,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
 
-    ASSERT_EQ(49, manifest.offset());
-    ASSERT_EQ(48, manifest.count());
+    ASSERT_EQ(59, manifest.offset());
+    ASSERT_EQ(46, manifest.count());
     ASSERT_EQ(7, manifest.term());
 }
 

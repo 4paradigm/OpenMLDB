@@ -407,6 +407,7 @@ uint64_t Snapshot::CollectDeletedKey() {
                 }
                 std::string combined_key = entry.dimensions(0).key() + "|" + std::to_string(entry.dimensions(0).idx());
                 deleted_keys_[combined_key] = cur_offset;
+                PDLOG(DEBUG, "insert key %s offset %lu. tid %u pid %u", combined_key.c_str(), cur_offset, tid_, pid_);
             }
         } else if (status.IsEof()) {
             continue;
@@ -503,6 +504,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                 std::string combined_key = entry.pk() + "|0";
                 auto iter = deleted_keys_.find(combined_key);
                 if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
+                    PDLOG(DEBUG, "delete key %s  offset %lu", entry.pk().c_str(), entry.log_index());
                     deleted_key_num++;
                     continue;
                 }
