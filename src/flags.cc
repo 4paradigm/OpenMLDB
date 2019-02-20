@@ -75,6 +75,7 @@ DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024, "the limit bandwidth. Byt
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
 DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach the threshold");
+DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 
