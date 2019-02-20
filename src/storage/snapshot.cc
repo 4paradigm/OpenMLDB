@@ -142,8 +142,9 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
             if (entry.dimensions_size() == 0) {
                 PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid_, pid_, entry.log_index());
+            } else {
+                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
             }
-            table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
         } else {
             if (entry.dimensions_size() > 0) {
                 table->Put(entry.ts(), entry.value(), entry.dimensions());
@@ -312,24 +313,25 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
                 continue;
             }
         } else {
-            std::set<int> deleted_idx;
-            for (int idx = 0; idx < entry.dimensions_size(); idx++) {
-                std::string combined_key = entry.dimensions(idx).key() + "|" + std::to_string(idx);
+            std::set<int> deleted_pos_set;
+            for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+                std::string combined_key = entry.dimensions(pos).key() + "|" + 
+                        std::to_string(entry.dimensions(pos).idx());
                 if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
-                    deleted_idx.insert(idx);
+                    deleted_pos_set.insert(pos);
                 }
             }
-            if (!deleted_idx.empty()) {
-                if ((int)deleted_idx.size() == entry.dimensions_size()) {
+            if (!deleted_pos_set.empty()) {
+                if ((int)deleted_pos_set.size() == entry.dimensions_size()) {
                     deleted_key_num++;
                     continue;
                 } else {
                     ::rtidb::api::LogEntry tmp_entry(entry);
                     entry.clear_dimensions();
-                    for (int idx = 0; idx < tmp_entry.dimensions_size(); idx++) {
-                        if (deleted_idx.find(idx) == deleted_idx.end()) {
+                    for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
+                        if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
                             ::rtidb::api::Dimension* dimension = entry.add_dimensions();
-                            dimension->CopyFrom(tmp_entry.dimensions(idx));
+                            dimension->CopyFrom(tmp_entry.dimensions(pos));
                         }
                     }
                     std::string tmp_buf;
@@ -404,7 +406,7 @@ uint64_t Snapshot::CollectDeletedKey() {
                     continue;
                 }
                 std::string combined_key = entry.dimensions(0).key() + "|" + std::to_string(entry.dimensions(0).idx());
-                deleted_keys_.insert(std::make_pair(combined_key, cur_offset));
+                deleted_keys_[combined_key] = cur_offset;
             }
         } else if (status.IsEof()) {
             continue;
@@ -490,10 +492,10 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                 PDLOG(WARNING, "log missing expect offset %lu but %ld", cur_offset + 1, entry.log_index());
                 continue;
             }
+            cur_offset = entry.log_index();
             if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) { 
                 continue;
             }
-            cur_offset = entry.log_index();
             if (entry.has_term()) {
                 last_term = entry.term();
             }
@@ -505,25 +507,26 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                     continue;
                 }
             } else {
-                std::set<int> deleted_idx;
-                for (int idx = 0; idx < entry.dimensions_size(); idx++) {
-                    std::string combined_key = entry.dimensions(idx).key() + "|" + std::to_string(idx);
+                std::set<int> deleted_pos_set;
+                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+                    std::string combined_key = entry.dimensions(pos).key() + "|" + 
+                            std::to_string(entry.dimensions(pos).idx());
                     auto iter = deleted_keys_.find(combined_key);
                     if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-                        deleted_idx.insert(idx);
+                        deleted_pos_set.insert(pos);
                     }
                 }
-                if (!deleted_idx.empty()) {
-                    if ((int)deleted_idx.size() == entry.dimensions_size()) {
+                if (!deleted_pos_set.empty()) {
+                    if ((int)deleted_pos_set.size() == entry.dimensions_size()) {
                         deleted_key_num++;
                         continue;
                     } else {
                         ::rtidb::api::LogEntry tmp_entry(entry);
                         entry.clear_dimensions();
-                        for (int idx = 0; idx < tmp_entry.dimensions_size(); idx++) {
-                            if (deleted_idx.find(idx) == deleted_idx.end()) {
+                        for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
+                            if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
                                 ::rtidb::api::Dimension* dimension = entry.add_dimensions();
-                                dimension->CopyFrom(tmp_entry.dimensions(idx));
+                                dimension->CopyFrom(tmp_entry.dimensions(pos));
                             }
                         }
                         std::string tmp_buf;
@@ -585,8 +588,9 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
                     unlink((snapshot_path_ + manifest.name()).c_str());
                 }
                 uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
-                PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu. use %lu second. write key %lu expired key %lu",
-                          snapshot_name.c_str(), offset_, cur_offset, consumed, write_count, expired_key_num);
+                PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu."
+                            "use %lu second. write key %lu expired key %lu deleted key %lu",
+                          snapshot_name.c_str(), offset_, cur_offset, consumed, write_count, expired_key_num, deleted_key_num);
                 offset_ = cur_offset;
                 out_offset = cur_offset;
             } else {
@@ -600,6 +604,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
             ret = -1;
         }
     }
+    deleted_keys_.clear();
     making_snapshot_.store(false, std::memory_order_release);
     return ret;
 }
