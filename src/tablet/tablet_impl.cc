@@ -190,10 +190,10 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
 
     if (!table) {
-        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
-        response->set_code(-1);
-        response->set_msg("table not found");
+        response->set_code(100);
+        response->set_msg("table is not exist");
         return;
     }
 
@@ -280,27 +280,20 @@ void TabletImpl::Get(RpcController* controller,
              ::rtidb::api::GetResponse* response,
              Closure* done) {
     brpc::ClosureGuard done_guard(done);         
-    if (request->tid() < 1) {
-        PDLOG(WARNING, "invalid table tid %u", request->tid());
-        response->set_code(11);
-        response->set_msg("invalid table id");
-        return;
-    }
-
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
-        response->set_code(-1);
-        response->set_msg("table not found");
+        response->set_code(100);
+        response->set_msg("table is not exist");
         return;
     }
 
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                       request->tid(), request->pid());
-        response->set_code(20);
-        response->set_msg("table is unavailable now");
+        response->set_code(104);
+        response->set_msg("table is loading");
         return;
     }
 
@@ -383,13 +376,6 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
-    if (request->tid() < 1) {
-        PDLOG(DEBUG, "invalid table tid %u", request->tid());
-        response->set_code(11);
-        response->set_msg("invalid table id");
-        done->Run();
-        return;
-    }
     if (request->time() == 0) {
         PDLOG(DEBUG, "ts must be greater than zero. tid %u, pid %u", request->tid(),
                 request->pid());
@@ -400,26 +386,25 @@ void TabletImpl::Put(RpcController* controller,
     }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(DEBUG, "fail to find table with tid %u, pid %u", request->tid(),
+        PDLOG(DEBUG, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
-        response->set_code(10);
-        response->set_msg("table not found");
+        response->set_code(100);
+        response->set_msg("table is not exist");
         done->Run();
         return;
     }
     if (!table->IsLeader()) {
-        PDLOG(DEBUG, "table with tid %u, pid %u is follower and it's readonly ", request->tid(),
-                request->pid());
-        response->set_code(20);
-        response->set_msg("table is follower, and it's readonly");
+        PDLOG(DEBUG, "table is follower. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(103);
+        response->set_msg("table is follower");
         done->Run();
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                       request->tid(), request->pid());
-        response->set_code(20);
-        response->set_msg("table is unavailable now");
+        response->set_code(104);
+        response->set_msg("table is loading");
         done->Run();
         return;
     }
@@ -509,17 +494,17 @@ void TabletImpl::Scan(RpcController* controller,
     metric->set_rqtime(::baidu::common::timer::get_micros());
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(10);
-        response->set_msg("table not found");
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
         done->Run();
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                       request->tid(), request->pid());
-        response->set_code(20);
-        response->set_msg("table is unavailable now");
+        response->set_code(104);
+        response->set_msg("table is loading");
         done->Run();
         return;
     }
@@ -642,16 +627,16 @@ void TabletImpl::Count(RpcController* controller,
 	brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(10);
-        response->set_msg("table not found");
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                       request->tid(), request->pid());
-        response->set_code(20);
-        response->set_msg("table is unavailable now");
+        response->set_code(104);
+        response->set_msg("table is loading");
         return;
     }
     if (!request->filter_expired_data()) {
@@ -726,16 +711,16 @@ void TabletImpl::Traverse(RpcController* controller,
 	brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(10);
-        response->set_msg("table not found");
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        PDLOG(WARNING, "table with tid %u, pid %u is unavailable now", 
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", 
                       request->tid(), request->pid());
-        response->set_code(20);
-        response->set_msg("table is unavailable now");
+        response->set_code(104);
+        response->set_msg("table is loading");
         return;
     }
     ::rtidb::storage::TableIterator* it = NULL;
@@ -840,21 +825,21 @@ void TabletImpl::ChangeRole(RpcController* controller,
     } else {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
-            response->set_code(-1);
+            response->set_code(100);
             response->set_msg("table is not exist");
             return;
         }
         if (!table->IsLeader()) {
             PDLOG(WARNING, "table is follower. tid[%u] pid[%u]", tid, pid);
             response->set_code(0);
-            response->set_msg("table is follower.");
+            response->set_msg("table is follower");
             return;
         }
         if (table->GetTableStat() != ::rtidb::storage::kNormal) {
             PDLOG(WARNING, "table state[%u] can not change role. tid[%u] pid[%u]", 
                         table->GetTableStat(), tid, pid);
-            response->set_code(-1);
-            response->set_msg("can not change role");
+            response->set_code(105);
+            response->set_msg("table status is not kNormal");
             return;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
@@ -921,11 +906,17 @@ void TabletImpl::AddReplica(RpcController* controller,
 	}
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     do {
-        if (!table || !table->IsLeader()) {
-            PDLOG(WARNING, "table not exist or table is not leader tid %u, pid %u", request->tid(),
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                     request->pid());
-            response->set_code(-1);
-            response->set_msg("table not exist or table is leader");
+            response->set_code(100);
+            response->set_msg("table is not exist");
+            break;
+        }
+        if (!table->IsLeader()) {
+            PDLOG(WARNING, "table is follower. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(103);
+            response->set_msg("table is follower");
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
@@ -978,11 +969,17 @@ void TabletImpl::DelReplica(RpcController* controller,
 	}
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     do {
-        if (!table || !table->IsLeader()) {
-            PDLOG(WARNING, "table not exist or table is not leader tid %u, pid %u", request->tid(),
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                     request->pid());
-            response->set_code(-1);
-            response->set_msg("table not exist or table is leader");
+            response->set_code(100);
+            response->set_msg("table is not exist");
+            break;
+        }
+        if (!table->IsLeader()) {
+            PDLOG(WARNING, "table is follower. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(103);
+            response->set_msg("table is follower");
             break;
         }
         std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
@@ -1025,17 +1022,23 @@ void TabletImpl::AppendEntries(RpcController* controller,
         Closure* done) {
 	brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table || table->IsLeader()) {
-        PDLOG(WARNING, "table not exist or table is leader tid %u, pid %u", request->tid(),
+    if (!table) {
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist or table is leader");
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        return;
+    }
+    if (!table->IsLeader()) {
+        PDLOG(WARNING, "table is follower. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(103);
+        response->set_msg("table is follower");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
-        response->set_code(-1);
-        response->set_msg("table is loading now");
-        PDLOG(WARNING, "table is loading now. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(104);
+        response->set_msg("table is loading");
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
         return;
     }    
     std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
@@ -1061,9 +1064,9 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        response->set_code(-1);
-        response->set_msg("table not found");
-        PDLOG(WARNING, "fail to find table with tid %u, pid %u", request->tid(),
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
                 request->pid());
         return;
     }
@@ -1145,9 +1148,9 @@ void TabletImpl::SetExpire(RpcController* controller,
             Closure* done) {
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "table not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(-1);
-        response->set_msg("table not exist");
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
         done->Run();
         return;
     }
@@ -1272,14 +1275,14 @@ void TabletImpl::MakeSnapshot(RpcController* controller,
         }
         std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
         if (!table) {
-            PDLOG(WARNING, "fail to find table with tid %u, pid %u", tid, pid);
-            response->set_code(-1);
-            response->set_msg("table not found");
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+            response->set_code(100);
+            response->set_msg("table is not exist");
             break;
         }
         if (table->GetTableStat() != ::rtidb::storage::kNormal) {
-            response->set_code(-1);
-            response->set_msg("table status is not normal");
+            response->set_code(105);
+            response->set_msg("table status is not kNormal");
             PDLOG(WARNING, "table state is %d, cannot make snapshot. %u, pid %u", 
                          table->GetTableStat(), tid, pid);
             break;
@@ -1429,21 +1432,21 @@ void TabletImpl::SendSnapshot(RpcController* controller,
             break;
         }
 		if (!table) {
-			PDLOG(WARNING, "table not exist. tid %u, pid %u", tid, pid);
-			response->set_code(-1);
-			response->set_msg("table not exist");
+			PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+			response->set_code(100);
+			response->set_msg("table is not exist");
 			break;
 		}
 		if (!table->IsLeader()) {
-			PDLOG(WARNING, "table with tid %u, pid %u is follower", tid, pid);
-			response->set_code(-1);
+			PDLOG(WARNING, "table is follower. tid %u, pid %u", tid, pid);
+			response->set_code(103);
 			response->set_msg("table is follower");
 			break;
 		}
 		if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
-			PDLOG(WARNING, "table with tid %u, pid %u is not kSnapshotPaused", tid, pid);
-			response->set_code(-1);
-			response->set_msg("table is unavailable now");
+			PDLOG(WARNING, "table status is not kSnapshotPaused. tid %u, pid %u", tid, pid);
+			response->set_code(107);
+			response->set_msg("table status is not kSnapshotPaused");
 			break;
 		}
         if (task_ptr) {
@@ -1675,9 +1678,9 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
     std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
     do {
         if (!table) {
-            PDLOG(WARNING, "table not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(-1);
-            response->set_msg("table not exist");
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(100);
+            response->set_msg("table is not exist");
             break;
         }
         if (table->GetTableStat() == ::rtidb::storage::kSnapshotPaused) {
@@ -1686,7 +1689,7 @@ void TabletImpl::PauseSnapshot(RpcController* controller,
         } else if (table->GetTableStat() != ::rtidb::storage::kNormal) {
             PDLOG(WARNING, "table status is [%u], cann't pause. tid[%u] pid[%u]", 
                             table->GetTableStat(), request->tid(), request->pid());
-            response->set_code(-1);
+            response->set_code(105);
             response->set_msg("table status is not kNormal");
             break;
         } else {
@@ -1722,9 +1725,9 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
     do {
         std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
         if (!table) {
-            PDLOG(WARNING, "table not exist tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(-1);
-            response->set_msg("table not exist");
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_code(100);
+            response->set_msg("table is not exist");
             break;
         }
         {
@@ -1736,7 +1739,7 @@ void TabletImpl::RecoverSnapshot(RpcController* controller,
             } else if (table->GetTableStat() != ::rtidb::storage::kSnapshotPaused) {
                 PDLOG(WARNING, "table status is [%u], cann't recover. tid[%u] pid[%u]", 
                         table->GetTableStat(), request->tid(), request->pid());
-                response->set_code(-1);
+                response->set_code(107);
                 response->set_msg("table status is not kSnapshotPaused");
                 break;
             } else {
@@ -2028,14 +2031,14 @@ void TabletImpl::GetTableFollower(RpcController* controller,
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
         PDLOG(DEBUG, "table is not exist. tid %u pid %u", tid, pid);
-	    response->set_code(-1);
-        response->set_msg("table not found");
+	    response->set_code(100);
+        response->set_msg("table is not exist");
         return;
     }
     if (!table->IsLeader()) {
-        PDLOG(DEBUG, "table with tid %u, pid %u is follower", tid, pid);
+        PDLOG(DEBUG, "table is follower. tid %u, pid %u", tid, pid);
         response->set_msg("table is follower");
-        response->set_code(-1);
+        response->set_code(103);
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
@@ -2373,8 +2376,8 @@ void TabletImpl::DropTable(RpcController* controller,
         }
         if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
             PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
-            response->set_code(-1);
-            response->set_msg("table is making snapshot");
+            response->set_code(106);
+            response->set_msg("table status is kMakingSnapshot");
             break;
         }
         response->set_code(0);
