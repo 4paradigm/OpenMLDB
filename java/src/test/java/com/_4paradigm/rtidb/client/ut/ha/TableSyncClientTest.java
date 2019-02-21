@@ -207,6 +207,58 @@ public class TableSyncClientTest {
     }
 
     @Test
+    public void testDelete() {
+        String name = createKvTable();
+        try {
+            boolean ok = tableSyncClient.put(name, "test1", 9527, "value0");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9528, "value1");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test1", 9529, "value2");
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.scan(name, "test1", 9529, 1000);
+            Assert.assertTrue(it.getCount() == 3);
+            Assert.assertTrue(tableSyncClient.delete(name, "test1"));
+            it = tableSyncClient.scan(name, "test1", 9529, 1000);
+            Assert.assertTrue(it.getCount() == 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testDeleteSchema() {
+        String name = createSchemaTable();
+        try {
+            Map<String, Object> rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc0");
+            rowMap.put("amt", 9.15d);
+            boolean ok = tableSyncClient.put(name, 9527, rowMap);
+            Assert.assertTrue(ok);
+            rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card0");
+            rowMap.put("mcc", "mcc1");
+            rowMap.put("amt", 9.2d);
+            ok = tableSyncClient.put(name, 9528, rowMap);
+            Assert.assertTrue(ok);
+            KvIterator it = tableSyncClient.scan(name, "card0", "card", 9529, 1000);
+            Assert.assertTrue(it.getCount() == 2);
+            Assert.assertTrue(tableSyncClient.delete(name, "card0", "card"));
+            it = tableSyncClient.scan(name, "card0", "card", 9529, 1000);
+            Assert.assertTrue(it.getCount() == 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
     public void testCount() {
         String name = createKvTable();
         try {

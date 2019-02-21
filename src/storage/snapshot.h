@@ -12,6 +12,7 @@
 #include <vector>
 #include <atomic>
 #include <memory>
+#include <map>
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
 #include "base/count_down_latch.h"
@@ -53,7 +54,7 @@ public:
     int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset);
 
     int TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
-                uint64_t& count, uint64_t& expired_key_num);
+                uint64_t& count, uint64_t& expired_key_num, uint64_t& deleted_key_num);
 
     // Read manifest from local storage return 0 if ok , 1 if manifest does not exist,
     // or -1 if some error ocurrs 
@@ -69,6 +70,8 @@ private:
                                std::atomic<uint64_t>* g_succ_cnt,
                                std::atomic<uint64_t>* g_failed_cnt);
 
+   uint64_t CollectDeletedKey();                           
+
 private:
     uint32_t tid_;
     uint32_t pid_;
@@ -78,6 +81,7 @@ private:
     // the snapshot path
     std::string snapshot_path_;
     std::string log_path_;
+    std::map<std::string, uint64_t> deleted_keys_;
 };
 
 }
