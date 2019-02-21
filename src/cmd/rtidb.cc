@@ -1256,16 +1256,21 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
     uint32_t limit = FLAGS_preview_default_limit;
     if (parts.size() > 2) {
         try {
+            int64_t tmp = boost::lexical_cast<int64_t>(parts[2]);
+            if (tmp < 0) {
+                printf("preview error. limit should be unsigned int\n");
+                return;
+            }
             limit = boost::lexical_cast<uint32_t>(parts[2]);
         } catch (std::exception const& e) {
-            printf("Invalid args. limit should be unsigned int\n");
+            printf("preview error. limit should be unsigned int\n");
             return;
         }
         if (limit > FLAGS_preview_limit_max_num) {
-            printf("scan error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
+            printf("preview error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
             return;
         } else if (limit == 0) {
-            printf("scan error. limit must be greater than zero\n");
+            printf("preview error. limit must be greater than zero\n");
             return;
         }
     }
@@ -2880,12 +2885,17 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::rtidb::client:
         tid =  boost::lexical_cast<uint32_t>(parts[1]);
         pid =  boost::lexical_cast<uint32_t>(parts[2]);
         if (parts.size() > 3) {
+            int64_t tmp = boost::lexical_cast<int64_t>(parts[3]);
+            if (tmp < 0) {
+                printf("preview error. limit should be unsigned int\n");
+                return;
+            }
             limit = boost::lexical_cast<uint32_t>(parts[3]);
             if (limit > FLAGS_preview_limit_max_num) {
-                printf("scan error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
+                printf("preview error. limit is greater than the max num %u\n", FLAGS_preview_limit_max_num);
                 return;
             } else if (limit == 0) {
-                printf("scan error. limit must be greater than zero\n");
+                printf("preview error. limit must be greater than zero\n");
                 return;
             }
         }
