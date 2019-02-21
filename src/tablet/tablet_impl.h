@@ -311,6 +311,7 @@ private:
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
     ThreadPool io_pool_;
+    ThreadPool snapshot_pool_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;

@@ -18,6 +18,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(gc_deleted_pk_version_delta);
 
 namespace rtidb {
 namespace storage {
@@ -166,10 +167,10 @@ void Segment::FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
 
 void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
-    if (cur_version < 2) {
+    if (cur_version < FLAGS_gc_deleted_pk_version_delta) {
         return;
     }
-    uint64_t free_list_version = cur_version - 2;
+    uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
     ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*>* node = NULL;
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
