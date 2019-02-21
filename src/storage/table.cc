@@ -162,6 +162,21 @@ bool Table::Put(const Slice& pk,
     return true;
 }
 
+bool Table::Delete(const std::string& pk, uint32_t idx) {
+    if (idx >= idx_cnt_) {
+        return false;
+    }
+    Slice spk(pk);
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+    }
+    PDLOG(DEBUG, "delete index %u with pk %s for tid %u pid %u", 
+                 idx, pk.c_str(), id_, pid_);
+    Segment* segment = segments_[idx][seg_idx];
+    return segment->Delete(spk);
+}
+
 uint64_t Table::Release() {
     if (segment_released_) {
         return 0;
@@ -183,9 +198,6 @@ void Table::SetGcSafeOffset(uint64_t offset) {
 }
 
 uint64_t Table::SchedGc() {
-    if (!enable_gc_.load(std::memory_order_relaxed)) {
-        return 0;
-    }
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
             id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
@@ -198,6 +210,11 @@ uint64_t Table::SchedGc() {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
+            segment->IncrGcVersion();
+            segment->GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            if (!enable_gc_.load(std::memory_order_relaxed)) {
+                continue;
+            }
             switch (ttl_type_) {
             case ::rtidb::api::TTLType::kAbsoluteTime:
                 segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
