@@ -33,9 +33,11 @@ class TestCount(TestCaseBase):
         rs5 = self.ns_count(self.ns_leader, name, 'testkey1', '')
         self.assertIn('count: 1', rs5)
         rs6 = self.ns_count(self.ns_leader, name, 'testkeyx', '')
-        self.assertIn('key not found', rs6)
+        self.assertIn('count: 0', rs6)
         rs7 = self.ns_count(self.ns_leader, name, 'testkey0', '', 'true')
         self.assertIn('count: 2', rs7)
+        rs8 = self.ns_count(self.ns_leader, name, 'testkeyx', '', 'true')
+        self.assertIn('count: 0', rs8)
 
     def test_count_kv_latest(self):
         """
@@ -92,7 +94,7 @@ class TestCount(TestCaseBase):
         rs5 = self.ns_count(self.ns_leader, name, 'mcc1', 'k2')
         self.assertIn('count: 1', rs5)
         rs6 = self.ns_count(self.ns_leader, name, 'mcc1', 'k1')
-        self.assertIn('key not found', rs6)
+        self.assertIn('count: 0', rs6)
         rs7 = self.ns_count(self.ns_leader, name, 'mcc1', 'card')
         self.assertIn('idx name not found', rs7)
 
