@@ -669,13 +669,11 @@ void TabletImpl::Count(RpcController* controller,
         }
         uint64_t count = 0;
         if (table->GetCount(index, request->key(), count) < 0) {
-            response->set_code(30);
-            response->set_msg("key not found");
-        } else {
-            response->set_code(0);
-            response->set_msg("ok");
-            response->set_count(count);
+            count = 0;
         }
+        response->set_code(0);
+        response->set_msg("ok");
+        response->set_count(count);
         return;
     }
     ::rtidb::storage::Ticket ticket;
