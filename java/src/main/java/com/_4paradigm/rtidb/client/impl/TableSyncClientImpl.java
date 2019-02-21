@@ -228,6 +228,20 @@ public class TableSyncClientImpl implements TableSyncClient {
         return count(th.getTableInfo().getTid(), pid, key, idxName, filter_expired_data, th);
     }
 
+    @Override
+    public int count(int tid, int pid, String key, boolean filter_expired_data) throws TimeoutException, TabletException {
+        return count(tid, pid, key, null, filter_expired_data);
+    }
+
+    @Override
+    public int count(int tid, int pid, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with tid" + tid);
+        }
+        return count(tid, pid, key, idxName, filter_expired_data, th);
+    }
+
     private int count(int tid, int pid, String key, String idxName, boolean filter_expired_data, TableHandler th) throws TimeoutException, TabletException {
         if (key == null || key.isEmpty()) {
             throw new TabletException("key is null or empty");
@@ -271,6 +285,20 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
 
+    }
+
+    @Override
+    public boolean delete(int tid, int pid, String key) throws TimeoutException, TabletException {
+        return delete(tid, pid, key, null);
+    }
+
+    @Override
+    public boolean delete(int tid, int pid, String key, String idxName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with tid" + tid);
+        }
+        return delete(tid, pid, key, idxName, th);
     }
 
     private boolean delete(int tid, int pid, String key, String idxName, TableHandler th) throws TimeoutException, TabletException {
