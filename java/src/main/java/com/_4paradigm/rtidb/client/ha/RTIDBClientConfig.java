@@ -30,7 +30,7 @@ public class RTIDBClientConfig {
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	private String nsEndpoint;
-	private int traverseLimit = 100;
+	private int traverseLimit = 200;
 	private int timerBucketSize = 16;
 	
 
