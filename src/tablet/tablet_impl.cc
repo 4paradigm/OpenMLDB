@@ -1070,10 +1070,10 @@ void TabletImpl::AppendEntries(RpcController* controller,
         response->set_msg("table is not exist");
         return;
     }
-    if (!table->IsLeader()) {
-        PDLOG(WARNING, "table is follower. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(103);
-        response->set_msg("table is follower");
+    if (table->IsLeader()) {
+        PDLOG(WARNING, "table is leader. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(102);
+        response->set_msg("table is leader");
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
