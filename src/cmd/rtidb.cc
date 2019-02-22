@@ -2701,24 +2701,6 @@ void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::clie
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "Bad format" << std::endl;
     }
-}
-
-void HandleClientExecuteGc(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 3) {
-        std::cout << "Bad format" << std::endl;
-        return;
-    }
-    try {
-        bool ok = client->ExecuteGc(boost::lexical_cast<uint32_t>(parts[1]), 
-                                    boost::lexical_cast<uint32_t>(parts[2]));
-        if (ok) {
-            std::cout << "executegc ok" << std::endl;
-        } else {
-            std::cout << "Fail to executegc" << std::endl;
-        }
-    } catch (boost::bad_lexical_cast& e) {
-        std::cout << "Bad format" << std::endl;
-    }
 
 }
 
@@ -3733,8 +3715,6 @@ void StartClient() {
             HandleClientSetExpire(parts, &client);
         } else if (parts[0] == "setttlclock") {
             HandleClientSetTTLClock(parts, &client);
-        } else if (parts[0] == "executegc") {
-            HandleClientExecuteGc(parts, &client);
         } else if (parts[0] == "connectzk") {
             HandleClientConnectZK(parts, &client);
         } else if (parts[0] == "disconnectzk") {
