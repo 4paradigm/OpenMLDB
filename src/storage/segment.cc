@@ -18,6 +18,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(gc_deleted_pk_version_delta);
 
 namespace rtidb {
