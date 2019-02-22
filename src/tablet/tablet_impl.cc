@@ -861,6 +861,7 @@ void TabletImpl::Delete(RpcController* controller,
     } else {
         response->set_code(31);
         response->set_msg("delete failed");
+        return;
     }
     std::shared_ptr<LogReplicator> replicator;
     do {
