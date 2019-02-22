@@ -438,7 +438,7 @@ class TestChangeLeader(TestCaseBase):
         self.assertTrue('failed to change leader. error msg: pid is not exist' in rs)
 
         rs = self.changeleader(self.ns_leader, name, pid, '199.199.233.21:21')
-        self.assertTrue('failed to change leader. error msg: change leader failed' in rs)
+        self.assertTrue('failed to change leader. error msg: create op failed' in rs)
         self.ns_drop(self.ns_leader, name)
 
 
