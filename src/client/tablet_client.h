@@ -94,6 +94,8 @@ public:
              const std::string& idx_name, bool filter_expired_data, 
              uint64_t& value, std::string& msg);
 
+    bool ExecuteGc(uint32_t tid, uint32_t pid);
+
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
              uint32_t pid,
              const std::string& pk,

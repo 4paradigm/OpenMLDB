@@ -161,6 +161,11 @@ message DeleteRequest {
     optional string idx_name = 4;
 }
 
+message ExecuteGcRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
 message GeneralRequest {
     required int32 tid = 1;
     required int32 pid = 2;
@@ -549,6 +554,7 @@ service TabletServer {
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
     rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
     rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
+    rpc ExecuteGc(ExecuteGcRequest) returns (GeneralResponse);
 
     // replication api for master
     rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);

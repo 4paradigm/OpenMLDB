@@ -2083,6 +2083,15 @@ void TabletImpl::CreateTable(RpcController* controller,
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
 }
 
+void TabletImpl::ExecuteGc(RpcController* controller,
+            const ::rtidb::api::ExecuteGcRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    gc_pool_.AddTask(boost::bind(&TabletImpl::GcTable, this, request->tid(), request->pid()));
+    PDLOG(INFO, "ExecuteGc. tid %u pid %u", request->tid(), request->pid());
+}
+
 void TabletImpl::GetTableFollower(RpcController* controller,
             const ::rtidb::api::GetTableFollowerRequest* request,
             ::rtidb::api::GetTableFollowerResponse* response,
