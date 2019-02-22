@@ -18,7 +18,6 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_uint32(skiplist_max_height);
-DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(gc_deleted_pk_version_delta);
 
 namespace rtidb {
@@ -29,13 +28,13 @@ const static SliceComparator scmp;
 Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), gc_version_(0){
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
-    entry_free_list_ = new KeyEntryNodeList((uint8_t)FLAGS_absolute_default_skiplist_height, 4, tcmp);
+    entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
         key_entry_max_height_(height), gc_version_(0) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-    entry_free_list_ = new KeyEntryNodeList((uint8_t)FLAGS_absolute_default_skiplist_height, 4, tcmp);
+    entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 
 Segment::~Segment() {
