@@ -102,7 +102,7 @@ public class TraverseKvIterator implements KvIterator {
 
     @Override
     public int getCount() {
-        return 0;
+        throw new UnsupportedOperationException("getCount not supported");
     }
 
     @Override
@@ -130,13 +130,16 @@ public class TraverseKvIterator implements KvIterator {
 
     @Override
     public ByteBuffer getValue() {
+        if (schema != null && !schema.isEmpty()) {
+            throw new UnsupportedOperationException("getValue not supported");
+        }
         return slice;
     }
 
     @Override
     public Object[] getDecodedValue() throws TabletException {
-        if (schema == null) {
-            throw new TabletException("get decoded value is not supported");
+        if (schema == null || schema.isEmpty()) {
+            throw new UnsupportedOperationException("getDecodedValue not supported");
         }
         Object[] row = new Object[schema.size()];
         getDecodedValue(row, 0, row.length);
@@ -145,7 +148,7 @@ public class TraverseKvIterator implements KvIterator {
 
     @Override
     public void getDecodedValue(Object[] row, int start, int length) throws TabletException {
-        if (schema == null) {
+        if (schema == null || schema.isEmpty()) {
             throw new TabletException("get decoded value is not supported");
         }
         RowCodec.decode(slice, schema, row, start, length);
