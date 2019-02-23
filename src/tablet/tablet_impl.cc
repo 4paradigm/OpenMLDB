@@ -902,7 +902,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
             if (table->IsLeader()) {
                 PDLOG(WARNING, "table is leader. tid[%u] pid[%u]", tid, pid);
                 response->set_code(102);
-                response->set_msg("table is follower");
+                response->set_msg("table is leader");
                 return ;
             }
             PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
