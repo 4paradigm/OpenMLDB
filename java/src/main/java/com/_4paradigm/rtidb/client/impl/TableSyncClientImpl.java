@@ -368,19 +368,6 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public KvIterator traverse(int tid) throws TimeoutException, TabletException {
-        return traverse(tid, null);
-    }
-
-    @Override
-    public KvIterator traverse(int tid, String idxName) throws TimeoutException, TabletException {
-        TableHandler th = client.getHandler(tid);
-        TraverseKvIterator it = new TraverseKvIterator(client, th, idxName);
-        it.next();
-        return it;
-    }
-
-    @Override
     public KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException {
 
         return scan(tname, key, null, st, et, 0);

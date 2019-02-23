@@ -836,8 +836,9 @@ void TabletImpl::Delete(RpcController* controller,
         response->set_msg("ok");
         PDLOG(DEBUG, "delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());
     } else {
-        response->set_code(109);
-        response->set_msg("key not found");
+        response->set_code(136);
+        response->set_msg("delete failed");
+        return;
     }
     std::shared_ptr<LogReplicator> replicator;
     do {
@@ -2057,6 +2058,26 @@ void TabletImpl::CreateTable(RpcController* controller,
     PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
             pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+}
+
+void TabletImpl::ExecuteGc(RpcController* controller,
+            const ::rtidb::api::ExecuteGcRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done) {
+	brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
+    if (!table) {
+        PDLOG(DEBUG, "table is not exist. tid %u pid %u", tid, pid);
+	    response->set_code(-1);
+        response->set_msg("table not found");
+        return;
+    }
+    gc_pool_.AddTask(boost::bind(&TabletImpl::GcTable, this, tid, pid));
+    response->set_code(0);
+    response->set_msg("ok");
+    PDLOG(INFO, "ExecuteGc. tid %u pid %u", tid, pid);
 }
 
 void TabletImpl::GetTableFollower(RpcController* controller,

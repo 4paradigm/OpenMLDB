@@ -242,7 +242,7 @@ class TestRecoverEndpoint(TestCaseBase):
         (conf.tb_endpoints[0], 'abc', '', 'Invalid args. need_restore should be true or false'),
         (conf.tb_endpoints[0], 'false', '-1', 'Invalid args. concurrency should be greater than 0'),
         (conf.tb_endpoints[0], 'false', '0', 'Invalid args. concurrency should be greater than 0'),
-        (conf.tb_endpoints[0], 'false', '10', 'concurrency is greater than the max value 8'),
+        (conf.tb_endpoints[0], 'false', '10', 'invalid parameter'),
         (conf.tb_endpoints[0], 'false', 'abc', 'Invalid args. concurrency should be uint32_t'),
     )
     @ddt.unpack

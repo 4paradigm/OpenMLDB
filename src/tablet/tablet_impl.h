@@ -198,6 +198,11 @@ public:
             ::rtidb::api::UpdateTTLResponse* response,
             Closure* done);
 
+    void ExecuteGc(RpcController* controller, 
+            const ::rtidb::api::ExecuteGcRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void ShowMemPool(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,
