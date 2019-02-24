@@ -285,7 +285,8 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
             PDLOG(WARNING, "no dimesion. tid %u pid %u", table_->GetId(), table_->GetPid());
             return false;
         }
-        return table_->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+        table_->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+        return true;
     }
     if (entry.dimensions_size() > 0) {
         return table_->Put(entry.ts(), entry.value(), entry.dimensions());
