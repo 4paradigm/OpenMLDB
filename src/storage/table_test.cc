@@ -487,8 +487,10 @@ TEST_F(TableTest, TableIteratorCount) {
     Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
     table->Init();
     for (int i = 0; i < 100000; i++) {
+        std::string key = "pk" + std::to_string(i);
         std::string value = "test" + std::to_string(i);
-        table->Put("pk" + std::to_string(i), 9527 + i, value.c_str(), value.size());
+        table->Put(key, 9527 + i, value.c_str(), value.size());
+        table->Put(key, 9528 + i, value.c_str(), value.size());
     }
     TableIterator* it = table->NewTableIterator(0);
     it->SeekToFirst();
@@ -497,7 +499,7 @@ TEST_F(TableTest, TableIteratorCount) {
         count++;
         it->Next();
     }
-    ASSERT_EQ(100000, count);
+    ASSERT_EQ(200000, count);
     delete it;
 }
 
