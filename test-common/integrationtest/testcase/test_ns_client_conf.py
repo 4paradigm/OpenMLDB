@@ -16,8 +16,8 @@ class TestConfSetGet(TestCaseBase):
         ('false', 'TRUE', 'set auto_failover ok','true'),
         ('true', 'FALSE', 'set auto_failover ok','false'),
         ('true', 'FalsE', 'set auto_failover ok','false'),
-        ('true', '0', 'failed to set auto_failover. error msg: invalid value', 'true'),
-        ('true', 'FAlsee', 'failed to set auto_failover. error msg: invalid value', 'true'),
+        ('true', '0', 'failed to set auto_failover. error msg: invalid parameter', 'true'),
+        ('true', 'FAlsee', 'failed to set auto_failover. error msg: invalid parameter', 'true'),
         ('true', 'true', 'set auto_failover ok','true'),
         ('true', 'false', 'set auto_failover ok','false'),
     )

@@ -267,7 +267,7 @@ class TestAutoFailover(TestCaseBase):
         for i in range(number):
             rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
             self.assertIn('Put ok', rs_put)
-        msg = "auto_failover is enabled, cannot execute this cmd"
+        msg = "auto_failover is enabled"
         self.confset(self.ns_leader, 'auto_failover', 'true')
         rs = self.ns_gettablepartition(self.ns_leader, 'gettablepartition', name, 0)
         self.assertIn('get table partition ok', rs)

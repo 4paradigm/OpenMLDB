@@ -259,8 +259,6 @@ private:
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
-    inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
-
     inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
@@ -276,9 +274,6 @@ private:
                   const std::string& file_name, char* buffer, size_t len, uint64_t block_id, uint64_t limit_time);
 
     void SchedMakeSnapshot();
-
-    int ChangeToLeader(uint32_t tid, uint32_t pid, 
-                       const std::vector<std::string>& replicas, uint64_t term);
 
     void CheckZkClient();
 

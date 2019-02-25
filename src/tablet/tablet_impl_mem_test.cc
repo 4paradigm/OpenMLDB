@@ -80,7 +80,7 @@ TEST_F(TabletImplMemTest, TestMem) {
         prequest.set_time(0);
         tablet->Put(NULL, &prequest, &presponse,
                 &closure);
-        ASSERT_EQ(12, presponse.code());
+        ASSERT_EQ(114, presponse.code());
     }
     // 
     {

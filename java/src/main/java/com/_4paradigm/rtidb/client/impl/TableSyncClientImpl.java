@@ -197,6 +197,9 @@ public class TableSyncClientImpl implements TableSyncClient {
                 return response.getValue();
             }
         }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
         return null;
     }
 
@@ -263,9 +266,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.CountResponse response = ts.count(request);
         if (response != null && response.getCode() == 0) {
             return response.getCount();
-        } else {
-            throw new TabletException(response.getMsg());
         }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        throw new TabletException("rtidb internal server error");
     }
 
     @Override
@@ -321,9 +326,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.GeneralResponse response = ts.delete(request);
         if (response != null && response.getCode() == 0) {
             return true;
-        } else {
-            return false;
         }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
+        }
+        return false;
     }
 
     @Override
@@ -457,7 +464,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             return it;
         }
         if (response != null) {
-            throw new TabletException(response.getMsg());
+            throw new TabletException(response.getCode(), response.getMsg());
         }
         throw new TabletException("rtidb internal server error");
     }
@@ -581,6 +588,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         if (response != null && response.getCode() == 0) {
             return true;
+        }
+        if (response != null) {
+            throw new TabletException(response.getCode(), response.getMsg());
         }
         return false;
     }

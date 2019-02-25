@@ -456,12 +456,14 @@ public class TabletSchemaClientTest {
         Assert.assertTrue(ok);
         Assert.assertTrue(tableClient.put(tid, 0, 10l, new Object[] { "9527", "merchant0", 2.0d }));
         // check no exist
-        Object[] row = tableClient.getRow(tid, 0, "9528", 0l);
-        Assert.assertEquals(3, row.length);
-        Assert.assertEquals(null, row[0]);
+        try {
+            Object[] row = tableClient.getRow(tid, 0, "9528", 0l);
+        } catch (TabletException e) {
+            Assert.assertEquals(109, e.getCode());
+        }
 
         // get head
-        row = tableClient.getRow(tid, 0, "9527", 0l);
+        Object[] row = tableClient.getRow(tid, 0, "9527", 0l);
         Assert.assertEquals(3, row.length);
         Assert.assertEquals("9527", row[0]);
         Assert.assertEquals("merchant0", row[1]);
@@ -472,6 +474,7 @@ public class TabletSchemaClientTest {
         Assert.assertEquals("9527", row[0]);
         Assert.assertEquals("merchant0", row[1]);
         Assert.assertEquals(2.0d, row[2]);
+        tabletClient.dropTable(tid, 0);
     }
 
     @Test
@@ -499,12 +502,14 @@ public class TabletSchemaClientTest {
         Assert.assertTrue(tableClient.put(tid, 0, 20l, new Object[] { "9527", "merchant1", 3.0d }));
         Assert.assertTrue(tableClient.put(tid, 0, 30l, new Object[] { "9528", "merchant0", 4.0d }));
         // check no exist
-        Object[] row = tableClient.getRow(tid, 0, "9529", "card", 0l);
-        Assert.assertEquals(3, row.length);
-        Assert.assertEquals(null, row[0]);
+        try {
+            Object[] row = tableClient.getRow(tid, 0, "9529", "card", 0l);
+        } catch (TabletException e) {
+            Assert.assertEquals(109, e.getCode());
+        }
 
         // get head
-        row = tableClient.getRow(tid, 0, "9527", "card",0l);
+        Object[] row = tableClient.getRow(tid, 0, "9527", "card",0l);
         Assert.assertEquals(3, row.length);
         Assert.assertEquals("9527", row[0]);
         Assert.assertEquals("merchant1", row[1]);
@@ -522,6 +527,7 @@ public class TabletSchemaClientTest {
         Assert.assertEquals("9528", row[0]);
         Assert.assertEquals("merchant0", row[1]);
         Assert.assertEquals(4.0d, row[2]);
+        tabletClient.dropTable(tid, 0);
     }
     
     public void testUtf8() throws TimeoutException, TabletException {

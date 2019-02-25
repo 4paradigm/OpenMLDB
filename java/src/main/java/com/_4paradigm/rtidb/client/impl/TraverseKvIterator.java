@@ -94,7 +94,7 @@ public class TraverseKvIterator implements KvIterator {
                 return;
             }
             if (response != null) {
-                throw new TabletException(response.getMsg());
+                throw new TabletException(response.getCode(), response.getMsg());
             }
             throw new TabletException("rtidb internal server error");
         } while (true);
