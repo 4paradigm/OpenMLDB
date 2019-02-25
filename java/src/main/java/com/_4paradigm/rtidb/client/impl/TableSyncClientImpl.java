@@ -306,7 +306,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("key is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
-        TabletServer ts = ph.getReadHandler(th.getReadStrategy());
+        TabletServer ts = ph.getLeader();
         if (ts == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
