@@ -486,11 +486,11 @@ TEST_F(TableTest, TableIteratorCount) {
     mapping.insert(std::make_pair("idx0", 0));
     Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
     table->Init();
-    for (int i = 0; i < 100000; i++) {
+    for (int i = 0; i < 100000; i = i + 2) {
         std::string key = "pk" + std::to_string(i);
         std::string value = "test" + std::to_string(i);
-        table->Put(key, 9527 + i, value.c_str(), value.size());
-        table->Put(key, 9528 + i, value.c_str(), value.size());
+        table->Put(key, 9527, value.c_str(), value.size());
+        table->Put(key, 9528, value.c_str(), value.size());
     }
     TableIterator* it = table->NewTableIterator(0);
     it->SeekToFirst();
@@ -499,8 +499,28 @@ TEST_F(TableTest, TableIteratorCount) {
         count++;
         it->Next();
     }
-    ASSERT_EQ(200000, count);
+    ASSERT_EQ(100000, count);
     delete it;
+
+    it = table->NewTableIterator(0);
+    it->Seek("pk500", 9528);
+    ASSERT_STREQ("pk500", it->GetPK().c_str());
+    ASSERT_EQ(9527, it->GetKey());
+    count = 0;
+    while(it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(44471, count);
+    delete it;
+
+    for (int i = 0; i < 200000; i++) {
+        TableIterator* cur_it = table->NewTableIterator(0);
+        std::string key = "pk" + std::to_string(i);
+        cur_it->Seek(key, 9528);
+        ASSERT_TRUE(cur_it->Valid());
+        delete cur_it;
+    }
 }
 
 
