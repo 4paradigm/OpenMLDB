@@ -397,12 +397,14 @@ public class TableSchemaClientTest {
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10l, new Object[] { "9527", "merchant0", 2.0d }));
         // check no exist
-        Object[] row = client.getRow(tid, 0, "9528", 0l);
-        Assert.assertEquals(3, row.length);
-        Assert.assertEquals(null, row[0]);
+        try {
+            Object[] row = client.getRow(tid, 0, "9528", 0l);
+        } catch (TabletException e) {
+            Assert.assertEquals(109, e.getCode());
+        }
 
         // get head
-        row = client.getRow(tid, 0, "9527", 0l);
+        Object[]row = client.getRow(tid, 0, "9527", 0l);
         Assert.assertEquals(3, row.length);
         Assert.assertEquals("9527", row[0]);
         Assert.assertEquals("merchant0", row[1]);
@@ -413,6 +415,7 @@ public class TableSchemaClientTest {
         Assert.assertEquals("9527", row[0]);
         Assert.assertEquals("merchant0", row[1]);
         Assert.assertEquals(2.0d, row[2]);
+        tabletClient.dropTable(tid, 0);
     }
     
     public void testUtf8() throws TimeoutException, TabletException {
