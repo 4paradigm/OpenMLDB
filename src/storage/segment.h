@@ -74,11 +74,10 @@ private:
     TimeEntries::Iterator* it_;
 };
 
-
 class KeyEntry {
 public:
-    KeyEntry(const char* data, uint32_t size):key(data, size, true), entries(12, 4, tcmp), refs_(0){}
-    KeyEntry(const char* data, uint32_t size, uint8_t height):key(data, size, true), entries(height, 4, tcmp), refs_(0){}
+    KeyEntry(): entries(12, 4, tcmp), refs_(0), count_(0){}
+    KeyEntry(uint8_t height): entries(height, 4, tcmp), refs_(0), count_(0){}
     ~KeyEntry() {}
 
     // just return the count of datablock
@@ -110,10 +109,14 @@ public:
         refs_.fetch_sub(1, std::memory_order_relaxed);
     }
 
+    uint64_t GetCount() {
+        return count_.load(std::memory_order_relaxed);
+    }
+
 public:
-    rtidb::base::Slice key;
     TimeEntries entries;
     std::atomic<uint64_t> refs_;
+    std::atomic<uint64_t> count_;
     friend Segment;
 };
 
@@ -124,6 +127,7 @@ struct SliceComparator {
 };
 
 typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry*, SliceComparator> KeyEntries;
+typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*, TimeComparator> KeyEntryNodeList;
 
 class Segment {
 
@@ -147,6 +151,8 @@ public:
              uint64_t time,
              DataBlock** block);
 
+    bool Delete(const Slice& key);
+
     uint64_t Release();
     // gc with specify time, delete the data before time 
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
@@ -165,9 +171,20 @@ public:
         return pk_cnt_.load(std::memory_order_relaxed);
     }
 
+    void GcFreeList(uint64_t& entry_gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+
+    KeyEntries* GetKeyEntries() {
+        return entries_;
+    }
+
+    int GetCount(const Slice& key, uint64_t& count);
+
+    void IncrGcVersion() {
+        gc_version_.fetch_add(1, std::memory_order_relaxed);
+    }
+
 private:
-    void FreeList(const Slice& pk, 
-                  ::rtidb::base::Node<uint64_t, DataBlock*>* node,
+    void FreeList(::rtidb::base::Node<uint64_t, DataBlock*>* node,
                   uint64_t& gc_idx_cnt, 
                   uint64_t& gc_record_cnt,
                   uint64_t& gc_record_byte_size);
@@ -177,10 +194,13 @@ private:
     KeyEntries* entries_;
     // only Put need mutex
     std::mutex mu_;
+    std::mutex gc_mu_;
     std::atomic<uint64_t> idx_cnt_;
     std::atomic<uint64_t> idx_byte_size_;
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;
+    KeyEntryNodeList* entry_free_list_;
+    std::atomic<uint64_t> gc_version_;
 };
 
 }// namespace storage

@@ -27,6 +27,14 @@ void Ticket::Push(KeyEntry* entry) {
     entries_.push_back(entry);
 }
 
+void Ticket::Pop() {
+    if (!entries_.empty()) {
+        KeyEntry* entry = entries_.back();
+        entries_.pop_back();
+        entry->UnRef();
+    }
+}
+
 }
 }
 

@@ -37,6 +37,34 @@ enum TableStat {
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
+class TableIterator {
+public:
+	TableIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
+	~TableIterator();
+	bool Valid() const;
+	void Next();
+	void Seek(const std::string& key, uint64_t time);
+	DataBlock* GetValue() const;
+	std::string GetPK() const;
+	uint64_t GetKey() const;
+	void SeekToFirst();
+
+private:
+    void NextPK();
+    bool IsExpired();
+
+private:
+    Segment** segments_;
+    uint32_t const seg_cnt_;
+    uint32_t seg_idx_;
+    KeyEntries::Iterator* pk_it_;
+    TimeEntries::Iterator* it_;
+    ::rtidb::api::TTLType ttl_type_;
+    uint32_t record_idx_;
+    uint64_t expire_value_;
+    Ticket ticket_;
+};
+
 class Table {
 
 public:
@@ -80,10 +108,14 @@ public:
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
+    bool Delete(const std::string& pk, uint32_t idx);
+
     // use the first demission
     Iterator* NewIterator(const std::string& pk, Ticket& ticket);
 
     Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
+
+    TableIterator* NewTableIterator(uint32_t index);
     // release all memory allocated
     uint64_t Release();
 
@@ -92,6 +124,8 @@ public:
     uint64_t GetTTL() const {
         return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
     }
+
+    int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
 
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);

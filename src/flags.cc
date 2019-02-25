@@ -31,6 +31,7 @@ DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");
+DEFINE_uint32(gc_deleted_pk_version_delta, 2, "config the gc version delta");
 DEFINE_double(mem_release_rate, 5 , "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
@@ -38,6 +39,8 @@ DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024, "config the max size of scan bytes size");
 DEFINE_uint32(scan_reserve_size, 1024, "config the size of vec reserve");
+DEFINE_uint32(preview_limit_max_num, 1000, "config the max num of preview limit");
+DEFINE_uint32(preview_default_limit, 100, "config the default limit of preview");
 // binlog configuration
 DEFINE_int32(binlog_single_file_max_size, 1024*4, "the max size of single binlog file");
 DEFINE_int32(binlog_sync_batch_size, 32, "the batch size of sync binlog");
@@ -73,6 +76,7 @@ DEFINE_int32(stream_bandwidth_limit, 10 * 1204 * 1024, "the limit bandwidth. Byt
 DEFINE_int32(make_snapshot_time, 23, "config the time to make snapshot");
 DEFINE_int32(make_snapshot_check_interval, 1000*60*10, "config the interval to check making snapshot time");
 DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach the threshold");
+DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 

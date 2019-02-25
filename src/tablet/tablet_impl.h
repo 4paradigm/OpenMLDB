@@ -83,6 +83,21 @@ public:
               ::rtidb::api::ScanResponse* response,
               Closure* done);
 
+    void Delete(RpcController* controller,
+              const ::rtidb::api::DeleteRequest* request,
+              ::rtidb::api::GeneralResponse* response,
+              Closure* done);
+
+    void Count(RpcController* controller,
+              const ::rtidb::api::CountRequest* request,
+              ::rtidb::api::CountResponse* response,
+              Closure* done);
+
+    void Traverse(RpcController* controller,
+              const ::rtidb::api::TraverseRequest* request,
+              ::rtidb::api::TraverseResponse* response,
+              Closure* done);
+
     void CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
@@ -183,6 +198,11 @@ public:
             ::rtidb::api::UpdateTTLResponse* response,
             Closure* done);
 
+    void ExecuteGc(RpcController* controller, 
+            const ::rtidb::api::ExecuteGcRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void ShowMemPool(RpcController* controller,
             const ::rtidb::api::HttpRequest* request,
             ::rtidb::api::HttpResponse* response,
@@ -239,8 +259,6 @@ private:
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
-    inline bool CheckScanRequest(const rtidb::api::ScanRequest* request);
-
     inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
@@ -256,9 +274,6 @@ private:
                   const std::string& file_name, char* buffer, size_t len, uint64_t block_id, uint64_t limit_time);
 
     void SchedMakeSnapshot();
-
-    int ChangeToLeader(uint32_t tid, uint32_t pid, 
-                       const std::vector<std::string>& replicas, uint64_t term);
 
     void CheckZkClient();
 
@@ -296,6 +311,7 @@ private:
     ThreadPool keep_alive_pool_;
     ThreadPool task_pool_;
     ThreadPool io_pool_;
+    ThreadPool snapshot_pool_;
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;

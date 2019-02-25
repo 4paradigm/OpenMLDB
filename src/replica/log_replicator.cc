@@ -279,6 +279,15 @@ void LogReplicator::SetLeaderTerm(uint64_t term) {
 }
 
 bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
+    if (entry.has_method_type() && 
+        entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+        if (entry.dimensions_size() == 0) {
+            PDLOG(WARNING, "no dimesion. tid %u pid %u", table_->GetId(), table_->GetPid());
+            return false;
+        }
+        table_->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+        return true;
+    }
     if (entry.dimensions_size() > 0) {
         return table_->Put(entry.ts(), entry.value(), entry.dimensions());
     } else {
@@ -340,7 +349,7 @@ bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* requ
             return false;
         }
         if (!ApplyEntryToTable(request->entries(i))) {
-            PDLOG(WARNING, "put failed. tid %u pid %u", table_->GetId(), table_->GetPid());
+            PDLOG(WARNING, "apply failed. tid %u pid %u", table_->GetId(), table_->GetPid());
             return false;
         }
         log_offset_.store(request->entries(i).log_index(), std::memory_order_relaxed);

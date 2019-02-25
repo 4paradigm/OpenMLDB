@@ -1,6 +1,7 @@
 #! /bin/sh
 #
 # start_ns.sh
+cd "$(dirname "$0")"/../
 RTIDBPIDFILE="./bin/ns.pid"
 mkdir -p "$(dirname "$RTIDBPIDFILE")"
 case $1 in

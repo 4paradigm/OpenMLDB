@@ -237,7 +237,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     }
                     for (PartitionMeta pm : partition.getPartitionMetaList()) {
                         if (!pm.getIsAlive()) {
-                            logger.warn("table {} partition with endpoint {} is dead", table.getName(), pm.getEndpoint());
+                            logger.warn("table {} partition {} with endpoint {} is dead", table.getName(), partition.getPid(), pm.getEndpoint());
                             continue;
                         }
                         EndPoint endpoint = new EndPoint(pm.getEndpoint());
@@ -257,7 +257,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                         }
                         if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
                             ph.setFastTablet(ts);
-                            logger.info("find fast tablet[{}] server for table {} local read", endpoint, table.getName());
+                            logger.info("find fast tablet[{}] server for table {} partition {} local read", endpoint, table.getName(), partition.getPid());
                         }
                     }
                 }

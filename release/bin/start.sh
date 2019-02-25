@@ -1,6 +1,7 @@
 #! /bin/sh
 #
 # start.sh
+cd "$(dirname "$0")"/../
 RTIDBPIDFILE="./bin/tablet.pid"
 mkdir -p "$(dirname "$RTIDBPIDFILE")"
 case $1 in
