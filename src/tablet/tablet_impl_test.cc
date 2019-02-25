@@ -205,7 +205,7 @@ TEST_F(TabletImplTest, Get) {
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(113, response.code());
+        ASSERT_EQ(109, response.code());
     }
     // put/get expired key
     {
@@ -227,7 +227,7 @@ TEST_F(TabletImplTest, Get) {
         request.set_ts(0);
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(113, response.code());
+        ASSERT_EQ(109, response.code());
     }
     // put some key
     {
@@ -286,7 +286,7 @@ TEST_F(TabletImplTest, Get) {
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(113, response.code());
+        ASSERT_EQ(109, response.code());
     }
     {
         ::rtidb::api::GetRequest request;
@@ -310,7 +310,7 @@ TEST_F(TabletImplTest, Get) {
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(113, response.code());
+        ASSERT_EQ(109, response.code());
     }
     // create latest ttl table
     id = counter++;
@@ -497,7 +497,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
 
         gresponse.Clear();
         tablet.Get(NULL, &grequest, &gresponse, &closure);
-        ASSERT_EQ(113, gresponse.code());
+        ASSERT_EQ(109, gresponse.code());
 
         gres.Clear();
         tablet.GetTableStatus(NULL, &gr, &gres, &closure);
@@ -1348,8 +1348,8 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         request.set_ts(1);
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(113, response.code());
-        ASSERT_EQ("ts not found", response.msg());
+        ASSERT_EQ(109, response.code());
+        ASSERT_EQ("key not found", response.msg());
     }
     // revert ttl
     {
@@ -1372,8 +1372,8 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         request.set_ts(1);
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(113, response.code());
-        ASSERT_EQ("ts not found", response.msg());
+        ASSERT_EQ(109, response.code());
+        ASSERT_EQ("key not found", response.msg());
     }
 
     FLAGS_gc_interval = old_gc_interval;
@@ -1846,8 +1846,8 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         request.set_ts(now3);
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(113, response.code());
-        ASSERT_EQ("ts not found", response.msg());
+        ASSERT_EQ(109, response.code());
+        ASSERT_EQ("key not found", response.msg());
     }
     FLAGS_gc_interval = old_gc_interval;
 }
