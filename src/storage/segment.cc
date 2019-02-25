@@ -61,7 +61,9 @@ uint64_t Segment::Release() {
     while (f_it->Valid()) {
         ::rtidb::base::Node<Slice, KeyEntry*>* node = f_it->GetValue();
         delete node->GetKey().data();
-        node->GetValue()->Release();
+        KeyEntry* entry = node->GetValue();
+        entry->Release();
+        delete entry;
         delete node;
         f_it->Next();
     }
