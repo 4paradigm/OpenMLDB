@@ -396,7 +396,7 @@ TEST_F(TableTest, TableIterator) {
     ASSERT_FALSE(it->Valid());
 
     it->Seek("none", 11111);
-    ASSERT_FALSE(it->Valid());
+    ASSERT_TRUE(it->Valid());
 
     it->Seek("test", 30);
     ASSERT_TRUE(it->Valid());
@@ -434,6 +434,93 @@ TEST_F(TableTest, TableIterator) {
     ASSERT_STREQ("pk1", it->GetPK().c_str());
     ASSERT_EQ(9527, it->GetKey());
 
+}
+
+TEST_F(TableTest, TableIteratorNoPk) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
+    table->Init();
+
+    table->Put("pk10", 9527, "test10", 5);
+    table->Put("pk8", 9526, "test8", 5);
+    table->Put("pk6", 9525, "test6", 5);
+    table->Put("pk4", 9524, "test4", 5);
+    table->Put("pk2", 9523, "test2", 5);
+    table->Put("pk0", 9522, "test0", 5);
+    // Ticket ticket;
+    TableIterator* it = table->NewTableIterator(0);
+    it->SeekToFirst();
+    ASSERT_STREQ("pk10", it->GetPK().c_str());
+    ASSERT_EQ(9527, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk4", it->GetPK().c_str());
+    ASSERT_EQ(9524, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk8", it->GetPK().c_str());
+    ASSERT_EQ(9526, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk0", it->GetPK().c_str());
+    ASSERT_EQ(9522, it->GetKey());
+    delete it;
+    it = table->NewTableIterator(0);
+    it->Seek("pk4", 9526);
+    ASSERT_STREQ("pk4", it->GetPK().c_str());
+    ASSERT_EQ(9524, it->GetKey());
+    delete it;
+
+    ASSERT_TRUE(table->Delete("pk4", 0));
+    it = table->NewTableIterator(0);
+    it->Seek("pk4", 9526);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_STREQ("pk8", it->GetPK().c_str());
+    ASSERT_EQ(9526, it->GetKey());
+    it->Next();
+    ASSERT_STREQ("pk0", it->GetPK().c_str());
+    ASSERT_EQ(9522, it->GetKey());
+    delete it;
+}
+
+TEST_F(TableTest, TableIteratorCount) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
+    table->Init();
+    for (int i = 0; i < 100000; i = i + 2) {
+        std::string key = "pk" + std::to_string(i);
+        std::string value = "test" + std::to_string(i);
+        table->Put(key, 9527, value.c_str(), value.size());
+        table->Put(key, 9528, value.c_str(), value.size());
+    }
+    TableIterator* it = table->NewTableIterator(0);
+    it->SeekToFirst();
+    int count = 0;
+    while(it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(100000, count);
+    delete it;
+
+    it = table->NewTableIterator(0);
+    it->Seek("pk500", 9528);
+    ASSERT_STREQ("pk500", it->GetPK().c_str());
+    ASSERT_EQ(9527, it->GetKey());
+    count = 0;
+    while(it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(44471, count);
+    delete it;
+
+    for (int i = 0; i < 200000; i++) {
+        TableIterator* cur_it = table->NewTableIterator(0);
+        std::string key = "pk" + std::to_string(i);
+        cur_it->Seek(key, 9528);
+        ASSERT_TRUE(cur_it->Valid());
+        delete cur_it;
+    }
 }
 
 
