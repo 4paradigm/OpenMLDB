@@ -127,14 +127,10 @@ bool Segment::Delete(const Slice& key) {
     ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = NULL;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        uint64_t byte_size = 0;
         entry_node = entries_->Remove(key);
         if (entry_node == NULL) {
             return false;
         }
-        byte_size = GetRecordPkIdxSize(entry_node->Height(), key.size(), key_entry_max_height_);
-        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
     }
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
@@ -178,6 +174,9 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
     }
     while (node != NULL) {
         ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = node->GetValue();
+        uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
+        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
         // free pk memory
         delete entry_node->GetKey().data();
         KeyEntry* entry = entry_node->GetValue();
@@ -255,11 +254,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
             if (entry->entries.IsEmpty()) {
-                ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = entries_->Remove(key);
-                uint64_t byte_size = 0;
-                byte_size = GetRecordPkIdxSize(entry_node->Height(), key.size(), key_entry_max_height_);
-                idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-                pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
+                entry_node = entries_->Remove(key);
             }
         }
         if (entry_node != NULL) {
