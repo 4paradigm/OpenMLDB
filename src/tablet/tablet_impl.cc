@@ -730,10 +730,14 @@ void TabletImpl::Traverse(RpcController* controller,
     } else {
         it = table->NewTableIterator(0);
     }
+    uint64_t last_time = 0;
+    std::string last_pk;
     if (request->has_pk() && request->pk().size() > 0) {
         PDLOG(DEBUG, "tid %u, pid %u seek pk %s ts %lu", 
                     request->tid(), request->pid(), request->pk().c_str(), request->ts());
         it->Seek(request->pk(), request->ts());
+        last_pk = request->pk();
+        last_time = request->ts();
     } else {
         PDLOG(DEBUG, "tid %u, pid %u seek to first", request->tid(), request->pid());
         it->SeekToFirst();
@@ -745,8 +749,6 @@ void TabletImpl::Traverse(RpcController* controller,
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     uint32_t scount = 0;
-    uint64_t last_time = 0;
-    std::string last_pk;
     while (it->Valid()) {
         if (request->limit() > 0 && scount > request->limit() - 1) {
             PDLOG(DEBUG, "reache the limit %u ", request->limit());
