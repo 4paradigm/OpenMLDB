@@ -14,6 +14,10 @@ public class RTIDBClientConfig {
     public enum Mode {
         kSingleNodeMode, kClusterMode
     }
+    public static boolean handleNull = false;
+    public static final String NULL_STRING = "!N@U#L$L%";
+    public static final String EMPTY_STRING = "!@#$%";
+
 	private boolean enableMetrics = true;
 	private String zkEndpoints = "";
 	private String zkRootPath = "";
@@ -32,7 +36,7 @@ public class RTIDBClientConfig {
 	private String nsEndpoint;
 	private int traverseLimit = 200;
 	private int timerBucketSize = 16;
-	
+
 
     /**
      * @return the timerBucketSize

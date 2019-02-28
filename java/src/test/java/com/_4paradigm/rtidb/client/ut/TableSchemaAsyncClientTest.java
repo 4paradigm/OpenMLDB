@@ -29,7 +29,8 @@ public class TableSchemaAsyncClientTest {
     private final static AtomicInteger id = new AtomicInteger(9000);
     private static TableAsyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static EndPoint endpoint = new EndPoint("192.168.22.152:9501");
+//    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     
@@ -47,6 +48,10 @@ public class TableSchemaAsyncClientTest {
     }
     @AfterClass
     public static void tearDown() {
+        for (int i = id.get(); i >= 9000; i--) {
+            tabletClient.dropTable(i, 0);
+        }
+        RTIDBClientConfig.handleNull = false;
         snc.close();
     }
     
@@ -147,7 +152,8 @@ public class TableSchemaAsyncClientTest {
         } catch (ExecutionException e) {
             Assert.assertTrue(false);
         }
-        
+
+
     }
 
     @Test
@@ -196,6 +202,82 @@ public class TableSchemaAsyncClientTest {
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
-        
+
+    }
+
+
+    @Test
+    public void testNullEmptyKeyScan() {
+        int tid = createTable();
+        try {
+            RTIDBClientConfig.handleNull = true;
+            PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { null, "1222", 1.0 });
+            Assert.assertTrue(pf.get());
+
+            pf = tableClient.put(tid, 0, 10, new Object[] { null, "2222", 1.0 });
+            Assert.assertTrue(pf.get());
+
+            pf = tableClient.put(tid, 0, 11, new Object[] { null, "3222", 1.0 });
+            Assert.assertTrue(pf.get());
+
+            pf = tableClient.put(tid, 0, 12, new Object[] { null, "4222", 1.0 });
+            Assert.assertTrue(pf.get());
+
+            pf = tableClient.put(tid, 0, 13, new Object[] {"", "5222", 1.0 });
+            Assert.assertTrue(pf.get());
+
+            pf = tableClient.put(tid, 0, 14, new Object[] {"", "6222", 1.0 });
+            Assert.assertTrue(pf.get());
+
+            pf = tableClient.put(tid, 0, 15, new Object[] {"card1", "7222", 1.0 });
+            Assert.assertTrue(pf.get());
+
+            ScanFuture sf = tableClient.scan(tid, 0, null, "card", 20, 9);
+            KvIterator it = sf.get();
+            Assert.assertEquals(it.getCount(), 4);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals(null, row[0]);
+            Assert.assertEquals("4222", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+
+            sf = tableClient.scan(tid, 0, "", "card", 20, 9);
+            it = sf.get();
+            Assert.assertEquals(it.getCount(), 2);
+            Assert.assertTrue(it.valid());
+            row = it.getDecodedValue();
+            Assert.assertEquals("", row[0]);
+            Assert.assertEquals("6222", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+
+            sf = tableClient.scan(tid, 0, "card1", "card", 20, 9);
+            it = sf.get();
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            row = it.getDecodedValue();
+            Assert.assertEquals("card1", row[0]);
+            Assert.assertEquals("7222", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+
+        try {
+            PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { "9527", null, 1.0 });
+            Assert.assertTrue(pf.get());
+            ScanFuture sf = tableClient.scan(tid, 0, "9527", "card", 12, 9);
+            KvIterator it = sf.get();
+            Assert.assertEquals(it.getCount(), 1);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals(null, row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
     }
 }

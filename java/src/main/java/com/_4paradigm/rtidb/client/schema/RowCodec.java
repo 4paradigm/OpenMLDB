@@ -8,6 +8,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import org.joda.time.DateTime;
 
 import com._4paradigm.rtidb.client.TabletException;
@@ -24,6 +25,19 @@ public class RowCodec {
         if (row.length != schema.size()) {
             throw new TabletException("row length mismatch schema");
         }
+
+
+        if (RTIDBClientConfig.handleNull) {
+            for (int i = 0; i < row.length; i++) {
+                if (null == row[i]) {
+                    row[i] = RTIDBClientConfig.NULL_STRING;
+                } else if (row[i].toString().isEmpty()) {
+                    row[i] = RTIDBClientConfig.EMPTY_STRING;
+                }
+            }
+        }
+
+
         Object[] cache = new Object[row.length];
         // TODO limit the max size
         int size = getSize(row, schema, cache);
@@ -161,7 +175,17 @@ public class RowCodec {
                     byte[] inner = new byte[size];
                     buffer.get(inner);
                     String val = new String(inner, charset);
-                    row[index] = val;
+                    if (RTIDBClientConfig.handleNull) {
+                        if (RTIDBClientConfig.NULL_STRING.equals(val)) {
+                            row[index] = null;
+                        } else if (RTIDBClientConfig.EMPTY_STRING.equals(val)) {
+                            row[index] = "";
+                        } else {
+                            row[index] = val;
+                        }
+                    } else {
+                        row[index] = val;
+                    }
                     break;
                 case kInt32:
                     row[index] = buffer.getInt();

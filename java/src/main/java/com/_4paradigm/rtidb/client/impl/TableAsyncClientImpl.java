@@ -15,6 +15,7 @@ import com._4paradigm.rtidb.client.TableAsyncClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
@@ -32,13 +33,15 @@ import io.brpc.client.RpcCallback;
 import rtidb.api.TabletServer;
 
 public class TableAsyncClientImpl implements TableAsyncClient {
-    
+
     private RTIDBClient client;
-    
+
+
     public TableAsyncClientImpl(RTIDBClient client) {
         this.client = client;
     }
-    
+
+
     @Override
     public PutFuture put(int tid, int pid, long time, Object[] row) throws TabletException {
         TableHandler tableHandler = client.getHandler(tid);
@@ -48,21 +51,35 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (tableHandler.getPartitions().length <= pid) {
             throw new TabletException("fail to find partition with pid "+ pid +" from table " +tableHandler.getTableInfo().getName());
         }
-        ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
+
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         int index = 0;
         int count = 0;
         for (int i = 0; i < tableHandler.getSchema().size(); i++) {
             if (tableHandler.getSchema().get(i).isAddTsIndex()) {
+
+                String value = null;
                 if (row[i] == null) {
-                    index ++;
-                    continue;
+                    if (RTIDBClientConfig.handleNull) {
+                        value = RTIDBClientConfig.NULL_STRING;
+                    } else {
+                        index ++;
+                        continue;
+                    }
                 }
-                String value = row[i].toString();
+                if (row[i] != null) {
+                    value = row[i].toString();
+                }
+
                 if (value.isEmpty()) {
-                    index ++;
-                    continue;
+                    if (RTIDBClientConfig.handleNull) {
+                        value = RTIDBClientConfig.EMPTY_STRING;
+                    } else {
+                        index ++;
+                        continue;
+                    }
                 }
+
                 Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
                 dimList.add(dim);
                 index ++;
@@ -72,9 +89,12 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (count == 0) {
             throw new TabletException("no dimension in this row");
         }
+
+        ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
+
         return put(tid, pid, null, time, dimList, buffer, tableHandler);
     }
-    
+
     @Override
     public PutFuture put(int tid, int pid, String key, long time, byte[] bytes) throws TabletException {
         TableHandler th = client.getHandler(tid);
@@ -104,28 +124,41 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         return put(th.getTableInfo().getTid(), pid, key, time, bytes, th);
     }
-    
+
     @Override
     public PutFuture put(String name, long time, Object[] row) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
         Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
         int index = 0;
         int count = 0;
         for (int i = 0; i < th.getSchema().size(); i++) {
             if (th.getSchema().get(i).isAddTsIndex()) {
+
+                String value = null;
                 if (row[i] == null) {
-                    index++;
-                    continue;
+                    if (RTIDBClientConfig.handleNull) {
+                        value = RTIDBClientConfig.NULL_STRING;
+                    } else {
+                        index ++;
+                        continue;
+                    }
                 }
-                String value = row[i].toString();
+                if (row[i] != null) {
+                    value = row[i].toString();
+                }
+
                 if (value.isEmpty()) {
-                    index++;
-                    continue;
+                    if (RTIDBClientConfig.handleNull) {
+                        value = RTIDBClientConfig.EMPTY_STRING;
+                    } else {
+                        index ++;
+                        continue;
+                    }
                 }
+
                 int pid = (int) (MurmurHash.hash64(value) % th.getPartitions().length);
                 if (pid < 0) {
                     pid = pid * -1;
@@ -144,17 +177,19 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (count == 0) {
             throw new TabletException("no dimension in this row for table name " + name);
         }
+        ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
+
         List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
-            Future<PutResponse> response = putForInternal(th.getTableInfo().getTid(), entry.getKey(), null, 
+            Future<PutResponse> response = putForInternal(th.getTableInfo().getTid(), entry.getKey(), null,
                              time, entry.getValue(), buffer, th);
             pl.add(response);
         }
         return PutFuture.wrapper(pl);
     }
-    
+
     @Override
     public PutFuture put(String name, String key, long time, String value) throws TabletException {
         return put(name, key, time, value.getBytes(Charsets.UTF_8));
@@ -288,10 +323,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException{
         return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), th);
     }
-    
-    private PutFuture put(int tid, int pid, 
-            String key, long time, 
-            List<Tablet.Dimension> ds, 
+
+    private PutFuture put(int tid, int pid,
+            String key, long time,
+            List<Tablet.Dimension> ds,
             ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
@@ -300,10 +335,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Future<PutResponse> response = putForInternal(tid, pid, key, time, ds, row, th);
         return PutFuture.wrapper(response, start, client.getConfig());
     }
-    
-    private Future<PutResponse> putForInternal(int tid, int pid, 
-            String key, long time, 
-            List<Tablet.Dimension> ds, 
+
+    private Future<PutResponse> putForInternal(int tid, int pid,
+            String key, long time,
+            List<Tablet.Dimension> ds,
             ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
@@ -340,11 +375,16 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Future<PutResponse> response = tablet.put(request, putFakeCallback);
         return response;
     }
-    
+
     private GetFuture get(int tid, int pid, String key, String idxName, long time, Tablet.GetType  type, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
-            throw new TabletException("key is null or empty");
+            if (RTIDBClientConfig.handleNull) {
+                key = null == key ? RTIDBClientConfig.NULL_STRING : RTIDBClientConfig.EMPTY_STRING;
+            } else {
+                throw new TabletException("key is null or empty");
+            }
         }
+
         Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
@@ -364,11 +404,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Future<Tablet.GetResponse> response = ts.get(request, getFakeCallback);
         return GetFuture.wrappe(response, th, startTime, client.getConfig());
     }
-    
-    
+
+
     private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
-            throw new TabletException("key is null or empty");
+            if (RTIDBClientConfig.handleNull) {
+                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
+            } else {
+                throw new TabletException("key is null or empty");
+            }
         }
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
@@ -393,7 +437,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Future<Tablet.ScanResponse> response = ts.scan(request, scanFakeCallback);
         return ScanFuture.wrappe(response, th, startTime);
     }
-    
+
     private static RpcCallback<Tablet.PutResponse> putFakeCallback = new RpcCallback<Tablet.PutResponse>() {
 
         @Override
