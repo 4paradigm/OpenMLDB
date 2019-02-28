@@ -44,6 +44,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public PutFuture put(int tid, int pid, long time, Object[] row) throws TabletException {
+        boolean handleNull = client.getConfig().isHandleNull();
         TableHandler tableHandler = client.getHandler(tid);
         if (tableHandler == null) {
             throw new TabletException("fail to find table with id " + tid);
@@ -60,7 +61,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
                 String value = null;
                 if (row[i] == null) {
-                    if (RTIDBClientConfig.handleNull) {
+                    if (handleNull) {
                         value = RTIDBClientConfig.NULL_STRING;
                     } else {
                         index ++;
@@ -72,7 +73,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                 }
 
                 if (value.isEmpty()) {
-                    if (RTIDBClientConfig.handleNull) {
+                    if (handleNull) {
                         value = RTIDBClientConfig.EMPTY_STRING;
                     } else {
                         index ++;
@@ -128,6 +129,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     @Override
     public PutFuture put(String name, long time, Object[] row) throws TabletException {
         TableHandler th = client.getHandler(name);
+        boolean handleNull = client.getConfig().isHandleNull();
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
@@ -139,7 +141,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
                 String value = null;
                 if (row[i] == null) {
-                    if (RTIDBClientConfig.handleNull) {
+                    if (handleNull) {
                         value = RTIDBClientConfig.NULL_STRING;
                     } else {
                         index ++;
@@ -151,7 +153,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                 }
 
                 if (value.isEmpty()) {
-                    if (RTIDBClientConfig.handleNull) {
+                    if (handleNull) {
                         value = RTIDBClientConfig.EMPTY_STRING;
                     } else {
                         index ++;
@@ -378,7 +380,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     private GetFuture get(int tid, int pid, String key, String idxName, long time, Tablet.GetType  type, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
-            if (RTIDBClientConfig.handleNull) {
+            if (client.getConfig().isHandleNull()) {
                 key = null == key ? RTIDBClientConfig.NULL_STRING : RTIDBClientConfig.EMPTY_STRING;
             } else {
                 throw new TabletException("key is null or empty");
@@ -408,7 +410,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th) throws TabletException {
         if (key == null || key.isEmpty()) {
-            if (RTIDBClientConfig.handleNull) {
+            if (client.getConfig().isHandleNull()) {
                 key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
             } else {
                 throw new TabletException("key is null or empty");

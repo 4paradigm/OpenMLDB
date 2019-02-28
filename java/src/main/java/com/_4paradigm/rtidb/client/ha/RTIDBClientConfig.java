@@ -11,10 +11,17 @@ import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
  */
 public class RTIDBClientConfig {
 
+    public boolean isHandleNull() {
+        return handleNull;
+    }
+
+    public void setHandleNull(boolean handleNull) {
+        this.handleNull = handleNull;
+    }
+
     public enum Mode {
         kSingleNodeMode, kClusterMode
     }
-    public static boolean handleNull = false;
     public static final String NULL_STRING = "!N@U#L$L%";
     public static final String EMPTY_STRING = "!@#$%";
 
@@ -30,6 +37,7 @@ public class RTIDBClientConfig {
 	private int readTimeout = 10000;
 	private int maxCntCnnPerHost = 2;
 	private boolean removeDuplicateByTime = false;
+    private boolean handleNull = false;
 	private int maxRetryCnt = 1;
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
