@@ -119,6 +119,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with name " + name);
         }
+
+        if (key == null || key.isEmpty()) {
+            if (client.getConfig().isHandleNull()) {
+                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
+            } else {
+                throw new TabletException("key is null or empty");
+            }
+        }
+
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -272,7 +281,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (key == null || key.isEmpty()) {
+            if (client.getConfig().isHandleNull()) {
+                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
+            } else {
+                throw new TabletException("key is null or empty");
+            }
+        }
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
+
         if (pid < 0) {
             pid = pid * -1;
         }
@@ -304,6 +321,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
+        }
+        if (key == null || key.isEmpty()) {
+            if (client.getConfig().isHandleNull()) {
+                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
+            } else {
+                throw new TabletException("key is null or empty");
+            }
         }
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
@@ -386,7 +410,6 @@ public class TableAsyncClientImpl implements TableAsyncClient {
                 throw new TabletException("key is null or empty");
             }
         }
-
         Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
@@ -533,10 +556,20 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+
+        if (key == null || key.isEmpty()) {
+            if (client.getConfig().isHandleNull()) {
+                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
+            } else {
+                throw new TabletException("key is null or empty");
+            }
+        }
+
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
         }
+
         return get(th.getTableInfo().getTid(), pid, key, idxName, time, type, th);
     }
 }

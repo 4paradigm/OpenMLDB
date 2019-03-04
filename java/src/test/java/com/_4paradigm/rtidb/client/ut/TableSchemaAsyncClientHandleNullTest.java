@@ -27,10 +27,11 @@ public class TableSchemaAsyncClientHandleNullTest {
     private final static AtomicInteger id = new AtomicInteger(9100);
     private static TableAsyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    //    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static EndPoint endpoint = new EndPoint("192.168.22.152:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    
+
     @BeforeClass
     public static void setUp() {
         try {
@@ -44,6 +45,7 @@ public class TableSchemaAsyncClientHandleNullTest {
         tabletClient = new TabletClientImpl(snc);
 
     }
+
     @AfterClass
     public static void tearDown() {
         for (int i = id.get(); i >= 9100; i--) {
@@ -51,7 +53,7 @@ public class TableSchemaAsyncClientHandleNullTest {
         }
         snc.close();
     }
-    
+
     private int createTable() {
         int tid = id.incrementAndGet();
         List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
@@ -74,7 +76,7 @@ public class TableSchemaAsyncClientHandleNullTest {
         Assert.assertTrue(ok);
         return tid;
     }
-    
+
     @Test
     public void testAsyncScanTableNotExist() throws TimeoutException, TabletException {
         ScanFuture sf = tableClient.scan(0, 0, "pl", "test_idx_name", 1000l, 0l);
@@ -88,7 +90,7 @@ public class TableSchemaAsyncClientHandleNullTest {
         }
     }
 
-    
+
     @Test
     public void testAsyncScanTableIdxNotExist() throws TimeoutException, TabletException {
         int tid = createTable();
@@ -96,7 +98,7 @@ public class TableSchemaAsyncClientHandleNullTest {
         try {
             sf.get();
             Assert.assertTrue(false);
-        }  catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             Assert.assertTrue(false);
         } catch (ExecutionException e) {
             Assert.assertTrue(true);
@@ -107,13 +109,14 @@ public class TableSchemaAsyncClientHandleNullTest {
     @Test
     public void testAsyncScanTable() throws TimeoutException, TabletException, InterruptedException, ExecutionException {
         int tid = createTable();
-        PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 });
+        PutFuture pf = tableClient.put(tid, 0, 10, new Object[]{"9527", "1222", 1.0});
         Assert.assertTrue(pf.get());
-        pf = tableClient.put(tid, 0, 11, new Object[] { "9527", "1221", 2.0 });
+        pf = tableClient.put(tid, 0, 11, new Object[]{"9527", "1221", 2.0});
         Assert.assertTrue(pf.get());
-        pf = tableClient.put(tid, 0, 12, new Object[] { "9524", "1222", 3.0 });
+        pf = tableClient.put(tid, 0, 12, new Object[]{"9524", "1222", 3.0});
         Assert.assertTrue(pf.get());
         ScanFuture sf = tableClient.scan(tid, 0, "9527", "card", 12, 9);
+
         try {
             KvIterator it = sf.get();
             Assert.assertEquals(2, it.getCount());
@@ -123,7 +126,7 @@ public class TableSchemaAsyncClientHandleNullTest {
             Assert.assertEquals("1221", row[1]);
             Assert.assertEquals(2.0, row[2]);
             it.next();
-            
+
             Assert.assertTrue(it.valid());
             row = it.getDecodedValue();
             Assert.assertEquals("9527", row[0]);
@@ -145,25 +148,25 @@ public class TableSchemaAsyncClientHandleNullTest {
     public void testNullEmptyKeyScan() {
         int tid = createTable();
         try {
-            PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { null, "1222", 1.0 });
+            PutFuture pf = tableClient.put(tid, 0, 10, new Object[]{null, "1222", 1.0});
             Assert.assertTrue(pf.get());
 
-            pf = tableClient.put(tid, 0, 10, new Object[] { null, "2222", 1.0 });
+            pf = tableClient.put(tid, 0, 10, new Object[]{null, "2222", 1.0});
             Assert.assertTrue(pf.get());
 
-            pf = tableClient.put(tid, 0, 11, new Object[] { null, "3222", 1.0 });
+            pf = tableClient.put(tid, 0, 11, new Object[]{null, "3222", 1.0});
             Assert.assertTrue(pf.get());
 
-            pf = tableClient.put(tid, 0, 12, new Object[] { null, "4222", 1.0 });
+            pf = tableClient.put(tid, 0, 12, new Object[]{null, "4222", 1.0});
             Assert.assertTrue(pf.get());
 
-            pf = tableClient.put(tid, 0, 13, new Object[] {"", "5222", 1.0 });
+            pf = tableClient.put(tid, 0, 13, new Object[]{"", "5222", 1.0});
             Assert.assertTrue(pf.get());
 
-            pf = tableClient.put(tid, 0, 14, new Object[] {"", "6222", 1.0 });
+            pf = tableClient.put(tid, 0, 14, new Object[]{"", "6222", 1.0});
             Assert.assertTrue(pf.get());
 
-            pf = tableClient.put(tid, 0, 15, new Object[] {"card1", "7222", 1.0 });
+            pf = tableClient.put(tid, 0, 15, new Object[]{"card1", "7222", 1.0});
             Assert.assertTrue(pf.get());
 
             ScanFuture sf = tableClient.scan(tid, 0, null, "card", 20, 9);
@@ -199,7 +202,7 @@ public class TableSchemaAsyncClientHandleNullTest {
         }
 
         try {
-            PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { "9527", null, 1.0 });
+            PutFuture pf = tableClient.put(tid, 0, 10, new Object[]{"9527", null, 1.0});
             Assert.assertTrue(pf.get());
             ScanFuture sf = tableClient.scan(tid, 0, "9527", "card", 12, 9);
             KvIterator it = sf.get();
