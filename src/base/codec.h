@@ -26,9 +26,9 @@ using ::baidu::common::DEBUG;
 namespace rtidb {
 namespace base {
 
-static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+static inline void Encode(uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset) {
     buffer += offset;
-    uint32_t total_size = 8 + data->size;
+    uint32_t total_size = 8 + size;
     PDLOG(DEBUG, "encode size %d", total_size);
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
@@ -36,7 +36,11 @@ static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, ui
     memcpy(buffer, static_cast<const void*>(&time), 8);
     memrev64ifbe(buffer);
     buffer += 8;
-    memcpy(buffer, static_cast<const void*>(data->data), data->size);
+    memcpy(buffer, static_cast<const void*>(data), size);
+}
+
+static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+    return Encode(time, data->data, data->size, buffer, offset);
 }
 
 // encode pk, ts and value

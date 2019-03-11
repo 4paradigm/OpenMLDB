@@ -6,6 +6,12 @@ option java_generic_services = true;
 option java_package = "com._4paradigm.rtidb.tablet";
 option java_outer_classname = "Tablet";
 
+enum StorageMode {
+    kMemory = 1;
+    kSSD = 2;
+    kHDD = 3;
+}
+
 enum TableMode {
     kTableLeader = 1;
     kTableFollower = 2;
@@ -279,6 +285,7 @@ message TableMeta {
     repeated string dimensions = 12;
     optional CompressType compress_type = 13;
     optional uint32 key_entry_max_height = 14;
+    optional StorageMode storage_mode = 15;
 }
 
 message CreateTableRequest {

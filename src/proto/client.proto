@@ -23,4 +23,5 @@ message TableInfo {
 	optional uint32 replica_num = 8; // contain the leader
 	optional string compress_type = 9 [default = "kNoCompress"];
 	optional uint32 key_entry_max_height = 10;
+	optional string storage_mode = 11 [default = "kMemory"];
 }

@@ -9,6 +9,12 @@ enum CompressType {
     kSnappy = 1;
 }
 
+enum StorageMode {
+    kMemory = 1;
+    kSSD = 2;
+    kHDD = 3;
+}
+
 message ColumnDesc {
     required string name = 1;
     required string type = 2;
@@ -61,7 +67,7 @@ message TableInfo {
     optional uint32 replica_num = 9; // contain the leader
     optional CompressType compress_type = 10 [default = kNoCompress];
     optional uint32 key_entry_max_height = 11;
-
+    optional StorageMode storage_mode = 12 [default = kMemory];
 }
 
 message CreateTableRequest {

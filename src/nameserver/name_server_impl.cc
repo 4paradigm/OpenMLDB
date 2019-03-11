@@ -1252,6 +1252,12 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
         compress_type = ::rtidb::api::CompressType::kSnappy;
     }
+    ::rtidb::api::StorageMode storage_mode = ::rtidb::api::StorageMode::kMemory;
+    if (table_info->storage_mode() == ::rtidb::nameserver::kSSD) {
+        storage_mode = ::rtidb::api::StorageMode::kSSD;
+    } else if (table_info->storage_mode() == ::rtidb::nameserver::kHDD) {
+        storage_mode = ::rtidb::api::StorageMode::kHDD;
+    }
     ::rtidb::api::TableMeta table_meta;
     for (uint32_t i = 0; i < columns.size(); i++) {
         if (columns[i].add_ts_idx) {
@@ -1271,6 +1277,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     table_meta.set_schema(schema);
     table_meta.set_ttl_type(ttl_type);
     table_meta.set_compress_type(compress_type);
+    table_meta.set_storage_mode(storage_mode);
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
     }

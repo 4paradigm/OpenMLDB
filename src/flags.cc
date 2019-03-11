@@ -56,6 +56,9 @@ DEFINE_uint32(check_binlog_sync_progress_delta, 100000, "config the delta of che
 
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");
+//yj
+DEFINE_string(ssd_root_path,"/tmp/ssd/", "the root ssd path of db");
+DEFINE_string(hdd_root_path,"/tmp/hdd/", "the root hdd path of db");
 
 // thread pool config
 DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");

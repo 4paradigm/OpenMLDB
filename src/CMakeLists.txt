@@ -10,7 +10,8 @@ endif()
 
 add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
-add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc storage/snapshot.cc)
+add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc storage/snapshot.cc storage/disktable.cc)
+#target_link_libraries(storage rocksdb)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc)
 add_library(log STATIC log/crc32c.cc 
                        log/sequential_file.cc 
@@ -59,6 +60,9 @@ target_link_libraries(segment_test gtest gflags storage pthread common tcmalloc_
 
 add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc flags.cc)
 target_link_libraries(table_test gtest gflags pthread storage common protobuf tcmalloc_minimal)
+
+add_executable(disktable_test  storage/disktable_test.cc proto/tablet.pb.cc flags.cc)
+target_link_libraries(disktable_test gtest gflags pthread storage common protobuf tcmalloc_minimal rocksdb z)
 
 add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc base/status.cc)
 target_link_libraries(snapshot_test storage log tablet base common brpc rt ssl crypto dl leveldb protobuf gtest gflags pthread z snappy)
