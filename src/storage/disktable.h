@@ -2,8 +2,7 @@
 // Created by yangjun on 12/14/18.
 //
 
-#ifndef RTIDB_ONDISKTABLE_H
-#define RTIDB_ONDISKTABLE_H
+#pragma once
 
 #include <vector>
 #include <map>
@@ -17,6 +16,8 @@
 #include <rocksdb/table.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/filter_policy.h>
+#include "base/slice.h"
+#include "storage/iterator.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
@@ -71,6 +72,49 @@ public:
 
 };
 
+class DiskTableIterator : public TableIterator {
+public:
+    DiskTableIterator(rocksdb::Iterator* it, const std::string& pk);
+    virtual ~DiskTableIterator();
+    bool Valid() override;
+    void Next() override;
+    rtidb::base::Slice GetValue() const override;
+    std::string GetPK() const override;
+    uint64_t GetKey() const override;
+    void SeekToFirst() override;
+    void Seek(uint64_t time) override;
+
+private:
+    rocksdb::Iterator* it_;
+    std::string pk_;
+    uint64_t ts_;
+};
+
+class DiskTableTraverseIterator : public TableIterator {
+public:
+    DiskTableTraverseIterator(rocksdb::Iterator* it, ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
+    virtual ~DiskTableTraverseIterator();
+    bool Valid() override;
+    void Next() override;
+    rtidb::base::Slice GetValue() const override;
+    std::string GetPK() const override;
+    uint64_t GetKey() const override;
+    void SeekToFirst() override;
+    void Seek(const std::string& pk, uint64_t time) override;
+
+private:
+    void NextPK();
+    bool IsExpired();
+
+private:
+    rocksdb::Iterator* it_;
+    ::rtidb::api::TTLType ttl_type_;
+    uint64_t expire_value_;
+    uint32_t record_idx_;
+    std::string pk_;
+    uint64_t ts_;
+};
+
 class DiskTable {
 
 public:
@@ -78,7 +122,8 @@ public:
                 uint32_t id,
                 uint32_t pid,
                 const std::map<std::string, uint32_t>& mapping,
-                uint64_t ttl);
+                uint64_t ttl,
+                ::rtidb::api::TTLType ttl_type);
 
     virtual ~DiskTable();
 
@@ -102,9 +147,9 @@ public:
              const std::string& value,
              const Dimensions& dimensions);
 
-    bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string * value);
+    bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value);
 
-    bool Get(const std::string& pk, uint64_t ts, std::string * value);
+    bool Get(const std::string& pk, uint64_t ts, std::string& value);
 
     bool Delete(const std::string& pk, uint32_t idx);
 
@@ -142,18 +187,11 @@ public:
         return mapping_;
     }
 
-    static void ParseColInfo(const std::string &src, const std::string &separator,
-                             std::vector<std::string> &dest);
+    DiskTableIterator* NewIterator(const std::string& pk);
 
-    static void SeekTsWithKeyFromItr(const std::string& pk, const uint64_t ts, rocksdb::Iterator* it) ;
+    DiskTableIterator* NewIterator(uint32_t idx, const std::string& pk);
 
-    rocksdb::Iterator* NewIterator(const std::string& pk);//, Ticket& ticket);
-
-    rocksdb::Iterator* NewIterator(const std::string& pk, uint64_t ts);//, Ticket& ticket);
-
-    rocksdb::Iterator* NewIterator(uint32_t idx, const std::string& pk);//, Ticket& ticket);
-
-    rocksdb::Iterator* NewIterator(uint32_t idx, const std::string& pk, uint64_t ts);
+    DiskTableTraverseIterator* NewTraverseIterator(uint32_t idx);
 
 private:
 
@@ -169,6 +207,7 @@ private:
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
     std::atomic<uint64_t> ttl_;
+    ::rtidb::api::TTLType ttl_type_;
     KeyTSComparator cmp_;
 //  uint32_t const idx_cnt_;
 //  std::atomic<uint64_t> record_cnt_;
@@ -178,10 +217,8 @@ private:
 //  std::atomic<uint32_t> table_status_;
 //  bool segment_released_;
 //  std::atomic<uint64_t> record_byte_size_;
-//  ::rtidb::api::TTLType ttl_type_;
 //  ::rtidb::api::CompressType compress_type_;
 };
 
 }
 }
-#endif //RTIDB_ONDISKTABLE_H

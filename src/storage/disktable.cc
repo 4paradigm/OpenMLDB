@@ -25,9 +25,10 @@ static Options hdd_option_template;
 static bool options_template_initialized = false;
 
 DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
-                         const std::map<std::string, uint32_t> &mapping, uint64_t ttl) :
+                     const std::map<std::string, uint32_t> &mapping, 
+                     uint64_t ttl, ::rtidb::api::TTLType ttl_type) :
         name_(name), id_(id), pid_(pid), schema_(),
-        mapping_(mapping), ttl_(ttl * 60 * 1000) {
+        mapping_(mapping), ttl_(ttl * 60 * 1000), ttl_type_(ttl_type) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -101,44 +102,25 @@ bool DiskTable::Init() {
     cf_ds_.push_back(ColumnFamilyDescriptor(kDefaultColumnFamilyName, ColumnFamilyOptions()));
     std::map<std::string, uint32_t> tempmapping;
     for (auto iter = mapping_.begin(); iter != mapping_.end(); ++iter) {
-        std::vector<std::string> col_info;
-        PDLOG(DEBUG, "DiskTable::CreateTable col_name = %s, idx = %u",
-              iter->first.c_str(), iter->second);
-        ParseColInfo(iter->first, "|", col_info);
-        tempmapping.insert(std::make_pair(col_info[0], iter->second));
         ColumnFamilyOptions cfo;
         if (storage_mode_ == ::rtidb::api::StorageMode::kSSD) {
             cfo = ColumnFamilyOptions(ssd_option_template);
-            // cfo.cf_paths.push_back(DbPath(FLAGS_ssd_root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_), 0));
             options_ = ssd_option_template;
         } else {
             cfo = ColumnFamilyOptions(hdd_option_template);
-            // cfo.cf_paths.push_back(DbPath(FLAGS_hdd_root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_), 0));
             options_ = hdd_option_template;
         }
-        auto len = static_cast<size_t>(std::stoi(col_info[1], nullptr, 10));
-        if (len > 0) {
-            // cfo.prefix_extractor.reset(NewCappedPrefixTransform(len));
-            cfo.comparator = &cmp_;
-            PDLOG(DEBUG, "prefix_extractor = NewCappedPrefixTransform(%d)", len);
-        }
-        cf_ds_.push_back(ColumnFamilyDescriptor(col_info[0], cfo));
-        PDLOG(DEBUG, "cf_ds_ push_back complete, cf_name %s", col_info[0].c_str());
+        cfo.comparator = &cmp_;
+        cf_ds_.push_back(ColumnFamilyDescriptor(iter->first, cfo));
+        PDLOG(DEBUG, "cf_ds_ push_back complete, cf_name %s", iter->first.c_str());
     }
-    mapping_.swap(tempmapping);
-    // cf_ds_[0].options.cf_paths.push_back(cf_ds_[1].options.cf_paths[0]);
     std::string path = FLAGS_hdd_root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_);
-    //options_.db_paths.push_back(DbPath(db_paths_[i]+name_,0));
-    //PDLOG(DEBUG, "DiskTable::CreateTable db_paths of disk %d is %s", i, options_[i].db_paths[0].path.c_str());
     options_.create_if_missing = true;
     options_.error_if_exists = true;
     options_.create_missing_column_families = true;
-    // PDLOG(DEBUG, "DiskTable::CreateTable DB before open, db_ = %p, cf_hs_.size = %d path %s", db_, cf_hs_.size(), cf_ds_[0].options.cf_paths[0].path.c_str());
     Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
-    PDLOG(DEBUG, "DiskTable::CreateTable DB after open, db_ = %p, cf_hs_.size = %d,", db_, cf_hs_.size());
     if (!s.ok()) {
         PDLOG(WARNING, "CreateWithPath db, status = %s", s.ToString().c_str());
-        //TODO: Handling the DB creation errors
         return false;
     } 
     return true;
@@ -164,11 +146,8 @@ bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint
     Status s;
     Slice spk = Slice(CombineKeyTs(pk, time));
     s = db_->Put(WriteOptions(), cf_hs_[1], spk, Slice(data, size));
-    PDLOG(DEBUG, "DiskTable::Put single db_ = %p, cf_hs_[%d] = %p, pk = %s, value = %s",
-           db_, 1, cf_hs_[1], spk.ToString().c_str(),
-          Slice(data, size).ToString().c_str());
+    PDLOG(DEBUG, "Put pk %s value %s", spk.ToString().c_str(), Slice(data, size).ToString().c_str());
 //  PDLOG(DEBUG, "record key %s, value %s tid %u pid %u", spk.ToString().c_str(), value.ToString().c_str(), id_, pid_);
-    PDLOG(DEBUG, "status return %s", s.ToString().c_str());
     return s.ok();
 }
 
@@ -206,10 +185,10 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     return s.ok();
 }
 
-bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string * value) {
+bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
     Status s;
     Slice spk = Slice(CombineKeyTs(pk, ts));
-    s = db_->Get(ReadOptions(), cf_hs_[idx + 1], spk, value);
+    s = db_->Get(ReadOptions(), cf_hs_[idx + 1], spk, &value);
     if (s.ok()) {
         return true;
     } else {
@@ -217,7 +196,7 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
     }
 }
 
-bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string * value) {
+bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) {
     return Get(0, pk, ts, value);
 }
 
@@ -250,91 +229,208 @@ void DiskTable::SelfTune() {
     //TODO: Tablet接入, 包括replicators
 }
 
-void DiskTable::ParseColInfo(const std::string &src, const std::string &separator,
-                               std::vector<std::string> &dest) {
-    std::string str = src;
-    std::string substring;
-    std::string::size_type start = 0, index;
-    dest.clear();
-    index = str.find_last_of(separator); //以最后一个"|"为分隔符
-//            PDLOG(INFO, "src = %s, index = %d", src.c_str(), index);
-    if (index != std::string::npos) {
-        substring = str.substr(start, index - start);
-//                    PDLOG(INFO, "first substring = %s", src.c_str());
-        dest.push_back(substring);
-        substring = str.substr(index + 1);
-//                    PDLOG(INFO, "second substring = %s", src.c_str());
-        dest.push_back(substring);
-    } else {
-        dest.push_back(str);
-        dest.push_back("1");
-    }
-}
-
-Iterator *DiskTable::NewIterator(const std::string &pk) {
+DiskTableIterator* DiskTable::NewIterator(const std::string &pk) {
     return DiskTable::NewIterator(0, pk);
 }
 
-Iterator *DiskTable::NewIterator(const std::string &pk, uint64_t ts) {
-    return DiskTable::NewIterator(0, pk, ts);
-}
-
-Iterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk) {
-    PDLOG(DEBUG, "NewIterator, idx = %u, pk = %s, cf_hs_[%u]",
-            idx, pk.c_str(), idx + 1);
+DiskTableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk) {
     ReadOptions ro = ReadOptions();
-    Iterator* it;
-
-//            ro.prefix_same_as_start = true;
-//            it = db_->NewIterator(ro, cf_hs_[idx * disk_cnt_ + index + 1]);
-//            PDLOG(DEBUG, "NewIterator, after new prefix true, it->status = %s, it->valid = %d", it->status().ToString().c_str(), it->Valid());
-//            it->Seek(Slice(pk+"|"+std::to_string(std::numeric_limits<uint64_t>::max())));
-//            PDLOG(DEBUG, "DiskTable::NewIterator prefix true, seek to pk, status = %s, valid = %d", it->status().ToString().c_str(), it->Valid());
-//            for (;it->Valid();it->Next()) {
-//                PDLOG(DEBUG, "DiskTable::NewIterator prefix true, scan from pk, pk = %s, value = %s, status = %s",
-//                        it->key().ToString().c_str(), it->value().ToString().c_str(), it->status().ToString().c_str());
-//            }
-//            delete it;
-//            ro.prefix_same_as_start = false;
-//            it = db_->NewIterator(ro, cf_hs_[idx * disk_cnt_ + index + 1]);
-//            PDLOG(DEBUG, "NewIterator, after new prefix false, it->status = %s, it->valid = %d", it->status().ToString().c_str(), it->Valid());
-//            it->Seek(Slice(pk));
-//            PDLOG(DEBUG, "DiskTable::NewIterator prefix false, seek to pk, status = %s, valid = %d", it->status().ToString().c_str(), it->Valid());
-//            for (;it->Valid();it->Next()) {
-//                PDLOG(DEBUG, "DiskTable::NewIterator prefix false, scan from pk, pk = %s, value = %s, status = %s, valid = %d",
-//                      it->key().ToString().c_str(), it->value().ToString().c_str(), it->status().ToString().c_str(), it->Valid());
-//            }
-//            delete it;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
-    it = db_->NewIterator(ro, cf_hs_[idx + 1]);
-    PDLOG(DEBUG, "NewIterator, after new prefix true, it->status = %s, it->valid = %d", it->status().ToString().c_str(), it->Valid());
-    it->Seek(Slice(CombineKeyTs(pk, UINT64_MAX)));
-//            PDLOG(DEBUG, "NewIterator, after seek pk, it->valid = %d, it->key = %s, it->value=%s",
-//                  it->Valid(), it->key().ToString().c_str(), it->value().ToString().c_str());
-    return it;
+    Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+    return new DiskTableIterator(it, pk);
 }
 
-Iterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, uint64_t ts) {
-    Iterator* it = DiskTable::NewIterator(idx, pk);
-    // DiskTable::SeekTsWithKeyFromItr(pk, ts, it);
-    it->Seek(Slice(CombineKeyTs(pk, ts)));
-    return it;
+DiskTableTraverseIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
+    ReadOptions ro = ReadOptions();
+    ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+    uint64_t expire_value = 0;
+    if (ttl_ == 0) {
+        expire_value = 0;
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        expire_value = ttl_ / 60 / 1000;
+    } else {
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        expire_value = cur_time - ttl_.load(std::memory_order_relaxed);
+    }
+    return new DiskTableTraverseIterator(it, ttl_type_, expire_value);
 }
 
-void DiskTable::SeekTsWithKeyFromItr(const std::string& pk, const uint64_t ts, rocksdb::Iterator* it) {
-    PDLOG(DEBUG, "DiskTable::SeekTsWithKeyFromItr pk = %s, ts = %lld", pk.c_str(), ts);
-    for (; it->Valid(); it->Next()) {
-        std::string cur_pk;
-        uint64_t cur_ts = 0;
-        ParseKeyAndTs(it->key().ToString(), cur_pk, cur_ts);
-        PDLOG(DEBUG, "DiskTable::SeekTsWithKeyFromItr it->pk = %s, it->ts = %lu", cur_pk.c_str(), cur_ts);
-        if (pk == cur_pk && cur_ts <= ts) {
-            PDLOG(DEBUG, "DiskTable::SeekTsWithKeyFromItr hit");
-            return;
+DiskTableIterator::DiskTableIterator(rocksdb::Iterator* it, const std::string& pk) : it_(it), pk_(pk), ts_(0) {
+}
+
+DiskTableIterator::~DiskTableIterator() {
+    delete it_;
+}
+
+bool DiskTableIterator::Valid() {
+    if (it_ == NULL || !it_->Valid()) {
+        return false;
+    }
+    std::string cur_pk;
+    ParseKeyAndTs(it_->key().ToString(), cur_pk, ts_);
+    return cur_pk == pk_;
+}
+
+void DiskTableIterator::Next() {
+    return it_->Next();
+}
+
+rtidb::base::Slice DiskTableIterator::GetValue() const {
+    rocksdb::Slice value = it_->value();
+    return rtidb::base::Slice(value.data(), value.size());
+}
+
+std::string DiskTableIterator::GetPK() const {
+    return pk_;
+}
+
+uint64_t DiskTableIterator::GetKey() const {
+    return ts_;
+}
+
+void DiskTableIterator::SeekToFirst() {
+    it_->Seek(Slice(CombineKeyTs(pk_, UINT64_MAX)));
+}
+
+void DiskTableIterator::Seek(uint64_t ts) {
+    it_->Seek(Slice(CombineKeyTs(pk_, ts)));
+}
+
+DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::Iterator* it, 
+        ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : 
+        it_(it), ttl_type_(ttl_type), expire_value_(expire_value), record_idx_(0) {
+}
+
+DiskTableTraverseIterator::~DiskTableTraverseIterator() {
+    delete it_;
+}
+
+bool DiskTableTraverseIterator::Valid() {
+    return it_->Valid();
+}
+
+void DiskTableTraverseIterator::Next() {
+    it_->Next();
+    if (it_->Valid()) {
+        std::string tmp_pk;
+        ParseKeyAndTs(it_->key().ToString(), tmp_pk, ts_);
+        if (tmp_pk == pk_) {
+            record_idx_++;
+        } else {
+            pk_ = tmp_pk;
+            record_idx_ = 1;
+        }
+        if (IsExpired()) {
+            NextPK();
         }
     }
 }
-    
+
+rtidb::base::Slice DiskTableTraverseIterator::GetValue() const {
+    rocksdb::Slice value = it_->value();
+    return rtidb::base::Slice(value.data(), value.size());
+}
+
+std::string DiskTableTraverseIterator::GetPK() const {
+    return pk_;
+}
+
+uint64_t DiskTableTraverseIterator::GetKey() const {
+    return ts_;
+}
+
+void DiskTableTraverseIterator::SeekToFirst() {
+    it_->SeekToFirst();
+    record_idx_ = 1;
+    if (it_->Valid()) {
+        ParseKeyAndTs(it_->key().ToString(), pk_, ts_);
+        if (IsExpired()) {
+            NextPK();
+        }
+    }
+}
+
+void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        it_->Seek(Slice(CombineKeyTs(pk, UINT64_MAX)));
+        record_idx_ = 0;
+        while (it_->Valid()) {
+            record_idx_++;
+            ParseKeyAndTs(it_->key().ToString(), pk_, ts_);
+            if (pk_ == pk) {
+                if (IsExpired()) {
+                    NextPK();
+                    break;
+                } 
+                if (ts_ >= time) {
+                    it_->Next();
+                    continue;
+                }
+            } else {
+                record_idx_ = 1;
+                if (IsExpired()) {
+                    NextPK();
+                }
+            }
+            break;
+        }
+    } else {
+        it_->Seek(Slice(CombineKeyTs(pk, time)));
+        while (it_->Valid()) {
+            ParseKeyAndTs(it_->key().ToString(), pk_, ts_);
+            if (pk_ == pk) {
+                if (ts_ >= time) {
+                    it_->Next();
+                    continue;
+                }
+                if (IsExpired()) {
+                    NextPK();
+                }    
+                break;
+            } else {
+                if (IsExpired()) {
+                    NextPK();
+                }    
+            }
+            break;
+        }
+    }
+}
+
+bool DiskTableTraverseIterator::IsExpired() {
+    if (expire_value_ == 0) {
+        return false;
+    }
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        return record_idx_ > expire_value_;
+    }
+    return ts_ < expire_value_;
+}
+
+void DiskTableTraverseIterator::NextPK() {
+    std::string last_pk = pk_;
+    it_->Seek(Slice(CombineKeyTs(last_pk, 0)));
+    record_idx_ = 1;
+    while (it_->Valid()) {
+        std::string tmp_pk;
+        ParseKeyAndTs(it_->key().ToString(), tmp_pk, ts_);
+        if (tmp_pk != last_pk) {
+            if (!IsExpired()) {
+                pk_ = tmp_pk;
+                return;
+            } else {
+                last_pk = tmp_pk;
+                it_->Seek(Slice(CombineKeyTs(last_pk, 0)));
+                record_idx_ = 1;
+            }
+        } else {
+            it_->Next();
+        }
+    }
+}
+
 }
 }

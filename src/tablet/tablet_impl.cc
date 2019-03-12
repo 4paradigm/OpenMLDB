@@ -726,9 +726,9 @@ void TabletImpl::Traverse(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewTableIterator(iit->second);
+        it = table->NewTraverseIterator(iit->second);
     } else {
-        it = table->NewTableIterator(0);
+        it = table->NewTraverseIterator(0);
     }
     uint64_t last_time = 0;
     std::string last_pk;
@@ -742,7 +742,7 @@ void TabletImpl::Traverse(RpcController* controller,
         PDLOG(DEBUG, "tid %u, pid %u seek to first", request->tid(), request->pid());
         it->SeekToFirst();
     }
-    std::map<std::string, std::vector<std::pair<uint64_t, DataBlock*>>> value_map;
+    std::map<std::string, std::vector<std::pair<uint64_t, rtidb::base::Slice>>> value_map;
     uint32_t total_block_size = 0;
     bool remove_duplicated_record = false;
     if (request->has_enable_remove_duplicated_record()) {
@@ -764,11 +764,12 @@ void TabletImpl::Traverse(RpcController* controller,
         last_pk = it->GetPK();
         last_time = it->GetKey();
         if (value_map.find(last_pk) == value_map.end()) {
-            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, DataBlock*>>()));
+            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, rtidb::base::Slice>>()));
             value_map[last_pk].reserve(request->limit());
         }
-        value_map[last_pk].push_back(std::make_pair(it->GetKey(), it->GetValue()));
-        total_block_size += last_pk.length() + it->GetValue()->size;
+        rtidb::base::Slice value = it->GetValue();
+        value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
+        total_block_size += last_pk.length() + value.size();
         it->Next();
         scount ++;
     }
@@ -784,9 +785,9 @@ void TabletImpl::Traverse(RpcController* controller,
     uint32_t offset = 0;
     for (const auto& kv : value_map) {
         for (const auto& pair : kv.second) {
-            PDLOG(DEBUG, "encode pk %s ts %lu value %s size %u", kv.first.c_str(), pair.first, pair.second->data, pair.second->size);
-            ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second, rbuffer, offset);
-            offset += (4 + 4 + 8 + kv.first.length() + pair.second->size);
+            PDLOG(DEBUG, "encode pk %s ts %lu value %s size %u", kv.first.c_str(), pair.first, pair.second.data(), pair.second.size());
+            ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
+            offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
         }
     }
     PDLOG(DEBUG, "traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
