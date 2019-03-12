@@ -27,8 +27,8 @@ public class TableSchemaAsyncClientHandleNullTest {
     private final static AtomicInteger id = new AtomicInteger(9100);
     private static TableAsyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;
-    //    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
-    private static EndPoint endpoint = new EndPoint("192.168.22.152:9501");
+    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+//    private static EndPoint endpoint = new EndPoint("192.168.22.152:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
 

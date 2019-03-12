@@ -309,6 +309,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        key = validateKey(key);
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -401,13 +402,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     private GetFuture get(int tid, int pid, String key, String idxName, long time, Tablet.GetType  type, TableHandler th) throws TabletException {
-        if (key == null || key.isEmpty()) {
-            if (client.getConfig().isHandleNull()) {
-                key = null == key ? RTIDBClientConfig.NULL_STRING : RTIDBClientConfig.EMPTY_STRING;
-            } else {
-                throw new TabletException("key is null or empty");
-            }
-        }
+        key = validateKey(key);
         Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
         builder.setTid(tid);
         builder.setPid(pid);
@@ -430,13 +425,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
 
     private ScanFuture scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th) throws TabletException {
-        if (key == null || key.isEmpty()) {
-            if (client.getConfig().isHandleNull()) {
-                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
-            } else {
-                throw new TabletException("key is null or empty");
-            }
-        }
+        key = validateKey(key);
+
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
         builder.setPk(key);
         builder.setTid(tid);
