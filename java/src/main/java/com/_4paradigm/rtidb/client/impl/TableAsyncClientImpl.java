@@ -120,14 +120,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with name " + name);
         }
 
-        if (key == null || key.isEmpty()) {
-            if (client.getConfig().isHandleNull()) {
-                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
-            } else {
-                throw new TabletException("key is null or empty");
-            }
-        }
-
+        key = validateKey(key);
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -281,13 +274,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        if (key == null || key.isEmpty()) {
-            if (client.getConfig().isHandleNull()) {
-                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
-            } else {
-                throw new TabletException("key is null or empty");
-            }
-        }
+        key = validateKey(key);
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
 
         if (pid < 0) {
@@ -322,13 +309,6 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        if (key == null || key.isEmpty()) {
-            if (client.getConfig().isHandleNull()) {
-                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
-            } else {
-                throw new TabletException("key is null or empty");
-            }
-        }
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
@@ -360,6 +340,24 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         long start = System.currentTimeMillis();
         Future<PutResponse> response = putForInternal(tid, pid, key, time, ds, row, th);
         return PutFuture.wrapper(response, start, client.getConfig());
+    }
+
+    /**
+     * validate key
+     * rewrite key if rtidb client config set isHandleNull {@code true}
+     * @param key
+     * @return
+     * @throws TabletException if key is null or empty
+     */
+    private String validateKey(String key) throws TabletException {
+        if (key == null || key.isEmpty()) {
+            if (client.getConfig().isHandleNull()) {
+                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
+            } else {
+                throw new TabletException("key is null or empty");
+            }
+        }
+        return key;
     }
 
     private Future<PutResponse> putForInternal(int tid, int pid,
@@ -557,14 +555,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("no table with name " + name);
         }
 
-        if (key == null || key.isEmpty()) {
-            if (client.getConfig().isHandleNull()) {
-                key = key == null ? RTIDBClientConfig.NULL_STRING : key.isEmpty() ? RTIDBClientConfig.EMPTY_STRING : key;
-            } else {
-                throw new TabletException("key is null or empty");
-            }
-        }
-
+        key = validateKey(key);
         int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
         if (pid < 0) {
             pid = pid * -1;
