@@ -56,7 +56,6 @@ DEFINE_uint32(check_binlog_sync_progress_delta, 100000, "config the delta of che
 
 // local db config
 DEFINE_string(db_root_path, "/tmp/", "the root path of db");
-//yj
 DEFINE_string(ssd_root_path, "/tmp/ssd/", "the root ssd path of db");
 DEFINE_string(hdd_root_path, "/tmp/hdd/", "the root hdd path of db");
 
@@ -82,6 +81,7 @@ DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach
 DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
+DEFINE_string(recycle_ssd_bin_root_path, "/tmp/ssd_recycle", "specify the ssd root path of recycle bin");
 
 DEFINE_uint32(latest_ttl_max, 1000, "the max ttl of latest");
 DEFINE_uint32(absolute_ttl_max, 60*24*365*30 , "the max ttl of absolute time");

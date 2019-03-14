@@ -42,13 +42,13 @@ class MemTableTraverseIterator : public TableIterator {
 public:
 	MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
 	~MemTableTraverseIterator();
-	bool Valid() override;
-	void Next() override;
-	void Seek(const std::string& key, uint64_t time) override;
-	rtidb::base::Slice GetValue() const override;
-	std::string GetPK() const override;
-	uint64_t GetKey() const override;
-	void SeekToFirst() override;
+	virtual bool Valid() override;
+	virtual void Next() override;
+	virtual void Seek(const std::string& key, uint64_t time) override;
+	virtual rtidb::base::Slice GetValue() const override;
+	virtual std::string GetPK() const override;
+	virtual uint64_t GetKey() const override;
+	virtual void SeekToFirst() override;
 
 private:
     void NextPK();

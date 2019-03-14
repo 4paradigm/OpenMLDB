@@ -5,7 +5,7 @@
 // Date 2018-01-07
 //
 
-#include "storage/disktable.h"
+#include "storage/disk_table.h"
 #include "gtest/gtest.h"
 #include "timer.h"
 #include "logging.h"
@@ -29,7 +29,8 @@ public:
 TEST_F(DiskTableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("yjtable1", 1, 1, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    DiskTable* table = new DiskTable("yjtable1", 1, 1, mapping, 10, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::StorageMode::kHDD);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -62,7 +63,8 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::StorageMode::kHDD);
     ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, table->GetIdxCnt());
 //    ASSERT_EQ(0, table->GetRecordIdxCnt());
@@ -183,7 +185,8 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime);
+    DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::StorageMode::kHDD);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -217,7 +220,8 @@ TEST_F(DiskTableTest, Delete) {
 TEST_F(DiskTableTest, TraverseIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
+    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::StorageMode::kHDD);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -305,7 +309,8 @@ TEST_F(DiskTableTest, TraverseIterator) {
 TEST_F(DiskTableTest, TraverseIteratorLatest) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3, ::rtidb::api::TTLType::kLatestTime);
+    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
+            ::rtidb::api::TTLType::kLatestTime, ::rtidb::api::StorageMode::kHDD);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -372,26 +377,6 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     ASSERT_TRUE(::rtidb::base::RemoveDir(path));
 }
 
-/* No need to test for ondisktable
-TEST_F(DiskTableTest, MultiDimissionPut1) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0|6", 0));
-    mapping.insert(std::make_pair("idx1|6", 1));
-    mapping.insert(std::make_pair("idx2|6", 2));
-    DiskTable* table = new DiskTable("yjtable3", 1, 1, 8, mapping, 10);
-    table->Init();
-    table->CreateWithPath("/tmp/yjtest/yjtable3");
-    PDLOG(INFO, "CreateWithPath yjtable3");
-    ASSERT_EQ(3, table->GetIdxCnt());
-    DataBlock* db = new DataBlock(3, "helloworld", 10);
-    std::string d1 = "d1";
-    ASSERT_FALSE(table->Put(d1, 9527, db, 3));
-    ASSERT_TRUE(table->Put(d1, 9527, db, 0));
-    std::string d2 = "d2";
-    ASSERT_TRUE(table->Put(d2, 9527, db, 1));
-    std::string d3 = "d3";
-    ASSERT_TRUE(table->Put(d3, 9527, db, 2));
-}*/
 /* No need to test for ondisktable
 TEST_F(DiskTableTest, Release) {
     std::map<std::string, uint32_t> mapping;
@@ -476,194 +461,6 @@ TEST_F(DiskTableTest, IsExpired) {
 //    delete table;
 //}
 
-
-/*
-TEST_F(DiskTableTest, SchedGcForMultiDimissionTable) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    mapping.insert(std::make_pair("idx1", 1));
-    mapping.insert(std::make_pair("idx2", 2));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
-    table->Init();
-    ASSERT_EQ(3, table->GetIdxCnt());
-    DataBlock* db = new DataBlock(3, "helloworld", 10);
-    std::string d1 = "d1";
-    ASSERT_FALSE(table->Put(d1, 9527, db, 3));
-    ASSERT_TRUE(table->Put(d1, 9527, db, 0));
-    std::string d2 = "d2";
-    ASSERT_TRUE(table->Put(d2, 9527, db, 1));
-    std::string d3 = "d3";
-    ASSERT_TRUE(table->Put(d3, 9527, db, 2));
-    table->RecordCntIncr(1);
-    ASSERT_EQ(3, table->GetRecordIdxCnt());
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
-    ASSERT_EQ(0, table->GetRecordCnt());
-    ASSERT_EQ(0, table->GetRecordIdxCnt());
-}
-
-TEST_F(DiskTableTest, SchedGcHead) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
-    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
-    table->Init();
-    table->Put("test", 2, "test1", 5);
-    uint64_t bytes = table->GetRecordByteSize();
-    uint64_t record_idx_bytes = table->GetRecordIdxByteSize();
-    table->Put("test", 1, "test2", 5);
-    ASSERT_EQ(2, table->GetRecordCnt());
-    ASSERT_EQ(2, table->GetRecordIdxCnt());
-    ASSERT_EQ(1, table->GetRecordPkCnt());
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
-    ASSERT_EQ(1, table->GetRecordCnt());
-    ASSERT_EQ(1, table->GetRecordIdxCnt());
-    ASSERT_EQ(bytes, table->GetRecordByteSize());
-    ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
-}
-
-TEST_F(DiskTableTest, SchedGcHead1) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    uint64_t keep_cnt = 500;
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, keep_cnt);
-    table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
-    table->Init();
-	uint64_t ts = 0;
-    for (int i = 0; i < 10; i++) {
-        int count = 5000;
-        while (count) {
-            ts++;
-            table->Put("test", ts, "test1", 5);
-            count--;
-        }
-        table->SchedGc();
-        Ticket ticket;
-        Iterator* it = table->NewIterator("test", ticket);
-
-        it->Seek(ts + 1);
-        ASSERT_TRUE(it->Valid());
-        it->Seek(ts);
-        ASSERT_TRUE(it->Valid());
-        it->Seek(ts - keep_cnt / 2);
-        ASSERT_TRUE(it->Valid());
-        it->Seek(ts - keep_cnt / 4);
-        ASSERT_TRUE(it->Valid());
-        it->Seek(ts - keep_cnt + 1);
-        ASSERT_TRUE(it->Valid());
-        it->Seek(ts - keep_cnt);
-        ASSERT_FALSE(it->Valid());
-        it->Seek(ts - keep_cnt - 1);
-        ASSERT_FALSE(it->Valid());
-        delete it;
-    }
-    table->SchedGc();
-}
-
-TEST_F(DiskTableTest, SchedGc) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
-    table->Init();
-
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    table->Put("test", now, "tes2", 4);
-    uint64_t bytes = table->GetRecordByteSize();
-    uint64_t record_idx_bytes = table->GetRecordIdxByteSize();
-    table->Put("test", 9527, "test", 4);
-    ASSERT_EQ(2, table->GetRecordCnt());
-    ASSERT_EQ(2, table->GetRecordIdxCnt());
-    ASSERT_EQ(1, table->GetRecordPkCnt());
-
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
-    ASSERT_EQ(1, table->GetRecordCnt());
-    ASSERT_EQ(1, table->GetRecordIdxCnt());
-    ASSERT_EQ(bytes, table->GetRecordByteSize());
-    ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
-
-    Ticket ticket;
-    Iterator* it = table->NewIterator("test", ticket);
-    it->Seek(now);
-    ASSERT_TRUE(it->Valid());
-    std::string value_str(it->GetValue()->data, it->GetValue()->size);
-    ASSERT_EQ("tes2", value_str);
-    it->Next();
-    ASSERT_FALSE(it->Valid());
-    delete table;
-}
-
-TEST_F(DiskTableTest, OffSet) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
-    table->Init();
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    table->SetTimeOffset(-60 * 4);
-    table->Put("test", now - 10 * 60 * 1000, "test", 4);
-    table->Put("test", now - 3 * 60 * 1000, "test", 4);
-    table->Put("test", now, "tes2", 4);
-    table->Put("test", now + 3 * 60 * 1000, "tes2", 4);
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
-
-    table->SetTimeOffset(0);
-    table->SetExpire(false);
-    count = table->SchedGc();
-    ASSERT_EQ(0, count);
-    table->SetExpire(true);
-    count = table->SchedGc();
-    ASSERT_EQ(1, count);
-    {
-        Ticket ticket;
-        Iterator* it = table->NewIterator("test", ticket);
-        it->Seek(now);
-        ASSERT_TRUE(it->Valid());
-        std::string value_str(it->GetValue()->data, it->GetValue()->size);
-        ASSERT_EQ("tes2", value_str);
-        it->Next();
-        ASSERT_FALSE(it->Valid());
-        delete it;
-    }
-    
-    ASSERT_EQ(table->GetRecordCnt(), 2);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 2);
-    table->SetTimeOffset(120);
-    count = table->SchedGc();
-    ASSERT_EQ(1, count);
-    ASSERT_EQ(table->GetRecordCnt(), 1);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 1);
-    delete table;
-}
-
-TEST_F(DiskTableTest, TableDataCnt) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
-    table->Init();
-    ASSERT_EQ(table->GetRecordCnt(), 0);
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
-    table->Put("test", 9527, "test", 4);
-    table->Put("test", now, "tes2", 4);
-    ASSERT_EQ(table->GetRecordCnt(), 2);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 2);
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
-    ASSERT_EQ(table->GetRecordCnt(), 1);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 1);
-    delete table;
-}
-
-TEST_F(DiskTableTest, TableUnref) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1 ,8 , mapping, 1);
-    table->Init();
-    table->Put("test", 9527, "test", 4);
-    delete table;
-}
-*/
 }
 }
 
@@ -672,7 +469,3 @@ int main(int argc, char** argv) {
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     return RUN_ALL_TESTS();
 }
-
-
-
-

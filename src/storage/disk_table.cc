@@ -2,7 +2,7 @@
 // Created by yangjun on 12/14/18.
 //
 
-#include "storage/disktable.h"
+#include "storage/disk_table.h"
 #include "timer.h"
 #include "logging.h"
 #include "base/hash.h"
@@ -26,22 +26,32 @@ static bool options_template_initialized = false;
 
 DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      const std::map<std::string, uint32_t> &mapping, 
-                     uint64_t ttl, ::rtidb::api::TTLType ttl_type) :
-        name_(name), id_(id), pid_(pid), schema_(),
-        mapping_(mapping), ttl_(ttl * 60 * 1000), ttl_type_(ttl_type) {
+                     uint64_t ttl, ::rtidb::api::TTLType ttl_type,
+                     ::rtidb::api::StorageMode storage_mode) :
+        name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()), schema_(), mapping_(mapping),
+        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
     db_ = nullptr;
-    storage_mode_ = ::rtidb::api::StorageMode::kHDD;
+    is_leader_ = true;
 }
 
 DiskTable::~DiskTable() {
     for (auto handle : cf_hs_) {
         delete handle;
     }
-    if (db_ != nullptr)
+    if (db_ != nullptr) {
         delete db_;
+    }    
+    std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_);
+    Status s = DestroyDB(path, options_, cf_ds_);
+    if (s.ok()) {
+        PDLOG(INFO, "Destroy success. tid %u pid %u", id_, pid_);
+    } else {
+        PDLOG(INFO, "Destroy failed. tid %u pid %u status %s", id_, pid_, s.ToString().c_str());
+    }
 }
 
 void DiskTable::initOptionTemplate() {
@@ -114,7 +124,8 @@ bool DiskTable::Init() {
         cf_ds_.push_back(ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "cf_ds_ push_back complete, cf_name %s", iter->first.c_str());
     }
-    std::string path = FLAGS_hdd_root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_);
+    std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_);
     options_.create_if_missing = true;
     options_.error_if_exists = true;
     options_.create_missing_column_families = true;
@@ -124,22 +135,6 @@ bool DiskTable::Init() {
         return false;
     } 
     return true;
-}
-
-bool DiskTable::Destroy() {
-    for (auto handle : cf_hs_) {
-        delete handle;
-    }
-    if (db_ != nullptr)
-        delete db_;
-    Status s = DestroyDB(cf_ds_[0].options.cf_paths[0].path, options_, cf_ds_);
-    if (s.ok()) {
-        PDLOG(DEBUG, "DiskTable::Destroy success");
-        return true;
-    } else {
-        PDLOG(DEBUG, "DiskTable::Destroy failed, status = %s", s.ToString().c_str());
-        return false;
-    }
 }
 
 bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint32_t size) {
@@ -227,6 +222,15 @@ void DiskTable::SelfTune() {
     // 14亿, 20列 - 1000列
     //
     //TODO: Tablet接入, 包括replicators
+}
+
+uint64_t DiskTable::GetExpireTime() {
+    if (ttl_.load(std::memory_order_relaxed) == 0
+            || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        return 0;
+    }
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    return cur_time - ttl_.load(std::memory_order_relaxed);
 }
 
 DiskTableIterator* DiskTable::NewIterator(const std::string &pk) {
