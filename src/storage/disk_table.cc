@@ -51,7 +51,7 @@ DiskTable::~DiskTable() {
     if (s.ok()) {
         PDLOG(INFO, "Destroy success. tid %u pid %u", id_, pid_);
     } else {
-        PDLOG(INFO, "Destroy failed. tid %u pid %u status %s", id_, pid_, s.ToString().c_str());
+        PDLOG(WARNING, "Destroy failed. tid %u pid %u status %s", id_, pid_, s.ToString().c_str());
     }
 }
 
@@ -123,7 +123,7 @@ bool DiskTable::Init() {
         }
         cfo.comparator = &cmp_;
         cf_ds_.push_back(ColumnFamilyDescriptor(iter->first, cfo));
-        PDLOG(DEBUG, "cf_ds_ push_back complete, cf_name %s", iter->first.c_str());
+        PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
     std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
@@ -136,7 +136,7 @@ bool DiskTable::Init() {
     options_.create_missing_column_families = true;
     Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
-        PDLOG(WARNING, "CreateWithPath db, status = %s", s.ToString().c_str());
+        PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
         return false;
     } 
     return true;
@@ -163,20 +163,15 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
     for (; it != dimensions.end(); ++it) {
         if (it->idx() >= (cf_hs_.size() - 1)) {
             PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u",
-                  it->key().c_str(), it->idx(), id_, pid_);
+                            it->key().c_str(), it->idx(), id_, pid_);
             return false;
         }
         Slice spk = Slice(CombineKeyTs(it->key(), time));
         batch.Put(cf_hs_[it->idx() + 1], spk, value);
-        PDLOG(DEBUG, "DiskTable::Put multiple, cf_hs_[%d] = %p, pk = %s, value = %s",
-              it->idx() + 1, cf_hs_[it->idx() + 1],
-              spk.ToString().c_str(),
-              value.c_str());
+        PDLOG(DEBUG, "Put multiple, pk %s value %s idx %u tid %u pid %u",
+                      spk.ToString().c_str(), value.c_str(), it->idx(), id_, pid_);
     }
     s = db_->Write(WriteOptions(), &batch);
-//  record_cnt_.fetch_add(1, std::memory_order_relaxed);
-//  record_byte_size_.fetch_add(GetRecordSize(value.length()));
-//  s = dbs_[index]->Write(WriteOptions(), &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -224,21 +219,6 @@ bool DiskTable::ReadTableFromDisk() {
     if (!s.ok())
         PDLOG(WARNING, "ReadTableFromDisk db, status = %s", s.ToString().c_str());
     return s.ok();
-}
-
-void DiskTable::SelfTune() {
-
-    //TODO: 支持多SSD, 两种方案, 现在选1:
-    //              1. 准备多个DB instance, 设置好options.db_paths
-    //              2. 准备多个CF, 设置好cfo.cf_paths,
-    //      对于每一个(pk+ts, data), 根据(hash(pk) mod num_ssd), 插入到对应的DB/CF里
-
-    //TODO: 优化所需额外输入:
-    //              1. 数据库大概大小,内存额度,空间/时间 trade-off 偏好
-    //              2. 不同pk的访问习惯, 如: TS范围读取, 最新的TS, PK+TS单点查询
-    // 14亿, 20列 - 1000列
-    //
-    //TODO: Tablet接入, 包括replicators
 }
 
 uint64_t DiskTable::GetExpireTime() {
@@ -292,7 +272,6 @@ bool DiskTableIterator::Valid() {
     }
     std::string cur_pk;
     ParseKeyAndTs(it_->key().ToString(), cur_pk, ts_);
-    PDLOG(WARNING, "key %s pk %s ts %lu", it_->key().ToString().c_str(), pk_.c_str(), ts_);
     return cur_pk == pk_;
 }
 

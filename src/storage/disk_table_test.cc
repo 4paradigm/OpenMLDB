@@ -19,6 +19,10 @@ DECLARE_string(hdd_root_path);
 namespace rtidb {
 namespace storage {
 
+inline uint32_t GenRand() {
+    return rand() % 10000000 + 1;
+}
+
 class DiskTableTest : public ::testing::Test {
 
 public:
@@ -75,6 +79,7 @@ TEST_F(DiskTableTest, Put) {
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_1";
     ASSERT_TRUE(::rtidb::base::RemoveDir(path));
+    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
 }
 
 TEST_F(DiskTableTest, MultiDimensionPut) {
@@ -197,6 +202,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_2";
     ASSERT_TRUE(::rtidb::base::RemoveDir(path));
+    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
 }
 
 TEST_F(DiskTableTest, Delete) {
@@ -234,6 +240,7 @@ TEST_F(DiskTableTest, Delete) {
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_2";
     ASSERT_TRUE(::rtidb::base::RemoveDir(path));
+    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
 }
 
 TEST_F(DiskTableTest, TraverseIterator) {
@@ -323,6 +330,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_3";
     ASSERT_TRUE(::rtidb::base::RemoveDir(path));
+    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
 }
 
 TEST_F(DiskTableTest, TraverseIteratorLatest) {
@@ -394,91 +402,8 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_3";
     ASSERT_TRUE(::rtidb::base::RemoveDir(path));
+    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
 }
-
-/* No need to test for ondisktable
-TEST_F(DiskTableTest, Release) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
-    table->Init();
-    table->Put("test", 9537, "test", 4);
-    table->Put("test2", 9537, "test", 4);
-    uint64_t cnt = table->Release();
-    ASSERT_EQ(cnt, 2);
-    delete table;
-}*/
-/* No need to test for ondisktable
-TEST_F(DiskTableTest, IsExpired) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0", 0));
-    // table ttl is 1
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 1);
-    table->Init();
-    uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
-    ::rtidb::api::LogEntry entry;
-    uint64_t ts_time = now_time; 
-    entry.set_ts(ts_time);
-    ASSERT_FALSE(entry.ts() < table->GetExpireTime());
-    
-    // ttl_offset_ is 60 * 1000
-    ts_time = now_time - 4 * 60 * 1000; 
-    entry.set_ts(ts_time);
-    ASSERT_TRUE(entry.ts() < table->GetExpireTime());
-    delete table;
-}*/
-
-/*TEST_F(DiskTableTest, Iterator) {
-    std::map<std::string, uint32_t> mapping;
-    mapping.insert(std::make_pair("idx0|6", 0));
-    DiskTable* table =
-            new DiskTable("yjtable3", "", 1, 1, 2, "[SSD]/tmp/yjtest/yjssd1/|[SSD]/tmp/yjtest/yjssd2/", mapping, 10);
-    table->Init();
-    table->CreateTable();
-    table->Put("yjtest", 9527, "test", 4);
-    PDLOG(INFO, "Putted, yjtest 9527");
-    table->Put("yjtest1", 9527, "test", 4);
-    PDLOG(INFO, "Putted, yjtest1 9527");
-    table->Put("yjtest", 9528, "test0", 5);
-    PDLOG(INFO, "Putted, yjtest 9528");
-    rocksdb::Iterator* it = table->NewIterator("yjtest");
-    DiskTable::SeekTSWithKeyFromItr("yjtest", 9528, it);
-    ASSERT_TRUE(it->Valid());
-    ASSERT_EQ("test0", it->value().ToString());
-    ASSERT_EQ(5, it->value().size());
-    it->Next();
-    ASSERT_TRUE(it->Valid());
-    ASSERT_EQ("test", it->value().ToString());
-    ASSERT_EQ(4, it->value().size());
-    delete it;
-    delete table;
-}*/
-
-//TEST_F(DiskTableTest, Iterator_GetSize) {
-//    std::map<std::string, uint32_t> mapping;
-//    mapping.insert(std::make_pair("idx0|6", 0));
-//    DiskTable* table = new DiskTable("yjtable4", 1, 1, 8, mapping, 10);
-//    table->Init();
-//    table->CreateWithPath("/tmp/yjtest/yjtable4");
-//    PDLOG(INFO, "CreateWithPath yjtable4");
-//
-//    table->Put("yjtest", 9527, "test", 4);
-//    table->Put("yjtest", 9527, "test", 4);
-//    table->Put("yjtest", 9528, "test0", 5);
-//    rocksdb::Iterator* it = table->NewIterator("yjtest");
-////    ASSERT_EQ(3, it->GetSize());
-//    DiskTable::SeekTSWithKeyFromItr("yjtest", 9528, it);
-//    ASSERT_TRUE(it->Valid());
-//    ASSERT_EQ("test0", it->value().ToString());
-//    ASSERT_EQ(5, it->value().size());
-//    it->Next();
-//    ASSERT_EQ("test", it->value().ToString());
-//    ASSERT_EQ(4, it->value().size());
-//    it->Next();
-//    ASSERT_FALSE(it->Valid());
-//    delete it;
-//    delete table;
-//}
 
 }
 }
@@ -486,5 +411,6 @@ TEST_F(DiskTableTest, IsExpired) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
+    FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();
 }

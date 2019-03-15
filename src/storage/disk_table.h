@@ -136,8 +136,6 @@ public:
 
     bool ReadTableFromDisk();
 
-    void SelfTune();
-
     static void initOptionTemplate();
 
     bool Put(const std::string& pk,
@@ -145,7 +143,6 @@ public:
              const char* data,
              uint32_t size);
 
-    // Put a multi dimension record
     bool Put(uint64_t time,
              const std::string& value,
              const Dimensions& dimensions);
@@ -166,7 +163,6 @@ public:
 
     inline uint32_t GetIdxCnt() const {
         return idx_cnt_;
-        //use the size of the vector of column family handles, minus the default column family, no longer use idx_cnt_
     }
 
     inline std::string GetName() const {
@@ -237,13 +233,6 @@ private:
     KeyTSComparator cmp_;
     bool is_leader_;
     std::atomic<uint64_t> offset_;
-//  uint32_t const idx_cnt_;
-//  std::atomic<uint64_t> record_cnt_;
-//  std::atomic<int64_t> time_offset_;
-//  std::vector<std::string> replicas_;
-//  std::atomic<uint32_t> table_status_;
-//  std::atomic<uint64_t> record_byte_size_;
-//  ::rtidb::api::CompressType compress_type_;
 };
 
 }
