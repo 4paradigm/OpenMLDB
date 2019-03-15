@@ -2098,14 +2098,47 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
-
-        std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + 
+        std::string root_path = FLAGS_db_root_path;
+        if (table_meta.storage_mode() == ::rtidb::api::kHDD) {
+            root_path = FLAGS_hdd_root_path;
+        } else if (table_meta.storage_mode() == ::rtidb::api::kSSD) {
+            root_path = FLAGS_ssd_root_path;
+        }
+        std::string db_path = root_path + "/" + std::to_string(tid) + 
                         "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
             PDLOG(WARNING, "table db path is not exist. tid %u, pid %u", tid, pid);
             response->set_code(130);
             response->set_msg("table db path is not exist");
             break;
+        }
+        if (table_meta.storage_mode() != rtidb::api::kMemory) {
+            std::lock_guard<std::mutex> lock(mu_);
+            std::shared_ptr<DiskTable> disk_table = GetDiskTableUnLock(tid, pid);
+            if (disk_table) {
+                PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+                response->set_code(101);
+                response->set_msg("table already exists");
+                return;
+            }
+            UpdateTableMeta(db_path, &table_meta);
+            if (WriteTableMeta(db_path, &table_meta) < 0) {
+                PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
+                response->set_code(127);
+                response->set_msg("write data failed");
+                return;
+            }
+            std::string msg;
+            if (CreateDiskTableInternal(&table_meta, true, msg) < 0) {
+                response->set_code(131);
+                response->set_msg(msg.c_str());
+                return;
+            }
+            response->set_code(0);
+            response->set_msg("ok");
+            PDLOG(INFO, "load table ok. tid[%u] pid[%u] storage mode[%s]", 
+                        tid, pid, ::rtidb::api::StorageMode_Name(table_meta.storage_mode()).c_str());
+            return;
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -2303,14 +2336,14 @@ void TabletImpl::CreateTable(RpcController* controller,
     	std::string table_db_path = db_root_path + "/" + std::to_string(tid) +
                         "_" + std::to_string(pid);
 		if (WriteTableMeta(table_db_path, table_meta) < 0) {
-        	PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
+        	PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
             response->set_code(127);
             response->set_msg("write data failed");
             done->Run();
             return;
 		}
         std::string msg;
-        if (CreateDiskTableInternal(table_meta, msg) < 0) {
+        if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
             response->set_code(131);
             response->set_msg(msg.c_str());
             done->Run();
@@ -2319,7 +2352,7 @@ void TabletImpl::CreateTable(RpcController* controller,
         response->set_code(0);
         response->set_msg("ok");
         done->Run();
-        PDLOG(INFO, "create table ok. tid[%lu] pid[%lu] storage mode[%s]", 
+        PDLOG(INFO, "create table ok. tid[%u] pid[%u] storage mode[%s]", 
                     tid, pid, ::rtidb::api::StorageMode_Name(table_meta->storage_mode()).c_str());
         return;
     }
@@ -2732,7 +2765,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     return 0;
 }
 
-int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
+int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg) {
     std::string name = table_meta->name();
     std::map<std::string, uint32_t> mapping;
     for (int32_t i = 0; i < table_meta->dimensions_size(); i++) {
@@ -2753,8 +2786,14 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
                                                            table_meta->ttl(),
                                                            table_meta->ttl_type(),
                                                            table_meta->storage_mode());
-    if (!disk_table->Init()) {
-        return -1;
+    if (is_load) {
+        if (!disk_table->LoadTable()) {
+            return -1;
+        }
+    } else {
+        if (!disk_table->Init()) {
+            return -1;
+        }
     }
     disk_table->SetSchema(table_meta->schema());
     disk_tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), disk_table));

@@ -134,7 +134,7 @@ public:
 
     bool Init();
 
-    bool ReadTableFromDisk();
+    bool LoadTable();
 
     static void initOptionTemplate();
 

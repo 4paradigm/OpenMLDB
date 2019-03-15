@@ -276,7 +276,7 @@ private:
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
-    int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
+    int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg);
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 

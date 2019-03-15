@@ -207,18 +207,18 @@ bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) {
     return Get(0, pk, ts, value);
 }
 
-bool DiskTable::ReadTableFromDisk() {
+bool DiskTable::LoadTable() {
     options_.create_if_missing = false;
     options_.error_if_exists = false;
     options_.create_missing_column_families = false;
-    PDLOG(DEBUG, "DiskTable::ReadTableFromDisk DB before open, db_ = %p, cf_hs_.size = %d,", db_,
-          cf_hs_.size());
-    Status s = DB::Open(options_, cf_ds_[0].options.cf_paths[0].path, cf_ds_, &cf_hs_, &db_);
-    PDLOG(DEBUG, "DiskTable::ReadTableFromDisk DB after open, db_ = %p, cf_hs_.size = %d,", db_,
-          cf_hs_.size());
-    if (!s.ok())
-        PDLOG(WARNING, "ReadTableFromDisk db, status = %s", s.ToString().c_str());
-    return s.ok();
+    std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
+    Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
+    PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
+    if (!s.ok()) {
+        PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+    }    
+    return true;
 }
 
 uint64_t DiskTable::GetExpireTime() {

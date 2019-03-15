@@ -302,6 +302,22 @@ bool TabletClient::LoadTable(const std::string& name, uint32_t id,
     return LoadTable(name, id, pid, ttl, false, endpoints, seg_cnt);
 }
 
+bool TabletClient::LoadTable(const ::rtidb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::LoadTableRequest request;
+    ::rtidb::api::TableMeta* cur_table_meta = request.mutable_table_meta();
+    cur_table_meta->CopyFrom(table_meta);
+    if (task_info) {
+        request.mutable_task_info()->CopyFrom(*task_info);
+    }
+    ::rtidb::api::GeneralResponse response;
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::LoadTable,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool TabletClient::LoadTable(const std::string& name,
                                uint32_t tid, uint32_t pid, uint64_t ttl,
                                bool leader, const std::vector<std::string>& endpoints,
