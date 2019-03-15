@@ -18,6 +18,7 @@
 #include <rocksdb/filter_policy.h>
 #include "base/slice.h"
 #include "storage/iterator.h"
+#include <boost/lexical_cast.hpp>
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
@@ -33,8 +34,12 @@ static int ParseKeyAndTs(const std::string& s, std::string& key, uint64_t& ts) {
     std::string::size_type index = s.find_last_of("|");
     if (index != std::string::npos) {
         key = s.substr(0, index);
-        ts = static_cast<uint64_t>(std::atoi(s.substr(index + 1).c_str()));
-        return 0;
+        try {
+            ts = boost::lexical_cast<uint64_t>(s.substr(index + 1));
+            return 0;
+        } catch (std::exception const& e) {
+            return -1;
+        }
     }
     return -1;
 }
@@ -196,6 +201,10 @@ public:
         return count;
     }
 
+    uint64_t GetOffset() {
+        return offset_.load(std::memory_order_relaxed);
+    }
+
     inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }
@@ -227,6 +236,7 @@ private:
     ::rtidb::api::StorageMode storage_mode_;
     KeyTSComparator cmp_;
     bool is_leader_;
+    std::atomic<uint64_t> offset_;
 //  uint32_t const idx_cnt_;
 //  std::atomic<uint64_t> record_cnt_;
 //  std::atomic<int64_t> time_offset_;

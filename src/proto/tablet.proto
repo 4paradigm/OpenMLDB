@@ -448,6 +448,7 @@ message TableStatus {
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
+    optional StorageMode storage_mode = 20;
 }
 
 message GetTableStatusResponse {

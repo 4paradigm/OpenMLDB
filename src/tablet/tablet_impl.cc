@@ -1347,15 +1347,20 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        response->set_code(100);
-        response->set_msg("table is not exist");
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
-                request->pid());
-        return;
+        std::shared_ptr<DiskTable> disk_table = GetDiskTable(request->tid(), request->pid());
+        if (!disk_table) {
+            response->set_code(100);
+            response->set_msg("table is not exist");
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(),
+                    request->pid());
+            return;
+        }
+        response->set_schema(disk_table->GetSchema());
+    } else {
+        response->set_schema(table->GetSchema());
     }
     response->set_code(0);
     response->set_msg("ok");
-    response->set_schema(table->GetSchema());
 }
 
 void TabletImpl::GetTableStatus(RpcController* controller,
@@ -1396,6 +1401,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_record_idx_byte_size(table->GetRecordIdxByteSize());
             status->set_record_pk_cnt(table->GetRecordPkCnt());
             status->set_skiplist_height(table->GetKeyEntryHeight());
+            status->set_storage_mode(rtidb::api::StorageMode::kMemory);
             uint64_t record_idx_cnt = 0;
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
             for (;iit != table->GetMapping().end(); ++iit) {
@@ -1420,6 +1426,31 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             if (request->has_need_schema() && request->need_schema()) {
                 status->set_schema(table->GetSchema());
             }
+        }
+    }
+    for (auto it = disk_tables_.begin(); it != disk_tables_.end(); it++) {
+        if (request->has_tid() && request->tid() != it->first) {
+            continue;
+        }
+        for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
+            std::shared_ptr<DiskTable> disk_table = pit->second;
+            ::rtidb::api::TableStatus* status = response->add_all_table_status();
+            status->set_mode(::rtidb::api::TableMode::kTableFollower);
+            if (disk_table->IsLeader()) {
+                status->set_mode(::rtidb::api::TableMode::kTableLeader);
+            }
+            status->set_tid(it->first);
+            status->set_pid(pit->first);
+            status->set_ttl(disk_table->GetTTL());
+            status->set_ttl_type(disk_table->GetTTLType());
+            status->set_name(disk_table->GetName());
+            status->set_storage_mode(disk_table->GetStorageMode());
+            status->set_offset(disk_table->GetOffset());
+            status->set_state(::rtidb::api::TableState::kTableNormal);
+            if (request->has_need_schema() && request->need_schema()) {
+                status->set_schema(disk_table->GetSchema());
+            }
+            status->set_record_cnt(disk_table->GetRecordCnt());
         }
     }
     response->set_code(0);
@@ -2749,15 +2780,20 @@ void TabletImpl::DropTable(RpcController* controller,
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            break;
-        }
-        if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
-            PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
-            response->set_code(106);
-            response->set_msg("table status is kMakingSnapshot");
-            break;
+            std::shared_ptr<DiskTable> disk_table;
+            disk_table = GetDiskTable(tid, pid);
+            if (!disk_table) {
+                response->set_code(100);
+                response->set_msg("table is not exist");
+                break;
+            }
+        } else {
+            if (table->GetTableStat() == ::rtidb::storage::kMakingSnapshot) {
+                PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
+                response->set_code(106);
+                response->set_msg("table status is kMakingSnapshot");
+                break;
+            }
         }
         response->set_code(0);
         response->set_msg("ok");

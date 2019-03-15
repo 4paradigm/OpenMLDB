@@ -932,6 +932,7 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
     row.push_back("offset");
     row.push_back("record_cnt");
     row.push_back("memused");
+    row.push_back("storage_mode");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -972,10 +973,16 @@ void HandleNSClientShowTable(const std::vector<std::string>& parts, ::rtidb::cli
                 } else {
                     row.push_back("-");
                 }
-                if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size()) {
+                if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size() &&
+                        (!value.has_storage_mode() || value.storage_mode() == ::rtidb::nameserver::StorageMode::kMemory)) {
                     row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).record_byte_size()));
                 } else {
                     row.push_back("-");
+                }
+                if (value.has_storage_mode()) {
+                    row.push_back(::rtidb::nameserver::StorageMode_Name(value.storage_mode()));
+                } else {
+                    row.push_back("kMemory");
                 }
                 tp.AddRow(row);
             }
@@ -1564,7 +1571,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ns_table_info.set_storage_mode(::rtidb::nameserver::kMemory);
     } else if (storage_mode == "kssd" || storage_mode == "ssd") {
         ns_table_info.set_storage_mode(::rtidb::nameserver::kSSD);
-    } else if (storage_mode == "kssd" || storage_mode == "ssd") {
+    } else if (storage_mode == "khdd" || storage_mode == "hdd") {
         ns_table_info.set_storage_mode(::rtidb::nameserver::kHDD);
     } else {
         printf("storage mode %s is invalid\n", table_info.storage_mode().c_str());

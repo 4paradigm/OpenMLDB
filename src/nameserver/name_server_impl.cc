@@ -1960,6 +1960,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
                         table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
         return;
     }
+    if (table_info->has_storage_mode() && table_info->storage_mode() != rtidb::nameserver::StorageMode::kMemory && 
+            table_info->replica_num() > 1) {
+        response->set_code(307);
+        response->set_msg("invalid parameter");
+        PDLOG(WARNING, "muti-replica not supported");
+        return;
+    }
     if (table_info->table_partition_size() > 0) {
         std::set<uint32_t> pid_set;
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {

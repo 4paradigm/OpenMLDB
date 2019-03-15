@@ -6,6 +6,7 @@
 #include "timer.h"
 #include "logging.h"
 #include "base/hash.h"
+#include "base/file_util.h"
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -29,7 +30,7 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      uint64_t ttl, ::rtidb::api::TTLType ttl_type,
                      ::rtidb::api::StorageMode storage_mode) :
         name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()), schema_(), mapping_(mapping),
-        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode) {
+        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode), offset_(0) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -45,7 +46,7 @@ DiskTable::~DiskTable() {
         delete db_;
     }    
     std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
-    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_);
+    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     Status s = DestroyDB(path, options_, cf_ds_);
     if (s.ok()) {
         PDLOG(INFO, "Destroy success. tid %u pid %u", id_, pid_);
@@ -125,7 +126,11 @@ bool DiskTable::Init() {
         PDLOG(DEBUG, "cf_ds_ push_back complete, cf_name %s", iter->first.c_str());
     }
     std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
-    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_);
+    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
+    if (!::rtidb::base::MkdirRecur(path)) {
+        PDLOG(WARNING, "fail to create path %s", path.c_str());
+        return false;
+    }
     options_.create_if_missing = true;
     options_.error_if_exists = true;
     options_.create_missing_column_families = true;
@@ -142,8 +147,13 @@ bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint
     Slice spk = Slice(CombineKeyTs(pk, time));
     s = db_->Put(WriteOptions(), cf_hs_[1], spk, Slice(data, size));
     PDLOG(DEBUG, "Put pk %s value %s", spk.ToString().c_str(), Slice(data, size).ToString().c_str());
-//  PDLOG(DEBUG, "record key %s, value %s tid %u pid %u", spk.ToString().c_str(), value.ToString().c_str(), id_, pid_);
-    return s.ok();
+    if (s.ok()) {
+        offset_.fetch_add(1, std::memory_order_relaxed);
+        return true;
+    } else {
+        PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return false;
+    }
 }
 
 bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &dimensions) {
@@ -168,16 +178,23 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
 //  record_byte_size_.fetch_add(GetRecordSize(value.length()));
 //  s = dbs_[index]->Write(WriteOptions(), &batch);
     if (s.ok()) {
+        offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
-        PDLOG(DEBUG, "DiskTable::Put multiple failed, msg = %s", s.ToString().c_str());
+        PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
         return false;
     }
 }
 
 bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     Status s = db_->DeleteRange(WriteOptions(), cf_hs_[idx + 1], Slice(CombineKeyTs(pk, UINT64_MAX)), Slice(CombineKeyTs(pk, 0)));
-    return s.ok();
+    if (s.ok()) {
+        offset_.fetch_add(1, std::memory_order_relaxed);
+        return true;
+    } else {
+        PDLOG(DEBUG, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return false;
+    }
 }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
@@ -275,6 +292,7 @@ bool DiskTableIterator::Valid() {
     }
     std::string cur_pk;
     ParseKeyAndTs(it_->key().ToString(), cur_pk, ts_);
+    PDLOG(WARNING, "key %s pk %s ts %lu", it_->key().ToString().c_str(), pk_.c_str(), ts_);
     return cur_pk == pk_;
 }
 
