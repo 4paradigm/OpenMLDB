@@ -3,13 +3,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com._4paradigm</groupId>
 	<artifactId>rtidb-client</artifactId>
-	<version>1.4.0-handlenull-SNAPSHOT</version>
+	<version>1.4.0.1-RELEASE</version>
 	<packaging>jar</packaging>
-	<!--<properties>-->
-		<!--<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>-->
-		<!--<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>-->
-	<!--</properties>-->
-
 	<dependencies>
 
   <dependency>
