@@ -11,9 +11,20 @@ import com._4paradigm.rtidb.client.ha.TableHandler.ReadStrategy;
  */
 public class RTIDBClientConfig {
 
+    public boolean isHandleNull() {
+        return handleNull;
+    }
+
+    public void setHandleNull(boolean handleNull) {
+        this.handleNull = handleNull;
+    }
+
     public enum Mode {
         kSingleNodeMode, kClusterMode
     }
+    public static final String NULL_STRING = "!N@U#L$L%";
+    public static final String EMPTY_STRING = "!@#$%";
+
 	private boolean enableMetrics = true;
 	private String zkEndpoints = "";
 	private String zkRootPath = "";
@@ -26,13 +37,14 @@ public class RTIDBClientConfig {
 	private int readTimeout = 10000;
 	private int maxCntCnnPerHost = 2;
 	private boolean removeDuplicateByTime = false;
+    private boolean handleNull = false;
 	private int maxRetryCnt = 1;
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
 	private String nsEndpoint;
 	private int traverseLimit = 200;
 	private int timerBucketSize = 16;
-	
+
 
     /**
      * @return the timerBucketSize
