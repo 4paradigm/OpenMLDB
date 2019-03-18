@@ -16,29 +16,33 @@
 #include <rocksdb/table.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/filter_policy.h>
+#include <rocksdb/compaction_filter.h>
 #include "base/slice.h"
+#include "base/strings.h"
 #include "storage/iterator.h"
 #include <boost/lexical_cast.hpp>
+#include "timer.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
-using rocksdb::DB;
-using rocksdb::Options;
 using rocksdb::ColumnFamilyDescriptor;
 using rocksdb::ColumnFamilyHandle;
 
 namespace rtidb {
 namespace storage {
 
-static int ParseKeyAndTs(const std::string& s, std::string& key, uint64_t& ts) {
-    std::string::size_type index = s.find_last_of("|");
-    if (index != std::string::npos) {
-        key = s.substr(0, index);
-        try {
-            ts = boost::lexical_cast<uint64_t>(s.substr(index + 1));
+static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
+    const char* ch = s.data();
+    uint64_t last_pos = 0;
+    for (uint64_t pos = 0; pos < s.size(); pos++) {
+        if (ch[pos] == '|') {
+            last_pos = pos;
+        }
+    }
+    if (last_pos > 0 && last_pos < s.size() - 1) {
+        key.assign(s.data(), last_pos);
+        if (rtidb::base::StrToUINT64(ch + last_pos + 1, s.size() - last_pos - 1, ts)) {
             return 0;
-        } catch (std::exception const& e) {
-            return -1;
         }
     }
     return -1;
@@ -57,8 +61,8 @@ public:
     virtual int Compare(const rocksdb::Slice& a, const rocksdb::Slice& b) const override {
         std::string key1, key2;
         uint64_t ts1 = 0, ts2 = 0;
-        ParseKeyAndTs(a.ToString(), key1, ts1);
-        ParseKeyAndTs(b.ToString(), key2, ts2);
+        ParseKeyAndTs(a, key1, ts1);
+        ParseKeyAndTs(b, key2, ts2);
 
         int ret = key1.compare(key2);
         if (ret != 0) {
@@ -74,6 +78,41 @@ public:
 
     virtual void FindShortSuccessor(std::string* /*key*/) const override {}
 
+};
+
+class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
+public:
+    AbsoluteTTLCompactionFilter(uint64_t ttl) : ttl_(ttl) {}
+    virtual ~AbsoluteTTLCompactionFilter() {}
+
+    virtual const char* Name() const override { return "AbsoluteTTLCompactionFilter"; }
+
+    virtual bool Filter(int /*level*/, const rocksdb::Slice& key,
+                      const rocksdb::Slice& /*existing_value*/,
+                      std::string* /*new_value*/,
+                      bool* /*value_changed*/) const override {
+        const char* ch = key.data();
+        uint64_t last_pos = 0;
+        for (uint64_t pos = 0; pos < key.size(); pos++) {
+            if (ch[pos] == '|') {
+                last_pos = pos;
+            }
+        }
+        if (last_pos > 0 && last_pos < key.size() - 1) {
+            uint64_t ts = 0;
+            if (!rtidb::base::StrToUINT64(ch + last_pos + 1, key.size() - last_pos - 1, ts)) {
+                return false;
+            }
+            uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+            if (ts < cur_time - ttl_) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    uint64_t ttl_;
 };
 
 class DiskTableIterator : public TableIterator {
@@ -218,10 +257,10 @@ public:
     DiskTableTraverseIterator* NewTraverseIterator(uint32_t idx);
 
 private:
-    DB* db_;
+    rocksdb::DB* db_;
     std::vector<ColumnFamilyDescriptor> cf_ds_;
     std::vector<ColumnFamilyHandle*> cf_hs_;
-    Options options_;
+    rocksdb::Options options_;
 
     std::string const name_;
     uint32_t const id_;
@@ -235,6 +274,7 @@ private:
     KeyTSComparator cmp_;
     bool is_leader_;
     std::atomic<uint64_t> offset_;
+    rocksdb::CompactionFilter* compaction_filter_;
 };
 
 }

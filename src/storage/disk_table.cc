@@ -30,7 +30,7 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      uint64_t ttl, ::rtidb::api::TTLType ttl_type,
                      ::rtidb::api::StorageMode storage_mode) :
         name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()), schema_(), mapping_(mapping),
-        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode), offset_(0) {
+        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode), offset_(0), compaction_filter_(nullptr) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -44,10 +44,13 @@ DiskTable::~DiskTable() {
     }
     if (db_ != nullptr) {
         delete db_;
-    }    
-    std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+    }
+    if (compaction_filter_ != nullptr) {
+        delete compaction_filter_;
+    }
+    /*std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
-    /*Status s = DestroyDB(path, options_, cf_ds_);
+    Status s = DestroyDB(path, options_, cf_ds_);
     if (s.ok()) {
         PDLOG(INFO, "Destroy success. tid %u pid %u", id_, pid_);
     } else {
@@ -126,6 +129,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cf_ds_.push_back(ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
+    return true;
 }
 
 bool DiskTable::Init() {
@@ -139,6 +143,10 @@ bool DiskTable::Init() {
     options_.create_if_missing = true;
     options_.error_if_exists = true;
     options_.create_missing_column_families = true;
+    if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
+        compaction_filter_ = new AbsoluteTTLCompactionFilter(ttl_);
+        options_.compaction_filter = compaction_filter_;
+    }
     Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
@@ -222,6 +230,10 @@ bool DiskTable::LoadTable() {
     if (!rtidb::base::IsExists(path)) {
         return false;
     }
+    if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
+        compaction_filter_ = new AbsoluteTTLCompactionFilter(ttl_);
+        options_.compaction_filter = compaction_filter_;
+    }
     Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     if (!s.ok()) {
@@ -280,7 +292,7 @@ bool DiskTableIterator::Valid() {
         return false;
     }
     std::string cur_pk;
-    ParseKeyAndTs(it_->key().ToString(), cur_pk, ts_);
+    ParseKeyAndTs(it_->key(), cur_pk, ts_);
     return cur_pk == pk_;
 }
 
@@ -326,7 +338,7 @@ void DiskTableTraverseIterator::Next() {
     it_->Next();
     if (it_->Valid()) {
         std::string tmp_pk;
-        ParseKeyAndTs(it_->key().ToString(), tmp_pk, ts_);
+        ParseKeyAndTs(it_->key(), tmp_pk, ts_);
         if (tmp_pk == pk_) {
             record_idx_++;
         } else {
@@ -356,7 +368,7 @@ void DiskTableTraverseIterator::SeekToFirst() {
     it_->SeekToFirst();
     record_idx_ = 1;
     if (it_->Valid()) {
-        ParseKeyAndTs(it_->key().ToString(), pk_, ts_);
+        ParseKeyAndTs(it_->key(), pk_, ts_);
         if (IsExpired()) {
             NextPK();
         }
@@ -369,7 +381,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         record_idx_ = 0;
         while (it_->Valid()) {
             record_idx_++;
-            ParseKeyAndTs(it_->key().ToString(), pk_, ts_);
+            ParseKeyAndTs(it_->key(), pk_, ts_);
             if (pk_ == pk) {
                 if (IsExpired()) {
                     NextPK();
@@ -390,7 +402,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     } else {
         it_->Seek(Slice(CombineKeyTs(pk, time)));
         while (it_->Valid()) {
-            ParseKeyAndTs(it_->key().ToString(), pk_, ts_);
+            ParseKeyAndTs(it_->key(), pk_, ts_);
             if (pk_ == pk) {
                 if (ts_ >= time) {
                     it_->Next();
@@ -426,7 +438,7 @@ void DiskTableTraverseIterator::NextPK() {
     record_idx_ = 1;
     while (it_->Valid()) {
         std::string tmp_pk;
-        ParseKeyAndTs(it_->key().ToString(), tmp_pk, ts_);
+        ParseKeyAndTs(it_->key(), tmp_pk, ts_);
         if (tmp_pk != last_pk) {
             if (!IsExpired()) {
                 pk_ = tmp_pk;
