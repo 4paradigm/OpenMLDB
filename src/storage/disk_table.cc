@@ -47,12 +47,12 @@ DiskTable::~DiskTable() {
     }    
     std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
-    Status s = DestroyDB(path, options_, cf_ds_);
+    /*Status s = DestroyDB(path, options_, cf_ds_);
     if (s.ok()) {
         PDLOG(INFO, "Destroy success. tid %u pid %u", id_, pid_);
     } else {
         PDLOG(WARNING, "Destroy failed. tid %u pid %u status %s", id_, pid_, s.ToString().c_str());
-    }
+    }*/
 }
 
 void DiskTable::initOptionTemplate() {
@@ -109,7 +109,8 @@ void DiskTable::initOptionTemplate() {
     options_template_initialized = true;
 }
 
-bool DiskTable::Init() {
+bool DiskTable::InitColumnFamilyDescriptor() {
+    cf_ds_.clear();
     cf_ds_.push_back(ColumnFamilyDescriptor(kDefaultColumnFamilyName, ColumnFamilyOptions()));
     std::map<std::string, uint32_t> tempmapping;
     for (auto iter = mapping_.begin(); iter != mapping_.end(); ++iter) {
@@ -125,6 +126,10 @@ bool DiskTable::Init() {
         cf_ds_.push_back(ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
+}
+
+bool DiskTable::Init() {
+    InitColumnFamilyDescriptor();
     std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!::rtidb::base::MkdirRecur(path)) {
@@ -208,11 +213,15 @@ bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) {
 }
 
 bool DiskTable::LoadTable() {
+    InitColumnFamilyDescriptor();
     options_.create_if_missing = false;
     options_.error_if_exists = false;
     options_.create_missing_column_families = false;
     std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
+    if (!rtidb::base::IsExists(path)) {
+        return false;
+    }
     Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     if (!s.ok()) {

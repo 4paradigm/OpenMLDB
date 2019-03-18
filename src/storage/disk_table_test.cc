@@ -20,7 +20,14 @@ namespace rtidb {
 namespace storage {
 
 inline uint32_t GenRand() {
+    srand((unsigned)time(NULL));
     return rand() % 10000000 + 1;
+}
+
+void RemoveData(const std::string& path) {
+    ::rtidb::base::RemoveDir(path+"/data");
+    ::rtidb::base::RemoveDir(path);
+    ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
 }
 
 class DiskTableTest : public ::testing::Test {
@@ -78,8 +85,7 @@ TEST_F(DiskTableTest, Put) {
     delete it;
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_1";
-    ASSERT_TRUE(::rtidb::base::RemoveDir(path));
-    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
+    RemoveData(path);
 }
 
 TEST_F(DiskTableTest, MultiDimensionPut) {
@@ -201,8 +207,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
 
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_2";
-    ASSERT_TRUE(::rtidb::base::RemoveDir(path));
-    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
+    RemoveData(path);
 }
 
 TEST_F(DiskTableTest, Delete) {
@@ -239,8 +244,7 @@ TEST_F(DiskTableTest, Delete) {
 
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_2";
-    ASSERT_TRUE(::rtidb::base::RemoveDir(path));
-    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
+    RemoveData(path);
 }
 
 TEST_F(DiskTableTest, TraverseIterator) {
@@ -329,8 +333,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     delete it;
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_3";
-    ASSERT_TRUE(::rtidb::base::RemoveDir(path));
-    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
+    RemoveData(path);
 }
 
 TEST_F(DiskTableTest, TraverseIteratorLatest) {
@@ -401,8 +404,59 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     delete it;
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_3";
-    ASSERT_TRUE(::rtidb::base::RemoveDir(path));
-    ASSERT_TRUE(::rtidb::base::RemoveDir(FLAGS_hdd_root_path));
+    RemoveData(path);
+}
+
+TEST_F(DiskTableTest, Load) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::StorageMode::kHDD);
+    ASSERT_TRUE(table->Init());
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = 9537;
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
+        }
+    }
+    std::string raw_key = "test35";
+    DiskTableIterator* it = table->NewIterator(raw_key);
+    it->SeekToFirst();
+    for (int k = 0; k < 10; k++) {
+        ASSERT_TRUE(it->Valid());
+        std::string pk = it->GetPK();
+        ASSERT_EQ(pk, raw_key);
+        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        std::string value1 = it->GetValue().ToString();
+        ASSERT_EQ("value", value1);
+        it->Next();
+    }
+    ASSERT_FALSE(it->Valid());
+    delete it;
+    delete table;
+
+    table = new DiskTable("t1", 1, 1, mapping, 10, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::StorageMode::kHDD);
+    ASSERT_TRUE(table->LoadTable());
+    raw_key = "test35";
+    it = table->NewIterator(raw_key);
+    it->SeekToFirst();
+    for (int k = 0; k < 10; k++) {
+        ASSERT_TRUE(it->Valid());
+        std::string pk = it->GetPK();
+        ASSERT_EQ(pk, raw_key);
+        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        std::string value1 = it->GetValue().ToString();
+        ASSERT_EQ("value", value1);
+        it->Next();
+    }
+    ASSERT_FALSE(it->Valid());
+    delete it;
+    delete table;
+
+    std::string path = FLAGS_hdd_root_path + "/1_1";
+    RemoveData(path);
 }
 
 }

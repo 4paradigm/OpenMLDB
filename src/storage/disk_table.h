@@ -132,6 +132,8 @@ public:
 
     virtual ~DiskTable();
 
+    bool InitColumnFamilyDescriptor();
+
     bool Init();
 
     bool LoadTable();
