@@ -28,6 +28,7 @@ DEFINE_uint32(partition_num, 8, "config the default partition_num");
 DEFINE_uint32(replica_num, 3, "config the default replica_num. if set 3, there is one leader and two followers");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
+DEFINE_int32(disk_gc_interval, 1440, "the rocksdb gc interval of tablet");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");

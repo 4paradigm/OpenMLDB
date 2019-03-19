@@ -91,6 +91,7 @@ public:
                       const rocksdb::Slice& /*existing_value*/,
                       std::string* /*new_value*/,
                       bool* /*value_changed*/) const override {
+        printf("compact key: %s\n", key.ToString().c_str());              
         const char* ch = key.data();
         uint64_t last_pos = 0;
         for (uint64_t pos = 0; pos < key.size(); pos++) {
@@ -255,6 +256,15 @@ public:
     DiskTableIterator* NewIterator(uint32_t idx, const std::string& pk);
 
     DiskTableTraverseIterator* NewTraverseIterator(uint32_t idx);
+
+    void SchedGc();
+    void GcHead();
+
+    void CompactDB() {
+        for (ColumnFamilyHandle* cf : cf_hs_) {
+            db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
+        }
+    }
 
 private:
     rocksdb::DB* db_;

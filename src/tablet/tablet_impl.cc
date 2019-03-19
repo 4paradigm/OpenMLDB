@@ -34,6 +34,7 @@ using ::rtidb::storage::Table;
 using ::rtidb::storage::DataBlock;
 
 DECLARE_int32(gc_interval);
+DECLARE_int32(disk_gc_interval);
 DECLARE_int32(gc_pool_size);
 DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
@@ -2134,6 +2135,9 @@ void TabletImpl::LoadTable(RpcController* controller,
                 response->set_msg(msg.c_str());
                 return;
             }
+            if (table_meta.ttl_type() == ::rtidb::api::TTLType::kLatestTime && table_meta.ttl() > 0) {
+                gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+            }
             response->set_code(0);
             response->set_msg("ok");
             PDLOG(INFO, "load table ok. tid[%u] pid[%u] storage mode[%s]", 
@@ -2349,6 +2353,9 @@ void TabletImpl::CreateTable(RpcController* controller,
             done->Run();
             return;
         }
+        if (table_meta->ttl_type() == ::rtidb::api::TTLType::kLatestTime && table_meta->ttl() > 0) {
+            gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+        }
         response->set_code(0);
         response->set_msg("ok");
         done->Run();
@@ -2423,7 +2430,8 @@ void TabletImpl::ExecuteGc(RpcController* controller,
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
+    std::shared_ptr<DiskTable> disk_table = GetDiskTable(tid, pid);
+    if (!table && !disk_table) {
         PDLOG(DEBUG, "table is not exist. tid %u pid %u", tid, pid);
 	    response->set_code(-1);
         response->set_msg("table not found");
@@ -2984,11 +2992,17 @@ std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
-    if (!table) {
+    if (table) {
+        table->SchedGc();
+        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
         return;
     }
-    table->SchedGc();
-    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+    std::shared_ptr<DiskTable> disk_table = GetDiskTable(tid, pid);
+    if (disk_table) {
+        disk_table->SchedGc();
+        gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+        return;
+    }
 }
 
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {

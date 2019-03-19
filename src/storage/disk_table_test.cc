@@ -459,6 +459,86 @@ TEST_F(DiskTableTest, Load) {
     RemoveData(path);
 }
 
+TEST_F(DiskTableTest, CompactFilter) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::StorageMode::kHDD);
+    ASSERT_TRUE(table->Init());
+    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;        
+    uint64_t ts1 = ts - 20 * 60 * 1000;
+    ASSERT_TRUE(table->Put("key1", ts, "value1", 6));
+    ASSERT_TRUE(table->Put("key2", ts1, "value2", 6));
+    std::string value;
+    ASSERT_TRUE(table->Get("key1", ts, value));
+    ASSERT_EQ("value1", value);
+    ASSERT_TRUE(table->Get("key2", ts1, value));
+    ASSERT_EQ("value2", value);
+
+    table->CompactDB();
+    ASSERT_TRUE(table->Get("key1", ts, value));
+    ASSERT_EQ("value1", value);
+    //ASSERT_FALSE(table->Get("key2", ts1, value));
+    //sleep(10);
+    delete table;
+    std::string path = FLAGS_hdd_root_path + "/1_1";
+    //RemoveData(path);
+    printf("path: %s\n", path.c_str());
+}
+
+TEST_F(DiskTableTest, GcHead) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
+            ::rtidb::api::TTLType::kLatestTime, ::rtidb::api::StorageMode::kHDD);
+    ASSERT_TRUE(table->Init());
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = 9537;
+        for (int k = 0; k < 5; k++) {
+            ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
+            if (idx == 10 && k == 2) {
+                ASSERT_TRUE(table->Put(key, ts + k, "value9", 6));
+                ASSERT_TRUE(table->Put(key, ts + k, "value8", 6));
+            }
+        }
+    }
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = 9537;
+        for (int k = 0; k < 5; k++) {
+            std::string value;
+            ASSERT_TRUE(table->Get(key, ts + k, value));
+            if (idx == 10 && k == 2) {
+                ASSERT_EQ("value8", value);
+            } else {
+                ASSERT_EQ("value", value);
+            }
+        }
+    }
+    table->GcHead();
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = 9537;
+        for (int k = 0; k < 5; k++) {
+            std::string value;
+            if (k < 2) {
+                ASSERT_FALSE(table->Get(key, ts + k, value));
+            } else {
+                ASSERT_TRUE(table->Get(key, ts + k, value));
+                if (idx == 10 && k == 2) {
+                    ASSERT_EQ("value8", value);
+                } else {
+                    ASSERT_EQ("value", value);
+                }
+            }
+        }
+    }
+    delete table;
+    std::string path = FLAGS_hdd_root_path + "/1_3";
+    RemoveData(path);
+}
+
 }
 }
 

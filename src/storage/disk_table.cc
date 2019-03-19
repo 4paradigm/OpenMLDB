@@ -20,7 +20,6 @@ using namespace rocksdb;
 namespace rtidb {
 namespace storage {
 
-const static uint32_t SEED = 0x52806833; // 4PD!
 static Options ssd_option_template;
 static Options hdd_option_template;
 static bool options_template_initialized = false;
@@ -240,6 +239,57 @@ bool DiskTable::LoadTable() {
         PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
     }    
     return true;
+}
+
+void DiskTable::SchedGc() {
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime && ttl_ > 0) {
+        GcHead();
+    }
+}
+
+void DiskTable::GcHead() {
+    uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
+    uint64_t ttl_num = ttl_ / 60 / 1000;
+    if (ttl_num < 1) {
+        return;
+    }
+    for (auto cf_hs : cf_hs_) {
+        ReadOptions ro = ReadOptions();
+        ro.prefix_same_as_start = true;
+        ro.pin_data = true;
+        Iterator* it = db_->NewIterator(ro, cf_hs);
+        it->SeekToFirst();
+        std::string last_pk;
+        uint64_t count = 0;
+        while (it->Valid()) {
+            std::string cur_pk;
+            uint64_t ts = 0;
+            ParseKeyAndTs(it->key(), cur_pk, ts);
+            if (last_pk.empty()) {
+                last_pk = cur_pk;
+            }
+            if (cur_pk == last_pk) {
+                if (count < ttl_num) {
+                    it->Next();
+                    count++;
+                    continue;
+                } else {
+                    Status s = db_->DeleteRange(WriteOptions(), cf_hs, Slice(CombineKeyTs(cur_pk, ts)), Slice(CombineKeyTs(cur_pk, 0)));
+                    if (!s.ok()) {
+                        PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                    }    
+                    it->Seek(Slice(CombineKeyTs(cur_pk, 0)));
+                }
+            } else {
+                count = 1;
+                last_pk = cur_pk;
+                it->Next();
+            }
+        }
+        delete it;
+    }
+    uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
+    PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
 }
 
 uint64_t DiskTable::GetExpireTime() {
