@@ -2135,7 +2135,7 @@ void TabletImpl::LoadTable(RpcController* controller,
                 response->set_msg(msg.c_str());
                 return;
             }
-            if (table_meta.ttl_type() == ::rtidb::api::TTLType::kLatestTime && table_meta.ttl() > 0) {
+            if (table_meta.ttl() > 0) {
                 gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
             }
             response->set_code(0);
@@ -2353,7 +2353,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             done->Run();
             return;
         }
-        if (table_meta->ttl_type() == ::rtidb::api::TTLType::kLatestTime && table_meta->ttl() > 0) {
+        if (table_meta->ttl() > 0) {
             gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
         }
         response->set_code(0);

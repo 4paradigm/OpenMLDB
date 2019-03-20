@@ -259,6 +259,7 @@ public:
 
     void SchedGc();
     void GcHead();
+    void GcTTL();
 
     void CompactDB() {
         for (ColumnFamilyHandle* cf : cf_hs_) {

@@ -142,10 +142,10 @@ bool DiskTable::Init() {
     options_.create_if_missing = true;
     options_.error_if_exists = true;
     options_.create_missing_column_families = true;
-    if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
+    /*if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
         compaction_filter_ = new AbsoluteTTLCompactionFilter(ttl_);
         options_.compaction_filter = compaction_filter_;
-    }
+    }*/
     Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
@@ -229,10 +229,10 @@ bool DiskTable::LoadTable() {
     if (!rtidb::base::IsExists(path)) {
         return false;
     }
-    if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
+    /*if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
         compaction_filter_ = new AbsoluteTTLCompactionFilter(ttl_);
         options_.compaction_filter = compaction_filter_;
-    }
+    }*/
     Status s = DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     if (!s.ok()) {
@@ -242,9 +242,57 @@ bool DiskTable::LoadTable() {
 }
 
 void DiskTable::SchedGc() {
-    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime && ttl_ > 0) {
-        GcHead();
+    if (ttl_ == 0) {
+        return;
     }
+    if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        GcHead();
+    } else {
+        GcTTL();
+
+    }
+}
+
+void DiskTable::GcTTL() {
+    uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
+    uint64_t expire_time = GetExpireTime();
+    if (expire_time < 1) {
+        return;
+    }
+    for (auto cf_hs : cf_hs_) {
+        ReadOptions ro = ReadOptions();
+        ro.prefix_same_as_start = true;
+        ro.pin_data = true;
+        Iterator* it = db_->NewIterator(ro, cf_hs);
+        it->SeekToFirst();
+        std::string last_pk;
+        while (it->Valid()) {
+            std::string cur_pk;
+            uint64_t ts = 0;
+            ParseKeyAndTs(it->key(), cur_pk, ts);
+            if (last_pk.empty()) {
+                last_pk = cur_pk;
+            }
+            if (cur_pk == last_pk) {
+                if (ts == 0 || ts > expire_time) {
+                    it->Next();
+                    continue;
+                } else {
+                    Status s = db_->DeleteRange(WriteOptions(), cf_hs, Slice(CombineKeyTs(cur_pk, ts)), Slice(CombineKeyTs(cur_pk, 0)));
+                    if (!s.ok()) {
+                        PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                    }    
+                    it->Seek(Slice(CombineKeyTs(cur_pk, 0)));
+                }
+            } else {
+                last_pk = cur_pk;
+                it->Next();
+            }
+        }
+        delete it;
+    }
+    uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
+    PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
 }
 
 void DiskTable::GcHead() {
@@ -269,7 +317,7 @@ void DiskTable::GcHead() {
                 last_pk = cur_pk;
             }
             if (cur_pk == last_pk) {
-                if (count < ttl_num) {
+                if (ts == 0 || count < ttl_num) {
                     it->Next();
                     count++;
                     continue;
