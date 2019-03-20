@@ -287,9 +287,8 @@ void TabletImpl::Get(RpcController* controller,
              Closure* done) {
     brpc::ClosureGuard done_guard(done);         
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    std::shared_ptr<DiskTable> disk_table;
     if (!table) {
-        disk_table = GetDiskTable(request->tid(), request->pid());
+        std::shared_ptr<DiskTable> disk_table = GetDiskTable(request->tid(), request->pid());
         if (!disk_table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(100);
