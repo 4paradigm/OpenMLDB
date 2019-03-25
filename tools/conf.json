@@ -1,0 +1,39 @@
+{
+    "zookeeper":{
+        "path":"/home/denglong/env/test",
+        "package":"./package/zookeeper-3.4.10.tar.gz",
+        "inner_port1":2881,
+        "inner_port2":3881,
+        "need_deploy": true,
+        "address_arr":[
+            {
+                "address":"172.27.128.37:12201",
+                "path":"/home/denglong/env/zk",
+                "inner_port1":5881,
+                "inner_port2":6881
+            },
+            {
+                "address":"172.27.128.31:12202"
+            }
+            ]
+    },
+    "zk_root_path":"/rtidb_cluster",
+    "nameserver": {
+        "path":"/home/denglong/env/test/nameserver",
+        "package":"./package/rtidb-cluster-1.4.0.tar.gz",
+        "address_arr": [
+            {
+                "address":"172.27.128.37:6527"
+            }
+        ]
+    },
+    "tablet": {
+        "path":"/home/denglong/env/test/tablet",
+        "package":"./package/rtidb-cluster-1.4.0.tar.gz",
+        "address_arr": [
+            {
+                "address":"172.27.128.37:9527"
+            }
+        ]
+    }
+}
