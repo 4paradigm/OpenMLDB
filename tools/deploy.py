@@ -4,6 +4,16 @@ import sys
 import subprocess
 import os
 
+import socket
+
+def CheckLocalHost(host):
+    hostname = socket.gethostname()
+    if host == hostname:
+        return True
+    ip = socket.gethostbyname(hostname)    
+    if host == ip:
+        return True
+    return False
 
 def RunWithRetunCode(command):
     try:
@@ -18,9 +28,19 @@ def RunWithRetunCode(command):
         print(ex)
         return -1,None,None
 
+def GetPrefixAndSuffix(host):
+    is_local = CheckLocalHost(host)
+    prefix = ""
+    suffix = ""
+    if not is_local:
+        prefix = "ssh {} \" ".format(host)
+        suffix = "\""
+    return (prefix, suffix, is_local)    
+    
+
 def CheckJava(host):
-    cmd = "ssh {} \"java -version\"".format(host)
-    print(cmd)
+    (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
+    cmd = "{} java -version {}".format(prefix, suffix)
     (returncode,output,errout) = RunWithRetunCode(cmd)
     if returncode != 0:
         print("execute cmd[{}] failed! error msg: {}".format(cmd, errout))    
@@ -30,16 +50,20 @@ def CheckJava(host):
     return True    
 
 def DeployJava(host, path, source_file, teardown):
+    (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
     cmd_arr = []
     file_name = os.path.basename(source_file)
     if teardown:
         print("clear java on {}. path: {}".format(host, path))
-        cmd_arr.append("ssh {} \"cd {}; rm {}; rm -rf {}\"".format(host, path, file_name, "jdk1.8.0_121"))
+        cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, path, file_name, "jdk1.8.0_121", suffix))
     else:    
         print("deploy java on {}. path: {}".format(host, path))
-        cmd_arr.append("ssh {} \"mkdir -p {} \"".format(host, path))
-        cmd_arr.append("scp {} {}:{}".format(source_file, host, path))
-        cmd_arr.append("ssh {} \"cd {}; tar -zxvf {};\"".format(host, path, file_name))
+        cmd_arr.append("{} mkdir -p {} {}".format(prefix, path, suffix))
+        if is_local:
+            cmd_arr.append("cp {} {}".format(source_file, path))
+        else:    
+            cmd_arr.append("scp {} {}:{}".format(source_file, host, path))
+        cmd_arr.append("{} cd {}; tar -zxvf {}; {}".format(prefix, path, file_name, suffix))
     for cmd in cmd_arr:
         (returncode,output,errout) = RunWithRetunCode(cmd)
         if returncode != 0:
@@ -69,6 +93,7 @@ def DeployZookeeper(zk_conf, teardown):
     for idx in xrange(len(zk_conf["address_arr"])):
         host = zk_conf["address_arr"][idx]["address"].split(":")[0]
         port = zk_conf["address_arr"][idx]["address"].split(":")[1]
+        (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
         real_path = ''
         if "path" in zk_conf["address_arr"][idx]:
             real_path = zk_conf["address_arr"][idx]["path"]
@@ -82,20 +107,23 @@ def DeployZookeeper(zk_conf, teardown):
         work_path = real_path + "/" + dir_name
         if teardown:
             print("teardown zookeeper on {}. path: {}".format(host, real_path))
-            cmd_arr.append("ssh {} \"cd {}; sh bin/zkServer.sh stop\"".format(host, work_path))
-            cmd_arr.append("ssh {} \"cd {}; rm {}; rm -rf {}\"".format(host, real_path, file_name, dir_name))
+            cmd_arr.append("{} cd {}; sh bin/zkServer.sh stop {}".format(prefix, work_path, suffix))
+            cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, real_path, file_name, dir_name, suffix))
         else:    
             print("start zookeeper on {}. path: {}".format(host, real_path))
-            cmd_arr.append("ssh {} \"mkdir -p {} \"".format(host, real_path))
-            cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
-            cmd_arr.append("ssh {} \"cd {}; tar -zxvf {}; mv {} {}; cd {}; mv conf/zoo_sample.cfg conf/zoo.cfg\"".format(
-                            host, real_path, file_name, file_name[:-7], dir_name, dir_name))
-            cmd_arr.append("ssh {} \"cd {}; sed -i 's/dataDir=.*/dataDir=\.\/data/g' conf/zoo.cfg;\
+            cmd_arr.append("{} mkdir -p {} {}".format(prefix, real_path, suffix))
+            if is_local:
+                cmd_arr.append("cp {} {}".format(source_file, real_path))
+            else:
+                cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
+            cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} {}; cd {}; mv conf/zoo_sample.cfg conf/zoo.cfg {}".format(
+                            prefix, real_path, file_name, file_name[:-7], dir_name, dir_name, suffix))
+            cmd_arr.append("{} cd {}; sed -i 's/dataDir=.*/dataDir=\.\/data/g' conf/zoo.cfg;\
                                             sed -i 's/clientPort=.*/clientPort={}/g' conf/zoo.cfg;\
-                                            {}\"".format(
-                                            host, work_path, port, ";".join(server_conf)))
-            cmd_arr.append("ssh {} \"cd {}; mkdir -p ./data; echo {} > ./data/myid\"".format(host, work_path, idx + 1))
-            cmd_arr.append("ssh {} \"cd {}; {}; sh bin/zkServer.sh start\"".format(host, work_path, java_home_str))
+                                            {} {}".format(
+                                            prefix, work_path, port, ";".join(server_conf), suffix))
+            cmd_arr.append("{} cd {}; mkdir -p ./data; echo {} > ./data/myid {}".format(prefix, work_path, idx + 1, suffix))
+            cmd_arr.append("{} cd {}; {}; sh bin/zkServer.sh start {}".format(prefix, work_path, java_home_str, suffix))
         for cmd in cmd_arr:
             (returncode,output,errout) = RunWithRetunCode(cmd)
             if returncode != 0:
@@ -123,22 +151,26 @@ def DeployNameserver(zk_cluster, zk_root_path, ns_conf, teardown):
         else:
             real_path = ns_conf["path"]
         host = item["address"].split(":")[0]
+        (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
         work_path = real_path + "/rtidb-nameserver-" + version 
         cmd_arr = []
         if teardown:
             print("teardown nameserver on {}. path: {}".format(host, real_path))
-            cmd_arr.append("ssh {} \"cd {}; sh bin/start_ns.sh stop\"".format(host, work_path))
-            cmd_arr.append("ssh {} \"cd {}; rm {}; rm -rf {}\"".format(host, real_path, file_name, "rtidb-nameserver-*"))
+            cmd_arr.append("{} cd {}; sh bin/start_ns.sh stop {}".format(prefix, work_path, suffix))
+            cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, real_path, file_name, "rtidb-nameserver-*", suffix))
         else:    
             print("start nameserver on {}. path: {}".format(host, real_path))
-            cmd_arr.append("ssh {} \"mkdir -p {} \"".format(host, real_path))
-            cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
-            cmd_arr.append("ssh {} \"cd {}; tar -zxvf {}; mv {} rtidb-nameserver-{}\"".format(host, real_path, file_name, file_name[:-7], version))
-            cmd_arr.append("ssh {} \"cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/nameserver.flags;\
+            cmd_arr.append("{} mkdir -p {} {}".format(prefix, real_path, suffix))
+            if is_local:
+                cmd_arr.append("cp {} {}".format(source_file, real_path))
+            else:    
+                cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
+            cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} rtidb-nameserver-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
+            cmd_arr.append("{} cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/nameserver.flags;\
                                             sed -i 's/--zk_cluster=.*/--zk_cluster={}/g' conf/nameserver.flags;\
-                                            sed -i 's/--zk_root_path=.*/--zk_root_path={}/g' conf/nameserver.flags \" ".format(
-                                            host, work_path, item["address"], zk_cluster, zk_root_path.replace("/", "\/")))
-            cmd_arr.append("ssh {} \"cd {}; sh bin/start_ns.sh start\"".format(host, work_path))
+                                            sed -i 's/--zk_root_path=.*/--zk_root_path={}/g' conf/nameserver.flags {}".format(
+                                            prefix, work_path, item["address"], zk_cluster, zk_root_path.replace("/", "\/"), suffix))
+            cmd_arr.append("{} cd {}; sh bin/start_ns.sh start {}".format(prefix, work_path, suffix))
         for cmd in cmd_arr:
             (returncode,output,errout) = RunWithRetunCode(cmd)
             if returncode != 0:
@@ -157,23 +189,27 @@ def DeployTablet(zk_cluster, zk_root_path, tablet_conf, teardown):
         else:    
             real_path = tablet_conf["path"]
         host = item["address"].split(":")[0]
+        (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
         work_path = real_path + "/rtidb-tablet-" + version 
         cmd_arr = []
         if teardown:
             print("teardown tablet on {}. path: {}".format(host, real_path))
-            cmd_arr.append("ssh {} \"cd {}; sh bin/start.sh stop\"".format(host, work_path))
-            cmd_arr.append("ssh {} \"cd {}; rm {}; rm -rf {}\"".format(host, real_path, file_name, "rtidb-tablet-*"))
+            cmd_arr.append("{} cd {}; sh bin/start.sh stop {}".format(prefix, work_path, suffix))
+            cmd_arr.append("{} cd {}; rm {}; rm -rf {} {}".format(prefix, real_path, file_name, "rtidb-tablet-*", suffix))
         else:
             print("start tablet on {}. path: {}".format(host, real_path))
-            cmd_arr.append("ssh {} \"mkdir -p {} \"".format(host, real_path))
-            cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
-            cmd_arr.append("ssh {} \"cd {}; tar -zxvf {}; mv {} rtidb-tablet-{}\"".format(host, real_path, file_name, file_name[:-7], version))
-            cmd_arr.append("ssh {} \"cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/tablet.flags\"".format(host, work_path, item["address"]))
+            cmd_arr.append("{} mkdir -p {} {}".format(prefix, real_path, suffix))
+            if is_local:
+                cmd_arr.append("cp {} {}".format(source_file, real_path))
+            else:    
+                cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
+            cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} rtidb-tablet-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
+            cmd_arr.append("{} cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/tablet.flags {}".format(prefix, work_path, item["address"], suffix))
             if zk_cluster != "":
-                cmd_arr.append("ssh {} \"cd {}; sed -i 's/#--zk_cluster=.*/--zk_cluster={}/g' conf/tablet.flags;\
-                                            sed -i 's/#--zk_root_path=.*/--zk_root_path={}/g' conf/tablet.flags \" ".format(
-                                            host, work_path, zk_cluster, zk_root_path.replace("/", "\/")))
-            cmd_arr.append("ssh {} \"cd {}; sh bin/start.sh start\"".format(host, work_path))
+                cmd_arr.append("{} cd {}; sed -i 's/#--zk_cluster=.*/--zk_cluster={}/g' conf/tablet.flags;\
+                                            sed -i 's/#--zk_root_path=.*/--zk_root_path={}/g' conf/tablet.flags {}".format(
+                                            prefix, work_path, zk_cluster, zk_root_path.replace("/", "\/"), suffix))
+            cmd_arr.append("{} cd {}; sh bin/start.sh start {}".format(prefix, work_path, suffix))
         for cmd in cmd_arr:
             (returncode,output,errout) = RunWithRetunCode(cmd)
             if returncode != 0:

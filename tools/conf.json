@@ -14,7 +14,7 @@
                 "inner_port2":6881
             },
             {
-                "address":"172.27.128.31:12202"
+                "address":"172.27.128.33:12202"
             }
             ]
     },
@@ -24,7 +24,7 @@
         "package":"./package/rtidb-cluster-1.4.0.tar.gz",
         "address_arr": [
             {
-                "address":"172.27.129.198:6527"
+                "address":"172.27.129.198:6927"
             }
         ]
     },
@@ -33,7 +33,10 @@
         "package":"./package/rtidb-cluster-1.4.0.tar.gz",
         "address_arr": [
             {
-                "address":"172.27.129.198:9527"
+                "address":"172.27.129.198:9027"
+            },
+            {
+                "address":"172.27.128.33:9027"
             }
         ]
     }
