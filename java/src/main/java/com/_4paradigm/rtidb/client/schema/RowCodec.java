@@ -8,6 +8,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import org.joda.time.DateTime;
 
 import com._4paradigm.rtidb.client.TabletException;
@@ -24,19 +25,20 @@ public class RowCodec {
         if (row.length != schema.size()) {
             throw new TabletException("row length mismatch schema");
         }
+
         Object[] cache = new Object[row.length];
         // TODO limit the max size
         int size = getSize(row, schema, cache);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
         if (row.length > 128) {
-            buffer.putShort((short)row.length);
+            buffer.putShort((short) row.length);
         } else {
             buffer.put((byte) row.length);
         }
         for (int i = 0; i < row.length; i++) {
             ColumnType ct = schema.get(i).getType();
-            if(row[i]!=null && ct == ColumnType.kString){
-                if(((byte[])cache[i]).length <= 0){
+            if (row[i] != null && ct == ColumnType.kString) {
+                if (((byte[]) cache[i]).length <= 0) {
                     ct = ColumnType.kEmptyString;
                 }
             }
@@ -79,40 +81,40 @@ public class RowCodec {
                     buffer.putDouble((Double) row[i]);
                     break;
                 case kTimestamp:
-                    buffer.put((byte)8);
+                    buffer.put((byte) 8);
                     if (row[i] instanceof DateTime) {
-                        DateTime time = (DateTime)row[i];
+                        DateTime time = (DateTime) row[i];
                         buffer.putLong(time.getMillis());
-                    }else if (row[i] instanceof Timestamp) {
-                        Timestamp ts = (Timestamp)row[i];
+                    } else if (row[i] instanceof Timestamp) {
+                        Timestamp ts = (Timestamp) row[i];
                         buffer.putLong(ts.getTime());
-                    }else {
+                    } else {
                         throw new TabletException(row[i].getClass().getName() + "is not support for timestamp ");
                     }
                     break;
                 case kInt16:
-                    buffer.put((byte)2);
-                    buffer.putShort((Short)row[i]);
+                    buffer.put((byte) 2);
+                    buffer.putShort((Short) row[i]);
                     break;
                 case kDate:
-                    buffer.put((byte)8);
+                    buffer.put((byte) 8);
                     if (row[i] instanceof Date) {
-                        Date date = (Date)row[i];
+                        Date date = (Date) row[i];
                         buffer.putLong(date.getTime());
-                    }else if (row[i] instanceof LocalDate) {
-                        LocalDate date = (LocalDate)row[i];
+                    } else if (row[i] instanceof LocalDate) {
+                        LocalDate date = (LocalDate) row[i];
                         buffer.putLong(date.toDate().getTime());
-                    }else {
+                    } else {
                         throw new TabletException(row[i].getClass().getName() + "is not support for date");
                     }
                     break;
                 case kBool:
-                    buffer.put((byte)1);
-                    Boolean bool = (Boolean)row[i];
+                    buffer.put((byte) 1);
+                    Boolean bool = (Boolean) row[i];
                     if (bool) {
-                        buffer.put((byte)1);
-                    }else {
-                        buffer.put((byte)0);
+                        buffer.put((byte) 1);
+                    } else {
+                        buffer.put((byte) 0);
                     }
                     break;
                 case kEmptyString:
@@ -125,7 +127,7 @@ public class RowCodec {
         return buffer;
     }
 
-    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, Object[] row, int start, int length)  throws TabletException{
+    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, Object[] row, int start, int length) throws TabletException {
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
@@ -144,7 +146,7 @@ public class RowCodec {
             byte type = buffer.get();
             int size = buffer.get() & 0xFF;
             ColumnType ctype = ColumnType.valueOf((int) type);
-            if(size == 0 && ctype == ColumnType.kEmptyString){
+            if (size == 0 && ctype == ColumnType.kEmptyString) {
                 row[index] = "";
                 index++;
                 count++;
@@ -190,7 +192,7 @@ public class RowCodec {
                     int byteValue = buffer.get();
                     if (byteValue == 0) {
                         row[index] = false;
-                    }else {
+                    } else {
                         row[index] = true;
                     }
                     break;
