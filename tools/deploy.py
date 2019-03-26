@@ -25,9 +25,28 @@ def CheckJava(host):
     if returncode != 0:
         print("execute cmd[{}] failed! error msg: {}".format(cmd, errout))    
         return False
-    if output.find("java: command not found") == -1 or errout.find("java: command not found") == -1:
+    if output.find("java: command not found") != -1 or errout.find("java: command not found") != -1:
         return False
     return True    
+
+def DeployJava(host, path, source_file, teardown):
+    cmd_arr = []
+    file_name = os.path.basename(source_file)
+    if teardown:
+        print("clear java on {}. path: {}".format(host, path))
+        cmd_arr.append("ssh {} \"cd {}; rm {}; rm -rf {}\"".format(host, path, file_name, "jdk1.8.0_121"))
+    else:    
+        print("deploy java on {}. path: {}".format(host, path))
+        cmd_arr.append("ssh {} \"mkdir -p {} \"".format(host, path))
+        cmd_arr.append("scp {} {}:{}".format(source_file, host, path))
+        cmd_arr.append("ssh {} \"cd {}; tar -zxvf {};\"".format(host, path, file_name))
+    for cmd in cmd_arr:
+        (returncode,output,errout) = RunWithRetunCode(cmd)
+        if returncode != 0:
+            print("execute cmd[{}] failed! error msg: {}".format(cmd, errout))    
+            return
+        print("execute cmd[{}] success".format(cmd))
+    
 
 def DeployZookeeper(zk_conf, teardown):
     source_file = zk_conf["package"]
@@ -50,14 +69,15 @@ def DeployZookeeper(zk_conf, teardown):
     for idx in xrange(len(zk_conf["address_arr"])):
         host = zk_conf["address_arr"][idx]["address"].split(":")[0]
         port = zk_conf["address_arr"][idx]["address"].split(":")[1]
-        if not CheckJava(host):
-            # install java
-            pass
         real_path = ''
         if "path" in zk_conf["address_arr"][idx]:
             real_path = zk_conf["address_arr"][idx]["path"]
         else:    
             real_path = zk_conf["path"]
+        java_home_str = "echo $PATH"
+        if not CheckJava(host):
+            DeployJava(host, real_path, zk_conf["java_package"], teardown)
+            java_home_str = "PATH=$PATH:{}/{}/bin".format(real_path, "jdk1.8.0_121")
         cmd_arr = []
         work_path = real_path + "/" + dir_name
         if teardown:
@@ -75,7 +95,7 @@ def DeployZookeeper(zk_conf, teardown):
                                             {}\"".format(
                                             host, work_path, port, ";".join(server_conf)))
             cmd_arr.append("ssh {} \"cd {}; mkdir -p ./data; echo {} > ./data/myid\"".format(host, work_path, idx + 1))
-            cmd_arr.append("ssh {} \"cd {}; sh bin/zkServer.sh start\"".format(host, work_path))
+            cmd_arr.append("ssh {} \"cd {}; {}; sh bin/zkServer.sh start\"".format(host, work_path, java_home_str))
         for cmd in cmd_arr:
             (returncode,output,errout) = RunWithRetunCode(cmd)
             if returncode != 0:
@@ -89,7 +109,7 @@ def GetZKCluster(conf):
     zk_cluster_arr = []
     for item in conf["zookeeper"]["address_arr"]:
         zk_cluster_arr.append(item["address"])
-    return ",".join(zk_cluster_arr)
+    return ",".join(zk_cluster_arr), conf["zk_root_path"]
 
 
 def DeployNameserver(zk_cluster, zk_root_path, ns_conf, teardown):
@@ -171,11 +191,10 @@ if __name__ == "__main__":
     if "zookeeper" in conf and "need_deploy" in conf["zookeeper"] and conf["zookeeper"]["need_deploy"] == True:
         DeployZookeeper(conf["zookeeper"], teardown)
        
-    zk_cluster = GetZKCluster(conf)    
+    (zk_cluster, zk_root_path) = GetZKCluster(conf)    
     if "nameserver" in conf:    
-        if "zk_root_path" not in conf:
-            print("not set zk_root_path. exit...")
-            exit
-        DeployNameserver(zk_cluster, conf["zk_root_path"], conf["nameserver"], teardown)
-    DeployTablet(zk_cluster, conf["zk_root_path"], conf["tablet"], teardown)
+        DeployNameserver(zk_cluster, zk_root_path, conf["nameserver"], teardown)
+
+    if "tablet" in conf:   
+        DeployTablet(zk_cluster, zk_root_path, conf["tablet"], teardown)
 
