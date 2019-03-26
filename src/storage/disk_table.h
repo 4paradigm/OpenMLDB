@@ -33,13 +33,14 @@ namespace storage {
 
 static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
     const char* ch = s.data();
-    uint64_t last_pos = 0;
-    for (uint64_t pos = 0; pos < s.size(); pos++) {
+    int last_pos = 0;
+    for (int pos = s.size() - 1; pos >= 0; pos--) {
         if (ch[pos] == '|') {
             last_pos = pos;
+            break;
         }
     }
-    if (last_pos > 0 && last_pos < s.size() - 1) {
+    if (last_pos > 0 && last_pos < (int)s.size() - 1) {
         key.assign(s.data(), last_pos);
         if (rtidb::base::StrToUINT64(ch + last_pos + 1, s.size() - last_pos - 1, ts)) {
             return 0;
@@ -92,13 +93,14 @@ public:
                       std::string* /*new_value*/,
                       bool* /*value_changed*/) const override {
         const char* ch = key.data();
-        uint64_t last_pos = 0;
-        for (uint64_t pos = 0; pos < key.size(); pos++) {
+        int last_pos = 0;
+        for (int pos = key.size() - 1; pos >= 0; pos--) {
             if (ch[pos] == '|') {
                 last_pos = pos;
+                break;
             }
         }
-        if (last_pos > 0 && last_pos < key.size() - 1) {
+        if (last_pos > 0 && last_pos < (int)key.size() - 1) {
             uint64_t ts = 0;
             if (!rtidb::base::StrToUINT64(ch + last_pos + 1, key.size() - last_pos - 1, ts)) {
                 return false;
@@ -262,7 +264,12 @@ public:
 
     void CompactDB() {
         for (ColumnFamilyHandle* cf : cf_hs_) {
-            db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
+            db_->Flush(rocksdb::FlushOptions(), cf);
+            rocksdb::Slice begin = CombineKeyTs("test1", UINT64_MAX);
+            rocksdb::Slice end = CombineKeyTs("test100", 0);
+            //db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
+            db_->CompactRange(rocksdb::CompactRangeOptions(), cf, &begin, &end);
+            db_->Flush(rocksdb::FlushOptions(), cf);
         }
     }
 
