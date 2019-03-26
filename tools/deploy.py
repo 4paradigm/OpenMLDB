@@ -37,6 +37,21 @@ def GetPrefixAndSuffix(host):
         suffix = "\""
     return (prefix, suffix, is_local)    
     
+def InitEnv(tablet_conf):    
+    for item in tablet_conf["address_arr"]:
+        host = item["address"].split(":")[0]
+        (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
+        cmd_arr = []
+        print("Init Env on {}".format(host))
+        cmd_arr.append("{} echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled;"
+                          "echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag {}".format(prefix, suffix))
+        cmd_arr.append("{} swapoff -a {}".format(prefix, suffix))
+        for cmd in cmd_arr:
+            (returncode,output,errout) = RunWithRetunCode(cmd)
+            if returncode != 0:
+                print("execute cmd[{}] failed! error msg: {}".format(cmd, errout))    
+                return
+            print("execute cmd[{}] success".format(cmd))
 
 def CheckJava(host):
     (prefix, suffix, is_local) = GetPrefixAndSuffix(host)
@@ -118,9 +133,9 @@ def DeployZookeeper(zk_conf, teardown):
                 cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
             cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} {}; cd {}; mv conf/zoo_sample.cfg conf/zoo.cfg {}".format(
                             prefix, real_path, file_name, file_name[:-7], dir_name, dir_name, suffix))
-            cmd_arr.append("{} cd {}; sed -i 's/dataDir=.*/dataDir=\.\/data/g' conf/zoo.cfg;\
-                                            sed -i 's/clientPort=.*/clientPort={}/g' conf/zoo.cfg;\
-                                            {} {}".format(
+            cmd_arr.append("{} cd {}; sed -i 's/dataDir=.*/dataDir=\.\/data/g' conf/zoo.cfg;"
+                                            "sed -i 's/clientPort=.*/clientPort={}/g' conf/zoo.cfg;"
+                                            "{} {}".format(
                                             prefix, work_path, port, ";".join(server_conf), suffix))
             cmd_arr.append("{} cd {}; mkdir -p ./data; echo {} > ./data/myid {}".format(prefix, work_path, idx + 1, suffix))
             cmd_arr.append("{} cd {}; {}; sh bin/zkServer.sh start {}".format(prefix, work_path, java_home_str, suffix))
@@ -166,9 +181,9 @@ def DeployNameserver(zk_cluster, zk_root_path, ns_conf, teardown):
             else:    
                 cmd_arr.append("scp {} {}:{}".format(source_file, host, real_path))
             cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} rtidb-nameserver-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
-            cmd_arr.append("{} cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/nameserver.flags;\
-                                            sed -i 's/--zk_cluster=.*/--zk_cluster={}/g' conf/nameserver.flags;\
-                                            sed -i 's/--zk_root_path=.*/--zk_root_path={}/g' conf/nameserver.flags {}".format(
+            cmd_arr.append("{} cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/nameserver.flags;"
+                                            "sed -i 's/--zk_cluster=.*/--zk_cluster={}/g' conf/nameserver.flags;"
+                                            "sed -i 's/--zk_root_path=.*/--zk_root_path={}/g' conf/nameserver.flags {}".format(
                                             prefix, work_path, item["address"], zk_cluster, zk_root_path.replace("/", "\/"), suffix))
             cmd_arr.append("{} cd {}; sh bin/start_ns.sh start {}".format(prefix, work_path, suffix))
         for cmd in cmd_arr:
@@ -206,8 +221,8 @@ def DeployTablet(zk_cluster, zk_root_path, tablet_conf, teardown):
             cmd_arr.append("{} cd {}; tar -zxvf {}; mv {} rtidb-tablet-{} {}".format(prefix, real_path, file_name, file_name[:-7], version, suffix))
             cmd_arr.append("{} cd {}; sed -i 's/--endpoint=.*/--endpoint={}/g' conf/tablet.flags {}".format(prefix, work_path, item["address"], suffix))
             if zk_cluster != "":
-                cmd_arr.append("{} cd {}; sed -i 's/#--zk_cluster=.*/--zk_cluster={}/g' conf/tablet.flags;\
-                                            sed -i 's/#--zk_root_path=.*/--zk_root_path={}/g' conf/tablet.flags {}".format(
+                cmd_arr.append("{} cd {}; sed -i 's/#--zk_cluster=.*/--zk_cluster={}/g' conf/tablet.flags;"
+                                            "sed -i 's/#--zk_root_path=.*/--zk_root_path={}/g' conf/tablet.flags {}".format(
                                             prefix, work_path, zk_cluster, zk_root_path.replace("/", "\/"), suffix))
             cmd_arr.append("{} cd {}; sh bin/start.sh start {}".format(prefix, work_path, suffix))
         for cmd in cmd_arr:
@@ -224,6 +239,9 @@ if __name__ == "__main__":
         teardown = True
     with open(conf_file, 'r') as f:
         conf = json.loads(f.read())
+    if "init_env" in conf and conf["init_env"] and "tablet" in conf:
+        InitEnv(conf["tablet"])
+
     if "zookeeper" in conf and "need_deploy" in conf["zookeeper"] and conf["zookeeper"]["need_deploy"] == True:
         DeployZookeeper(conf["zookeeper"], teardown)
        
