@@ -1,10 +1,9 @@
-package com.parseParquet;
+package com._4paradigm.dataimporter.task;
 
 import com._4paradigm.rtidb.client.TableSyncClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class PutTask implements Runnable {
     private static Logger logger = LoggerFactory.getLogger(PutTask.class);
@@ -24,6 +23,10 @@ public class PutTask implements Runnable {
     public void run() {
         while (true) {//当put失败时进行重试，直到成功
             try {
+                if(map==null){
+                    logger.error("error: the map is null");
+                    return;
+                }
                 if (tableSyncClient.put(tableName, System.currentTimeMillis(), map)) {
                     break;
                 }
