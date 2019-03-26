@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.ns.NS;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -26,6 +27,7 @@ public class NameServerTest {
     private static String zkRootPath = "/onebox";
     private static String leaderPath  = zkRootPath + "/leader";
     private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+    private static RTIDBClientConfig config = new RTIDBClientConfig();
     static {
         String envZkEndpoints = System.getenv("zkEndpoints");
         if (envZkEndpoints != null) {
@@ -35,6 +37,10 @@ public class NameServerTest {
         if (envleaderPath != null) {
             leaderPath = envleaderPath;
         }
+        config.setZkEndpoints(zkEndpoints);
+        config.setZkRootPath(zkRootPath);
+        config.setWriteTimeout(100000);
+        config.setReadTimeout(100000);
     }
     
     @Test
@@ -89,6 +95,7 @@ public class NameServerTest {
             Assert.assertTrue(nsc.createTable(tableInfo));
             List<TableInfo> tables = nsc.showTable("t1");
             Assert.assertTrue(tables.size() == 1);
+            Assert.assertEquals(tables.get(0).getStorageMode(), NS.StorageMode.kMemory);
             Assert.assertTrue( nsc.dropTable("t1"));
             nsc.close();
         } catch(Exception e) {
@@ -142,6 +149,48 @@ public class NameServerTest {
             TableInfo tableInfo4 = TableInfo.newBuilder().setName("t4").setSegCnt(8).setTtlType("kLatestTime").setTtl(1000).build();
             Assert.assertTrue(nsc.createTable(tableInfo4));
             Assert.assertTrue(nsc.dropTable("t4"));
+        } catch(Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.close();
+        }
+    }
+
+    @Test
+    public void testCreateTableHDD() {
+        NameServerClientImpl nsc = new NameServerClientImpl(config);
+        try {
+            nsc.init();
+            String name = "t1";
+            TableInfo tableInfo1 = TableInfo.newBuilder().setName(name).setSegCnt(8).setTtl(0).setReplicaNum(1)
+                    .setStorageMode(NS.StorageMode.kHDD).build();
+            Assert.assertTrue(nsc.createTable(tableInfo1));
+            List<TableInfo> tables = nsc.showTable(name);
+            Assert.assertTrue(tables.size() == 1);
+            Assert.assertEquals(tables.get(0).getStorageMode(), NS.StorageMode.kHDD);
+            Assert.assertTrue(nsc.dropTable(name));
+        } catch(Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.close();
+        }
+    }
+
+    @Test
+    public void testCreateTableSSD() {
+        NameServerClientImpl nsc = new NameServerClientImpl(config);
+        try {
+            nsc.init();
+            String name = "t1";
+            TableInfo tableInfo1 = TableInfo.newBuilder().setName(name).setSegCnt(8).setTtl(0).setReplicaNum(1)
+                    .setStorageMode(NS.StorageMode.kSSD).build();
+            Assert.assertTrue(nsc.createTable(tableInfo1));
+            List<TableInfo> tables = nsc.showTable(name);
+            Assert.assertTrue(tables.size() == 1);
+            Assert.assertEquals(tables.get(0).getStorageMode(), NS.StorageMode.kSSD);
+            Assert.assertTrue(nsc.dropTable(name));
         } catch(Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
