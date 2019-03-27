@@ -5,7 +5,7 @@ import com._4paradigm.dataimporter.verification.CheckParameters;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com.csvreader.CsvReader;
-import com._4paradigm.dataimporter.operator.*;
+import com._4paradigm.dataimporter.initialization.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
@@ -37,7 +37,7 @@ public class ParseCsvUtil {
             reader.readHeaders();
             // 逐行读入除表头的数据,index决定哪个client执行put操作
             for (int index = 0; reader.readRecord(); index++) {
-                logger.info("每行读到的数据为：" + reader.getRawRecord());
+                logger.debug("每行读到的数据为：" + reader.getRawRecord());
                 HashMap<String, Object> map = new HashMap<>();
                 String columnName;
                 for (int j = 0; j < reader.getValues().length; j++) {
@@ -66,7 +66,7 @@ public class ParseCsvUtil {
                             break;
                     }
                 }
-                if (index == OperateTable.SUM) {
+                if (index == OperateTable.COUNT) {
                     index = 0;
                 }
                 client = OperateTable.getTableSyncClient()[index];
@@ -84,9 +84,8 @@ public class ParseCsvUtil {
 
     public static void main(String[] args) {
 //        CsvExample.writeCSV(csvFilePath);
-        OperateTable.initClient();
-        OperateThreadPool.initThreadPool();
-        OperateTable.dropTable(tableName);
+        InitAll.init();
+//        OperateTable.dropTable(tableName);
         OperateTable.createSchemaTable(tableName, OperateTable.getRtidbSchema());
         putCsv(csvFilePath,tableName,OperateTable.getRtidbSchema());
     }

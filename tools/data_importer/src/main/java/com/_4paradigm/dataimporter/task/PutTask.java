@@ -39,7 +39,7 @@ public class PutTask implements Runnable {
 //        } catch (InterruptedException e) {
 //            e.printStackTrace();
 //        }
-        logger.info(Thread.currentThread().getName() + " -> " + "Current Task Num: #" + id);
+        logger.debug(Thread.currentThread().getName() + " -> " + "Current Task Num: #" + id);
     }
     @Override
     public String toString() {

@@ -6,8 +6,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com._4paradigm.dataimporter.operator.OperateTable;
-import com._4paradigm.dataimporter.operator.OperateThreadPool;
+import com._4paradigm.dataimporter.initialization.InitAll;
+import com._4paradigm.dataimporter.initialization.InitProperties;
+import com._4paradigm.dataimporter.initialization.OperateTable;
+import com._4paradigm.dataimporter.initialization.OperateThreadPool;
 import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.dataimporter.verification.CheckParameters;
 import com._4paradigm.rtidb.client.TableSyncClient;
@@ -66,7 +68,7 @@ public class ParseParquetUtil {
                         map.put(columnName, new String(group.getBinary(i, 0).getBytes()));
                     }
                 }
-                if(index== OperateTable.SUM){
+                if(index== OperateTable.COUNT){
                     index=0;
                 }
                 client = OperateTable.getTableSyncClient()[index];
@@ -106,8 +108,7 @@ public class ParseParquetUtil {
     }
 
     public static void main(String[] args) {
-        OperateTable.initClient();
-        OperateThreadPool.initThreadPool();
+        InitAll.init();
 //        OperateTable.dropTable(tableName);
         OperateTable.createSchemaTable(tableName, OperateTable.getRtidbSchema());
         putParquet(parquetPath,tableName, OperateTable.getRtidbSchema());
