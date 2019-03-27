@@ -239,8 +239,9 @@ if __name__ == "__main__":
         teardown = True
     with open(conf_file, 'r') as f:
         conf = json.loads(f.read())
-    if "init_env" in conf and conf["init_env"] and "tablet" in conf:
+    if sys.argv[2] == "init_env" and "tablet" in conf:
         InitEnv(conf["tablet"])
+        exit(0)
 
     if "zookeeper" in conf and "need_deploy" in conf["zookeeper"] and conf["zookeeper"]["need_deploy"] == True:
         DeployZookeeper(conf["zookeeper"], teardown)

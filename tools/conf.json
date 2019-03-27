@@ -1,5 +1,4 @@
 {
-    "init_env" : false,
     "zookeeper":{
         "path":"/home/denglong/env/test",
         "package":"./package/zookeeper-3.4.10.tar.gz",
