@@ -3,7 +3,6 @@
 //
 
 #include "storage/disk_table.h"
-#include "timer.h"
 #include "logging.h"
 #include "base/hash.h"
 #include "base/file_util.h"
@@ -45,14 +44,6 @@ DiskTable::~DiskTable() {
     if (compaction_filter_ != nullptr) {
         delete compaction_filter_;
     }
-    /*std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
-    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
-    Status s = DestroyDB(path, options_, cf_ds_);
-    if (s.ok()) {
-        PDLOG(INFO, "Destroy success. tid %u pid %u", id_, pid_);
-    } else {
-        PDLOG(WARNING, "Destroy failed. tid %u pid %u status %s", id_, pid_, s.ToString().c_str());
-    }*/
 }
 
 void DiskTable::initOptionTemplate() {

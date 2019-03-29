@@ -53,6 +53,10 @@ TEST_F(DiskTableTest, ParseKeyAndTs) {
     ASSERT_EQ("0", key);
     ASSERT_EQ(0, ts);
     ASSERT_EQ(-1, ParseKeyAndTs("abc", key, ts));
+    combined_key = CombineKeyTs("", 1122);
+    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    ASSERT_TRUE(key.empty());
+    ASSERT_EQ(1122, ts);
 }
 
 TEST_F(DiskTableTest, Put) {

@@ -28,13 +28,15 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 namespace rtidb {
 namespace storage {
 
-static uint32_t TS_LEN = sizeof(uint64_t);
+const static uint32_t TS_LEN = sizeof(uint64_t);
 
 static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
+    key.clear();
     if (s.size() < TS_LEN) {
         return -1;
+    } else if (s.size() > TS_LEN) {
+        key.assign(s.data(), s.size() - TS_LEN);
     }
-    key.assign(s.data(), s.size() - TS_LEN);
     memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
     memrev64ifbe(static_cast<void*>(&ts));
     return 0;
