@@ -43,27 +43,6 @@ TEST_F(StringsTest, ReadableTime) {
     ASSERT_EQ("5d", result);
 }
 
-TEST_F(StringsTest, StrToUINT64) {
-    std::string str = "112233";
-    uint64_t value = 0;
-    ASSERT_TRUE(StrToUINT64(str.c_str(), str.length(), value));
-    ASSERT_EQ(112233, value);
-
-    str = "00112200394";
-    ASSERT_TRUE(StrToUINT64(str.c_str(), str.length(), value));
-    ASSERT_EQ(112200394, value);
-
-    str = "0";
-    ASSERT_TRUE(StrToUINT64(str.c_str(), str.length(), value));
-    ASSERT_EQ(0, value);
-
-    str = "-1";
-    ASSERT_FALSE(StrToUINT64(str.c_str(), str.length(), value));
-
-    str = "0011a2200394";
-    ASSERT_FALSE(StrToUINT64(str.c_str(), str.length(), value));
-}
-
 }
 }
 

@@ -123,7 +123,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
             options_ = hdd_option_template;
         }
         cfo.comparator = &cmp_;
-        cf_ds_.push_back(ColumnFamilyDescriptor(iter->first, cfo));
+        cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
     return true;

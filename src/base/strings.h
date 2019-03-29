@@ -174,18 +174,6 @@ static inline int GetNowHour() {
  	return t.tm_hour;
 }
 
-static inline bool StrToUINT64(const char* ch, uint64_t len, uint64_t& value) {
-    value = 0;
-    for (uint64_t idx = 0; idx < len; idx++) {
-        const char* cur = ch + idx;
-        if (*cur < '0' || *cur > '9') {
-            return false;
-        }
-        value = value * 10 + *cur - '0';
-    }
-    return true;
-}
-
 
 }
 }

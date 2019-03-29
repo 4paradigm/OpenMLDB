@@ -18,45 +18,38 @@
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/compaction_filter.h>
 #include "base/slice.h"
-#include "base/strings.h"
+#include "base/endianconv.h"
 #include "storage/iterator.h"
 #include <boost/lexical_cast.hpp>
 #include "timer.h"
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
-using rocksdb::ColumnFamilyDescriptor;
-using rocksdb::ColumnFamilyHandle;
-
 namespace rtidb {
 namespace storage {
 
+static uint32_t TS_LEN = sizeof(uint64_t);
+
 static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
-    const char* ch = s.data();
-    int last_pos = 0;
-    for (int pos = s.size() - 1; pos >= 0; pos--) {
-        if (ch[pos] == '|') {
-            last_pos = pos;
-            break;
-        }
+    if (s.size() < TS_LEN) {
+        return -1;
     }
-    if (last_pos > 0 && last_pos < (int)s.size() - 1) {
-        key.assign(s.data(), last_pos);
-        if (rtidb::base::StrToUINT64(ch + last_pos + 1, s.size() - last_pos - 1, ts)) {
-            return 0;
-        }
-    }
-    return -1;
+    key.assign(s.data(), s.size() - TS_LEN);
+    memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
+    memrev64ifbe(static_cast<void*>(&ts));
+    return 0;
 }
 
 static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
-    return key + "|" + std::to_string(ts);
+    memrev64ifbe(static_cast<void*>(&ts));
+    char buf[TS_LEN];
+    memcpy(buf, static_cast<void*>(&ts), TS_LEN);
+    return key + std::string(buf, TS_LEN);
 }
 
 class KeyTSComparator : public rocksdb::Comparator {
 public:
     KeyTSComparator() {}
-
     virtual const char* Name() const override { return "KeyTSComparator"; }
 
     virtual int Compare(const rocksdb::Slice& a, const rocksdb::Slice& b) const override {
@@ -74,11 +67,8 @@ public:
             return 0;
         }
     }
-
     virtual void FindShortestSeparator(std::string* /*start*/, const rocksdb::Slice& /*limit*/) const override {}
-
     virtual void FindShortSuccessor(std::string* /*key*/) const override {}
-
 };
 
 class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
@@ -92,23 +82,15 @@ public:
                       const rocksdb::Slice& /*existing_value*/,
                       std::string* /*new_value*/,
                       bool* /*value_changed*/) const override {
-        const char* ch = key.data();
-        int last_pos = 0;
-        for (int pos = key.size() - 1; pos >= 0; pos--) {
-            if (ch[pos] == '|') {
-                last_pos = pos;
-                break;
-            }
+        if (key.size() < TS_LEN) {
+            return false;
         }
-        if (last_pos > 0 && last_pos < (int)key.size() - 1) {
-            uint64_t ts = 0;
-            if (!rtidb::base::StrToUINT64(ch + last_pos + 1, key.size() - last_pos - 1, ts)) {
-                return false;
-            }
-            uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-            if (ts < cur_time - ttl_) {
-                return true;
-            }
+        uint64_t ts = 0;
+        memcpy(static_cast<void*>(&ts), key.data() + key.size() - TS_LEN, TS_LEN);
+        memrev64ifbe(static_cast<void*>(&ts));
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        if (ts < cur_time - ttl_) {
+            return true;
         }
         return false;
     }
@@ -263,7 +245,7 @@ public:
     void GcTTL();
 
     void CompactDB() {
-        for (ColumnFamilyHandle* cf : cf_hs_) {
+        for (rocksdb::ColumnFamilyHandle* cf : cf_hs_) {
             db_->Flush(rocksdb::FlushOptions(), cf);
             rocksdb::Slice begin = CombineKeyTs("test1", UINT64_MAX);
             rocksdb::Slice end = CombineKeyTs("test100", 0);
@@ -275,8 +257,8 @@ public:
 
 private:
     rocksdb::DB* db_;
-    std::vector<ColumnFamilyDescriptor> cf_ds_;
-    std::vector<ColumnFamilyHandle*> cf_hs_;
+    std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
+    std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;
 
     std::string const name_;

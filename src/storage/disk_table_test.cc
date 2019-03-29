@@ -38,22 +38,21 @@ public:
 };
 
 TEST_F(DiskTableTest, ParseKeyAndTs) {
-    std::string combined_key = "abcdexxx11|1552619498000";
+    std::string combined_key = CombineKeyTs("abcdexxx11",1552619498000);
     std::string key;
     uint64_t ts;
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
     ASSERT_EQ("abcdexxx11", key);
     ASSERT_EQ(1552619498000, ts);
-    combined_key = "abcdexxx11|mdd44|1552619498000";
+    combined_key = CombineKeyTs("abcdexxx11", 1);
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
-    ASSERT_EQ("abcdexxx11|mdd44", key);
-    ASSERT_EQ(1552619498000, ts);
-    combined_key = "abcdexxx11|mdd44|0";
+    ASSERT_EQ("abcdexxx11", key);
+    ASSERT_EQ(1, ts);
+    combined_key = CombineKeyTs("0", 0);
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
-    ASSERT_EQ("abcdexxx11|mdd44", key);
+    ASSERT_EQ("0", key);
     ASSERT_EQ(0, ts);
     ASSERT_EQ(-1, ParseKeyAndTs("abc", key, ts));
-    ASSERT_EQ(-1, ParseKeyAndTs("abc|dd", key, ts));
 }
 
 TEST_F(DiskTableTest, Put) {
