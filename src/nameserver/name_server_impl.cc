@@ -2678,6 +2678,13 @@ void NameServerImpl::UpdateTableStatus() {
         std::lock_guard<std::mutex> lock(mu_);
         for (const auto& kv : table_info_) {
             uint32_t tid = kv.second->tid();
+            std::string first_index_col;
+            for (int idx = 0; idx < kv.second->column_desc_size(); idx++) {
+                if (kv.second->column_desc(idx).add_ts_idx()) {
+                    first_index_col = kv.second->column_desc(idx).name();
+                    break;
+                }
+            }
             for (int idx = 0; idx < kv.second->table_partition_size(); idx++) {
                 uint32_t pid = kv.second->table_partition(idx).pid();
                 ::rtidb::nameserver::TablePartition* table_partition =
@@ -2693,12 +2700,24 @@ void NameServerImpl::UpdateTableStatus() {
                     if (pos_response_iter != pos_response.end()) {
                         const ::rtidb::api::TableStatus& table_status = pos_response_iter->second;
                         partition_meta->set_offset(table_status.offset());
-                        partition_meta->set_record_cnt(table_status.record_cnt());
                         partition_meta->set_record_byte_size(table_status.record_byte_size() + 
                                     table_status.record_idx_byte_size());
+                        uint64_t record_cnt = table_status.record_cnt();
+                        if (!first_index_col.empty()) {
+                            for (int pos = 0; pos < table_status.ts_idx_status_size(); pos++) {
+                                if (table_status.ts_idx_status(pos).idx_name() == first_index_col) {
+                                    record_cnt = 0;
+                                    for (int seg_idx = 0; seg_idx < table_status.ts_idx_status(pos).seg_cnts_size(); seg_idx++) {
+                                        record_cnt += table_status.ts_idx_status(pos).seg_cnts(seg_idx);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        partition_meta->set_record_cnt(record_cnt);
                         if (kv.second->table_partition(idx).partition_meta(meta_idx).is_alive() && 
                                 kv.second->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                                table_partition->set_record_cnt(table_status.record_cnt());
+                                table_partition->set_record_cnt(record_cnt);
                                 table_partition->set_record_byte_size(table_status.record_byte_size() + 
                                     table_status.record_idx_byte_size());
                         }
