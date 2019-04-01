@@ -103,7 +103,7 @@ private:
 
 class DiskTableIterator : public TableIterator {
 public:
-    DiskTableIterator(rocksdb::Iterator* it, const std::string& pk);
+    DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk);
     virtual ~DiskTableIterator();
     virtual bool Valid() override;
     virtual void Next() override;
@@ -114,14 +114,17 @@ public:
     virtual void Seek(uint64_t time) override;
 
 private:
+    rocksdb::DB* db_;
     rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
     std::string pk_;
     uint64_t ts_;
 };
 
 class DiskTableTraverseIterator : public TableIterator {
 public:
-    DiskTableTraverseIterator(rocksdb::Iterator* it, ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
+    DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, 
+                ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
     virtual ~DiskTableTraverseIterator();
     virtual bool Valid() override;
     virtual void Next() override;
@@ -136,10 +139,12 @@ private:
     bool IsExpired();
 
 private:
+    rocksdb::DB* db_;
     rocksdb::Iterator* it_;
+    const rocksdb::Snapshot* snapshot_;
     ::rtidb::api::TTLType ttl_type_;
-    uint64_t expire_value_;
     uint32_t record_idx_;
+    uint64_t expire_value_;
     std::string pk_;
     uint64_t ts_;
 };

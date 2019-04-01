@@ -342,14 +342,18 @@ DiskTableIterator* DiskTable::NewIterator(const std::string &pk) {
 
 DiskTableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk) {
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
-    return new DiskTableIterator(it, pk);
+    return new DiskTableIterator(db_, it, snapshot, pk);
 }
 
 DiskTableTraverseIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
@@ -362,14 +366,17 @@ DiskTableTraverseIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
         expire_value = cur_time - ttl_.load(std::memory_order_relaxed);
     }
-    return new DiskTableTraverseIterator(it, ttl_type_, expire_value);
+    return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_, expire_value);
 }
 
-DiskTableIterator::DiskTableIterator(rocksdb::Iterator* it, const std::string& pk) : it_(it), pk_(pk), ts_(0) {
+DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, 
+            const rocksdb::Snapshot* snapshot, const std::string& pk) : 
+            db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0) {
 }
 
 DiskTableIterator::~DiskTableIterator() {
     delete it_;
+    db_->ReleaseSnapshot(snapshot_);
 }
 
 bool DiskTableIterator::Valid() {
@@ -406,13 +413,14 @@ void DiskTableIterator::Seek(uint64_t ts) {
     it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts)));
 }
 
-DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::Iterator* it, 
-        ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : 
-        it_(it), ttl_type_(ttl_type), expire_value_(expire_value), record_idx_(0) {
+DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, 
+        const rocksdb::Snapshot* snapshot, ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : 
+        db_(db), it_(it), snapshot_(snapshot), ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value) {
 }
 
 DiskTableTraverseIterator::~DiskTableTraverseIterator() {
     delete it_;
+    db_->ReleaseSnapshot(snapshot_);
 }
 
 bool DiskTableTraverseIterator::Valid() {
