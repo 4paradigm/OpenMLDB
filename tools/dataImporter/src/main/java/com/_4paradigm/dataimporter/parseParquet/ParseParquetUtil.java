@@ -16,24 +16,18 @@ import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.dataimporter.verification.CheckParameters;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ColumnType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
-import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 
 public class ParseParquetUtil {
     private static Logger logger = LoggerFactory.getLogger(ParseParquetUtil.class);
-    private static String tableName = "parquetTest";
 
     /**
      * @param path
@@ -86,8 +80,8 @@ public class ParseParquetUtil {
         }
     }
 
-//    public static void putParquets(String path, String tableName, List<ColumnDesc> schemaList) {
-//        File rootFile = new File(Constant.FILEPATH);
+//    public static void putParquets(String path, String parquetTableName, List<ColumnDesc> schemaList) {
+//        File rootFile = new File(Constant.PARQUET_FILEPATH);
 //        if (rootFile.isDirectory()) {
 //            List<java.nio.file.Path> filePaths = new ArrayList<>();
 //            File[] files = rootFile.listFiles();
@@ -96,10 +90,10 @@ public class ParseParquetUtil {
 //                logger.info("file path is : " + file.toPath().toString());
 //            }
 //            for (java.nio.file.Path filePath : filePaths) {
-//                putParquet(filePath.toString(), tableName, schemaList);
+//                putParquet(filePath.toString(), parquetTableName, schemaList);
 //            }
 //        } else if (rootFile.isFile()) {
-//            putParquet(rootFile.toPath().toString(), tableName, schemaList);
+//            putParquet(rootFile.toPath().toString(), parquetTableName, schemaList);
 //        }
 //
 //        InitThreadPool.getExecutor().shutdown();
@@ -113,7 +107,7 @@ public class ParseParquetUtil {
     public static void main(String[] args) {
         InitAll.init();
 
-        File rootFile = new File(Constant.FILEPATH);
+        File rootFile = new File(Constant.PARQUET_FILEPATH);
         List<ColumnDesc> schemaList = null;
         MessageType schema = null;
         if (rootFile.isDirectory()) {
@@ -123,21 +117,21 @@ public class ParseParquetUtil {
                 if (schemaList == null) {
                     schema = InitClient.getSchema(new Path(file.toPath().toString()));
                     schemaList = InitClient.getSchemaOfRtidb(schema);
-                    InitClient.dropTable(tableName);
-                    InitClient.createSchemaTable(tableName, schemaList);
+                    InitClient.dropTable(Constant.PARQUET_TABLENAME);
+                    InitClient.createSchemaTable(Constant.PARQUET_TABLENAME, schemaList);
                 }
                 filePaths.add(file.toPath());
                 logger.info("file path is : " + file.toPath().toString());
             }
             for (java.nio.file.Path filePath : filePaths) {
-                putParquet(filePath.toString(), tableName, schema);
+                putParquet(filePath.toString(), Constant.PARQUET_TABLENAME, schema);
             }
         } else if (rootFile.isFile()) {
             schema = InitClient.getSchema(new Path(rootFile.toPath().toString()));
             schemaList = InitClient.getSchemaOfRtidb(schema);
-            InitClient.dropTable(tableName);
-            InitClient.createSchemaTable(tableName, schemaList);
-            putParquet(rootFile.toPath().toString(), tableName, schema);
+            InitClient.dropTable(Constant.PARQUET_TABLENAME);
+            InitClient.createSchemaTable(Constant.PARQUET_TABLENAME, schemaList);
+            putParquet(rootFile.toPath().toString(), Constant.PARQUET_TABLENAME, schema);
         }
         InitThreadPool.getExecutor().shutdown();
         while (!InitThreadPool.getExecutor().isTerminated()) {

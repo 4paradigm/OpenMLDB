@@ -67,9 +67,6 @@ public class InitClient {
         }
     }
 
-    /**
-     * 创建有schema的表
-     */
     public static void createSchemaTable(String tableName, List<ColumnDesc> schemaList) {
         NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
                 .setName(tableName)  // 设置表名
@@ -165,6 +162,12 @@ public class InitClient {
         return array[1];
     }
 
+    /**
+     * for parquet
+     *
+     * @param schema
+     * @return
+     */
     public static List<ColumnDesc> getSchemaOfRtidb(MessageType schema) {
         List<ColumnDesc> list = new ArrayList<>();
         for (int i = 0; i < schema.getFieldCount(); i++) {
@@ -173,86 +176,71 @@ public class InitClient {
                 columnDesc.setAddTsIndex(true);
             }
             if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.INT32)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kInt32);
             } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.INT64)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kInt64);
             } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.INT96)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kString);
             } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.BINARY)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kString);
             } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.BOOLEAN)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kBool);
             } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.FLOAT)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kFloat);
             } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.DOUBLE)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kDouble);
             } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)) {
-                columnDesc.setName(schema.getFieldName(i));
                 columnDesc.setType(ColumnType.kString);
             }
+            columnDesc.setName(schema.getFieldName(i));
             list.add(columnDesc);
         }
         return list;
     }
 
     /**
-     * 获得rtidb的schema
+     * for csv
      *
+     * @param schemaList
      * @return
      */
-//    public static List<ColumnDesc> getRtidbSchema() {
-//        List<ColumnDesc> list = new ArrayList<>();
-//        ColumnDesc columnDesc = new ColumnDesc();
-//        columnDesc.setType(ColumnType.kInt32);
-//        columnDesc.setName("int_32");
-//        columnDesc.setAddTsIndex(true);
-//        list.add(columnDesc);
-//
-//        ColumnDesc columnDesc_1 = new ColumnDesc();
-//        columnDesc_1.setType(ColumnType.kInt64);
-//        columnDesc_1.setName("int_64");
-//        columnDesc_1.setAddTsIndex(false);
-//        list.add(columnDesc_1);
-//
-//        ColumnDesc columnDesc_2 = new ColumnDesc();
-//        columnDesc_2.setType(ColumnType.kString);
-//        columnDesc_2.setName("int_96");
-//        columnDesc_2.setAddTsIndex(false);
-//        list.add(columnDesc_2);
-//
-//        ColumnDesc columnDesc_3 = new ColumnDesc();
-//        columnDesc_3.setType(ColumnType.kFloat);
-//        columnDesc_3.setName("float_1");
-//        columnDesc_3.setAddTsIndex(false);
-//        list.add(columnDesc_3);
-//
-//        ColumnDesc columnDesc_4 = new ColumnDesc();
-//        columnDesc_4.setType(ColumnType.kDouble);
-//        columnDesc_4.setName("double_1");
-//        columnDesc_4.setAddTsIndex(false);
-//        list.add(columnDesc_4);
-//
-//        ColumnDesc columnDesc_5 = new ColumnDesc();
-//        columnDesc_5.setType(ColumnType.kBool);
-//        columnDesc_5.setName("boolean_1");
-//        columnDesc_5.setAddTsIndex(false);
-//        list.add(columnDesc_5);
-//
-//        ColumnDesc columnDesc_6 = new ColumnDesc();
-//        columnDesc_6.setType(ColumnType.kString);
-//        columnDesc_6.setName("binary_1");
-//        columnDesc_6.setAddTsIndex(false);
-//        list.add(columnDesc_6);
-//
-//        return list;
-//    }
+    public static List<ColumnDesc> getSchemaOfRtidb(List<String[]> schemaList) {
+        List<ColumnDesc> list = new ArrayList<>();
+        String columnName;
+        String type;
+        for (String[] string : schemaList) {
+            ColumnDesc columnDesc = new ColumnDesc();
+            if (Constant.CSV_INDEX.contains(string[0].split("=")[1])) {
+                columnDesc.setAddTsIndex(true);
+            }
+            columnName = string[0].split("=")[1];
+            type = string[1].split("=")[1];
+            switch (type) {
+                case "int32":
+                    columnDesc.setType(ColumnType.kInt32);
+                    break;
+                case "int64":
+                    columnDesc.setType(ColumnType.kInt64);
+                    break;
+                case "string":
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                case "boolean":
+                    columnDesc.setType(ColumnType.kBool);
+                    break;
+                case "float":
+                    columnDesc.setType(ColumnType.kFloat);
+                    break;
+                case "double":
+                    columnDesc.setType(ColumnType.kDouble);
+                    break;
+            }
+            columnDesc.setName(columnName);
+            list.add(columnDesc);
+        }
+        return list;
+    }
+
     public static List<ColumnDesc> getRtidbSchema2() {
         List<ColumnDesc> list = new ArrayList<>();
         ColumnDesc columnDesc = new ColumnDesc();

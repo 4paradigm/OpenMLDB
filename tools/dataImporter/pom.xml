@@ -174,9 +174,9 @@
 
         <!--解析orc所需依赖包开始-->
         <!--<dependency>-->
-            <!--<groupId>org.apache.orc</groupId>-->
-            <!--<artifactId>orc-core</artifactId>-->
-            <!--<version>1.5.1</version>-->
+        <!--<groupId>org.apache.orc</groupId>-->
+        <!--<artifactId>orc-core</artifactId>-->
+        <!--<version>1.5.1</version>-->
         <!--</dependency>-->
         <dependency>
             <groupId>org.apache.hive</groupId>
@@ -227,6 +227,7 @@
                 <includes>
                     <include>**/*.properties</include>
                     <include>**/*.xml</include>
+                    <include>**/*.conf</include>
                 </includes>
                 <filtering>true</filtering>
             </resource>
