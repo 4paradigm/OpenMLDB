@@ -1,19 +1,23 @@
 package com._4paradigm.dataimporter.parseParquet;
 
 
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com._4paradigm.dataimporter.initialization.Constant;
 import com._4paradigm.dataimporter.initialization.InitAll;
-import com._4paradigm.dataimporter.initialization.InitProperties;
-import com._4paradigm.dataimporter.initialization.OperateTable;
-import com._4paradigm.dataimporter.initialization.OperateThreadPool;
+import com._4paradigm.dataimporter.initialization.InitClient;
+import com._4paradigm.dataimporter.initialization.InitThreadPool;
 import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.dataimporter.verification.CheckParameters;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.ColumnType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -29,89 +33,118 @@ import org.apache.parquet.schema.MessageType;
 
 public class ParseParquetUtil {
     private static Logger logger = LoggerFactory.getLogger(ParseParquetUtil.class);
-//    private static String parquetPath = "file:///Users/innerpeace/Desktop/test.parq";//file://是文件协议，可以不加
-    private static String parquetPath = "/home/wangbao/test.parq";//file://是文件协议，可以不加
     private static String tableName = "parquetTest";
 
     /**
-     * @param path  文件的绝对路径
-     * @param tableName  表名
-     * @param schemaList  保存schema的list
+     * @param path
+     * @param tableName
+     * @param schema
      */
-    public static void putParquet(String path,String tableName, List<ColumnDesc> schemaList) {
-        if (CheckParameters.checkPutParameters(path, tableName, schemaList)) return;
+    public static void putParquet(String path, String tableName, MessageType schema) {
+        if (CheckParameters.checkPutParameters(path, tableName, schema)) return;
         SimpleGroup group;
         AtomicLong id = new AtomicLong(1);//task的id
-        int index=0;//用于选择使用哪个客户端执行put操作
+        int index = 0;//用于选择使用哪个客户端执行put操作
         TableSyncClient client;
         ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), new Path(path));
         try {
             ParquetReader<Group> reader = builder.build();
             while ((group = (SimpleGroup) reader.read()) != null) {
                 HashMap<String, Object> map = new HashMap<>();
-                String columnName ;
-                for (int i = 0; i < schemaList.size(); i++) {
-                    columnName = schemaList.get(i).getName();
-                    if (columnName.equals("int_32")) {
+                String columnName;
+                PrimitiveType.PrimitiveTypeName type;
+                for (int i = 0; i < schema.getFieldCount(); i++) {
+                    columnName = schema.getFieldName(i);
+                    type = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
+                    if (type.equals(PrimitiveType.PrimitiveTypeName.INT32)) {
                         map.put(columnName, group.getInteger(i, 0));
-                    } else if (columnName.equals("int_64")) {
+                    } else if (type.equals(PrimitiveType.PrimitiveTypeName.INT64)) {
                         map.put(columnName, group.getLong(i, 0));
-                    } else if (columnName.equals("int_96")) {
+                    } else if (type.equals(PrimitiveType.PrimitiveTypeName.INT96)) {
                         map.put(columnName, new String(group.getInt96(i, 0).getBytes()));
-                    } else if (columnName.equals("float_1")) {
+                    } else if (type.equals(PrimitiveType.PrimitiveTypeName.FLOAT)) {
                         map.put(columnName, group.getFloat(i, 0));
-                    } else if (columnName.equals("double_1")) {
+                    } else if (type.equals(PrimitiveType.PrimitiveTypeName.DOUBLE)) {
                         map.put(columnName, group.getDouble(i, 0));
-                    } else if (columnName.equals("boolean_1")) {
+                    } else if (type.equals(PrimitiveType.PrimitiveTypeName.BOOLEAN)) {
                         map.put(columnName, group.getBoolean(i, 0));
-                    } else if (columnName.equals("binary_1")) {
+                    } else if (type.equals(PrimitiveType.PrimitiveTypeName.BINARY)) {
+                        map.put(columnName, new String(group.getBinary(i, 0).getBytes()));
+                    } else if (type.equals(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)) {
                         map.put(columnName, new String(group.getBinary(i, 0).getBytes()));
                     }
                 }
-                if(index== OperateTable.COUNT){
-                    index=0;
+                if (index == InitClient.CLIENTCOUNT) {
+                    index = 0;
                 }
-                client = OperateTable.getTableSyncClient()[index];
-                OperateThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), client, tableName, map));
+                client = InitClient.getTableSyncClient()[index];
+                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), client, tableName, map));
                 index++;
             }
-            OperateThreadPool.getExecutor().shutdown();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    /**
-     * @param path
-     * @return
-     * @throws IOException
-     * @description 读取parquet文件获取schema
-     */
-    public static MessageType getSchema(Path path) throws IOException {
-        Configuration configuration = new Configuration();
-//         windows 下测试入库impala需要这个配置
-//        System.setProperty("hadoop.home.dir",
-//                "E:\\mvtech\\software\\hadoop-common-2.2.0-bin-master");
-        ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration,
-                path, ParquetMetadataConverter.NO_FILTER);
-        return readFooter.getFileMetaData().getSchema();
-    }
 
+//    public static void putParquets(String path, String tableName, List<ColumnDesc> schemaList) {
+//        File rootFile = new File(Constant.FILEPATH);
+//        if (rootFile.isDirectory()) {
+//            List<java.nio.file.Path> filePaths = new ArrayList<>();
+//            File[] files = rootFile.listFiles();
+//            for (File file : files) {
+//                filePaths.add(file.toPath());
+//                logger.info("file path is : " + file.toPath().toString());
+//            }
+//            for (java.nio.file.Path filePath : filePaths) {
+//                putParquet(filePath.toString(), tableName, schemaList);
+//            }
+//        } else if (rootFile.isFile()) {
+//            putParquet(rootFile.toPath().toString(), tableName, schemaList);
+//        }
+//
+//        InitThreadPool.getExecutor().shutdown();
+//        while (!InitThreadPool.getExecutor().isTerminated()) {
+//        }
+//        logger.info("The number of successfully inserted is : " + PutTask.successfulCount);
+//        logger.info("The number of successfully inserted is : " + PutTask.unSuccessfulCount);
+//    }
 
-    /**
-     * @param string
-     * @return
-     * @description 得到基本数据类型的字符串
-     */
-    public static String getDataType(String string) {
-        String[] array = string.split(" ");
-        return array[1];
-    }
 
     public static void main(String[] args) {
         InitAll.init();
-//        OperateTable.dropTable(tableName);
-//        OperateTable.createSchemaTable(tableName, OperateTable.getRtidbSchema());
-        putParquet(parquetPath,tableName, OperateTable.getRtidbSchema());
+
+        File rootFile = new File(Constant.FILEPATH);
+        List<ColumnDesc> schemaList = null;
+        MessageType schema = null;
+        if (rootFile.isDirectory()) {
+            List<java.nio.file.Path> filePaths = new ArrayList<>();
+            File[] files = rootFile.listFiles();
+            for (File file : files) {
+                if (schemaList == null) {
+                    schema = InitClient.getSchema(new Path(file.toPath().toString()));
+                    schemaList = InitClient.getSchemaOfRtidb(schema);
+                    InitClient.dropTable(tableName);
+                    InitClient.createSchemaTable(tableName, schemaList);
+                }
+                filePaths.add(file.toPath());
+                logger.info("file path is : " + file.toPath().toString());
+            }
+            for (java.nio.file.Path filePath : filePaths) {
+                putParquet(filePath.toString(), tableName, schema);
+            }
+        } else if (rootFile.isFile()) {
+            schema = InitClient.getSchema(new Path(rootFile.toPath().toString()));
+            schemaList = InitClient.getSchemaOfRtidb(schema);
+            InitClient.dropTable(tableName);
+            InitClient.createSchemaTable(tableName, schemaList);
+            putParquet(rootFile.toPath().toString(), tableName, schema);
+        }
+        InitThreadPool.getExecutor().shutdown();
+        while (!InitThreadPool.getExecutor().isTerminated()) {
+        }
+        logger.info("The number of successfully inserted is : " + PutTask.successfulCount);
+        logger.info("The number of unsuccessfully inserted is : " + PutTask.unSuccessfulCount);
+
 
     }
 }
