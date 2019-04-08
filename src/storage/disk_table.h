@@ -73,6 +73,31 @@ public:
     virtual void FindShortSuccessor(std::string* /*key*/) const override {}
 };
 
+class KeyTsPrefixTransform : public rocksdb::SliceTransform {
+public:
+    virtual const char* Name() const override { return "KeyTsPrefixTransform"; }
+    virtual rocksdb::Slice Transform(const rocksdb::Slice& src) const override {
+        assert(InDomain(src));
+        return rocksdb::Slice(src.data(), src.size() - TS_LEN);
+    }
+
+    virtual bool InDomain(const rocksdb::Slice& src) const override { 
+        return src.size() >= TS_LEN; 
+    }
+
+    virtual bool InRange(const rocksdb::Slice& dst) const override {
+        return dst.size() <= TS_LEN;
+    }
+
+    virtual bool FullLengthEnabled(size_t* len) const override {
+        return false;
+    }
+
+    virtual bool SameResultWhenAppended(const rocksdb::Slice& prefix) const override {
+        return InDomain(prefix);
+    }
+};
+
 class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
 public:
     AbsoluteTTLCompactionFilter(uint64_t ttl) : ttl_(ttl) {}

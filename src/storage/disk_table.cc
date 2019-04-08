@@ -114,6 +114,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
             options_ = hdd_option_template;
         }
         cfo.comparator = &cmp_;
+        cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
@@ -251,7 +252,9 @@ void DiskTable::GcTTL() {
     for (auto cf_hs : cf_hs_) {
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
         rocksdb::WriteOptions wo = rocksdb::WriteOptions();
-        ro.prefix_same_as_start = true;
+        const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+        ro.snapshot = snapshot;
+        //ro.prefix_same_as_start = true;
         ro.pin_data = true;
         rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs);
         it->SeekToFirst();
@@ -278,6 +281,7 @@ void DiskTable::GcTTL() {
             }
         }
         delete it;
+        db_->ReleaseSnapshot(snapshot);
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
@@ -292,7 +296,9 @@ void DiskTable::GcHead() {
     for (auto cf_hs : cf_hs_) {
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
         rocksdb::WriteOptions wo = rocksdb::WriteOptions();
-        ro.prefix_same_as_start = true;
+        const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+        ro.snapshot = snapshot;
+        //ro.prefix_same_as_start = true;
         ro.pin_data = true;
         rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs);
         it->SeekToFirst();
@@ -322,6 +328,7 @@ void DiskTable::GcHead() {
             }
         }
         delete it;
+        db_->ReleaseSnapshot(snapshot);
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
@@ -354,7 +361,7 @@ DiskTableTraverseIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
-    ro.prefix_same_as_start = true;
+    //ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
     uint64_t expire_value = 0;
