@@ -3,12 +3,8 @@ package com._4paradigm.dataimporter.parseCsv;
 import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.dataimporter.verification.CheckParameters;
 import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com.csvreader.CsvReader;
 import com._4paradigm.dataimporter.initialization.*;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +89,9 @@ public class ParseCsvUtil {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        if (lines == null) {
+            return null;
+        }
         List<String[]> arr = new ArrayList<>();
         for (String string : lines) {
             String[] strs = string.split(";");
@@ -104,6 +103,10 @@ public class ParseCsvUtil {
     public static void main(String[] args) {
         InitAll.init();
         List<String[]> scheamInfo = readSchemaFile(InitProperties.getProperties().getProperty("csv.schemaPath"));
+        if (scheamInfo == null) {
+            logger.info("the schemaInfo is null");
+            return;
+        }
         InitClient.dropTable(Constant.CSV_TABLENAME);
         InitClient.createSchemaTable(Constant.CSV_TABLENAME, InitClient.getSchemaOfRtidb(scheamInfo));
 
@@ -111,6 +114,10 @@ public class ParseCsvUtil {
         if (rootFile.isDirectory()) {
             List<java.nio.file.Path> filePaths = new ArrayList<>();
             File[] files = rootFile.listFiles();
+            if (files == null) {
+                logger.info("there is no file in the directory " + rootFile);
+                return;
+            }
             for (File file : files) {
                 filePaths.add(file.toPath());
                 logger.info("file path is : " + file.toPath().toString());
@@ -123,6 +130,11 @@ public class ParseCsvUtil {
         }
         InitThreadPool.getExecutor().shutdown();
         while (!InitThreadPool.getExecutor().isTerminated()) {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         logger.info("The number of successfully inserted is : " + PutTask.successfulCount);
         logger.info("The number of unsuccessfully inserted is : " + PutTask.unSuccessfulCount);

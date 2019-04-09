@@ -80,32 +80,9 @@ public class ParseParquetUtil {
         }
     }
 
-//    public static void putParquets(String path, String parquetTableName, List<ColumnDesc> schemaList) {
-//        File rootFile = new File(Constant.PARQUET_FILEPATH);
-//        if (rootFile.isDirectory()) {
-//            List<java.nio.file.Path> filePaths = new ArrayList<>();
-//            File[] files = rootFile.listFiles();
-//            for (File file : files) {
-//                filePaths.add(file.toPath());
-//                logger.info("file path is : " + file.toPath().toString());
-//            }
-//            for (java.nio.file.Path filePath : filePaths) {
-//                putParquet(filePath.toString(), parquetTableName, schemaList);
-//            }
-//        } else if (rootFile.isFile()) {
-//            putParquet(rootFile.toPath().toString(), parquetTableName, schemaList);
-//        }
-//
-//        InitThreadPool.getExecutor().shutdown();
-//        while (!InitThreadPool.getExecutor().isTerminated()) {
-//        }
-//        logger.info("The number of successfully inserted is : " + PutTask.successfulCount);
-//        logger.info("The number of successfully inserted is : " + PutTask.unSuccessfulCount);
-//    }
-
-
     public static void main(String[] args) {
         InitAll.init();
+        InitClient.dropTable(Constant.PARQUET_TABLENAME);
 
         File rootFile = new File(Constant.PARQUET_FILEPATH);
         List<ColumnDesc> schemaList = null;
@@ -113,11 +90,18 @@ public class ParseParquetUtil {
         if (rootFile.isDirectory()) {
             List<java.nio.file.Path> filePaths = new ArrayList<>();
             File[] files = rootFile.listFiles();
+            if (files == null) {
+                logger.info("there is no file in the directory " + rootFile);
+                return;
+            }
             for (File file : files) {
                 if (schemaList == null) {
                     schema = InitClient.getSchema(new Path(file.toPath().toString()));
+                    if (schema == null) {
+                        logger.info("the schema is null");
+                        return;
+                    }
                     schemaList = InitClient.getSchemaOfRtidb(schema);
-                    InitClient.dropTable(Constant.PARQUET_TABLENAME);
                     InitClient.createSchemaTable(Constant.PARQUET_TABLENAME, schemaList);
                 }
                 filePaths.add(file.toPath());
@@ -128,13 +112,21 @@ public class ParseParquetUtil {
             }
         } else if (rootFile.isFile()) {
             schema = InitClient.getSchema(new Path(rootFile.toPath().toString()));
+            if (schema == null) {
+                logger.info("the schema is null");
+                return;
+            }
             schemaList = InitClient.getSchemaOfRtidb(schema);
-            InitClient.dropTable(Constant.PARQUET_TABLENAME);
             InitClient.createSchemaTable(Constant.PARQUET_TABLENAME, schemaList);
             putParquet(rootFile.toPath().toString(), Constant.PARQUET_TABLENAME, schema);
         }
         InitThreadPool.getExecutor().shutdown();
         while (!InitThreadPool.getExecutor().isTerminated()) {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         logger.info("The number of successfully inserted is : " + PutTask.successfulCount);
         logger.info("The number of unsuccessfully inserted is : " + PutTask.unSuccessfulCount);

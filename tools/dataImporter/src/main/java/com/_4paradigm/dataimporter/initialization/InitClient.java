@@ -10,6 +10,7 @@ import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.ns.NS;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.orc.TypeDescription;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -31,9 +32,9 @@ public class InitClient {
     // NameServerClientImpl要么做成单例, 要么用完之后就调用close, 否则会导致fd泄露
     private static NameServerClientImpl nsc = new NameServerClientImpl(ZKENDPOINTS, ZKROOTPATH + "/leader");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBClusterClient clusterClient = null;
     public static final int CLIENTCOUNT = Constant.CLIENTCOUNT;
     private static TableSyncClient[] tableSyncClient = new TableSyncClient[CLIENTCOUNT];
+    private static RTIDBClusterClient[] clusterClient = new RTIDBClusterClient[CLIENTCOUNT];
 
     /**
      * 初始化客户端
@@ -56,9 +57,9 @@ public class InitClient {
             // config.setMaxRetryCnt(3);
             //初始化最大线程个数的client
             for (int i = 0; i < CLIENTCOUNT; i++) {
-                clusterClient = new RTIDBClusterClient(config);
-                clusterClient.init();
-                tableSyncClient[i] = new TableSyncClientImpl(clusterClient);
+                clusterClient[i] = new RTIDBClusterClient(config);
+                clusterClient[i].init();
+                tableSyncClient[i] = new TableSyncClientImpl(clusterClient[i]);
             }
 //            tableSyncClient = new TableSyncClientImpl(clusterClient);
 //            tableAsyncClient = new TableAsyncClientImpl(clusterClient);
@@ -89,7 +90,9 @@ public class InitClient {
         } else {
             logger.error("the RrtidbSchemaTable is created ：" + ok);
         }
-        clusterClient.refreshRouteTable();
+        for (int i = 0; i < CLIENTCOUNT; i++) {
+            clusterClient[i].refreshRouteTable();
+        }
     }
 
     /**
@@ -151,16 +154,6 @@ public class InitClient {
         return readFooter.getFileMetaData().getSchema();
     }
 
-
-    /**
-     * @param string
-     * @return
-     * @description 得到基本数据类型的字符串
-     */
-    public static String getDataType(String string) {
-        String[] array = string.split(" ");
-        return array[1];
-    }
 
     /**
      * for parquet
@@ -241,92 +234,55 @@ public class InitClient {
         return list;
     }
 
-    public static List<ColumnDesc> getRtidbSchema2() {
+    /**
+     * for orc
+     *
+     * @param schema
+     * @return
+     */
+    public static List<ColumnDesc> getSchemaOfRtidb(TypeDescription schema) {
         List<ColumnDesc> list = new ArrayList<>();
-        ColumnDesc columnDesc = new ColumnDesc();
-        columnDesc.setType(ColumnType.kString);
-        columnDesc.setName("binary_1");
-        columnDesc.setAddTsIndex(false);
-        list.add(columnDesc);
-
-        ColumnDesc columnDesc_1 = new ColumnDesc();
-        columnDesc_1.setType(ColumnType.kBool);
-        columnDesc_1.setName("boolean_1");
-        columnDesc_1.setAddTsIndex(false);
-        list.add(columnDesc_1);
-
-        ColumnDesc columnDesc_2 = new ColumnDesc();
-        columnDesc_2.setType(ColumnType.kInt16);
-        columnDesc_2.setName("byte_1");
-        columnDesc_2.setAddTsIndex(false);
-        list.add(columnDesc_2);
-
-        ColumnDesc columnDesc_3 = new ColumnDesc();
-        columnDesc_3.setType(ColumnType.kInt64);
-        columnDesc_3.setName("date_1");
-        columnDesc_3.setAddTsIndex(false);
-        list.add(columnDesc_3);
-
-        ColumnDesc columnDesc_4 = new ColumnDesc();
-        columnDesc_4.setType(ColumnType.kDouble);
-        columnDesc_4.setName("double_1");
-        columnDesc_4.setAddTsIndex(false);
-        list.add(columnDesc_4);
-
-        ColumnDesc columnDesc_5 = new ColumnDesc();
-        columnDesc_5.setType(ColumnType.kFloat);
-        columnDesc_5.setName("float_1");
-        columnDesc_5.setAddTsIndex(false);
-        list.add(columnDesc_5);
-
-        ColumnDesc columnDesc_6 = new ColumnDesc();
-        columnDesc_6.setType(ColumnType.kInt32);
-        columnDesc_6.setName("int_1");
-        columnDesc_6.setAddTsIndex(true);
-        list.add(columnDesc_6);
-
-        ColumnDesc columnDesc_7 = new ColumnDesc();
-        columnDesc_7.setType(ColumnType.kInt64);
-        columnDesc_7.setName("long_1");
-        columnDesc_7.setAddTsIndex(false);
-        list.add(columnDesc_7);
-
-        ColumnDesc columnDesc_8 = new ColumnDesc();
-        columnDesc_8.setType(ColumnType.kInt16);
-        columnDesc_8.setName("short_1");
-        columnDesc_8.setAddTsIndex(false);
-        list.add(columnDesc_8);
-
-        ColumnDesc columnDesc_9 = new ColumnDesc();
-        columnDesc_9.setType(ColumnType.kString);
-        columnDesc_9.setName("string_1");
-        columnDesc_9.setAddTsIndex(false);
-        list.add(columnDesc_9);
-
-        ColumnDesc columnDesc_10 = new ColumnDesc();
-        columnDesc_10.setType(ColumnType.kTimestamp);
-        columnDesc_10.setName("timestamp_1");
-        columnDesc_10.setAddTsIndex(false);
-        list.add(columnDesc_10);
-
-        ColumnDesc columnDesc_11 = new ColumnDesc();
-        columnDesc_11.setType(ColumnType.kString);
-        columnDesc_11.setName("char_1");
-        columnDesc_11.setAddTsIndex(false);
-        list.add(columnDesc_11);
-
-        ColumnDesc columnDesc_12 = new ColumnDesc();
-        columnDesc_12.setType(ColumnType.kString);
-        columnDesc_12.setName("varchar_1");
-        columnDesc_12.setAddTsIndex(false);
-        list.add(columnDesc_12);
-
-        ColumnDesc columnDesc_13 = new ColumnDesc();
-        columnDesc_13.setType(ColumnType.kDouble);
-        columnDesc_13.setName("decimal_1");
-        columnDesc_13.setAddTsIndex(false);
-        list.add(columnDesc_13);
-
+        String columnName;
+        String type;
+        for (int i = 0; i < schema.getFieldNames().size(); i++) {
+            ColumnDesc columnDesc = new ColumnDesc();
+            columnName = schema.getFieldNames().get(i);
+            type = schema.getChildren().get(i).toString();
+            columnDesc.setName(columnName);
+            if (Constant.ORC_INDEX.contains(columnName)) {
+                columnDesc.setAddTsIndex(true);
+            }
+            if (type.equalsIgnoreCase("binary")) {
+                columnDesc.setType(ColumnType.kString);
+            } else if (type.equalsIgnoreCase("boolean")) {
+                columnDesc.setType(ColumnType.kBool);
+            } else if (type.equalsIgnoreCase("tinyint")) {
+                columnDesc.setType(ColumnType.kInt16);
+            } else if (type.equalsIgnoreCase("date")) {
+                columnDesc.setType(ColumnType.kInt64);
+            } else if (type.equalsIgnoreCase("double")) {
+                columnDesc.setType(ColumnType.kDouble);
+            } else if (type.equalsIgnoreCase("float")) {
+                columnDesc.setType(ColumnType.kFloat);
+            } else if (type.equalsIgnoreCase("int")) {
+                columnDesc.setType(ColumnType.kInt32);
+            } else if (type.equalsIgnoreCase("bigint")) {
+                columnDesc.setType(ColumnType.kInt64);
+            } else if (type.equalsIgnoreCase("smallint")) {
+                columnDesc.setType(ColumnType.kInt16);
+            } else if (type.equalsIgnoreCase("string")) {
+                columnDesc.setType(ColumnType.kString);
+            } else if (type.equalsIgnoreCase("timestamp")) {
+                columnDesc.setType(ColumnType.kTimestamp);
+            } else if (type.substring(0, 4).equalsIgnoreCase("char")) {
+                columnDesc.setType(ColumnType.kString);
+            } else if (type.substring(0, 7).equalsIgnoreCase("varchar")) {
+                columnDesc.setType(ColumnType.kString);
+            } else if (type.substring(0, 7).equalsIgnoreCase("decimal")) {
+                columnDesc.setType(ColumnType.kDouble);
+            }
+            list.add(columnDesc);
+        }
         return list;
     }
 

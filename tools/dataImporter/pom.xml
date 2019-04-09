@@ -279,6 +279,38 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>2.5</version>
+                <executions>
+                    <execution>
+                        <!-- 把Redis缓存文件拷到和jar包同一个路径下 -->
+                        <id>copy-files</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <encoding>UTF-8</encoding>
+                            <outputDirectory>${project.basedir}/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/resources/configuration/
+                                    </directory>
+                                    <includes>
+                                        <include>*.sh</include>
+                                        <include>*.properties</include>
+                                        <include>*.xml</include>
+                                        <include>*.conf</include>
+                                    </includes>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
         </plugins>
     </build>
