@@ -495,7 +495,7 @@ TEST_F(DiskTableTest, CompactFilter) {
         }
     }
     table->CompactDB();
-    /*for (int idx = 0; idx < 100; idx++) {
+    for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = cur_time;
         for (int k = 0; k < 5; k++) {
@@ -507,7 +507,7 @@ TEST_F(DiskTableTest, CompactFilter) {
                 ASSERT_EQ("value", value);
             }
         }
-    }*/
+    }
     delete table;
     std::string path = FLAGS_hdd_root_path + "/1_1";
     RemoveData(path);

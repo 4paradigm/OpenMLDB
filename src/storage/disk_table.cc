@@ -26,7 +26,7 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      uint64_t ttl, ::rtidb::api::TTLType ttl_type,
                      ::rtidb::api::StorageMode storage_mode) :
         name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()), schema_(), mapping_(mapping),
-        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode), offset_(0), compaction_filter_(nullptr) {
+        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode), offset_(0) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -41,13 +41,10 @@ DiskTable::~DiskTable() {
     if (db_ != nullptr) {
         delete db_;
     }
-    if (compaction_filter_ != nullptr) {
-        delete compaction_filter_;
-    }
 }
 
 void DiskTable::initOptionTemplate() {
-    auto cache = rocksdb::NewLRUCache(512 << 20, 8); //Can be set by flags
+    std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(512 << 20, 8); //Can be set by flags
     //SSD options template
     ssd_option_template.max_open_files = -1;
     ssd_option_template.env->SetBackgroundThreads(1, rocksdb::Env::Priority::HIGH); //flush threads
@@ -60,15 +57,16 @@ void DiskTable::initOptionTemplate() {
     ssd_option_template.write_buffer_size = 64 << 20;
     ssd_option_template.target_file_size_base = 64 << 20;
     ssd_option_template.max_bytes_for_level_base = 512 << 20;
-    rocksdb::BlockBasedTableOptions ssd_table_options;
-    ssd_table_options.cache_index_and_filter_blocks = true;
-    ssd_table_options.pin_l0_filter_and_index_blocks_in_cache = true;
-    ssd_table_options.block_cache = cache;
-    ssd_table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
-    ssd_table_options.whole_key_filtering = false;
-    ssd_table_options.block_size = 4 << 10;
-    ssd_table_options.use_delta_encoding = false;
-    ssd_option_template.table_factory.reset(rocksdb::NewBlockBasedTableFactory(ssd_table_options));
+
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.cache_index_and_filter_blocks = true;
+    table_options.pin_l0_filter_and_index_blocks_in_cache = true;
+    table_options.block_cache = cache;
+    // table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
+    table_options.whole_key_filtering = false;
+    table_options.block_size = 256 << 10;
+    table_options.use_delta_encoding = false;
+    ssd_option_template.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
 
     //HDD options template
     hdd_option_template.max_open_files = -1;
@@ -87,15 +85,7 @@ void DiskTable::initOptionTemplate() {
     hdd_option_template.write_buffer_size = 256 << 20;
     hdd_option_template.target_file_size_base = 256 << 20;
     hdd_option_template.max_bytes_for_level_base = 1024 << 20;
-    rocksdb::BlockBasedTableOptions hdd_table_options;
-    hdd_table_options.cache_index_and_filter_blocks = true;
-    hdd_table_options.pin_l0_filter_and_index_blocks_in_cache = true;
-    hdd_table_options.block_cache = cache;
-    hdd_table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
-    hdd_table_options.whole_key_filtering = false;
-    hdd_table_options.block_size = 256 << 10;
-    hdd_table_options.use_delta_encoding = false;
-    hdd_option_template.table_factory.reset(rocksdb::NewBlockBasedTableFactory(hdd_table_options));
+    hdd_option_template.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
 
     options_template_initialized = true;
 }
@@ -115,6 +105,9 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         }
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
+        if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
+            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(ttl_);
+        }
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
@@ -132,10 +125,6 @@ bool DiskTable::Init() {
     options_.create_if_missing = true;
     options_.error_if_exists = true;
     options_.create_missing_column_families = true;
-    /*if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
-        compaction_filter_ = new AbsoluteTTLCompactionFilter(ttl_);
-        options_.compaction_filter = compaction_filter_;
-    }*/
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
@@ -220,10 +209,6 @@ bool DiskTable::LoadTable() {
     if (!rtidb::base::IsExists(path)) {
         return false;
     }
-    /*if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
-        compaction_filter_ = new AbsoluteTTLCompactionFilter(ttl_);
-        options_.compaction_filter = compaction_filter_;
-    }*/
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     if (!s.ok()) {
@@ -238,9 +223,10 @@ void DiskTable::SchedGc() {
     }
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         GcHead();
-    } else {
+    } /*else {
+        rocksdb will delete expired key when compact
         GcTTL();
-    }
+    }*/
 }
 
 void DiskTable::GcTTL() {

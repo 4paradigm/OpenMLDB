@@ -126,6 +126,20 @@ private:
     uint64_t ttl_;
 };
 
+class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
+public:
+    AbsoluteTTLFilterFactory(uint64_t ttl) : ttl_(ttl) {};
+    std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
+        const rocksdb::CompactionFilter::Context& context) override {
+        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(ttl_));
+    }
+    const char* Name() const override {
+        return "AbsoluteTTLFilterFactory";
+    }
+private:
+    uint64_t ttl_;
+};
+
 class DiskTableIterator : public TableIterator {
 public:
     DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk);
@@ -278,12 +292,7 @@ public:
 
     void CompactDB() {
         for (rocksdb::ColumnFamilyHandle* cf : cf_hs_) {
-            db_->Flush(rocksdb::FlushOptions(), cf);
-            rocksdb::Slice begin = CombineKeyTs("test1", UINT64_MAX);
-            rocksdb::Slice end = CombineKeyTs("test100", 0);
-            //db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
-            db_->CompactRange(rocksdb::CompactRangeOptions(), cf, &begin, &end);
-            db_->Flush(rocksdb::FlushOptions(), cf);
+            db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
         }
     }
 
@@ -305,7 +314,6 @@ private:
     KeyTSComparator cmp_;
     bool is_leader_;
     std::atomic<uint64_t> offset_;
-    rocksdb::CompactionFilter* compaction_filter_;
 };
 
 }
