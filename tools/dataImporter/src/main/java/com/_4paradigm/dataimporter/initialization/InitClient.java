@@ -227,6 +227,8 @@ public class InitClient {
                 case "double":
                     columnDesc.setType(ColumnType.kDouble);
                     break;
+                default:
+
             }
             columnDesc.setName(columnName);
             list.add(columnDesc);
