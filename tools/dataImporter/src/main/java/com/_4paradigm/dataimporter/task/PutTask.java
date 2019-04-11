@@ -11,15 +11,17 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PutTask implements Runnable {
     private static Logger logger = LoggerFactory.getLogger(PutTask.class);
     public static AtomicLong successfulCount = new AtomicLong(0);
-    public static AtomicLong unSuccessfulCount = new AtomicLong(0);
+    public static AtomicLong failedCount = new AtomicLong(0);
     private String id;
+    private Long timestamp;
     private TableSyncClient tableSyncClient;
     private String tableName;
     private HashMap map;
+    private final int LOG_INTERVAL = Constant.LOG_INTERVAL;
 
-
-    public PutTask(String id, TableSyncClient tableSyncClient, String tableName, HashMap map) {
+    public PutTask(String id, Long timestamp, TableSyncClient tableSyncClient, String tableName, HashMap map) {
         this.id = id;
+        this.timestamp = timestamp;
         this.tableSyncClient = tableSyncClient;
         this.tableName = tableName;
         this.map = map;
@@ -34,8 +36,14 @@ public class PutTask implements Runnable {
         int limit = 10;//retry times
         while (limit-- > 0) {
             try {
-                if (tableSyncClient.put(tableName, System.currentTimeMillis(), map)) {
-                    break;
+                if (timestamp == null) {
+                    if (tableSyncClient.put(tableName, System.currentTimeMillis(), map)) {
+                        break;
+                    }
+                } else {
+                    if (tableSyncClient.put(tableName, timestamp, map)) {
+                        break;
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -43,11 +51,11 @@ public class PutTask implements Runnable {
             }
         }
         if (limit < 0) {
-            logger.info("the row inserted unsuccessfully is : " + map);
-            unSuccessfulCount.getAndIncrement();
+            logger.info("the failed row inserted is : " + map);
+            failedCount.getAndIncrement();
         } else {
             long temp = successfulCount.incrementAndGet();
-            if (temp % Constant.INTERVAL == 0) {
+            if (temp % LOG_INTERVAL == 0) {
                 logger.info("put successfully successfulCount is ：" + temp);
             }
         }
