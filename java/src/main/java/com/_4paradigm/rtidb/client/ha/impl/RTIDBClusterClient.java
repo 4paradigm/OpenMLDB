@@ -126,7 +126,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             try {
                 localZk.close();
             } catch (Exception e) {
-                logger.error("fail to close old zookeeper client", e);
+                logger.error("fail to close local zookeeper client", e);
             }
             throw new TabletException("fail to connect zookeeper " + config.getZkEndpoints());
         }
