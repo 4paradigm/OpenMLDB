@@ -113,7 +113,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     
     private void connectToZk() throws TabletException,IOException{
         ZooKeeper localZk = new ZooKeeper(config.getZkEndpoints(), (int) config.getZkSesstionTimeout(), this);
-        int failedCountDown = 10;
+        int failedCountDown = 20;
         while (!localZk.getState().isConnected() && failedCountDown > 0) {
             try {
                 Thread.sleep(1000);
@@ -123,6 +123,11 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             failedCountDown--;
         }
         if (!localZk.getState().isConnected()) {
+            try {
+                localZk.close();
+            } catch (Exception e) {
+                logger.error("fail to close old zookeeper client", e);
+            }
             throw new TabletException("fail to connect zookeeper " + config.getZkEndpoints());
         }
         ZooKeeper old = zookeeper;
