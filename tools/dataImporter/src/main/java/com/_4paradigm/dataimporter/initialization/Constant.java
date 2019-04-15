@@ -10,6 +10,7 @@ public class Constant {
     public static final String TIMESTAMP = InitProperties.getProperties().getProperty("timeStamp");
     public static final String CSV_SEPARATOR = InitProperties.getProperties().getProperty("csv.separator");
     public static final String CSV_ENCODINGFORMAT = InitProperties.getProperties().getProperty("csv.encodingFormat");
+    public static final Boolean HAS_HEADER = Boolean.parseBoolean(InitProperties.getProperties().getProperty("csv.hasHeader"));
 
     public static final String ZKENDPOINTS = InitProperties.getProperties().getProperty("zkEndpoints");
     public static final String ZKROOTPATH = InitProperties.getProperties().getProperty("zkRootPath");

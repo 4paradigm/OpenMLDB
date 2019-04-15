@@ -16,7 +16,7 @@ public class InitProperties {
     public static void initProperties() {
         try {
             // 1.加载config.properties配置文件
-            String path = new File(System.getProperty("user.dir")) + "/config.properties";
+            String path = System.getProperty("user.dir") + "/config.properties";
             properties.load(new BufferedInputStream(new FileInputStream(new File(path))));
             logger.info("loading config succeeded");
         } catch (IOException e) {

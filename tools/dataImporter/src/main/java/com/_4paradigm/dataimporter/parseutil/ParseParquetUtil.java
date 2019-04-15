@@ -1,4 +1,4 @@
-package com._4paradigm.dataimporter.parseUtil;
+package com._4paradigm.dataimporter.parseutil;
 
 import com._4paradigm.dataimporter.initialization.Constant;
 import com._4paradigm.dataimporter.initialization.InitClient;
@@ -7,6 +7,7 @@ import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -77,7 +78,9 @@ public class ParseParquetUtil {
                     break;
                 default:
             }
-            if (columnName.equals(TIMESTAMP)) {
+            if (StringUtils.isBlank(TIMESTAMP)) {
+                timestamp = System.currentTimeMillis();
+            } else if (columnName.equals(TIMESTAMP)) {
                 timestamp = group.getLong(i, 0);
             }
         }

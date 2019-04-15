@@ -1,4 +1,4 @@
-package com._4paradigm.dataimporter.parseUtil;
+package com._4paradigm.dataimporter.parseutil;
 
 import com._4paradigm.dataimporter.initialization.Constant;
 import com._4paradigm.dataimporter.initialization.InitClient;
@@ -8,6 +8,7 @@ import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com.csvreader.CsvReader;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +28,8 @@ public class ParseCsvUtil {
     private List<String[]> scheamInfo;
     private static final String INDEX = Constant.INDEX;
     private final String TIMESTAMP = Constant.TIMESTAMP;
-    private Long timestamp = null;
+    private long timestamp;
+    private boolean hasHeader = Constant.HAS_HEADER;
 
     public ParseCsvUtil(String filePath, String tableName, List<String[]> scheamInfo) {
         this.filePath = filePath;
@@ -41,10 +43,10 @@ public class ParseCsvUtil {
         String columnType;
         int columnIndex = 0;
         for (String[] string : scheamInfo) {
-            columnName = string[0].split("=")[1].trim();
-            columnType = string[1].split("=")[1].trim();
+            columnName = string[0];
+            columnType = string[1];
             if (string.length == 3) {
-                columnIndex = Integer.valueOf(string[2].split("=")[1].trim());
+                columnIndex = Integer.valueOf(string[2]);
             }
             try {
                 switch (columnType) {
@@ -68,7 +70,9 @@ public class ParseCsvUtil {
                         break;
                     default:
                 }
-                if (columnName.equals(TIMESTAMP)) {
+                if (StringUtils.isBlank(TIMESTAMP)) {
+                    timestamp = System.currentTimeMillis();
+                } else if (columnName.equals(TIMESTAMP)) {
                     timestamp = Long.parseLong(reader.getValues()[columnIndex]);
                 }
             } catch (IOException e) {
@@ -86,9 +90,11 @@ public class ParseCsvUtil {
         CsvReader reader = null;
         try {
             reader = new CsvReader(filePath, Constant.CSV_SEPARATOR.toCharArray()[0], Charset.forName(Constant.CSV_ENCODINGFORMAT));
-            // 跳过表头 如果需要表头的话，这句可以忽略
-            reader.readHeaders();
-            for (int clientIndex = 0; reader.readRecord(); clientIndex++) {
+            if (hasHeader) {
+                reader.readHeaders();
+            }
+            int clientIndex = 0;
+            while (reader.readRecord()) {
                 logger.debug("read data：{}", reader.getRawRecord());
                 HashMap<String, Object> map = read(reader);
                 if (clientIndex == InitClient.MAX_THREAD_NUM) {
@@ -96,6 +102,7 @@ public class ParseCsvUtil {
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
                 InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), timestamp, client, tableName, map));
+                clientIndex++;
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -116,12 +123,15 @@ public class ParseCsvUtil {
         if (lines == null) {
             return null;
         }
-        List<String[]> arr = new ArrayList<>();
+        List<String[]> result = new ArrayList<>();
         for (String string : lines) {
             String[] strs = string.split(";");
-            arr.add(strs);
+            for (int i = 0; i < strs.length; i++) {
+                strs[i] = strs[i].split("=")[1].trim();
+            }
+            result.add(strs);
         }
-        return arr;
+        return result;
     }
 
     public static List<ColumnDesc> getSchemaOfRtidb(List<String[]> schemaList) {
@@ -130,11 +140,11 @@ public class ParseCsvUtil {
         String type;
         for (String[] string : schemaList) {
             ColumnDesc columnDesc = new ColumnDesc();
-            if (INDEX.contains(string[0].split("=")[1])) {
+            columnName = string[0];
+            type = string[1];
+            if (INDEX.contains(columnName)) {
                 columnDesc.setAddTsIndex(true);
             }
-            columnName = string[0].split("=")[1];
-            type = string[1].split("=")[1];
             switch (type) {
                 case "int32":
                     columnDesc.setType(ColumnType.kInt32);

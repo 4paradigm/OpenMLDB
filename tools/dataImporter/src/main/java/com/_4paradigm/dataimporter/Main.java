@@ -1,9 +1,9 @@
 package com._4paradigm.dataimporter;
 
 import com._4paradigm.dataimporter.initialization.*;
-import com._4paradigm.dataimporter.parseUtil.ParseCsvUtil;
-import com._4paradigm.dataimporter.parseUtil.ParseOrcUtil;
-import com._4paradigm.dataimporter.parseUtil.ParseParquetUtil;
+import com._4paradigm.dataimporter.parseutil.ParseCsvUtil;
+import com._4paradigm.dataimporter.parseutil.ParseOrcUtil;
+import com._4paradigm.dataimporter.parseutil.ParseParquetUtil;
 import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import org.apache.commons.lang.StringUtils;

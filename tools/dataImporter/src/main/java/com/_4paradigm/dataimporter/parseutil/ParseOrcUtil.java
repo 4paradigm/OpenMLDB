@@ -1,4 +1,4 @@
-package com._4paradigm.dataimporter.parseUtil;
+package com._4paradigm.dataimporter.parseutil;
 
 import com._4paradigm.dataimporter.initialization.Constant;
 import com._4paradigm.dataimporter.initialization.InitClient;
@@ -92,7 +92,9 @@ public class ParseOrcUtil {
                 String s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
                 map.put(columnName, Double.valueOf(s));
             }
-            if (columnName.equals(TIMESTAMP)) {
+            if (StringUtils.isBlank(TIMESTAMP)) {
+                timestamp = System.currentTimeMillis();
+            } else if (columnName.equals(TIMESTAMP)) {
                 String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
                 timestamp = Long.valueOf(s);
             }
@@ -113,16 +115,16 @@ public class ParseOrcUtil {
             StructObjectInspector inspector
                     = (StructObjectInspector) reader.getObjectInspector();
             AtomicLong id = new AtomicLong(1);//task的id
-            int index = 0;//用于选择使用哪个客户端执行put操作
+            int clientIndex = 0;//用于选择使用哪个客户端执行put操作
             while (records.hasNext()) {
                 row = records.next(row);
                 HashMap<String, Object> map = read(inspector, row);
-                if (index == InitClient.MAX_THREAD_NUM) {
-                    index = 0;
+                if (clientIndex == InitClient.MAX_THREAD_NUM) {
+                    clientIndex = 0;
                 }
-                TableSyncClient client = InitClient.getTableSyncClient()[index];
+                TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
                 InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), timestamp, client, tableName, map));
-                index++;
+                clientIndex++;
 
             }
         } catch (IOException e) {
