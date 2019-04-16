@@ -117,7 +117,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     private void connectZk() throws TabletException, IOException {
         ZooKeeper localZk = new ZooKeeper(zkEndpoints, 10000, this);
-        int tryCnt = 10;
+        int tryCnt = 20;
         while (!localZk.getState().isConnected() && tryCnt > 0) {
             try {
                 Thread.sleep(1000);
@@ -127,6 +127,11 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             tryCnt --;
         }
         if (!localZk.getState().isConnected()) {
+            try {
+                localZk.close();
+            } catch (Exception e) {
+                logger.error("fail to close local zookeeper client", e);
+            }
             throw new TabletException("fail to connect to zookeeper " + zkEndpoints);
         }
         ZooKeeper old = zookeeper;
