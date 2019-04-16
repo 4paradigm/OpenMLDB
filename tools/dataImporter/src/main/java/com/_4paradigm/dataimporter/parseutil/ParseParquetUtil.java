@@ -10,6 +10,7 @@ import com._4paradigm.rtidb.client.schema.ColumnType;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.logging.log4j.util.Strings;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -35,8 +36,9 @@ public class ParseParquetUtil {
     private String tableName;
     private MessageType schema;
     private static final String INDEX = Constant.INDEX;
-    private final String TIMESTAMP = Constant.TIMESTAMP;
+    private final int TIMESTAMP_INDEX = Integer.parseInt(StringUtils.isBlank(Constant.TIMESTAMP_INDEX) ? "-1" : Constant.TIMESTAMP_INDEX);
     private Long timestamp = null;
+    private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
 
     public ParseParquetUtil(String filePath, String tableName, MessageType schema) {
         this.filePath = filePath;
@@ -78,9 +80,7 @@ public class ParseParquetUtil {
                     break;
                 default:
             }
-            if (StringUtils.isBlank(TIMESTAMP)) {
-                timestamp = System.currentTimeMillis();
-            } else if (columnName.equals(TIMESTAMP)) {
+            if (i == TIMESTAMP_INDEX) {
                 timestamp = group.getLong(i, 0);
             }
         }
@@ -100,6 +100,9 @@ public class ParseParquetUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
+                if (TIMESTAMP_INDEX == -1) {
+                    timestamp = System.currentTimeMillis();
+                }
                 InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(taskId.getAndIncrement()), timestamp, client, tableName, map));
                 clientIndex++;
             }
@@ -126,29 +129,33 @@ public class ParseParquetUtil {
     public static List<ColumnDesc> getSchemaOfRtidb(MessageType schema) {
         List<ColumnDesc> list = new ArrayList<>();
         for (int i = 0; i < schema.getFieldCount(); i++) {
-            ColumnDesc columnDesc = new ColumnDesc();
-            if (INDEX.contains(schema.getFieldName(i))) {
-                columnDesc.setAddTsIndex(true);
+            if (INPUT_COLUMN_INDEX == null || INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
+                ColumnDesc columnDesc = new ColumnDesc();
+                String fieldName = schema.getFieldName(i);
+                if (INDEX.contains(fieldName)) {
+                    columnDesc.setAddTsIndex(true);
+                }
+                PrimitiveType.PrimitiveTypeName columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
+                if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT32)) {
+                    columnDesc.setType(ColumnType.kInt32);
+                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT64)) {
+                    columnDesc.setType(ColumnType.kInt64);
+                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT96)) {
+                    columnDesc.setType(ColumnType.kString);
+                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.BINARY)) {
+                    columnDesc.setType(ColumnType.kString);
+                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.BOOLEAN)) {
+                    columnDesc.setType(ColumnType.kBool);
+                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.FLOAT)) {
+                    columnDesc.setType(ColumnType.kFloat);
+                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.DOUBLE)) {
+                    columnDesc.setType(ColumnType.kDouble);
+                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)) {
+                    columnDesc.setType(ColumnType.kString);
+                }
+                columnDesc.setName(fieldName);
+                list.add(columnDesc);
             }
-            if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.INT32)) {
-                columnDesc.setType(ColumnType.kInt32);
-            } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.INT64)) {
-                columnDesc.setType(ColumnType.kInt64);
-            } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.INT96)) {
-                columnDesc.setType(ColumnType.kString);
-            } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.BINARY)) {
-                columnDesc.setType(ColumnType.kString);
-            } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.BOOLEAN)) {
-                columnDesc.setType(ColumnType.kBool);
-            } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.FLOAT)) {
-                columnDesc.setType(ColumnType.kFloat);
-            } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.DOUBLE)) {
-                columnDesc.setType(ColumnType.kDouble);
-            } else if (schema.getType(i).asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)) {
-                columnDesc.setType(ColumnType.kString);
-            }
-            columnDesc.setName(schema.getFieldName(i));
-            list.add(columnDesc);
         }
         return list;
     }

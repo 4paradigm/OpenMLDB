@@ -30,7 +30,7 @@ public class PutTask implements Runnable {
     @Override
     public void run() {
         if (map == null) {
-            logger.info("the map is null");
+            logger.warn("the map is null");
             return;
         }
         int limit = 10;//retry times
@@ -45,7 +45,7 @@ public class PutTask implements Runnable {
             }
         }
         if (limit < 0) {
-            logger.info("the failed row inserted is : " + map);
+            logger.warn("the failed row inserted is : " + map);
             failedCount.getAndIncrement();
         } else {
             long temp = successfulCount.incrementAndGet();

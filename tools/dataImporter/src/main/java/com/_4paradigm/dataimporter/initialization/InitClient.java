@@ -23,9 +23,11 @@ public class InitClient {
     // NameServerClientImpl要么做成单例, 要么用完之后就调用close, 否则会导致fd泄露
     private static NameServerClientImpl nsc = new NameServerClientImpl(ZKENDPOINTS, ZKROOTPATH + "/leader");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
-    public static final int MAX_THREAD_NUM = Constant.MAX_THREAD_NUM;
+    public static final int MAX_THREAD_NUM = Constant.MAXIMUMPOOLSIZE + 1;
     private static final int REPLICA_NUM = Constant.REPLICA_NUM;
     private static final int PARTITION_NUM = Constant.PARTITION_NUM;
+    private static final String TTL_TYPE = Constant.TTL_TYPE;
+    private static final int COMPRESS_TYPE = Constant.COMPRESS_TPYE;
     private static final long TTL = Constant.TTL;
 
 
@@ -56,8 +58,8 @@ public class InitClient {
                 .setName(tableName)  // 设置表名
                 .setReplicaNum(REPLICA_NUM)    // 设置副本数. 此设置是可选的, 默认为3
                 .setPartitionNum(PARTITION_NUM)  // 设置分片数. 此设置是可选的, 默认为16
-                //.setCompressType(NS.CompressType.kSnappy) // 设置数据压缩类型. 此设置是可选的默认为不压缩
-                //.setTtlType("kLatestTime")  // 设置ttl类型. 此设置是可选的, 默认为"kAbsoluteTime"按时间过期
+                .setCompressType(NS.CompressType.valueOf(COMPRESS_TYPE)) // 设置数据压缩类型. 此设置是可选的默认为不压缩
+                .setTtlType(TTL_TYPE)  // 设置ttl类型. 此设置是可选的, 默认为"kAbsoluteTime"按时间过期
                 .setTtl(TTL);      // 设置ttl. 如果ttl类型是kAbsoluteTime, 那么ttl的单位是分钟.
         for (ColumnDesc schema : schemaList) {
             builder.addColumnDesc(NS.ColumnDesc.newBuilder()

@@ -27,7 +27,7 @@ public class ParseCsvUtil {
     private String tableName;
     private List<String[]> scheamInfo;
     private static final String INDEX = Constant.INDEX;
-    private final String TIMESTAMP = Constant.TIMESTAMP;
+    private final int TIMESTAMP_INDEX = Integer.parseInt(StringUtils.isBlank(Constant.TIMESTAMP_INDEX) ? "-1" : Constant.TIMESTAMP_INDEX);
     private long timestamp;
     private boolean hasHeader = Constant.HAS_HEADER;
 
@@ -41,6 +41,7 @@ public class ParseCsvUtil {
         HashMap<String, Object> map = new HashMap<>();
         String columnName;
         String columnType;
+        String value = null;
         int columnIndex = 0;
         for (String[] string : scheamInfo) {
             columnName = string[0];
@@ -49,34 +50,33 @@ public class ParseCsvUtil {
                 columnIndex = Integer.valueOf(string[2]);
             }
             try {
-                switch (columnType) {
-                    case "int32":
-                        map.put(columnName, Integer.parseInt(reader.getValues()[columnIndex]));
-                        break;
-                    case "int64":
-                        map.put(columnName, Long.parseLong(reader.getValues()[columnIndex]));
-                        break;
-                    case "string":
-                        map.put(columnName, reader.getValues()[columnIndex]);
-                        break;
-                    case "float":
-                        map.put(columnName, Float.parseFloat(reader.getValues()[columnIndex]));
-                        break;
-                    case "double":
-                        map.put(columnName, Double.parseDouble(reader.getValues()[columnIndex]));
-                        break;
-                    case "boolean":
-                        map.put(columnName, Boolean.parseBoolean(reader.getValues()[columnIndex]));
-                        break;
-                    default:
-                }
-                if (StringUtils.isBlank(TIMESTAMP)) {
-                    timestamp = System.currentTimeMillis();
-                } else if (columnName.equals(TIMESTAMP)) {
-                    timestamp = Long.parseLong(reader.getValues()[columnIndex]);
-                }
+                value = reader.getValues()[columnIndex];
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+            switch (columnType) {
+                case "int32":
+                    map.put(columnName, Integer.parseInt(value));
+                    break;
+                case "int64":
+                    map.put(columnName, Long.parseLong(value));
+                    break;
+                case "string":
+                    map.put(columnName, value);
+                    break;
+                case "float":
+                    map.put(columnName, Float.parseFloat(value));
+                    break;
+                case "double":
+                    map.put(columnName, Double.parseDouble(value));
+                    break;
+                case "boolean":
+                    map.put(columnName, Boolean.parseBoolean(value));
+                    break;
+                default:
+            }
+            if (columnIndex == TIMESTAMP_INDEX) {
+                timestamp = Long.parseLong(value);
             }
             if (string.length != 3) {
                 columnIndex++;
@@ -101,6 +101,9 @@ public class ParseCsvUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
+                if (TIMESTAMP_INDEX == -1) {
+                    timestamp = System.currentTimeMillis();
+                }
                 InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), timestamp, client, tableName, map));
                 clientIndex++;
             }

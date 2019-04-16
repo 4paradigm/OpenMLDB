@@ -3,21 +3,14 @@ package com._4paradigm.dataimporter.initialization;
 import com.sun.istack.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.concurrent.RejectedExecutionHandler;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class InitThreadPool {
     private static Logger logger = LoggerFactory.getLogger(InitThreadPool.class);
-    private static final int COREPOOLSIZE = Constant.COREPOOLSIZE;
     private static final int MAXIMUMPOOLSIZE = Constant.MAXIMUMPOOLSIZE;
-    private static final int KEEPALIVETIME = Constant.KEEPALIVETIME;
     private static final int BLOCKINGQUEUESIZE = Constant.BLOCKINGQUEUESIZE;
-    private static final TimeUnit TIMEUNIT = Constant.TIMEUNIT;
     private static BlockingQueue<Runnable> limitArray;
     private static ThreadFactory threadFactory;
     private static RejectedExecutionHandler rejectedExecutionHandler = new ThreadPoolExecutor.CallerRunsPolicy();
@@ -51,8 +44,8 @@ public class InitThreadPool {
 //            }
 //        };
         //创建线程池
-        executor = new ThreadPoolExecutor(COREPOOLSIZE, MAXIMUMPOOLSIZE,
-                KEEPALIVETIME, TIMEUNIT, limitArray, threadFactory, rejectedExecutionHandler);
+        executor = new ThreadPoolExecutor(MAXIMUMPOOLSIZE, MAXIMUMPOOLSIZE,
+                30, TimeUnit.SECONDS, limitArray, threadFactory, rejectedExecutionHandler);
 
     }
 
