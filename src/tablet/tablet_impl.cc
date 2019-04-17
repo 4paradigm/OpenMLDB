@@ -658,7 +658,7 @@ void TabletImpl::Scan(RpcController* controller,
     uint32_t scount = 0;
     uint64_t last_time = 0;
     end_time = std::max(end_time, table->GetExpireTime());
-    PDLOG(DEBUG, "scan pk %s st %u end_time %lu expire_time %lu", 
+    PDLOG(DEBUG, "scan pk %s st %lu end_time %lu expire_time %lu", 
                   request->pk().c_str(), request->st(), end_time, table->GetExpireTime());
     uint32_t limit = 0;
     if (request->has_limit()) {
