@@ -34,8 +34,20 @@ public class ParseOrcUtil {
     private TypeDescription schema;
     private static final String INDEX = Constant.INDEX;
     private final int TIMESTAMP_INDEX = Integer.parseInt(StringUtils.isBlank(Constant.TIMESTAMP_INDEX) ? "-1" : Constant.TIMESTAMP_INDEX);
-    private Long timestamp = null;
+    private long timestamp;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
+    private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
+            ? null
+            : new int[INPUT_COLUMN_INDEX.split(",").length];
+
+    static {
+        if (arr != null) {
+            String[] sarr = INPUT_COLUMN_INDEX.split(",");
+            for (int i = 0; i < sarr.length; i++) {
+                arr[i] = Integer.parseInt(sarr[i].trim());
+            }
+        }
+    }
 
     public ParseOrcUtil(String path, String tableName, TypeDescription schema) {
         this.path = path;
@@ -47,55 +59,78 @@ public class ParseOrcUtil {
         HashMap<String, Object> map = new HashMap<>();
         List<Object> valueList = inspector.getStructFieldsDataAsList(row);
         logger.debug("row:{}", valueList);
+        int index;
         for (int i = 0; i < schema.getFieldNames().size(); i++) {
-            String columnName = schema.getFieldNames().get(i);
-            String columnType = schema.getChildren().get(i).toString();
-            Object value = valueList.get(i);
-            if (columnType.equalsIgnoreCase("binary")) {
-                map.put(columnName, new String(((BytesWritable) value).getBytes()));
-            } else if (columnType.equalsIgnoreCase("boolean")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                if (s.equals("0")) {
-                    map.put(columnName, false);
-                } else {
-                    map.put(columnName, true);
-                }
-            } else if (columnType.equalsIgnoreCase("tinyint")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                map.put(columnName, Short.valueOf(s));
-            } else if (columnType.equalsIgnoreCase("date")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                map.put(columnName, Long.valueOf(s));
-            } else if (columnType.equalsIgnoreCase("double")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
-                map.put(columnName, Double.valueOf(s));
-            } else if (columnType.equalsIgnoreCase("float")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
-                map.put(columnName, Float.valueOf(s));
-            } else if (columnType.equalsIgnoreCase("int")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                map.put(columnName, Integer.valueOf(s));
-            } else if (columnType.equalsIgnoreCase("bigint")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                map.put(columnName, Long.valueOf(s));
-            } else if (columnType.equalsIgnoreCase("smallint")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                map.put(columnName, Short.valueOf(s));
-            } else if (columnType.equalsIgnoreCase("string")) {
-                map.put(columnName, String.valueOf(value));
-            } else if (columnType.equalsIgnoreCase("timestamp")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
-                map.put(columnName, Timestamp.valueOf(s));
-            } else if (columnType.substring(0, 4).equalsIgnoreCase("char")) {
-                map.put(columnName, String.valueOf(value));
-            } else if (columnType.substring(0, 7).equalsIgnoreCase("varchar")) {
-                map.put(columnName, String.valueOf(value));
-            } else if (columnType.substring(0, 7).equalsIgnoreCase("decimal")) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
-                map.put(columnName, Double.valueOf(s));
+            if (arr == null) {
+                index = i;
+            } else {
+                index = arr[i];
             }
-            if (i == TIMESTAMP_INDEX) {
-                String s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+            String columnName = schema.getFieldNames().get(i);
+            TypeDescription.Category columnType = schema.getChildren().get(i).getCategory();
+            Object value = valueList.get(index);
+            String s;
+            switch (columnType) {
+                case BINARY:
+                    map.put(columnName, new String(((BytesWritable) value).getBytes()));
+                    break;
+                case BOOLEAN:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? null : String.valueOf(value);
+                    if (s == null) {
+                        map.put(columnName, false);
+                    } else {
+                        map.put(columnName, Boolean.parseBoolean(s));
+                    }
+                    break;
+                case BYTE:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                    map.put(columnName, Short.valueOf(s));
+                    break;
+                case DATE:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                    map.put(columnName, Long.valueOf(s));
+                    break;
+                case DOUBLE:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
+                    map.put(columnName, Double.valueOf(s));
+                    break;
+                case FLOAT:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
+                    map.put(columnName, Float.valueOf(s));
+                    break;
+                case INT:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                    map.put(columnName, Integer.valueOf(s));
+                    break;
+                case LONG:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                    map.put(columnName, Long.valueOf(s));
+                    break;
+                case SHORT:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                    map.put(columnName, Short.valueOf(s));
+                    break;
+                case STRING:
+                    map.put(columnName, String.valueOf(value));
+                    break;
+                case TIMESTAMP:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
+                    map.put(columnName, Timestamp.valueOf(s));
+                    break;
+                case CHAR:
+                    map.put(columnName, String.valueOf(value));
+                    break;
+                case VARCHAR:
+                    map.put(columnName, String.valueOf(value));
+                    break;
+                case DECIMAL:
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
+                    map.put(columnName, Double.valueOf(s));
+                    break;
+                default:
+            }
+            if (index == TIMESTAMP_INDEX) {
+                s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
                 timestamp = Long.valueOf(s);
             }
         }
@@ -145,57 +180,81 @@ public class ParseOrcUtil {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (reader != null) {
-            return reader.getSchema();
-        } else {
+        if (reader == null) {
             return null;
         }
+        TypeDescription schema = reader.getSchema();
+        if (INPUT_COLUMN_INDEX == null) {
+            return schema;
+        }
+        TypeDescription result = TypeDescription.createStruct();
+        for (int i = 0; i < schema.getFieldNames().size(); i++) {
+            if (INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
+                result.addField(schema.getFieldNames().get(i), schema.getChildren().get(i));
+            }
+        }
+        return result;
+
     }
 
     public static List<ColumnDesc> getSchemaOfRtidb(TypeDescription schema) {
         List<ColumnDesc> list = new ArrayList<>();
         String columnName;
-        String type;
+        TypeDescription.Category columnType;
         for (int i = 0; i < schema.getFieldNames().size(); i++) {
-            if (INPUT_COLUMN_INDEX == null || INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
-                ColumnDesc columnDesc = new ColumnDesc();
-                columnName = schema.getFieldNames().get(i);
-                type = schema.getChildren().get(i).toString();
-                columnDesc.setName(columnName);
-                if (INDEX.contains(columnName)) {
-                    columnDesc.setAddTsIndex(true);
-                }
-                if (type.equalsIgnoreCase("binary")) {
-                    columnDesc.setType(ColumnType.kString);
-                } else if (type.equalsIgnoreCase("boolean")) {
-                    columnDesc.setType(ColumnType.kBool);
-                } else if (type.equalsIgnoreCase("tinyint")) {
-                    columnDesc.setType(ColumnType.kInt16);
-                } else if (type.equalsIgnoreCase("date")) {
-                    columnDesc.setType(ColumnType.kInt64);
-                } else if (type.equalsIgnoreCase("double")) {
-                    columnDesc.setType(ColumnType.kDouble);
-                } else if (type.equalsIgnoreCase("float")) {
-                    columnDesc.setType(ColumnType.kFloat);
-                } else if (type.equalsIgnoreCase("int")) {
-                    columnDesc.setType(ColumnType.kInt32);
-                } else if (type.equalsIgnoreCase("bigint")) {
-                    columnDesc.setType(ColumnType.kInt64);
-                } else if (type.equalsIgnoreCase("smallint")) {
-                    columnDesc.setType(ColumnType.kInt16);
-                } else if (type.equalsIgnoreCase("string")) {
-                    columnDesc.setType(ColumnType.kString);
-                } else if (type.equalsIgnoreCase("timestamp")) {
-                    columnDesc.setType(ColumnType.kTimestamp);
-                } else if (type.substring(0, 4).equalsIgnoreCase("char")) {
-                    columnDesc.setType(ColumnType.kString);
-                } else if (type.substring(0, 7).equalsIgnoreCase("varchar")) {
-                    columnDesc.setType(ColumnType.kString);
-                } else if (type.substring(0, 7).equalsIgnoreCase("decimal")) {
-                    columnDesc.setType(ColumnType.kDouble);
-                }
-                list.add(columnDesc);
+            ColumnDesc columnDesc = new ColumnDesc();
+            columnName = schema.getFieldNames().get(i);
+            columnType = schema.getChildren().get(i).getCategory();
+            columnDesc.setName(columnName);
+            if (INDEX.contains(columnName)) {
+                columnDesc.setAddTsIndex(true);
             }
+            switch (columnType) {
+                case BINARY:
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                case BOOLEAN:
+                    columnDesc.setType(ColumnType.kBool);
+                    break;
+                case BYTE:
+                    columnDesc.setType(ColumnType.kInt16);
+                    break;
+                case DATE:
+                    columnDesc.setType(ColumnType.kInt64);
+                    break;
+                case DOUBLE:
+                    columnDesc.setType(ColumnType.kDouble);
+                    break;
+                case FLOAT:
+                    columnDesc.setType(ColumnType.kFloat);
+                    break;
+                case INT:
+                    columnDesc.setType(ColumnType.kInt32);
+                    break;
+                case LONG:
+                    columnDesc.setType(ColumnType.kInt64);
+                    break;
+                case SHORT:
+                    columnDesc.setType(ColumnType.kInt16);
+                    break;
+                case STRING:
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                case TIMESTAMP:
+                    columnDesc.setType(ColumnType.kTimestamp);
+                    break;
+                case CHAR:
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                case VARCHAR:
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                case DECIMAL:
+                    columnDesc.setType(ColumnType.kDouble);
+                    break;
+                default:
+            }
+            list.add(columnDesc);
         }
         return list;
     }

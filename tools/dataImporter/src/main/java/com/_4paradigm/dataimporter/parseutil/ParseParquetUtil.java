@@ -20,6 +20,7 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,8 +38,20 @@ public class ParseParquetUtil {
     private MessageType schema;
     private static final String INDEX = Constant.INDEX;
     private final int TIMESTAMP_INDEX = Integer.parseInt(StringUtils.isBlank(Constant.TIMESTAMP_INDEX) ? "-1" : Constant.TIMESTAMP_INDEX);
-    private Long timestamp = null;
+    private long timestamp;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
+    private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
+            ? null
+            : new int[INPUT_COLUMN_INDEX.split(",").length];
+
+    static {
+        if (arr != null) {
+            String[] sarr = INPUT_COLUMN_INDEX.split(",");
+            for (int i = 0; i < sarr.length; i++) {
+                arr[i] = Integer.parseInt(sarr[i].trim());
+            }
+        }
+    }
 
     public ParseParquetUtil(String filePath, String tableName, MessageType schema) {
         this.filePath = filePath;
@@ -50,38 +63,44 @@ public class ParseParquetUtil {
         HashMap<String, Object> map = new HashMap<>();
         String columnName;
         PrimitiveType.PrimitiveTypeName type;
+        int index;
         for (int i = 0; i < schema.getFieldCount(); i++) {
+            if (arr == null) {
+                index = i;
+            } else {
+                index = arr[i];
+            }
             columnName = schema.getFieldName(i);
             type = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
             switch (type) {
                 case INT32:
-                    map.put(columnName, group.getInteger(i, 0));
+                    map.put(columnName, group.getInteger(index, 0));
                     break;
                 case INT64:
-                    map.put(columnName, group.getLong(i, 0));
+                    map.put(columnName, group.getLong(index, 0));
                     break;
                 case INT96:
-                    map.put(columnName, new String(group.getInt96(i, 0).getBytes()));
+                    map.put(columnName, new String(group.getInt96(index, 0).getBytes()));
                     break;
                 case FLOAT:
-                    map.put(columnName, group.getFloat(i, 0));
+                    map.put(columnName, group.getFloat(index, 0));
                     break;
                 case DOUBLE:
-                    map.put(columnName, group.getDouble(i, 0));
+                    map.put(columnName, group.getDouble(index, 0));
                     break;
                 case BOOLEAN:
-                    map.put(columnName, group.getBoolean(i, 0));
+                    map.put(columnName, group.getBoolean(index, 0));
                     break;
                 case BINARY:
-                    map.put(columnName, new String(group.getBinary(i, 0).getBytes()));
+                    map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
                     break;
                 case FIXED_LEN_BYTE_ARRAY:
-                    map.put(columnName, new String(group.getBinary(i, 0).getBytes()));
+                    map.put(columnName, new String(group.getBinary(index, 0).getBytes()));
                     break;
                 default:
             }
-            if (i == TIMESTAMP_INDEX) {
-                timestamp = group.getLong(i, 0);
+            if (index == TIMESTAMP_INDEX) {
+                timestamp = group.getLong(index, 0);
             }
         }
         return map;
@@ -123,42 +142,62 @@ public class ParseParquetUtil {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return readFooter.getFileMetaData().getSchema();
+        MessageType schema = readFooter.getFileMetaData().getSchema();
+        if (INPUT_COLUMN_INDEX == null) {
+            return schema;
+        }
+        List<Type> typeList = new ArrayList<>();
+        for (int i = 0; i < schema.getFieldCount(); i++) {
+            if (INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
+                typeList.add(schema.getType(i));
+            }
+        }
+        return new MessageType("parquet", typeList);
     }
 
     public static List<ColumnDesc> getSchemaOfRtidb(MessageType schema) {
         List<ColumnDesc> list = new ArrayList<>();
+        ColumnDesc columnDesc;
+        String fieldName;
+        PrimitiveType.PrimitiveTypeName columnType;
         for (int i = 0; i < schema.getFieldCount(); i++) {
-            if (INPUT_COLUMN_INDEX == null || INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
-                ColumnDesc columnDesc = new ColumnDesc();
-                String fieldName = schema.getFieldName(i);
-                if (INDEX.contains(fieldName)) {
-                    columnDesc.setAddTsIndex(true);
-                }
-                PrimitiveType.PrimitiveTypeName columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
-                if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT32)) {
-                    columnDesc.setType(ColumnType.kInt32);
-                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT64)) {
-                    columnDesc.setType(ColumnType.kInt64);
-                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT96)) {
-                    columnDesc.setType(ColumnType.kString);
-                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.BINARY)) {
-                    columnDesc.setType(ColumnType.kString);
-                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.BOOLEAN)) {
-                    columnDesc.setType(ColumnType.kBool);
-                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.FLOAT)) {
-                    columnDesc.setType(ColumnType.kFloat);
-                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.DOUBLE)) {
-                    columnDesc.setType(ColumnType.kDouble);
-                } else if (columnType.equals(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)) {
-                    columnDesc.setType(ColumnType.kString);
-                }
-                columnDesc.setName(fieldName);
-                list.add(columnDesc);
+            columnDesc = new ColumnDesc();
+            fieldName = schema.getFieldName(i);
+            if (INDEX.contains(fieldName)) {
+                columnDesc.setAddTsIndex(true);
             }
+            columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
+            switch (columnType) {
+                case INT32:
+                    columnDesc.setType(ColumnType.kInt32);
+                    break;
+                case INT64:
+                    columnDesc.setType(ColumnType.kInt64);
+                    break;
+                case INT96:
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                case BINARY:
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                case BOOLEAN:
+                    columnDesc.setType(ColumnType.kBool);
+                    break;
+                case FLOAT:
+                    columnDesc.setType(ColumnType.kFloat);
+                    break;
+                case DOUBLE:
+                    columnDesc.setType(ColumnType.kDouble);
+                    break;
+                case FIXED_LEN_BYTE_ARRAY:
+                    columnDesc.setType(ColumnType.kString);
+                    break;
+                default:
+            }
+            columnDesc.setName(fieldName);
+            list.add(columnDesc);
         }
         return list;
     }
-
 }
 
