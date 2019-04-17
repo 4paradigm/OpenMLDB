@@ -137,7 +137,6 @@ bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint
     rocksdb::Status s;
     rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(pk, time));
     s = db_->Put(rocksdb::WriteOptions(), cf_hs_[1], spk, rocksdb::Slice(data, size));
-    PDLOG(DEBUG, "Put pk %s value %s", spk.ToString().c_str(), std::string(data, size).c_str());
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -159,8 +158,6 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
         }
         rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(it->key(), time));
         batch.Put(cf_hs_[it->idx() + 1], spk, value);
-        PDLOG(DEBUG, "Put multiple, pk %s value %s idx %u tid %u pid %u",
-                      spk.ToString().c_str(), value.c_str(), it->idx(), id_, pid_);
     }
     s = db_->Write(rocksdb::WriteOptions(), &batch);
     if (s.ok()) {

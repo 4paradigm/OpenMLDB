@@ -291,10 +291,6 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
         return table_->Put(entry.ts(), entry.value(), entry.dimensions());
     } else {
-        // the legend way
-        PDLOG(DEBUG, "apply log entry %lu #key %s, #ts %lu, #value %s", 
-                    entry.log_index(), entry.pk().c_str(),  
-                    entry.ts(), entry.value().c_str());
         return table_->Put(entry.pk(), entry.ts(),
                        entry.value().c_str(),
                        entry.value().size());
@@ -479,8 +475,6 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
         PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
-    // add record header size
-    PDLOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(std::memory_order_relaxed));
     return true;
 }
 

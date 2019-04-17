@@ -370,8 +370,6 @@ void TabletImpl::Get(RpcController* controller,
         response->set_key(request->key());
         response->set_ts(it->GetKey());
         response->set_value(it->GetValue()->data, it->GetValue()->size);
-        PDLOG(DEBUG, "Get key %s ts %lu value %s", request->key().c_str(),
-                request->ts(), it->GetValue()->data);
     } else {
         response->set_code(109);
         response->set_msg("key not found");
@@ -441,8 +439,6 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<DiskTable> disk_table,
         response->set_key(request->key());
         response->set_ts(it->GetKey());
         response->set_value(it->GetValue().data(), it->GetValue().size());
-        PDLOG(DEBUG, "Get key %s ts %lu value %s", request->key().c_str(),
-                request->ts(), it->GetValue().ToString().c_str());
     } else {
         response->set_code(109);
         response->set_msg("key not found");
@@ -493,7 +489,6 @@ void TabletImpl::Put(RpcController* controller,
                            request->time(), 
                            request->value().c_str(),
                            request->value().size());
-                PDLOG(DEBUG, "put key %s ok ts %lu", request->pk().c_str(), request->time());
             }
             if (!ok) {
                 response->set_code(116);
@@ -538,7 +533,6 @@ void TabletImpl::Put(RpcController* controller,
                    request->time(), 
                    request->value().c_str(),
                    request->value().size());
-        PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     }
     if (!ok) {
         response->set_code(116);
@@ -661,18 +655,17 @@ void TabletImpl::Scan(RpcController* controller,
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
-    PDLOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
     uint64_t last_time = 0;
     end_time = std::max(end_time, table->GetExpireTime());
-    PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
+    PDLOG(DEBUG, "scan pk %s st %u end_time %lu expire_time %lu", 
+                  request->pk().c_str(), request->st(), end_time, table->GetExpireTime());
     uint32_t limit = 0;
     if (request->has_limit()) {
         limit = request->limit();
     }
     while (it->Valid()) {
         scount ++;
-        PDLOG(DEBUG, "scan key %lld", it->GetKey());
         if (it->GetKey() <= end_time) {
             break;
         }
@@ -688,7 +681,6 @@ void TabletImpl::Scan(RpcController* controller,
         total_block_size += it->GetValue()->size;
         it->Next();
         if (limit > 0 && scount >= limit) {
-            PDLOG(DEBUG, "reach the limit %u", limit);
             break;
         }
         // check reach the max bytes size
@@ -707,13 +699,11 @@ void TabletImpl::Scan(RpcController* controller,
     }else {
         pairs->resize(total_size);
     }
-    PDLOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
     std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
-        PDLOG(DEBUG, "encode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
@@ -755,17 +745,16 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
     tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
-    PDLOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
     end_time = std::max(end_time, disk_table->GetExpireTime());
-    PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, disk_table->GetExpireTime());
+    PDLOG(DEBUG, "scan pk %s st %lu end_time %lu expire_time %lu", 
+                  request->pk().c_str(), request->st(), end_time, disk_table->GetExpireTime());
     uint32_t limit = 0;
     if (request->has_limit()) {
         limit = request->limit();
     }
     while (it->Valid()) {
         scount ++;
-        PDLOG(DEBUG, "scan key %lld", it->GetKey());
         if (it->GetKey() <= end_time) {
             break;
         }
@@ -774,7 +763,6 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
         total_block_size += value.size();
         it->Next();
         if (limit > 0 && scount >= limit) {
-            PDLOG(DEBUG, "reach the limit %u", limit);
             break;
         }
         // check reach the max bytes size
@@ -792,11 +780,9 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
     }else {
         pairs->resize(total_size);
     }
-    PDLOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
     for (const auto& pair : tmp) {
-        PDLOG(DEBUG, "encode key %lld value %s size %u", pair.first, pair.second.data(), pair.second.size());
         ::rtidb::base::Encode(pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
         offset += (4 + 8 + pair.second.size());
     }
