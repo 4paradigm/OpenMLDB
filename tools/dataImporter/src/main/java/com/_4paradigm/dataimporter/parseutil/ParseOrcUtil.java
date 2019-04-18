@@ -13,6 +13,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.orc.OrcFile;
 import org.apache.hadoop.hive.ql.io.orc.Reader;
 import org.apache.hadoop.hive.ql.io.orc.RecordReader;
+import org.apache.hadoop.hive.serde2.io.DateWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.logging.log4j.util.Strings;
@@ -72,7 +73,7 @@ public class ParseOrcUtil {
             String s;
             switch (columnType) {
                 case BINARY:
-                    map.put(columnName, new String(((BytesWritable) value).getBytes()));
+                    map.put(columnName, new String(((BytesWritable) value).copyBytes()));
                     break;
                 case BOOLEAN:
                     s = StringUtils.isBlank(String.valueOf(value)) ? null : String.valueOf(value);
@@ -88,7 +89,7 @@ public class ParseOrcUtil {
                     break;
                 case DATE:
                     s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                    map.put(columnName, Long.valueOf(s));
+                    map.put(columnName, ((DateWritable) value).get());
                     break;
                 case DOUBLE:
                     s = StringUtils.isBlank(String.valueOf(value)) ? "0.0" : String.valueOf(value);
@@ -220,7 +221,7 @@ public class ParseOrcUtil {
                     columnDesc.setType(ColumnType.kInt16);
                     break;
                 case DATE:
-                    columnDesc.setType(ColumnType.kInt64);
+                    columnDesc.setType(ColumnType.kDate);
                     break;
                 case DOUBLE:
                     columnDesc.setType(ColumnType.kDouble);
