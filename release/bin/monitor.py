@@ -106,7 +106,6 @@ if __name__ == "__main__":
                 os.rename(log_file_name, log_file_name + "." + last_date)
                 last_date = new_date
                 log_file = open(log_file_name, 'w')
-
             for module in rtidb_log.keys():
                 for var in rtidb_log[module]:
                     (count, offset) = search_key(conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
@@ -135,7 +134,6 @@ if __name__ == "__main__":
                 log_file.write(data + "\n")
                 log_file.flush()
         except Exception, ex:
-            print ex
             log_file.write("has exception {}\n".format(ex))
         time.sleep(conf_map["interval"])
     log_file.close()
