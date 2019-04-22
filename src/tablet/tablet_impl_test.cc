@@ -1723,6 +1723,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         std::string binlog_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
         ::rtidb::base::GetFileName(binlog_path, vec);
         ASSERT_EQ(4, vec.size());
+        std::sort(vec.begin(), vec.end());
         std::string file_name = binlog_path + "/00000001.log";
         ASSERT_STREQ(file_name.c_str(), vec[0].c_str());
         std::string file_name1 = binlog_path + "/00000007.log";
