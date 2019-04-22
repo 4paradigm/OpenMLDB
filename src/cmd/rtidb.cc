@@ -2340,11 +2340,11 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        int64_t key_num = 1000000;
+        uint64_t key_num = 1000000;
         if (parts.size() >= 4) {
-            key_num = ::boost::lexical_cast<int32_t>(parts[3]);
+            key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
         }
-        uint32_t times = 1000;
+        uint32_t times = 10000;
         if (parts.size() >= 5) {
             times = ::boost::lexical_cast<uint32_t>(parts[4]);
         }
@@ -2359,7 +2359,7 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
         std::uniform_int_distribution<> dis(1, key_num);
         while(num > 0) {
             for (uint32_t i = 0; i < times; i++) {
-                std::string key = std::to_string(base + i);
+                std::string key = std::to_string(base + dis(engine));
                 uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
                 client->Put(tid, pid, key, ts, value);
             }
