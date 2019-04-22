@@ -2284,7 +2284,7 @@ void HandleClientBenGet(std::vector<std::string>& parts, ::rtidb::client::Tablet
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
         uint64_t key_num = 1000000;
         if (parts.size() >= 4) {
-            key_num = ::boost::lexical_cast<uint32_t>(parts[3]);
+            key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
         }
         uint32_t times = 10000;
         if (parts.size() >= 5) {
@@ -3657,7 +3657,7 @@ void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client:
             tid = ::boost::lexical_cast<uint32_t>(parts[1]);
             pid = ::boost::lexical_cast<uint32_t>(parts[2]);
             if (parts.size() >= 4) {
-                key_num = ::boost::lexical_cast<uint32_t>(parts[3]);
+                key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
             }
             if (parts.size() >= 5) {
                 times = ::boost::lexical_cast<uint32_t>(parts[4]);
