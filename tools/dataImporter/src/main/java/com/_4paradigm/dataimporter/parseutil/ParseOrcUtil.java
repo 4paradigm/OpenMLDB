@@ -60,16 +60,16 @@ public class ParseOrcUtil {
         HashMap<String, Object> map = new HashMap<>();
         List<Object> valueList = inspector.getStructFieldsDataAsList(row);
         logger.debug("row:{}", valueList);
-        int index;
+        int columnIndex;
         for (int i = 0; i < schema.getFieldNames().size(); i++) {
             if (arr == null) {
-                index = i;
+                columnIndex = i;
             } else {
-                index = arr[i];
+                columnIndex = arr[i];
             }
             String columnName = schema.getFieldNames().get(i);
             TypeDescription.Category columnType = schema.getChildren().get(i).getCategory();
-            Object value = valueList.get(index);
+            Object value = valueList.get(columnIndex);
             String s;
             switch (columnType) {
                 case BINARY:
@@ -88,7 +88,6 @@ public class ParseOrcUtil {
                     map.put(columnName, Short.valueOf(s));
                     break;
                 case DATE:
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
                     map.put(columnName, ((DateWritable) value).get());
                     break;
                 case DOUBLE:
@@ -130,9 +129,17 @@ public class ParseOrcUtil {
                     break;
                 default:
             }
-            if (index == TIMESTAMP_INDEX) {
-                s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                timestamp = Long.valueOf(s);
+            if (columnIndex == TIMESTAMP_INDEX) {
+                if (columnType.equals(TypeDescription.Category.STRING) || columnType.equals(TypeDescription.Category.LONG)) {
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                    timestamp = Long.valueOf(s);
+                } else if (columnType.equals(TypeDescription.Category.TIMESTAMP)) {
+                    s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
+                    timestamp = Timestamp.valueOf(s).getTime();
+                } else {
+                    logger.error("incorrect format for timestamp!");
+                    throw new RuntimeException("incorrect format for timestamp!");
+                }
             }
         }
         return map;

@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +57,9 @@ public class ParseCsvUtil {
                 e.printStackTrace();
             }
             switch (columnType) {
+                case "int16":
+                    map.put(columnName, Short.parseShort(value));
+                    break;
                 case "int32":
                     map.put(columnName, Integer.parseInt(value));
                     break;
@@ -73,10 +78,23 @@ public class ParseCsvUtil {
                 case "boolean":
                     map.put(columnName, Boolean.parseBoolean(value));
                     break;
+                case "date":
+                    map.put(columnName, Date.valueOf(value));
+                    break;
+                case "timestamp":
+                    map.put(columnName, Timestamp.valueOf(value));
+                    break;
                 default:
             }
             if (columnIndex == TIMESTAMP_INDEX) {
-                timestamp = Long.parseLong(value);
+                if (columnType.equals("string") || columnType.equals("int64")) {
+                    timestamp = Long.parseLong(value);
+                } else if (columnType.equals("timestamp")) {
+                    timestamp = Timestamp.valueOf(value).getTime();
+                } else {
+                    logger.error("incorrect format for timestamp!");
+                    throw new RuntimeException("incorrect format for timestamp!");
+                }
             }
             if (string.length != 3) {
                 columnIndex++;
@@ -149,6 +167,9 @@ public class ParseCsvUtil {
                 columnDesc.setAddTsIndex(true);
             }
             switch (type) {
+                case "int16":
+                    columnDesc.setType(ColumnType.kInt16);
+                    break;
                 case "int32":
                     columnDesc.setType(ColumnType.kInt32);
                     break;
@@ -167,8 +188,13 @@ public class ParseCsvUtil {
                 case "double":
                     columnDesc.setType(ColumnType.kDouble);
                     break;
+                case "date":
+                    columnDesc.setType(ColumnType.kDate);
+                    break;
+                case "timestamp":
+                    columnDesc.setType(ColumnType.kTimestamp);
+                    break;
                 default:
-
             }
             columnDesc.setName(columnName);
             list.add(columnDesc);

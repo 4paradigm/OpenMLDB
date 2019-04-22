@@ -62,7 +62,7 @@ public class ParseParquetUtil {
     private HashMap<String, Object> read(SimpleGroup group) {
         HashMap<String, Object> map = new HashMap<>();
         String columnName;
-        PrimitiveType.PrimitiveTypeName type;
+        PrimitiveType.PrimitiveTypeName columnType;
         int index;
         for (int i = 0; i < schema.getFieldCount(); i++) {
             if (arr == null) {
@@ -71,8 +71,8 @@ public class ParseParquetUtil {
                 index = arr[i];
             }
             columnName = schema.getFieldName(i);
-            type = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
-            switch (type) {
+            columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
+            switch (columnType) {
                 case INT32:
                     map.put(columnName, group.getInteger(index, 0));
                     break;
@@ -100,7 +100,12 @@ public class ParseParquetUtil {
                 default:
             }
             if (index == TIMESTAMP_INDEX) {
-                timestamp = group.getLong(index, 0);
+                if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT64)) {
+                    timestamp = group.getLong(index, 0);
+                } else {
+                    logger.error("incorrect format for timestamp!");
+                    throw new RuntimeException("incorrect format for timestamp!");
+                }
             }
         }
         return map;
