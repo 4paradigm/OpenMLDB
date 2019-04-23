@@ -1,8 +1,8 @@
-FROM centos:7
+FROM docker.4pd.io/base-image-common:3.0
+
 USER root
-COPY ./bin /root/bin/
-COPY ./lib /root/lib/
-COPY ./tablet.flags /root/conf/
-VOLUME ["/root/db", "/root/logs", "/root/recycle"]
-WORKDIR /root
-ENTRYPOINT ["/bin/bash", "/root/bin/start.sh"]
+COPY ./bin /app/bin/
+COPY ./lib /app/lib/
+COPY ./tablet.flags /app/conf/
+VOLUME ["/app/db", "/app/logs", "/app/recycle"]
+ENTRYPOINT ["/bin/bash", "/app/bin/start.sh"]
