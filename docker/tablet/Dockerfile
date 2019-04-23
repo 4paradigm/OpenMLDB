@@ -1,4 +1,4 @@
-FROM docker.4pd.io/base-image-common:3.0
+FROM docker.4pd.io/base-image-common:1.0
 
 USER root
 COPY ./bin /app/bin/
