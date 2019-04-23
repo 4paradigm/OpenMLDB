@@ -531,6 +531,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_limit(limit);
     request.mutable_metric()->set_sqtime(::baidu::common::timer::get_micros());
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
+    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
             &request, response, FLAGS_request_timeout_ms, 1);
     response->mutable_metric()->set_rptime(::baidu::common::timer::get_micros());
@@ -541,6 +542,10 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
         return NULL;
     }
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
     return kv_it;
 }
 
@@ -776,8 +781,13 @@ bool TabletClient::Get(uint32_t tid,
     request.set_pid(pid);
     request.set_key(pk);
     request.set_ts(time);
+    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
             &request, &response, FLAGS_request_timeout_ms, 1);
+    if (FLAGS_enable_show_tp) {
+        consumed = ::baidu::common::timer::get_micros() - consumed;
+        percentile_.push_back(consumed);
+    }
     if (response.has_msg()) {
         msg = response.msg();
     }

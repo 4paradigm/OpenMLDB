@@ -2278,6 +2278,41 @@ void HandleClientGet(const std::vector<std::string>& parts, ::rtidb::client::Tab
 
 }
 
+void HandleClientBenGet(std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
+    try {
+        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
+        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
+        uint64_t key_num = 1000000;
+        if (parts.size() >= 4) {
+            key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
+        }
+        uint32_t times = 10000;
+        if (parts.size() >= 5) {
+            times = ::boost::lexical_cast<uint32_t>(parts[4]);
+        }
+        int num = 100;
+        if (parts.size() >= 6) {
+            num = ::boost::lexical_cast<int>(parts[5]);
+        }
+        std::string value;
+        uint64_t base = 100000000;
+        std::random_device rd;
+        std::default_random_engine engine(rd());
+        std::uniform_int_distribution<> dis(1, key_num);
+        std::string msg;
+        while(num > 0) {
+            for (uint32_t i = 0; i < times; i++) {
+                std::string key = std::to_string(base + dis(engine));
+                uint64_t ts = 0;
+                client->Get(tid, pid, key, 0, value, ts, msg);
+            }
+            client->ShowTp();
+            num--;
+        }
+    } catch (boost::bad_lexical_cast& e) {
+        std::cout << "put argument error!" << std::endl;
+    }
+}
 
 // the input format like put 1 1 key time value
 void HandleClientPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
@@ -2305,26 +2340,31 @@ void HandleClientBenPut(std::vector<std::string>& parts, ::rtidb::client::Tablet
     try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        uint64_t key_num = 100000;
+        uint64_t key_num = 1000000;
         if (parts.size() >= 4) {
-            key_num = ::boost::lexical_cast<uint32_t>(parts[3]);
+            key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
         }
-        uint32_t times = 100000;
+        uint32_t times = 10000;
         if (parts.size() >= 5) {
             times = ::boost::lexical_cast<uint32_t>(parts[4]);
+        }
+        int num = 100;
+        if (parts.size() >= 6) {
+            num = ::boost::lexical_cast<int>(parts[5]);
         }
         std::string value(128, 'a');
         uint64_t base = 100000000;
         std::random_device rd;
         std::default_random_engine engine(rd());
         std::uniform_int_distribution<> dis(1, key_num);
-        while(true) {
+        while(num > 0) {
             for (uint32_t i = 0; i < times; i++) {
                 std::string key = std::to_string(base + dis(engine));
                 uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
                 client->Put(tid, pid, key, ts, value);
             }
             client->ShowTp();
+            num--;
         }
     } catch (boost::bad_lexical_cast& e) {
         std::cout << "put argument error!" << std::endl;
@@ -3605,33 +3645,50 @@ void HandleClientDelete(const std::vector<std::string>& parts, ::rtidb::client::
 }
 
 void HandleClientBenScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    uint64_t st = 999;
     uint64_t et = 0;
     uint32_t tid = 1;
     uint32_t pid = 1;
-    uint32_t times = 10;
+    uint64_t key_num = 1000000;
+    uint32_t times = 10000;
+    int num = 100;
+    uint32_t limit = 0;
     if (parts.size() >= 3) {
         try {
-            times = ::boost::lexical_cast<uint32_t>(parts[2]);
+            tid = ::boost::lexical_cast<uint32_t>(parts[1]);
+            pid = ::boost::lexical_cast<uint32_t>(parts[2]);
+            if (parts.size() >= 4) {
+                key_num = ::boost::lexical_cast<uint64_t>(parts[3]);
+            }
+            if (parts.size() >= 5) {
+                times = ::boost::lexical_cast<uint32_t>(parts[4]);
+            }
+            if (parts.size() >= 6) {
+                num = ::boost::lexical_cast<int>(parts[5]);
+            }
+            if (parts.size() >= 7) {
+                limit = ::boost::lexical_cast<uint32_t>(parts[6]);
+            }
         } catch (boost::bad_lexical_cast& e) {
             std::cout << "Bad scan format" << std::endl;
             return;
         }
     }
+    uint64_t base = 100000000;
+    std::random_device rd;
+    std::default_random_engine engine(rd());
+    std::uniform_int_distribution<> dis(1, key_num);
     std::string msg;
-    for (uint32_t i = 0; i < 10; i++) {
-        std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-        ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0, msg);
-        delete it;
-    }
-    client->ShowTp();
-    for (uint32_t j = 0; j < times; j++) {
-        for (uint32_t i = 0; i < 500; i++) {
-            std::string key = parts[1] + "test" + boost::lexical_cast<std::string>(i);
-            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key, st, et, 0, msg);
+    while(num > 0) {
+        for (uint32_t i = 0; i < times; i++) {
+            std::string key = std::to_string(base + dis(engine));
+            uint64_t st = ::baidu::common::timer::get_micros() / 1000;
+            msg.clear();
+            //::rtidb::base::KvIterator* it = client->Scan(tid, pid, key.c_str(), st, et, msg, false);
+            ::rtidb::base::KvIterator* it = client->Scan(tid, pid, key.c_str(), st, et, limit, msg);
             delete it;
         }
         client->ShowTp();
+        num--;
     }
 }
 
@@ -3689,6 +3746,8 @@ void StartClient() {
             HandleClientBenPut(parts, &client);
         } else if (parts[0] == "benscan") {
             HandleClientBenScan(parts, &client);
+        } else if (parts[0] == "benget") {
+            HandleClientBenGet(parts, &client);
         } else if (parts[0] == "benchmark") {
             HandleClientBenchmark(&client);
         } else if (parts[0] == "drop") {
