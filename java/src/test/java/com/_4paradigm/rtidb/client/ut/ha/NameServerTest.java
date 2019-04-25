@@ -25,7 +25,7 @@ public class NameServerTest {
     private static String zkEndpoints = Const.ZK_ENDPOINTS;
     private static String zkRootPath = Const.ZK_ROOT_PATH;
     private static String leaderPath  = zkRootPath + "/leader";
-    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+    private static String[] nodes = Const.NODES;
     static {
         String envZkEndpoints = System.getenv("zkEndpoints");
         if (envZkEndpoints != null) {

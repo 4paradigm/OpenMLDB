@@ -27,7 +27,7 @@ public class TableTimestampTest {
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
-    private static String[] nodes = new String[]{"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+    private static String[] nodes = Const.NODES;
 
     @BeforeClass
     public static void setUp() {
