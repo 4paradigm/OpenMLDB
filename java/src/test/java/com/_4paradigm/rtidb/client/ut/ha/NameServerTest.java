@@ -5,8 +5,6 @@ import java.util.Map;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
@@ -22,10 +20,10 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
  */
 public class NameServerTest {
 
-    private static String zkEndpoints = Const.ZK_ENDPOINTS;
-    private static String zkRootPath = Const.ZK_ROOT_PATH;
+    private static String zkEndpoints = Config.ZK_ENDPOINTS;
+    private static String zkRootPath = Config.ZK_ROOT_PATH;
     private static String leaderPath  = zkRootPath + "/leader";
-    private static String[] nodes = Const.NODES;
+    private static String[] nodes = Config.NODES;
     static {
         String envZkEndpoints = System.getenv("zkEndpoints");
         if (envZkEndpoints != null) {

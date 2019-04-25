@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com._4paradigm.rtidb.client.ut.ha.Const;
+import com._4paradigm.rtidb.client.ut.ha.Config;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -29,7 +29,7 @@ public class TableSchemaClientTest {
     private final static AtomicInteger id = new AtomicInteger(5000);
     private static TableSyncClientImpl client = null;
     private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint(Const.ENDPOINT);
+    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
    

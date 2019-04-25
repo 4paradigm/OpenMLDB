@@ -24,22 +24,21 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
 public class TableSyncClientTest {
-    private static String zkEndpoints = Const.ZK_ENDPOINTS;
-    private static String leaderPath  = Const.ZK_ROOT_PATH + "/leader";
+    private static String zkEndpoints = Config.ZK_ENDPOINTS;
+    private static String zkRootPath = Config.ZK_ROOT_PATH;
+    private static String leaderPath  = zkRootPath + "/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
-    private static String[] nodes = Const.NODES;
+    private static String[] nodes = Config.NODES;
     @BeforeClass
     public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath(Const.ZK_ROOT_PATH + "/nodes");
-            config.setZkTableRootPath(Const.ZK_ROOT_PATH + "/table/table_data");
-            config.setZkTableNotifyPath(Const.ZK_ROOT_PATH + "/table/notify");
+            config.setZkRootPath(zkRootPath);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);
