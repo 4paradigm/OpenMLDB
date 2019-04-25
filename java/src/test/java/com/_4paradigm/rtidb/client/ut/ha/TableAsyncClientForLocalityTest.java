@@ -28,8 +28,8 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
 
 public class TableAsyncClientForLocalityTest {
     private final static Logger logger = LoggerFactory.getLogger(TableAsyncClientForLocalityTest.class);
-    private static String zkEndpoints = "127.0.0.1:6181";
-    private static String leaderPath  = "/onebox/leader";
+    private static String zkEndpoints = Const.ZK_ENDPOINTS;
+    private static String leaderPath  = Const.ZK_ROOT_PATH + "/leader";
     private static AtomicInteger id = new AtomicInteger(20000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
@@ -41,9 +41,9 @@ public class TableAsyncClientForLocalityTest {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath("/onebox/nodes");
-            config.setZkTableRootPath("/onebox/table/table_data");
-            config.setZkTableNotifyPath("/onebox/table/notify");
+            config.setZkNodeRootPath(Const.ZK_ROOT_PATH + "/nodes");
+            config.setZkTableRootPath(Const.ZK_ROOT_PATH + "/table/table_data");
+            config.setZkTableNotifyPath(Const.ZK_ROOT_PATH + "/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableAsyncClient = new TableAsyncClientImpl(client);

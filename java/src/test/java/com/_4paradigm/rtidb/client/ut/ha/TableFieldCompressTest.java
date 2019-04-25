@@ -29,8 +29,8 @@ import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
 
 public class TableFieldCompressTest {
-    private static String zkEndpoints = "127.0.0.1:6181";
-    private static String leaderPath  = "/onebox/leader";
+    private static String zkEndpoints = Const.ZK_ENDPOINTS;
+    private static String leaderPath  = Const.ZK_ROOT_PATH + "/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
@@ -44,7 +44,7 @@ public class TableFieldCompressTest {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkRootPath("/onebox");
+            config.setZkRootPath(Const.ZK_ROOT_PATH);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

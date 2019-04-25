@@ -11,6 +11,7 @@ import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.client.ut.ha.Const;
 import io.brpc.client.EndPoint;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -28,7 +29,7 @@ public class TableSchemaSyncClientHandleNullTest {
     private final static AtomicInteger id = new AtomicInteger(7100);
     private static TableSyncClientImpl tableClient = null;
     private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static EndPoint endpoint = new EndPoint(Const.ENDPOINT);
 //    private static EndPoint endpoint = new EndPoint("192.168.22.152:9501");
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);

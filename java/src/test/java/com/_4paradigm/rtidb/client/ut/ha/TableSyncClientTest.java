@@ -24,8 +24,8 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
 public class TableSyncClientTest {
-    private static String zkEndpoints = "127.0.0.1:6181";
-    private static String leaderPath  = "/onebox/leader";
+    private static String zkEndpoints = Const.ZK_ENDPOINTS;
+    private static String leaderPath  = Const.ZK_ROOT_PATH + "/leader";
     private static AtomicInteger id = new AtomicInteger(10000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
@@ -37,9 +37,9 @@ public class TableSyncClientTest {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath("/onebox/nodes");
-            config.setZkTableRootPath("/onebox/table/table_data");
-            config.setZkTableNotifyPath("/onebox/table/notify");
+            config.setZkNodeRootPath(Const.ZK_ROOT_PATH + "/nodes");
+            config.setZkTableRootPath(Const.ZK_ROOT_PATH + "/table/table_data");
+            config.setZkTableNotifyPath(Const.ZK_ROOT_PATH + "/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

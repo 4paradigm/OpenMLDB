@@ -20,22 +20,23 @@ import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 
 public class TableTimestampTest {
-    private static String zkEndpoints = "127.0.0.1:6181";
-    private static String leaderPath  = "/onebox/leader";
+    private static String zkEndpoints = Const.ZK_ENDPOINTS;
+    private static String leaderPath = Const.ZK_ROOT_PATH + "/leader";
     private static AtomicInteger id = new AtomicInteger(50000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
-    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+    private static String[] nodes = new String[]{"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+
     @BeforeClass
     public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath("/onebox/nodes");
-            config.setZkTableRootPath("/onebox/table/table_data");
-            config.setZkTableNotifyPath("/onebox/table/notify");
+            config.setZkNodeRootPath(Const.ZK_ROOT_PATH + "/nodes");
+            config.setZkTableRootPath(Const.ZK_ROOT_PATH + "/table/table_data");
+            config.setZkTableNotifyPath(Const.ZK_ROOT_PATH + "/table/notify");
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);
@@ -44,6 +45,7 @@ public class TableTimestampTest {
             e.printStackTrace();
         }
     }
+
     @AfterClass
     public static void tearDown() {
         nsc.close();
@@ -70,13 +72,13 @@ public class TableTimestampTest {
         client.refreshRouteTable();
         return name;
     }
-   
+
     @Test
     public void testTimestampPut() {
         String name = createSchemaTable();
         long time = System.currentTimeMillis();
         try {
-            boolean ok = tableSyncClient.put(name, time, new Object[] {"card0", "mcc0", 1.1d, new DateTime(time)});
+            boolean ok = tableSyncClient.put(name, time, new Object[]{"card0", "mcc0", 1.1d, new DateTime(time)});
             Assert.assertTrue(ok);
             Object[] row = tableSyncClient.getRow(name, "card0", 0);
             Assert.assertNotNull(row);
@@ -84,7 +86,7 @@ public class TableTimestampTest {
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals("mcc0", row[1]);
             Assert.assertEquals(1.1d, row[2]);
-            Assert.assertEquals(time, ((DateTime)row[3]).getMillis());
+            Assert.assertEquals(time, ((DateTime) row[3]).getMillis());
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
