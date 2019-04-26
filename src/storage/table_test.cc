@@ -532,7 +532,3 @@ int main(int argc, char** argv) {
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     return RUN_ALL_TESTS();
 }
-
-
-
-

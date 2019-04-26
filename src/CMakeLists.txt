@@ -8,7 +8,7 @@ if (TCMALLOC_ENABLE)
     endif()
 endif()
 
-add_library(tablet STATIC proto/tablet.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
+add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc tablet/tablet_impl.cc flags.cc tablet/tablet_metric.cc)
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
 add_library(storage STATIC storage/table.cc storage/segment.cc storage/ticket.cc storage/snapshot.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc)
@@ -23,11 +23,11 @@ add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 add_library(replica STATIC replica/replicate_node.cc
                            replica/log_replicator.cc)
 
-add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc)
+add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper.cc proto/tablet.pb.cc proto/common.pb.cc)
 target_link_libraries(rtidb_py pthread common brpc gflags rt ssl crypto dl leveldb protobuf z snappy)
 
 add_executable(strings_test base/strings_test.cc)
-target_link_libraries(strings_test gtest pthread)
+target_link_libraries(strings_test gtest pthread numa)
 
 add_executable(slice_test base/slice_test.cc)
 target_link_libraries(slice_test gtest pthread)
@@ -57,16 +57,16 @@ target_link_libraries(count_down_latch_test common gtest pthread)
 add_executable(segment_test storage/segment_test.cc flags.cc)
 target_link_libraries(segment_test gtest gflags storage pthread common tcmalloc_minimal)
 
-add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc flags.cc)
+add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc proto/common.pb.cc flags.cc)
 target_link_libraries(table_test gtest gflags pthread storage common protobuf tcmalloc_minimal)
 
-add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc flags.cc base/status.cc)
+add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc proto/common.pb.cc flags.cc base/status.cc)
 target_link_libraries(snapshot_test storage log tablet base common brpc rt ssl crypto dl leveldb protobuf gtest gflags pthread z snappy)
 
 add_executable(table_mem_test  storage/table_mem_test.cc)
 target_link_libraries(table_mem_test gtest pthread storage zookeeper_mt common zk_client unwind tcmalloc)
 
-add_executable(kv_iterator_test  base/kv_iterator_test.cc proto/tablet.pb.cc)
+add_executable(kv_iterator_test  base/kv_iterator_test.cc proto/tablet.pb.cc proto/common.pb.cc)
 target_link_libraries(kv_iterator_test gtest pthread common protobuf)
 
 add_executable(tablet_impl_test  tablet/tablet_impl_test.cc base/status.cc)
@@ -78,7 +78,7 @@ target_link_libraries(tablet_impl_keep_alive_test   gtest pthread tablet gflags 
 add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
 target_link_libraries(tablet_impl_mem_test   gtest pthread tablet gflags storage replica log common brpc rt ssl crypto dl leveldb protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
 
-add_executable(codec_bench_test  base/codec_bench_test.cc proto/kv_pair.pb.cc)
+add_executable(codec_bench_test  base/codec_bench_test.cc proto/common.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf tcmalloc_minimal)
 
 add_executable(log_test  log/log_test.cc)

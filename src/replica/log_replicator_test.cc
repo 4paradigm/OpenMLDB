@@ -35,7 +35,7 @@ using ::baidu::common::DEBUG;
 namespace rtidb {
 namespace replica {
 
-const std::vector<std::string> g_endpoints;
+const std::vector<std::string> g_endpoints;    
 
 class MockTabletImpl : public ::rtidb::api::TabletServer {
 
@@ -120,7 +120,7 @@ TEST_F(LogReplicatorTest,  Init) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -132,7 +132,7 @@ TEST_F(LogReplicatorTest,  BenchMark) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -152,7 +152,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints, 12);
+    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:17527";
@@ -221,7 +221,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     leader.AddReplicateNode(vec);
     sleep(2);
 
-    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints, 12);
+    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:17528";
@@ -295,7 +295,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
 	brpc::Server server1;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints, 12);
+    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
@@ -340,7 +340,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     leader.AddReplicateNode(vec);
     sleep(2);
 
-    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0, false, g_endpoints, 12);
+    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";

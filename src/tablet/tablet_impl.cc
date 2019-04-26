@@ -35,7 +35,6 @@ using ::rtidb::storage::DataBlock;
 
 DECLARE_int32(gc_interval);
 DECLARE_int32(gc_pool_size);
-DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
 DECLARE_uint32(scan_reserve_size);
@@ -68,10 +67,6 @@ DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
-DECLARE_uint32(skiplist_max_height);
-DECLARE_uint32(key_entry_max_height);
-DECLARE_uint32(latest_default_skiplist_height);
-DECLARE_uint32(absolute_default_skiplist_height);
 
 namespace rtidb {
 namespace tablet {
@@ -909,7 +904,6 @@ void TabletImpl::ChangeRole(RpcController* controller,
             }
             PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
             table->SetLeader(true);
-            table->SetReplicas(vec);
             replicator->SetRole(ReplicatorRole::kLeaderNode);
             if (!FLAGS_zk_cluster.empty()) {
                 replicator->SetLeaderTerm(request->term());
@@ -2319,66 +2313,25 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
 }
 
 int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
-    uint32_t seg_cnt = 8;
-    std::string name = table_meta->name();
-    if (table_meta->seg_cnt() > 0) {
-        seg_cnt = table_meta->seg_cnt();
-    }
-    bool is_leader = false;
-    if (table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
-        is_leader = true;
-    }
     std::vector<std::string> endpoints;
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
-    // config dimensions
-    std::map<std::string, uint32_t> mapping;
-    for (int32_t i = 0; i < table_meta->dimensions_size(); i++) {
-        mapping.insert(std::make_pair(table_meta->dimensions(i), 
-                       (uint32_t)i));
-        PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta->dimensions(i).c_str(),
-                i, table_meta->name().c_str(), table_meta->tid(), table_meta->pid());
-    }
-    // add default dimension
-    if (mapping.size() <= 0) {
-        mapping.insert(std::make_pair("idx0", 0));
-        PDLOG(INFO, "no index specified with default");
-    }
-    uint32_t key_entry_max_height = FLAGS_key_entry_max_height;
-    if (table_meta->has_key_entry_max_height() && table_meta->key_entry_max_height() <= FLAGS_skiplist_max_height 
-            && table_meta->key_entry_max_height() > 0) {
-        key_entry_max_height = table_meta->key_entry_max_height();
-    }else {
-        if (table_meta->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
-            key_entry_max_height = FLAGS_latest_default_skiplist_height;
-        }else if (table_meta->ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
-            key_entry_max_height = FLAGS_absolute_default_skiplist_height;
-        }
-    }
-    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
-                                                           table_meta->tid(),
-                                                           table_meta->pid(), seg_cnt, 
-                                                           mapping,
-                                                           table_meta->ttl(), is_leader,
-                                                           endpoints,
-                                                           key_entry_max_height);
-    table->Init();
-    table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
-    table->SetSchema(table_meta->schema());
-    table->SetTTLType(table_meta->ttl_type());
-    if (table_meta->has_compress_type()) {
-        table->SetCompressType(table_meta->compress_type());
+    std::shared_ptr<Table> table = std::make_shared<Table>(*table_meta);
+    if (table->Init() < 0) {
+        PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
+        msg.assign("fail to init table");
+        return -1;
     }
     std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(table_meta->tid()) +
                 "_" + std::to_string(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
-                                                     table->GetReplicas(), 
+                                                     endpoints,
                                                      ReplicatorRole::kLeaderNode, 
                                                      table);
-    }else {
+    } else {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      std::vector<std::string>(), 
                                                      ReplicatorRole::kFollowerNode,
@@ -2396,7 +2349,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         msg.assign("fail init replicator for table");
         return -1;
     }
-    if (!FLAGS_zk_cluster.empty() && is_leader) {
+    if (!FLAGS_zk_cluster.empty() && table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
         replicator->SetLeaderTerm(table_meta->term());
     }
     std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(table_meta->tid(), table_meta->pid(), replicator->GetLogPart());

@@ -76,23 +76,13 @@ public:
           uint32_t pid,
           uint32_t seg_cnt,
           const std::map<std::string, uint32_t>& mapping,
-          uint64_t ttl,
-          bool is_leader,
-          const std::vector<std::string>& replicas,
-          uint32_t key_entry_max_height);
-
-    Table(const std::string& name,
-          uint32_t id,
-          uint32_t pid,
-          uint32_t seg_cnt,
-          const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl);
 
+    Table(const ::rtidb::api::TableMeta& table_meta);
     ~Table();
 
-    void Init();
-
-    void SetGcSafeOffset(uint64_t offset);
+    int InitColumnDesc();
+    int Init();
 
     // Put a record
     bool Put(const std::string& pk,
@@ -107,6 +97,9 @@ public:
 
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
+
+    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
+             const std::string& value);
 
     bool Delete(const std::string& pk, uint32_t idx);
 
@@ -172,24 +165,12 @@ public:
         is_leader_ = is_leader;
     }
 
-    inline const std::vector<std::string>& GetReplicas() const {
-        return replicas_;
-    }
-
-    void SetReplicas(const std::vector<std::string>& replicas) {
-        replicas_ = replicas;
-    }
-
     inline uint32_t GetTableStat() {
         return table_status_.load(std::memory_order_relaxed);
     }
 
     inline void SetTableStat(uint32_t table_status) {
         table_status_.store(table_status, std::memory_order_relaxed);
-    }
-
-    inline void SetSchema(const std::string& schema) {
-        schema_ = schema;
     }
 
     inline const std::string& GetSchema() {
@@ -248,9 +229,8 @@ private:
     std::string const name_;
     uint32_t const id_;
     uint32_t const pid_;
-    uint32_t const seg_cnt_;
-    uint32_t const idx_cnt_;
-    // Segments is readonly
+    uint32_t seg_cnt_;
+    uint32_t idx_cnt_;
     Segment*** segments_;
     std::atomic<bool> enable_gc_;
     std::atomic<uint64_t> ttl_;
@@ -259,19 +239,21 @@ private:
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
     std::atomic<int64_t> time_offset_;
-    std::vector<std::string> replicas_;
     std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
+    std::map<std::string, uint32_t> ts_mapping_;
+    std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
+    std::map<uint32_t, uint64_t> ttl_map_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
     uint32_t key_entry_max_height_;
+    ::rtidb::api::TableMeta table_meta_;
 };
 
 }
 }
-
 
 #endif /* !TABLE_H */

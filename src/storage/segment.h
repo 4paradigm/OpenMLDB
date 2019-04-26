@@ -16,10 +16,12 @@
 #include <mutex>
 #include <atomic>
 #include "storage/ticket.h"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace storage {
 
+typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension> TSDimensions;
 
 using ::rtidb::base::Slice;
 
@@ -127,6 +129,7 @@ struct SliceComparator {
 };
 
 typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry*, SliceComparator> KeyEntries;
+typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry**, SliceComparator> KeyMultiEntries;
 typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*, TimeComparator> KeyEntryNodeList;
 
 class Segment {
@@ -134,22 +137,20 @@ class Segment {
 public:
     Segment();
     Segment(uint8_t height);
+    Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec);
     ~Segment();
 
     // Put time data 
-    void Put(const Slice& key,
-             uint64_t time,
-             const char* data,
-             uint32_t size);
+    void Put(const Slice& key, uint64_t time, const char* data, uint32_t size);
 
-    void Put(const Slice& key, 
-             uint64_t time,
-             DataBlock* row);
+    void Put(const Slice& key, uint64_t time, DataBlock* row);
+
+    void Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock* row);
 
     // Get time data
-    bool Get(const Slice& key,
-             uint64_t time,
-             DataBlock** block);
+    bool Get(const Slice& key, uint64_t time, DataBlock** block);
+
+    bool Get(const Slice& key, const uint8_t idx, uint64_t time, DataBlock** block);
 
     bool Delete(const Slice& key);
 
@@ -158,6 +159,7 @@ public:
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     Iterator* NewIterator(const Slice& key, Ticket& ticket);
+    Iterator* NewIterator(const Slice& key, const uint8_t idx, Ticket& ticket);
 
     inline uint64_t GetIdxCnt() {
         return idx_cnt_.load(std::memory_order_relaxed);
@@ -178,6 +180,7 @@ public:
     }
 
     int GetCount(const Slice& key, uint64_t& count);
+    int GetCount(const Slice& key, const uint8_t idx, uint64_t& count);
 
     void IncrGcVersion() {
         gc_version_.fetch_add(1, std::memory_order_relaxed);
@@ -192,6 +195,7 @@ private:
                    ::rtidb::base::Node<uint64_t, DataBlock*>** node);
 private:
     KeyEntries* entries_;
+    KeyMultiEntries* multi_entries_;
     // only Put need mutex
     std::mutex mu_;
     std::mutex gc_mu_;
@@ -200,7 +204,9 @@ private:
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;
     KeyEntryNodeList* entry_free_list_;
+    uint32_t ts_cnt_;
     std::atomic<uint64_t> gc_version_;
+    std::map<uint32_t, uint32_t> ts_idx_map_;
 };
 
 }// namespace storage

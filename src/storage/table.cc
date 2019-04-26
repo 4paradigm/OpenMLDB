@@ -13,6 +13,7 @@
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
+#include <algorithm>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -20,7 +21,11 @@ using ::baidu::common::DEBUG;
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
-
+DECLARE_int32(gc_safe_offset);
+DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(key_entry_max_height);
+DECLARE_uint32(absolute_default_skiplist_height);
+DECLARE_uint32(latest_default_skiplist_height);
 
 namespace rtidb {
 namespace storage {
@@ -32,36 +37,26 @@ Table::Table(const std::string& name,
         uint32_t pid,
         uint32_t seg_cnt,
         const std::map<std::string, uint32_t>& mapping,
-        uint64_t ttl,
-        bool is_leader,
-        const std::vector<std::string>& replicas,
-        uint32_t key_entry_max_height):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
+        uint64_t ttl):name_(name), id_(id),
+    pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
-    enable_gc_(false), ttl_(ttl * 60 * 1000), 
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
-    replicas_(replicas), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(key_entry_max_height)
+    enable_gc_(false), ttl_(ttl * 60 * 1000),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
+    table_status_(kUndefined), schema_(),
+    mapping_(mapping), segment_released_(false), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress)
 {
     new_ttl_.store(ttl_.load());
 }
 
-Table::Table(const std::string& name,
-        uint32_t id,
-        uint32_t pid,
-        uint32_t seg_cnt,
-        const std::map<std::string, uint32_t>& mapping,
-        uint64_t ttl):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
+Table::Table(const ::rtidb::api::TableMeta& table_meta) : name_(table_meta.name()), id_(table_meta.tid()), 
+    pid_(table_meta.pid()), seg_cnt_(8), 
     segments_(NULL), 
-    enable_gc_(false), ttl_(ttl * 60 * 1000),
+    enable_gc_(false),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
-    replicas_(), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(FLAGS_skiplist_max_height)
-{
-    new_ttl_.store(ttl_.load());
+    segment_released_(false), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress) {
+    table_meta_.CopyFrom(table_meta);
 }
 
 Table::~Table() {
@@ -75,20 +70,159 @@ Table::~Table() {
     delete[] segments_;
 }
 
-void Table::Init() {
+int Table::InitColumnDesc() {
+	if (table_meta_.column_desc_size() > 0) {
+        uint32_t key_idx = 0;
+        uint32_t ts_idx = 0;
+        for (const auto& column_desc : table_meta_.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                mapping_.insert(std::make_pair(column_desc.name(), key_idx));
+                key_idx++;
+            } else if (column_desc.is_ts_col()) {
+                ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
+                if (column_desc.has_ttl()) {
+                    ttl_map_.insert(std::make_pair(ts_idx, column_desc.ttl() * 60 * 1000));
+                } else {
+                    ttl_map_.insert(std::make_pair(ts_idx, table_meta_.ttl() * 60 * 1000));
+                }
+                ts_idx++;
+            }
+        }
+        if (ts_mapping_.size() > 1 && !mapping_.empty()) {
+            mapping_.clear();
+            key_idx = 0;
+        }
+        if (table_meta_.column_key_size() > 0) {
+            for (const auto& column_key : table_meta_.column_key()) {
+                uint32_t cur_key_idx = key_idx;
+                if (column_key.key_name_size() == 0) {
+                    continue;
+                } else if (column_key.key_name_size() == 1) {
+                    std::string name = column_key.key_name(0);
+                    auto it = mapping_.find(name);
+                    if (it == mapping_.end()) {
+                        mapping_.insert(std::make_pair(name, key_idx));
+                        key_idx++;
+                    } else {
+                        cur_key_idx = it->second;
+                    }
+                } else {
+                    std::string combined_key;
+                    for (const auto& name : column_key.key_name()) {
+                        if (combined_key.empty()) {
+                            combined_key = name;
+                        } else {
+                            combined_key += "|" + name;
+                        }
+                    }
+                    auto it = mapping_.find(combined_key);
+                    if (it == mapping_.end()) {
+                        mapping_.insert(std::make_pair(combined_key, key_idx));
+                        key_idx++;
+                    } else {
+                        cur_key_idx = it->second;
+                    }
+                }
+				if (ts_mapping_.empty()) {
+					continue;
+				}
+                auto ts_iter = ts_mapping_.find(column_key.ts_name());
+                if (ts_iter == ts_mapping_.end()) {
+                    PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u",
+                                    column_key.ts_name().c_str(), id_, pid_);
+                    return -1;
+                }
+                if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
+                    column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                }
+                if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
+                            ts_iter->second) == column_key_map_[cur_key_idx].end()) {
+                    column_key_map_[cur_key_idx].push_back(ts_iter->second);
+                }
+            }
+        } else {
+            if (ts_mapping_.size() > 1) {
+                PDLOG(WARNING, "must set column_key when ts column is two or more. tid %u pid %u",
+                                id_, pid_);
+                return -1;
+            } else if (!ts_mapping_.empty()) {
+				for (const auto& kv : mapping_) {
+					uint32_t cur_key_idx = kv.second;
+					if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
+						column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+					}
+					uint32_t cur_ts_idx = ts_mapping_.begin()->second;
+					if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
+								cur_ts_idx) == column_key_map_[cur_key_idx].end()) {
+						column_key_map_[cur_key_idx].push_back(cur_ts_idx);
+					}
+				}
+			}
+        }
+	} else {
+		for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
+			mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t)i));
+			PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", 
+                        table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
+		}
+	}
+    // add default dimension
+    if (mapping_.empty()) {
+        mapping_.insert(std::make_pair("idx0", 0));
+        PDLOG(INFO, "no index specified with default");
+    }
+    return 0;
+}
+
+int Table::Init() {
+    key_entry_max_height_ = FLAGS_key_entry_max_height;
+    ttl_offset_ = FLAGS_gc_safe_offset * 60 * 1000;
+    if (table_meta_.seg_cnt() > 0) {
+        seg_cnt_ = table_meta_.seg_cnt();
+    }
+    if (table_meta_.has_mode() && table_meta_.mode() == ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = true;
+    }
+    if (InitColumnDesc() < 0) {
+        return -1;
+    }
+    if (table_meta_.has_ttl()) ttl_ = table_meta_.ttl() * 60 * 1000;
+    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
+    if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
+    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
+    if (table_meta_.has_key_entry_max_height() && table_meta_.key_entry_max_height() <= FLAGS_skiplist_max_height
+            && table_meta_.key_entry_max_height() > 0) {
+        key_entry_max_height_ = table_meta_.key_entry_max_height();
+    } else {
+        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+            key_entry_max_height_ = FLAGS_latest_default_skiplist_height;
+        } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+            key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
+        }
+    }
+    idx_cnt_ = mapping_.size();
+
     segments_ = new Segment**[idx_cnt_];
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            segments_[i][j] = new Segment(key_entry_max_height_);
-            PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
+            if (column_key_map_.find(i) != column_key_map_.end()) {
+                segments_[i][j] = new Segment(key_entry_max_height_, column_key_map_[i]);
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
+                            i, j, key_entry_max_height_, column_key_map_[i].size());
+            } else {
+                segments_[i][j] = new Segment(key_entry_max_height_);
+                PDLOG(INFO, "init %u, %u segment. height %u", 
+                            i, j, key_entry_max_height_);
+            }
         }
     }
     if (ttl_ > 0) {
         enable_gc_ = true;
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
-            id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+                id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+    return 0;
 }
 
 void Table::SetCompressType(::rtidb::api::CompressType compress_type) {
@@ -143,6 +277,51 @@ bool Table::Put(uint64_t time,
     return true;
 }
 
+bool Table::Put(const Dimensions& dimensions,
+                const TSDimensions& ts_dimemsions,
+                const std::string& value) {
+    if (dimensions.size() == 0 || ts_dimemsions.size() == 0) {
+        PDLOG(WARNING, "empty dimesion. tid %u pid %u", id_, pid_);
+        return false;
+    }
+    uint32_t real_ref_cnt = 0;
+    for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
+        auto pos = column_key_map_.find(iter->idx());
+        if (pos == column_key_map_.end()) {
+            PDLOG(WARNING, "can not found dimesion idx %u. tid %u pid %u", 
+                            iter->idx(), id_, pid_);
+            return false;
+        }
+        bool has_ts = false;
+        for (auto ts_idx : pos->second) {
+            for (auto it = ts_dimemsions.begin(); it != ts_dimemsions.end(); it++) {
+                if (it->idx() == ts_idx) {
+                    real_ref_cnt++;
+                    has_ts = true;
+                    break;
+                }
+            }
+        }
+        if (!has_ts) {
+            PDLOG(WARNING, "can not found ts in dimesion idx %u. tid %u pid %u", 
+                            iter->idx(), id_, pid_);
+            return false;
+        }
+    }
+    DataBlock* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
+    for (auto it = dimensions.begin(); it != dimensions.end(); it++) {
+        Slice spk(it->key());
+        uint32_t seg_idx = 0;
+        if (seg_cnt_ > 1) {
+            seg_idx = ::rtidb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+        }
+        Segment* segment = segments_[it->idx()][seg_idx];
+        segment->Put(spk, ts_dimemsions, block);
+    }
+    record_cnt_.fetch_add(1, std::memory_order_relaxed);
+    record_byte_size_.fetch_add(GetRecordSize(value.length()));
+    return true;
+}
 
 bool Table::Put(const Slice& pk,
                 uint64_t time, 
@@ -191,10 +370,6 @@ uint64_t Table::Release() {
     }
     segment_released_ = true;
     return total_cnt;
-}
-
-void Table::SetGcSafeOffset(uint64_t offset) {
-    ttl_offset_ = offset;
 }
 
 uint64_t Table::SchedGc() {

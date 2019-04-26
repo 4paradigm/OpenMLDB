@@ -883,6 +883,7 @@ TEST_F(TabletImplTest, Put) {
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
     table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -916,6 +917,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -995,6 +997,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
     table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1045,6 +1048,7 @@ TEST_F(TabletImplTest, Traverse) {
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
     table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1093,6 +1097,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
     table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1160,6 +1165,7 @@ TEST_F(TabletImplTest, Scan) {
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
     table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1245,6 +1251,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         table_meta->set_pid(1);
         table_meta->set_ttl(3);
         table_meta->set_ttl_type(::rtidb::api::kLatestTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -1390,6 +1397,7 @@ TEST_F(TabletImplTest, GC) {
     table_meta->set_pid(1);
     table_meta->set_ttl(1);
     table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1731,7 +1739,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     }
     FLAGS_make_snapshot_threshold_offset = old_offset;
     FLAGS_binlog_delete_interval = old_interval;
-}    
+}
 
 TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
      int32_t old_gc_interval = FLAGS_gc_interval;
@@ -1751,6 +1759,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         // 3 minutes
         table_meta->set_ttl(3);
         table_meta->set_ttl_type(::rtidb::api::kAbsoluteTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
@@ -1919,6 +1928,7 @@ TEST_F(TabletImplTest, TestGetType) {
     table_meta->set_ttl(4);
     table_meta->set_wal(true);
     table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+    table_meta->set_mode(::rtidb::api::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -2070,7 +2080,7 @@ TEST_F(TabletImplTest, Snapshot) {
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
-    table_meta->set_wal(true);
+    table_meta->set_mode(::rtidb::api::kTableLeader);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -2419,7 +2429,6 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         FLAGS_make_snapshot_threshold_offset = offset;
     }
 }
-
 
 }
 }
