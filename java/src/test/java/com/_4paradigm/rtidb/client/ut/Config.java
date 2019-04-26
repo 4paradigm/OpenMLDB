@@ -1,4 +1,4 @@
-package com._4paradigm.rtidb.client.ut.ha;
+package com._4paradigm.rtidb.client.ut;
 
 public class Config {
     public static final String ZK_ENDPOINTS = "127.0.0.1:6181";

@@ -8,7 +8,6 @@ import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.client.ut.ha.Config;
 import io.brpc.client.EndPoint;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;

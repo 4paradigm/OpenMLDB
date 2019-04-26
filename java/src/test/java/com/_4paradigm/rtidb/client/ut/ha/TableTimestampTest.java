@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ut.Config;
 import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
