@@ -25,8 +25,10 @@ public class TableHandler {
             ncd.setAddTsIndex(cd.getAddTsIdx());
             ncd.setType(ColumnType.valueFrom(cd.getType()));
             schema.add(ncd);
-            indexes.put(cd.getName(), index);
-            index ++;
+            if (cd.getAddTsIdx()) {
+                indexes.put(cd.getName(), index);
+                index++;
+            }
         }
         
     }

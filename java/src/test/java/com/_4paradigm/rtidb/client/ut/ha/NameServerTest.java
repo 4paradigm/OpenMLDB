@@ -4,9 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.ut.Config;
+import com._4paradigm.rtidb.ns.NS;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
@@ -17,15 +19,16 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
 
 /**
  * 需要外部启动ns 环境
- * @author wangtaize
  *
+ * @author wangtaize
  */
 public class NameServerTest {
 
-    private static String zkEndpoints = "127.0.0.1:6181";
-    private static String zkRootPath = "/onebox";
-    private static String leaderPath  = zkRootPath + "/leader";
-    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
+    private static String zkEndpoints = Config.ZK_ENDPOINTS;
+    private static String zkRootPath = Config.ZK_ROOT_PATH;
+    private static String leaderPath = zkRootPath + "/leader";
+    private static String[] nodes = Config.NODES;
+
     static {
         String envZkEndpoints = System.getenv("zkEndpoints");
         if (envZkEndpoints != null) {
@@ -36,7 +39,7 @@ public class NameServerTest {
             leaderPath = envleaderPath;
         }
     }
-    
+
     @Test
     public void testInvalidZkInit() {
         try {
@@ -44,11 +47,11 @@ public class NameServerTest {
             nsc.init();
             Assert.assertTrue(false);
             nsc.close();
-        } catch(Exception e) {
+        } catch (Exception e) {
             Assert.assertTrue(true);
         }
     }
-    
+
     @Test
     public void testInvalidEndpointInit() {
         try {
@@ -56,11 +59,11 @@ public class NameServerTest {
             nsc.init();
             Assert.assertTrue(false);
             nsc.close();
-        } catch(Exception e) {
+        } catch (Exception e) {
             Assert.assertTrue(true);
         }
     }
-    
+
     @Test
     public void testNsInit() {
         try {
@@ -68,7 +71,7 @@ public class NameServerTest {
             nsc.init();
             Assert.assertTrue(true);
             nsc.close();
-        } catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         }
@@ -89,14 +92,14 @@ public class NameServerTest {
             Assert.assertTrue(nsc.createTable(tableInfo));
             List<TableInfo> tables = nsc.showTable("t1");
             Assert.assertTrue(tables.size() == 1);
-            Assert.assertTrue( nsc.dropTable("t1"));
+            Assert.assertTrue(nsc.dropTable("t1"));
             nsc.close();
-        } catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         }
     }
-    
+
     @Test
     public void testAllFlow() {
         PartitionMeta pm = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
@@ -108,7 +111,7 @@ public class NameServerTest {
             Assert.assertTrue(true);
             Assert.assertTrue(nsc.createTable(tableInfo));
             List<TableInfo> tables = nsc.showTable("t1");
-            Map<String,String> nscMap = nsc.showNs();
+            Map<String, String> nscMap = nsc.showNs();
             Assert.assertTrue(nscMap.size() == 3);
             TableInfo e = tables.get(0);
             Assert.assertTrue(e.getTablePartitionList().size() == 1);
@@ -116,11 +119,11 @@ public class NameServerTest {
             Assert.assertTrue(e.getTablePartition(0).getRecordCnt() == 0);
             Assert.assertTrue(tables.size() == 1);
             Assert.assertTrue(tables.get(0).getName().equals("t1"));
-            Assert.assertTrue( nsc.dropTable("t1"));
+            Assert.assertTrue(nsc.dropTable("t1"));
             tables = nsc.showTable("t1");
             Assert.assertTrue(tables.size() == 0);
             nsc.close();
-        } catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         }
@@ -131,7 +134,7 @@ public class NameServerTest {
         NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
         try {
             nsc.init();
-            int max_ttl = 60*24*365*30;
+            int max_ttl = 60 * 24 * 365 * 30;
             TableInfo tableInfo1 = TableInfo.newBuilder().setName("t1").setSegCnt(8).setTtl(max_ttl + 1).build();
             Assert.assertFalse(nsc.createTable(tableInfo1));
             TableInfo tableInfo2 = TableInfo.newBuilder().setName("t2").setSegCnt(8).setTtl(max_ttl).build();
@@ -142,11 +145,45 @@ public class NameServerTest {
             TableInfo tableInfo4 = TableInfo.newBuilder().setName("t4").setSegCnt(8).setTtlType("kLatestTime").setTtl(1000).build();
             Assert.assertTrue(nsc.createTable(tableInfo4));
             Assert.assertTrue(nsc.dropTable("t4"));
-        } catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         } finally {
             nsc.close();
         }
+    }
+
+    @Test
+    public void testTableHandler() {
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
+                .setName("test")  // 设置表名
+                .setTtl(144000);      // 设置ttl
+        NS.ColumnDesc col0 = NS.ColumnDesc.newBuilder().setName("col_0").setAddTsIdx(true).setType("string").build();
+        NS.ColumnDesc col1 = NS.ColumnDesc.newBuilder().setName("col_1").setAddTsIdx(true).setType("int64").build();
+        NS.ColumnDesc col2 = NS.ColumnDesc.newBuilder().setName("col_2").setAddTsIdx(false).setType("double").build();
+        NS.ColumnDesc col3 = NS.ColumnDesc.newBuilder().setName("col_3").setAddTsIdx(false).setType("float").build();
+        builder.addColumnDesc(col0).addColumnDesc(col1).addColumnDesc(col2).addColumnDesc(col3);
+        NS.TableInfo tableInfo = builder.build();
+        TableHandler tableHandler = new TableHandler(tableInfo);
+        List<ColumnDesc> schema = tableHandler.getSchema();
+
+        Assert.assertTrue(schema.size() == 4, "schema size mistook");
+        Assert.assertTrue((schema.get(0).getName().equals("col_0"))
+                && (schema.get(0).isAddTsIndex() == true)
+                && (schema.get(0).getType().toString().equals("kString")), "col_0 mistook");
+        Assert.assertTrue(schema.get(1).getName().equals("col_1")
+                && schema.get(1).isAddTsIndex() == true
+                && schema.get(1).getType().toString().equals("kInt64"), "col_1 mistook");
+        Assert.assertTrue(schema.get(2).getName().equals("col_2")
+                && schema.get(2).isAddTsIndex() == false
+                && schema.get(2).getType().toString().equals("kDouble"), "col_2 mistook");
+        Assert.assertTrue(schema.get(3).getName().equals("col_3")
+                && schema.get(3).isAddTsIndex() == false
+                && schema.get(3).getType().toString().equals("kFloat"), "col_3 mistook");
+
+        Map<String, Integer> indexes = tableHandler.getIndexes();
+        Assert.assertTrue(indexes.size() == 2, "indexes size mistook");
+        Assert.assertTrue(indexes.get("col_0") == 0, "col_0 index mistook");
+        Assert.assertTrue(indexes.get("col_1") == 1, "col_1 index mistook");
     }
 }
