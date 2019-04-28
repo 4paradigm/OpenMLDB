@@ -27,7 +27,7 @@ add_library(rtidb_py SHARED client/tablet_client.cc client/tablet_client_wrapper
 target_link_libraries(rtidb_py pthread common brpc gflags rt ssl crypto dl leveldb protobuf z snappy)
 
 add_executable(strings_test base/strings_test.cc)
-target_link_libraries(strings_test gtest pthread numa)
+target_link_libraries(strings_test gtest pthread)
 
 add_executable(slice_test base/slice_test.cc)
 target_link_libraries(slice_test gtest pthread)
