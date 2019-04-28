@@ -1262,7 +1262,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset <= snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
+    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
         PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", tid, pid, cur_offset, snapshot_offset);
     }else {
 		uint64_t offset = 0;

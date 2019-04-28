@@ -27,6 +27,7 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(zk_keep_alive_check_interval);
+DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 
@@ -66,6 +67,8 @@ public:
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_zk_cluster="127.0.0.1:6181";
+    int32_t old_offset = FLAGS_make_snapshot_threshold_offset;
+    FLAGS_make_snapshot_threshold_offset = 0;
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -172,13 +175,14 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_FALSE(ok);
     delete nameserver;
     delete tablet;
+    FLAGS_make_snapshot_threshold_offset = old_offset;
 }
 
 TEST_F(NameServerImplTest, ConfigGetAndSet) {
     FLAGS_zk_cluster="127.0.0.1:6181";
     FLAGS_zk_root_path="/rtidb3" + GenRand();
 
-    std::string endpoint = "27.0.0.1:9631";
+    std::string endpoint = "127.0.0.1:9631";
     FLAGS_endpoint = endpoint;
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init();
@@ -297,7 +301,7 @@ TEST_F(NameServerImplTest, CreateTable) {
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(-1, response.code());
+    ASSERT_EQ(307, response.code());
 
     TablePartition* partion2 = table_info->add_table_partition();
     partion2->set_pid(0);
@@ -396,7 +400,7 @@ TEST_F(NameServerImplTest, Offline) {
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(-1, response.code());
+    ASSERT_EQ(307, response.code());
 
     TablePartition* partion2 = table_info->add_table_partition();
     partion2->set_pid(0);
@@ -471,6 +475,15 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     ASSERT_TRUE(ok);
 
     sleep(2);
+    std::string msg;
+    ConfSetRequest conf_request;
+    GeneralResponse conf_response;
+    ::rtidb::nameserver::Pair* conf = conf_request.mutable_conf();
+    conf->set_key("auto_failover");
+    conf->set_value("false");
+    ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::ConfSet,
+            &conf_request, &conf_response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
     
     CreateTableRequest request;
     GeneralResponse response;
@@ -490,7 +503,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
     ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::CreateTable,
             &request, &response, FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(-1, response.code());
+    ASSERT_EQ(307, response.code());
 
     TablePartition* partion2 = table_info->add_table_partition();
     partion2->set_pid(0);
@@ -538,16 +551,40 @@ TEST_F(NameServerImplTest, SetTablePartition) {
 }
 
 TEST_F(NameServerImplTest, CancelOP) {
+    FLAGS_zk_cluster="127.0.0.1:6181";
+    FLAGS_zk_root_path="/rtidb3" + GenRand();
+
+    FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
-    Start(nameserver);
+    bool ok = nameserver->Init();
+    ASSERT_TRUE(ok);
+    sleep(4);
+    brpc::ServerOptions options;
+    brpc::Server server;
+    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+
+    ConfSetRequest conf_request;
+    GeneralResponse conf_response;
+    MockClosure closure;
+    ::rtidb::nameserver::Pair* conf = conf_request.mutable_conf();
+    conf->set_key("auto_failover");
+    conf->set_value("false");
+    nameserver->ConfSet(NULL, &conf_request, &conf_response, &closure);
+    ASSERT_EQ(0, conf_response.code());
 
     CancelOPRequest request;
     GeneralResponse response;
-    MockClosure closure;
     request.set_op_id(11);
     nameserver->CancelOP(NULL, &request, &response,
                 &closure);
-    ASSERT_EQ(-1, response.code());
+    ASSERT_EQ(312, response.code());
 
     std::vector<std::list<std::shared_ptr<OPData>>>& task_vec = GetTaskVec(nameserver);
     task_vec.resize(FLAGS_name_server_task_max_concurrency);
@@ -570,7 +607,7 @@ TEST_F(NameServerImplTest, CancelOP) {
     ASSERT_EQ(0, response.code());
     ASSERT_TRUE(op_data->op_info_.task_status() == ::rtidb::api::kCanceled);
     delete nameserver;
-}    
+}  
 
 }
 }
@@ -584,6 +621,3 @@ int main(int argc, char** argv) {
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     return RUN_ALL_TESTS();
 }
-
-
-
