@@ -186,7 +186,10 @@ int Table::Init() {
     if (InitColumnDesc() < 0) {
         return -1;
     }
-    if (table_meta_.has_ttl()) ttl_ = table_meta_.ttl() * 60 * 1000;
+    if (table_meta_.has_ttl()) {
+        ttl_ = table_meta_.ttl() * 60 * 1000;
+        new_ttl_.store(ttl_.load());
+    }    
     if (table_meta_.has_schema()) schema_ = table_meta_.schema();
     if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
