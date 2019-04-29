@@ -59,7 +59,6 @@ TEST_F(TabletImplMemTest, TestMem) {
         table_meta->set_pid(1);
         // 1 minutes
         table_meta->set_ttl(0);
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
         ::rtidb::api::CreateTableResponse response;
         MockClosure closure;
         tablet->CreateTable(NULL, &request, &response,

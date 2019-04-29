@@ -41,7 +41,7 @@ Table::Table(const std::string& name,
     pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
     enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
     table_status_(kUndefined), schema_(),
     mapping_(mapping), segment_released_(false), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress)
@@ -53,7 +53,7 @@ Table::Table(const ::rtidb::api::TableMeta& table_meta) : name_(table_meta.name(
     pid_(table_meta.pid()), seg_cnt_(8), 
     segments_(NULL), 
     enable_gc_(false),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
     segment_released_(false), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress) {
     table_meta_.CopyFrom(table_meta);
@@ -180,8 +180,8 @@ int Table::Init() {
     if (table_meta_.seg_cnt() > 0) {
         seg_cnt_ = table_meta_.seg_cnt();
     }
-    if (table_meta_.has_mode() && table_meta_.mode() == ::rtidb::api::TableMode::kTableLeader) {
-        is_leader_ = true;
+    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = false;
     }
     if (InitColumnDesc() < 0) {
         return -1;

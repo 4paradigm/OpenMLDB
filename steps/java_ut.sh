@@ -10,10 +10,10 @@ clear_debug() {
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
 ulimit -c unlimited
 sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
-mkdir -p java/src/main/proto/rtidb/api
-mkdir -p java/src/main/proto/rtidb/nameserver
-cp -rf src/proto/tablet.proto java/src/main/proto/rtidb/api/
-cp -rf src/proto/name_server.proto java/src/main/proto/rtidb/nameserver/
+mkdir -p java/src/main/proto/
+cp -rf src/proto/tablet.proto java/src/main/proto/
+cp -rf src/proto/name_server.proto java/src/main/proto/
+cp -rf src/proto/common.proto java/src/main/proto/
 
 clear_debug
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.10/conf
