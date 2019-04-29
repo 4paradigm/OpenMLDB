@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ut.Config;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.testng.Assert;
@@ -14,7 +15,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.Assert;
 
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
@@ -28,23 +28,22 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
 
 public class TableSchemaTest {
     private final static Logger logger = LoggerFactory.getLogger(TableSchemaTest.class);
-    private static String zkEndpoints = "127.0.0.1:6181";
-    private static String leaderPath  = "/onebox/leader";
+    private static String zkEndpoints = Config.ZK_ENDPOINTS;
+    private static String zkRootPath = Config.ZK_ROOT_PATH;
+    private static String leaderPath  = zkRootPath + "/leader";
     private static AtomicInteger id = new AtomicInteger(50000);
     private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
-    private static String[] nodes = new String[] {"127.0.0.1:9522", "127.0.0.1:9521", "127.0.0.1:9520"};
-    
+    private static String[] nodes = Config.NODES;
+
     @BeforeClass
     public static void setUp() {
         try {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
-            config.setZkNodeRootPath("/onebox/nodes");
-            config.setZkTableRootPath("/onebox/table/table_data");
-            config.setZkTableNotifyPath("/onebox/table/notify");
+            config.setZkRootPath(zkRootPath);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

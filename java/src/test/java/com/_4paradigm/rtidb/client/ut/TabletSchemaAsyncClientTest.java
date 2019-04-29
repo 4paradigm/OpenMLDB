@@ -30,7 +30,7 @@ public class TabletSchemaAsyncClientTest {
     private final static AtomicInteger id = new AtomicInteger(4000);
     private static TabletAsyncClient aclient = null;
     private static TabletSyncClient sclient = null;
-    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     @BeforeClass
