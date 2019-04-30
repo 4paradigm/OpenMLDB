@@ -3712,15 +3712,12 @@ void StartClient() {
         } else {
             char *line = ::rtidb::base::linenoise(display_prefix.c_str());
             if (line[0] != '\0' && line[0] != '/') {
-               std::string temp = line;
-               boost::trim(temp);
-               if (!temp.empty()) {
-                   ::rtidb::base::linenoiseHistoryAdd(line);
-               }
-            } else if (line[0] == '/') {
-                printf("Unreconized command: %s\n", line);
+                buffer.assign(line);
+                boost::trim(buffer);
+                if (!buffer.empty()) {
+                    ::rtidb::base::linenoiseHistoryAdd(line);
+                }
             }
-            buffer.assign(line);
             free(line);
             if (buffer.empty()) {
                 continue;
@@ -3854,15 +3851,12 @@ void StartNsClient() {
         } else {
 	        char *line = ::rtidb::base::linenoise(display_prefix.c_str());
             if (line[0] != '\0' && line[0] != '/') { 
-               std::string temp = line;
-               boost::trim(temp);
-               if (!temp.empty()) {
-                   ::rtidb::base::linenoiseHistoryAdd(line);
-               }
-            } else if (line[0] == '/') {
-                printf("Unreconized command: %s\n", line);
+                buffer.assign(line);
+                boost::trim(buffer);
+                if (!buffer.empty()) {
+                    ::rtidb::base::linenoiseHistoryAdd(line);
+                }
             }
-            buffer.assign(line);
             free(line);
             if (buffer.empty()) {
                 continue;
