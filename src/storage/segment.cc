@@ -35,7 +35,6 @@ Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_siz
         key_entry_max_height_(height), ts_cnt_(1), gc_version_(0) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     multi_entries_ = NULL;
-    key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 

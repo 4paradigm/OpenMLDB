@@ -43,7 +43,8 @@ Table::Table(const std::string& name,
     enable_gc_(false), ttl_(ttl * 60 * 1000),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
     table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    mapping_(mapping), segment_released_(false), record_byte_size_(0), 
+    ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress)
 {
     new_ttl_.store(ttl_.load());
@@ -54,7 +55,8 @@ Table::Table(const ::rtidb::api::TableMeta& table_meta) : name_(table_meta.name(
     segments_(NULL), 
     enable_gc_(false),
     ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
-    segment_released_(false), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    segment_released_(false), record_byte_size_(0), 
+    ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
     compress_type_(::rtidb::api::CompressType::kNoCompress) {
     table_meta_.CopyFrom(table_meta);
 }
