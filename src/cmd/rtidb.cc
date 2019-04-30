@@ -3718,7 +3718,7 @@ void StartClient() {
                     ::rtidb::base::linenoiseHistoryAdd(line);
                 }
             }
-            free(line);
+            ::rtidb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
@@ -3727,7 +3727,7 @@ void StartClient() {
         ::rtidb::base::SplitString(buffer, " ", &parts);
         if (parts.empty()) {
             continue;
-        }else if (parts[0] == "put") {
+        } else if (parts[0] == "put") {
             HandleClientPut(parts, &client);
         } else if (parts[0] == "sput") {
             HandleClientSPut(parts, &client);
@@ -3737,7 +3737,7 @@ void StartClient() {
             HandleClientGet(parts, &client);
         } else if (parts[0] == "sget") {
             HandleClientSGet(parts, &client);
-        }else if (parts[0] == "screate") {
+        } else if (parts[0] == "screate") {
             HandleClientSCreateTable(parts, &client);
         } else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
@@ -3857,7 +3857,7 @@ void StartNsClient() {
                     ::rtidb::base::linenoiseHistoryAdd(line);
                 }
             }
-            free(line);
+            ::rtidb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
