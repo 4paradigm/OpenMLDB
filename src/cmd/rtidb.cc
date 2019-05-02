@@ -29,6 +29,7 @@
 #include "base/flat_array.h"
 #include "base/file_util.h"
 #include "base/hash.h"
+#include "base/linenoise.h"
 #include "timer.h"
 #include "version.h"
 #include "proto/tablet.pb.h"
@@ -3703,20 +3704,30 @@ void StartClient() {
     }
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
     client.Init();
+    std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
-        std::cout << ">";
         std::string buffer;
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
-            std::getline(std::cin, buffer);
+            char *line = ::rtidb::base::linenoise(display_prefix.c_str());
+            if (line[0] != '\0' && line[0] != '/') {
+                buffer.assign(line);
+                boost::trim(buffer);
+                if (!buffer.empty()) {
+                    ::rtidb::base::linenoiseHistoryAdd(line);
+                }
+            }
+            ::rtidb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
         }
         std::vector<std::string> parts;
         ::rtidb::base::SplitString(buffer, " ", &parts);
-        if (parts[0] == "put") {
+        if (parts.empty()) {
+            continue;
+        } else if (parts[0] == "put") {
             HandleClientPut(parts, &client);
         } else if (parts[0] == "sput") {
             HandleClientSPut(parts, &client);
@@ -3726,7 +3737,7 @@ void StartClient() {
             HandleClientGet(parts, &client);
         } else if (parts[0] == "sget") {
             HandleClientSGet(parts, &client);
-        }else if (parts[0] == "screate") {
+        } else if (parts[0] == "screate") {
             HandleClientSCreateTable(parts, &client);
         } else if (parts[0] == "scan") {
             HandleClientScan(parts, &client);
@@ -3832,20 +3843,30 @@ void StartNsClient() {
         std::cout << "client init failed" << std::endl;
         return;
     }
+    std::string display_prefix = endpoint + "> ";
     while (true) {
-        std::cout << ">";
         std::string buffer;
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
-            std::getline(std::cin, buffer);
+	        char *line = ::rtidb::base::linenoise(display_prefix.c_str());
+            if (line[0] != '\0' && line[0] != '/') { 
+                buffer.assign(line);
+                boost::trim(buffer);
+                if (!buffer.empty()) {
+                    ::rtidb::base::linenoiseHistoryAdd(line);
+                }
+            }
+            ::rtidb::base::linenoiseFree(line);
             if (buffer.empty()) {
                 continue;
             }
         }
         std::vector<std::string> parts;
         ::rtidb::base::SplitString(buffer, " ", &parts);
-        if (parts[0] == "showtablet") {
+        if (parts.empty()) {
+            continue;
+        } else if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
         } else if (parts[0] == "showns") {
             HandleNSShowNameServer(parts, &client, zk_client);
