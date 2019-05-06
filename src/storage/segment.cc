@@ -188,7 +188,7 @@ bool Segment::Get(const Slice& key,
     return true;
 }
 
-bool Segment::Get(const Slice& key, const uint8_t idx, const uint64_t time, DataBlock** block) {
+bool Segment::Get(const Slice& key, uint32_t idx, const uint64_t time, DataBlock** block) {
     if (block == NULL) {
         return false;
     }
@@ -377,7 +377,7 @@ int Segment::GetCount(const Slice& key, uint64_t& count) {
     return 0;
 }
 
-int Segment::GetCount(const Slice& key, const uint8_t idx, uint64_t& count) {
+int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
     if (idx >= ts_cnt_) {
         return -1;
     } else if (ts_cnt_ == 1) {
@@ -408,7 +408,7 @@ Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     return new Iterator(entry->entries.NewIterator());
 }
 
-Iterator* Segment::NewIterator(const Slice& key, const uint8_t idx, Ticket& ticket) {
+Iterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
     if (idx >= ts_cnt_) {
         return new Iterator(NULL);
     } else if (ts_cnt_ == 1) {

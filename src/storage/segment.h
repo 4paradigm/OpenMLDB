@@ -150,7 +150,7 @@ public:
     // Get time data
     bool Get(const Slice& key, uint64_t time, DataBlock** block);
 
-    bool Get(const Slice& key, const uint8_t idx, uint64_t time, DataBlock** block);
+    bool Get(const Slice& key, uint32_t idx, uint64_t time, DataBlock** block);
 
     bool Delete(const Slice& key);
 
@@ -159,7 +159,7 @@ public:
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     Iterator* NewIterator(const Slice& key, Ticket& ticket);
-    Iterator* NewIterator(const Slice& key, const uint8_t idx, Ticket& ticket);
+    Iterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket);
 
     inline uint64_t GetIdxCnt() {
         return idx_cnt_.load(std::memory_order_relaxed);
@@ -180,7 +180,7 @@ public:
     }
 
     int GetCount(const Slice& key, uint64_t& count);
-    int GetCount(const Slice& key, const uint8_t idx, uint64_t& count);
+    int GetCount(const Slice& key, uint32_t idx, uint64_t& count);
 
     void IncrGcVersion() {
         gc_version_.fetch_add(1, std::memory_order_relaxed);

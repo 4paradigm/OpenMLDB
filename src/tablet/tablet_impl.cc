@@ -643,8 +643,21 @@ void TabletImpl::Count(RpcController* controller,
             index = iit->second;
         }
         uint64_t count = 0;
-        if (table->GetCount(index, request->key(), count) < 0) {
-            count = 0;
+        if (request->has_ts_name()) {
+            auto iter = table->GetTSMapping().find(request->ts_name());
+            if (iter == table->GetTSMapping().end()) {
+                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                      request->tid(), request->pid());
+                response->set_code(137);
+                response->set_msg("ts name not found");
+            }
+            if (table->GetCount(index, iter->second, request->key(), count) < 0) {
+                count = 0;
+            }
+        } else {
+            if (table->GetCount(index, request->key(), count) < 0) {
+                count = 0;
+            }
         }
         response->set_code(0);
         response->set_msg("ok");
@@ -662,8 +675,18 @@ void TabletImpl::Count(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewIterator(iit->second,
-                                request->key(), ticket);
+        if (request->has_ts_name()) {
+            auto iter = table->GetTSMapping().find(request->ts_name());
+            if (iter == table->GetTSMapping().end()) {
+                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                      request->tid(), request->pid());
+                response->set_code(137);
+                response->set_msg("ts name not found");
+            }
+            it = table->NewIterator(iit->second, iter->second, request->key(), ticket);
+        } else {    
+            it = table->NewIterator(iit->second, request->key(), ticket);
+        }
     } else {
         it = table->NewIterator(request->key(), ticket);
     }

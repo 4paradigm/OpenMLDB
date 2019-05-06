@@ -108,6 +108,8 @@ public:
 
     Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
 
+    Iterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
+
     TableIterator* NewTableIterator(uint32_t index);
     // release all memory allocated
     uint64_t Release();
@@ -119,6 +121,7 @@ public:
     }
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
+    int GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count);
 
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
@@ -199,6 +202,10 @@ public:
 
     inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
+    }
+
+    inline std::map<std::string, uint32_t>& GetTSMapping() {
+        return ts_mapping_;
     }
 
     inline void RecordCntIncr() {

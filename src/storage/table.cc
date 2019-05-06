@@ -144,7 +144,7 @@ int Table::InitColumnDesc() {
             }
         } else {
             if (ts_mapping_.size() > 1) {
-                PDLOG(WARNING, "must set column_key when ts column is two or more. tid %u pid %u",
+                PDLOG(WARNING, "column_key should be set when has two or more ts columns. tid %u pid %u",
                                 id_, pid_);
                 return -1;
             } else if (!ts_mapping_.empty()) {
@@ -481,6 +481,19 @@ int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     return segment->GetCount(spk, count);
 }
 
+int Table::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count) {
+    if (index >= idx_cnt_) {
+        return -1;
+    }
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(pk);
+    Segment* segment = segments_[index][seg_idx];
+    return segment->GetCount(spk, ts_idx, count);
+}
+
 Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
     return NewIterator(0, pk, ticket); 
 }
@@ -497,6 +510,20 @@ Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& tick
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
     return segment->NewIterator(spk, ticket);
+}
+
+Iterator* Table::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+    if (index >= idx_cnt_) {
+        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
+        return NULL;
+    }
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(pk);
+    Segment* segment = segments_[index][seg_idx];
+    return segment->NewIterator(spk, ts_idx, ticket);
 }
 
 uint64_t Table::GetRecordIdxByteSize() {

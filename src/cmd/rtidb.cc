@@ -1665,7 +1665,8 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     }
 
     std::set<std::string> name_set;
-    bool has_index = false;
+    std::set<std::string> index_set;
+    std::set<std::string> ts_col_set;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
         std::string cur_type = table_info.column_desc(idx).type();
         std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
@@ -1679,20 +1680,77 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             return -1;
         }
         if (table_info.column_desc(idx).add_ts_idx()) {
-            has_index = true;
+            index_set.insert(table_info.column_desc(idx).name());
+        }
+        if (table_info.column_desc(idx).is_ts_col()) {
+            if (table_info.column_desc(idx).add_ts_idx()) {
+                printf("index column cannot be ts column\n");
+                return -1;
+            }
+            if (cur_type != "timestamp" && cur_type != "int64" && cur_type != "uint64") {
+                printf("ts column type should be int64, uint64 or timestamp\n");
+                return -1;
+            }
+            if (table_info.column_desc(idx).has_ttl()) {
+                if (ns_table_info.ttl_type() == "kAbsoluteTime") {
+                    if (table_info.column_desc(idx).ttl() > FLAGS_absolute_ttl_max) {
+                        printf("the max ttl is %u\n", FLAGS_absolute_ttl_max);
+                        return -1;
+                    }
+                } else {
+                    if (table_info.column_desc(idx).ttl() > FLAGS_latest_ttl_max) {
+                        printf("the max ttl is %u\n", FLAGS_latest_ttl_max);
+                        return -1;
+                    }
+                }
+            }
+            ts_col_set.insert(table_info.column_desc(idx).name());
         }
         name_set.insert(table_info.column_desc(idx).name());
-        ::rtidb::nameserver::ColumnDesc* column_desc = ns_table_info.add_column_desc();
-        column_desc->set_name(table_info.column_desc(idx).name());
-        column_desc->set_type(cur_type);
-        column_desc->set_add_ts_idx(table_info.column_desc(idx).add_ts_idx());
+        ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
+        column_desc->CopyFrom(table_info.column_desc(idx));
     }
-    if (!has_index && table_info.column_desc_size() > 0) {
+    if (ts_col_set.size() > 1 && table_info.column_key_size() == 0) {
+        printf("column_key should be set when has two or more ts columns\n");
+        return -1;
+    }
+    if (table_info.column_key_size() > 0) {
+        index_set.clear();
+        for (int idx = 0; idx < table_info.column_key_size(); idx++) {
+            std::string cur_key;
+            if (table_info.column_key(idx).key_name_size() == 0) {
+                printf("not set key_name in column_key\n");
+                return -1;
+            } else if (table_info.column_key(idx).key_name_size() == 1) {
+                cur_key = table_info.column_key(idx).key_name(0);
+            } else {
+                for (const auto& name : table_info.column_key(idx).key_name()) {
+                    if (cur_key.empty()) {
+                        cur_key = name;
+                    } else {
+                        cur_key += "|" + name;
+                    }
+                }
+            }
+            if (ts_col_set.find(table_info.column_key(idx).ts_name()) == ts_col_set.end()) {
+                printf("invalid ts_name %s\n", table_info.column_key(idx).ts_name().c_str());
+                return -1;
+            }
+            cur_key += "\t" + table_info.column_key(idx).ts_name();
+            if (index_set.find(cur_key) != index_set.end()) {
+                printf("duplicate column_key\n");
+                return -1;
+            }
+            index_set.insert(cur_key);
+            ::rtidb::common::ColumnKey* column_key = ns_table_info.add_column_key();
+            column_key->CopyFrom(table_info.column_key(idx));
+        }
+    }
+    if (index_set.empty() && table_info.column_desc_size() > 0) {
         std::cout << "no index" << std::endl;
         return -1;
     }
     return 0;
-
 }
 
 void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
