@@ -501,7 +501,6 @@ void TabletImpl::Scan(RpcController* controller,
         return;
     }
 
-    metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
