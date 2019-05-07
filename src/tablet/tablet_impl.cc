@@ -531,7 +531,6 @@ void TabletImpl::Scan(RpcController* controller,
     } else {
         it->Seek(request->st());
     }
-    metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     // reduce the times of memcpy in vector
     tmp.reserve(FLAGS_scan_reserve_size);
@@ -593,7 +592,6 @@ void TabletImpl::Scan(RpcController* controller,
     }
     response->set_code(0);
     response->set_count(tmp.size());
-    metric->set_sptime(::baidu::common::timer::get_micros()); 
     done->Run();
 }
 
