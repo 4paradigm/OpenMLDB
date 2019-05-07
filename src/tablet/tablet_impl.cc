@@ -379,8 +379,6 @@ void TabletImpl::Put(RpcController* controller,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
     if (request->time() == 0) {
-        PDLOG(DEBUG, "ts must be greater than zero. tid %u, pid %u", request->tid(),
-                request->pid());
         response->set_code(114);
         response->set_msg("ts must be greater than zero");
         done->Run();
@@ -388,15 +386,12 @@ void TabletImpl::Put(RpcController* controller,
     }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(DEBUG, "table is not exist. tid %u, pid %u", request->tid(),
-                request->pid());
         response->set_code(100);
         response->set_msg("table is not exist");
         done->Run();
         return;
     }
     if (!table->IsLeader()) {
-        PDLOG(DEBUG, "table is follower. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(103);
         response->set_msg("table is follower");
         done->Run();
@@ -427,7 +422,6 @@ void TabletImpl::Put(RpcController* controller,
                    request->time(), 
                    request->value().c_str(),
                    request->value().size());
-        PDLOG(DEBUG, "put key %s ok ts %lld", request->pk().c_str(), request->time());
     }
     if (!ok) {
         response->set_code(116);
@@ -484,9 +478,6 @@ void TabletImpl::Scan(RpcController* controller,
         return;
     }
 
-    ::rtidb::api::RpcMetric* metric = response->mutable_metric();
-    metric->CopyFrom(request->metric());
-    metric->set_rqtime(::baidu::common::timer::get_micros());
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
@@ -551,24 +542,20 @@ void TabletImpl::Scan(RpcController* controller,
     if (request->has_enable_remove_duplicated_record()) {
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
-    PDLOG(DEBUG, "scan pk %s st %lld et %lld", request->pk().c_str(), request->st(), end_time);
     uint32_t scount = 0;
     uint64_t last_time = 0;
     end_time = std::max(end_time, table->GetExpireTime());
-    PDLOG(DEBUG, "end_time %lu expire_time %lu", end_time, table->GetExpireTime());
     uint32_t limit = 0;
     if (request->has_limit()) {
         limit = request->limit();
     }
     while (it->Valid()) {
         scount ++;
-        PDLOG(DEBUG, "scan key %lld", it->GetKey());
         if (it->GetKey() <= end_time) {
             break;
         }
         // skip duplicate record 
         if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
-            PDLOG(DEBUG, "filter duplicate record for key %s with ts %lld", request->pk().c_str(), it->GetKey());
             last_time = it->GetKey();
             it->Next();
             continue;
@@ -578,7 +565,6 @@ void TabletImpl::Scan(RpcController* controller,
         total_block_size += it->GetValue()->size;
         it->Next();
         if (limit > 0 && scount >= limit) {
-            PDLOG(DEBUG, "reach the limit %u", limit);
             break;
         }
         // check reach the max bytes size
@@ -586,11 +572,11 @@ void TabletImpl::Scan(RpcController* controller,
             response->set_code(118);
             response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
             done->Run();
+            delete it;
             return;
         }
     }
     delete it;
-    metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
     if (tmp.size() <= 0) {
@@ -598,17 +584,14 @@ void TabletImpl::Scan(RpcController* controller,
     }else {
         pairs->resize(total_size);
     }
-    PDLOG(DEBUG, "scan count %d", tmp.size());
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
     std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
     for (; lit != tmp.end(); ++lit) {
         std::pair<uint64_t, DataBlock*>& pair = *lit;
-        PDLOG(DEBUG, "encode key %lld value %s size %u", pair.first, pair.second->data, pair.second->size);
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
-
     response->set_code(0);
     response->set_count(tmp.size());
     metric->set_sptime(::baidu::common::timer::get_micros()); 
