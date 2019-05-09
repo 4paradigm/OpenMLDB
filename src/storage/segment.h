@@ -131,6 +131,7 @@ struct SliceComparator {
 typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry*, SliceComparator> KeyEntries;
 typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry**, SliceComparator> KeyMultiEntries;
 typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*, TimeComparator> KeyEntryNodeList;
+typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, KeyEntry**>*, TimeComparator> MultiKeyEntryNodeList;
 
 class Segment {
 
@@ -157,7 +158,11 @@ public:
     uint64_t Release();
     // gc with specify time, delete the data before time 
     void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_idx_cnt, 
+            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
+    void Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t& gc_idx_cnt, 
+            uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     Iterator* NewIterator(const Slice& key, Ticket& ticket);
     Iterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket);
 
@@ -204,6 +209,7 @@ private:
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;
     KeyEntryNodeList* entry_free_list_;
+    MultiKeyEntryNodeList* multi_entry_free_list_;
     uint32_t ts_cnt_;
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;

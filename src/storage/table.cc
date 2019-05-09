@@ -387,6 +387,25 @@ uint64_t Table::SchedGc() {
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
+        std::map<uint32_t, uint64_t> cur_ttl_map;
+        if (!column_key_map_.empty()) {
+            auto pos = column_key_map_.find(i);
+            if (pos == column_key_map_.end()) {
+                continue;
+            }
+            for (auto ts_idx : pos->second) {
+                auto in_pos = ttl_map_.find(ts_idx);
+                if (in_pos == ttl_map_.end()) {
+                    continue;
+                }
+                if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+                    cur_ttl_map.insert(std::make_pair(ts_idx, 
+                                cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - in_pos->second));
+                } else {
+                    cur_ttl_map.insert(std::make_pair(ts_idx, in_pos->second / 60 / 1000));
+                }
+            }
+        }
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
@@ -396,14 +415,22 @@ uint64_t Table::SchedGc() {
                 continue;
             }
             switch (ttl_type_) {
-            case ::rtidb::api::TTLType::kAbsoluteTime:
-                segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                break;
-            case ::rtidb::api::TTLType::kLatestTime:
-                segment->Gc4Head(ttl_.load(std::memory_order_relaxed) / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                break;
-            default:
-                PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
+                case ::rtidb::api::TTLType::kAbsoluteTime:
+                    if (cur_ttl_map.empty()) {
+                        segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    } else {
+                        segment->Gc4TTL(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    }
+                    break;
+                case ::rtidb::api::TTLType::kLatestTime:
+                    if (cur_ttl_map.empty()) {
+                        segment->Gc4Head(ttl_.load(std::memory_order_relaxed) / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    } else {
+                        segment->Gc4Head(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    }
+                    break;
+                default:
+                    PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
             }
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
             PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time, name_.c_str(), id_, pid_);
