@@ -373,7 +373,7 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
-    if (request->time() == 0) {
+    if (request->time() == 0 && request->ts_dimensions_size() == 0) {
         PDLOG(DEBUG, "ts must be greater than zero. tid %u, pid %u", request->tid(),
                 request->pid());
         response->set_code(114);
