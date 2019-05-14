@@ -251,7 +251,6 @@ bool Table::Put(const std::string& pk,
     segment->Put(spk, time, data, size);
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
     record_byte_size_.fetch_add(GetRecordSize(size));
-    PDLOG(DEBUG, "record key %s, value %s tid %u pid %u index %u", pk.c_str(), data, id_, pid_, index);
     return true;
 }
 
@@ -341,8 +340,6 @@ bool Table::Put(const Slice& pk,
     }
     Segment* segment = segments_[idx][seg_idx];
     segment->Put(pk, time, row);
-    PDLOG(DEBUG, "add row to index %u with pk %s value size %u for tid %u pid %u ok", idx,
-               pk.data(), row->size, id_, pid_);
     return true;
 }
 
@@ -355,8 +352,6 @@ bool Table::Delete(const std::string& pk, uint32_t idx) {
     if (seg_cnt_ > 1) {
         seg_idx = ::rtidb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
     }
-    PDLOG(DEBUG, "delete index %u with pk %s for tid %u pid %u", 
-                 idx, pk.c_str(), id_, pid_);
     Segment* segment = segments_[idx][seg_idx];
     return segment->Delete(spk);
 }
@@ -699,7 +694,6 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
             it_->SeekToFirst();
             record_idx_ = 1;
             if (!it_->Valid() || IsExpired()) {
-                PDLOG(DEBUG, "skip to next pk, cur pk %s idx %u", pk_it_->GetKey().ToString().c_str(), seg_idx_);
                 NextPK();
             }
         } else {
@@ -708,7 +702,6 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
                 record_idx_ = 1;
                 while(it_->Valid() && record_idx_ <= expire_value_) {
                     if (it_->GetKey() < ts) {
-                        PDLOG(DEBUG, "cur pk %s ts %lu idx %u record_idx_ %u", key.c_str(), it_->GetKey(), seg_idx_, record_idx_);
                         return;
                     }
                     it_->Next();
@@ -718,17 +711,14 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
             } else {
                 it_->Seek(ts);
                 if (it_->Valid() && it_->GetKey() == ts) {
-                    PDLOG(DEBUG, "pk %s ts %lu has found, skip to next", key.c_str(), it_->GetKey());
                     it_->Next();
                 }
                 if (!it_->Valid() || IsExpired()) {
-                    PDLOG(DEBUG, "skip to next pk, cur pk %s idx %u", key.c_str(), seg_idx_);
                     NextPK();
                 }
             }
         }
     } else {
-        PDLOG(DEBUG, "has not found pk %s. seg_idx[%u]", key.c_str(), seg_idx_);
         NextPK();
     }
 }

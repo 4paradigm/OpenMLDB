@@ -156,7 +156,6 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     std::lock_guard<std::mutex> lock(mu_);
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
-        PDLOG(DEBUG, "new pk entry %s", key.data());
         char* pk = new char[key.size()];
         memcpy(pk, key.data(), key.size());
         // need to delete memory when free node
@@ -169,7 +168,6 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     idx_cnt_.fetch_add(1, std::memory_order_relaxed);
     uint8_t height = entry->entries.Insert(time, row);
     entry->count_.fetch_add(1, std::memory_order_relaxed);
-    PDLOG(DEBUG, "add ts %lu with height %u", time, height);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
@@ -276,7 +274,6 @@ bool Segment::Delete(const Slice& key) {
             multi_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
     }
-    PDLOG(DEBUG, "delete key %s", key.ToString().c_str());
     return true;
 }
 
