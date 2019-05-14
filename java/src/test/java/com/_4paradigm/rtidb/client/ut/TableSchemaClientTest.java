@@ -28,7 +28,7 @@ public class TableSchemaClientTest {
     private final static AtomicInteger id = new AtomicInteger(5000);
     private static TableSyncClientImpl client = null;
     private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint("127.0.0.1:9501");
+    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
    

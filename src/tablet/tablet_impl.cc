@@ -453,14 +453,14 @@ void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
+
     if (request->time() == 0) {
-        PDLOG(DEBUG, "ts must be greater than zero. tid %u, pid %u", request->tid(),
-                request->pid());
         response->set_code(114);
         response->set_msg("ts must be greater than zero");
         done->Run();
         return;
     }
+
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<DiskTable> disk_table;
     if (!table) {
@@ -502,7 +502,6 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (!table->IsLeader()) {
-        PDLOG(DEBUG, "table is follower. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(103);
         response->set_msg("table is follower");
         done->Run();
@@ -587,9 +586,6 @@ void TabletImpl::Scan(RpcController* controller,
         response->set_msg("starttime less than endtime");
         return;
     }
-    ::rtidb::api::RpcMetric* metric = response->mutable_metric();
-    metric->CopyFrom(request->metric());
-    metric->set_rqtime(::baidu::common::timer::get_micros());
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     std::shared_ptr<DiskTable> disk_table;
     if (!table) {
@@ -616,7 +612,6 @@ void TabletImpl::Scan(RpcController* controller,
         return;
     }
 
-    metric->set_sctime(::baidu::common::timer::get_micros());
     // Use seek to process scan request
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
@@ -645,7 +640,6 @@ void TabletImpl::Scan(RpcController* controller,
     } else {
         it->Seek(request->st());
     }
-    metric->set_sitime(::baidu::common::timer::get_micros());
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     // reduce the times of memcpy in vector
     tmp.reserve(FLAGS_scan_reserve_size);
@@ -658,8 +652,6 @@ void TabletImpl::Scan(RpcController* controller,
     uint32_t scount = 0;
     uint64_t last_time = 0;
     end_time = std::max(end_time, table->GetExpireTime());
-    PDLOG(DEBUG, "scan pk %s st %lu end_time %lu expire_time %lu", 
-                  request->pk().c_str(), request->st(), end_time, table->GetExpireTime());
     uint32_t limit = 0;
     if (request->has_limit()) {
         limit = request->limit();
@@ -671,7 +663,6 @@ void TabletImpl::Scan(RpcController* controller,
         }
         // skip duplicate record 
         if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
-            PDLOG(DEBUG, "filter duplicate record for key %s with ts %lld", request->pk().c_str(), it->GetKey());
             last_time = it->GetKey();
             it->Next();
             continue;
@@ -687,11 +678,12 @@ void TabletImpl::Scan(RpcController* controller,
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             response->set_code(118);
             response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
+            done->Run();
+            delete it;
             return;
         }
     }
     delete it;
-    metric->set_setime(::baidu::common::timer::get_micros());
     uint32_t total_size = tmp.size() * (8+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
     if (tmp.size() <= 0) {
@@ -707,10 +699,8 @@ void TabletImpl::Scan(RpcController* controller,
         ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
         offset += (4 + 8 + pair.second->size);
     }
-
     response->set_code(0);
     response->set_count(tmp.size());
-    metric->set_sptime(::baidu::common::timer::get_micros()); 
 }
 
 void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
@@ -789,6 +779,7 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
     response->set_code(0);
     response->set_msg("ok");
     response->set_count(tmp.size());
+    done->Run();
 }
 
 void TabletImpl::Count(RpcController* controller,

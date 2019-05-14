@@ -136,7 +136,6 @@ bool Segment::Delete(const Slice& key) {
         std::lock_guard<std::mutex> lock(gc_mu_);
         entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
     }
-    PDLOG(DEBUG, "delete key %s", key.ToString().c_str());
     return true;
 }
 

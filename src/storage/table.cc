@@ -460,7 +460,6 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_->SeekToFirst();
             record_idx_ = 1;
             if (!it_->Valid() || IsExpired()) {
-                PDLOG(DEBUG, "skip to next pk, cur pk %s idx %u", pk_it_->GetKey().ToString().c_str(), seg_idx_);
                 NextPK();
             }
         } else {
@@ -469,7 +468,6 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 record_idx_ = 1;
                 while(it_->Valid() && record_idx_ <= expire_value_) {
                     if (it_->GetKey() < ts) {
-                        PDLOG(DEBUG, "cur pk %s ts %lu idx %u record_idx_ %u", key.c_str(), it_->GetKey(), seg_idx_, record_idx_);
                         return;
                     }
                     it_->Next();
@@ -479,17 +477,14 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             } else {
                 it_->Seek(ts);
                 if (it_->Valid() && it_->GetKey() == ts) {
-                    PDLOG(DEBUG, "pk %s ts %lu has found, skip to next", key.c_str(), it_->GetKey());
                     it_->Next();
                 }
                 if (!it_->Valid() || IsExpired()) {
-                    PDLOG(DEBUG, "skip to next pk, cur pk %s idx %u", key.c_str(), seg_idx_);
                     NextPK();
                 }
             }
         }
     } else {
-        PDLOG(DEBUG, "has not found pk %s. seg_idx[%u]", key.c_str(), seg_idx_);
         NextPK();
     }
 }
