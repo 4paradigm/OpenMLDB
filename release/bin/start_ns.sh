@@ -4,6 +4,8 @@
 cd "$(dirname "$0")"/../
 RTIDBPIDFILE="./bin/ns.pid"
 mkdir -p "$(dirname "$RTIDBPIDFILE")"
+LOGDIR=`grep log_dir ./conf/nameserver.flags | awk -F '=' '{print $2}'`
+mkdir -p $LOGDIR
 case $1 in
     start)
         echo -n "Starting nameserver ... "
@@ -13,7 +15,7 @@ case $1 in
                 exit 0
             fi
         fi
-        ./bin/mon ./bin/boot_ns.sh -d -s 10 -l ./logs/rtidb_ns_mon.log -m $RTIDBPIDFILE
+        ./bin/mon ./bin/boot_ns.sh -d -s 10 -l $LOGDIR/rtidb_ns_mon.log -m $RTIDBPIDFILE
         if [ $? -eq 0 ]
         then
             sleep 1
