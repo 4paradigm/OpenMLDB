@@ -759,6 +759,7 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             response->set_code(118);
             response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
+            delete it;
             return;
         }
     }
@@ -779,7 +780,6 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
     response->set_code(0);
     response->set_msg("ok");
     response->set_count(tmp.size());
-    done->Run();
 }
 
 void TabletImpl::Count(RpcController* controller,
