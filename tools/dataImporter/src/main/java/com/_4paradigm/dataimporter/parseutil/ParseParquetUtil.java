@@ -7,6 +7,8 @@ import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import com.google.common.primitives.Ints;
+import com.google.common.primitives.Longs;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -18,9 +20,11 @@ import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +32,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ParseParquetUtil {
@@ -43,7 +48,9 @@ public class ParseParquetUtil {
     private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
             ? null
             : new int[INPUT_COLUMN_INDEX.split(",").length];
-
+    private final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
+    private final long MILLIS_IN_DAY = TimeUnit.DAYS.toMillis(1);
+    private final long NANOS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
     static {
         if (arr != null) {
             String[] sarr = INPUT_COLUMN_INDEX.split(",");
@@ -80,7 +87,8 @@ public class ParseParquetUtil {
                     map.put(columnName, group.getLong(index, 0));
                     break;
                 case INT96:
-                    map.put(columnName, new String(group.getInt96(index, 0).getBytes()));
+                    Binary binary = group.getInt96(index, 0);
+                    map.put(columnName, new DateTime(getTimestamp(binary)));
                     break;
                 case FLOAT:
                     map.put(columnName, group.getFloat(index, 0));
@@ -180,7 +188,7 @@ public class ParseParquetUtil {
                     columnDesc.setType(ColumnType.kInt64);
                     break;
                 case INT96:
-                    columnDesc.setType(ColumnType.kString);
+                    columnDesc.setType(ColumnType.kTimestamp);
                     break;
                 case BINARY:
                     columnDesc.setType(ColumnType.kString);
@@ -203,6 +211,23 @@ public class ParseParquetUtil {
             list.add(columnDesc);
         }
         return list;
+    }
+
+    private long getTimestamp(Binary binary) {
+        if (binary.length() != 12) {
+            throw new RuntimeException("Parquet timestamp must be 12 bytes, actual " + binary.length());
+        }
+        byte[] bytes = binary.getBytes();
+
+        // little endian encoding - need to invert byte order
+        long timeOfDayNanos = Longs.fromBytes(bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0]);
+        int julianDay = Ints.fromBytes(bytes[11], bytes[10], bytes[9], bytes[8]);
+
+        return julianDayToMillis(julianDay) + (timeOfDayNanos / NANOS_PER_MILLISECOND);
+    }
+
+    private long julianDayToMillis(int julianDay) {
+        return (julianDay - JULIAN_EPOCH_OFFSET_DAYS) * MILLIS_IN_DAY;
     }
 }
 
