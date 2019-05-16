@@ -1,6 +1,7 @@
 #! /bin/sh
 #
 # start.sh
+CURDIR=`pwd`
 cd "$(dirname "$0")"/../
 RTIDBPIDFILE="./bin/tablet.pid"
 mkdir -p "$(dirname "$RTIDBPIDFILE")"
@@ -38,9 +39,10 @@ case $1 in
         ;;
     restart)
         shift
-        "$0" stop ${@}
+        cd $CURDIR
+        sh "$0" stop ${@}
         sleep 5
-        "$0" start ${@}
+        sh "$0" start ${@}
         ;;
     *)
         echo "Usage: $0 {start|stop|restart}" >&2
