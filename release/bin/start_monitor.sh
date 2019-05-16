@@ -5,6 +5,8 @@ cd "$(dirname "$0")"/../
 MONITORPIDFILE="./bin/monitor.pid"
 NODEEXPORTERPIDFILE="./bin/node_exporter.pid"
 mkdir -p "$(dirname "$MONITORPIDFILE")"
+LOGDIR=`grep log_dir ./conf/monitor.conf | awk -F '=' '{print $2}'`
+mkdir -p $LOGDIR
 case $1 in
     start)
         echo "Starting monitor ... "
@@ -13,7 +15,7 @@ case $1 in
                 echo -n monitor already running as process `cat "$MONITORPIDFILE"`
             fi
         else    
-            ./bin/mon ./bin/boot_monitor.sh -d -s 10 -l ./logs/monitor_mon.log -m $MONITORPIDFILE
+            ./bin/mon ./bin/boot_monitor.sh -d -s 10 -l $LOGDIR/monitor_mon.log -m $MONITORPIDFILE
         fi
         echo "Starting node_exporter ... "
         if [ -f "$NODEEXPORTERPIDFILE" ]; then
@@ -21,7 +23,7 @@ case $1 in
                 echo node_exporter already running as process `cat "$NODEEXPORTERPIDFILE"`
             fi
         else    
-            ./bin/mon ./bin/node_exporter -d -s 10 -l ./logs/monitor_mon.log -m $NODEEXPORTERPIDFILE
+            ./bin/mon ./bin/node_exporter -d -s 10 -l $LOGDIR/monitor_mon.log -m $NODEEXPORTERPIDFILE
         fi
         if [ $? -eq 0 ]
         then
