@@ -56,7 +56,7 @@ message TableInfo {
     optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
     optional uint32 tid = 5;
-    repeated ColumnDesc column_desc = 6; // deprecated
+    repeated ColumnDesc column_desc = 6 [deprecated = true];
     optional string ttl_type = 7 [default = "kAbsoluteTime"];
     optional uint32 partition_num = 8;
     optional uint32 replica_num = 9; // contain the leader

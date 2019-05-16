@@ -97,33 +97,13 @@ int Table::InitColumnDesc() {
         if (table_meta_.column_key_size() > 0) {
             for (const auto& column_key : table_meta_.column_key()) {
                 uint32_t cur_key_idx = key_idx;
-                if (column_key.key_name_size() == 0) {
-                    continue;
-                } else if (column_key.key_name_size() == 1) {
-                    std::string name = column_key.key_name(0);
-                    auto it = mapping_.find(name);
-                    if (it == mapping_.end()) {
-                        mapping_.insert(std::make_pair(name, key_idx));
-                        key_idx++;
-                    } else {
-                        cur_key_idx = it->second;
-                    }
+                std::string name = column_key.key_name();
+                auto it = mapping_.find(name);
+                if (it == mapping_.end()) {
+                    mapping_.insert(std::make_pair(name, key_idx));
+                    key_idx++;
                 } else {
-                    std::string combined_key;
-                    for (const auto& name : column_key.key_name()) {
-                        if (combined_key.empty()) {
-                            combined_key = name;
-                        } else {
-                            combined_key += "|" + name;
-                        }
-                    }
-                    auto it = mapping_.find(combined_key);
-                    if (it == mapping_.end()) {
-                        mapping_.insert(std::make_pair(combined_key, key_idx));
-                        key_idx++;
-                    } else {
-                        cur_key_idx = it->second;
-                    }
+                    cur_key_idx = it->second;
                 }
 				if (ts_mapping_.empty()) {
 					continue;

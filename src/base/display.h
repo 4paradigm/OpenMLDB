@@ -71,7 +71,8 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
 static void PrintColumnKey(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field) {
     std::vector<std::string> row;
     row.push_back("#");
-    row.push_back("key");
+    row.push_back("key_name");
+    row.push_back("col_name");
     row.push_back("ts_col");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
@@ -79,13 +80,17 @@ static void PrintColumnKey(const google::protobuf::RepeatedPtrField<::rtidb::com
     for (const auto& column_key : column_key_field) {
         row.clear();
         row.push_back(std::to_string(idx));
+        row.push_back(column_key.key_name());
         std::string key;
-        for (const auto& name : column_key.key_name()) {
+        for (const auto& name : column_key.col_name()) {
             if (key.empty()) {
                 key = name;
             } else {
                 key += "|" + name;
             }
+        }
+        if (key.empty()) {
+            key = column_key.key_name();
         }
         row.push_back(key);
         if (column_key.has_ts_name() && column_key.ts_name().size() > 0) {

@@ -281,8 +281,8 @@ message TableMeta {
     optional bool wal = 9; // unused
     // term for change role
     optional uint64 term = 10 [default = 0];
-    optional bytes schema = 11; // deprecated
-    repeated string dimensions = 12; // deprecated
+    optional bytes schema = 11 [deprecated = true];
+    repeated string dimensions = 12 [deprecated = true];
     optional CompressType compress_type = 13;
     optional uint32 key_entry_max_height = 14;
     repeated rtidb.common.ColumnDesc column_desc = 15;
@@ -480,6 +480,7 @@ message CountRequest {
     optional string idx_name = 3;
     optional string key = 4;
     optional bool filter_expired_data = 5 [default = false];
+    optional string ts_name = 6;
 }    
 
 message CountResponse {
