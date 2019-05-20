@@ -409,9 +409,11 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        ok = table->Put(request->time(), 
-                   request->value(),
-                   request->dimensions());
+        if (request->ts_dimensions_size() > 0) {
+            ok = table->Put(request->dimensions(), request->ts_dimensions(), request->value());
+        } else {
+            ok = table->Put(request->time(), request->value(), request->dimensions());
+        }
     } else {
         ok = table->Put(request->pk(), 
                    request->time(), 
