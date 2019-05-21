@@ -3712,6 +3712,9 @@ void StartClient() {
             buffer = FLAGS_cmd;
         } else {
             char *line = ::rtidb::base::linenoise(display_prefix.c_str());
+            if (line == NULL) {
+                return;
+            }
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
                 boost::trim(buffer);
@@ -3851,6 +3854,9 @@ void StartNsClient() {
             buffer = FLAGS_cmd;
         } else {
 	        char *line = ::rtidb::base::linenoise(display_prefix.c_str());
+            if (line == NULL) {
+                return;
+            }
             if (line[0] != '\0' && line[0] != '/') { 
                 buffer.assign(line);
                 boost::trim(buffer);

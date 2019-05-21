@@ -1,9 +1,12 @@
 #! /bin/sh
 #
 # start.sh
+CURDIR=`pwd`
 cd "$(dirname "$0")"/../
 RTIDBPIDFILE="./bin/tablet.pid"
 mkdir -p "$(dirname "$RTIDBPIDFILE")"
+LOGDIR=`grep log_dir ./conf/tablet.flags | awk -F '=' '{print $2}'`
+mkdir -p $LOGDIR
 case $1 in
     start)
         echo -n "Starting tablet ... "
@@ -13,7 +16,7 @@ case $1 in
                 exit 0
             fi
         fi
-        ./bin/mon ./bin/boot.sh -d -s 10 -l ./logs/rtidb_mon.log -m $RTIDBPIDFILE
+        ./bin/mon ./bin/boot.sh -d -s 10 -l $LOGDIR/rtidb_mon.log -m $RTIDBPIDFILE
         if [ $? -eq 0 ]
         then
             sleep 1
@@ -36,9 +39,10 @@ case $1 in
         ;;
     restart)
         shift
-        "$0" stop ${@}
+        cd $CURDIR
+        sh "$0" stop ${@}
         sleep 5
-        "$0" start ${@}
+        sh "$0" start ${@}
         ;;
     *)
         echo "Usage: $0 {start|stop|restart}" >&2
