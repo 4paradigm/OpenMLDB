@@ -16,8 +16,8 @@ message KvList {
 message ColumnDesc {
     required string name = 1;
     optional string type = 2;
-    optional bool add_ts_idx = 3; 
-    optional bool is_ts_col = 4;
+    optional bool add_ts_idx = 3 [default=false]; 
+    optional bool is_ts_col = 4 [default=false];
     optional uint64 ttl = 5;
 }
 

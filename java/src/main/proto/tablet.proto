@@ -197,18 +197,19 @@ message GeneralResponse {
 }
 
 message ScanRequest {
-	// the prefix key
-	optional string pk = 1;
-	// the start subfix key
-	optional uint64 st = 2;
-	// the end subfix key
-	optional uint64 et = 3;
-	optional uint32 limit = 4;
-	optional RpcMetric metric = 5;
-	optional uint32 tid = 6;
-	optional uint32 pid = 7;
+    // the prefix key
+    optional string pk = 1;
+    // the start subfix key
+    optional uint64 st = 2;
+    // the end subfix key
+    optional uint64 et = 3;
+    optional uint32 limit = 4;
+    optional RpcMetric metric = 5;
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
     optional bool enable_remove_duplicated_record = 8 [default=false];
     optional string idx_name = 9;
+    optional string ts_name = 10;
 }
 
 message RpcMetric {
@@ -464,6 +465,7 @@ message GetRequest {
     optional uint64 ts = 4 [default = 0];
     optional string idx_name = 5;
     optional GetType type = 6 [default = kSubKeyEq];
+    optional string ts_name = 7;
 }
 
 message GetResponse {

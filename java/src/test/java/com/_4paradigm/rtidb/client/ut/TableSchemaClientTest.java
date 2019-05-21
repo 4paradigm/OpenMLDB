@@ -193,8 +193,8 @@ public class TableSchemaClientTest {
         Assert.assertEquals(false, th.getSchema().get(2).isAddTsIndex());
         Assert.assertEquals("amt", th.getSchema().get(2).getName());
         Assert.assertEquals(ColumnType.kDouble, th.getSchema().get(2).getType());
-        Assert.assertEquals(th.getIndexes().get("card").intValue(), 0);
-        Assert.assertEquals(th.getIndexes().get("merchant").intValue(), 1);
+        Assert.assertEquals(th.getIndexes().get(0).size(), 1);
+        Assert.assertEquals(th.getIndexes().get(1).size(), 1);
 
     }
 

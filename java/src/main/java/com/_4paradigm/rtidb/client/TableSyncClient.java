@@ -43,6 +43,12 @@ public interface TableSyncClient {
     KvIterator scan(int tid, int pid, String key, String idxName, int limit)
             throws TimeoutException, TabletException;
 
+    KvIterator scan(int tid, int pid, Object[] row, String idxName, long st, long et, String tsName)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(int tid, int pid, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException;
+
     // for cluster
     boolean put(String tname, String key, long time, byte[] bytes) throws TimeoutException, TabletException;
 
@@ -50,6 +56,7 @@ public interface TableSyncClient {
 
     boolean put(String tname, long time, Object[] row) throws TimeoutException, TabletException;
     boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException;
+    boolean put(String tname, Map<String, Object> row) throws TimeoutException, TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
 
@@ -77,6 +84,18 @@ public interface TableSyncClient {
             throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, String idxName, int limit)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, String key, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, Object[] row, String idxName, long st, long et, String tsName)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
             throws TimeoutException, TabletException;
 
     KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException;

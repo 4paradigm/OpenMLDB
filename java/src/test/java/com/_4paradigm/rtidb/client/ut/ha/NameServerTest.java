@@ -181,9 +181,9 @@ public class NameServerTest {
                 && schema.get(3).isAddTsIndex() == false
                 && schema.get(3).getType().toString().equals("kFloat"), "col_3 mistook");
 
-        Map<String, Integer> indexes = tableHandler.getIndexes();
+        Map<Integer, List<Integer>> indexes = tableHandler.getIndexes();
         Assert.assertTrue(indexes.size() == 2, "indexes size mistook");
-        Assert.assertTrue(indexes.get("col_0") == 0, "col_0 index mistook");
-        Assert.assertTrue(indexes.get("col_1") == 1, "col_1 index mistook");
+        Assert.assertTrue(indexes.get(0).size() == 1);
+        Assert.assertTrue(indexes.get(1).size() == 1);
     }
 }
