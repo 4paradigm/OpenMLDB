@@ -409,9 +409,11 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        ok = table->Put(request->time(), 
-                   request->value(),
-                   request->dimensions());
+        if (request->ts_dimensions_size() > 0) {
+            ok = table->Put(request->dimensions(), request->ts_dimensions(), request->value());
+        } else {
+            ok = table->Put(request->time(), request->value(), request->dimensions());
+        }
     } else {
         ok = table->Put(request->pk(), 
                    request->time(), 
@@ -440,6 +442,9 @@ void TabletImpl::Put(RpcController* controller,
         entry.set_term(replicator->GetLeaderTerm());
         if (request->dimensions_size() > 0) {
             entry.mutable_dimensions()->CopyFrom(request->dimensions());
+        }
+        if (request->ts_dimensions_size() > 0) {
+            entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
         }
         replicator->AppendEntry(entry);
     } while(false);
@@ -510,8 +515,20 @@ void TabletImpl::Scan(RpcController* controller,
             done->Run();
             return;
         }
-        it = table->NewIterator(iit->second,
-                                request->pk(), ticket);
+        if (request->has_ts_name() && request->ts_name().size() > 0) {
+            auto ts_it = table->GetTSMapping().find(request->ts_name());
+            if (ts_it == table->GetTSMapping().end()) {
+                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                      request->tid(), request->pid());
+                response->set_code(137);
+                response->set_msg("ts name not found");
+                done->Run();
+                return;
+            }
+            it = table->NewIterator(iit->second, ts_it->second, request->pk(), ticket);
+        } else {
+            it = table->NewIterator(iit->second, request->pk(), ticket);
+        }
     }else {
         it = table->NewIterator(request->pk(), ticket);
     }

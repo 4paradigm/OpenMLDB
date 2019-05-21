@@ -505,6 +505,10 @@ Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& tick
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
     }
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        return NewIterator(index, pos->second.front(), pk, ticket);
+    } 
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
         seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;

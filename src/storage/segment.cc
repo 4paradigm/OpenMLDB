@@ -56,6 +56,9 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec):
         multi_entries_ = NULL;
         entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
         multi_entry_free_list_ = NULL;
+        if (!ts_idx_vec.empty()) {
+            ts_idx_map_[ts_idx_vec[0]] = 0;
+        }
     }
 }
 
@@ -176,10 +179,19 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
     uint32_t ts_size = ts_dimension.size();
     if (ts_size == 0) {
         return;
-    } else if (ts_size == 1 && ts_cnt_ == 1) {
-        Put(key, ts_dimension.begin()->ts(), row);
-        return;
-    } else if (ts_size > ts_cnt_) {
+    }
+    if (ts_cnt_ == 1) {
+        if (ts_size == 1) {
+            Put(key, ts_dimension.begin()->ts(), row);
+        } else if (!ts_idx_map_.empty()) {
+            for (const auto& cur_ts : ts_dimension) {
+                auto pos = ts_idx_map_.find(cur_ts.idx());
+                if (pos != ts_idx_map_.end()) {
+                    Put(key, cur_ts.ts(), row);
+                }
+                break;
+            }
+        }
         return;
     }
     KeyEntry** entry_arr = NULL;
