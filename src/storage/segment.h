@@ -128,10 +128,8 @@ struct SliceComparator {
     }
 };
 
-typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry*, SliceComparator> KeyEntries;
-typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, KeyEntry**, SliceComparator> KeyMultiEntries;
-typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*, TimeComparator> KeyEntryNodeList;
-typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, KeyEntry**>*, TimeComparator> MultiKeyEntryNodeList;
+typedef ::rtidb::base::Skiplist<::rtidb::base::Slice, void*, SliceComparator> KeyEntries;
+typedef ::rtidb::base::Skiplist<uint64_t, ::rtidb::base::Node<Slice, void*>*, TimeComparator> KeyEntryNodeList;
 
 class Segment {
 
@@ -170,6 +168,10 @@ public:
         return idx_cnt_.load(std::memory_order_relaxed);
     }
 
+    inline uint64_t GetTsCnt() {
+        return ts_cnt_;
+    }
+
     inline uint64_t GetIdxByteSize() {
         return idx_byte_size_.load(std::memory_order_relaxed);
     }
@@ -200,7 +202,6 @@ private:
                    ::rtidb::base::Node<uint64_t, DataBlock*>** node);
 private:
     KeyEntries* entries_;
-    KeyMultiEntries* multi_entries_;
     // only Put need mutex
     std::mutex mu_;
     std::mutex gc_mu_;
@@ -209,7 +210,6 @@ private:
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;
     KeyEntryNodeList* entry_free_list_;
-    MultiKeyEntryNodeList* multi_entry_free_list_;
     uint32_t ts_cnt_;
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;

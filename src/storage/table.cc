@@ -648,8 +648,14 @@ void TableIterator::NextPK() {
         if (it_ != NULL) {
             delete it_;
         }
-        it_ = pk_it_->GetValue()->entries.NewIterator();
-        ticket_.Push(pk_it_->GetValue());
+        if (segments_[seg_idx_]->GetTsCnt() > 1) {
+            KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
+            it_ = entry->entries.NewIterator();
+            ticket_.Push(entry);
+        } else {
+            it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            ticket_.Push((KeyEntry*)pk_it_->GetValue());
+        }
         it_->SeekToFirst();
         record_idx_ = 1;
     } while(it_ == NULL || !it_->Valid() || IsExpired());
@@ -672,8 +678,14 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
     pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
     pk_it_->Seek(spk);
     if (pk_it_->Valid()) {
-        ticket_.Push(pk_it_->GetValue());
-        it_ = pk_it_->GetValue()->entries.NewIterator();
+        if (segments_[seg_idx_]->GetTsCnt() > 1) {
+            KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
+            ticket_.Push(entry);
+            it_ = entry->entries.NewIterator();
+        } else {    
+            ticket_.Push((KeyEntry*)pk_it_->GetValue());
+            it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+        }
         if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
             record_idx_ = 1;
@@ -733,8 +745,14 @@ void TableIterator::SeekToFirst() {
         pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
         pk_it_->SeekToFirst();
         while (pk_it_->Valid()) {
-            ticket_.Push(pk_it_->GetValue());
-            it_ = pk_it_->GetValue()->entries.NewIterator();
+            if (segments_[seg_idx_]->GetTsCnt() > 1) {
+                KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
+                ticket_.Push(entry);
+                it_ = entry->entries.NewIterator();
+            } else {    
+                ticket_.Push((KeyEntry*)pk_it_->GetValue());
+                it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            }
             it_->SeekToFirst();
             if (it_->Valid() && !IsExpired()) {
                 record_idx_ = 1;
@@ -752,5 +770,3 @@ void TableIterator::SeekToFirst() {
 
 }
 }
-
-

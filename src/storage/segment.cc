@@ -28,45 +28,27 @@ Segment::Segment():entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
-    multi_entries_ = NULL;
-    multi_entry_free_list_ = NULL;
 }
 
 Segment::Segment(uint8_t height):entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
         key_entry_max_height_(height), ts_cnt_(1), gc_version_(0) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
-    multi_entries_ = NULL;
-    multi_entry_free_list_ = NULL;
 }
 
 Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec):
         entries_(NULL),mu_(), idx_cnt_(0), idx_byte_size_(0), pk_cnt_(0), 
         key_entry_max_height_(height), ts_cnt_(ts_idx_vec.size()), gc_version_(0) {
-    if (ts_idx_vec.size() > 1) {
-        entries_ = NULL;
-        entry_free_list_ = NULL;
-        multi_entries_ = new KeyMultiEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-        multi_entry_free_list_ = new MultiKeyEntryNodeList(4, 4, tcmp);
-        for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
-            ts_idx_map_[ts_idx_vec[i]] = i;
-        }
-    } else {
-        entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
-        multi_entries_ = NULL;
-        entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
-        multi_entry_free_list_ = NULL;
-        if (!ts_idx_vec.empty()) {
-            ts_idx_map_[ts_idx_vec[0]] = 0;
-        }
+    entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
+    entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
+    for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
+        ts_idx_map_[ts_idx_vec[i]] = i;
     }
 }
 
 Segment::~Segment() {
     if (entries_) delete entries_;
-    if (multi_entries_) delete multi_entries_;
     if (entry_free_list_) delete entry_free_list_;
-    if (multi_entry_free_list_) delete multi_entry_free_list_;
 }
 
 uint64_t Segment::Release() {
@@ -76,29 +58,22 @@ uint64_t Segment::Release() {
         it->SeekToFirst();
         while (it->Valid()) {
             if (it->GetValue() != NULL) {
-                cnt += it->GetValue()->Release();
+                if (ts_cnt_ > 1) {
+                    KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
+                    for (uint32_t i = 0; i < ts_cnt_; i++) {
+                        cnt += entry_arr[i]->Release();
+                        delete entry_arr[i];
+                    }
+                    delete[] entry_arr;
+                } else {
+                    KeyEntry* entry = (KeyEntry*)it->GetValue();
+                    cnt += entry->Release();
+                    delete entry;
+                }
             }
-            delete it->GetValue();
             it->Next();
         }
         entries_->Clear();
-        delete it;
-    }
-
-    if (multi_entries_) {
-        KeyMultiEntries::Iterator* it = multi_entries_->NewIterator();
-        it->SeekToFirst();
-        while (it->Valid()) {
-            if (it->GetValue() != NULL) {
-                KeyEntry** entry_arr = it->GetValue();
-                for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    cnt += entry_arr[i]->Release();
-                }
-            }
-            delete[] it->GetValue();
-            it->Next();
-        }
-        multi_entries_->Clear();
         delete it;
     }
 
@@ -106,35 +81,25 @@ uint64_t Segment::Release() {
         KeyEntryNodeList::Iterator* f_it = entry_free_list_->NewIterator();
         f_it->SeekToFirst();
         while (f_it->Valid()) {
-            ::rtidb::base::Node<Slice, KeyEntry*>* node = f_it->GetValue();
+            ::rtidb::base::Node<Slice, void*>* node = f_it->GetValue();
             delete node->GetKey().data();
-            KeyEntry* entry = node->GetValue();
-            entry->Release();
-            delete entry;
+            if (ts_cnt_ > 1) {
+                KeyEntry** entry_arr = (KeyEntry**)node->GetValue();
+                for (uint32_t i = 0; i < ts_cnt_; i++) {
+                    entry_arr[i]->Release();
+                    delete entry_arr[i];
+                }
+                delete[] entry_arr;
+            } else {    
+                KeyEntry* entry = (KeyEntry*)node->GetValue();
+                entry->Release();
+                delete entry;
+            }
             delete node;
             f_it->Next();
         }
         delete f_it;
         entry_free_list_->Clear();
-    }
-
-    if (multi_entry_free_list_) {
-        MultiKeyEntryNodeList::Iterator* f_it = multi_entry_free_list_->NewIterator();
-        f_it->SeekToFirst();
-        while (f_it->Valid()) {
-            ::rtidb::base::Node<Slice, KeyEntry**>* node = f_it->GetValue();
-            delete node->GetKey().data();
-            KeyEntry** entry_arr = node->GetValue();
-            for (uint32_t i = 0; i < ts_cnt_; i++) {
-                entry_arr[i]->Release();
-            }
-            delete[] entry_arr;
-            delete node;
-            f_it->Next();
-        }
-        delete f_it;
-        multi_entry_free_list_->Clear();
-
     }
     return cnt;
 }
@@ -154,7 +119,7 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     if (ts_cnt_ > 1) {
         return;
     }
-    KeyEntry* entry = NULL;
+    void* entry = NULL;
     uint32_t byte_size = 0; 
     std::lock_guard<std::mutex> lock(mu_);
     int ret = entries_->Get(key, entry);
@@ -163,14 +128,14 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
         memcpy(pk, key.data(), key.size());
         // need to delete memory when free node
         Slice skey(pk, key.size());
-        entry = new KeyEntry(key_entry_max_height_);
+        entry = (void*)new KeyEntry(key_entry_max_height_);
         uint8_t height = entries_->Insert(skey, entry);
         byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
         pk_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
     idx_cnt_.fetch_add(1, std::memory_order_relaxed);
-    uint8_t height = entry->entries.Insert(time, row);
-    entry->count_.fetch_add(1, std::memory_order_relaxed);
+    uint8_t height = ((KeyEntry*)entry)->entries.Insert(time, row);
+    ((KeyEntry*)entry)->count_.fetch_add(1, std::memory_order_relaxed);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
@@ -194,7 +159,7 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
         }
         return;
     }
-    KeyEntry** entry_arr = NULL;
+    void* entry_arr = NULL;
     uint32_t byte_size = 0; 
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& cur_ts : ts_dimension) {
@@ -202,21 +167,24 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
         if (pos == ts_idx_map_.end()) {
             continue;
         }
-		int ret = multi_entries_->Get(key, entry_arr);
-		if (ret < 0 || entry_arr == NULL) {
-			char* pk = new char[key.size()];
-			memcpy(pk, key.data(), key.size());
-			Slice skey(pk, key.size());
-			entry_arr = new KeyEntry*[ts_cnt_];
-			for (uint32_t i = 0; i < ts_cnt_; i++) {
-				entry_arr[i] = new KeyEntry(key_entry_max_height_);
-			}
-			uint8_t height = multi_entries_->Insert(skey, entry_arr);
-			byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
-			pk_cnt_.fetch_add(1, std::memory_order_relaxed);
-		}
-        uint8_t height = entry_arr[pos->second]->entries.Insert(cur_ts.ts(), row);
-        entry_arr[pos->second]->count_.fetch_add(1, std::memory_order_relaxed);
+        if (entry_arr == NULL) {
+            int ret = entries_->Get(key, entry_arr);
+            if (ret < 0 || entry_arr == NULL) {
+                char* pk = new char[key.size()];
+                memcpy(pk, key.data(), key.size());
+                Slice skey(pk, key.size());
+                KeyEntry** entry_arr_tmp = new KeyEntry*[ts_cnt_];
+                for (uint32_t i = 0; i < ts_cnt_; i++) {
+                    entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
+                }
+                entry_arr = (void*)entry_arr_tmp;
+                uint8_t height = entries_->Insert(skey, entry_arr);
+                byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
+                pk_cnt_.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+        uint8_t height = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(cur_ts.ts(), row);
+        ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
     }
@@ -229,13 +197,11 @@ bool Segment::Get(const Slice& key,
     if (block == NULL || ts_cnt_ > 1) {
         return false;
     }
-
-    KeyEntry* entry = NULL;
+    void* entry = NULL;
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return false;
     }
-
-    *block = entry->entries.Get(time);
+    *block = ((KeyEntry*)entry)->entries.Get(time);
     return true;
 }
 
@@ -250,41 +216,26 @@ bool Segment::Get(const Slice& key, uint32_t idx, const uint64_t time, DataBlock
     if (pos == ts_idx_map_.end()) {
         return false;
     }
-    KeyEntry** entry = NULL;
-    if (multi_entries_->Get(key, entry) < 0 || entry == NULL) {
+    void* entry = NULL;
+    if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return false;
     }
-    *block = entry[pos->second]->entries.Get(time);
+    *block = ((KeyEntry**)entry)[pos->second]->entries.Get(time);
     return true;
 }
 
 bool Segment::Delete(const Slice& key) {
-    if (entries_) {
-        ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            entry_node = entries_->Remove(key);
-            if (entry_node == NULL) {
-                return false;
-            }
+    ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        entry_node = entries_->Remove(key);
+        if (entry_node == NULL) {
+            return false;
         }
-        {
-            std::lock_guard<std::mutex> lock(gc_mu_);
-            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
-        }
-    } else if (multi_entries_) {
-        ::rtidb::base::Node<Slice, KeyEntry**>* entry_node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            entry_node = multi_entries_->Remove(key);
-            if (entry_node == NULL) {
-                return false;
-            }
-        }
-        {
-            std::lock_guard<std::mutex> lock(gc_mu_);
-            multi_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
-        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
+        entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
     }
     return true;
 }
@@ -318,63 +269,47 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
     uint64_t old = gc_idx_cnt;
     uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
     if (entry_free_list_) {
-        ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*>* node = NULL;
+        ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* node = NULL;
         {
             std::lock_guard<std::mutex> lock(gc_mu_);
             node = entry_free_list_->Split(free_list_version);
         }
         while (node != NULL) {
-            ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = node->GetValue();
+            ::rtidb::base::Node<Slice, void*>* entry_node = node->GetValue();
             uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
             idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
             pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
             // free pk memory
             delete entry_node->GetKey().data();
-            KeyEntry* entry = entry_node->GetValue();
-            TimeEntries::Iterator* it = entry->entries.NewIterator();
-            it->SeekToFirst();
-            if (it->Valid()) {
-                uint64_t ts = it->GetKey();
-                ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
-                FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-            }
-            delete it;
-            delete entry;
-            delete entry_node;
-            ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, KeyEntry*>*>* tmp = node;
-            node = node->GetNextNoBarrier(0);
-            delete tmp;
-        }
-        idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
-    } else if (multi_entry_free_list_) {
-        ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, KeyEntry**>*>* node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(gc_mu_);
-            node = multi_entry_free_list_->Split(free_list_version);
-        }
-        while (node != NULL) {
-            ::rtidb::base::Node<Slice, KeyEntry**>* entry_node = node->GetValue();
-            uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
-            idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-            pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
-            // free pk memory
-            delete entry_node->GetKey().data();
-            KeyEntry** entry_arr = entry_node->GetValue();
-            for (uint32_t i = 0; i < ts_cnt_; i++) {
-                TimeEntries::Iterator* it = entry_arr[i]->entries.NewIterator();
+            if (ts_cnt_ > 1) {
+                KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();
+                for (uint32_t i = 0; i < ts_cnt_; i++) {
+                    TimeEntries::Iterator* it = entry_arr[i]->entries.NewIterator();
+                    it->SeekToFirst();
+                    if (it->Valid()) {
+                        uint64_t ts = it->GetKey();
+                        ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry_arr[i]->entries.Split(ts);
+                        FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    }
+                    delete it;
+                }
+                delete[] entry_arr;
+            } else {
+                KeyEntry* entry = (KeyEntry*)entry_node->GetValue();
+                TimeEntries::Iterator* it = entry->entries.NewIterator();
                 it->SeekToFirst();
                 if (it->Valid()) {
                     uint64_t ts = it->GetKey();
-                    ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry_arr[i]->entries.Split(ts);
+                    ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
                     FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 }
-                ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, KeyEntry**>*>* tmp = node;
-                node = node->GetNextNoBarrier(0);
                 delete it;
-                delete tmp;
+                delete entry;
             }
-            delete[] entry_arr;
             delete entry_node;
+            ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* tmp = node;
+            node = node->GetNextNoBarrier(0);
+            delete tmp;
         }
         idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     }
@@ -390,7 +325,7 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = it->GetValue();
+        KeyEntry* entry = (KeyEntry*)it->GetValue();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -412,18 +347,15 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
 
 void Segment::Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t& gc_idx_cnt, 
         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
-    if (multi_entries_ == NULL) {
-        if (keep_cnt_map.size() == 1) {
-            return Gc4Head(keep_cnt_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        } 
-        return;
-    }
+    if (keep_cnt_map.size() == 1) {
+        return Gc4Head(keep_cnt_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    } 
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt; 
-    KeyMultiEntries::Iterator* it = multi_entries_->NewIterator();
+    KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry** entry_arr = it->GetValue();
+        KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
         Slice key = it->GetKey();
         it->Next();
         for (const auto& kv : keep_cnt_map) {
@@ -465,7 +397,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = it->GetValue();
+        KeyEntry* entry = (KeyEntry*)it->GetValue();
         Slice key = it->GetKey();
         it->Next();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
@@ -474,7 +406,7 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
             continue;
         }
         node = NULL;
-        ::rtidb::base::Node<Slice, KeyEntry*>* entry_node = NULL;
+        ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
         {
             std::lock_guard<std::mutex> lock(mu_);
             SplitList(entry, time, &node);
@@ -499,18 +431,15 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
 
 void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_idx_cnt, 
             uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
-    if (multi_entries_ == NULL) {
-        if (time_map.size() == 1) {
-            return Gc4TTL(time_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        } 
-        return;
-    }
+    if (time_map.size() == 1) {
+        return Gc4TTL(time_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    } 
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt; 
-    KeyMultiEntries::Iterator* it = multi_entries_->NewIterator();
+    KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry** entry_arr = it->GetValue();
+        KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
         Slice key = it->GetKey();
         it->Next();
         uint32_t empty_cnt = 0;
@@ -541,7 +470,7 @@ void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_
         }
         if (empty_cnt == ts_cnt_) {
             bool is_empty = true;
-            ::rtidb::base::Node<Slice, KeyEntry**>* entry_node = NULL;
+            ::rtidb::base::Node<Slice, void*>* entry_node = NULL;
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
@@ -551,12 +480,12 @@ void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_
                     }
                 }
                 if (is_empty) {
-                    entry_node = multi_entries_->Remove(key);
+                    entry_node = entries_->Remove(key);
                 }
             }
             if (entry_node != NULL) {
                 std::lock_guard<std::mutex> lock(gc_mu_);
-                multi_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+                entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
             }
         }
     }
@@ -570,11 +499,11 @@ int Segment::GetCount(const Slice& key, uint64_t& count) {
     if (ts_cnt_ > 1) {
         return -1;
     }
-    KeyEntry* entry = NULL;
+    void* entry = NULL;
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return -1;
     }
-    count = entry->count_.load(std::memory_order_relaxed);
+    count = ((KeyEntry*)entry)->count_.load(std::memory_order_relaxed);
     return 0;
 }
 
@@ -586,11 +515,11 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
     if (pos == ts_idx_map_.end()) {
         return -1;
     }
-    KeyEntry** entry_arr = NULL;
-    if (multi_entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
+    void* entry_arr = NULL;
+    if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
         return -1;
     }
-    count = entry_arr[pos->second]->count_.load(std::memory_order_relaxed);
+    count = ((KeyEntry**)entry_arr)[pos->second]->count_.load(std::memory_order_relaxed);
     return 0;
 }
 
@@ -599,12 +528,12 @@ Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     if (entries_ == NULL) {
         return new Iterator(NULL);
     }
-    KeyEntry* entry = NULL;
+    void* entry = NULL;
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
         return new Iterator(NULL);
     }
-    ticket.Push(entry);
-    return new Iterator(entry->entries.NewIterator());
+    ticket.Push((KeyEntry*)entry);
+    return new Iterator(((KeyEntry*)entry)->entries.NewIterator());
 }
 
 Iterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
@@ -615,12 +544,12 @@ Iterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
     if (pos == ts_idx_map_.end()) {
         return new Iterator(NULL);
     }
-    KeyEntry** entry_arr = NULL;
-    if (multi_entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
+    void* entry_arr = NULL;
+    if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
         return new Iterator(NULL);
     }
-    ticket.Push(entry_arr[idx]);
-    return new Iterator(entry_arr[idx]->entries.NewIterator());
+    ticket.Push(((KeyEntry**)entry_arr)[idx]);
+    return new Iterator(((KeyEntry**)entry_arr)[idx]->entries.NewIterator());
 }
 
 Iterator::Iterator(TimeEntries::Iterator* it): it_(it) {}
