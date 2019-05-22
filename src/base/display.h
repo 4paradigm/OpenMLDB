@@ -25,6 +25,7 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common
     row.push_back("type");
     row.push_back("index");
     row.push_back("ts_col");
+    row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     uint32_t idx = 0;
@@ -39,6 +40,7 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common
             row.push_back("-");
         }
         column_desc.is_ts_col() ? row.push_back("yes") : row.push_back("no");
+        column_desc.has_ttl() ? row.push_back(std::to_string(column_desc.ttl())) : row.push_back("-");
         tp.AddRow(row);
         idx++;
     }
@@ -52,6 +54,7 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
     row.push_back("type");
     row.push_back("index");
     row.push_back("ts_col");
+    row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     uint32_t idx = 0;
@@ -61,6 +64,8 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
         row.push_back(column_desc.name());
         row.push_back(column_desc.type());
         column_desc.add_ts_idx() ? row.push_back("yes") : row.push_back("no");
+        row.push_back("-");
+        row.push_back("-");
         row.push_back("-");
         tp.AddRow(row);
         idx++;

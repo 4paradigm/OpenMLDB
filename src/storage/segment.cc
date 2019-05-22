@@ -47,60 +47,56 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec):
 }
 
 Segment::~Segment() {
-    if (entries_) delete entries_;
-    if (entry_free_list_) delete entry_free_list_;
+    delete entries_;
+    delete entry_free_list_;
 }
 
 uint64_t Segment::Release() {
     uint64_t cnt = 0;
-    if (entries_) {
-        KeyEntries::Iterator* it = entries_->NewIterator();
-        it->SeekToFirst();
-        while (it->Valid()) {
-            if (it->GetValue() != NULL) {
-                if (ts_cnt_ > 1) {
-                    KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
-                    for (uint32_t i = 0; i < ts_cnt_; i++) {
-                        cnt += entry_arr[i]->Release();
-                        delete entry_arr[i];
-                    }
-                    delete[] entry_arr;
-                } else {
-                    KeyEntry* entry = (KeyEntry*)it->GetValue();
-                    cnt += entry->Release();
-                    delete entry;
-                }
-            }
-            it->Next();
-        }
-        entries_->Clear();
-        delete it;
-    }
-
-    if (entry_free_list_) {
-        KeyEntryNodeList::Iterator* f_it = entry_free_list_->NewIterator();
-        f_it->SeekToFirst();
-        while (f_it->Valid()) {
-            ::rtidb::base::Node<Slice, void*>* node = f_it->GetValue();
-            delete node->GetKey().data();
+    KeyEntries::Iterator* it = entries_->NewIterator();
+    it->SeekToFirst();
+    while (it->Valid()) {
+        if (it->GetValue() != NULL) {
             if (ts_cnt_ > 1) {
-                KeyEntry** entry_arr = (KeyEntry**)node->GetValue();
+                KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    entry_arr[i]->Release();
+                    cnt += entry_arr[i]->Release();
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
-            } else {    
-                KeyEntry* entry = (KeyEntry*)node->GetValue();
-                entry->Release();
+            } else {
+                KeyEntry* entry = (KeyEntry*)it->GetValue();
+                cnt += entry->Release();
                 delete entry;
             }
-            delete node;
-            f_it->Next();
         }
-        delete f_it;
-        entry_free_list_->Clear();
+        it->Next();
     }
+    entries_->Clear();
+    delete it;
+
+    KeyEntryNodeList::Iterator* f_it = entry_free_list_->NewIterator();
+    f_it->SeekToFirst();
+    while (f_it->Valid()) {
+        ::rtidb::base::Node<Slice, void*>* node = f_it->GetValue();
+        delete node->GetKey().data();
+        if (ts_cnt_ > 1) {
+            KeyEntry** entry_arr = (KeyEntry**)node->GetValue();
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                entry_arr[i]->Release();
+                delete entry_arr[i];
+            }
+            delete[] entry_arr;
+        } else {    
+            KeyEntry* entry = (KeyEntry*)node->GetValue();
+            entry->Release();
+            delete entry;
+        }
+        delete node;
+        f_it->Next();
+    }
+    delete f_it;
+    entry_free_list_->Clear();
     return cnt;
 }
 
@@ -163,7 +159,7 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
     uint32_t byte_size = 0; 
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& cur_ts : ts_dimension) {
-		auto pos = ts_idx_map_.find(cur_ts.idx());
+        auto pos = ts_idx_map_.find(cur_ts.idx());
         if (pos == ts_idx_map_.end()) {
             continue;
         }
@@ -212,7 +208,7 @@ bool Segment::Get(const Slice& key, uint32_t idx, const uint64_t time, DataBlock
     if (ts_cnt_ == 1) {
         return Get(key, time, block);
     }
-	auto pos = ts_idx_map_.find(idx);
+    auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return false;
     }
@@ -268,49 +264,47 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
     }
     uint64_t old = gc_idx_cnt;
     uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
-    if (entry_free_list_) {
-        ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* node = NULL;
-        {
-            std::lock_guard<std::mutex> lock(gc_mu_);
-            node = entry_free_list_->Split(free_list_version);
-        }
-        while (node != NULL) {
-            ::rtidb::base::Node<Slice, void*>* entry_node = node->GetValue();
-            uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
-            idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-            pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
-            // free pk memory
-            delete entry_node->GetKey().data();
-            if (ts_cnt_ > 1) {
-                KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();
-                for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    TimeEntries::Iterator* it = entry_arr[i]->entries.NewIterator();
-                    it->SeekToFirst();
-                    if (it->Valid()) {
-                        uint64_t ts = it->GetKey();
-                        ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry_arr[i]->entries.Split(ts);
-                        FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                    }
-                    delete it;
-                }
-                delete[] entry_arr;
-            } else {
-                KeyEntry* entry = (KeyEntry*)entry_node->GetValue();
-                TimeEntries::Iterator* it = entry->entries.NewIterator();
+    ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* node = NULL;
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
+        node = entry_free_list_->Split(free_list_version);
+    }
+    while (node != NULL) {
+        ::rtidb::base::Node<Slice, void*>* entry_node = node->GetValue();
+        uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
+        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
+        // free pk memory
+        delete entry_node->GetKey().data();
+        if (ts_cnt_ > 1) {
+            KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                TimeEntries::Iterator* it = entry_arr[i]->entries.NewIterator();
                 it->SeekToFirst();
                 if (it->Valid()) {
                     uint64_t ts = it->GetKey();
-                    ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
+                    ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry_arr[i]->entries.Split(ts);
                     FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 }
                 delete it;
-                delete entry;
             }
-            delete entry_node;
-            ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* tmp = node;
-            node = node->GetNextNoBarrier(0);
-            delete tmp;
+            delete[] entry_arr;
+        } else {
+            KeyEntry* entry = (KeyEntry*)entry_node->GetValue();
+            TimeEntries::Iterator* it = entry->entries.NewIterator();
+            it->SeekToFirst();
+            if (it->Valid()) {
+                uint64_t ts = it->GetKey();
+                ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
+                FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            }
+            delete it;
+            delete entry;
         }
+        delete entry_node;
+        ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* tmp = node;
+        node = node->GetNextNoBarrier(0);
+        delete tmp;
         idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     }
 }
@@ -347,9 +341,12 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
 
 void Segment::Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t& gc_idx_cnt, 
         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
-    if (keep_cnt_map.size() == 1) {
-        return Gc4Head(keep_cnt_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    } 
+    if (ts_cnt_ <= 1) {
+        if (!keep_cnt_map.empty()) {
+            return Gc4Head(keep_cnt_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        } 
+        return;
+    }
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt; 
     KeyEntries::Iterator* it = entries_->NewIterator();
@@ -431,9 +428,12 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
 
 void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_idx_cnt, 
             uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
-    if (time_map.size() == 1) {
-        return Gc4TTL(time_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    } 
+    if (ts_cnt_ <= 1) {
+        if (!time_map.empty()) {
+            return Gc4TTL(time_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        } 
+        return;
+    }
     uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt; 
     KeyEntries::Iterator* it = entries_->NewIterator();
@@ -511,7 +511,7 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
     if (ts_cnt_ == 1) {
         return GetCount(key, count);
     }
-	auto pos = ts_idx_map_.find(idx);
+    auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return -1;
     }
@@ -540,7 +540,7 @@ Iterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
     if (ts_cnt_ == 1) {
         return NewIterator(key, ticket);
     }
-	auto pos = ts_idx_map_.find(idx);
+    auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return new Iterator(NULL);
     }
@@ -612,6 +612,3 @@ uint32_t Iterator::GetSize() {
 
 }
 }
-
-
-

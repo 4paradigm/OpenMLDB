@@ -204,6 +204,13 @@ int Table::Init() {
     }
     if (ttl_ > 0) {
         enable_gc_ = true;
+    } else {
+        for (auto kv : ttl_map_) {
+            if (kv.second > 0) {
+                enable_gc_ = true;
+                break;
+            }
+        }
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
                 id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
@@ -435,6 +442,20 @@ uint64_t Table::GetExpireTime() {
     return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_.load(std::memory_order_relaxed);
 }
 
+uint64_t Table::GetExpireTime(uint32_t ts_idx) {
+    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+    auto iter = ttl_map_.find(ts_idx);
+    if (iter != ttl_map_.end()) {
+        ttl = iter->second;
+    }
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0 
+            || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        return 0;
+    }
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl;
+}
+
 bool Table::IsExpire(const LogEntry& entry) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0) { 
         return false;
@@ -579,21 +600,37 @@ bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 }
 
 TableIterator* Table::NewTableIterator(uint32_t index) {
+    return NewTableIterator(index, 0);
+}
+
+TableIterator* Table::NewTableIterator(uint32_t index, uint32_t ts_index) {
     uint64_t expire_value = 0;
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) {
+    if (!enable_gc_.load(std::memory_order_relaxed)) {
         expire_value = 0;
     } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        expire_value = ttl_ / 60 / 1000;
+        uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+        auto iter = ttl_map_.find(ts_index);
+        if (iter != ttl_map_.end()) {
+            ttl = iter->second;
+        }
+        expire_value = ttl / 60 / 1000;
     } else {
         expire_value = GetExpireTime();
     }
-    return new TableIterator(segments_[index], seg_cnt_, ttl_type_, expire_value);
+    return new TableIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, ts_index);
 }
 
 TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt, 
-            ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : segments_(segments),
+            ::rtidb::api::TTLType ttl_type, uint64_t expire_value, 
+            uint32_t ts_index) : segments_(segments),
         seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
-        ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value), ticket_() {}
+        ttl_type_(ttl_type), record_idx_(0), ts_idx_(0), 
+        expire_value_(expire_value), ticket_() {
+    uint32_t idx = 0;
+    if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
+        ts_idx_ = idx;
+    }
+}
 
 TableIterator::~TableIterator() {
     if (pk_it_ != NULL) delete pk_it_;
@@ -679,7 +716,7 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
     pk_it_->Seek(spk);
     if (pk_it_->Valid()) {
         if (segments_[seg_idx_]->GetTsCnt() > 1) {
-            KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
+            KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];
             ticket_.Push(entry);
             it_ = entry->entries.NewIterator();
         } else {    
@@ -746,7 +783,7 @@ void TableIterator::SeekToFirst() {
         pk_it_->SeekToFirst();
         while (pk_it_->Valid()) {
             if (segments_[seg_idx_]->GetTsCnt() > 1) {
-                KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
+                KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];
                 ticket_.Push(entry);
                 it_ = entry->entries.NewIterator();
             } else {    

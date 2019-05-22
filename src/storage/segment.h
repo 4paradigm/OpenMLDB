@@ -172,6 +172,16 @@ public:
         return ts_cnt_;
     }
 
+    int GetTsIdx(uint32_t raw_idx, uint32_t& real_idx) {
+        auto iter = ts_idx_map_.find(raw_idx);
+        if (iter == ts_idx_map_.end()) {
+            return -1;
+        } else {
+            real_idx = iter->second;
+        }
+        return 0;
+    }
+
     inline uint64_t GetIdxByteSize() {
         return idx_byte_size_.load(std::memory_order_relaxed);
     }

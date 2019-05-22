@@ -39,7 +39,8 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
 class TableIterator {
 public:
-	TableIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
+	TableIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, 
+            uint64_t expire_value, uint32_t ts_index);
 	~TableIterator();
 	bool Valid() const;
 	void Next();
@@ -61,6 +62,7 @@ private:
     TimeEntries::Iterator* it_;
     ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
+    uint32_t ts_idx_;
     uint64_t expire_value_;
     Ticket ticket_;
 };
@@ -111,6 +113,7 @@ public:
     Iterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
 
     TableIterator* NewTableIterator(uint32_t index);
+    TableIterator* NewTableIterator(uint32_t index, uint32_t ts_idx);
     // release all memory allocated
     uint64_t Release();
 
@@ -185,6 +188,7 @@ public:
     }
 
     uint64_t GetExpireTime();
+    uint64_t GetExpireTime(uint32_t ts_idx);
 
     bool IsExpire(const LogEntry& entry);
 
