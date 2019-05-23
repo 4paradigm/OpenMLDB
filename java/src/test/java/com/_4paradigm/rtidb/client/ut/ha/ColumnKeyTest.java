@@ -271,7 +271,7 @@ public class ColumnKeyTest {
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
-        //nsc.dropTable(name);
+        nsc.dropTable(name);
     }
 
 }
