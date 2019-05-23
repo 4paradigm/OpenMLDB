@@ -525,7 +525,7 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
 
 // Iterator
 Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
-    if (entries_ == NULL) {
+    if (entries_ == NULL || ts_cnt_ > 1) {
         return new Iterator(NULL);
     }
     void* entry = NULL;

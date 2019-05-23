@@ -119,9 +119,9 @@ public:
 
     uint64_t SchedGc();
 
-    uint64_t GetTTL() const {
-        return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
-    }
+    uint64_t GetTTL();
+    uint64_t GetTTL(uint32_t index);
+    uint64_t GetTTL(uint32_t index, uint32_t ts_index);
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
     int GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count);
@@ -187,8 +187,7 @@ public:
         enable_gc_.store(is_expire, std::memory_order_relaxed);
     }
 
-    uint64_t GetExpireTime();
-    uint64_t GetExpireTime(uint32_t ts_idx);
+    uint64_t GetExpireTime(uint64_t ttl);
 
     bool IsExpire(const LogEntry& entry);
 
@@ -211,6 +210,10 @@ public:
     inline std::map<std::string, uint32_t>& GetTSMapping() {
         return ts_mapping_;
     }
+
+    inline std::map<uint32_t, std::vector<uint32_t>>& GetColumnMap() {
+        return column_key_map_;
+    }   
 
     inline void RecordCntIncr() {
         record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -255,7 +258,7 @@ private:
     std::map<std::string, uint32_t> mapping_;
     std::map<std::string, uint32_t> ts_mapping_;
     std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
-    std::map<uint32_t, uint64_t> ttl_map_;
+    std::vector<uint64_t> ttl_vec_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;

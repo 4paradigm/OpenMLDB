@@ -110,12 +110,12 @@ TEST_F(TableTest, IsExpired) {
     ::rtidb::api::LogEntry entry;
     uint64_t ts_time = now_time; 
     entry.set_ts(ts_time);
-    ASSERT_FALSE(entry.ts() < table->GetExpireTime());
+    ASSERT_FALSE(entry.ts() < table->GetExpireTime(1));
     
     // ttl_offset_ is 60 * 1000
     ts_time = now_time - 4 * 60 * 1000; 
     entry.set_ts(ts_time);
-    ASSERT_TRUE(entry.ts() < table->GetExpireTime());
+    ASSERT_TRUE(entry.ts() < table->GetExpireTime(1));
     delete table;
 }
 

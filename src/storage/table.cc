@@ -83,9 +83,9 @@ int Table::InitColumnDesc() {
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
                 if (column_desc.has_ttl()) {
-                    ttl_map_.insert(std::make_pair(ts_idx, column_desc.ttl() * 60 * 1000));
+                    ttl_vec_.push_back(column_desc.ttl() * 60 * 1000);
                 } else {
-                    ttl_map_.insert(std::make_pair(ts_idx, table_meta_.ttl() * 60 * 1000));
+                    ttl_vec_.push_back(table_meta_.ttl() * 60 * 1000);
                 }
                 ts_idx++;
             }
@@ -205,8 +205,8 @@ int Table::Init() {
     if (ttl_ > 0) {
         enable_gc_ = true;
     } else {
-        for (auto kv : ttl_map_) {
-            if (kv.second > 0) {
+        for (auto ttl : ttl_vec_) {
+            if (ttl > 0) {
                 enable_gc_ = true;
                 break;
             }
@@ -376,15 +376,14 @@ uint64_t Table::SchedGc() {
                 continue;
             }
             for (auto ts_idx : pos->second) {
-                auto in_pos = ttl_map_.find(ts_idx);
-                if (in_pos == ttl_map_.end()) {
+                if (ts_idx >= ttl_vec_.size()) {
                     continue;
                 }
                 if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
                     cur_ttl_map.insert(std::make_pair(ts_idx, 
-                                cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - in_pos->second));
+                                cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_vec_[ts_idx]));
                 } else {
-                    cur_ttl_map.insert(std::make_pair(ts_idx, in_pos->second / 60 / 1000));
+                    cur_ttl_map.insert(std::make_pair(ts_idx, ttl_vec_[ts_idx] / 60 / 1000));
                 }
             }
         }
@@ -433,27 +432,36 @@ uint64_t Table::SchedGc() {
     return gc_record_cnt;
 }
 
-uint64_t Table::GetExpireTime() {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0 
+uint64_t Table::GetTTL() {
+    return GetTTL(0);
+}
+
+uint64_t Table::GetTTL(uint32_t index) {
+    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        if (pos->second.front() < ttl_vec_.size()) {
+            ttl = ttl_vec_[pos->second.front()];
+        }
+    }
+    return ttl / (60 * 1000);
+}
+
+uint64_t Table::GetTTL(uint32_t index, uint32_t ts_index) {
+    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+    if (ts_index < ttl_vec_.size()) {
+        ttl = ttl_vec_[ts_index];
+    }
+    return ttl / (60 * 1000);
+}
+
+uint64_t Table::GetExpireTime(uint64_t ttl) {
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_.load(std::memory_order_relaxed);
-}
-
-uint64_t Table::GetExpireTime(uint32_t ts_idx) {
-    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
-    auto iter = ttl_map_.find(ts_idx);
-    if (iter != ttl_map_.end()) {
-        ttl = iter->second;
-    }
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0 
-            || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        return 0;
-    }
-    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl;
 }
 
 bool Table::IsExpire(const LogEntry& entry) {
@@ -486,7 +494,7 @@ bool Table::IsExpire(const LogEntry& entry) {
             delete it;
         }
     } else {
-        expired_time = GetExpireTime();
+        expired_time = GetExpireTime(GetTTL());
     }
     return entry.ts() < expired_time;
 }
@@ -501,6 +509,10 @@ int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     }
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        return segment->GetCount(spk, pos->second.front(), count);
+    } 
     return segment->GetCount(spk, count);
 }
 
@@ -600,7 +612,12 @@ bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 }
 
 TableIterator* Table::NewTableIterator(uint32_t index) {
-    return NewTableIterator(index, 0);
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        return NewTableIterator(index, pos->second.front());
+    } else {
+        return NewTableIterator(index, 0);
+    }
 }
 
 TableIterator* Table::NewTableIterator(uint32_t index, uint32_t ts_index) {
@@ -608,14 +625,9 @@ TableIterator* Table::NewTableIterator(uint32_t index, uint32_t ts_index) {
     if (!enable_gc_.load(std::memory_order_relaxed)) {
         expire_value = 0;
     } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        uint64_t ttl = ttl_.load(std::memory_order_relaxed);
-        auto iter = ttl_map_.find(ts_index);
-        if (iter != ttl_map_.end()) {
-            ttl = iter->second;
-        }
-        expire_value = ttl / 60 / 1000;
+        expire_value = GetTTL(index, ts_index);
     } else {
-        expire_value = GetExpireTime();
+        expire_value = GetExpireTime(GetTTL(index, ts_index));
     }
     return new TableIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, ts_index);
 }

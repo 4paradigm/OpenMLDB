@@ -294,8 +294,8 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
 
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    uint32_t index = 0;
+    int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -305,10 +305,26 @@ void TabletImpl::Get(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewIterator(iit->second,
-                                request->key(), ticket);
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }    
+
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->key(), ticket);
     } else {
-        it = table->NewIterator(request->key(), ticket);
+        it = table->NewIterator(index, request->key(), ticket);
     }
     if (it == NULL) {
         response->set_code(109);
@@ -321,9 +337,10 @@ void TabletImpl::Get(RpcController* controller,
     }
     bool has_found = true;
     // filter with time
+    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     if (request->ts() > 0) {
         if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
-            uint64_t keep_cnt = table->GetTTL();
+            uint64_t keep_cnt = ttl;
             it->SeekToFirst();
             while (it->Valid()) {
                 if (CheckGetDone(get_type, it->GetKey(), request->ts())) {
@@ -336,7 +353,7 @@ void TabletImpl::Get(RpcController* controller,
                 }
                 it->Next();
             }
-        } else if (request->ts() > table->GetExpireTime()) {
+        } else if (request->ts() > table->GetExpireTime(ttl)) {
             it->Seek(request->ts());
             if (it->Valid() && it->GetKey() != request->ts()) {
                 has_found = false;
@@ -346,7 +363,7 @@ void TabletImpl::Get(RpcController* controller,
     } else {
         it->SeekToFirst();
         if (it->Valid() && table->GetTTLType() == ::rtidb::api::TTLType::kAbsoluteTime) {
-            if (it->GetKey() <= table->GetExpireTime()) {
+            if (it->GetKey() <= table->GetExpireTime(ttl)) {
                 has_found = false;
             }
         }
@@ -500,11 +517,8 @@ void TabletImpl::Scan(RpcController* controller,
         done->Run();
         return;
     }
-
-    // Use seek to process scan request
-    // the first seek to find the total size to copy
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    uint32_t index = 0;
+    int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -515,22 +529,29 @@ void TabletImpl::Scan(RpcController* controller,
             done->Run();
             return;
         }
-        if (request->has_ts_name() && request->ts_name().size() > 0) {
-            auto ts_it = table->GetTSMapping().find(request->ts_name());
-            if (ts_it == table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(137);
-                response->set_msg("ts name not found");
-                done->Run();
-                return;
-            }
-            it = table->NewIterator(iit->second, ts_it->second, request->pk(), ticket);
-        } else {
-            it = table->NewIterator(iit->second, request->pk(), ticket);
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            done->Run();
+            return;
         }
-    }else {
-        it = table->NewIterator(request->pk(), ticket);
+        ts_index = iter->second;
+    }    
+
+    // Use seek to process scan request
+    // the first seek to find the total size to copy
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->pk(), ticket);
+    } else {
+        it = table->NewIterator(index, request->pk(), ticket);
     }
     if (it == NULL) {
         response->set_code(109);
@@ -554,7 +575,8 @@ void TabletImpl::Scan(RpcController* controller,
     }
     uint32_t scount = 0;
     uint64_t last_time = 0;
-    end_time = std::max(end_time, table->GetExpireTime());
+    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    end_time = std::max(end_time, table->GetExpireTime(ttl));
     uint32_t limit = 0;
     if (request->has_limit()) {
         limit = request->limit();
@@ -626,29 +648,34 @@ void TabletImpl::Count(RpcController* controller,
         response->set_msg("table is loading");
         return;
     }
-    if (!request->filter_expired_data()) {
-        uint32_t index = 0;
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(108);
-                response->set_msg("idx name not found");
-                return;
-            }
-            index = iit->second;
+    uint32_t index = 0;
+    int ts_index = -1;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(108);
+            response->set_msg("idx name not found");
+            return;
         }
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }    
+    if (!request->filter_expired_data()) {
         uint64_t count = 0;
-        if (request->has_ts_name()) {
-            auto iter = table->GetTSMapping().find(request->ts_name());
-            if (iter == table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(137);
-                response->set_msg("ts name not found");
-            }
-            if (table->GetCount(index, iter->second, request->key(), count) < 0) {
+        if (ts_index >= 0) {
+            if (table->GetCount(index, ts_index, request->key(), count) < 0) {
                 count = 0;
             }
         } else {
@@ -663,29 +690,10 @@ void TabletImpl::Count(RpcController* controller,
     }
     ::rtidb::storage::Ticket ticket;
     ::rtidb::storage::Iterator* it = NULL;
-    if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
-            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                  request->tid(), request->pid());
-            response->set_code(108);
-            response->set_msg("idx name not found");
-            return;
-        }
-        if (request->has_ts_name()) {
-            auto iter = table->GetTSMapping().find(request->ts_name());
-            if (iter == table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(137);
-                response->set_msg("ts name not found");
-            }
-            it = table->NewIterator(iit->second, iter->second, request->key(), ticket);
-        } else {    
-            it = table->NewIterator(iit->second, request->key(), ticket);
-        }
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->key(), ticket);
     } else {
-        it = table->NewIterator(request->key(), ticket);
+        it = table->NewIterator(index, request->key(), ticket);
     }
     if (it == NULL) {
         response->set_code(109);
@@ -693,22 +701,26 @@ void TabletImpl::Count(RpcController* controller,
         return;
     }
     it->SeekToFirst();
-    uint64_t end_time = table->GetExpireTime();
+    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    uint64_t end_time = table->GetExpireTime(ttl);
     PDLOG(DEBUG, "end_time %lu", end_time);
     uint64_t scount = 0;
-    uint64_t ttl = table->GetTTL();
     while (it->Valid()) {
-        if (it->GetKey() <= end_time) {
-            break;
-        }
-        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime && scount >= ttl) {
-            break;
+        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
+            if (scount >= ttl) {
+                break;
+            }
+        } else {
+            if (it->GetKey() <= end_time) {
+                break;
+            }
         }
         scount ++;
         it->Next();
     }
     delete it;
     response->set_code(0);
+    response->set_msg("ok");
     response->set_count(scount);
 }
 
@@ -731,9 +743,10 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_msg("table is loading");
         return;
     }
-    ::rtidb::storage::TableIterator* it = NULL;
+    uint32_t index = 0;
+    int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        auto iit = table->GetMapping().find(request->idx_name());
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
                   request->tid(), request->pid());
@@ -741,21 +754,24 @@ void TabletImpl::Traverse(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        if (request->has_ts_name() && request->ts_name().size() > 0) {
-            auto pos = table->GetTSMapping().find(request->ts_name());
-            if (pos == table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(137);
-                response->set_msg("ts name not found");
-                return;
-            }
-            it = table->NewTableIterator(iit->second, pos->second);
-        } else {
-            it = table->NewTableIterator(iit->second);
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
         }
+        ts_index = iter->second;
+    }    
+    ::rtidb::storage::TableIterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewTableIterator(index, ts_index);
     } else {
-        it = table->NewTableIterator(0);
+        it = table->NewTableIterator(index);
     }
     uint64_t last_time = 0;
     std::string last_pk;
