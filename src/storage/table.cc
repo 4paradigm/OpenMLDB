@@ -528,12 +528,12 @@ bool Table::IsExpire(const LogEntry& entry) {
         }
     } else {
         if (ts_dimemsions_map.empty()) {
-            if (entry.ts() < GetExpireTime(GetTTL())) {
+            if (entry.ts() >= GetExpireTime(GetTTL())) {
                 return false;
             }
         } else {
             for (auto kv : ts_dimemsions_map) {
-                if (kv.second < GetExpireTime(GetTTL(0, kv.first))) {
+                if (kv.second >= GetExpireTime(GetTTL(0, kv.first))) {
                     return false;
                 }
             }

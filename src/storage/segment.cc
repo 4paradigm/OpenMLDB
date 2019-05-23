@@ -271,9 +271,6 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
     }
     while (node != NULL) {
         ::rtidb::base::Node<Slice, void*>* entry_node = node->GetValue();
-        uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
-        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
-        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
         // free pk memory
         delete entry_node->GetKey().data();
         if (ts_cnt_ > 1) {
@@ -289,6 +286,9 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
                 delete it;
             }
             delete[] entry_arr;
+            uint64_t byte_size = GetRecordPkMultiIdxSize(entry_node->Height(), 
+                    entry_node->GetKey().size(), key_entry_max_height_, ts_cnt_);
+            idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
         } else {
             KeyEntry* entry = (KeyEntry*)entry_node->GetValue();
             TimeEntries::Iterator* it = entry->entries.NewIterator();
@@ -300,11 +300,15 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
             }
             delete it;
             delete entry;
+            uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), 
+                    entry_node->GetKey().size(), key_entry_max_height_);
+            idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
         }
         delete entry_node;
         ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* tmp = node;
         node = node->GetNextNoBarrier(0);
         delete tmp;
+        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
         idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     }
 }
