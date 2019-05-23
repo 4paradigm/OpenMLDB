@@ -465,38 +465,81 @@ uint64_t Table::GetExpireTime(uint64_t ttl) {
 }
 
 bool Table::IsExpire(const LogEntry& entry) {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0) { 
+    if (!enable_gc_.load(std::memory_order_relaxed)) { 
         return false;
     }
-    uint64_t expired_time = 0;
+    std::map<uint32_t, uint64_t> ts_dimemsions_map;
+    for (auto iter = entry.ts_dimensions().begin(); iter != entry.ts_dimensions().end(); iter++) {
+        ts_dimemsions_map.insert(std::make_pair(iter->idx(), iter->ts()));
+    }
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         if (entry.dimensions_size() > 0) {
             for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
-                ::rtidb::storage::Ticket ticket;
-                ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), iter->key(), ticket);
-                it->SeekToLast();
-                if (it->Valid()) {
-                    if (expired_time == 0) {
-                        expired_time = it->GetKey();
+                auto pos = column_key_map_.find(iter->idx());
+                if (pos != column_key_map_.end()) {
+                    for (auto ts_idx : pos->second) {
+                        auto inner_pos = ts_dimemsions_map.find(ts_idx);
+                        if (inner_pos == ts_dimemsions_map.end()) {
+                            continue;
+                        }
+                        ::rtidb::storage::Ticket ticket;
+                        ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
+                        it->SeekToLast();
+                        if (it->Valid()) {
+                            if (inner_pos->second >= it->GetKey()) {
+                                delete it;
+                                return false;
+                            }
+                        }
+                        delete it;
+                    }    
+                } else {
+                    uint64_t ts = 0;
+                    ::rtidb::storage::Iterator* it = NULL;
+                    ::rtidb::storage::Ticket ticket;
+                    if (ts_dimemsions_map.empty()) {
+                        ts = entry.ts();
+                        it = NewIterator(iter->idx(), iter->key(), ticket);
                     } else {
-                        expired_time = std::min(expired_time, it->GetKey());
+                        ts = ts_dimemsions_map.begin()->second;
+                        it = NewIterator(iter->idx(), ts_dimemsions_map.begin()->first, iter->key(), ticket);
                     }
+                    it->SeekToLast();
+                    if (it->Valid()) {
+                        if (ts >= it->GetKey()) {
+                            delete it;
+                            return false;
+                        }
+                    }
+                    delete it;
                 }
-                delete it;
             }
         } else {
             ::rtidb::storage::Ticket ticket;
             ::rtidb::storage::Iterator* it = NewIterator(entry.pk(), ticket);
             it->SeekToLast();
             if (it->Valid()) {
-                expired_time = it->GetKey();
+                if (entry.ts() >= it->GetKey()) {
+                    delete it;
+                    return false;
+                }
             }
             delete it;
         }
     } else {
-        expired_time = GetExpireTime(GetTTL());
+        if (ts_dimemsions_map.empty()) {
+            if (entry.ts() < GetExpireTime(GetTTL())) {
+                return false;
+            }
+        } else {
+            for (auto kv : ts_dimemsions_map) {
+                if (kv.second < GetExpireTime(GetTTL(0, kv.first))) {
+                    return false;
+                }
+            }
+        }
     }
-    return entry.ts() < expired_time;
+    return true;
 }
 
 int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
