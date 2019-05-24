@@ -237,6 +237,7 @@ message TraverseRequest {
 	optional string pk = 5;
 	optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
+    optional string ts_name = 8;
 }
 
 message TraverseResponse {

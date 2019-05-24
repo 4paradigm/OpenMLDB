@@ -515,8 +515,11 @@ class TestCaseBase(unittest.TestCase):
         table_meta = {}
         with open('{}/db/{}_{}/table_meta.txt'.format(nodepath, tid, pid)) as f:
             for l in f:
-                k = l.split(":")[0]
-                v = l[:-1].split(":")[1].strip()
+                arr = l.split(":")
+                if (len(arr) < 2):
+                    continue
+                k = arr[0]
+                v = arr[1].strip()
                 if k in table_meta:
                     v += '|' + table_meta[k]
                 table_meta[k] = v
