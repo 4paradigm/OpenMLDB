@@ -97,7 +97,7 @@ int Table::InitColumnDesc() {
         if (table_meta_.column_key_size() > 0) {
             for (const auto& column_key : table_meta_.column_key()) {
                 uint32_t cur_key_idx = key_idx;
-                std::string name = column_key.key_name();
+                std::string name = column_key.index_name();
                 auto it = mapping_.find(name);
                 if (it == mapping_.end()) {
                     mapping_.insert(std::make_pair(name, key_idx));

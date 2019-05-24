@@ -232,13 +232,13 @@ int SetDimensionData(const std::map<std::string, std::string>& raw_data,
             uint32_t pid_num,
             std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions) {
     uint32_t dimension_idx = 0;
-    std::set<std::string> key_name_set;
+    std::set<std::string> index_name_set;
     for (const auto& column_key : column_key_field) {
-        std::string key_name = column_key.key_name();
-        if (key_name_set.find(key_name) == key_name_set.end()) {
+        std::string index_name = column_key.index_name();
+        if (index_name_set.find(index_name) == index_name_set.end()) {
             continue;
         }
-        key_name_set.insert(key_name);
+        index_name_set.insert(index_name);
         std::string key;
         for (int i = 0; i < column_key.col_name_size(); i++) {
             auto pos = raw_data.find(column_key.col_name(i));
@@ -251,7 +251,7 @@ int SetDimensionData(const std::map<std::string, std::string>& raw_data,
             key += pos->second;
         }
         if (key.empty()) {
-            auto pos = raw_data.find(key_name);
+            auto pos = raw_data.find(index_name);
             if (pos == raw_data.end()) {
                 return -1;
             }
@@ -918,13 +918,9 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
         return;
     }
     if (tables[0].column_desc_v1_size() > 0) {
-        if (tables[0].column_key_size() > 0) {
-            ::rtidb::base::PrintSchema(tables[0].column_desc_v1(), false);
-            printf("\n#ColumnKey\n");
-            ::rtidb::base::PrintColumnKey(tables[0].column_key());
-        } else {
-            ::rtidb::base::PrintSchema(tables[0].column_desc_v1(), true);
-        }
+        ::rtidb::base::PrintSchema(tables[0].column_desc_v1());
+        printf("\n#ColumnKey\n");
+        ::rtidb::base::PrintColumnKey(tables[0]);
     } else if (tables[0].column_desc_size() > 0) {
         ::rtidb::base::PrintSchema(tables[0].column_desc());
     } else {
@@ -1649,9 +1645,9 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         std::set<std::string> key_set;
         for (int idx = 0; idx < table_info.column_key_size(); idx++) {
             std::string cur_key;
-            if (!table_info.column_key(idx).has_key_name() ||
-                    table_info.column_key(idx).key_name().size() == 0) {
-                printf("not set key_name in column_key\n");
+            if (!table_info.column_key(idx).has_index_name() ||
+                    table_info.column_key(idx).index_name().size() == 0) {
+                printf("not set index_name in column_key\n");
                 return -1;
             }
             if (table_info.column_key(idx).col_name_size() > 0) {
@@ -1663,7 +1659,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                     }
                 }
             } else {
-                cur_key = table_info.column_key(idx).key_name();
+                cur_key = table_info.column_key(idx).index_name();
             }
             if (ts_col_set.find(table_info.column_key(idx).ts_name()) == ts_col_set.end()) {
                 printf("invalid ts_name %s\n", table_info.column_key(idx).ts_name().c_str());
@@ -1674,7 +1670,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                 printf("duplicate column_key\n");
                 return -1;
             }
-            std::string key_ts_pair = table_info.column_key(idx).key_name() + 
+            std::string key_ts_pair = table_info.column_key(idx).index_name() + 
                 table_info.column_key(idx).ts_name();
             if (key_set.find(key_ts_pair) != key_set.end()) {
                 printf("duplicate column_key\n");

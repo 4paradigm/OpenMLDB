@@ -17,15 +17,11 @@
 namespace rtidb {
 namespace base {
 
-static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field, 
-            bool display_index) {
+static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("name");
     row.push_back("type");
-    row.push_back("index");
-    row.push_back("ts_col");
-    row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     uint32_t idx = 0;
@@ -34,13 +30,6 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
         row.push_back(column_desc.type());
-        if (display_index) {
-            column_desc.add_ts_idx() ? row.push_back("yes") : row.push_back("no");
-        } else {
-            row.push_back("-");
-        }
-        column_desc.is_ts_col() ? row.push_back("yes") : row.push_back("no");
-        column_desc.has_ttl() ? row.push_back(std::to_string(column_desc.ttl())) : row.push_back("-");
         tp.AddRow(row);
         idx++;
     }
@@ -73,38 +62,78 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
     tp.Print(true);
 }
 
-static void PrintColumnKey(const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field) {
+static void PrintColumnKey(const ::rtidb::nameserver::TableInfo& table_info) {
     std::vector<std::string> row;
     row.push_back("#");
-    row.push_back("key_name");
+    row.push_back("index_name");
     row.push_back("col_name");
     row.push_back("ts_col");
+    row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    uint32_t idx = 0;
-    for (const auto& column_key : column_key_field) {
-        row.clear();
-        row.push_back(std::to_string(idx));
-        row.push_back(column_key.key_name());
-        std::string key;
-        for (const auto& name : column_key.col_name()) {
-            if (key.empty()) {
-                key = name;
+    uint64_t ttl = table_info.ttl();
+    std::map<std::string, uint64_t> ttl_map;
+    for (const auto& column_desc :  table_info.column_desc_v1()) {
+        if (column_desc.is_ts_col()) {
+            if (column_desc.has_ttl()) {
+                ttl_map.insert(std::make_pair(column_desc.name(), column_desc.ttl()));
             } else {
-                key += "|" + name;
+                ttl_map.insert(std::make_pair(column_desc.name(), ttl));
             }
         }
-        if (key.empty()) {
-            key = column_key.key_name();
+    }
+    std::string ttl_suff = table_info.ttl_type() == "kLatestTime" ? "" : "min";
+    uint32_t idx = 0;
+    if (table_info.column_key_size() > 0) {
+        for (const auto& column_key : table_info.column_key()) {
+            row.clear();
+            row.push_back(std::to_string(idx));
+            row.push_back(column_key.index_name());
+            std::string key;
+            for (const auto& name : column_key.col_name()) {
+                if (key.empty()) {
+                    key = name;
+                } else {
+                    key += "|" + name;
+                }
+            }
+            if (key.empty()) {
+                key = column_key.index_name();
+            }
+            row.push_back(key);
+            if (column_key.has_ts_name() && column_key.ts_name().size() > 0) {
+                row.push_back(column_key.ts_name());
+                if (ttl_map.find(column_key.ts_name()) != ttl_map.end()) {
+                    row.push_back(std::to_string(ttl_map[column_key.ts_name()]) + ttl_suff);
+                } else {
+                    row.push_back(std::to_string(ttl) + ttl_suff);
+                }
+            } else {
+                row.push_back("-");
+                row.push_back(std::to_string(ttl) + ttl_suff);
+            }
+            tp.AddRow(row);
+            idx++;
         }
-        row.push_back(key);
-        if (column_key.has_ts_name() && column_key.ts_name().size() > 0) {
-            row.push_back(column_key.ts_name());
-        } else {
-            row.push_back("-");
+    } else {
+        for (const auto& column_desc :  table_info.column_desc_v1()) {
+            if (column_desc.add_ts_idx()) {
+                row.clear();
+                row.push_back(std::to_string(idx));
+                row.push_back(column_desc.name());
+                row.push_back(column_desc.name());
+                if (ttl_map.empty()) {
+                    row.push_back("-");
+                    row.push_back(std::to_string(ttl) + ttl_suff);
+                } else {
+                    auto iter = ttl_map.begin();
+                    row.push_back(iter->first);
+                    row.push_back(std::to_string(iter->second) + ttl_suff);
+                }
+                tp.AddRow(row);
+                idx++;
+            }
         }
-        tp.AddRow(row);
-        idx++;
     }
     tp.Print(true);
 }
