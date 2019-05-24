@@ -1006,7 +1006,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         std::cout << "failed to get. error msg: " << msg << std::endl;
         return;
     }
-    if (tables[0].column_desc_size() == 0) {
+    if (tables[0].column_desc_size() == 0 && tables[0].column_desc_v1_size() == 0) {
         std::string value;
         uint64_t ts = 0;
         try {
