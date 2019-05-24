@@ -154,7 +154,7 @@ public class ColumnKeyTest {
         ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
         ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
         ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
-        ColumnKey colKey1 = ColumnKey.newBuilder().setKeyName("card_mcc").addColName("card").addColName("mcc").setTsName("ts").build();
+        ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card_mcc").addColName("card").addColName("mcc").setTsName("ts").build();
         TableInfo table = TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
@@ -217,9 +217,9 @@ public class ColumnKeyTest {
         ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
         ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
-        ColumnKey colKey1 = ColumnKey.newBuilder().setKeyName("card").setTsName("ts").build();
-        ColumnKey colKey2 = ColumnKey.newBuilder().setKeyName("card").setTsName("ts_1").build();
-        ColumnKey colKey3 = ColumnKey.newBuilder().setKeyName("mcc").setTsName("ts").build();
+        ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").setTsName("ts").build();
+        ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("card").setTsName("ts_1").build();
+        ColumnKey colKey3 = ColumnKey.newBuilder().setIndexName("mcc").setTsName("ts").build();
         TableInfo table = TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
