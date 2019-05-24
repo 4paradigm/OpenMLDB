@@ -767,6 +767,9 @@ public class TableSyncClientImpl implements TableSyncClient {
                     value = value + "|" + cur_value;
                 }
             }
+            if (value == null || value.isEmpty()) {
+                continue;
+            }
             int pid = (int) (MurmurHash.hash64(value) % th.getPartitions().length);
             if (pid < 0) {
                 pid = pid * -1;
