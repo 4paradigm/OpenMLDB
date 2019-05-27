@@ -685,6 +685,16 @@ public class TableSyncClientImpl implements TableSyncClient {
         return put(name, time, row, null);
     }
 
+    @Override
+    public boolean put(String name, Object[] row) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        List<Tablet.TSDimension> tsDimensions = TableClientCommon.ParseArrayInput(row, th);
+        return put(name, 0, row, tsDimensions);
+    }
+
     private boolean put(String name, long time, Object[] row, List<Tablet.TSDimension> ts) throws TimeoutException, TabletException {
         boolean handleNull = client.getConfig().isHandleNull();
         TableHandler th = client.getHandler(name);
@@ -738,20 +748,20 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
-        if (ds != null) {
-        }
         builder.setPid(pid);
         builder.setTid(tid);
         if (time != 0) {
             builder.setTime(time);
-        } else {
+        }
+        if (ts != null) {
             for (Tablet.TSDimension tsDim : ts) {
                 builder.addTsDimensions(tsDim);
             }
         }
         if (key != null) {
             builder.setPk(key);
-        } else {
+        }
+        if (ds != null){
             for (Tablet.Dimension dim : ds) {
                 builder.addDimensions(dim);
             }
@@ -787,9 +797,6 @@ public class TableSyncClientImpl implements TableSyncClient {
         Object[] arrayRow = new Object[th.getSchema().size()];
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
         TableClientCommon.ParseMapInput(row, th, arrayRow, tsDimensions);
-        if (tsDimensions.isEmpty()) {
-            throw new TabletException("no ts column with name" + tname);
-        }
         return put(tname, 0, arrayRow, tsDimensions);
     }
 

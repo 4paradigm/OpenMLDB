@@ -18,6 +18,7 @@ import java.util.Map;
 public class TableClientCommon {
 
     public static void ParseMapInput(Map<String, Object> row, TableHandler th, Object[] arrayRow, List<Tablet.TSDimension> tsDimensions) throws TabletException {
+        tsDimensions.clear();
         int tsIndex = 0;
         for (int i = 0; i < th.getSchema().size(); i++) {
             ColumnDesc columnDesc = th.getSchema().get(i);
@@ -42,6 +43,43 @@ public class TableClientCommon {
                 tsIndex++;
             }
         }
+        if (tsDimensions.isEmpty()) {
+            throw new TabletException("no ts column");
+        }
+    }
+
+    public static List<Tablet.TSDimension> ParseArrayInput(Object[] row, TableHandler th) throws TabletException {
+        if (row.length != th.getSchema().size()) {
+            throw new TabletException("input row size error");
+        }
+        List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
+        int tsIndex = 0;
+        for (int i = 0; i < th.getSchema().size(); i++) {
+            ColumnDesc columnDesc = th.getSchema().get(i);
+            Object colValue = row[i];
+            if (columnDesc.isTsCol()) {
+                if (columnDesc.getType() == ColumnType.kInt64) {
+                    tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).setTs((Long)colValue).build());
+                } else if (columnDesc.getType() == ColumnType.kTimestamp) {
+                    if (colValue instanceof Timestamp) {
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                                setTs(((Timestamp)colValue).getTime()).build());
+                    } else if (colValue instanceof DateTime) {
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                                setTs(((DateTime)colValue).getMillis()).build());
+                    } else {
+                        throw new TabletException("invalid ts column");
+                    }
+                } else {
+                    throw new TabletException("invalid ts column");
+                }
+                tsIndex++;
+            }
+        }
+        if (tsDimensions.isEmpty()) {
+            throw new TabletException("no ts column");
+        }
+        return tsDimensions;
     }
 
     public static List<Tablet.Dimension> FillTabletDimension(Object[] row, TableHandler th, boolean handleNull) throws TabletException {

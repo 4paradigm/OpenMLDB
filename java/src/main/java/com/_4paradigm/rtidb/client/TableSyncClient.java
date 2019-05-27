@@ -55,6 +55,7 @@ public interface TableSyncClient {
     boolean put(String tname, String key, long time, String value) throws TimeoutException, TabletException;
 
     boolean put(String tname, long time, Object[] row) throws TimeoutException, TabletException;
+    boolean put(String tname, Object[] row) throws TimeoutException, TabletException;
     boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException;
     boolean put(String tname, Map<String, Object> row) throws TimeoutException, TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;

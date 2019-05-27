@@ -84,8 +84,10 @@ public interface TableAsyncClient {
     PutFuture put(String name, String key, long time, String value) throws TabletException;
 
     PutFuture put(String name, long time, Object[] row) throws TabletException;
+    PutFuture put(String name, Object[] row) throws TabletException;
 
     PutFuture put(String name, long time, Map<String, Object> row) throws TabletException;
+    PutFuture put(String name, Map<String, Object> row) throws TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ScanFuture scan(String name, String key, String idxName, long st, long et) throws TabletException;
 
@@ -99,11 +101,18 @@ public interface TableAsyncClient {
 
     ScanFuture scan(String name, String key, long st, long et, int limit) throws TabletException;
 
+    ScanFuture scan(String name, String key, String idxName, long st, long et, String tsName, int limit) throws TabletException;
+    ScanFuture scan(String name, Object[] row, String idxName, long st, long et, String tsName, int limit) throws TabletException;
+    ScanFuture scan(String name, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit) throws TabletException;
+
     GetFuture get(String name, String key, long time) throws TabletException;
     GetFuture get(String name, String key, long time, Tablet.GetType type) throws TabletException;
 
     GetFuture get(String name, String key, String idxName, long time) throws TabletException;
     GetFuture get(String name, String key, String idxName, long time, Tablet.GetType type) throws TabletException;
+    GetFuture get(String name, String key, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException;
+    GetFuture get(String name, Object[] row, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException;
+    GetFuture get(String name, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException;
     GetFuture get(String name, String key) throws TabletException;
 
     GetFuture get(String name, String key, String idxName) throws TabletException;
