@@ -279,20 +279,16 @@ def RecoverData():
     for key in partitions:
         tables = partitions[key]
         for p in tables:
-            # print p
             cmd_no = "--cmd=updatetablealive " + p[0] + " " + p[2] + " " + p[3] + " no"
             update_alive_no = list(common_cmd)
             update_alive_no.append(cmd_no)
             code, stdout,stderr = RunWithRetuncode(update_alive_no)
-            # print stdout.find("ok")
             if stdout.find("update ok") == -1:
                 print stdout
                 print "update table alive is failed"
                 return
-            # print stdout
+
             # dont use code to determine result
-            # print code
-            # print p
             if p[4] == "leader":
                 key = "{}_{}".format(p[1], p[2])
                 if leader_table.has_key(key):
@@ -304,13 +300,11 @@ def RecoverData():
             else:
                 follower_table.append(p)
 
-# ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
+    # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
     tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
     for key in leader_table:
         # print key
         table = leader_table[key]
-        # tablet_endpoint = set()
-        # print table
         cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
         # print cmd_loadtable
         loadtable = list(tablet_cmd)
@@ -348,15 +342,14 @@ def RecoverData():
         update_alive_yes.append(cmd_yes)
         code, stdout,stderr = RunWithRetuncode(update_alive_yes)
         if stdout.find("update ok") == -1:
-                print stdout
-                print "update table alive is failed"
-                return
+            print stdout
+            print "update table alive is failed"
+            return
 
-# recovertable table_name pid endpoint
+    # recovertable table_name pid endpoint
     for table in follower_table:
         # print table
         cmd_recovertable = "--cmd=recovertable " + table[0] + " " + table[2] + " " + table[3]
-        # print cmd_recovertable
         recovertable = list(common_cmd)
         recovertable.append(cmd_recovertable)
         code, stdout,stderr = RunWithRetuncode(recovertable)
