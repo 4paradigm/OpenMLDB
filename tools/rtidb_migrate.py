@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 USE_SHELL = sys.platform.startswith( "win" )
 from optparse import OptionParser
 parser = OptionParser()
@@ -112,6 +113,25 @@ def GetTables(output):
         partitons = partition_on_tablet.get(partition[3], [])
         partitons.append(partition)
         partition_on_tablet[partition[3]] = partitons
+    return partition_on_tablet
+
+def GetTablesStatus(output):
+    # tid  pid  offset  mode state enable_expire ttl ttl_offset memused compress_type skiplist_height
+    lines = output.split("\n")
+    content_is_started = False
+    partition_on_tablet = {}
+    for line in lines:
+        if line.startswith("---------"):
+            content_is_started = True
+            continue
+        if not content_is_started:
+            continue
+        partition = line.split()
+        if len(partition) < 4:
+            continue
+
+        key = "{}_{}".format(partition[0], partition[1])
+        partition_on_tablet[key] = partition
     return partition_on_tablet
 
 def Analysis():
@@ -254,7 +274,7 @@ def RecoverData():
     # updatetablealive $TABLE 1 172.27.128.37:9797 yes
     # ./build/bin/rtidb --cmd="updatetablealive $TABLE 1 172.27.128.37:9797 yes" --role=ns_client --endpoint=172.27.128.37:6527 --interactive=false
     # updatetablealive all of tables no
-    leader_table = []
+    leader_table = {}
     follower_table = []
     for key in partitions:
         tables = partitions[key]
@@ -272,14 +292,24 @@ def RecoverData():
             # print stdout
             # dont use code to determine result
             # print code
+            # print p
             if p[4] == "leader":
-                leader_table.append(p)
+                key = "{}_{}".format(p[1], p[2])
+                if leader_table.has_key(key):
+                    tmp = leader_table[key]
+                    if (tmp[8] < p[8]):
+                        leader_table[key] = p
+                else:
+                    leader_table[key] = p
             else:
                 follower_table.append(p)
 
 # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
     tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
-    for table in leader_table:
+    for key in leader_table:
+        # print key
+        table = leader_table[key]
+        # tablet_endpoint = set()
         # print table
         cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
         # print cmd_loadtable
@@ -288,13 +318,31 @@ def RecoverData():
         loadtable.append("--endpoint=" + table[3])
         # print loadtable
         code, stdout,stderr = RunWithRetuncode(loadtable)
+        cmd_gettablestatus = "--cmd=gettablestatus"
+        gettablestatus = list(tablet_cmd)
+        loadtable.append("--endpoint=" + table[3])
+        loadtable.append(cmd_gettablestatus)
+        print loadtable
+        code, stdout,stderr = RunWithRetuncode(loadtable)
         # print stdout
-        # if "LoadTable\ ok" not in stdout:
-        if stdout.find("LoadTable ok") == -1:
-            print stdout
-            print stderr
+
+        # check table status
+        flag = False
+        for i in range(10):
+            code, stdout,stderr = RunWithRetuncode(loadtable)
+            table_status = GetTablesStatus(stdout)
+            status = table_status[key]
+            if status[3] == "kTableLeader":
+                if status[4] == "kTableNormal":
+                    flag = True
+                    break
+            time.sleep(2)
+
+        if flag == False:
             print "Load table is failed"
             return
+
+        # update table is alive
         cmd_yes = "--cmd=updatetablealive " + table[0] + " " + table[2] + " " + table[3] + " yes"
         update_alive_yes = list(common_cmd)
         update_alive_yes.append(cmd_yes)
@@ -303,7 +351,6 @@ def RecoverData():
                 print stdout
                 print "update table alive is failed"
                 return
-
 
 # recovertable table_name pid endpoint
     for table in follower_table:
