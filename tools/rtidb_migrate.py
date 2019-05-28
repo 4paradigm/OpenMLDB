@@ -225,6 +225,111 @@ def RecoverEndpoint():
         else:
             print "skip to recover partiton for %s %s on %s"%(p[0], p[2], options.endpoint)
 
+def RecoverData():
+    conget_auto = list(common_cmd)
+    conget_auto.append("--cmd=confget auto_failover")
+    code, stdout,stderr = RunWithRetuncode(conget_auto)
+    flag = stdout.find("true")
+    if flag != -1:
+        # set auto failove is no
+        confset_no = list(common_cmd)
+        confset_no.append("--cmd=confset auto_failover false")
+        code, stdout,stderr = RunWithRetuncode(confset_no)
+        # print stdout
+        if code != 0:
+            print "set auto_failover is failed"
+            return
+
+    # show table
+    show_table = list(common_cmd)
+    show_table.append("--cmd=showtable")
+    # print common_cmd
+    code, stdout,stderr = RunWithRetuncode(show_table)
+    if code != 0:
+        print "fail to show table"
+        return
+    # print stdout
+    partitions = GetTables(stdout)
+
+    # updatetablealive $TABLE 1 172.27.128.37:9797 yes
+    # ./build/bin/rtidb --cmd="updatetablealive $TABLE 1 172.27.128.37:9797 yes" --role=ns_client --endpoint=172.27.128.37:6527 --interactive=false
+    # updatetablealive all of tables no
+    leader_table = []
+    follower_table = []
+    for key in partitions:
+        tables = partitions[key]
+        for p in tables:
+            # print p
+            cmd_no = "--cmd=updatetablealive " + p[0] + " " + p[2] + " " + p[3] + " no"
+            update_alive_no = list(common_cmd)
+            update_alive_no.append(cmd_no)
+            code, stdout,stderr = RunWithRetuncode(update_alive_no)
+            # print stdout.find("ok")
+            if stdout.find("update ok") == -1:
+                print stdout
+                print "update table alive is failed"
+                return
+            # print stdout
+            # dont use code to determine result
+            # print code
+            if p[4] == "leader":
+                leader_table.append(p)
+            else:
+                follower_table.append(p)
+
+# ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
+    tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
+    for table in leader_table:
+        # print table
+        cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
+        # print cmd_loadtable
+        loadtable = list(tablet_cmd)
+        loadtable.append(cmd_loadtable)
+        loadtable.append("--endpoint=" + table[3])
+        # print loadtable
+        code, stdout,stderr = RunWithRetuncode(loadtable)
+        # print stdout
+        # if "LoadTable\ ok" not in stdout:
+        if stdout.find("LoadTable ok") == -1:
+            print stdout
+            print stderr
+            print "Load table is failed"
+            return
+        cmd_yes = "--cmd=updatetablealive " + table[0] + " " + table[2] + " " + table[3] + " yes"
+        update_alive_yes = list(common_cmd)
+        update_alive_yes.append(cmd_yes)
+        code, stdout,stderr = RunWithRetuncode(update_alive_yes)
+        if stdout.find("update ok") == -1:
+                print stdout
+                print "update table alive is failed"
+                return
+
+
+# recovertable table_name pid endpoint
+    for table in follower_table:
+        # print table
+        cmd_recovertable = "--cmd=recovertable " + table[0] + " " + table[2] + " " + table[3]
+        # print cmd_recovertable
+        recovertable = list(common_cmd)
+        recovertable.append(cmd_recovertable)
+        code, stdout,stderr = RunWithRetuncode(recovertable)
+        if stdout.find("recover table ok") == -1:
+            print stdout
+            print "recover is failed"
+            return
+        # print stdout
+
+    if flag != -1:
+        # set auto failove is no
+        confset_no = list(common_cmd)
+        confset_no.append("--cmd=confset auto_failover true")
+        code, stdout,stderr = RunWithRetuncode(confset_no)
+        # print stdout
+        if code != 0:
+            print "set auto_failover true is failed"
+            return
+
+
 
 def Main():
     if options.cmd == "analysis":
@@ -233,6 +338,8 @@ def Main():
         ChangeLeader()
     elif options.cmd == "recovertable":
         RecoverEndpoint()
+    elif options.cmd == "recoverdata":
+        RecoverData()
 
 if __name__ == "__main__":
     Main()
