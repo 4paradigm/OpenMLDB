@@ -305,6 +305,7 @@ def RecoverData():
     for key in leader_table:
         # print key
         table = leader_table[key]
+        print "recover table: {}".format(table)
         cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
         # print cmd_loadtable
         loadtable = list(tablet_cmd)
@@ -316,7 +317,7 @@ def RecoverData():
         gettablestatus = list(tablet_cmd)
         loadtable.append("--endpoint=" + table[3])
         loadtable.append(cmd_gettablestatus)
-        print loadtable
+        # print loadtable
         code, stdout,stderr = RunWithRetuncode(loadtable)
         # print stdout
 
