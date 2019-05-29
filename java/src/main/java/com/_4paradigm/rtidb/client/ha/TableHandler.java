@@ -60,16 +60,16 @@ public class TableHandler {
                         list1.add(colName);
                     }
                     if (list.isEmpty()) {
-                        String key = ck.getKeyName();
+                        String key = ck.getIndexName();
                         list.add(schemaPos.get(key));
                         list1.add(key);
                     }
-                    if (indexSet.contains(ck.getKeyName())) {
+                    if (indexSet.contains(ck.getIndexName())) {
                         continue;
                     }
-                    indexSet.add(ck.getKeyName());
+                    indexSet.add(ck.getIndexName());
                     indexes.put(index, list);
-                    keyMap.put(ck.getKeyName(), list1);
+                    keyMap.put(ck.getIndexName(), list1);
                     index++;
                 }
             }

@@ -22,6 +22,7 @@ public class TraverseKvIterator implements KvIterator {
     private int pid = 0;
     private int lastPid = 0;
     private String idxName = null;
+    private String tsName = null;
     private ByteString bs;
     private int offset;
     private ByteBuffer bb;
@@ -40,13 +41,14 @@ public class TraverseKvIterator implements KvIterator {
     private TableHandler th = null;
     private static Charset charset = Charset.forName("utf-8");
 
-    public TraverseKvIterator(RTIDBClient client, TableHandler th, String idxName) {
+    public TraverseKvIterator(RTIDBClient client, TableHandler th, String idxName, String tsName) {
         this.offset = 0;
         this.totalSize = 0;
         this.client = client;
         this.th = th;
         this.schema = th.getSchema();
         this.idxName = idxName;
+        this.tsName = tsName;
         this.isFinished = false;
     }
 
@@ -63,6 +65,9 @@ public class TraverseKvIterator implements KvIterator {
             builder.setLimit(client.getConfig().getTraverseLimit());
             if (idxName != null && !idxName.isEmpty()) {
                 builder.setIdxName(idxName);
+            }
+            if (tsName != null && !tsName.isEmpty()) {
+                builder.setTsName(tsName);
             }
             if (client.getConfig().isRemoveDuplicateByTime()) {
                 builder.setEnableRemoveDuplicatedRecord(true);
