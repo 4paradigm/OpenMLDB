@@ -249,8 +249,8 @@ def RecoverData():
     conget_auto = list(common_cmd)
     conget_auto.append("--cmd=confget auto_failover")
     code, stdout,stderr = RunWithRetuncode(conget_auto)
-    flag = stdout.find("true")
-    if flag != -1:
+    auto_failover_flag = stdout.find("true")
+    if auto_failover_flag != -1:
         # set auto failove is no
         confset_no = list(common_cmd)
         confset_no.append("--cmd=confset auto_failover false")
@@ -360,7 +360,7 @@ def RecoverData():
             return
         # print stdout
 
-    if flag != -1:
+    if auto_failover_flag != -1:
         # set auto failove is no
         confset_no = list(common_cmd)
         confset_no.append("--cmd=confset auto_failover true")
@@ -369,7 +369,6 @@ def RecoverData():
         if code != 0:
             print "set auto_failover true is failed"
             return
-
 
 
 def Main():
