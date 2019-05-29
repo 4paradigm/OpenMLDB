@@ -298,7 +298,7 @@ def RecoverData():
                         follower_table.append(tmp)
                 else:
                     leader_table[key] = p
-            else
+            else:
                 follower_table.append(p)
 
     # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
