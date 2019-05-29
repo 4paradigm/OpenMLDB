@@ -295,9 +295,10 @@ def RecoverData():
                     tmp = leader_table[key]
                     if (tmp[8] < p[8]):
                         leader_table[key] = p
+                        follower_table.append(tmp)
                 else:
                     leader_table[key] = p
-            else:
+            else
                 follower_table.append(p)
 
     # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
@@ -349,6 +350,7 @@ def RecoverData():
 
     # recovertable table_name pid endpoint
     for table in follower_table:
+        # if table[4] == "leader"
         # print table
         cmd_recovertable = "--cmd=recovertable " + table[0] + " " + table[2] + " " + table[3]
         recovertable = list(common_cmd)
