@@ -101,19 +101,25 @@ static void PrintColumnKey(const ::rtidb::nameserver::TableInfo& table_info) {
                 key = column_key.index_name();
             }
             row.push_back(key);
-            if (column_key.has_ts_name() && column_key.ts_name().size() > 0) {
-                row.push_back(column_key.ts_name());
-                if (ttl_map.find(column_key.ts_name()) != ttl_map.end()) {
-                    row.push_back(std::to_string(ttl_map[column_key.ts_name()]) + ttl_suff);
-                } else {
-                    row.push_back(std::to_string(ttl) + ttl_suff);
+            if (column_key.ts_name_size() > 0) {
+                for (const auto& ts_name : column_key.ts_name()) {
+                    std::vector<std::string> row_copy = row;
+                    row_copy[0] = std::to_string(idx);
+                    row_copy.push_back(ts_name);
+                    if (ttl_map.find(ts_name) != ttl_map.end()) {
+                        row_copy.push_back(std::to_string(ttl_map[ts_name]) + ttl_suff);
+                    } else {
+                        row_copy.push_back(std::to_string(ttl) + ttl_suff);
+                    }
+                    tp.AddRow(row_copy);
+                    idx++;
                 }
             } else {
                 row.push_back("-");
                 row.push_back(std::to_string(ttl) + ttl_suff);
+                tp.AddRow(row);
+                idx++;
             }
-            tp.AddRow(row);
-            idx++;
         }
     } else {
         for (const auto& column_desc :  table_info.column_desc_v1()) {

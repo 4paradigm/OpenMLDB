@@ -1644,12 +1644,17 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         index_set.clear();
         std::set<std::string> key_set;
         for (int idx = 0; idx < table_info.column_key_size(); idx++) {
-            std::string cur_key;
             if (!table_info.column_key(idx).has_index_name() ||
                     table_info.column_key(idx).index_name().size() == 0) {
                 printf("not set index_name in column_key\n");
                 return -1;
             }
+            if (index_set.find(table_info.column_key(idx).index_name()) != index_set.end()) {
+                printf("duplicate index_name %s\n", table_info.column_key(idx).index_name().c_str());
+                return -1;
+            }
+            index_set.insert(table_info.column_key(idx).index_name());
+            std::string cur_key;
             if (table_info.column_key(idx).col_name_size() > 0) {
                 for (const auto& name : table_info.column_key(idx).col_name()) {
                     if (cur_key.empty()) {
@@ -1661,23 +1666,17 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             } else {
                 cur_key = table_info.column_key(idx).index_name();
             }
-            if (ts_col_set.find(table_info.column_key(idx).ts_name()) == ts_col_set.end()) {
-                printf("invalid ts_name %s\n", table_info.column_key(idx).ts_name().c_str());
-                return -1;
-            }
-            cur_key += "\t" + table_info.column_key(idx).ts_name();
-            if (index_set.find(cur_key) != index_set.end()) {
+            if (key_set.find(cur_key) != key_set.end()) {
                 printf("duplicate column_key\n");
                 return -1;
             }
-            std::string key_ts_pair = table_info.column_key(idx).index_name() + 
-                table_info.column_key(idx).ts_name();
-            if (key_set.find(key_ts_pair) != key_set.end()) {
-                printf("duplicate column_key\n");
-                return -1;
+            key_set.insert(cur_key);
+            for (const auto& ts_name : table_info.column_key(idx).ts_name()) {
+                if (ts_col_set.find(ts_name) == ts_col_set.end()) {
+                    printf("invalid ts_name %s\n", ts_name.c_str());
+                    return -1;
+                }
             }
-            index_set.insert(cur_key);
-            key_set.insert(key_ts_pair);
             ::rtidb::common::ColumnKey* column_key = ns_table_info.add_column_key();
             column_key->CopyFrom(table_info.column_key(idx));
         }

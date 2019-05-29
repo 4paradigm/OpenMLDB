@@ -473,14 +473,88 @@ void TabletImpl::Put(RpcController* controller,
     }
 }
 
-inline bool TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta) {
+int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg) {
+    msg.clear();
     if (table_meta->name().size() <= 0) {
-        return false;
+        msg = "table name is empty";
+        return -1;
     }
     if (table_meta->tid() <= 0) {
-        return false;
+        msg = "tid is zero";
+        return -1;
     }
-    return true;
+    ::rtidb::api::TTLType type = table_meta->ttl_type();
+    uint64_t ttl = table_meta->ttl();
+    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
+        return -1;
+    }
+    std::set<std::string> column_set;
+    std::set<std::string> ts_set;
+    if (table_meta->column_desc_size() > 0) {
+        for (const auto& column_desc : table_meta->column_desc()) {
+            if (column_set.find(column_desc.name()) != column_set.end()) {
+                msg = "has repeated column name " + column_desc.name();
+                return -1;
+            }
+            if (column_desc.is_ts_col()) {
+                if (column_desc.type() != "int64" && column_desc.type() != "uint64" && 
+                        column_desc.type() != "timestamp") {
+                    msg = "ttl column type must be int64, uint64, timestamp";
+                    return -1;
+                }
+                if (column_desc.has_ttl()) {
+                    ttl = column_desc.ttl();
+                    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+                            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+                        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+                        msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
+                        return -1;
+                    }
+                }
+                ts_set.insert(column_desc.name());
+            }
+            column_set.insert(column_desc.name());
+        }
+    }
+    std::set<std::string> index_set;
+    if (table_meta->column_key_size() > 0) {
+        for (const auto& column_key : table_meta->column_key()) {
+            if (index_set.find(column_key.index_name()) != index_set.end()) {
+                msg = "has repeated index name " + column_key.index_name();
+                return -1;
+            }
+            index_set.insert(column_key.index_name());
+            for (const auto& column_name : column_key.col_name()) {
+                if (column_set.find(column_name) == column_set.end()) {
+                    msg = "not found column name " + column_name;
+                    return -1;
+                }
+            }
+            std::set<std::string> ts_name_set;
+            for (const auto& ts_name : column_key.ts_name()) {
+                if (ts_set.find(ts_name) == ts_set.end()) {
+                    msg = "not found ts_name " + ts_name;
+                    return -1;
+                }
+                if (ts_name_set.find(ts_name) != ts_name_set.end()) {
+                    msg = "has repeated ts_name " + ts_name;
+                    return -1;
+                }
+                ts_name_set.insert(ts_name);
+            }
+            if (ts_set.size() > 1 && column_key.ts_name_size() == 0) {
+                msg = "ts column num more than one, must set ts name";
+                return -1;
+            }
+        }
+    } else if (ts_set.size() > 1) {
+        msg = "column_key should be set when has two or more ts columns";
+        return -1;
+    }
+    return 0;
 }
 
 void TabletImpl::Scan(RpcController* controller,
@@ -1863,9 +1937,10 @@ void TabletImpl::LoadTable(RpcController* controller,
     do {
         ::rtidb::api::TableMeta table_meta;
         table_meta.CopyFrom(request->table_meta());
-        if (!CheckTableMeta(&table_meta)) {
+        std::string msg;
+        if (CheckTableMeta(&table_meta, msg) != 0) {
             response->set_code(129);
-            response->set_msg("table meta is illegal");
+            response->set_msg(msg);
             break;
         }
         uint32_t tid = table_meta.tid();
@@ -2021,9 +2096,10 @@ void TabletImpl::CreateTable(RpcController* controller,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
     const ::rtidb::api::TableMeta* table_meta = &request->table_meta();
-    if (!CheckTableMeta(table_meta)) {
+    std::string msg;
+    if (CheckTableMeta(table_meta, msg) != 0) {
         response->set_code(129);
-        response->set_msg("table meta is illegal");
+        response->set_msg(msg);
         done->Run();
         return;
     }
@@ -2031,16 +2107,6 @@ void TabletImpl::CreateTable(RpcController* controller,
     uint32_t pid = table_meta->pid();
     ::rtidb::api::TTLType type = table_meta->ttl_type();
     uint64_t ttl = table_meta->ttl();
-    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
-        response->set_code(132);
-        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
-        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
-                        ttl, ::rtidb::api::TTLType_Name(type).c_str(), max_ttl);
-        done->Run();
-        return;
-    }
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string name = table_meta->name();
     uint32_t seg_cnt = 8;

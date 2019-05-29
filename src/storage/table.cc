@@ -62,6 +62,9 @@ Table::Table(const ::rtidb::api::TableMeta& table_meta) : name_(table_meta.name(
 }
 
 Table::~Table() {
+    if (segments_ == NULL) {
+        return;
+    }
     Release();
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -73,7 +76,7 @@ Table::~Table() {
 }
 
 int Table::InitColumnDesc() {
-	if (table_meta_.column_desc_size() > 0) {
+    if (table_meta_.column_desc_size() > 0) {
         uint32_t key_idx = 0;
         uint32_t ts_idx = 0;
         for (const auto& column_desc : table_meta_.column_desc()) {
@@ -99,55 +102,56 @@ int Table::InitColumnDesc() {
                 uint32_t cur_key_idx = key_idx;
                 std::string name = column_key.index_name();
                 auto it = mapping_.find(name);
-                if (it == mapping_.end()) {
-                    mapping_.insert(std::make_pair(name, key_idx));
-                    key_idx++;
-                } else {
-                    cur_key_idx = it->second;
-                }
-				if (ts_mapping_.empty()) {
-					continue;
-				}
-                auto ts_iter = ts_mapping_.find(column_key.ts_name());
-                if (ts_iter == ts_mapping_.end()) {
-                    PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u",
-                                    column_key.ts_name().c_str(), id_, pid_);
+                if (it != mapping_.end()) {
                     return -1;
+                }    
+                mapping_.insert(std::make_pair(name, key_idx));
+                key_idx++;
+                if (ts_mapping_.empty()) {
+                    continue;
                 }
                 if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
                     column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
                 }
-                if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
-                            ts_iter->second) == column_key_map_[cur_key_idx].end()) {
-                    column_key_map_[cur_key_idx].push_back(ts_iter->second);
+                if (ts_mapping_.size() == 1) {
+                    column_key_map_[cur_key_idx].push_back(ts_mapping_.begin()->second);
+                    continue;
+                }
+                for (const auto& ts_name : column_key.ts_name()) {
+                    auto ts_iter = ts_mapping_.find(ts_name);
+                    if (ts_iter == ts_mapping_.end()) {
+                        PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u",
+                                        ts_name.c_str(), id_, pid_);
+                        return -1;
+                    }
+                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
+                                ts_iter->second) == column_key_map_[cur_key_idx].end()) {
+                        column_key_map_[cur_key_idx].push_back(ts_iter->second);
+                    }
                 }
             }
         } else {
-            if (ts_mapping_.size() > 1) {
-                PDLOG(WARNING, "column_key should be set when has two or more ts columns. tid %u pid %u",
-                                id_, pid_);
-                return -1;
-            } else if (!ts_mapping_.empty()) {
-				for (const auto& kv : mapping_) {
-					uint32_t cur_key_idx = kv.second;
-					if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
-						column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
-					}
-					uint32_t cur_ts_idx = ts_mapping_.begin()->second;
-					if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
-								cur_ts_idx) == column_key_map_[cur_key_idx].end()) {
-						column_key_map_[cur_key_idx].push_back(cur_ts_idx);
-					}
-				}
-			}
+            if (!ts_mapping_.empty()) {
+                for (const auto& kv : mapping_) {
+                    uint32_t cur_key_idx = kv.second;
+                    if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
+                        column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                    }
+                    uint32_t cur_ts_idx = ts_mapping_.begin()->second;
+                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
+                                cur_ts_idx) == column_key_map_[cur_key_idx].end()) {
+                        column_key_map_[cur_key_idx].push_back(cur_ts_idx);
+                    }
+                }
+            }
         }
-	} else {
-		for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
-			mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t)i));
-			PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", 
+    } else {
+        for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
+            mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t)i));
+            PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", 
                         table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
-		}
-	}
+        }
+    }
     // add default dimension
     if (mapping_.empty()) {
         mapping_.insert(std::make_pair("idx0", 0));
@@ -345,6 +349,9 @@ bool Table::Delete(const std::string& pk, uint32_t idx) {
 
 uint64_t Table::Release() {
     if (segment_released_) {
+        return 0;
+    }
+    if (segments_ == NULL) {
         return 0;
     }
     uint64_t total_cnt = 0;
