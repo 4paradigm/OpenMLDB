@@ -246,32 +246,15 @@ def RecoverEndpoint():
             print "skip to recover partiton for %s %s on %s"%(p[0], p[2], options.endpoint)
 
 def RecoverData():
-    conget_auto = list(common_cmd)
-    conget_auto.append("--cmd=confget auto_failover")
-    code, stdout,stderr = RunWithRetuncode(conget_auto)
-    auto_failover_flag = stdout.find("true")
-    if auto_failover_flag != -1:
-        # set auto failove is no
-        confset_no = list(common_cmd)
-        confset_no.append("--cmd=confset auto_failover false")
-        code, stdout,stderr = RunWithRetuncode(confset_no)
-        # print stdout
-        if code != 0:
-            print "set auto_failover is failed"
-            return
-        print "confset auto_failover false"
-
     # show table
     show_table = list(common_cmd)
-    # print show_table
     show_table.append("--cmd=showtable")
-    # print common_cmd
     code, stdout,stderr = RunWithRetuncode(show_table)
     if code != 0:
         print "fail to show table"
         return
 
-    # check table partition is not exixted
+    # check whether table partition is not exixted
     partitions = GetTables(stdout)
     tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
     for table in partitions:
@@ -286,6 +269,21 @@ def RecoverData():
         else:
             print "endpoint[{}] is alive".format(table[3])
             return
+
+    conget_auto = list(common_cmd)
+    conget_auto.append("--cmd=confget auto_failover")
+    code, stdout,stderr = RunWithRetuncode(conget_auto)
+    auto_failover_flag = stdout.find("true")
+    if auto_failover_flag != -1:
+        # set auto failove is no
+        confset_no = list(common_cmd)
+        confset_no.append("--cmd=confset auto_failover false")
+        code, stdout,stderr = RunWithRetuncode(confset_no)
+        # print stdout
+        if code != 0:
+            print "set auto_failover is failed"
+            return
+        print "confset auto_failover false"
 
     # updatetablealive $TABLE 1 172.27.128.37:9797 yes
     # ./build/bin/rtidb --cmd="updatetablealive $TABLE 1 172.27.128.37:9797 yes" --role=ns_client --endpoint=172.27.128.37:6527 --interactive=false
