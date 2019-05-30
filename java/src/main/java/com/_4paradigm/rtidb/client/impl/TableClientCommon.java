@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class TableClientCommon {
 
-    public static void ParseMapInput(Map<String, Object> row, TableHandler th, Object[] arrayRow, List<Tablet.TSDimension> tsDimensions) throws TabletException {
+    public static void parseMapInput(Map<String, Object> row, TableHandler th, Object[] arrayRow, List<Tablet.TSDimension> tsDimensions) throws TabletException {
         tsDimensions.clear();
         int tsIndex = 0;
         for (int i = 0; i < th.getSchema().size(); i++) {
@@ -48,7 +48,7 @@ public class TableClientCommon {
         }
     }
 
-    public static List<Tablet.TSDimension> ParseArrayInput(Object[] row, TableHandler th) throws TabletException {
+    public static List<Tablet.TSDimension> parseArrayInput(Object[] row, TableHandler th) throws TabletException {
         if (row.length != th.getSchema().size()) {
             throw new TabletException("input row size error");
         }
@@ -82,7 +82,7 @@ public class TableClientCommon {
         return tsDimensions;
     }
 
-    public static List<Tablet.Dimension> FillTabletDimension(Object[] row, TableHandler th, boolean handleNull) throws TabletException {
+    public static List<Tablet.Dimension> fillTabletDimension(Object[] row, TableHandler th, boolean handleNull) throws TabletException {
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         Map<Integer, List<Integer>> indexs = th.getIndexes();
         if (indexs.isEmpty()) {
@@ -134,7 +134,7 @@ public class TableClientCommon {
         return dimList;
     }
 
-    public static Map<Integer, List<Tablet.Dimension>> FillPartitionTabletDimension(Object[] row, TableHandler th,
+    public static Map<Integer, List<Tablet.Dimension>> fillPartitionTabletDimension(Object[] row, TableHandler th,
                                                                            boolean handleNull) throws TabletException {
         Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
         Map<Integer, List<Integer>> indexs = th.getIndexes();
@@ -177,7 +177,7 @@ public class TableClientCommon {
             if (value == null || value.isEmpty()) {
                 continue;
             }
-            int pid = ComputePidByKey(value, th.getPartitions().length);
+            int pid = computePidByKey(value, th.getPartitions().length);
             Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
             List<Tablet.Dimension> dimList = mapping.get(pid);
             if (dimList == null) {
@@ -193,7 +193,7 @@ public class TableClientCommon {
         return mapping;
     }
 
-    public static String GetCombinedKey(Map<String, Object> keyMap, List<String> indexList, boolean handleNull) throws TabletException {
+    public static String getCombinedKey(Map<String, Object> keyMap, List<String> indexList, boolean handleNull) throws TabletException {
         String combinedKey = "";
         for (String key : indexList) {
             if (!combinedKey.isEmpty()) {
@@ -221,7 +221,7 @@ public class TableClientCommon {
         return combinedKey;
     }
 
-    public static String GetCombinedKey(Object[] row, boolean handleNull) throws TabletException {
+    public static String getCombinedKey(Object[] row, boolean handleNull) throws TabletException {
         String combinedKey = "";
         for (Object obj : row) {
             if (!combinedKey.isEmpty()) {
@@ -248,7 +248,7 @@ public class TableClientCommon {
         return combinedKey;
     }
 
-    public static int ComputePidByKey(String key, int pidNum) {
+    public static int computePidByKey(String key, int pidNum) {
         int pid = (int) (MurmurHash.hash64(key) % pidNum);
         if (pid < 0) {
             pid = pid * -1;

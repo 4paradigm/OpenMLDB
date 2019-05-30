@@ -102,7 +102,7 @@ public interface TableAsyncClient {
     ScanFuture scan(String name, String key, long st, long et, int limit) throws TabletException;
 
     ScanFuture scan(String name, String key, String idxName, long st, long et, String tsName, int limit) throws TabletException;
-    ScanFuture scan(String name, Object[] row, String idxName, long st, long et, String tsName, int limit) throws TabletException;
+    ScanFuture scan(String name, Object[] keyArr, String idxName, long st, long et, String tsName, int limit) throws TabletException;
     ScanFuture scan(String name, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit) throws TabletException;
 
     GetFuture get(String name, String key, long time) throws TabletException;
@@ -111,7 +111,7 @@ public interface TableAsyncClient {
     GetFuture get(String name, String key, String idxName, long time) throws TabletException;
     GetFuture get(String name, String key, String idxName, long time, Tablet.GetType type) throws TabletException;
     GetFuture get(String name, String key, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException;
-    GetFuture get(String name, Object[] row, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException;
+    GetFuture get(String name, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException;
     GetFuture get(String name, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException;
     GetFuture get(String name, String key) throws TabletException;
 

@@ -204,7 +204,7 @@ message ScanRequest {
     // the end subfix key
     optional uint64 et = 3;
     optional uint32 limit = 4;
-    optional RpcMetric metric = 5;
+    optional RpcMetric metric = 5 [deprecated = true];
     optional uint32 tid = 6;
     optional uint32 pid = 7;
     optional bool enable_remove_duplicated_record = 8 [default=false];
@@ -254,7 +254,7 @@ message ScanResponse {
 	optional string msg = 2;
 	optional int32 code = 3;
 	optional uint32 count = 4;
-	optional RpcMetric metric = 6;
+	optional RpcMetric metric = 6 [deprecated = true];
 }
 
 message ReplicaRequest {

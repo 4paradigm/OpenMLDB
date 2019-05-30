@@ -74,7 +74,7 @@ public interface TableSyncClient {
 
     Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
 
-    Object[] getRow(String tname, Object[] row, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException;
@@ -95,7 +95,7 @@ public interface TableSyncClient {
     KvIterator scan(String tname, String key, String idxName, long st, long et, String tsName, int limit)
             throws TimeoutException, TabletException;
 
-    KvIterator scan(String tname, Object[] row, String idxName, long st, long et, String tsName)
+    KvIterator scan(String tname, Object[] keyArr, String idxName, long st, long et, String tsName)
             throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName)
@@ -114,7 +114,7 @@ public interface TableSyncClient {
     int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(String tname, Map<String, Object> keyMap, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
-    int count(String tname, Object[] row, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
+    int count(String tname, Object[] keyArr, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
 
     int count(int tid, int pid, String key, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(int tid, int pid, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
