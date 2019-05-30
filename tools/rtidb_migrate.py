@@ -304,7 +304,7 @@ def RecoverData():
                     leader_table[key] = p
             else:
                 follower_table.append(p)
-            print "updatetablealive tid[{}] pid[{}]".format(p[1], p[2])
+            print "updatetablealive tid[{}] pid[{}] endpoint[{}] no".format(p[1], p[2], p[3])
 
     # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
     tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
@@ -329,6 +329,7 @@ def RecoverData():
     count = 0
     while True:
         flag = True
+        print "loop check NO.{}".format(count)
         for key in leader_table:
             table = leader_table[key]
             cmd_gettablestatus = "--cmd=gettablestatus"
