@@ -268,7 +268,7 @@ def RecoverData():
         if len(table_status) == 0:
             continue
         else:
-            print "endpoint[{}] is alive".format(endpoint)
+            print "endpoint {} has table partitions".format(endpoint)
             return
 
     conget_auto = list(common_cmd)
