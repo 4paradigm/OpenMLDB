@@ -296,6 +296,8 @@ def RecoverData():
                     if (tmp[8] < p[8]):
                         leader_table[key] = p
                         follower_table.append(tmp)
+                    else:
+                        follower_table.append(p)
                 else:
                     leader_table[key] = p
             else:
