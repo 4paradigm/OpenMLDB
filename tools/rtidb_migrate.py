@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 USE_SHELL = sys.platform.startswith( "win" )
 from optparse import OptionParser
 parser = OptionParser()
@@ -112,6 +113,25 @@ def GetTables(output):
         partitons = partition_on_tablet.get(partition[3], [])
         partitons.append(partition)
         partition_on_tablet[partition[3]] = partitons
+    return partition_on_tablet
+
+def GetTablesStatus(output):
+    # tid  pid  offset  mode state enable_expire ttl ttl_offset memused compress_type skiplist_height
+    lines = output.split("\n")
+    content_is_started = False
+    partition_on_tablet = {}
+    for line in lines:
+        if line.startswith("---------"):
+            content_is_started = True
+            continue
+        if not content_is_started:
+            continue
+        partition = line.split()
+        if len(partition) < 4:
+            continue
+
+        key = "{}_{}".format(partition[0], partition[1])
+        partition_on_tablet[key] = partition
     return partition_on_tablet
 
 def Analysis():
@@ -225,6 +245,165 @@ def RecoverEndpoint():
         else:
             print "skip to recover partiton for %s %s on %s"%(p[0], p[2], options.endpoint)
 
+def RecoverData():
+    # show table
+    show_table = list(common_cmd)
+    show_table.append("--cmd=showtable")
+    code, stdout,stderr = RunWithRetuncode(show_table)
+    if code != 0:
+        print "fail to show table"
+        return
+
+    # check whether table partition is not exixted
+    partitions = GetTables(stdout)
+    # print partitions
+    tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
+    for endpoint in partitions:
+        cmd_gettablestatus = "--cmd=gettablestatus"
+        gettablestatus = list(tablet_cmd)
+        gettablestatus.append("--endpoint=" + endpoint)
+        gettablestatus.append(cmd_gettablestatus)
+        code, stdout,stderr = RunWithRetuncode(gettablestatus)
+        table_status = GetTablesStatus(stdout)
+        if len(table_status) == 0:
+            continue
+        else:
+            print "endpoint {} has table partitions".format(endpoint)
+            return
+
+    conget_auto = list(common_cmd)
+    conget_auto.append("--cmd=confget auto_failover")
+    code, stdout,stderr = RunWithRetuncode(conget_auto)
+    auto_failover_flag = stdout.find("true")
+    if auto_failover_flag != -1:
+        # set auto failove is no
+        confset_no = list(common_cmd)
+        confset_no.append("--cmd=confset auto_failover false")
+        code, stdout,stderr = RunWithRetuncode(confset_no)
+        # print stdout
+        if code != 0:
+            print "set auto_failover is failed"
+            return
+        print "confset auto_failover false"
+
+    # updatetablealive $TABLE 1 172.27.128.37:9797 yes
+    # ./build/bin/rtidb --cmd="updatetablealive $TABLE 1 172.27.128.37:9797 yes" --role=ns_client --endpoint=172.27.128.37:6527 --interactive=false
+    # updatetablealive all of tables no
+    leader_table = {}
+    follower_table = []
+    for key in partitions:
+        tables = partitions[key]
+        for p in tables:
+            cmd_no = "--cmd=updatetablealive " + p[0] + " " + p[2] + " " + p[3] + " no"
+            update_alive_no = list(common_cmd)
+            update_alive_no.append(cmd_no)
+            code, stdout,stderr = RunWithRetuncode(update_alive_no)
+            if stdout.find("update ok") == -1:
+                print stdout
+                print "update table alive is failed"
+                return
+
+            # dont use code to determine result
+            if p[4] == "leader":
+                key = "{}_{}".format(p[1], p[2])
+                if leader_table.has_key(key):
+                    tmp = leader_table[key]
+                    if (tmp[8] < p[8]):
+                        leader_table[key] = p
+                        follower_table.append(tmp)
+                    else:
+                        follower_table.append(p)
+                else:
+                    leader_table[key] = p
+            else:
+                follower_table.append(p)
+            print "updatetablealive tid[{}] pid[{}] endpoint[{}] no".format(p[1], p[2], p[3])
+
+    # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
+    for key in leader_table:
+        # print key
+        table = leader_table[key]
+        print "table leader: {}".format(table)
+        cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
+        # print cmd_loadtable
+        loadtable = list(tablet_cmd)
+        loadtable.append(cmd_loadtable)
+        loadtable.append("--endpoint=" + table[3])
+        # print loadtable
+        code, stdout,stderr = RunWithRetuncode(loadtable)
+        if stdout.find("LoadTable ok") == -1:
+            print stdout
+            print "load table is failed"
+            return
+        print "loadtable tid[{}] pid[{}]".format(table[1], table[2])
+
+    # check table status
+    count = 0
+    while True:
+        flag = True
+        if count % 12 == 0:
+            print "loop check NO.{}".format(count)
+        for key in leader_table:
+            table = leader_table[key]
+            cmd_gettablestatus = "--cmd=gettablestatus"
+            gettablestatus = list(tablet_cmd)
+            gettablestatus.append("--endpoint=" + table[3])
+            gettablestatus.append(cmd_gettablestatus)
+            code, stdout,stderr = RunWithRetuncode(gettablestatus)
+
+            table_status = GetTablesStatus(stdout)
+            status = table_status[key]
+            if status[3] == "kTableLeader":
+                if count % 12 == 0:
+                    print "{} status: {}".format(key, status[4])
+                if status[4] != "kTableNormal":
+                    flag = False
+                else:
+                    # update table is alive
+                    cmd_yes = "--cmd=updatetablealive " + table[0] + " " + table[2] + " " + table[3] + " yes"
+                    update_alive_yes = list(common_cmd)
+                    update_alive_yes.append(cmd_yes)
+                    code, stdout,stderr = RunWithRetuncode(update_alive_yes)
+                    if stdout.find("update ok") == -1:
+                        print stdout
+                        print "update table alive is failed"
+                        return
+                        break
+
+        if flag == True:
+            print "Load table is ok"
+            break
+
+        if count % 12 == 0:
+            print "loading table, please wait a moment"
+        count = count + 1
+        time.sleep(5)
+
+    # recovertable table_name pid endpoint
+    for table in follower_table:
+        # print table
+        cmd_recovertable = "--cmd=recovertable " + table[0] + " " + table[2] + " " + table[3]
+        recovertable = list(common_cmd)
+        recovertable.append(cmd_recovertable)
+        code, stdout,stderr = RunWithRetuncode(recovertable)
+        if stdout.find("recover table ok") == -1:
+            print stdout
+            print "recover is failed"
+            return
+        print "recovertable tid[{}] pid[{}] endpoint[{}]".format(table[1], table[2], table[3])
+        # print stdout
+
+    if auto_failover_flag != -1:
+        # set auto failove is no
+        confset_no = list(common_cmd)
+        confset_no.append("--cmd=confset auto_failover true")
+        code, stdout,stderr = RunWithRetuncode(confset_no)
+        # print stdout
+        if code != 0:
+            print "set auto_failover true is failed"
+            return
+        print "confset auto_failover true"
+
 
 def Main():
     if options.cmd == "analysis":
@@ -233,6 +412,8 @@ def Main():
         ChangeLeader()
     elif options.cmd == "recovertable":
         RecoverEndpoint()
+    elif options.cmd == "recoverdata":
+        RecoverData()
 
 if __name__ == "__main__":
     Main()
