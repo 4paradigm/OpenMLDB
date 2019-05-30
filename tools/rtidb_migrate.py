@@ -259,6 +259,7 @@ def RecoverData():
         if code != 0:
             print "set auto_failover is failed"
             return
+        print "confset auto_failover false"
 
     # show table
     show_table = list(common_cmd)
@@ -303,13 +304,14 @@ def RecoverData():
                     leader_table[key] = p
             else:
                 follower_table.append(p)
+            print "updatetablealive tid[{}] pid[{}]".format(p[1], p[2])
 
     # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
     tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
     for key in leader_table:
         # print key
         table = leader_table[key]
-        print "recover table: {}".format(table)
+        print "table info: {}".format(table)
         cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
         # print cmd_loadtable
         loadtable = list(tablet_cmd)
@@ -321,8 +323,10 @@ def RecoverData():
             print stdout
             print "load table is failed"
             return
+        print "loadtable tid[{}] pid[{}]".format(table[1], table[2])
 
     # check table status
+    count = 0
     while True:
         flag = True
         for key in leader_table:
@@ -355,12 +359,25 @@ def RecoverData():
             print "Load table is ok"
             break
 
-        print "loading table, please wait a moment"
-        time.sleep(60)
+        count = count + 1
+        if count % 12 == 0:
+            print "loading table, please wait a moment"
+        time.sleep(5)
 
     # recovertable table_name pid endpoint
     for table in follower_table:
-        # if table[4] == "leader"
+        # check table partition is not exixted
+        cmd_gettablestatus = "--cmd=gettablestatus"
+        gettablestatus = list(tablet_cmd)
+        gettablestatus.append("--endpoint=" + table[3])
+        gettablestatus.append(cmd_gettablestatus)
+        code, stdout,stderr = RunWithRetuncode(gettablestatus)
+        table_status = GetTablesStatus(stdout)
+        for status in table_status:
+            if table[1] == status[0] and table[2] == status[1]:
+                print "tid[{}] pid[{}] is existed".format(status[0], status[1])
+                return
+
         # print table
         cmd_recovertable = "--cmd=recovertable " + table[0] + " " + table[2] + " " + table[3]
         recovertable = list(common_cmd)
@@ -370,6 +387,7 @@ def RecoverData():
             print stdout
             print "recover is failed"
             return
+        print "recovertable tid[{}] pid[{}] endpoint[{}]".format(table[1], table[2], table[3])
         # print stdout
 
     if auto_failover_flag != -1:
@@ -381,6 +399,7 @@ def RecoverData():
         if code != 0:
             print "set auto_failover true is failed"
             return
+        print "confset auto_failover true"
 
 
 def Main():
