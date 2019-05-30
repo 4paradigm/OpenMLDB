@@ -270,8 +270,22 @@ def RecoverData():
     if code != 0:
         print "fail to show table"
         return
-    # print stdout
+
+    # check table partition is not exixted
     partitions = GetTables(stdout)
+    tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
+    for table in partitions:
+        cmd_gettablestatus = "--cmd=gettablestatus"
+        gettablestatus = list(tablet_cmd)
+        gettablestatus.append("--endpoint=" + table[3])
+        gettablestatus.append(cmd_gettablestatus)
+        code, stdout,stderr = RunWithRetuncode(gettablestatus)
+        table_status = GetTablesStatus(stdout)
+        if len(table_status) == 0:
+            continue
+        else:
+            print "endpoint[{}] is alive".format(table[3])
+            return
 
     # updatetablealive $TABLE 1 172.27.128.37:9797 yes
     # ./build/bin/rtidb --cmd="updatetablealive $TABLE 1 172.27.128.37:9797 yes" --role=ns_client --endpoint=172.27.128.37:6527 --interactive=false
@@ -307,11 +321,10 @@ def RecoverData():
             print "updatetablealive tid[{}] pid[{}] endpoint[{}] no".format(p[1], p[2], p[3])
 
     # ./build/bin/rtidb --cmd="loadtable $TABLE $TID $PID 144000 3 true" --role=client --endpoint=$TABLET_ENDPOINT --interactive=false
-    tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
     for key in leader_table:
         # print key
         table = leader_table[key]
-        print "table info: {}".format(table)
+        print "table leader: {}".format(table)
         cmd_loadtable = "--cmd=loadtable " + table[0] + " " + table[1] + " " + table[2] + " " + table[5].split("min")[0] + " 8"
         # print cmd_loadtable
         loadtable = list(tablet_cmd)
@@ -329,7 +342,8 @@ def RecoverData():
     count = 0
     while True:
         flag = True
-        print "loop check NO.{}".format(count)
+        if count % 12 == 0:
+            print "loop check NO.{}".format(count)
         for key in leader_table:
             table = leader_table[key]
             cmd_gettablestatus = "--cmd=gettablestatus"
@@ -341,7 +355,8 @@ def RecoverData():
             table_status = GetTablesStatus(stdout)
             status = table_status[key]
             if status[3] == "kTableLeader":
-                print "{} status: {}".format(key, status[4])
+                if count % 12 == 0:
+                    print "{} status: {}".format(key, status[4])
                 if status[4] != "kTableNormal":
                     flag = False
                 else:
@@ -360,25 +375,13 @@ def RecoverData():
             print "Load table is ok"
             break
 
-        count = count + 1
         if count % 12 == 0:
             print "loading table, please wait a moment"
+        count = count + 1
         time.sleep(5)
 
     # recovertable table_name pid endpoint
     for table in follower_table:
-        # check table partition is not exixted
-        cmd_gettablestatus = "--cmd=gettablestatus"
-        gettablestatus = list(tablet_cmd)
-        gettablestatus.append("--endpoint=" + table[3])
-        gettablestatus.append(cmd_gettablestatus)
-        code, stdout,stderr = RunWithRetuncode(gettablestatus)
-        table_status = GetTablesStatus(stdout)
-        for status in table_status:
-            if table[1] == status[0] and table[2] == status[1]:
-                print "tid[{}] pid[{}] is existed".format(status[0], status[1])
-                return
-
         # print table
         cmd_recovertable = "--cmd=recovertable " + table[0] + " " + table[2] + " " + table[3]
         recovertable = list(common_cmd)
