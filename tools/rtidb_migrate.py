@@ -317,39 +317,45 @@ def RecoverData():
         loadtable.append("--endpoint=" + table[3])
         # print loadtable
         code, stdout,stderr = RunWithRetuncode(loadtable)
-        cmd_gettablestatus = "--cmd=gettablestatus"
-        gettablestatus = list(tablet_cmd)
-        gettablestatus.append("--endpoint=" + table[3])
-        gettablestatus.append(cmd_gettablestatus)
+        if stdout.find("LoadTable ok") == -1:
+            print stdout
+            print "load table is failed"
+            return
 
-        code, stdout,stderr = RunWithRetuncode(gettablestatus)
-        # print stdout
-
-        # check table status
-        flag = False
-        for i in range(10):
+    while True:
+        flag = True
+        for key in leader_table:
+            table = leader_table[key]
+            cmd_gettablestatus = "--cmd=gettablestatus"
+            gettablestatus = list(tablet_cmd)
+            gettablestatus.append("--endpoint=" + table[3])
+            gettablestatus.append(cmd_gettablestatus)
             code, stdout,stderr = RunWithRetuncode(gettablestatus)
+
             table_status = GetTablesStatus(stdout)
             status = table_status[key]
             if status[3] == "kTableLeader":
-                if status[4] == "kTableNormal":
-                    flag = True
-                    break
-            time.sleep(2)
+                print "{} status: {}".format(key, status[4])
+                if status[4] != "kTableNormal":
+                    flag = False
+                else:
+                    # update table is alive
+                    cmd_yes = "--cmd=updatetablealive " + table[0] + " " + table[2] + " " + table[3] + " yes"
+                    update_alive_yes = list(common_cmd)
+                    update_alive_yes.append(cmd_yes)
+                    code, stdout,stderr = RunWithRetuncode(update_alive_yes)
+                    if stdout.find("update ok") == -1:
+                        print stdout
+                        print "update table alive is failed"
+                        return
+                        break
 
-        if flag == False:
-            print "Load table is failed"
-            return
+        if flag == True:
+            print "Load table is ok"
+            break
 
-        # update table is alive
-        cmd_yes = "--cmd=updatetablealive " + table[0] + " " + table[2] + " " + table[3] + " yes"
-        update_alive_yes = list(common_cmd)
-        update_alive_yes.append(cmd_yes)
-        code, stdout,stderr = RunWithRetuncode(update_alive_yes)
-        if stdout.find("update ok") == -1:
-            print stdout
-            print "update table alive is failed"
-            return
+        print "loading table, please wait a moment"
+        time.sleep(60)
 
     # recovertable table_name pid endpoint
     for table in follower_table:
