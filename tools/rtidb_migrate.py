@@ -322,6 +322,7 @@ def RecoverData():
             print "load table is failed"
             return
 
+    # check table status
     while True:
         flag = True
         for key in leader_table:
