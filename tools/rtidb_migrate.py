@@ -256,18 +256,19 @@ def RecoverData():
 
     # check whether table partition is not exixted
     partitions = GetTables(stdout)
+    # print partitions
     tablet_cmd = [options.rtidb_bin_path, "--role=client",  "--interactive=false"]
-    for table in partitions:
+    for endpoint in partitions:
         cmd_gettablestatus = "--cmd=gettablestatus"
         gettablestatus = list(tablet_cmd)
-        gettablestatus.append("--endpoint=" + table[3])
+        gettablestatus.append("--endpoint=" + endpoint)
         gettablestatus.append(cmd_gettablestatus)
         code, stdout,stderr = RunWithRetuncode(gettablestatus)
         table_status = GetTablesStatus(stdout)
         if len(table_status) == 0:
             continue
         else:
-            print "endpoint[{}] is alive".format(table[3])
+            print "endpoint[{}] is alive".format(endpoint)
             return
 
     conget_auto = list(common_cmd)
