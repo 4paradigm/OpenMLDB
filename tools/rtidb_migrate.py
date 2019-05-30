@@ -262,6 +262,7 @@ def RecoverData():
 
     # show table
     show_table = list(common_cmd)
+    # print show_table
     show_table.append("--cmd=showtable")
     # print common_cmd
     code, stdout,stderr = RunWithRetuncode(show_table)
@@ -318,16 +319,16 @@ def RecoverData():
         code, stdout,stderr = RunWithRetuncode(loadtable)
         cmd_gettablestatus = "--cmd=gettablestatus"
         gettablestatus = list(tablet_cmd)
-        loadtable.append("--endpoint=" + table[3])
-        loadtable.append(cmd_gettablestatus)
-        # print loadtable
-        code, stdout,stderr = RunWithRetuncode(loadtable)
+        gettablestatus.append("--endpoint=" + table[3])
+        gettablestatus.append(cmd_gettablestatus)
+
+        code, stdout,stderr = RunWithRetuncode(gettablestatus)
         # print stdout
 
         # check table status
         flag = False
         for i in range(10):
-            code, stdout,stderr = RunWithRetuncode(loadtable)
+            code, stdout,stderr = RunWithRetuncode(gettablestatus)
             table_status = GetTablesStatus(stdout)
             status = table_status[key]
             if status[3] == "kTableLeader":
