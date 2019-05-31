@@ -189,7 +189,7 @@ public class TableClientCommonTest {
             Assert.assertEquals(list.get(0).getKey(), "!@#$%");
             Assert.assertEquals(list.get(1).getKey(), "mcc1");
 
-            Object[] row2 = new Object[] {"", "mcc1", 1.5d, 1122l, 1234l, Timestamp.valueOf("2011-05-09 11:49:45")};
+            Object[] row2 = new Object[] {null, "mcc1", 1.5d, 1122l, 1234l, Timestamp.valueOf("2011-05-09 11:49:45")};
             list = TableClientCommon.fillTabletDimension(row2, th, true);
             Assert.assertEquals(list.size(), 2);
             Assert.assertEquals(list.get(0).getKey(), "!N@U#L$L%");

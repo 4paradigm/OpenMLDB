@@ -1,7 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.*;
+import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.ut.Config;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
@@ -12,7 +12,6 @@ import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
@@ -37,6 +36,7 @@ public class ColumnKeyTest {
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableSyncClient tableSyncClient = null;
+    private static TableAsyncClient tableAsyncClient = null;
 
     @BeforeClass
     public static void setUp() {
@@ -47,6 +47,7 @@ public class ColumnKeyTest {
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);
+            tableAsyncClient = new TableAsyncClientImpl(client);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -202,6 +203,53 @@ public class ColumnKeyTest {
             scan_key.put("mcc", "mcc2");
             it = tableSyncClient.scan(name, scan_key, "card_mcc", 1235l, 0l, "ts", 0);
             Assert.assertFalse(it.valid());
+            row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc", 1234, "ts", null);
+            Assert.assertEquals(row.length, 4);
+            Assert.assertEquals(row[0],"card0");
+            Assert.assertEquals(row[1],"mcc0");
+            Assert.assertEquals(row[2],1.5d);
+
+            Map<String, Object> key_map = new HashMap<String, Object>();
+            key_map.put("card", "card0");
+            key_map.put("mcc", "mcc1");
+            row = tableSyncClient.getRow(name, key_map, "card_mcc", 1235, "ts", null);
+            Assert.assertEquals(row[0],"card0");
+            Assert.assertEquals(row[1],"mcc1");
+            Assert.assertEquals(row[2],1.6d);
+
+            Assert.assertEquals(tableSyncClient.count(name, key_map, "card_mcc", "ts", false), 1);
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.6);
+            data.put("ts", 1240l);
+            tableSyncClient.put(name, data);
+            Assert.assertEquals(tableSyncClient.count(name, key_map, "card_mcc", "ts", false), 2);
+
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.7);
+            data.put("ts", 1245l);
+            PutFuture pf = tableAsyncClient.put(name, data);
+            Assert.assertTrue(pf.get());
+
+            ScanFuture sf = tableAsyncClient.scan(name, key_map, "card_mcc", 1245, 0, "ts", 0);
+            it = sf.get();
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 3);
+            row = it.getDecodedValue();
+            Assert.assertEquals(it.getKey(), 1245);
+            Assert.assertEquals(row[0],"card0");
+            Assert.assertEquals(row[1],"mcc1");
+            Assert.assertEquals(row[2],1.7d);
+
+            GetFuture gf = tableAsyncClient.get(name, key_map, "card_mcc", 1235, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals(row[0],"card0");
+            Assert.assertEquals(row[1],"mcc1");
+            Assert.assertEquals(row[2],1.6d);
+
         } catch (Exception e) {
             Assert.assertTrue(false);
         }

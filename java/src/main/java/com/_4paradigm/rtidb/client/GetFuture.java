@@ -111,7 +111,12 @@ public class GetFuture implements Future<ByteString>{
 				return response.getValue();
 			}
 		}
-		return null;
+		if (response != null) {
+			String msg = String.format("Bad request with error %s code %d", response.getMsg(), response.getCode());
+			throw new ExecutionException(msg, null);
+		} else {
+			throw new ExecutionException("response is null", null);
+		}
 	}
 
 	@Override

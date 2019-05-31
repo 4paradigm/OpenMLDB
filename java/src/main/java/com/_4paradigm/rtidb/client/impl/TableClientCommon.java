@@ -88,7 +88,6 @@ public class TableClientCommon {
         if (indexs.isEmpty()) {
             throw new TabletException("no dimension in this row");
         }
-        int count = 0;
         for (Map.Entry<Integer, List<Integer>> entry : indexs.entrySet()) {
             int index = entry.getKey();
             String value = null;
@@ -126,9 +125,8 @@ public class TableClientCommon {
             }
             Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
             dimList.add(dim);
-            count++;
         }
-        if (count == 0) {
+        if (dimList.isEmpty()) {
             throw new TabletException("no dimension in this row");
         }
         return dimList;
