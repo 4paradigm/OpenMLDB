@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.TreeMap;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
@@ -15,8 +16,8 @@ public class TableHandler {
 
     private TableInfo tableInfo;
     private PartitionHandler[] partitions;
-    private Map<Integer, List<Integer>> indexes = new HashMap<Integer, List<Integer>>();
-    private Map<String, List<String>> keyMap = new HashMap<String, List<String>>();
+    private Map<Integer, List<Integer>> indexes = new TreeMap<Integer, List<Integer>>();
+    private Map<String, List<String>> keyMap = new TreeMap<String, List<String>>();
     private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
     private boolean hasTsCol = false;

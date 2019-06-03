@@ -91,28 +91,21 @@ public class TableClientCommon {
         for (Map.Entry<Integer, List<Integer>> entry : indexs.entrySet()) {
             int index = entry.getKey();
             String value = null;
+            int null_empty_count = 0;
             for (Integer pos : entry.getValue()) {
                 String cur_value = null;
                 if (pos >= row.length) {
                     throw new TabletException("index is greater than row length");
                 }
                 if (row[pos] == null) {
-                    if (handleNull) {
-                        cur_value = RTIDBClientConfig.NULL_STRING;
-                    } else {
-                        value = null;
-                        break;
-                    }
+                    cur_value = RTIDBClientConfig.NULL_STRING;
+                    null_empty_count++;
                 } else {
                     cur_value = row[pos].toString();
                 }
                 if (cur_value.isEmpty()) {
-                    if (handleNull) {
-                        cur_value = RTIDBClientConfig.EMPTY_STRING;
-                    } else {
-                        value = null;
-                        break;
-                    }
+                    cur_value = RTIDBClientConfig.EMPTY_STRING;
+                    null_empty_count++;
                 }
                 if (value == null) {
                     value = cur_value;
@@ -120,7 +113,7 @@ public class TableClientCommon {
                     value = value + "|" + cur_value;
                 }
             }
-            if (value == null || value.isEmpty()) {
+            if (!handleNull && null_empty_count == entry.getValue().size()) {
                 continue;
             }
             Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
@@ -143,28 +136,21 @@ public class TableClientCommon {
         for (Map.Entry<Integer, List<Integer>> entry : indexs.entrySet()) {
             int index = entry.getKey();
             String value = null;
+            int null_empty_count = 0;
             for (Integer pos : entry.getValue()) {
                 String cur_value = null;
                 if (pos >= row.length) {
                     throw new TabletException("index is greater than row length");
                 }
                 if (row[pos] == null) {
-                    if (handleNull) {
-                        cur_value = RTIDBClientConfig.NULL_STRING;
-                    } else {
-                        value = null;
-                        break;
-                    }
+                    cur_value = RTIDBClientConfig.NULL_STRING;
+                    null_empty_count++;
                 } else {
                     cur_value = row[pos].toString();
                 }
                 if (cur_value.isEmpty()) {
-                    if (handleNull) {
-                        cur_value = RTIDBClientConfig.EMPTY_STRING;
-                    } else {
-                        value = null;
-                        break;
-                    }
+                    cur_value = RTIDBClientConfig.EMPTY_STRING;
+                    null_empty_count++;
                 }
                 if (value == null) {
                     value = cur_value;
@@ -172,7 +158,7 @@ public class TableClientCommon {
                     value = value + "|" + cur_value;
                 }
             }
-            if (value == null || value.isEmpty()) {
+            if (!handleNull && null_empty_count == entry.getValue().size()) {
                 continue;
             }
             int pid = computePidByKey(value, th.getPartitions().length);
@@ -193,55 +179,51 @@ public class TableClientCommon {
 
     public static String getCombinedKey(Map<String, Object> keyMap, List<String> indexList, boolean handleNull) throws TabletException {
         String combinedKey = "";
+        int null_empty_count = 0;
         for (String key : indexList) {
             if (!combinedKey.isEmpty()) {
                 combinedKey += "|";
             }
             Object obj = keyMap.get(key);
             if (obj == null) {
-                if (handleNull) {
-                    combinedKey += RTIDBClientConfig.NULL_STRING;
-                } else {
-                    throw new TabletException(key + " value is null");
-                }
+                combinedKey += RTIDBClientConfig.NULL_STRING;
+                null_empty_count++;
             } else {
                 String value = obj.toString();
                 if (value.isEmpty()) {
-                    if (handleNull) {
-                        value = RTIDBClientConfig.EMPTY_STRING;
-                    } else {
-                        throw new TabletException(key + " value is empty");
-                    }
+                    value = RTIDBClientConfig.EMPTY_STRING;
+                    null_empty_count++;
                 }
                 combinedKey += value;
             }
+        }
+        if (!handleNull && null_empty_count == keyMap.size()) {
+            throw new TabletException("all key is null or empty");
         }
         return combinedKey;
     }
 
     public static String getCombinedKey(Object[] row, boolean handleNull) throws TabletException {
         String combinedKey = "";
+        int null_empty_count = 0;
         for (Object obj : row) {
             if (!combinedKey.isEmpty()) {
                 combinedKey += "|";
             }
             if (obj == null) {
-                if (handleNull) {
-                    combinedKey += RTIDBClientConfig.NULL_STRING;
-                } else {
-                    throw new TabletException("has null key");
-                }
+                combinedKey += RTIDBClientConfig.NULL_STRING;
+                null_empty_count++;
             } else {
                 String value = obj.toString();
                 if (value.isEmpty()) {
-                    if (handleNull) {
-                        value = RTIDBClientConfig.EMPTY_STRING;
-                    } else {
-                        throw new TabletException("has empty key");
-                    }
+                    value = RTIDBClientConfig.EMPTY_STRING;
+                    null_empty_count++;
                 }
                 combinedKey += value;
             }
+        }
+        if (!handleNull && null_empty_count == row.length) {
+            throw new TabletException("all key is null or empty");
         }
         return combinedKey;
     }

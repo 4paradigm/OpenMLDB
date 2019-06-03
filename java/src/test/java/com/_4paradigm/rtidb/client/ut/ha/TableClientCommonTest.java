@@ -36,6 +36,9 @@ public class TableClientCommonTest {
     @Test
     public void testGetCombinedKey() {
         try {
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card"}, false), "card");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{""}, true), "!@#$%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null}, true), "!N@U#L$L%");
             Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", "mcc"}, false), "card|mcc");
             Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", "mcc", "1122"}, false), "card|mcc|1122");
             Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card"}, false), "card");
@@ -43,16 +46,34 @@ public class TableClientCommonTest {
             Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", "mcc"}, true), "card|mcc");
             Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", ""}, true), "card|!@#$%");
             Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", null}, true), "card|!N@U#L$L%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", null}, false), "card|!N@U#L$L%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", ""}, false), "card|!@#$%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"", ""}, true), "!@#$%|!@#$%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, ""}, true), "!N@U#L$L%|!@#$%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, null}, true), "!N@U#L$L%|!N@U#L$L%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, null, ""}, true), "!N@U#L$L%|!N@U#L$L%|!@#$%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, null, "aaa"}, false), "!N@U#L$L%|!N@U#L$L%|aaa");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, "", "bbb"}, false), "!N@U#L$L%|!@#$%|bbb");
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
         try {
-            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", null}, false), "card|!N@U#L$L%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"", ""}, false), "!@#$%|!@#$%");
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{"card", ""}, false), "card|!N@U#L$L%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, ""}, false), "!N@U#L$L%|!@#$%");
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, null}, false), "!N@U#L$L%|!@#$%");
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            Assert.assertEquals(TableClientCommon.getCombinedKey(new Object[]{null, null, ""}, false), "!N@U#L$L%|!N@U#L$L%|!@#$%");
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
@@ -69,18 +90,17 @@ public class TableClientCommonTest {
             Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, false), "card1|mcc1");
             keyMap.put("mcc", "");
             Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, true), "card1|!@#$%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, false), "card1|!@#$%");
             keyMap.put("mcc", null);
             Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, true), "card1|!N@U#L$L%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, false), "card1|!N@U#L$L%");
+            keyMap.put("card", "");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, true), "!@#$%|!N@U#L$L%");
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
         try {
-            Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, false), "card1|!N@U#L$L%");
-        } catch (Exception e) {
-            Assert.assertTrue(true);
-        }
-        try {
-            Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, false), "card1|!N@U#L$L%");
+            Assert.assertEquals(TableClientCommon.getCombinedKey(keyMap, indexList, false), "!@#$%|!N@U#L$L%");
         } catch (Exception e) {
             Assert.assertTrue(true);
         }

@@ -250,6 +250,16 @@ public class ColumnKeyTest {
             Assert.assertEquals(row[1],"mcc1");
             Assert.assertEquals(row[2],1.6d);
 
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "");
+            data.put("amt", 1.8);
+            data.put("ts", 1250l);
+            tableSyncClient.put(name, data);
+            row = tableSyncClient.getRow(name, new Object[] {"card0", ""}, "card_mcc", 0, "ts", null);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "");
+            Assert.assertEquals(row[2], 1.8);
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
