@@ -2104,7 +2104,7 @@ void HandleNSClientGetTablePartition(const std::vector<std::string>& parts, ::rt
 }
 
 void HandleNSClientUpdateTableAlive(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
-    if (parts.size() < 4) {
+    if (parts.size() < 5) {
         std::cout << "Bad format" << std::endl;
         return;
     }

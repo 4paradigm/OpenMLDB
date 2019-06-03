@@ -374,14 +374,9 @@ void TabletImpl::Get(RpcController* controller,
         response->set_key(request->key());
         response->set_ts(it->GetKey());
         response->set_value(it->GetValue()->data, it->GetValue()->size);
-        PDLOG(DEBUG, "Get key %s ts %lu value %s", request->key().c_str(),
-                request->ts(), it->GetValue()->data);
     } else {
         response->set_code(109);
         response->set_msg("key not found");
-        PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
-                request->ts());
-
     }
     delete it; 
 }

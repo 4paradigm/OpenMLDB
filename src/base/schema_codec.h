@@ -151,6 +151,7 @@ public:
 
     static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
                         std::vector<ColumnDesc>& columns) {
+        columns.clear();
         if (table_info.column_desc_v1_size() > 0) {
             return ConvertColumnDesc(table_info.column_desc_v1(), columns);
         }
@@ -172,6 +173,7 @@ public:
     static int ConvertColumnDesc(
             const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
              std::vector<ColumnDesc>& columns) {
+        columns.clear();
         for (const auto& cur_column_desc : column_desc_field) {
             ::rtidb::base::ColType type = ConvertType(cur_column_desc.type());
             if (type == ::rtidb::base::ColType::kUnknown) {

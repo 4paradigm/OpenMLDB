@@ -48,14 +48,14 @@ target_link_libraries(skiplist_test gtest pthread)
 add_executable(flat_array_test base/flat_array_test.cc)
 target_link_libraries(flat_array_test gtest pthread)
 
-add_executable(schema_codec_test base/schema_codec_test.cc)
-target_link_libraries(schema_codec_test gtest pthread)
+add_executable(schema_codec_test base/schema_codec_test.cc proto/name_server.pb.cc proto/common.pb.cc)
+target_link_libraries(schema_codec_test gtest pthread protobuf)
 
 add_executable(count_down_latch_test base/count_down_latch_test.cc)
 target_link_libraries(count_down_latch_test common gtest pthread)
 
-add_executable(segment_test storage/segment_test.cc flags.cc)
-target_link_libraries(segment_test gtest gflags storage pthread common tcmalloc_minimal)
+add_executable(segment_test storage/segment_test.cc flags.cc proto/tablet.pb.cc proto/common.pb.cc)
+target_link_libraries(segment_test gtest gflags storage protobuf pthread common tcmalloc_minimal)
 
 add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc proto/common.pb.cc flags.cc)
 target_link_libraries(table_test gtest gflags pthread storage common protobuf tcmalloc_minimal)
