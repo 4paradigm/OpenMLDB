@@ -54,23 +54,23 @@ public class TableHandler {
                 index = 0;
                 Set<String> indexSet = new HashSet<String>();
                 for (com._4paradigm.rtidb.common.Common.ColumnKey ck : tableInfo.getColumnKeyList()) {
-                    List<Integer> list = new ArrayList<Integer>();
-                    List<String> list1 = new ArrayList<String>();
+                    List<Integer> indexList = new ArrayList<Integer>();
+                    List<String> nameList = new ArrayList<String>();
                     for (String colName : ck.getColNameList()) {
-                        list.add(schemaPos.get(colName));
-                        list1.add(colName);
+                        indexList.add(schemaPos.get(colName));
+                        nameList.add(colName);
                     }
-                    if (list.isEmpty()) {
+                    if (indexList.isEmpty()) {
                         String key = ck.getIndexName();
-                        list.add(schemaPos.get(key));
-                        list1.add(key);
+                        indexList.add(schemaPos.get(key));
+                        nameList.add(key);
                     }
                     if (indexSet.contains(ck.getIndexName())) {
                         continue;
                     }
                     indexSet.add(ck.getIndexName());
-                    indexes.put(index, list);
-                    keyMap.put(ck.getIndexName(), list1);
+                    indexes.put(index, indexList);
+                    keyMap.put(ck.getIndexName(), nameList);
                     index++;
                 }
             }
