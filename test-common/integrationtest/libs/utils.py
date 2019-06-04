@@ -114,7 +114,6 @@ def gen_table_meta_file(meta, filepath):
     write(s, filepath, 'w')
     infoLogger.info(read(filepath))
 
-
 def same_list(l1, l2):
     l2 = copy.deepcopy(l2)
     if len(l1) != len(l2):

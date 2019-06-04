@@ -71,6 +71,7 @@ class TestSchema(TestCaseBase):
         self.assertAlmostEqual(float(rs1['k10']), float('1123.65'))
         self.assertEqual(rs1['k11'], '1545724145000')
         self.assertEqual(rs1['k12'], '2018-12-25')
+        self.ns_drop(self.ns_leader, name)
 
     def test_showschema(self):
         name = 'tname{}'.format(time.time())
@@ -102,6 +103,7 @@ class TestSchema(TestCaseBase):
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
         self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "100min"])
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "100min"])
+        self.ns_drop(self.ns_leader, name)
 
     def test_showschema_no_columnkey(self):
         name = 'tname{}'.format(time.time())
@@ -127,6 +129,7 @@ class TestSchema(TestCaseBase):
         self.assertEqual(len(column_key), 2)
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
         self.assertEqual(column_key[1], ["1", "mcc", "mcc", "ts1", "14400min"])
+        self.ns_drop(self.ns_leader, name)
 
     def test_showschema_no_columnkey_no_tskey(self):
         name = 'tname{}'.format(time.time())
@@ -153,6 +156,15 @@ class TestSchema(TestCaseBase):
         self.assertEqual(len(column_key), 2)
         self.assertEqual(column_key[0], ["0", "card", "card", "-", "14400min"])
         self.assertEqual(column_key[1], ["1", "mcc", "mcc", "-", "14400min"])
-        
+        self.ns_drop(self.ns_leader, name)
+
+    def test_showschema_no_schema(self):
+        name = 'tname{}'.format(time.time())
+        rs = self.ns_create_cmd(self.ns_leader, name, '0', '8', '3')
+        self.assertIn('Create table ok', rs)
+        (schema_map, column_key) = self.ns_showschema(self.ns_leader, name)
+        self.assertEqual(len(schema_map), 0)
+        self.assertEqual(len(column_key), 0)
+
 if __name__ == "__main__":
     load(TestSchema)
