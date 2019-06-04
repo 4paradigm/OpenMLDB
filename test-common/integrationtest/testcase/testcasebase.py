@@ -491,6 +491,27 @@ class TestCaseBase(unittest.TestCase):
             traceback.print_exc(file=sys.stdout)
             infoLogger.error('table {} is not exist!'.format(e))
 
+    def ns_showschema(self, endpoint, name):
+        rs = self.run_client(endpoint, 'showschema {}'.format(name), 'ns_client')
+        arr = rs.strip().split("\n")
+        schema_map = {}
+        column_key = []
+        parts = 0;
+        for line in arr:
+            line = line.strip()
+            if line.find("--------------") != -1:
+                parts += 1
+                continue
+            if parts == 0:
+                continue
+            item = line.split(" ")
+            elements = [x for x in item if x != '']
+            if len(elements) == 3:
+                schema_map[elements[1]] = elements[2]
+            elif parts == 2 and len(elements) == 5:
+                column_key.append(elements)
+        return (schema_map, column_key)
+
     def showtablet(self, endpoint):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
         return self.parse_tb(rs, ' ', [0], [1, 2])

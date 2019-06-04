@@ -582,7 +582,7 @@ TEST_F(TableTest, TableIteratorTS) {
         std::string value = "value" + std::to_string(i);
         table.Put(request.dimensions(), request.ts_dimensions(), value);
     }
-    TableIterator* it = table.NewTableIterator(0);
+    TableIterator* it = table.NewTableIterator(0, 0);
     it->SeekToFirst();
     int count = 0;
     while(it->Valid()) {
@@ -591,9 +591,19 @@ TEST_F(TableTest, TableIteratorTS) {
     }
     ASSERT_EQ(1000, count);
     delete it;
+
+    it = table.NewTableIterator(0, 1);
+    it->SeekToFirst();
+    count = 0;
+    while(it->Valid()) {
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(1000, count);
+    delete it;
     
     Ticket ticket;
-    Iterator* iter = table.NewIterator(0, 1, "card5", ticket);
+    Iterator* iter = table.NewIterator(0, 0, "card5", ticket);
     iter->SeekToFirst();
     count = 0;
     while(iter->Valid()) {
@@ -601,6 +611,24 @@ TEST_F(TableTest, TableIteratorTS) {
         iter->Next();
     }
     ASSERT_EQ(10, count);
+    delete iter;
+    iter = table.NewIterator(0, 1, "card5", ticket);
+    iter->SeekToFirst();
+    count = 0;
+    while(iter->Valid()) {
+        count++;
+        iter->Next();
+    }
+    ASSERT_EQ(10, count);
+    delete iter;
+    iter = table.NewIterator(1, 1, "mcc10", ticket);
+    iter->SeekToFirst();
+    count = 0;
+    while(iter->Valid()) {
+        count++;
+        iter->Next();
+    }
+    ASSERT_EQ(1, count);
     delete iter;
 }
 

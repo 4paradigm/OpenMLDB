@@ -5,7 +5,6 @@ import commands
 import copy
 import os
 
-
 def exe_shell(cmd):
     infoLogger.debug(cmd)
     retcode, output = commands.getstatusoutput(cmd)
@@ -86,6 +85,32 @@ def gen_table_metadata_file(metadata, filepath):
         for i in tp[1]:
             s += '{}:{}\n'.format(i[0], i[1])
         s += '}\n'
+    write(s, filepath, 'w')
+    infoLogger.info(read(filepath))
+
+def gen_table_meta_file(meta, filepath):
+    s = ''
+    for key, value in meta.items():
+        if isinstance(value, str):
+            s += key + ": \"" + value + "\"\n"
+        elif isinstance(value, int):
+            s += key + ": " + str(value) + "\n"
+        elif isinstance(value, list):
+            for item in value:
+                s += key + " {\n"
+                for k, v in item.items():
+                    if isinstance(v, str):
+                        if v == "true" or v == "false":
+                            s += "  " + k + ": " + v + "\n"
+                        else:
+                            s += "  " + k + ": \"" + v + "\"\n"
+                    elif isinstance(v, int):
+                        s += "  " + k + ": " + str(v) + "\n"
+                    elif isinstance(v, list):
+                        for value in v:
+                            s += "  " + k + ": \"" + str(value) + "\"\n"
+                s += "}\n"
+
     write(s, filepath, 'w')
     infoLogger.info(read(filepath))
 
