@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
@@ -194,7 +195,6 @@ public class TTLTest {
             KvIterator it = tableSyncClient.scan(name, "card0", "card", curTime, 0l, "ts1", 0);
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 2);
-            Object[] row = it.getDecodedValue();
             it = tableSyncClient.scan(name, "card0", "card", curTime, 0, "ts2", 0);
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 3);
@@ -245,18 +245,26 @@ public class TTLTest {
             KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime, 0l, "ts1", 0);
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 2);
-            Object[] row = it.getDecodedValue();
             it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime, 0, "ts2", 0);
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 3);
             it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime, 0, "ts3", 0);
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 1);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime - 10 * 60 * 1000 - 1, "ts1", null);
+            Assert.assertEquals(row[0], "card0");
         } catch (Exception e) {
             Assert.assertTrue(false);
-        } finally {
-            nsc.dropTable(name);
         }
+        try {
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime - 20 * 60 * 1000 - 1, "ts1", null);
+            Assert.assertEquals(row[0], null);
+        } catch (TabletException e) {
+            Assert.assertEquals(e.getCode(), 109);
+        } catch (Exception e) {
+            Assert.assertTrue(false);
+        }
+        nsc.dropTable(name);
     }
 
 }

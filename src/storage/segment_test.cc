@@ -256,7 +256,7 @@ TEST_F(SegmentTest, GetTsIdx) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment(8, ts_idx_vec);
     ASSERT_EQ(3, segment.GetTsCnt());
-    uint32_t real_idx = 0;
+    uint32_t real_idx = UINT32_MAX;
     ASSERT_EQ(-1, segment.GetTsIdx(0, real_idx));
     ASSERT_EQ(0, segment.GetTsIdx(1, real_idx));
     ASSERT_EQ(0, real_idx);

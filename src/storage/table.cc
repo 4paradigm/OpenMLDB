@@ -283,7 +283,7 @@ bool Table::Put(const Dimensions& dimensions,
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         auto pos = column_key_map_.find(iter->idx());
         if (pos == column_key_map_.end()) {
-            PDLOG(WARNING, "can not found dimesion idx %u. tid %u pid %u", 
+            PDLOG(WARNING, "can not found dimension idx %u. tid %u pid %u", 
                             iter->idx(), id_, pid_);
             return false;
         }
@@ -298,7 +298,7 @@ bool Table::Put(const Dimensions& dimensions,
             }
         }
         if (!has_ts) {
-            PDLOG(WARNING, "can not found ts in dimesion idx %u. tid %u pid %u", 
+            PDLOG(WARNING, "can not found ts in dimension idx %u. tid %u pid %u", 
                             iter->idx(), id_, pid_);
             return false;
         }
