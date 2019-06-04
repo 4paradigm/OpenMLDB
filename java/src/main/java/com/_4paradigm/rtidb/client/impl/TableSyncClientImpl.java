@@ -518,13 +518,7 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public KvIterator scan(String tname, Map<String, Object> key_map, String idxName, long st, long et, String tsName)
-            throws TimeoutException, TabletException {
-        return scan(tname, key_map, idxName, st, et, tsName, 0);
-    }
-
-    @Override
-    public KvIterator scan(String tname, Object[] keyArr, String idxName, long st, long et, String tsName)
+    public KvIterator scan(String tname, Object[] keyArr, String idxName, long st, long et, String tsName, int limit)
             throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
@@ -539,7 +533,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, 0, th);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, th);
     }
 
     @Override

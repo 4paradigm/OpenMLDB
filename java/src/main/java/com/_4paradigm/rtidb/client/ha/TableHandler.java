@@ -38,12 +38,12 @@ public class TableHandler {
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
                 schema.add(ncd);
                 if (cd.getAddTsIdx()) {
-                    List<Integer> list = new ArrayList<Integer>();
-                    list.add(i);
-                    indexes.put(index, list);
-                    List<String> list1 = new ArrayList<String>();
-                    list1.add(cd.getName());
-                    keyMap.put(cd.getName(), list1);
+                    List<Integer> indexList = new ArrayList<Integer>();
+                    indexList.add(i);
+                    indexes.put(index, indexList);
+                    List<String> nameList = new ArrayList<String>();
+                    nameList.add(cd.getName());
+                    keyMap.put(cd.getName(), nameList);
                     index++;
                 }
                 schemaPos.put(cd.getName(), i);

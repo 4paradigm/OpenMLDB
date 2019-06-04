@@ -95,10 +95,7 @@ public interface TableSyncClient {
     KvIterator scan(String tname, String key, String idxName, long st, long et, String tsName, int limit)
             throws TimeoutException, TabletException;
 
-    KvIterator scan(String tname, Object[] keyArr, String idxName, long st, long et, String tsName)
-            throws TimeoutException, TabletException;
-
-    KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName)
+    KvIterator scan(String tname, Object[] keyArr, String idxName, long st, long et, String tsName, int limit)
             throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
