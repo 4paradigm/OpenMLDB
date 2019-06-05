@@ -7,7 +7,8 @@
 #include "base/schema_codec.h"
 #include "gtest/gtest.h"
 #include "base/strings.h"
-#include <iostream>
+#include "proto/name_server.pb.h"
+#include "proto/common.pb.h"
 
 namespace rtidb {
 namespace base {
@@ -125,6 +126,75 @@ TEST_F(SchemaCodecTest, Bool) {
     ASSERT_EQ("bool", decoded_columns[0].name);
 }
 
+TEST_F(SchemaCodecTest, HasTSCol) {
+    std::vector<ColumnDesc> columns;
+    ASSERT_FALSE(SchemaCodec::HasTSCol(columns));
+    ColumnDesc desc1;
+    desc1.is_ts_col = false;
+    columns.push_back(desc1);
+    ASSERT_FALSE(SchemaCodec::HasTSCol(columns));
+    ColumnDesc desc2;
+    desc2.is_ts_col = true;
+    columns.push_back(desc2);
+    ASSERT_TRUE(SchemaCodec::HasTSCol(columns));
+}
+
+TEST_F(SchemaCodecTest, ConvertColumnDesc1) {
+    std::vector<ColumnDesc> columns;
+    ::rtidb::nameserver::TableInfo table_info;
+    ASSERT_EQ(0, SchemaCodec::ConvertColumnDesc(table_info, columns));
+    ASSERT_TRUE(columns.empty());
+    ::rtidb::common::ColumnDesc* desc = table_info.add_column_desc_v1();
+    desc->set_name("col1");
+    desc->set_type("notype");
+    ASSERT_EQ(-1, SchemaCodec::ConvertColumnDesc(table_info, columns));
+    table_info.Clear();
+    desc = table_info.add_column_desc_v1();
+    desc->set_name("col1");
+    desc->set_type("string");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc->set_is_ts_col(false);
+    desc = table_info.add_column_desc_v1();
+    desc->set_name("col2");
+    desc->set_type("int32");
+    desc->set_add_ts_idx(false);
+    desc->set_is_ts_col(true);
+    ASSERT_EQ(0, SchemaCodec::ConvertColumnDesc(table_info, columns));
+    ASSERT_EQ(2, columns.size());
+    ASSERT_EQ("col1", columns[0].name);
+    ASSERT_EQ(::rtidb::base::ColType::kString, columns[0].type);
+    ASSERT_TRUE(columns[0].add_ts_idx);
+    ASSERT_FALSE(columns[0].is_ts_col);
+    ASSERT_FALSE(columns[1].add_ts_idx);
+    ASSERT_TRUE(columns[1].is_ts_col);
+}
+
+TEST_F(SchemaCodecTest, ConvertColumnDesc2) {
+    std::vector<ColumnDesc> columns;
+    ::rtidb::nameserver::TableInfo table_info;
+    ::rtidb::nameserver::ColumnDesc* desc = table_info.add_column_desc();
+    desc->set_name("col1");
+    desc->set_type("col1");
+    ASSERT_EQ(-1, SchemaCodec::ConvertColumnDesc(table_info, columns));
+    table_info.Clear();
+    desc = table_info.add_column_desc();
+    desc->set_name("col1");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_info.add_column_desc();
+    desc->set_name("col2");
+    desc->set_type("uint64");
+    desc->set_add_ts_idx(false);
+    ASSERT_EQ(0, SchemaCodec::ConvertColumnDesc(table_info, columns));
+    ASSERT_EQ(2, columns.size());
+    ASSERT_EQ("col1", columns[0].name);
+    ASSERT_EQ(::rtidb::base::ColType::kString, columns[0].type);
+    ASSERT_TRUE(columns[0].add_ts_idx);
+    ASSERT_FALSE(columns[0].is_ts_col);
+    ASSERT_FALSE(columns[1].add_ts_idx);
+    ASSERT_FALSE(columns[1].is_ts_col);
+}
 
 }
 }

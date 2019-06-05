@@ -109,10 +109,9 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     }
     Snapshot snapshot(4, 3, log_part);
     snapshot.Init();
-    std::vector<std::string> fakes;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 3, 8, mapping, 0, true, fakes, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 3, 8, mapping, 0);
     table->Init();
     uint64_t offset_value;
     int ret = snapshot.MakeSnapshot(table, offset_value);
@@ -230,11 +229,10 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
-    std::vector<std::string> fakes;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 4, 8, mapping, 0, true, fakes, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 4, 8, mapping, 0);
     table->Init();
     Snapshot snapshot(4, 4, log_part);
     snapshot.Init();
@@ -301,10 +299,9 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
         ASSERT_TRUE(status.ok());
     }
     wh->Sync();
-    std::vector<std::string> fakes;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 3, 8, mapping, 0, true, fakes, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 3, 8, mapping, 0);
     table->Init();
     Snapshot snapshot(3, 3, log_part);
     snapshot.Init();
@@ -404,11 +401,10 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         ASSERT_TRUE(status.ok());
     }
 
-    std::vector<std::string> fakes;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 2, 8, mapping, 0, true, fakes, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(3, 2, log_part);
@@ -517,11 +513,10 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         ASSERT_TRUE(status.ok());
     }
 
-    std::vector<std::string> fakes;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
 
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 2, 2, 8, mapping, 0, true, fakes, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", 2, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(2, 2, log_part);
@@ -698,7 +693,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("tx_log", 5, 1, 8, mapping , 4);
+    std::shared_ptr<Table> table = std::make_shared<Table>("tx_log", 5, 1, 8, mapping, 4);
     table->Init();
     table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
     uint64_t offset = 0;
@@ -899,10 +894,9 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     wh->Sync();
     delete wh;
 
-    std::vector<std::string> fakes;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", tid, 0, 8, mapping, 0, true, fakes, 12);
+    std::shared_ptr<Table> table = std::make_shared<Table>("test", tid, 0, 8, mapping, 0);
     table->Init();
     Snapshot snapshot(tid, 0, log_part);
     snapshot.Init();

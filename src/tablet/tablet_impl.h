@@ -259,7 +259,7 @@ private:
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
     void GcTable(uint32_t tid, uint32_t pid);
 
-    inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
+    int CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg);
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
@@ -293,7 +293,7 @@ private:
 
     int32_t CheckDimessionPut(const ::rtidb::api::PutRequest* request,
                               std::shared_ptr<Table>& table);
-    
+
     // sync log data from page cache to disk 
     void SchedSyncDisk(uint32_t tid, uint32_t pid);
     // sched replicator to delete binlog

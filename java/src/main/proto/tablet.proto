@@ -1,4 +1,4 @@
-syntax="proto2";
+import "common.proto";
 package rtidb.api;
 
 option cc_generic_services = true;
@@ -137,6 +137,11 @@ message Dimension {
     optional uint32 idx = 2;
 }
 
+message TSDimension {
+    optional uint64 ts = 1;
+    optional uint32 idx = 2;
+}
+
 message PutRequest {
 	// the prefix key
     // abandoned
@@ -147,6 +152,7 @@ message PutRequest {
 	optional uint32 tid = 4;
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
+    repeated TSDimension ts_dimensions = 7;
 }
 
 message PutResponse {
@@ -159,6 +165,11 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
+}
+
+message ExecuteGcRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
 }
 
 message GeneralRequest {
@@ -186,18 +197,19 @@ message GeneralResponse {
 }
 
 message ScanRequest {
-	// the prefix key
-	optional string pk = 1;
-	// the start subfix key
-	optional uint64 st = 2;
-	// the end subfix key
-	optional uint64 et = 3;
-	optional uint32 limit = 4;
-	optional RpcMetric metric = 5;
-	optional uint32 tid = 6;
-	optional uint32 pid = 7;
+    // the prefix key
+    optional string pk = 1;
+    // the start subfix key
+    optional uint64 st = 2;
+    // the end subfix key
+    optional uint64 et = 3;
+    optional uint32 limit = 4;
+    optional RpcMetric metric = 5;
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
     optional bool enable_remove_duplicated_record = 8 [default=false];
     optional string idx_name = 9;
+    optional string ts_name = 10;
 }
 
 message RpcMetric {
@@ -225,6 +237,7 @@ message TraverseRequest {
 	optional string pk = 5;
 	optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
+    optional string ts_name = 8;
 }
 
 message TraverseResponse {
@@ -267,13 +280,15 @@ message TableMeta {
     // the slave endpoints
 	repeated string replicas = 7;
 	optional TableMode mode = 8;
-    optional bool wal = 9 [default = true];
+    optional bool wal = 9; // unused
     // term for change role
     optional uint64 term = 10 [default = 0];
-    optional bytes schema = 11;
-    repeated string dimensions = 12;
+    optional bytes schema = 11 [deprecated = true];
+    repeated string dimensions = 12 [deprecated = true];
     optional CompressType compress_type = 13;
     optional uint32 key_entry_max_height = 14;
+    repeated rtidb.common.ColumnDesc column_desc = 15;
+    repeated rtidb.common.ColumnKey column_key = 16;
 }
 
 message CreateTableRequest {
@@ -351,12 +366,12 @@ message LogEntry {
     // term for leader
     optional uint64 term = 1;
     optional uint64 log_index = 2;
-    // abandoned
     optional string pk = 3;
     optional bytes value = 4;
     optional uint64 ts = 5;
     repeated Dimension dimensions = 6;
     optional MethodType method_type = 7;
+    repeated TSDimension ts_dimensions = 8;
 }
 
 message AppendEntriesRequest {
@@ -451,6 +466,7 @@ message GetRequest {
     optional uint64 ts = 4 [default = 0];
     optional string idx_name = 5;
     optional GetType type = 6 [default = kSubKeyEq];
+    optional string ts_name = 7;
 }
 
 message GetResponse {
@@ -467,6 +483,7 @@ message CountRequest {
     optional string idx_name = 3;
     optional string key = 4;
     optional bool filter_expired_data = 5 [default = false];
+    optional string ts_name = 6;
 }    
 
 message CountResponse {
@@ -549,6 +566,7 @@ service TabletServer {
     rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
     rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
     rpc SetConcurrency(SetConcurrencyRequest) returns (SetConcurrencyResponse);
+    rpc ExecuteGc(ExecuteGcRequest) returns (GeneralResponse);
 
     // replication api for master
     rpc AppendEntries(AppendEntriesRequest) returns(AppendEntriesResponse);

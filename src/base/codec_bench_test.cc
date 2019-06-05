@@ -8,7 +8,7 @@
 #include "base/codec.h"
 #include "storage/segment.h"
 #include "gtest/gtest.h"
-#include "proto/kv_pair.pb.h"
+#include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 #include "base/kv_iterator.h"
 #include "timer.h"
@@ -54,9 +54,9 @@ TEST_F(CodecBenchmarkTest, Encode) {
     uint64_t pconsumed = ::baidu::common::timer::get_micros();
 
     for (uint32_t i = 0; i < 10000; i++) {
-        ::rtidb::api::KvList list;
+        ::rtidb::common::KvList list;
         for (uint32_t j = 0; j < 1000; j++) {
-            ::rtidb::api::KvPair* pair = list.add_pairs();
+            ::rtidb::common::KvPair* pair = list.add_pairs();
             pair->set_time(time);
             pair->set_value(bd, 400);
         }
@@ -102,9 +102,9 @@ TEST_F(CodecBenchmarkTest, Decode) {
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    ::rtidb::api::KvList list;
+    ::rtidb::common::KvList list;
     for (uint32_t j = 0; j < 1000; j++) {
-        ::rtidb::api::KvPair* pair = list.add_pairs();
+        ::rtidb::common::KvPair* pair = list.add_pairs();
         pair->set_time(time);
         pair->set_value(bd, 400);
     }
@@ -112,7 +112,7 @@ TEST_F(CodecBenchmarkTest, Decode) {
     list.SerializeToString(&result);
     uint64_t pconsumed = ::baidu::common::timer::get_micros();
     for (uint32_t i = 0; i < 10000; i++) {
-        ::rtidb::api::KvList kv_list;
+        ::rtidb::common::KvList kv_list;
         kv_list.ParseFromString(result);
     }
 

@@ -39,7 +39,8 @@ typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
 class TableIterator {
 public:
-	TableIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, uint64_t expire_value);
+	TableIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, 
+            uint64_t expire_value, uint32_t ts_index);
 	~TableIterator();
 	bool Valid() const;
 	void Next();
@@ -61,6 +62,7 @@ private:
     TimeEntries::Iterator* it_;
     ::rtidb::api::TTLType ttl_type_;
     uint32_t record_idx_;
+    uint32_t ts_idx_;
     uint64_t expire_value_;
     Ticket ticket_;
 };
@@ -76,23 +78,13 @@ public:
           uint32_t pid,
           uint32_t seg_cnt,
           const std::map<std::string, uint32_t>& mapping,
-          uint64_t ttl,
-          bool is_leader,
-          const std::vector<std::string>& replicas,
-          uint32_t key_entry_max_height);
-
-    Table(const std::string& name,
-          uint32_t id,
-          uint32_t pid,
-          uint32_t seg_cnt,
-          const std::map<std::string, uint32_t>& mapping,
           uint64_t ttl);
 
+    Table(const ::rtidb::api::TableMeta& table_meta);
     ~Table();
 
-    void Init();
-
-    void SetGcSafeOffset(uint64_t offset);
+    int InitColumnDesc();
+    int Init();
 
     // Put a record
     bool Put(const std::string& pk,
@@ -108,6 +100,9 @@ public:
     // Note the method should incr record_cnt_ manually
     bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
 
+    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
+             const std::string& value);
+
     bool Delete(const std::string& pk, uint32_t idx);
 
     // use the first demission
@@ -115,17 +110,21 @@ public:
 
     Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
 
+    Iterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
+
     TableIterator* NewTableIterator(uint32_t index);
+    TableIterator* NewTableIterator(uint32_t index, uint32_t ts_idx);
     // release all memory allocated
     uint64_t Release();
 
     uint64_t SchedGc();
 
-    uint64_t GetTTL() const {
-        return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
-    }
+    uint64_t GetTTL();
+    uint64_t GetTTL(uint32_t index);
+    uint64_t GetTTL(uint32_t index, uint32_t ts_index);
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
+    int GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count);
 
     uint64_t GetRecordIdxCnt();
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
@@ -172,24 +171,12 @@ public:
         is_leader_ = is_leader;
     }
 
-    inline const std::vector<std::string>& GetReplicas() const {
-        return replicas_;
-    }
-
-    void SetReplicas(const std::vector<std::string>& replicas) {
-        replicas_ = replicas;
-    }
-
     inline uint32_t GetTableStat() {
         return table_status_.load(std::memory_order_relaxed);
     }
 
     inline void SetTableStat(uint32_t table_status) {
         table_status_.store(table_status, std::memory_order_relaxed);
-    }
-
-    inline void SetSchema(const std::string& schema) {
-        schema_ = schema;
     }
 
     inline const std::string& GetSchema() {
@@ -200,7 +187,7 @@ public:
         enable_gc_.store(is_expire, std::memory_order_relaxed);
     }
 
-    uint64_t GetExpireTime();
+    uint64_t GetExpireTime(uint64_t ttl);
 
     bool IsExpire(const LogEntry& entry);
 
@@ -219,6 +206,14 @@ public:
     inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }
+
+    inline std::map<std::string, uint32_t>& GetTSMapping() {
+        return ts_mapping_;
+    }
+
+    inline std::map<uint32_t, std::vector<uint32_t>>& GetColumnMap() {
+        return column_key_map_;
+    }   
 
     inline void RecordCntIncr() {
         record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -248,9 +243,8 @@ private:
     std::string const name_;
     uint32_t const id_;
     uint32_t const pid_;
-    uint32_t const seg_cnt_;
-    uint32_t const idx_cnt_;
-    // Segments is readonly
+    uint32_t seg_cnt_;
+    uint32_t idx_cnt_;
     Segment*** segments_;
     std::atomic<bool> enable_gc_;
     std::atomic<uint64_t> ttl_;
@@ -259,19 +253,21 @@ private:
     std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
     std::atomic<int64_t> time_offset_;
-    std::vector<std::string> replicas_;
     std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
+    std::map<std::string, uint32_t> ts_mapping_;
+    std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
+    std::vector<uint64_t> ttl_vec_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
     uint32_t key_entry_max_height_;
+    ::rtidb::api::TableMeta table_meta_;
 };
 
 }
 }
-
 
 #endif /* !TABLE_H */

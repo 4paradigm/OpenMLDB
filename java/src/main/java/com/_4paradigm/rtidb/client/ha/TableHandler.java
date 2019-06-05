@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.TreeMap;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
@@ -13,21 +16,80 @@ public class TableHandler {
 
     private TableInfo tableInfo;
     private PartitionHandler[] partitions;
-    private Map<String, Integer> indexes = new HashMap<String, Integer>();
+    private Map<Integer, List<Integer>> indexes = new TreeMap<Integer, List<Integer>>();
+    private Map<String, List<String>> keyMap = new TreeMap<String, List<String>>();
     private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
+    private boolean hasTsCol = false;
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int index = 0;
-        for (com._4paradigm.rtidb.ns.NS.ColumnDesc cd : tableInfo.getColumnDescList()) {
-            ColumnDesc ncd = new ColumnDesc();
-            ncd.setName(cd.getName());
-            ncd.setAddTsIndex(cd.getAddTsIdx());
-            ncd.setType(ColumnType.valueFrom(cd.getType()));
-            schema.add(ncd);
-            if (cd.getAddTsIdx()) {
-                indexes.put(cd.getName(), index);
-                index++;
+        if (tableInfo.getColumnDescV1Count() > 0) {
+            Map<String, Integer> schemaPos = new HashMap<String, Integer>();
+            for (int i = 0; i< tableInfo.getColumnDescV1Count(); i++) {
+                com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getColumnDescV1(i);
+                ColumnDesc ncd = new ColumnDesc();
+                ncd.setName(cd.getName());
+                ncd.setAddTsIndex(cd.getAddTsIdx());
+                if (cd.getIsTsCol()) {
+                    hasTsCol = true;
+                }
+                ncd.setTsCol(cd.getIsTsCol());
+                ncd.setType(ColumnType.valueFrom(cd.getType()));
+                schema.add(ncd);
+                if (cd.getAddTsIdx()) {
+                    List<Integer> indexList = new ArrayList<Integer>();
+                    indexList.add(i);
+                    indexes.put(index, indexList);
+                    List<String> nameList = new ArrayList<String>();
+                    nameList.add(cd.getName());
+                    keyMap.put(cd.getName(), nameList);
+                    index++;
+                }
+                schemaPos.put(cd.getName(), i);
+            }
+            if (tableInfo.getColumnKeyCount() > 0) {
+                indexes.clear();
+                keyMap.clear();
+                index = 0;
+                Set<String> indexSet = new HashSet<String>();
+                for (com._4paradigm.rtidb.common.Common.ColumnKey ck : tableInfo.getColumnKeyList()) {
+                    List<Integer> indexList = new ArrayList<Integer>();
+                    List<String> nameList = new ArrayList<String>();
+                    for (String colName : ck.getColNameList()) {
+                        indexList.add(schemaPos.get(colName));
+                        nameList.add(colName);
+                    }
+                    if (indexList.isEmpty()) {
+                        String key = ck.getIndexName();
+                        indexList.add(schemaPos.get(key));
+                        nameList.add(key);
+                    }
+                    if (indexSet.contains(ck.getIndexName())) {
+                        continue;
+                    }
+                    indexSet.add(ck.getIndexName());
+                    indexes.put(index, indexList);
+                    keyMap.put(ck.getIndexName(), nameList);
+                    index++;
+                }
+            }
+
+        } else {
+            for (int i = 0; i < tableInfo.getColumnDescCount(); i++) {
+                com._4paradigm.rtidb.ns.NS.ColumnDesc cd = tableInfo.getColumnDesc(i);
+                ColumnDesc ncd = new ColumnDesc();
+                ncd.setName(cd.getName());
+                ncd.setAddTsIndex(cd.getAddTsIdx());
+                ncd.setTsCol(false);
+                ncd.setType(ColumnType.valueFrom(cd.getType()));
+                schema.add(ncd);
+                if (cd.getAddTsIdx()) {
+                    List<Integer> list = new ArrayList<Integer>();
+                    list.add(i);
+                    indexes.put(index, list);
+                    index++;
+                }
             }
         }
         
@@ -43,11 +105,15 @@ public class TableHandler {
 
     public TableHandler(List<ColumnDesc> schema) {
         int index = 0;
+        int col_num = 0;
         for (ColumnDesc col : schema) {
             if (col.isAddTsIndex()) {
-                indexes.put(col.getName(), index);
+                List<Integer> list = new ArrayList<Integer>();
+                list.add(col_num);
+                indexes.put(index, list);
                 index ++;
             }
+            col_num++;
         }
         this.schema = schema;
     }
@@ -76,8 +142,12 @@ public class TableHandler {
         return partitions;
     }
 
-    public Map<String, Integer> getIndexes() {
+    public Map<Integer, List<Integer>> getIndexes() {
         return indexes;
+    }
+
+    public Map<String, List<String>> getKeyMap() {
+        return keyMap;
     }
 
     public List<ColumnDesc> getSchema() {
@@ -87,6 +157,10 @@ public class TableHandler {
     public enum ReadStrategy {
         kReadLocal,
         kReadLeader
+    }
+
+    public boolean hasTsCol() {
+        return hasTsCol;
     }
     
     
