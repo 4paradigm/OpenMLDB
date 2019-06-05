@@ -3259,6 +3259,16 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 type = ::rtidb::base::ColType::kDouble;
             } else if (kv[1] == "string") {
                 type = ::rtidb::base::ColType::kString;
+            } else if (kv[1] == "timestamp") {
+                type = ::rtidb::base::ColType::kTimestamp;
+            } else if (kv[1] == "date") {
+                type = ::rtidb::base::ColType::kDate;
+            } else if (kv[1] == "int16") {
+                type = ::rtidb::base::ColType::kInt16;
+            } else if (kv[1] == "uint16") {
+                type = ::rtidb::base::ColType::kUInt16;
+            } else if (kv[1] == " bool") {
+                type = ::rtidb::base::ColType::kBool;
             } else {
                 std::cout << "create failed! undefined type " << kv[1] << std::endl;
                 return;
@@ -3434,6 +3444,21 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
                 break;
             case ::rtidb::base::ColType::kString:
                 row.push_back("string");
+                break;
+            case ::rtidb::base::ColType::kTimestamp:
+                row.push_back("timestamp");
+                break;
+            case ::rtidb::base::ColType::kDate:
+                row.push_back("date");
+                break;
+            case ::rtidb::base::ColType::kInt16:
+                row.push_back("int16");
+                break;
+            case ::rtidb::base::ColType::kUInt16:
+                row.push_back("uint16");
+                break;
+            case ::rtidb::base::ColType::kBool:
+                row.push_back("bool");
                 break;
             default:
                 break;
