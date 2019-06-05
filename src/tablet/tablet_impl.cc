@@ -223,11 +223,24 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
         return;
     }
-
-    table->SetTTL(ttl);
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+		auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        table->SetTTL(iter->second, ttl);
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu, ts_name %u",
+                request->tid(), request->pid(), request->value(), request->ts_name().c_str());
+    } else {
+        table->SetTTL(ttl);
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
+    }
     response->set_code(0);
     response->set_msg("ok");
-    PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
 }
 
 bool TabletImpl::RegisterZK() {

@@ -86,9 +86,11 @@ int Table::InitColumnDesc() {
             } else if (column_desc.is_ts_col()) {
                 ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
                 if (column_desc.has_ttl()) {
-                    ttl_vec_.push_back(column_desc.ttl() * 60 * 1000);
+                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
                 } else {
-                    ttl_vec_.push_back(table_meta_.ttl() * 60 * 1000);
+                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
+                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
                 }
                 ts_idx++;
             }
@@ -209,8 +211,8 @@ int Table::Init() {
     if (ttl_ > 0) {
         enable_gc_ = true;
     } else {
-        for (auto ttl : ttl_vec_) {
-            if (ttl > 0) {
+        for (auto& ttl : ttl_vec_) {
+            if (*ttl > 0) {
                 enable_gc_ = true;
                 break;
             }
@@ -388,9 +390,11 @@ uint64_t Table::SchedGc() {
                 }
                 if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
                     cur_ttl_map.insert(std::make_pair(ts_idx, 
-                                cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_vec_[ts_idx]));
+                                cur_time + time_offset_.load(std::memory_order_relaxed) - 
+                                ttl_offset_ - ttl_vec_[ts_idx]->load(std::memory_order_relaxed)));
                 } else {
-                    cur_ttl_map.insert(std::make_pair(ts_idx, ttl_vec_[ts_idx] / 60 / 1000));
+                    cur_ttl_map.insert(std::make_pair(ts_idx, 
+                                ttl_vec_[ts_idx]->load(std::memory_order_relaxed) / 60 / 1000));
                 }
             }
         }
@@ -436,6 +440,15 @@ uint64_t Table::SchedGc() {
                     name_.c_str(), id_, pid_);
         ttl_.store(new_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     }
+    for (uint32_t i = 0; i < ttl_vec_.size(); i++) {
+        if (ttl_vec_[i]->load(std::memory_order_relaxed) != new_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
+                    ttl_vec_[i]->load(std::memory_order_relaxed),
+                    new_ttl_vec_[i]->load(std::memory_order_relaxed),
+                    name_.c_str(), id_, pid_, i);
+            ttl_vec_[i]->store(new_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+    }
     return gc_record_cnt;
 }
 
@@ -448,7 +461,7 @@ uint64_t Table::GetTTL(uint32_t index) {
     auto pos = column_key_map_.find(index);
     if (pos != column_key_map_.end() && !pos->second.empty()) {
         if (pos->second.front() < ttl_vec_.size()) {
-            ttl = ttl_vec_[pos->second.front()];
+            ttl = ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed);
         }
     }
     return ttl / (60 * 1000);
@@ -457,7 +470,7 @@ uint64_t Table::GetTTL(uint32_t index) {
 uint64_t Table::GetTTL(uint32_t index, uint32_t ts_index) {
     uint64_t ttl = ttl_.load(std::memory_order_relaxed);
     if (ts_index < ttl_vec_.size()) {
-        ttl = ttl_vec_[ts_index];
+        ttl = ttl_vec_[ts_index]->load(std::memory_order_relaxed);
     }
     return ttl / (60 * 1000);
 }
