@@ -3267,7 +3267,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 type = ::rtidb::base::ColType::kInt16;
             } else if (kv[1] == "uint16") {
                 type = ::rtidb::base::ColType::kUInt16;
-            } else if (kv[1] == " bool") {
+            } else if (kv[1] == "bool") {
                 type = ::rtidb::base::ColType::kBool;
             } else {
                 std::cout << "create failed! undefined type " << kv[1] << std::endl;

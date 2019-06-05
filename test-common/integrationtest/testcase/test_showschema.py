@@ -43,7 +43,7 @@ class TestShowSchema(TestCaseBase):
                           type_date='date:index',
                           type_int16='int16:index',
                           type_uint16='uint16:index',
-                        #   type_bool='bool:index'
+                          type_bool='bool:index'
                           )
         self.assertIn('Create table ok' ,rs1)
         schema_d = self.showschema(self.leader, self.tid, self.pid)
@@ -58,7 +58,7 @@ class TestShowSchema(TestCaseBase):
         self.assertEqual(schema_d['type_date'], ['date', 'yes'])
         self.assertEqual(schema_d['type_int16'], ['int16', 'yes'])
         self.assertEqual(schema_d['type_uint16'], ['uint16', 'yes'])
-        # self.assertEqual(schema_d['type_bool'], ['bool', 'yes'])
+        self.assertEqual(schema_d['type_bool'], ['bool', 'yes'])
 
 
 
