@@ -632,6 +632,58 @@ TEST_F(TableTest, TableIteratorTS) {
     delete iter;
 }
 
+TEST_F(TableTest, UpdateTTL) {
+    ::rtidb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    table_meta.set_tid(1);
+    table_meta.set_pid(0);
+    table_meta.set_ttl(10);
+    table_meta.set_seg_cnt(8);
+    table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    ::rtidb::common::ColumnDesc* desc = table_meta.add_column_desc();
+    desc->set_name("card");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta.add_column_desc();
+    desc->set_name("mcc");
+    desc->set_type("string");
+    desc->set_add_ts_idx(true);
+    desc = table_meta.add_column_desc();
+    desc->set_name("price");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc = table_meta.add_column_desc();
+    desc->set_name("ts1");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc->set_is_ts_col(true);
+    desc = table_meta.add_column_desc();
+    desc->set_name("ts2");
+    desc->set_type("int64");
+    desc->set_add_ts_idx(false);
+    desc->set_is_ts_col(true);
+    desc->set_ttl(5);
+    ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+    column_key->set_index_name("card");
+    column_key->add_ts_name("ts1");
+    column_key->add_ts_name("ts2");
+    column_key = table_meta.add_column_key();
+    column_key->set_index_name("mcc");
+    column_key->add_ts_name("ts1");
+
+    Table table(table_meta);
+    table.Init();
+    ASSERT_EQ(10, table.GetTTL(0, 0));
+    ASSERT_EQ(5, table.GetTTL(0, 1));
+    table.SetTTL(1, 20);
+    ASSERT_EQ(10, table.GetTTL(0, 0));
+    ASSERT_EQ(5, table.GetTTL(0, 1));
+    table.SchedGc();
+    ASSERT_EQ(10, table.GetTTL(0, 0));
+    ASSERT_EQ(20, table.GetTTL(0, 1));
+}
+
 }
 }
 

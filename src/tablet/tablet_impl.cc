@@ -223,11 +223,24 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
         return;
     }
-
-    table->SetTTL(ttl);
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+		auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        table->SetTTL(iter->second, ttl);
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu, ts_name %u",
+                request->tid(), request->pid(), request->value(), request->ts_name().c_str());
+    } else {
+        table->SetTTL(ttl);
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
+    }
     response->set_code(0);
     response->set_msg("ok");
-    PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
 }
 
 bool TabletImpl::RegisterZK() {
@@ -2029,7 +2042,7 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
             replicator->StartSyncing();
             table->SchedGc();
-            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
@@ -2166,7 +2179,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
             pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
-    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
 }
 
 void TabletImpl::ExecuteGc(RpcController* controller,
@@ -2183,7 +2196,7 @@ void TabletImpl::ExecuteGc(RpcController* controller,
         response->set_msg("table not found");
         return;
     }
-    gc_pool_.AddTask(boost::bind(&TabletImpl::GcTable, this, tid, pid));
+    gc_pool_.AddTask(boost::bind(&TabletImpl::GcTable, this, tid, pid, true));
     response->set_code(0);
     response->set_msg("ok");
     PDLOG(INFO, "ExecuteGc. tid %u pid %u", tid, pid);
@@ -2655,13 +2668,15 @@ std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
     return std::shared_ptr<::rtidb::api::TaskInfo>();
 }
 
-void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
+void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
         return;
     }
     table->SchedGc();
-    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+    if (!execute_once) {
+        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+    }
 }
 
 std::shared_ptr<Snapshot> TabletImpl::GetSnapshot(uint32_t tid, uint32_t pid) {

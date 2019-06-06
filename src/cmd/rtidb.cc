@@ -488,14 +488,15 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client
         std::cout << "bad setttl format, eg settl t1 absolute 10" <<std::endl;
         return;
     }
+    std::string ts_name;
+    if (parts.size() == 5) {
+        ts_name = parts[4];
+    }
     try {
         std::string value;
         std::string err;
         uint64_t ttl = boost::lexical_cast<uint64_t>(parts[3]);
-        bool ok = client->UpdateTTL(parts[1],
-                                    parts[2],
-                                    ttl,
-                                    err);
+        bool ok = client->UpdateTTL(parts[1], parts[2], ttl, ts_name, err);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
         }else {
@@ -1985,9 +1986,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
             printf("desc: set table ttl \n");
-            printf("usage: setttl table_name ttl_type ttl\n");
+            printf("usage: setttl table_name ttl_type ttl [ts_name]\n");
             printf("ex: setttl t1 absolute 10\n");
             printf("ex: setttl t2 latest 5\n");
+            printf("ex: setttl t3 latest 5 ts1\n");
         } else if (parts[1] == "cancelop") {
             printf("desc: cancel the op\n");
             printf("usage: cancelop op_id\n");
@@ -2217,8 +2219,12 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::rtidb::client
 
 void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 5) {
-        std::cout << "Bad setttl format, eg setttl tid pid type ttl" << std::endl;
+        std::cout << "Bad setttl format, eg setttl tid pid type ttl [ts_name]" << std::endl;
         return;
+    }
+    std::string ts_name;
+    if (parts.size() == 5) {
+        ts_name = parts[5];
     }
     try {
         std::string value;
@@ -2229,11 +2235,10 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::
         }
         bool ok = client->UpdateTTL(boost::lexical_cast<uint32_t>(parts[1]),
                                     boost::lexical_cast<uint32_t>(parts[2]),
-                                    type,
-                                    ttl);
+                                    type, ttl, ts_name);
         if (ok) {
             std::cout << "Set ttl ok !" << std::endl;
-        }else {
+        } else {
             std::cout << "Set ttl failed! " << std::endl; 
         }
     
@@ -2687,9 +2692,10 @@ void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::Tab
             printf("ex:man create\n");
         } else if (parts[1] == "setttl") {
             printf("desc: set table ttl \n");
-            printf("usage: setttl tid pid ttl_type ttl\n");
+            printf("usage: setttl tid pid ttl_type ttl [ts_name]\n");
             printf("ex: setttl 1 0 absolute 10\n");
             printf("ex: setttl 2 0 latest 10\n");
+            printf("ex: setttl 3 0 latest 10 ts1\n");
         } else if (parts[1] == "setlimit") {
             printf("desc: setlimit for tablet interface\n");
             printf("usage: setlimit method limit\n");
@@ -3251,6 +3257,16 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 type = ::rtidb::base::ColType::kDouble;
             } else if (kv[1] == "string") {
                 type = ::rtidb::base::ColType::kString;
+            } else if (kv[1] == "timestamp") {
+                type = ::rtidb::base::ColType::kTimestamp;
+            } else if (kv[1] == "date") {
+                type = ::rtidb::base::ColType::kDate;
+            } else if (kv[1] == "int16") {
+                type = ::rtidb::base::ColType::kInt16;
+            } else if (kv[1] == "uint16") {
+                type = ::rtidb::base::ColType::kUInt16;
+            } else if (kv[1] == "bool") {
+                type = ::rtidb::base::ColType::kBool;
             } else {
                 std::cout << "create failed! undefined type " << kv[1] << std::endl;
                 return;
@@ -3426,6 +3442,21 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
                 break;
             case ::rtidb::base::ColType::kString:
                 row.push_back("string");
+                break;
+            case ::rtidb::base::ColType::kTimestamp:
+                row.push_back("timestamp");
+                break;
+            case ::rtidb::base::ColType::kDate:
+                row.push_back("date");
+                break;
+            case ::rtidb::base::ColType::kInt16:
+                row.push_back("int16");
+                break;
+            case ::rtidb::base::ColType::kUInt16:
+                row.push_back("uint16");
+                break;
+            case ::rtidb::base::ColType::kBool:
+                row.push_back("bool");
                 break;
             default:
                 break;

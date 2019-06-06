@@ -14,6 +14,7 @@
 #include "storage/segment.h"
 #include "storage/ticket.h"
 #include <atomic>
+#include <memory>
 #include "proto/tablet.pb.h"
 
 using ::rtidb::base::Slice;
@@ -235,6 +236,12 @@ public:
         new_ttl_.store(ttl * 60 * 1000, std::memory_order_relaxed);
     }
 
+    inline void SetTTL(uint32_t ts_idx, uint64_t ttl) {
+        if (ts_idx < new_ttl_vec_.size()) {
+            new_ttl_vec_[ts_idx]->store(ttl * 60 * 1000, std::memory_order_relaxed);
+        }
+    }
+
     inline uint32_t GetKeyEntryHeight() {
         return key_entry_max_height_;
     }
@@ -258,7 +265,8 @@ private:
     std::map<std::string, uint32_t> mapping_;
     std::map<std::string, uint32_t> ts_mapping_;
     std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
-    std::vector<uint64_t> ttl_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> ttl_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_ttl_vec_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     ::rtidb::api::TTLType ttl_type_;

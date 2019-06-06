@@ -84,7 +84,7 @@ public:
 
     bool UpdateTTL(const std::string& name, 
                    const std::string& ttl_type, 
-                   uint64_t ttl,
+                   uint64_t ttl, const std::string& ts_name,
                    std::string& msg);
 private:
     std::string endpoint_;

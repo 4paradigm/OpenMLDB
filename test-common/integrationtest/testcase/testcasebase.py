@@ -684,15 +684,15 @@ class TestCaseBase(unittest.TestCase):
                                  'kAddReplica', 'kAddTableInfo', 'kCheckBinlogSyncProgress', 'kDelReplica',
                                  'kUpdateTableInfo', 'kDropTable'])
 
-    def check_setlimit(self, endpoint, command, method, limit):
+    def ns_setlimit(self, endpoint, command, method, limit):
         cmd = '{} {} {}'.format(command, method, limit)
         return self.run_client(endpoint, cmd)
 
-    def check_setttl_ns_client(self, endpoint, setttl, table_name, ttl_type, ttl):
-        cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
+    def ns_setttl(self, endpoint, setttl, table_name, ttl_type, ttl, ts_name = ''):
+        cmd = '{} {} {} {} {}'.format(setttl, table_name, ttl_type, ttl, ts_name)
         return self.run_client(endpoint, cmd, 'ns_client')
 
-    def check_setttl(self, endpoint, setttl, table_name, ttl_type, ttl):
+    def setttl(self, endpoint, setttl, table_name, ttl_type, ttl):
         cmd = '{} {} {} {}'.format(setttl, table_name, ttl_type, ttl)
         return self.run_client(endpoint, cmd)
 

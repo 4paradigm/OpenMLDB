@@ -42,10 +42,10 @@ class TestSetLimit(TestCaseBase):
         :param max_concurrency_limit:
         :return:
         """
-        rs1 = self.check_setlimit(self.leader, command, method, max_concurrency_limit)
+        rs1 = self.ns_setlimit(self.leader, command, method, max_concurrency_limit)
         self.assertIn(rsp_msg, rs1)
 
 
 if __name__ == "__main__":
-    load(TestLimit)
+    load(TestSetLimit)
 

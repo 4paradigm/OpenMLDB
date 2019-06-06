@@ -420,12 +420,15 @@ bool TabletClient::GetTaskStatus(::rtidb::api::TaskStatusResponse& response) {
 
 bool TabletClient::UpdateTTL(uint32_t tid, uint32_t pid,
                              const ::rtidb::api::TTLType& type,
-                             uint64_t ttl) {
+                             uint64_t ttl, const std::string& ts_name) {
     ::rtidb::api::UpdateTTLRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_type(type);
     request.set_value(ttl);
+    if (!ts_name.empty()) {
+        request.set_ts_name(ts_name);
+    }
     ::rtidb::api::UpdateTTLResponse response;
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::UpdateTTL,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);

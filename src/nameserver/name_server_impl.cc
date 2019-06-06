@@ -4739,9 +4739,25 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         response->set_msg("invalid parameter");
         return;
     }
-    uint64_t old_ttl = table->ttl();
-    table->set_ttl(request->value());
-
+    std::string ts_name;
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        ts_name = request->ts_name();
+        bool has_found = false;
+        for (int i = 0; i < table->column_desc_v1_size(); i++) {
+            if (table->column_desc_v1(i).is_ts_col() 
+                    && table->column_desc_v1(i).name() == ts_name) {
+                has_found = true;
+                break;
+            }
+        }
+        if (!has_found) {
+            PDLOG(WARNING, "ts name %s not found in table %s", 
+                    ts_name.c_str(), request->name().c_str());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+    }
     // update the tablet
     bool all_ok = true;
     for (int32_t i = 0; i < table->table_partition_size(); i++) {
@@ -4751,19 +4767,32 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         const TablePartition& table_partition = table->table_partition(i);
         for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
             const PartitionMeta& meta = table_partition.partition_meta(j);
-            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(), ttl_type, request->value()); 
+            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), 
+                    table_partition.pid(), ttl_type, request->value(), ts_name); 
         }
     }
-
     if (!all_ok) {
-        table->set_ttl(old_ttl);
         response->set_code(322);
         response->set_msg("fail to update ttl from tablet");
         return;
     }
+    TableInfo table_info;
+    std::lock_guard<std::mutex> lock(mu_);
+    table_info.CopyFrom(*table);
+    if (ts_name.empty()) {
+        table_info.set_ttl(request->value());
+    } else {
+        for (int i = 0; i < table_info.column_desc_v1_size(); i++) {
+            if (table_info.column_desc_v1(i).is_ts_col() 
+                    && table_info.column_desc_v1(i).name() == ts_name) {
+                ::rtidb::common::ColumnDesc* column_desc = table_info.mutable_column_desc_v1(i);
+                column_desc->set_ttl(request->value());
+            }
+        }
+    }
     // update zookeeper
     std::string table_value;
-    table->SerializeToString(&table_value);
+    table_info.SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table->name(), table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                         zk_table_data_path_.c_str(), table->name().c_str(), table_value.c_str());
@@ -4771,6 +4800,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         response->set_msg("set zk failed");
         return;
     }
+    table->CopyFrom(table_info);
     response->set_code(0);
     response->set_msg("ok");
 }
@@ -4894,7 +4924,7 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfo(const std::string& end
 
 bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
         int32_t tid, int32_t pid, const ::rtidb::api::TTLType& type,
-        uint64_t ttl) {
+        uint64_t ttl, const std::string& ts_name) {
     std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
     if (!tablet) {
         PDLOG(WARNING, "tablet with endpoint %s is not found", endpoint.c_str());
@@ -4905,7 +4935,7 @@ bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
         PDLOG(WARNING, "tablet with endpoint %s has not client", endpoint.c_str());
         return false;
     }
-    bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl);
+    bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl, ts_name);
     if (!ok) {
         PDLOG(WARNING, "fail to update ttl with tid %d, pid %d, ttl %lu, endpoint %s", tid, pid, ttl, endpoint.c_str());
     }else {
