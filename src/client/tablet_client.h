@@ -162,7 +162,7 @@ public:
 
     bool UpdateTTL(uint32_t tid, uint32_t pid, 
                    const ::rtidb::api::TTLType& type,
-                   uint64_t ttl);
+                   uint64_t ttl, const std::string& ts_name);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
     bool DeleteBinlog(uint32_t tid, uint32_t pid);
 
