@@ -83,6 +83,32 @@ public class CreateTableTest {
     }
 
     @Test
+    public void testTsColIndex() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").setAddTsIdx(true).build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setAddTsIdx(true).setIsTsCol(true).build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertFalse(ok);
+
+        ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        ColumnKey key1 = ColumnKey.newBuilder().setIndexName("card").addColName("ts").build();
+        table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col4)
+                .addColumnKey(key1)
+                .build();
+        ok = nsc.createTable(table);
+        Assert.assertFalse(ok);
+    }
+
+    @Test
     public void testColumnKey() {
         String name = String.valueOf(id.incrementAndGet());
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();

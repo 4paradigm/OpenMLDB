@@ -3,8 +3,6 @@ package com._4paradigm.rtidb.client.ut.ha;
 import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.ut.Config;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -19,7 +17,6 @@ import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import com._4paradigm.rtidb.common.Common.ColumnKey;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
-import com._4paradigm.rtidb.ns.NS.TablePartition;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -415,6 +412,11 @@ public class ColumnKeyTest {
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
             Assert.assertEquals(10008, (long)row[3]);
+            GetFuture gf = tableAsyncClient.get(name, "card0", "card",  10008, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals(9.2d, row[2]);
+            Assert.assertEquals(10008, (long)row[3]);
             Assert.assertEquals(20, tableSyncClient.count(name, "card0", "card"));
 
             it = tableSyncClient.traverse(name, "card");
@@ -472,6 +474,11 @@ public class ColumnKeyTest {
             it = tableSyncClient.scan(name, "card0", "card", 20000, 0, "ts1", 0);
             Assert.assertEquals(20, it.getCount());
             Object[]row = tableSyncClient.getRow(name, "card0", "card",  10008, "ts", null);
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals(9.2d, row[2]);
+            Assert.assertEquals(10008, (long)row[3]);
+            GetFuture gf = tableAsyncClient.get(name, "card0", "card",  10008, "ts", null);
+            row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
             Assert.assertEquals(10008, (long)row[3]);
@@ -533,6 +540,11 @@ public class ColumnKeyTest {
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
             Assert.assertEquals(10008, (long)row[3]);
+            GetFuture gf = tableAsyncClient.get(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, null, null);
+            row = gf.getRow();
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals(9.2d, row[2]);
+            Assert.assertEquals(10008, (long)row[3]);
             Assert.assertEquals(20, tableSyncClient.count(name, new Object[] {"card0", "mcc0"}, "card_mcc", null, true));
 
             it = tableSyncClient.traverse(name, "card_mcc");
@@ -588,6 +600,11 @@ public class ColumnKeyTest {
             it = sf.get();
             Assert.assertEquals(20, it.getCount());
             Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals(9.2d, row[2]);
+            Assert.assertEquals(10008, (long)row[3]);
+            GetFuture gf = tableAsyncClient.get(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
             Assert.assertEquals(10008, (long)row[3]);
@@ -648,6 +665,11 @@ public class ColumnKeyTest {
             it = sf.get();
             Assert.assertEquals(20, it.getCount());
             Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals(9.2d, row[2]);
+            Assert.assertEquals(10008, (long)row[3]);
+            GetFuture gf = tableAsyncClient.get(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
             Assert.assertEquals(10008, (long)row[3]);
