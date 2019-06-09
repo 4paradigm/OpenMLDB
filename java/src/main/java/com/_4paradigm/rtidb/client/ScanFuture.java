@@ -84,9 +84,6 @@ public class ScanFuture implements Future<KvIterator> {
             throws InterruptedException, ExecutionException, TimeoutException {
         ScanResponse response = f.get(timeout, unit);
         Long network = -1l;
-        // if (startTime > 0) {
-        //     network = System.nanoTime() - startTime;
-        // }
         if (response == null) {
             throw new ExecutionException("Connection error", null);
         }
