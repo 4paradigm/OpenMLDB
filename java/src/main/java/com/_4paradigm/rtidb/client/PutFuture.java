@@ -77,8 +77,8 @@ public class PutFuture implements Future<Boolean> {
             ok = ok && f.get() != null && f.get().getCode() == 0;
         }
         if (startTime > 0) {
-            Long network = System.nanoTime() - startTime;
             if (config != null && config.isMetricsEnabled()) {
+                Long network = System.nanoTime() - startTime;
                 TabletMetrics.getInstance().addPut(-1l, network);
             }
         }

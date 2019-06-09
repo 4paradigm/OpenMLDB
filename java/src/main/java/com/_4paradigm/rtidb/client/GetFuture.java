@@ -91,13 +91,13 @@ public class GetFuture implements Future<ByteString>{
 	}
 	
 	private void decode(ByteString raw, Object[] row, int start, int length) throws TabletException {
-	    long network = System.nanoTime() - startTime;
-        long decode = System.nanoTime();
+	    // long network = System.nanoTime() - startTime;
+        // long decode = System.nanoTime();
 	    RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema(), row, start, length);
-        if (config != null && config.isMetricsEnabled()) {
-            decode = System.nanoTime() - decode;
-            TabletMetrics.getInstance().addGet(decode, network);
-        }
+        // if (config != null && config.isMetricsEnabled()) {
+        //     decode = System.nanoTime() - decode;
+        //     TabletMetrics.getInstance().addGet(decode, network);
+        // }
 	}
 	
 	@Override

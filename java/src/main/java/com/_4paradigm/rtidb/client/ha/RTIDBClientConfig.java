@@ -25,7 +25,7 @@ public class RTIDBClientConfig {
     public static final String NULL_STRING = "!N@U#L$L%";
     public static final String EMPTY_STRING = "!@#$%";
 
-	private boolean enableMetrics = true;
+	private boolean enableMetrics = false;
 	private String zkEndpoints = "";
 	private String zkRootPath = "";
 	private String zkTableRootPath = "";
