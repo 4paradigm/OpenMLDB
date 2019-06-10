@@ -14,7 +14,6 @@ import com._4paradigm.rtidb.tablet.Tablet;
 public class PutFuture implements Future<Boolean> {
 
     private List<Future<Tablet.PutResponse>> bf = new ArrayList<Future<Tablet.PutResponse>>();
-    private Long startTime = -1l;
     private RTIDBClientConfig config = null;
 
     public PutFuture(Future<Tablet.PutResponse> f) {
@@ -23,7 +22,6 @@ public class PutFuture implements Future<Boolean> {
 
     public PutFuture(Future<Tablet.PutResponse> f, Long startTime, RTIDBClientConfig config) {
         this(f);
-        this.startTime = startTime;
         this.config = config;
     }
 

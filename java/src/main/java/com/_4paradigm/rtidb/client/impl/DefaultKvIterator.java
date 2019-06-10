@@ -97,6 +97,7 @@ public class DefaultKvIterator implements KvIterator {
         if (offset <= totalSize) {
             return true;
         }
+
         return false;
     }
 

@@ -18,7 +18,6 @@ import com.google.protobuf.ByteString;
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
 	private TableHandler t;
-	private long startTime = 0;
 	private RTIDBClientConfig config = null;
 	
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, long startTime, RTIDBClientConfig config) {
@@ -32,13 +31,11 @@ public class GetFuture implements Future<ByteString>{
 	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long startTime, RTIDBClientConfig config) {
 		this.f = f;
 		this.t = t;
-		this.startTime = startTime;
 		this.config = config;
 	}
 	
 	public GetFuture(Future<Tablet.GetResponse> f,  long startTime, RTIDBClientConfig config) {
         this.f = f;
-        this.startTime = startTime;
         this.config = config;
     }
 	
