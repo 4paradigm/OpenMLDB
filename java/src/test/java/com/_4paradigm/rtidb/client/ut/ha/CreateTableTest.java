@@ -16,6 +16,7 @@ import com._4paradigm.rtidb.common.Common.ColumnKey;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -233,6 +234,45 @@ public class CreateTableTest {
                 .build();
         ok = nsc.createTable(table4);
         Assert.assertTrue(ok);
+        nsc.dropTable(name);
+    }
+
+    @Test
+    public void testAddColumnKey() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        ColumnDesc col3 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setType("int64").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(14400)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        List<TableInfo> tableInfo = nsc.showTable(name);
+        Assert.assertEquals(tableInfo.size(), 1);
+        Assert.assertEquals(tableInfo.get(0).getColumnKeyCount(), 2);
+        Assert.assertEquals(tableInfo.get(0).getColumnKey(0).getIndexName(), "card");
+        Assert.assertEquals(tableInfo.get(0).getColumnKey(0).getTsNameList().size(), 0);
+        Assert.assertEquals(tableInfo.get(0).getColumnKey(1).getIndexName(), "mcc");
+        nsc.dropTable(name);
+
+        ColumnDesc col4 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setIsTsCol(true).setType("int64").build();
+        table = TableInfo.newBuilder()
+                .setName(name).setTtl(14400)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col4)
+                .build();
+        ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        tableInfo = nsc.showTable(name);
+        Assert.assertEquals(tableInfo.size(), 1);
+        Assert.assertEquals(tableInfo.get(0).getColumnKeyCount(), 2);
+        Assert.assertEquals(tableInfo.get(0).getColumnKey(0).getIndexName(), "card");
+        Assert.assertEquals(tableInfo.get(0).getColumnKey(0).getTsNameList().size(), 1);
+        Assert.assertEquals(tableInfo.get(0).getColumnKey(0).getTsName(0), "col1");
+        Assert.assertEquals(tableInfo.get(0).getColumnKey(1).getIndexName(), "mcc");
         nsc.dropTable(name);
     }
 }

@@ -547,7 +547,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         List<String> list = th.getKeyMap().get(idxName);
         if (list == null) {
-            throw new TabletException("no index name in table" + idxName);
+            throw new TabletException("no index name " + idxName + " in table " + name);
         }
         if (keyArr.length != list.size()) {
             throw new TabletException("check key number failed");
@@ -566,7 +566,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         List<String> list = th.getKeyMap().get(idxName);
         if (list == null) {
-            throw new TabletException("no index name in table" + idxName);
+            throw new TabletException("no index name " + idxName + " in table " + name);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
