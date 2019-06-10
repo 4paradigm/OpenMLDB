@@ -220,7 +220,7 @@ private:
 
     int SetPartitionInfo(TableInfo& table_info);
 
-    int RebuildTableInfo(TableInfo& table_info);
+    int FillColumnKey(TableInfo& table_info);
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 

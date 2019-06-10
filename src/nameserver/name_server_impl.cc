@@ -1161,7 +1161,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
-int NameServerImpl::RebuildTableInfo(TableInfo& table_info) {
+int NameServerImpl::FillColumnKey(TableInfo& table_info) {
     if (table_info.column_key_size() > 0) {
         return 0;
     }
@@ -1970,10 +1970,10 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
-    if (RebuildTableInfo(*table_info) < 0) {
+    if (FillColumnKey(*table_info) < 0) {
         response->set_code(307);
-        response->set_msg("rebuild table_info failed");
-        PDLOG(WARNING, "rebuild table_info failed");
+        response->set_msg("fill column key failed");
+        PDLOG(WARNING, "fill column key failed");
         return;
     }
     {
