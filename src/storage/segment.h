@@ -15,6 +15,7 @@
 #include "base/slice.h"
 #include <mutex>
 #include <atomic>
+#include <memory>
 #include "storage/ticket.h"
 #include "proto/tablet.pb.h"
 
@@ -165,7 +166,17 @@ public:
     Iterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket);
 
     inline uint64_t GetIdxCnt() {
-        return idx_cnt_.load(std::memory_order_relaxed);
+        return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed) : 
+            idx_cnt_.load(std::memory_order_relaxed);
+    }
+
+    int GetIdxCnt(uint32_t ts_idx, uint64_t& ts_cnt) {
+        uint32_t real_idx = 0;
+        if (GetTsIdx(ts_idx, real_idx) < 0) {
+            return -1;
+        }
+        ts_cnt = idx_cnt_vec_[real_idx]->load(std::memory_order_relaxed);
+        return 0;
     }
 
     inline uint64_t GetTsCnt() {
@@ -223,6 +234,7 @@ private:
     uint32_t ts_cnt_;
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
 };
 
 }// namespace storage
