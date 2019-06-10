@@ -1161,6 +1161,33 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
+int NameServerImpl::RebuildTableInfo(TableInfo& table_info) {
+    if (table_info.column_key_size() > 0) {
+        return 0;
+    }
+    std::vector<std::string> ts_vec;
+    std::vector<std::string> index_vec;
+    for (const auto& column_desc : table_info.column_desc_v1()) {
+        if (column_desc.is_ts_col()) {
+            ts_vec.push_back(column_desc.name());
+        }
+        if (column_desc.add_ts_idx()) {
+            index_vec.push_back(column_desc.name());
+        }
+    }
+    if (ts_vec.size() > 1) {
+        return -1;
+    }
+    for (const auto& index : index_vec) {
+        ::rtidb::common::ColumnKey* column_key = table_info.add_column_key();
+        column_key->set_index_name(index);
+        if (!ts_vec.empty()) {
+            column_key->add_ts_name(ts_vec[0]);
+        }
+    }
+    return 0;
+}
+
 int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     uint32_t partition_num = FLAGS_partition_num;
     if (table_info.has_partition_num() && table_info.partition_num() > 0) {
@@ -1943,6 +1970,12 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
+    if (RebuildTableInfo(*table_info) < 0) {
+        response->set_code(307);
+        response->set_msg("rebuild table_info failed");
+        PDLOG(WARNING, "rebuild table_info failed");
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {

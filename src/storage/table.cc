@@ -100,6 +100,8 @@ int Table::InitColumnDesc() {
             key_idx = 0;
         }
         if (table_meta_.column_key_size() > 0) {
+            mapping_.clear();
+            key_idx = 0;
             for (const auto& column_key : table_meta_.column_key()) {
                 uint32_t cur_key_idx = key_idx;
                 std::string name = column_key.index_name();
@@ -172,6 +174,7 @@ int Table::Init() {
         is_leader_ = false;
     }
     if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed");
         return -1;
     }
     if (table_meta_.has_ttl()) {
