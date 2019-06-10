@@ -43,6 +43,7 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec):
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
     for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
         ts_idx_map_[ts_idx_vec[i]] = i;
+        idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
     }
 }
 
@@ -97,6 +98,7 @@ uint64_t Segment::Release() {
     }
     delete f_it;
     entry_free_list_->Clear();
+    idx_cnt_vec_.clear();
     return cnt;
 }
 
@@ -183,8 +185,8 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
         ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+        idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
-    idx_cnt_.fetch_add(1, std::memory_order_relaxed);
 }
 
 bool Segment::Get(const Slice& key,
@@ -276,6 +278,7 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
         if (ts_cnt_ > 1) {
             KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();
             for (uint32_t i = 0; i < ts_cnt_; i++) {
+                uint64_t old = gc_idx_cnt;
                 TimeEntries::Iterator* it = entry_arr[i]->entries.NewIterator();
                 it->SeekToFirst();
                 if (it->Valid()) {
@@ -284,6 +287,7 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
                     FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 }
                 delete it;
+                idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
             }
             delete[] entry_arr;
             uint64_t byte_size = GetRecordPkMultiIdxSize(entry_node->Height(), 
@@ -303,13 +307,13 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
             uint64_t byte_size = GetRecordPkIdxSize(entry_node->Height(), 
                     entry_node->GetKey().size(), key_entry_max_height_);
             idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+            idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
         }
         delete entry_node;
         ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* tmp = node;
         node = node->GetNextNoBarrier(0);
         delete tmp;
         pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
-        idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     }
 }
 
@@ -351,8 +355,8 @@ void Segment::Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t
         } 
         return;
     }
-    uint64_t consumed = ::baidu::common::timer::get_micros();
     uint64_t old = gc_idx_cnt; 
+    uint64_t consumed = ::baidu::common::timer::get_micros();
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
@@ -375,12 +379,12 @@ void Segment::Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t
             uint64_t entry_gc_idx_cnt = 0;
             FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             gc_idx_cnt += entry_gc_idx_cnt;
         }
     }
     PDLOG(DEBUG, "[Gc4Head] segment gc consumed %lld, count %lld",
             (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
 
@@ -470,6 +474,7 @@ void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_
             uint64_t entry_gc_idx_cnt = 0;
             FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
+            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             gc_idx_cnt += entry_gc_idx_cnt;
         }
         if (empty_cnt == ts_cnt_) {
@@ -495,7 +500,6 @@ void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_
     }
     PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lld, consumed %lld, count %lld", time,
             (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
 
