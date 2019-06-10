@@ -26,7 +26,6 @@ public class DefaultKvIterator implements KvIterator {
     private int totalSize;
     private List<ColumnDesc> schema;
     private Long network = 0l;
-    private Long decode = 0l;
     private int count;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
@@ -98,9 +97,6 @@ public class DefaultKvIterator implements KvIterator {
         if (offset <= totalSize) {
             return true;
         }
-        if (config != null && config.isMetricsEnabled()) {
-            TabletMetrics.getInstance().addScan(decode, network);
-        }
         return false;
     }
 
@@ -135,10 +131,6 @@ public class DefaultKvIterator implements KvIterator {
     }
 
     public void next() {
-        long delta = 0l;
-        if (config != null && config.isMetricsEnabled()) {
-    	    delta = System.nanoTime();
-        }
         if (offset + 4 > totalSize) {
             offset += 4;
             return;
@@ -154,17 +146,10 @@ public class DefaultKvIterator implements KvIterator {
         }
         offset += (4 + size);
         slice.limit(offset);
-        if (config != null && config.isMetricsEnabled()) {
-            decode += System.nanoTime() - delta;
-        }
     }
 
     @Override
     public void getDecodedValue(Object[] row, int start, int length) throws TabletException {
-        long delta = 0l;
-        if (config != null && config.isMetricsEnabled()) {
-            delta = System.nanoTime();
-        }
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
@@ -178,9 +163,6 @@ public class DefaultKvIterator implements KvIterator {
             RowCodec.decode(ByteBuffer.wrap(uncompressed), schema, row, 0, length);
         } else {
             RowCodec.decode(slice, schema, row, start, length);
-        }
-        if (config != null && config.isMetricsEnabled()) {
-            decode += System.nanoTime() - delta;
         }
     }
 }

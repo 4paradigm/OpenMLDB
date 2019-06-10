@@ -76,12 +76,6 @@ public class PutFuture implements Future<Boolean> {
         for (Future<Tablet.PutResponse> f : bf) {
             ok = ok && f.get() != null && f.get().getCode() == 0;
         }
-        if (startTime > 0) {
-            if (config != null && config.isMetricsEnabled()) {
-                Long network = System.nanoTime() - startTime;
-                TabletMetrics.getInstance().addPut(-1l, network);
-            }
-        }
         return ok;
     }
 

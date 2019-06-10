@@ -633,16 +633,9 @@ public class TableSyncClientImpl implements TableSyncClient {
             builder.setEnableRemoveDuplicatedRecord(true);
         }
         Tablet.ScanRequest request = builder.build();
-        long consuemd = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            consuemd = System.nanoTime();
-        }
         Tablet.ScanResponse response = ts.scan(request);
         if (response != null && response.getCode() == 0) {
             Long network = null;
-            if (client.getConfig().isMetricsEnabled()) {
-                network = System.nanoTime() - consuemd;
-            }
             DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
             it.setCount(response.getCount());
             if (th.getTableInfo().hasCompressType()) {
@@ -733,10 +726,6 @@ public class TableSyncClientImpl implements TableSyncClient {
             ByteBuffer buffer = ByteBuffer.wrap(compressed);
             row = buffer;
         }
-        long consumed = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            consumed = System.nanoTime();
-        }
         TabletServer tablet = ph.getLeader();
         if (tablet == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
@@ -763,16 +752,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         row.rewind();
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
         Tablet.PutRequest request = builder.build();
-        long encode = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            encode = System.nanoTime() - consumed;
-            consumed = System.nanoTime();
-        }
         Tablet.PutResponse response = tablet.put(request);
-        if (client.getConfig().isMetricsEnabled()) {
-            Long network = System.nanoTime() - consumed;
-            TabletMetrics.getInstance().addPut(encode, network);
-        }
         if (response != null && response.getCode() == 0) {
             return true;
         }
