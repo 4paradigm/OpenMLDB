@@ -38,7 +38,7 @@ void OnLostCallback() {}
 
 
 TEST_F(DistLockTest, Lock) {
-    ZkClient client("127.0.0.1:6181", 2000, "127.0.0.1:9527", "/rtidb_lock");
+    ZkClient client("127.0.0.1:6181", 1000, "127.0.0.1:9527", "/rtidb_lock");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
     DistLock lock("/rtidb_lock/nameserver_lock", &client, boost::bind(&OnLockedCallback), boost::bind(&OnLostCallback), "endpoint1");
@@ -53,7 +53,7 @@ TEST_F(DistLockTest, Lock) {
     lock.CurrentLockValue(current_lock);
     ASSERT_EQ("endpoint1", current_lock);
     call_invoked = false;
-    ZkClient client2("127.0.0.1:6181", 2000, "127.0.0.1:9527", "/rtidb_lock");
+    ZkClient client2("127.0.0.1:6181", 1000, "127.0.0.1:9527", "/rtidb_lock");
     ok = client2.Init();
     if (!ok) {
         lock.Stop();
