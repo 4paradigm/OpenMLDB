@@ -53,16 +53,9 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, PartitionHandler ph)
             throws TimeoutException {
-        Long consumed = System.nanoTime();
         Tablet.PutRequest request = Tablet.PutRequest.newBuilder().setPid(pid).setPk(key).setTid(tid).setTime(time)
                 .setValue(ByteString.copyFrom(bytes)).build();
-        Long encode = System.nanoTime() - consumed;
-        consumed = System.nanoTime();
         Tablet.PutResponse response = ph.getLeader().put(request);
-        Long network = System.nanoTime() - consumed;
-        if (client.getConfig().isMetricsEnabled()) {
-            TabletMetrics.getInstance().addPut(encode, network);
-        }
         if (response != null && response.getCode() == 0) {
             return true;
         }
@@ -121,7 +114,6 @@ public class TabletSyncClientImpl implements TabletSyncClient {
 
     private boolean put(int tid, int pid, long ts, List<Tablet.Dimension> ds, ByteBuffer row, TableHandler th)
             throws TimeoutException, TabletException {
-        Long consumed = System.nanoTime();
         TabletServer tablet = th.getHandler(pid).getLeader();
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
         for (Tablet.Dimension dim : ds) {
@@ -133,13 +125,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         row.rewind();
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
         Tablet.PutRequest request = builder.build();
-        Long encode = System.nanoTime() - consumed;
-        consumed = System.nanoTime();
         Tablet.PutResponse response = tablet.put(request);
-        if (client.getConfig().isMetricsEnabled()) {
-            Long network = System.nanoTime() - consumed;
-            TabletMetrics.getInstance().addPut(encode, network);
-        }
         if (response != null && response.getCode() == 0) {
             return true;
         }
@@ -252,18 +238,11 @@ public class TabletSyncClientImpl implements TabletSyncClient {
     @Override
     public Object[] getRow(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tid);
-        long consumed = System.nanoTime();
         ByteString response = get(tid, pid, key, time);
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
-        long network = System.nanoTime() - consumed;
-        consumed = System.nanoTime();
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        if (client.getConfig().isMetricsEnabled()) {
-            long decode = System.nanoTime() - consumed;
-            TabletMetrics.getInstance().addGet(decode, network);
-        }
         return row;
     }
 
