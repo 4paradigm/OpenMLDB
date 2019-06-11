@@ -25,7 +25,6 @@ public class RTIDBClientConfig {
     public static final String NULL_STRING = "!N@U#L$L%";
     public static final String EMPTY_STRING = "!@#$%";
 
-	private boolean enableMetrics = true;
 	private String zkEndpoints = "";
 	private String zkRootPath = "";
 	private String zkTableRootPath = "";
@@ -59,10 +58,6 @@ public class RTIDBClientConfig {
     public void setTimerBucketSize(int timerBucketSize) {
         this.timerBucketSize = timerBucketSize;
     }
-
-    public void disableMetrics() {
-	    enableMetrics = false;
-	}
 
     /**
      * @return the nsEndpoint
@@ -172,14 +167,6 @@ public class RTIDBClientConfig {
     public void setZkSesstionTimeout(int zkSesstionTimeout) {
         this.zkSesstionTimeout = zkSesstionTimeout;
     }
-
-    public void enableMetrics() {
-        enableMetrics = true;
-	}
-	
-	public boolean isMetricsEnabled() {
-		return enableMetrics;
-	}
 
     public String getZkEndpoints() {
         return zkEndpoints;
