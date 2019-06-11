@@ -508,6 +508,10 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                 return -1;
             }
             if (column_desc.is_ts_col()) {
+                if (column_desc.add_ts_idx()) {
+                    msg = "can not set add_ts_idx and is_ts_col together. column name " + column_desc.name();
+                    return -1;
+                }
                 if (column_desc.type() != "int64" && column_desc.type() != "uint64" && 
                         column_desc.type() != "timestamp") {
                     msg = "ttl column type must be int64, uint64, timestamp";
@@ -538,6 +542,10 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
             for (const auto& column_name : column_key.col_name()) {
                 if (column_set.find(column_name) == column_set.end()) {
                     msg = "not found column name " + column_name;
+                    return -1;
+                }
+                if (ts_set.find(column_name) != ts_set.end()) {
+                    msg = "column name in column key can not set ts col. column name " + column_name;
                     return -1;
                 }
             }
@@ -2092,8 +2100,8 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
            "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
     ::rtidb::base::Rename(source_path, recycle_path);
     if (task_ptr) {
-		std::lock_guard<std::mutex> lock(mu_);
-	    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
     }
     PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
     return 0;
@@ -2103,19 +2111,21 @@ void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     const ::rtidb::api::TableMeta* table_meta = &request->table_meta();
     std::string msg;
+    uint32_t tid = table_meta->tid();
+    uint32_t pid = table_meta->pid();
     if (CheckTableMeta(table_meta, msg) != 0) {
         response->set_code(129);
         response->set_msg(msg);
-        done->Run();
+        PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
         return;
     }
-    uint32_t tid = table_meta->tid();
-    uint32_t pid = table_meta->pid();
     ::rtidb::api::TTLType type = table_meta->ttl_type();
     uint64_t ttl = table_meta->ttl();
-    PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
+    PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
+            tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string name = table_meta->name();
     uint32_t seg_cnt = 8;
     if (table_meta->seg_cnt() > 0) {
@@ -2134,7 +2144,6 @@ void TabletImpl::CreateTable(RpcController* controller,
             }
             response->set_code(101);
             response->set_msg("table already exists");
-            done->Run();
             return;
         }       
     	std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(tid) +
@@ -2143,20 +2152,17 @@ void TabletImpl::CreateTable(RpcController* controller,
         	PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
             response->set_code(127);
             response->set_msg("write data failed");
-            done->Run();
             return;
 		}
         std::string msg;
         if (CreateTableInternal(table_meta, msg) < 0) {
             response->set_code(131);
             response->set_msg(msg.c_str());
-            done->Run();
             return;
         }
     }
     response->set_code(0);
     response->set_msg("ok");
-    done->Run();
     std::shared_ptr<Table> table = GetTable(tid, pid);        
     if (!table) {
         PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
@@ -2180,13 +2186,13 @@ void TabletImpl::ExecuteGc(RpcController* controller,
             const ::rtidb::api::ExecuteGcRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
-	brpc::ClosureGuard done_guard(done);
+    brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
         PDLOG(DEBUG, "table is not exist. tid %u pid %u", tid, pid);
-	    response->set_code(-1);
+        response->set_code(-1);
         response->set_msg("table not found");
         return;
     }
