@@ -766,6 +766,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
                 return -2;
         }
         if (jump_out) break;
+        last_time = it->GetKey();
         tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
         total_block_size += it->GetValue()->size;
         if (total_block_size > FLAGS_scan_max_bytes_size) {
