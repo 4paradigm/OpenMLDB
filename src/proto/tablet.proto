@@ -209,8 +209,8 @@ message BaseScanRequest {
     optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string idx_name = 8;
     optional string ts_name = 9;
-    optional GetType st_type = 10;
-    optional GetType et_type = 11;
+    optional GetType st_type = 10 [default = kSubKeyLe];
+    optional GetType et_type = 11 [default = kSubKeyGt];
 }
 
 message BaseScanResponse {

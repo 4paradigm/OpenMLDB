@@ -882,11 +882,10 @@ void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
-
+    brpc::ClosureGuard done_guard(done);
     if (request->st() < request->et()) {
         response->set_code(117);
         response->set_msg("starttime less than endtime");
-        done->Run();
         return;
     }
 
@@ -895,7 +894,6 @@ void TabletImpl::Scan(RpcController* controller,
         PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(100);
         response->set_msg("table is not exist");
-        done->Run();
         return;
     }
     if (table->GetTableStat() == ::rtidb::storage::kLoading) {
@@ -903,13 +901,11 @@ void TabletImpl::Scan(RpcController* controller,
                       request->tid(), request->pid());
         response->set_code(104);
         response->set_msg("table is loading");
-        done->Run();
         return;
     }
     if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
         response->set_code(112);
         response->set_msg("table ttl type is kLatestTime, cannot scan");
-        done->Run();
         return;
     }
     uint32_t index = 0;
@@ -921,7 +917,6 @@ void TabletImpl::Scan(RpcController* controller,
                   request->tid(), request->pid());
             response->set_code(108);
             response->set_msg("idx name not found");
-            done->Run();
             return;
         }
         index = iit->second;
@@ -933,7 +928,6 @@ void TabletImpl::Scan(RpcController* controller,
                   request->tid(), request->pid());
             response->set_code(137);
             response->set_msg("ts name not found");
-            done->Run();
             return;
         }
         ts_index = iter->second;
@@ -951,77 +945,53 @@ void TabletImpl::Scan(RpcController* controller,
     if (it == NULL) {
         response->set_code(109);
         response->set_msg("key not found");
-        done->Run();
         return;
     }
-    if (request->st() == 0) {
-        it->SeekToFirst();
-    } else {
-        it->Seek(request->st());
-    }
-    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
-    // reduce the times of memcpy in vector
-    tmp.reserve(FLAGS_scan_reserve_size);
-    uint32_t total_block_size = 0;
-    uint64_t end_time = request->et();
-    bool remove_duplicated_record = false;
-    if (request->has_enable_remove_duplicated_record()) {
-        remove_duplicated_record = request->enable_remove_duplicated_record();
-    }
-    uint32_t scount = 0;
-    uint64_t last_time = 0;
     uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
-    end_time = std::max(end_time, table->GetExpireTime(ttl));
-    uint32_t limit = 0;
-    if (request->has_limit()) {
-        limit = request->limit();
-    }
-    while (it->Valid()) {
-        scount ++;
-        if (it->GetKey() <= end_time) {
+    std::string* pairs = response->mutable_pairs(); 
+    uint32_t count = 0;
+    int32_t code = 0;
+    switch(table->GetTTLType()) {
+        case ::rtidb::api::TTLType::kLatestTime:
+            code = ScanLatestIndex(ttl, it, request->limit(),
+                        request->st(), ::rtidb::api::GetType::kSubKeyLe,
+                        request->et(), ::rtidb::api::GetType::kSubKeyGt,
+                        pairs, &count);
             break;
-        }
-        // skip duplicate record 
-        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
-            last_time = it->GetKey();
-            it->Next();
-            continue;
-        }
-        last_time = it->GetKey();
-        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
-        total_block_size += it->GetValue()->size;
-        it->Next();
-        if (limit > 0 && scount >= limit) {
+        default:
+            bool remove_duplicated_record = false;
+            if (request->has_enable_remove_duplicated_record()) {
+                remove_duplicated_record = request->enable_remove_duplicated_record();
+            }
+            uint64_t expire_ts = table->GetExpireTime(ttl);
+            code = ScanTimeIndex(expire_ts, it, request->limit(),
+                    request->st(), ::rtidb::api::GetType::kSubKeyLe,
+                    request->et(), ::rtidb::api::GetType::kSubKeyGt,
+                    pairs, &count, remove_duplicated_record);
             break;
-        }
-        // check reach the max bytes size
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
-            response->set_code(118);
-            response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
-            done->Run();
-            delete it;
-            return;
-        }
     }
     delete it;
-    uint32_t total_size = tmp.size() * (8+4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (tmp.size() <= 0) {
-        pairs->resize(0);
-    }else {
-        pairs->resize(total_size);
+    response->set_code(code);
+    response->set_count(count);
+    switch(code) {
+        case 0:
+            return;
+        case -1:
+            response->set_msg("invalid args");
+            return;
+        case -2:
+            response->set_msg("st/et sub key type is invalid");
+            return;
+        case -3:
+            response->set_code(118);
+            response->set_msg("reach the max scan byte size");
+            return;
+        case -4:
+            response->set_msg("fail to encode data rows");
+            return;
+        default:
+            return;
     }
-    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
-    uint32_t offset = 0;
-    std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
-    for (; lit != tmp.end(); ++lit) {
-        std::pair<uint64_t, DataBlock*>& pair = *lit;
-        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
-        offset += (4 + 8 + pair.second->size);
-    }
-    response->set_code(0);
-    response->set_count(tmp.size());
-    done->Run();
 }
 
 void TabletImpl::Count(RpcController* controller,
