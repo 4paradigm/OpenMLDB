@@ -11,6 +11,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
@@ -75,7 +76,27 @@ public class TableSchemaAsyncClientTest {
         Assert.assertTrue(ok);
         return tid;
     }
-    
+
+    @Test
+    public void testSchemaGet() throws TimeoutException, InterruptedException, ExecutionException, TabletException {
+        int tid = createTable();
+        PutFuture pf = tableClient.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 });
+        Assert.assertTrue(pf.get());
+        pf = tableClient.put(tid, 0, 11, new Object[] { "9527", "1221", 2.0 });
+        Assert.assertTrue(pf.get());
+        pf = tableClient.put(tid, 0, 12, new Object[] { "9524", "1222", 3.0 });
+        Assert.assertTrue(pf.get());
+        GetFuture gf = tableClient.get(tid, 0, "9527", "card");
+
+        Object[] row = gf.getRow();
+        Assert.assertNotNull(row);
+
+        gf = tableClient.get(tid, 0, "9527not", "card");
+        row = gf.getRow();
+        // row = null;
+        Assert.assertNull(row);
+    }
+
     @Test
     public void testAsyncScanTableNotExist() throws TimeoutException, TabletException {
         ScanFuture sf = tableClient.scan(0, 0, "pl", "test_idx_name", 1000l, 0l);
@@ -89,7 +110,6 @@ public class TableSchemaAsyncClientTest {
         }
     }
 
-    
     @Test
     public void testAsyncScanTableIdxNotExist() throws TimeoutException, TabletException {
         int tid = createTable();

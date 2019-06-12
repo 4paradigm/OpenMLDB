@@ -96,7 +96,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         ByteString response = get(tid, pid, key, idxName, time, null, null, th);
         if (response == null) {
-            return new Object[th.getSchema().size()];
+            return null;
         }
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         return row;
@@ -166,7 +166,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
         ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th);
         if (response == null) {
-            return new Object[th.getSchema().size()];
+            return null;
         }
         Object[] resultRow = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         return resultRow;
@@ -187,7 +187,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
         ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th);
         if (response == null) {
-            return new Object[th.getSchema().size()];
+            return null;
         }
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         return row;
