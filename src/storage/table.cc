@@ -174,6 +174,7 @@ int Table::Init() {
         is_leader_ = false;
     }
     if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed");
         return -1;
     }
     if (table_meta_.has_ttl()) {

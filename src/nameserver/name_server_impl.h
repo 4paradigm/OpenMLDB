@@ -218,7 +218,9 @@ private:
 
     bool RecoverOPTask();
 
-    int SetPartitionInfo(::rtidb::nameserver::TableInfo& table_info);
+    int SetPartitionInfo(TableInfo& table_info);
+
+    int FillColumnKey(TableInfo& table_info);
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 

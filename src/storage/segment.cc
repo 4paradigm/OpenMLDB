@@ -361,7 +361,6 @@ void Segment::Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
-        Slice key = it->GetKey();
         it->Next();
         for (const auto& kv : keep_cnt_map) {
             auto pos = ts_idx_map_.find(kv.first);
