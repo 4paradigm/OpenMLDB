@@ -1,6 +1,5 @@
 package com._4paradigm.rtidb.client.ut;
 
-import java.beans.Transient;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -91,15 +90,9 @@ public class TableAsyncClientTest {
         PutFuture pf = tableClient.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(pf.get());
         GetFuture gf = tableClient.get(tid, 0, "pk");
-        while(!gf.isDone()) {
-            // waiting for gf is done
-        }
         ByteString response = gf.get();
         Assert.assertNotNull(response);
         gf = tableClient.get(tid, 0, "pksss");
-        while(!gf.isDone()) {
-            // waiting for gf is done
-        }
         response = gf.get();
         Assert.assertNull(response);
         tabletClient.dropTable(tid, 0);
