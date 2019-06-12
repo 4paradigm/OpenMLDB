@@ -76,6 +76,21 @@ public class TableSyncClientTest {
     }
 
     @Test
+    public void test1GetNullForKeyNotFound() throws TimeoutException, TabletException {
+        int tid = id.incrementAndGet();
+        boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
+        Assert.assertTrue(ok);
+        ok = tableClient.put(tid, 0, "pk", 9527, "test0");
+        Assert.assertTrue(ok);
+        ByteString buffer = tableClient.get(tid, 0, "pk");
+        Assert.assertNotNull(buffer);
+        Assert.assertEquals("test0", buffer.toString(Charset.forName("utf-8")));
+        buffer = tableClient.get(tid, 0, "pknotfound");
+        Assert.assertNull(buffer);
+        tabletClient.dropTable(tid, 0);
+    }
+
+    @Test
     public void test3Scan() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
         try {

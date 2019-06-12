@@ -397,14 +397,11 @@ public class TableSchemaClientTest {
         Assert.assertTrue(ok);
         Assert.assertTrue(client.put(tid, 0, 10l, new Object[] { "9527", "merchant0", 2.0d }));
         // check no exist
-        try {
-            Object[] row = client.getRow(tid, 0, "9528", 0l);
-        } catch (TabletException e) {
-            Assert.assertEquals(109, e.getCode());
-        }
+        Object[] row = client.getRow(tid, 0, "9528kkk", 0l);
+        Assert.assertNull(row);
 
         // get head
-        Object[]row = client.getRow(tid, 0, "9527", 0l);
+        row = client.getRow(tid, 0, "9527", 0l);
         Assert.assertEquals(3, row.length);
         Assert.assertEquals("9527", row[0]);
         Assert.assertEquals("merchant0", row[1]);
