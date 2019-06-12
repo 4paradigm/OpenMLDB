@@ -71,11 +71,11 @@ public class GetFuture implements Future<ByteString>{
 	    if (t == null || t.getSchema().isEmpty()) {
             throw new TabletException("no schema for table " + t);
         }
-	    Object[] row = new Object[t.getSchema().size()];
 		ByteString raw = get();
 		if (raw == null || raw.isEmpty()) {
             return null;
 		}
+		Object[] row = new Object[t.getSchema().size()];
 		decode(raw, row, 0, row.length);
 		return row;
 	}
