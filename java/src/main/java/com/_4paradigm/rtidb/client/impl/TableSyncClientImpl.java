@@ -260,6 +260,9 @@ public class TableSyncClientImpl implements TableSyncClient {
                 return response.getValue();
             }
         }
+        if (response.getCode() == 109) {
+            return null;
+        }
         if (response != null) {
             throw new TabletException(response.getCode(), response.getMsg());
         }

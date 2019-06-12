@@ -1,5 +1,6 @@
 package com._4paradigm.rtidb.client.ut;
 
+import java.beans.Transient;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -19,6 +20,7 @@ import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TabletClientImpl;
+import com.google.protobuf.ByteString;
 
 import io.brpc.client.EndPoint;
 
@@ -80,6 +82,27 @@ public class TableAsyncClientTest {
         tabletClient.dropTable(tid, 0);
     }
     
-    
+    @Test
+    public void test1GetNullForKeyNotFound() throws TimeoutException, TabletException, InterruptedException, ExecutionException {
+        int tid = id.incrementAndGet();
+        String tableName = "tj1";
+        boolean ok = tabletClient.createTable(tableName, tid, 0, 0, 8);
+        Assert.assertTrue(ok);
+        PutFuture pf = tableClient.put(tid, 0, "pk", 9527, "test0");
+        Assert.assertTrue(pf.get());
+        GetFuture gf = tableClient.get(tid, 0, "pk");
+        while(!gf.isDone()) {
+            // waiting for gf is done
+        }
+        ByteString response = gf.get();
+        Assert.assertNotNull(response);
+        gf = tableClient.get(tid, 0, "pksss");
+        while(!gf.isDone()) {
+            // waiting for gf is done
+        }
+        response = gf.get();
+        Assert.assertNull(response);
+        tabletClient.dropTable(tid, 0);
+    }
 
 }
