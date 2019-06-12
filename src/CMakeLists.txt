@@ -81,6 +81,9 @@ target_link_libraries(tablet_impl_mem_test   gtest pthread tablet gflags storage
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/common.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf tcmalloc_minimal)
 
+add_executable(codec_test  base/codec_test.cc proto/common.pb.cc)
+target_link_libraries(codec_test   gtest pthread storage tablet gflags storage common protobuf tcmalloc_minimal)
+
 add_executable(log_test  log/log_test.cc)
 target_link_libraries(log_test   gtest pthread storage tablet base log gflags storage common protobuf tcmalloc_minimal)
 

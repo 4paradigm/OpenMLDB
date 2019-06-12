@@ -83,6 +83,11 @@ public:
               ::rtidb::api::ScanResponse* response,
               Closure* done);
 
+    void BaseScan(RpcController* controller,
+            const ::rtidb::api::BaseScanRequest* request,
+            ::rtidb::api::BaseScanResponse* response,
+            Closure* done);
+
     void Delete(RpcController* controller,
               const ::rtidb::api::DeleteRequest* request,
               ::rtidb::api::GeneralResponse* response,
@@ -300,6 +305,29 @@ private:
     void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
     bool CheckGetDone(::rtidb::api::GetType type, uint64_t ts, uint64_t target_ts); 
+
+    // scan the latest index
+    int32_t ScanLatestIndex(uint64_t ttl,
+                            ::rtidb::storage::Iterator* it,
+                            uint32_t limit,
+                            uint64_t st,
+                            const rtidb::api::GetType& st_type,
+                            uint64_t et,
+                            const rtidb::api::GetType& et_type,
+                            std::string* pairs,
+                            uint32_t* count);
+
+    // scan the time index 
+    int32_t ScanTimeIndex(uint64_t expire_ts, 
+                          ::rtidb::storage::Iterator* it,
+                          uint32_t limit,
+                          uint64_t st,
+                          const rtidb::api::GetType& st_type,
+                          uint64_t et,
+                          const rtidb::api::GetType& et_type,
+                          std::string* pairs,
+                          uint32_t* count,
+                          bool remove_duplicated_record);
 
 private:
     Tables tables_;

@@ -119,7 +119,6 @@ TEST_F(CodecBenchmarkTest, Decode) {
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
     std::cout << "Decode rtidb: " << consumed/1000 << std::endl;
     std::cout << "Decode protobuf: " << pconsumed/1000 << std::endl;
-
 }
 
 }
