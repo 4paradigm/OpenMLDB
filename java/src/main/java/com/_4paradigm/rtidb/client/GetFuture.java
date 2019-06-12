@@ -102,10 +102,10 @@ public class GetFuture implements Future<ByteString>{
 				return response.getValue();
 			}
 		}
-		if (response.getCode() == 109) {
-			return null;
-		}
 		if (response != null) {
+			if (response.getCode() == 109) {
+				return null;
+			}
 			String msg = String.format("Bad request with error %s code %d", response.getMsg(), response.getCode());
 			throw new ExecutionException(msg, null);
 		} else {
