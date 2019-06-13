@@ -31,7 +31,7 @@ public class TableAsyncClientTest {
     private static String zkRootPath = Config.ZK_ROOT_PATH;
     private static String leaderPath  = zkRootPath + "/leader";
     private static AtomicInteger id = new AtomicInteger(20000);
-    private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
+    private static NameServerClientImpl nsc = null;
     private static RTIDBClientConfig config = new RTIDBClientConfig();
     private static RTIDBClusterClient client = null;
     private static TableAsyncClient tableAsyncClient = null;
@@ -40,9 +40,12 @@ public class TableAsyncClientTest {
     @BeforeClass
     public static void setUp() {
         try {
-            nsc.init();
             config.setZkEndpoints(zkEndpoints);
             config.setZkRootPath(zkRootPath);
+            config.setWriteTimeout(1000000);
+            config.setReadTimeout(1000000);
+            nsc = new NameServerClientImpl(config);
+            nsc.init();
             client = new RTIDBClusterClient(config);
             client.init();
             tableAsyncClient = new TableAsyncClientImpl(client);
@@ -313,6 +316,38 @@ public class TableAsyncClientTest {
 
     }
 
+    @Test
+    public void testGetWithOpDefault() {
+        String name = createSchemaTable("kLatestTime");
+        try {
+            PutFuture pf = tableAsyncClient.put(name, 10, new Object[]{"card0", "1222", 1.0});
+            Assert.assertTrue(pf.get());
+            pf = tableAsyncClient.put(name, 11, new Object[]{"card0", "1224", 2.0});
+            Assert.assertTrue(pf.get());
+            pf = tableAsyncClient.put(name, 13, new Object[]{"card0", "1224", 3.0});
+            Assert.assertTrue(pf.get());
+            // range
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0", "card", 14, null, Tablet.GetType.kSubKeyLe,
+                        9, Tablet.GetType.kSubKeyGe);
+                Object[] row = gf.getRow();
+                Assert.assertEquals(new Object[]{"card0", "1224", 3.0}, row);
+            }
+
+            //
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0","card", 14, null, Tablet.GetType.kSubKeyLe,
+                        14, Tablet.GetType.kSubKeyGe);
+                Object[] row = gf.getRow();
+                Assert.assertEquals(null, row);
+            }
+
+        } catch (Exception e) {
+            Assert.fail();
+        } finally {
+            config.setRemoveDuplicateByTime(false);
+        }
+    }
 
     @Test
     public void testGetWithOperator() {

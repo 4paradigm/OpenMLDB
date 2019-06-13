@@ -21,8 +21,6 @@ import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteString;
 import io.brpc.client.EndPoint;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
