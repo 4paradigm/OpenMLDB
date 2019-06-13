@@ -289,7 +289,11 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
         return true;
     }
     if (entry.dimensions_size() > 0) {
-        return table_->Put(entry.ts(), entry.value(), entry.dimensions());
+        if (entry.ts_dimensions_size() > 0) {
+            return table_->Put(entry.dimensions(), entry.ts_dimensions(), entry.value());
+        } else {
+            return table_->Put(entry.ts(), entry.value(), entry.dimensions());
+        }
     } else {
         // the legend way
         PDLOG(DEBUG, "apply log entry %lu #key %s, #ts %lu, #value %s", 
