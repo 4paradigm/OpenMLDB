@@ -73,6 +73,7 @@ public class GetFuture implements Future<ByteString>{
 		ByteString raw = get();
 		if (raw == null || raw.isEmpty()) {
 			return null;
+
 		}
 		Object[] row = new Object[t.getSchema().size()];
 		decode(raw, row, 0, row.length);

@@ -158,9 +158,9 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
         return;
     }
     void* entry_arr = NULL;
-    uint32_t byte_size = 0; 
     std::lock_guard<std::mutex> lock(mu_);
     for (const auto& cur_ts : ts_dimension) {
+        uint32_t byte_size = 0; 
         auto pos = ts_idx_map_.find(cur_ts.idx());
         if (pos == ts_idx_map_.end()) {
             continue;
@@ -361,7 +361,6 @@ void Segment::Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t
     it->SeekToFirst();
     while (it->Valid()) {
         KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
-        Slice key = it->GetKey();
         it->Next();
         for (const auto& kv : keep_cnt_map) {
             auto pos = ts_idx_map_.find(kv.first);

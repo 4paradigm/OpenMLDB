@@ -258,7 +258,8 @@ public class TTLTest {
         }
         try {
             Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", curTime - 20 * 60 * 1000 - 1, "ts1", null);
-            Assert.assertEquals(row[0], null);
+            // Assert.assertEquals(row[0], null);
+            Assert.assertNull(row);
         } catch (TabletException e) {
             Assert.assertEquals(e.getCode(), 109);
         } catch (Exception e) {

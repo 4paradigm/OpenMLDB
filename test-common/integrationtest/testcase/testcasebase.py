@@ -194,6 +194,11 @@ class TestCaseBase(unittest.TestCase):
             cmd, tname, tid, pid, ttl, segment, isleader, ' '.join(slave_endpoints),
             ' '.join(['{}:{}'.format(k, v) for k, v in schema.items() if k != ''])))
 
+    def execute_gc(self, endpoint, tid, pid):
+        cmd = "curl -d \'{\"tid\":%s, \"pid\":%s}\'  http://%s/TabletServer/ExecuteGc" % (tid, pid, endpoint)
+        utils.exe_shell(cmd)
+        time.sleep(2)
+
     def ns_create(self, endpoint, metadata_path):
         return self.run_client(endpoint, 'create ' + metadata_path, 'ns_client')
 
