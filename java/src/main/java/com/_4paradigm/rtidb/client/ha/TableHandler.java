@@ -19,7 +19,7 @@ public class TableHandler {
     private Map<Integer, List<Integer>> indexes = new TreeMap<Integer, List<Integer>>();
     private Map<String, List<String>> keyMap = new TreeMap<String, List<String>>();
     private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
-    private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
+    private ReadStrategy readStrategy = ReadStrategy.kReadLocal;
     private boolean hasTsCol = false;
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
