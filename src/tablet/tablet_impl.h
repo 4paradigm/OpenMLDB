@@ -83,11 +83,6 @@ public:
               ::rtidb::api::ScanResponse* response,
               Closure* done);
 
-    void BaseScan(RpcController* controller,
-            const ::rtidb::api::BaseScanRequest* request,
-            ::rtidb::api::BaseScanResponse* response,
-            Closure* done);
-
     void Delete(RpcController* controller,
               const ::rtidb::api::DeleteRequest* request,
               ::rtidb::api::GeneralResponse* response,

@@ -573,114 +573,6 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
     return 0;
 }
 
-void TabletImpl::BaseScan(RpcController* controller,
-            const ::rtidb::api::BaseScanRequest* request,
-            ::rtidb::api::BaseScanResponse* response,
-            Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (request->st() < request->et()) {
-        response->set_code(117);
-        response->set_msg("st less than et");
-        return;
-    }
-
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-        response->set_code(100);
-        response->set_msg("table is not exist");
-        return;
-    }
-
-    uint32_t index = 0;
-    int ts_index = -1;
-    if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-        if (iit == table->GetMapping().end()) {
-            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                  request->tid(), request->pid());
-            response->set_code(108);
-            response->set_msg("idx name not found");
-            return;
-        }
-        index = iit->second;
-    }
-    if (request->has_ts_name() && request->ts_name().size() > 0) {
-        auto iter = table->GetTSMapping().find(request->ts_name());
-        if (iter == table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                  request->tid(), request->pid());
-            response->set_code(137);
-            response->set_msg("ts name not found");
-            return;
-        }
-        ts_index = iter->second;
-    }
-    // Use seek to process scan request
-    // the first seek to find the total size to copy
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
-    if (ts_index >= 0) {
-        it = table->NewIterator(index, ts_index, request->pk(), ticket);
-    } else {
-        it = table->NewIterator(index, request->pk(), ticket);
-    }
-
-    if (it == NULL) {
-        response->set_code(109);
-        response->set_msg("key not found");
-        return;
-    }
-
-    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
-    std::string* pairs = response->mutable_pairs(); 
-    uint32_t count = 0;
-    int32_t code = 0;
-    switch(table->GetTTLType()) {
-        case ::rtidb::api::TTLType::kLatestTime:
-            code = ScanLatestIndex(ttl, it, request->limit(),
-                        request->st(), request->st_type(), 
-                        request->et(), request->et_type(),
-                        pairs, &count);
-            break;
-        default:
-            bool remove_duplicated_record = false;
-            if (request->has_enable_remove_duplicated_record()) {
-                remove_duplicated_record = request->enable_remove_duplicated_record();
-            }
-            uint64_t expire_ts = table->GetExpireTime(ttl);
-            code = ScanTimeIndex(expire_ts, it, request->limit(),
-                    request->st(), request->st_type(),
-                    request->et(), request->et_type(),
-                    pairs, &count, remove_duplicated_record);
-            break;
-    }
-    delete it;
-    response->set_code(code);
-    response->set_count(count);
-    switch(code) {
-        case 0:
-            return;
-        case -1:
-            response->set_msg("invalid args");
-            return;
-        case -2:
-            response->set_msg("st/et sub key type is invalid");
-            return;
-        case -3:
-            response->set_code(118);
-            response->set_msg("reach the max scan byte size");
-            return;
-        case -4:
-            response->set_msg("fail to encode data rows");
-            return;
-        default:
-            return;
-    }
-}
-
-
-
 int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts, 
                                  ::rtidb::storage::Iterator* it,
                                  uint32_t limit,
@@ -704,31 +596,23 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
     }
 
     if (st > 0) {
-        it->Seek(st);
-        while (it->Valid()) {
-            bool jump_out = false;
-            switch (st_type) {
-                case ::rtidb::api::GetType::kSubKeyEq:
-                case ::rtidb::api::GetType::kSubKeyLe:
-                    if (it->GetKey() <= st) {
-                        jump_out = true;
-                    }
-                    break;
-                case ::rtidb::api::GetType::kSubKeyLt:
-                    if (it->GetKey() < st) {
-                        jump_out = true;
-                    }
-                    break;
-                default:
-                    PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
-                    return -2;
-            }
-            if (jump_out) break;
-            it->Next();
+        switch (st_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+            case ::rtidb::api::GetType::kSubKeyLe:
+                it->Seek(st);
+                break;
+            case ::rtidb::api::GetType::kSubKeyLt:
+                //NOTE the st is million second
+                it->Seek(st - 1);
+                break;
+            default:
+                PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
+                return -2;
         }
     }else {
         it->SeekToFirst(); 
     }
+
     uint64_t last_time = 0;
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
@@ -752,12 +636,12 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
                 }
                 break;
             case ::rtidb::api::GetType::kSubKeyGt:
-                if (it->GetKey() <= et) {
+                if (it->GetKey() <= end_time) {
                     jump_out = true;
                 }
                 break;
             case ::rtidb::api::GetType::kSubKeyGe:
-                if (it->GetKey() < et) {
+                if (it->GetKey() < end_time) {
                     jump_out = true;
                 }
                 break;
@@ -775,7 +659,6 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
         }
         it->Next();
     }
-
     int32_t ok = ::rtidb::base::EncodeRows(tmp, total_block_size, pairs);
     if (ok == -1) {
         PDLOG(WARNING, "fail to encode rows");
@@ -783,7 +666,6 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
     }
     *count = tmp.size();
     return 0;
-
 }
 
 int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
@@ -955,10 +837,11 @@ void TabletImpl::Scan(RpcController* controller,
     switch(table->GetTTLType()) {
         case ::rtidb::api::TTLType::kLatestTime:
             code = ScanLatestIndex(ttl, it, request->limit(),
-                        request->st(), ::rtidb::api::GetType::kSubKeyLe,
-                        request->et(), ::rtidb::api::GetType::kSubKeyGt,
+                        request->st(), request->st_type(),
+                        request->et(), request->et_type(),
                         pairs, &count);
             break;
+
         default:
             bool remove_duplicated_record = false;
             if (request->has_enable_remove_duplicated_record()) {
@@ -966,8 +849,8 @@ void TabletImpl::Scan(RpcController* controller,
             }
             uint64_t expire_ts = table->GetExpireTime(ttl);
             code = ScanTimeIndex(expire_ts, it, request->limit(),
-                    request->st(), ::rtidb::api::GetType::kSubKeyLe,
-                    request->et(), ::rtidb::api::GetType::kSubKeyGt,
+                    request->st(), request->st_type(),
+                    request->et(), request->et_type(),
                     pairs, &count, remove_duplicated_record);
             break;
     }
