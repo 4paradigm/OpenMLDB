@@ -354,6 +354,7 @@ public class TableSyncClientTest {
                 ok = tableSyncClient.put(name, i + 9529, rowMap);
                 Assert.assertTrue(ok);
             }
+            Thread.sleep(1000);
             it = tableSyncClient.traverse(name, "card");
             for (int j = 0; j < 202; j++) {
                 Assert.assertTrue(it.valid());
