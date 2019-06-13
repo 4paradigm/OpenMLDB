@@ -2,7 +2,6 @@ package com._4paradigm.rtidb.client.impl;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +24,6 @@ import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.tablet.Tablet.PutResponse;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 import com._4paradigm.rtidb.utils.Compress;
-import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 
@@ -40,7 +38,6 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     public TableAsyncClientImpl(RTIDBClient client) {
         this.client = client;
     }
-
 
     @Override
     public PutFuture put(int tid, int pid, long time, Object[] row) throws TabletException {
@@ -137,7 +134,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public GetFuture get(int tid, int pid, String key) throws TabletException {
-        return get(tid, pid, key, null,0l);
+        return get(tid, pid, key, null, 0l);
     }
 
     @Override
@@ -156,7 +153,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with id " + tid);
         }
-        return get(tid, pid, key, idxName, time, null, null, th);
+        return get(tid, pid, key, idxName, time, null, null, 0l, null ,th);
     }
 
     @Override
@@ -282,7 +279,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, key, idxName, time, null, null, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, null, null,0l, null, th);
     }
 
     @Override
@@ -300,9 +297,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     }
 
     private PutFuture put(int tid, int pid,
-            String key, long time,
-            List<Tablet.Dimension> ds,
-            ByteBuffer row, TableHandler th) throws TabletException {
+                          String key, long time,
+                          List<Tablet.Dimension> ds,
+                          ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
         }
@@ -378,7 +375,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return response;
     }
 
-    private GetFuture get(int tid, int pid, String key, String idxName, long time, String tsName, Tablet.GetType type,
+    private GetFuture get(int tid, int pid, String key, String idxName,
+                          long time, String tsName, Tablet.GetType type,
+                          long endtime, Tablet.GetType etType,
                           TableHandler th) throws TabletException {
         key = validateKey(key);
         Tablet.GetRequest.Builder builder = Tablet.GetRequest.newBuilder();
@@ -386,7 +385,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         builder.setPid(pid);
         builder.setKey(key);
         builder.setTs(time);
+        builder.setEt(endtime);
         if (type != null)  builder.setType(type);
+        if (etType != null) builder.setEtType(etType);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
@@ -394,14 +395,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             builder.setTsName(tsName);
         }
         Tablet.GetRequest request = builder.build();
-        Long startTime = System.currentTimeMillis();
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
         if (ts == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
         Future<Tablet.GetResponse> response = ts.get(request, getFakeCallback);
-        return GetFuture.wrappe(response, th, startTime, client.getConfig());
+        return GetFuture.wrappe(response, th, client.getConfig());
     }
 
 
@@ -536,40 +536,76 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type,0l, null, th);
     }
 
     @Override
     public GetFuture get(String name, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TabletException {
+        return get(name, keyArr, idxName, time, tsName, type, 0l, null);
+    }
+
+    @Override
+    public GetFuture get(int tid, int pid, String key,
+                         String idxName, String tsName,
+                         long st, Tablet.GetType stType,
+                         long et, Tablet.GetType etType) throws TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with tid " + tid);
+        }
+        return this.get(tid, pid, key, idxName, st, tsName, stType, et, etType, th);
+    }
+
+    @Override
+    public GetFuture get(String name, String key,
+                         String idxName, long time, String tsName,
+                         Tablet.GetType type, long et, Tablet.GetType etType) throws TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return this.get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, et, etType, th);
+    }
+
+    @Override
+    public GetFuture get(String name, Object[] keyArr, String idxName, long time, String tsName,
+                         Tablet.GetType type, long et, Tablet.GetType etType) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
         List<String> list = th.getKeyMap().get(idxName);
         if (list == null) {
-            throw new TabletException("no index name in table" + idxName);
+            throw new TabletException("no index name " + idxName + " in table " + name);
         }
         if (keyArr.length != list.size()) {
             throw new TabletException("check key number failed");
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th);
+        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, et, etType, th);
     }
 
     @Override
     public GetFuture get(String name, Map<String, Object> keyMap, String idxName, long time, String tsName,
-                         Tablet.GetType type) throws TabletException {
+                         Tablet.GetType type, long et, Tablet.GetType etType) throws TabletException {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
         List<String> list = th.getKeyMap().get(idxName);
         if (list == null) {
-            throw new TabletException("no index name in table" + idxName);
+            throw new TabletException("no index name " + idxName + " in table " + name);
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th);
+        return get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, et, etType, th);
+    }
+
+    @Override
+    public GetFuture get(String name, Map<String, Object> keyMap, String idxName, long time, String tsName,
+                         Tablet.GetType type) throws TabletException {
+        return get(name, keyMap, idxName, time, tsName, type, 0l, null);
     }
 }

@@ -285,6 +285,179 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,  uint64_t
     return false;
 }
 
+int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
+                                 ::rtidb::storage::Iterator* it,
+                                 uint64_t st,
+                                 const rtidb::api::GetType& st_type,
+                                 uint64_t et,
+                                 const rtidb::api::GetType& et_type,
+                                 std::string* value,
+                                 uint64_t* ts) {
+
+    if (it == NULL || value == NULL || ts == NULL) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+    if (st_type == ::rtidb::api::kSubKeyEq
+            && et_type == ::rtidb::api::kSubKeyEq
+            && st != et) return 1;
+    uint64_t end_time = std::max(et, expire_ts);
+    if (st < end_time) {
+        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
+        return -1;
+    }
+
+    if (st > 0) {
+        switch (st_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                it->Seek(st);
+                if (it->Valid() && it->GetKey() == st) {
+                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    *ts = it->GetKey();
+                    return 0;
+                }else {
+                    return 1;
+                }
+            case ::rtidb::api::GetType::kSubKeyLe:
+                it->Seek(st);
+                break;
+            case ::rtidb::api::GetType::kSubKeyLt:
+                //NOTE the st is million second
+                it->Seek(st - 1);
+                break;
+            default:
+                PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
+                return -2;
+        }
+    }else {
+        it->SeekToFirst(); 
+    }
+
+    while (it->Valid()) {
+        bool jump_out = false;
+        switch(et_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it->GetKey() != end_time) {
+                    jump_out = true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGt:
+                if (it->GetKey() <= end_time) {
+                    jump_out = true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGe:
+                if (it->GetKey() < end_time) {
+                    jump_out = true;
+                }
+                break;
+            default:
+                PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                return -2;
+        }
+        if (jump_out) break;
+        value->assign(it->GetValue()->data, it->GetValue()->size);
+        *ts = it->GetKey();
+        return 0;
+    }
+    return 1;
+}
+
+
+int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
+                               ::rtidb::storage::Iterator* it,
+                               uint64_t st,
+                               const rtidb::api::GetType& st_type,
+                               uint64_t et,
+                               const rtidb::api::GetType& et_type,
+                               std::string* value,
+                               uint64_t* ts) {
+
+    if (it == NULL || value == NULL || ts == NULL) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+    if (st_type == ::rtidb::api::kSubKeyEq
+            && et_type == ::rtidb::api::kSubKeyEq
+            && st != et) return 1;
+    uint32_t it_count = 0;
+    // go to start point
+    it->SeekToFirst();
+    if (st > 0) {
+        while (it->Valid() && it_count < ttl) {
+            it_count++;
+            bool jump_out = false;
+            switch (st_type) {
+                case ::rtidb::api::GetType::kSubKeyEq:
+                    if (it->GetKey() <= st) {
+                        if (it->GetKey() == st)  {
+                            value->assign(it->GetValue()->data, it->GetValue()->size);
+                            *ts = it->GetKey();
+                            return 0;
+                        }else {
+                            return 1;
+                        }
+                    }
+                    break;
+                case ::rtidb::api::GetType::kSubKeyLe:
+                    if (it->GetKey() <= st) {
+                        jump_out = true;
+                    }
+                    break;
+
+                case ::rtidb::api::GetType::kSubKeyLt:
+                    if (it->GetKey() < st) {
+                        jump_out = true;
+                    }
+                    break;
+
+                default:
+                    PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
+                    return -2;
+            }
+            if (!jump_out) {
+                it->Next();
+            }else {
+                break;
+            }
+        }
+    }
+    while (it->Valid() && it_count < ttl) {
+        it_count++;
+        bool jump_out = false;
+        switch(et_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it->GetKey() != et) {
+                    jump_out = true;
+                }
+                break;
+
+            case ::rtidb::api::GetType::kSubKeyGt:
+                if (it->GetKey() <= et) {
+                    jump_out = true;
+                }
+                break;
+
+            case ::rtidb::api::GetType::kSubKeyGe:
+                if (it->GetKey() < et) {
+                    jump_out = true;
+                }
+                break;
+
+            default:
+                PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                return -2;
+        }
+        if (jump_out) break;
+        value->assign(it->GetValue()->data, it->GetValue()->size);
+        *ts = it->GetKey();
+        return 0;
+    }
+    // not found
+    return 1;
+}
+
+
 void TabletImpl::Get(RpcController* controller,
              const ::rtidb::api::GetRequest* request,
              ::rtidb::api::GetResponse* response,
@@ -339,59 +512,52 @@ void TabletImpl::Get(RpcController* controller,
     } else {
         it = table->NewIterator(index, request->key(), ticket);
     }
+
     if (it == NULL) {
         response->set_code(109);
         response->set_msg("key not found");
         return;
     }
-    ::rtidb::api::GetType get_type = ::rtidb::api::GetType::kSubKeyEq;
-    if (request->has_type()) {
-        get_type = request->type();
-    }
-    bool has_found = true;
-    // filter with time
-    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
-    if (request->ts() > 0) {
-        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
-            uint64_t keep_cnt = ttl;
-            it->SeekToFirst();
-            while (it->Valid()) {
-                if (CheckGetDone(get_type, it->GetKey(), request->ts())) {
-                    break;
-                }
-                keep_cnt--;
-                if (keep_cnt == 0) {
-                    has_found = false;
-                    break;
-                }
-                it->Next();
-            }
-        } else if (request->ts() > table->GetExpireTime(ttl)) {
-            it->Seek(request->ts());
-            if (it->Valid() && it->GetKey() != request->ts()) {
-                has_found = false;
-            }
-        }
 
-    } else {
-        it->SeekToFirst();
-        if (it->Valid() && table->GetTTLType() == ::rtidb::api::TTLType::kAbsoluteTime) {
-            if (it->GetKey() <= table->GetExpireTime(ttl)) {
-                has_found = false;
-            }
-        }
+    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    std::string* value = response->mutable_value(); 
+    uint64_t ts = 0;
+    int32_t code = 0;
+    switch(table->GetTTLType()) {
+        case ::rtidb::api::TTLType::kLatestTime:
+            code = GetLatestIndex(ttl, it,
+                        request->ts(), request->type(),
+                        request->et(), request->et_type(),
+                        value, &ts);
+            break;
+
+        default:
+            uint64_t expire_ts = table->GetExpireTime(ttl);
+            code = GetTimeIndex(expire_ts, it,
+                    request->ts(), request->type(),
+                    request->et(), request->et_type(),
+                    value, &ts);
+            break;
     }
-    if (it->Valid() && has_found) {
-        response->set_code(0);
-        response->set_msg("ok");
-        response->set_key(request->key());
-        response->set_ts(it->GetKey());
-        response->set_value(it->GetValue()->data, it->GetValue()->size);
-    } else {
-        response->set_code(109);
-        response->set_msg("key not found");
+    delete it;
+    response->set_ts(ts);
+    response->set_code(code);
+    switch(code) {
+        case 1:
+            response->set_code(109);
+            response->set_msg("not found");
+            return;
+        case 0:
+            return;
+        case -1:
+            response->set_msg("invalid args");
+            return;
+        case -2:
+            response->set_msg("st/et sub key type is invalid");
+            return;
+        default:
+            return;
     }
-    delete it; 
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -2953,6 +3119,7 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
 
 }
 }
+
 
 
 
