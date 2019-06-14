@@ -342,6 +342,21 @@ public class TableAsyncClientTest {
                 Assert.assertEquals(null, row);
             }
 
+            //
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0","card", 13, null, Tablet.GetType.kSubKeyEq,
+                        13, Tablet.GetType.kSubKeyEq);
+                Object[] row = gf.getRow();
+                Assert.assertEquals(new Object[]{"card0", "1224", 3.0}, row);
+            }
+
+            {
+                GetFuture gf = tableAsyncClient.get(name, "card0","card", 11, null, Tablet.GetType.kSubKeyEq,
+                        11, Tablet.GetType.kSubKeyEq);
+                Object[] row = gf.getRow();
+                Assert.assertEquals(new Object[]{"card0", "1224", 2.0}, row);
+            }
+
         } catch (Exception e) {
             Assert.fail();
         } finally {
@@ -407,6 +422,7 @@ public class TableAsyncClientTest {
                 Assert.assertEquals(new Object[]{"card0", "1224", 2.0}, row);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.fail();
         } finally {
             config.setRemoveDuplicateByTime(false);

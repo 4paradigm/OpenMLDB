@@ -301,13 +301,13 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
     if (st_type == ::rtidb::api::kSubKeyEq
             && et_type == ::rtidb::api::kSubKeyEq
             && st != et) return 1;
-    uint64_t end_time = std::max(et, expire_ts);
-    if (st < end_time) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
-        return -1;
-    }
 
+    uint64_t end_time = std::max(et, expire_ts);
     if (st > 0) {
+        if (st < end_time) {
+            PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
+            return -1;
+        }
         switch (st_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
                 it->Seek(st);
@@ -551,8 +551,10 @@ void TabletImpl::Get(RpcController* controller,
             return;
         case -1:
             response->set_msg("invalid args");
+            response->set_code(109);
             return;
         case -2:
+            response->set_code(109);
             response->set_msg("st/et sub key type is invalid");
             return;
         default:
