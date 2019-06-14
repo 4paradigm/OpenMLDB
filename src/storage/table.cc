@@ -339,6 +339,16 @@ bool Table::Put(const Slice& pk,
     return true;
 }
 
+bool Table::Put(const ::rtidb::api::LogEntry& entry) {
+    if (entry.dimensions_size() > 0) {
+		return entry.ts_dimensions_size() > 0 ?
+			Put(entry.dimensions(), entry.ts_dimensions(), entry.value()) :
+			Put(entry.ts(), entry.value(), entry.dimensions());
+	} else {
+		return Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
+	}
+}
+
 bool Table::Delete(const std::string& pk, uint32_t idx) {
     if (idx >= idx_cnt_) {
         return false;
