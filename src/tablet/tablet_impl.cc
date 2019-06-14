@@ -325,6 +325,26 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
                 //NOTE the st is million second
                 it->Seek(st - 1);
                 break;
+            // adopt for legacy
+            case ::rtidb::api::GetType::kSubKeyGt:
+                it->SeekToFirst();
+                if (it->Valid() && it->GetKey() > st) {
+                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    *ts = it->GetKey();
+                    return 0;
+                }else {
+                    return 1;
+                }
+            // adopt for legacy
+            case ::rtidb::api::GetType::kSubKeyGe:
+                it->SeekToFirst();
+                if (it->Valid() && it->GetKey() >= st) {
+                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    *ts = it->GetKey();
+                    return 0;
+                }else {
+                    return 1;
+                }
             default:
                 PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
                 return -2;
@@ -410,7 +430,24 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
                         jump_out = true;
                     }
                     break;
-
+                // adopt for the legacy
+                case ::rtidb::api::GetType::kSubKeyGe:
+                    if (it->GetKey() >= st) {
+                        value->assign(it->GetValue()->data, it->GetValue()->size);
+                        *ts = it->GetKey();
+                        return 0;
+                    }else {
+                        return 1;
+                    }
+                // adopt for the legacy
+                case ::rtidb::api::GetType::kSubKeyGt:
+                    if (it->GetKey() > st) {
+                        value->assign(it->GetValue()->data, it->GetValue()->size);
+                        *ts = it->GetKey();
+                        return 0;
+                    }else {
+                        return 1;
+                    }
                 default:
                     PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
                     return -2;
@@ -758,12 +795,11 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
     }
 
     uint64_t end_time = std::max(et, expire_ts);
-    if (st < end_time) {
-        PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
-        return -1;
-    }
-
     if (st > 0) {
+        if (st < end_time) {
+            PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
+            return -1;
+        }
         switch (st_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
             case ::rtidb::api::GetType::kSubKeyLe:
@@ -791,8 +827,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
         }
         // skip duplicate record 
         if (remove_duplicated_record 
-                && tmp.size() > 1 && last_time == it->GetKey()) {
-            last_time = it->GetKey();
+            && tmp.size() > 0 && last_time == it->GetKey()) {
             it->Next();
             continue;
         }
