@@ -147,7 +147,11 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
             }
         } else {
             if (entry.dimensions_size() > 0) {
-                table->Put(entry.ts(), entry.value(), entry.dimensions());
+                if (entry.ts_dimensions_size() > 0) {
+                    table->Put(entry.dimensions(), entry.ts_dimensions(), entry.value());
+                } else {
+                    table->Put(entry.ts(), entry.value(), entry.dimensions());
+                }
             } else {
                 // the legend way
                 table->Put(entry.pk(), entry.ts(),
@@ -255,10 +259,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                         succ_cnt, failed_cnt);
             }
             if (entry.dimensions_size() > 0) {
-                table->Put(entry.ts(), entry.value(), entry.dimensions());
-
+                if (entry.ts_dimensions_size() > 0) {
+                    table->Put(entry.dimensions(), entry.ts_dimensions(), entry.value());
+                } else {
+                    table->Put(entry.ts(), entry.value(), entry.dimensions());
+                }
             }else {
-                // the legend way
                 table->Put(entry.pk(), entry.ts(),
                            entry.value().c_str(),
                            entry.value().size());
