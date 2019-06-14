@@ -119,15 +119,21 @@ public:
     ~TabletFuncTest() {}
 };
 
-TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
-
-    ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = table->NewIterator("card0", ticket);
+void RunGetLatestIndexAssert(::rtidb::storage::Iterator* it) {
     ::rtidb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
     int32_t code = 0;
+
+    // get the st kSubKeyGt
+    {
+        //for the legacy
+        code = tablet_impl.GetLatestIndex(10, it, 1100, ::rtidb::api::GetType::kSubKeyGt, 1100, ::rtidb::api::GetType::kSubKeyEq,
+                &value, &ts);
+        ASSERT_EQ(0, code);
+        ASSERT_EQ(ts, 2000);
+        ASSERT_EQ(value, "value1000");
+    }
 
     // get the st == et
     {
@@ -162,7 +168,23 @@ TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
         ASSERT_EQ(value, "value200");
     }
 
+
 }
+
+TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
+    ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = table->NewIterator("card0", ticket);
+    RunGetLatestIndexAssert(it);
+}
+
+TEST_F(TabletFuncTest, GetLatestIndex_ts_iterator) {
+    ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = table->NewIterator(0, 0, "card0", ticket);
+    RunGetLatestIndexAssert(it);
+}
+
 
 }
 }
