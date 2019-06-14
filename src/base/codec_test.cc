@@ -46,7 +46,7 @@ TEST_F(CodecTest, EncodeRows) {
     data.push_back(std::make_pair(3, new ::rtidb::storage::DataBlock(1, empty.c_str(), empty.length())));
     std::string pairs;
     int32_t size = ::rtidb::base::EncodeRows(data, total_block_size, &pairs);
-    ASSERT_FALSE(size == 0);
+    ASSERT_EQ(size, 3 * 12 + 6 + 6);
     std::vector<std::pair<uint64_t, std::string*>> new_data;
     ::rtidb::base::Decode(&pairs, new_data);
     ASSERT_EQ(data.size(), new_data.size());
