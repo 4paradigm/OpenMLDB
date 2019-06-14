@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.*;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.client.ut.Config;
 import org.testng.Assert;
@@ -41,6 +42,7 @@ public class ColumnKeyTest {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
             config.setZkRootPath(zkRootPath);
+            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ut.Config;
 import org.joda.time.DateTime;
 import org.testng.Assert;
@@ -36,6 +37,7 @@ public class TableTimestampTest {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
             config.setZkRootPath(zkRootPath);
+            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

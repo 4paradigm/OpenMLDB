@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
@@ -31,8 +32,10 @@ public class SPutTest {
   private static TabletSyncClient client = null;
   private static EndPoint endpoint = new EndPoint("127.0.0.1:37770");
   private static RTIDBClientConfig config = new RTIDBClientConfig();
-  private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
+  private static RTIDBSingleNodeClient snc = null;
   static {
+    config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
+    snc = new RTIDBSingleNodeClient(config, endpoint);
       try {
           snc.init();
       } catch (Exception e) {

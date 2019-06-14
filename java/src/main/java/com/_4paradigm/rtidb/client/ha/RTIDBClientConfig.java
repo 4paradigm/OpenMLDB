@@ -40,6 +40,7 @@ public class RTIDBClientConfig {
 	private int maxRetryCnt = 1;
 	private Mode mode;
 	private Map<String, ReadStrategy> readStrategies = new HashMap<String, ReadStrategy>();
+	private ReadStrategy globalReadStrategy = ReadStrategy.kReadLocal;
 	private String nsEndpoint;
 	private int traverseLimit = 200;
 	private int timerBucketSize = 16;
@@ -198,5 +199,13 @@ public class RTIDBClientConfig {
 
     public void setReadStrategies(Map<String, ReadStrategy> readStrategies) {
         this.readStrategies = readStrategies;
+    }
+
+    public void setGlobalReadStrategies(ReadStrategy readStrategy) {
+        this.globalReadStrategy = readStrategy;
+    }
+
+    public ReadStrategy getGlobalReadStrategies() {
+        return this.globalReadStrategy;
     }
 }
