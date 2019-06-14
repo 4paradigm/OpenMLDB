@@ -145,7 +145,6 @@ public:
         return record_cnt_.load(std::memory_order_relaxed);
     }
 
-
     inline std::string GetName() const {
         return name_;
     }
@@ -184,6 +183,10 @@ public:
 
     inline const std::string& GetSchema() {
         return schema_;
+    }
+
+    const ::rtidb::api::TableMeta& GetTableMeta() const {
+        return table_meta_;
     }
 
     inline void SetExpire(bool is_expire) {

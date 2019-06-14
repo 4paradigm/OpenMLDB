@@ -586,7 +586,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
 }
 
 bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
-        std::string& schema) {
+        ::rtidb::api::TableMeta& table_meta) {
     ::rtidb::api::GetTableSchemaRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -594,7 +594,10 @@ bool TabletClient::GetTableSchema(uint32_t tid, uint32_t pid,
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTableSchema,
             &request, &response, FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
-        schema.assign(response.schema());
+        table_meta.CopyFrom(response.table_meta());
+        if (response.has_schema() && response.schema().size() == 0) {
+            table_meta.set_schema(response.schema());
+        }
         return true;
     }
     return false;

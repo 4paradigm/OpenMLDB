@@ -921,7 +921,8 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::rtidb::cl
     if (tables[0].column_desc_v1_size() > 0) {
         ::rtidb::base::PrintSchema(tables[0].column_desc_v1());
         printf("\n#ColumnKey\n");
-        ::rtidb::base::PrintColumnKey(tables[0]);
+        std::string ttl_suff = tables[0].ttl_type() == "kLatestTime" ? "" : "min";
+        ::rtidb::base::PrintColumnKey(tables[0].ttl(), ttl_suff, tables[0].column_desc_v1(), tables[0].column_key());
     } else if (tables[0].column_desc_size() > 0) {
         ::rtidb::base::PrintSchema(tables[0].column_desc());
     } else {
@@ -3394,81 +3395,30 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
         std::cout <<  "Bad show schema format" << std::endl;
         return;
     }
+    ::rtidb::api::TableMeta table_meta;
     std::string schema;
     try {
         bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
-                                        boost::lexical_cast<uint32_t>(parts[2]), schema);
-        if(!ok || schema.empty()) {
-            std::cout << "No schema for table" << std::endl;
+                                        boost::lexical_cast<uint32_t>(parts[2]), table_meta);
+        schema = table_meta.schema();
+        if(!ok) {
+            std::cout << "ShowSchema failed" << std::endl;
             return;
         }
     } catch (std::exception const& e) {
         std::cout << "Invalid args" << std::endl;
         return;
     }
-    std::vector<::rtidb::base::ColumnDesc> raw;
-    ::rtidb::base::SchemaCodec codec;
-    codec.Decode(schema, raw);
-    ::baidu::common::TPrinter tp(4);
-    std::vector<std::string> header;
-    header.push_back("#");
-    header.push_back("name");
-    header.push_back("type");
-    header.push_back("index");
-
-    tp.AddRow(header);
-    for (uint32_t i = 0; i < raw.size(); i++) {
-        std::vector<std::string> row;
-        row.push_back(boost::lexical_cast<std::string>(i));
-        row.push_back(raw[i].name);
-        switch (raw[i].type) {
-            case ::rtidb::base::ColType::kInt32:
-                row.push_back("int32");
-                break;
-            case ::rtidb::base::ColType::kInt64:
-                row.push_back("int64");
-                break;
-            case ::rtidb::base::ColType::kUInt32:
-                row.push_back("uint32");
-                break;
-            case ::rtidb::base::ColType::kUInt64:
-                row.push_back("uint64");
-                break;
-            case ::rtidb::base::ColType::kDouble:
-                row.push_back("double");
-                break;
-            case ::rtidb::base::ColType::kFloat:
-                row.push_back("float");
-                break;
-            case ::rtidb::base::ColType::kString:
-                row.push_back("string");
-                break;
-            case ::rtidb::base::ColType::kTimestamp:
-                row.push_back("timestamp");
-                break;
-            case ::rtidb::base::ColType::kDate:
-                row.push_back("date");
-                break;
-            case ::rtidb::base::ColType::kInt16:
-                row.push_back("int16");
-                break;
-            case ::rtidb::base::ColType::kUInt16:
-                row.push_back("uint16");
-                break;
-            case ::rtidb::base::ColType::kBool:
-                row.push_back("bool");
-                break;
-            default:
-                break;
-        }
-        if (raw[i].add_ts_idx) {
-            row.push_back("yes");
-        }else {
-            row.push_back("no");
-        }
-        tp.AddRow(row);
+    if (table_meta.column_desc_size() > 0) {
+        ::rtidb::base::PrintSchema(table_meta.column_desc());
+        printf("\n#ColumnKey\n");
+        std::string ttl_suff = table_meta.ttl_type() == ::rtidb::api::kLatestTime ? "" : "min";
+        ::rtidb::base::PrintColumnKey(table_meta.ttl(), ttl_suff, table_meta.column_desc(), table_meta.column_key());
+    } else if (!schema.empty()){
+        ::rtidb::base::PrintSchema(schema);
+    } else {
+        std::cout << "No schema for table" << std::endl;
     }
-    tp.Print(true);
 }
 
 uint32_t GetDimensionIndex(const std::vector<::rtidb::base::ColumnDesc>& columns,
@@ -3496,14 +3446,15 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         if (parts.size() > 5) {
             time = boost::lexical_cast<uint64_t>(parts[5]);
         }
-        std::string schema;
+        ::rtidb::api::TableMeta table_meta;
         bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
                                          boost::lexical_cast<uint32_t>(parts[2]), 
-                                         schema);
+                                         table_meta);
         if(!ok) {
             std::cout << "No schema for table ,please use command get" << std::endl;
             return;
         }
+        std::string schema = table_meta.schema();
         std::vector<::rtidb::base::ColumnDesc> raw;
         ::rtidb::base::SchemaCodec codec;
         codec.Decode(schema, raw);
@@ -3565,12 +3516,13 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         if (it == NULL) {
             std::cout << "Fail to scan table. error msg: " << msg << std::endl;
         } else {
-            std::string schema;
-            bool ok = client->GetTableSchema(tid, pid, schema);
+            ::rtidb::api::TableMeta table_meta;
+            bool ok = client->GetTableSchema(tid, pid, table_meta);
             if(!ok) {
                 std::cout << "No schema for table, please use command scan" << std::endl;
                 return;
             }
+            std::string schema = table_meta.schema();
             ::rtidb::api::TableStatus table_status;
             if (!client->GetTableStatus(tid, pid, table_status)) {
                 std::cout << "Fail to get table status" << std::endl;
@@ -3598,14 +3550,15 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
         return;
     }
     try {
-        std::string schema;
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        bool ok = client->GetTableSchema(tid, pid, schema);
+        ::rtidb::api::TableMeta table_meta;
+        bool ok = client->GetTableSchema(tid, pid, table_meta);
         if (!ok) {
             std::cout << "Fail to get table schema" << std::endl;
             return;
         }
+        std::string schema = table_meta.schema();
         if (schema.empty()) {
             std::cout << "No schema for table, please use put command" << std::endl;
             return;

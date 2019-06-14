@@ -488,16 +488,8 @@ class TestCaseBase(unittest.TestCase):
         rs = self.run_client(endpoint, 'gettablestatus {} {}'.format(tid, pid))
         return rs
 
-    def showschema(self, endpoint, tid='', pid=''):
-        try:
-            rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
-            return self.parse_tb(rs, ' ', [1], [2, 3])
-        except KeyError, e:
-            traceback.print_exc(file=sys.stdout)
-            infoLogger.error('table {} is not exist!'.format(e))
-
-    def ns_showschema(self, endpoint, name):
-        rs = self.run_client(endpoint, 'showschema {}'.format(name), 'ns_client')
+    @staticmethod
+    def parse_schema(rs):
         arr = rs.strip().split("\n")
         schema_map = {}
         column_key = []
@@ -516,6 +508,18 @@ class TestCaseBase(unittest.TestCase):
             elif parts == 2 and len(elements) == 5:
                 column_key.append(elements)
         return (schema_map, column_key)
+
+    def showschema(self, endpoint, tid='', pid=''):
+        try:
+            rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
+            return self.parse_tb(rs, ' ', [1], [2, 3])
+        except KeyError, e:
+            traceback.print_exc(file=sys.stdout)
+            infoLogger.error('table {} is not exist!'.format(e))
+
+    def ns_showschema(self, endpoint, name):
+        rs = self.run_client(endpoint, 'showschema {}'.format(name), 'ns_client')
+        return self.parse_schema(rs)
 
     def showtablet(self, endpoint):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
