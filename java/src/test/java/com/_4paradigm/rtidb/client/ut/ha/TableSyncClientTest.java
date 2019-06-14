@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ut.Config;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -40,6 +41,7 @@ public class TableSyncClientTest {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
             config.setZkRootPath(zkRootPath);
+            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);
@@ -354,7 +356,6 @@ public class TableSyncClientTest {
                 ok = tableSyncClient.put(name, i + 9529, rowMap);
                 Assert.assertTrue(ok);
             }
-            Thread.sleep(1000);
             it = tableSyncClient.traverse(name, "card");
             for (int j = 0; j < 202; j++) {
                 Assert.assertTrue(it.valid());
