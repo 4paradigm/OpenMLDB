@@ -40,6 +40,7 @@ public class HaPutTest {
       config.setZkNodeRootPath("/onebox/nodes");
       config.setZkTableRootPath("/onebox/table/table_data");
       config.setZkTableNotifyPath("/onebox/table/notify");
+      config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
       client = new RTIDBClusterClient(config);
       client.init();
       tableSyncClient = new TableSyncClientImpl(client);

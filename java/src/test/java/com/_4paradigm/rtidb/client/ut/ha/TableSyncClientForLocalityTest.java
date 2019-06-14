@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ut.Config;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -41,6 +42,7 @@ public class TableSyncClientForLocalityTest {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
             config.setZkRootPath(zkRootPath);
+            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ut.Config;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
@@ -44,6 +45,7 @@ public class TableSchemaTest {
             nsc.init();
             config.setZkEndpoints(zkEndpoints);
             config.setZkRootPath(zkRootPath);
+            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
             client = new RTIDBClusterClient(config);
             client.init();
             tableSyncClient = new TableSyncClientImpl(client);

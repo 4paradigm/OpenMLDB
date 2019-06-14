@@ -232,6 +232,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 TableHandler handler = new TableHandler(table);
                 if (config.getReadStrategies().containsKey(table.getName())) {
                     handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
+                } else {
+                    handler.setReadStrategy(config.getGlobalReadStrategies());
                 }
                 PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
                 for (TablePartition partition : table.getTablePartitionList()) {

@@ -49,6 +49,7 @@ public class CompressTest {
       config.setZkNodeRootPath("/onebox/nodes");
       config.setZkTableRootPath("/onebox/table/table_data");
       config.setZkTableNotifyPath("/onebox/table/notify");
+      config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
       ns_client = new RTIDBClusterClient(config);
       ns_client.init();
       tableSyncClient = new TableSyncClientImpl(ns_client);
