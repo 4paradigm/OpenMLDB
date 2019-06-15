@@ -491,7 +491,7 @@ class TestCaseBase(unittest.TestCase):
     @staticmethod
     def parse_schema(rs):
         arr = rs.strip().split("\n")
-        schema_map = {}
+        schema = []
         column_key = []
         parts = 0;
         for line in arr:
@@ -503,19 +503,15 @@ class TestCaseBase(unittest.TestCase):
                 continue
             item = line.split(" ")
             elements = [x for x in item if x != '']
-            if len(elements) == 3:
-                schema_map[elements[1]] = elements[2]
+            if parts == 1 and (len(elements) == 3 or len(elements) == 4):
+                schema.append(elements)
             elif parts == 2 and len(elements) == 5:
                 column_key.append(elements)
-        return (schema_map, column_key)
+        return (schema, column_key)
 
     def showschema(self, endpoint, tid='', pid=''):
-        try:
-            rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
-            return self.parse_tb(rs, ' ', [1], [2, 3])
-        except KeyError, e:
-            traceback.print_exc(file=sys.stdout)
-            infoLogger.error('table {} is not exist!'.format(e))
+        rs = self.run_client(endpoint, 'showschema {} {}'.format(tid, pid))
+        return self.parse_schema(rs)
 
     def ns_showschema(self, endpoint, name):
         rs = self.run_client(endpoint, 'showschema {}'.format(name), 'ns_client')
