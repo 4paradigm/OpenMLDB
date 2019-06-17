@@ -404,7 +404,7 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
     // go to start point
     it->SeekToFirst();
     if (st > 0) {
-        while (it->Valid() && it_count < ttl) {
+        while (it->Valid() && (it_count < ttl || ttl == 0)) {
             it_count++;
             bool jump_out = false;
             switch (st_type) {
@@ -459,7 +459,7 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
             }
         }
     }
-    while (it->Valid() && it_count < ttl) {
+    while (it->Valid() && (it_count < ttl || ttl == 0)) {
         it_count++;
         bool jump_out = false;
         switch(et_type) {
@@ -888,7 +888,7 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
     // go to start point
     it->SeekToFirst();
     if (st > 0) {
-        while (it->Valid() && it_count < ttl) {
+        while (it->Valid() && (it_count < ttl || ttl == 0)) {
             it_count++;
             bool jump_out = false;
             switch (st_type) {
@@ -919,7 +919,7 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
-    while (it->Valid() && it_count < ttl) {
+    while (it->Valid() && (it_count < ttl || ttl == 0)) {
         it_count++;
         if (limit > 0 && tmp.size() >= limit) break;
         bool jump_out = false;
