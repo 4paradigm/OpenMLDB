@@ -8,12 +8,20 @@ import com._4paradigm.rtidb.ns.NS.*;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteString;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Listeners;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 @Listeners({com._4paradigm.rtidb.client.functiontest.utils.TestReport.class})
 public class CompressTest extends TestCaseBase {
+
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
+
+    @AfterClass
+    public void tearDown() {
+        tearDown();
+    }
 
     public static String genLongString(int len) {
         String str = "";

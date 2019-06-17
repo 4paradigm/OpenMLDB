@@ -13,10 +13,7 @@ import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Listeners;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 @Listeners({com._4paradigm.rtidb.client.functiontest.utils.TestReport.class})
 public class HaPutTest extends TestCaseBase {
@@ -31,10 +28,14 @@ public class HaPutTest extends TestCaseBase {
         return str;
     }
 
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
+
     @AfterClass
     public void tearDown() {
-        nsc.close();
-        client.close();
+        tearDown();
     }
 
     private String createKvTable() {

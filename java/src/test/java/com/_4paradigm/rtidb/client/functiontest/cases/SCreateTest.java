@@ -5,9 +5,7 @@ import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Listeners;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +16,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SCreateTest extends TestCaseBase {
 
     private final static AtomicInteger id = new AtomicInteger(20);
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
 
+    @AfterClass
+    public void tearDown() {
+        tearDown();
+    }
     public static String genLongString(int len) {
         String str = "";
         for (int i = 0; i < len; i++) {

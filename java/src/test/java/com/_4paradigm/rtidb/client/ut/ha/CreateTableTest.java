@@ -2,6 +2,8 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +21,15 @@ public class CreateTableTest extends TestCaseBase {
 
     private final static Logger logger = LoggerFactory.getLogger(TableSchemaTest.class);
     private static AtomicInteger id = new AtomicInteger(50000);
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
 
+    @AfterClass
+    public void tearDown() {
+        tearDown();
+    }
     @Test
     public void testTSColumnType() {
         Map<String, Boolean> map = new HashMap<String, Boolean>();

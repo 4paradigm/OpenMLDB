@@ -25,7 +25,6 @@ public class TestCaseBase {
     protected TabletClientImpl tabletClient = null;
     protected TabletSyncClientImpl tabletSyncClient = null;
 
-    @BeforeSuite
     public void setUp() {
         try {
             nsc = ClientBuilder.buildNewNSC();
@@ -40,7 +39,6 @@ public class TestCaseBase {
         }
     }
 
-    @AfterSuite
     public  void tearDown() {
         nsc.close();
         client.close();

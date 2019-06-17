@@ -5,9 +5,7 @@ import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Listeners;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +15,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SScanTest extends TestCaseBase {
 
     private final static AtomicInteger id = new AtomicInteger(200);
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
 
+    @AfterClass
+    public void tearDown() {
+        tearDown();
+    }
     @DataProvider(name = "putdata")
     public Object[][] putdata() {
         return new Object[][]{

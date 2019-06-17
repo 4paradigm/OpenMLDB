@@ -8,9 +8,7 @@ import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 import com._4paradigm.rtidb.tablet.Tablet.TableStatus;
 import com.google.protobuf.ByteString;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Listeners;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -21,9 +19,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Listeners({com._4paradigm.rtidb.client.functiontest.utils.TestReport.class})
 public class TtlCreateTest extends TestCaseBase {
 
-    private final static Random random = new Random(System.currentTimeMillis());
     private final static AtomicInteger id = new AtomicInteger(400);
 
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
+
+    @AfterClass
+    public void tearDown() {
+        tearDown();
+    }
     @DataProvider(name = "latest")
     public Object[][] latest() {
         return new Object[][]{{-1, false}, {0, true}, {1, true}, {1000, true}, {1001, false},};

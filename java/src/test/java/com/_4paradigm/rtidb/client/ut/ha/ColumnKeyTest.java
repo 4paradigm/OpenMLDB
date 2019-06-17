@@ -3,6 +3,8 @@ package com._4paradigm.rtidb.client.ut.ha;
 import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +21,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ColumnKeyTest extends TestCaseBase {
     private final static Logger logger = LoggerFactory.getLogger(ColumnKeyTest.class);
     private static AtomicInteger id = new AtomicInteger(50000);
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
 
+    @AfterClass
+    public void tearDown() {
+        tearDown();
+    }
     @Test
     public void testPutNoTs() {
         String name = String.valueOf(id.incrementAndGet());

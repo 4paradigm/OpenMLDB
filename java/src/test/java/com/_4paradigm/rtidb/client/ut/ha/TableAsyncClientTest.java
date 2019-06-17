@@ -8,6 +8,8 @@ import com._4paradigm.rtidb.client.base.ClientBuilder;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.base.Config;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.GetFuture;
@@ -24,7 +26,15 @@ public class TableAsyncClientTest extends TestCaseBase {
 
     private static AtomicInteger id = new AtomicInteger(20000);
     private static String[] nodes = com._4paradigm.rtidb.client.base.Config.NODES;
+    @BeforeClass
+    public void setUp() {
+        setUp();
+    }
 
+    @AfterClass
+    public void tearDown() {
+        tearDown();
+    }
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
