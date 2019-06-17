@@ -83,7 +83,6 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
     return true;
 }
 
-
 TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/4_3/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/4_3/binlog/";
@@ -943,6 +942,117 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     }
     ASSERT_EQ(30, manifest.offset());
     ASSERT_EQ(30, manifest.count());
+}
+
+TEST_F(SnapshotTest, Recover_snapshot_ts) {
+    std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
+    ::rtidb::base::MkdirRecur(snapshot_dir);
+    {
+        std::string snapshot1 = "20190614.sdb";
+        std::string full_path = snapshot_dir + "/" + snapshot1;
+		printf("path:%s\n", full_path.c_str());
+        FILE* fd_w = fopen(full_path.c_str(), "ab+");
+        ASSERT_TRUE(fd_w != NULL);
+        ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
+        ::rtidb::log::Writer writer(wf);
+        ::rtidb::api::LogEntry entry;
+        entry.set_pk("test0");
+        entry.set_ts(9527);
+        entry.set_value("value0");
+        entry.set_log_index(1);
+        ::rtidb::api::Dimension* dim = entry.add_dimensions();
+        dim->set_key("card0");
+        dim->set_idx(0);
+        ::rtidb::api::Dimension* dim1 = entry.add_dimensions();
+        dim1->set_key("mcc0");
+        dim1->set_idx(1);
+        ::rtidb::api::TSDimension* ts_dim = entry.add_ts_dimensions();
+        ts_dim->set_ts(1122);
+        ts_dim->set_idx(0);
+        ::rtidb::api::TSDimension* ts_dim1 = entry.add_ts_dimensions();
+        ts_dim1->set_ts(2233);
+        ts_dim1->set_idx(1);
+        std::string val;
+        bool ok = entry.SerializeToString(&val);
+        ASSERT_TRUE(ok);
+        Slice sval(val.c_str(), val.size());
+        Status status = writer.AddRecord(sval);
+        ASSERT_TRUE(status.ok());
+    }
+    
+	::rtidb::api::TableMeta table_meta;
+	table_meta.set_name("test");
+    table_meta.set_tid(2);
+    table_meta.set_pid(2);
+    table_meta.set_ttl(0);
+    table_meta.set_seg_cnt(8);
+	::rtidb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
+	column_desc1->set_name("card");
+	column_desc1->set_type("string");
+	::rtidb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
+	column_desc2->set_name("mcc");
+	column_desc2->set_type("string");
+	::rtidb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
+	column_desc3->set_name("amt");
+	column_desc3->set_type("double");
+	::rtidb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
+	column_desc4->set_name("ts1");
+	column_desc4->set_type("int64");
+	column_desc4->set_is_ts_col(true);
+	::rtidb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
+	column_desc5->set_name("ts2");
+	column_desc5->set_type("int64");
+	column_desc5->set_is_ts_col(true);
+	::rtidb::common::ColumnKey* column_key1 = table_meta.add_column_key();
+	column_key1->set_index_name("card");
+	column_key1->add_ts_name("ts1");
+	column_key1->add_ts_name("ts2");
+	::rtidb::common::ColumnKey* column_key2 = table_meta.add_column_key();
+	column_key2->set_index_name("mcc");
+	column_key2->add_ts_name("ts1");
+	table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta);
+    table->Init();
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    Snapshot snapshot(2, 2, log_part);
+    ASSERT_TRUE(snapshot.Init());
+    int ret = snapshot.RecordOffset("20190614.sdb", 1, 1, 5);
+    ASSERT_EQ(0, ret);
+    uint64_t offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, offset));
+    ASSERT_EQ(1, offset);
+    Ticket ticket;
+    Iterator* it = table->NewIterator(0, 0, "card0", ticket);
+    it->Seek(1122);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1122, it->GetKey());
+    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value0", value2_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+	delete it;
+    it = table->NewIterator(0, 1, "card0", ticket);
+    it->Seek(2233);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(2233, it->GetKey());
+    value2_str.assign(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value0", value2_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+	delete it;
+    it = table->NewIterator(1, 0, "mcc0", ticket);
+    it->Seek(1122);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_EQ(1122, it->GetKey());
+    value2_str.assign(it->GetValue()->data, it->GetValue()->size);
+    ASSERT_EQ("value0", value2_str);
+    it->Next();
+    ASSERT_FALSE(it->Valid());
+	delete it;
+    it = table->NewIterator(0, 0, "mcc0", ticket);
+    it->Seek(1122);
+    ASSERT_FALSE(it->Valid());
+	delete it;
 }
 
 }

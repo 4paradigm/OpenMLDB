@@ -1844,7 +1844,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(109, response.code());
-        ASSERT_EQ("key not found", response.msg());
+        ASSERT_EQ("invalid args", response.msg());
     }
     FLAGS_gc_interval = old_gc_interval;
 }

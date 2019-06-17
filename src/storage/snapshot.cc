@@ -146,14 +146,7 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
                 table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
             }
         } else {
-            if (entry.dimensions_size() > 0) {
-                table->Put(entry.ts(), entry.value(), entry.dimensions());
-            } else {
-                // the legend way
-                table->Put(entry.pk(), entry.ts(),
-                           entry.value().c_str(),
-                           entry.value().size());
-            }
+            table->Put(entry);
         }
         cur_offset = entry.log_index();
         succ_cnt++;
@@ -254,15 +247,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
                         succ_cnt, failed_cnt);
             }
-            if (entry.dimensions_size() > 0) {
-                table->Put(entry.ts(), entry.value(), entry.dimensions());
-
-            }else {
-                // the legend way
-                table->Put(entry.pk(), entry.ts(),
-                           entry.value().c_str(),
-                           entry.value().size());
-            }
+            table->Put(entry);
         }
         // will close the fd atomic
         delete seq_file;

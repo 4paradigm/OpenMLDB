@@ -42,8 +42,6 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
     row.push_back("name");
     row.push_back("type");
     row.push_back("index");
-    row.push_back("ts_col");
-    row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     uint32_t idx = 0;
@@ -53,16 +51,81 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
         row.push_back(column_desc.name());
         row.push_back(column_desc.type());
         column_desc.add_ts_idx() ? row.push_back("yes") : row.push_back("no");
-        row.push_back("-");
-        row.push_back("-");
-        row.push_back("-");
         tp.AddRow(row);
         idx++;
     }
     tp.Print(true);
 }
 
-static void PrintColumnKey(const ::rtidb::nameserver::TableInfo& table_info) {
+static void PrintSchema(const std::string& schema) {
+    std::vector<::rtidb::base::ColumnDesc> raw;
+    ::rtidb::base::SchemaCodec codec;
+    codec.Decode(schema, raw);
+    ::baidu::common::TPrinter tp(4);
+    std::vector<std::string> header;
+    header.push_back("#");
+    header.push_back("name");
+    header.push_back("type");
+    header.push_back("index");
+
+    tp.AddRow(header);
+    for (uint32_t i = 0; i < raw.size(); i++) {
+        std::vector<std::string> row;
+        row.push_back(boost::lexical_cast<std::string>(i));
+        row.push_back(raw[i].name);
+        switch (raw[i].type) {
+            case ::rtidb::base::ColType::kInt32:
+                row.push_back("int32");
+                break;
+            case ::rtidb::base::ColType::kInt64:
+                row.push_back("int64");
+                break;
+            case ::rtidb::base::ColType::kUInt32:
+                row.push_back("uint32");
+                break;
+            case ::rtidb::base::ColType::kUInt64:
+                row.push_back("uint64");
+                break;
+            case ::rtidb::base::ColType::kDouble:
+                row.push_back("double");
+                break;
+            case ::rtidb::base::ColType::kFloat:
+                row.push_back("float");
+                break;
+            case ::rtidb::base::ColType::kString:
+                row.push_back("string");
+                break;
+            case ::rtidb::base::ColType::kTimestamp:
+                row.push_back("timestamp");
+                break;
+            case ::rtidb::base::ColType::kDate:
+                row.push_back("date");
+                break;
+            case ::rtidb::base::ColType::kInt16:
+                row.push_back("int16");
+                break;
+            case ::rtidb::base::ColType::kUInt16:
+                row.push_back("uint16");
+                break;
+            case ::rtidb::base::ColType::kBool:
+                row.push_back("bool");
+                break;
+            default:
+                break;
+        }
+        if (raw[i].add_ts_idx) {
+            row.push_back("yes");
+        }else {
+            row.push_back("no");
+        }
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
+static void PrintColumnKey(uint64_t ttl, const std::string& ttl_suff,
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
+        const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& column_key_field) {
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("index_name");
@@ -71,9 +134,8 @@ static void PrintColumnKey(const ::rtidb::nameserver::TableInfo& table_info) {
     row.push_back("ttl");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
-    uint64_t ttl = table_info.ttl();
     std::map<std::string, uint64_t> ttl_map;
-    for (const auto& column_desc :  table_info.column_desc_v1()) {
+    for (const auto& column_desc : column_desc_field) {
         if (column_desc.is_ts_col()) {
             if (column_desc.has_ttl()) {
                 ttl_map.insert(std::make_pair(column_desc.name(), column_desc.ttl()));
@@ -82,10 +144,9 @@ static void PrintColumnKey(const ::rtidb::nameserver::TableInfo& table_info) {
             }
         }
     }
-    std::string ttl_suff = table_info.ttl_type() == "kLatestTime" ? "" : "min";
     uint32_t idx = 0;
-    if (table_info.column_key_size() > 0) {
-        for (const auto& column_key : table_info.column_key()) {
+    if (column_key_field.size() > 0) {
+        for (const auto& column_key : column_key_field) {
             row.clear();
             row.push_back(std::to_string(idx));
             row.push_back(column_key.index_name());
@@ -122,7 +183,7 @@ static void PrintColumnKey(const ::rtidb::nameserver::TableInfo& table_info) {
             }
         }
     } else {
-        for (const auto& column_desc :  table_info.column_desc_v1()) {
+        for (const auto& column_desc : column_desc_field) {
             if (column_desc.add_ts_idx()) {
                 row.clear();
                 row.push_back(std::to_string(idx));
