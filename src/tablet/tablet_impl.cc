@@ -398,8 +398,8 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
         return -1;
     }
     if (st_type == ::rtidb::api::kSubKeyEq
-            && et_type == ::rtidb::api::kSubKeyEq
-            && st != et) return 1;
+        && et_type == ::rtidb::api::kSubKeyEq
+        && st != et) return 1;
     uint32_t it_count = 0;
     // go to start point
     it->SeekToFirst();
@@ -582,7 +582,7 @@ void TabletImpl::Get(RpcController* controller,
     switch(code) {
         case 1:
             response->set_code(109);
-            response->set_msg("not found");
+            response->set_msg("key not found");
             return;
         case 0:
             return;
