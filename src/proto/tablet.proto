@@ -337,6 +337,7 @@ message GetTableSchemaResponse {
     optional int32 code = 1;
     optional string msg = 2;
     optional bytes schema = 3;
+    optional TableMeta table_meta = 4;
 }
 
 message UpdateTTLRequest {

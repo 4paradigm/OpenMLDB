@@ -264,7 +264,6 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
     if (cur_version < FLAGS_gc_deleted_pk_version_delta) {
         return;
     }
-    uint64_t old = gc_idx_cnt;
     uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
     ::rtidb::base::Node<uint64_t, ::rtidb::base::Node<Slice, void*>*>* node = NULL;
     {
@@ -294,6 +293,7 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
                     entry_node->GetKey().size(), key_entry_max_height_, ts_cnt_);
             idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
         } else {
+            uint64_t old = gc_idx_cnt;
             KeyEntry* entry = (KeyEntry*)entry_node->GetValue();
             TimeEntries::Iterator* it = entry->entries.NewIterator();
             it->SeekToFirst();

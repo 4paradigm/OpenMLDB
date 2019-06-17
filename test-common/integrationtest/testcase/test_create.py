@@ -38,10 +38,10 @@ class TestCreateTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
                           card='string:index', merchant='string:index', amt='double:index')
         self.assertIn('Create table ok' ,rs1)
-        schema_d = self.showschema(self.leader, self.tid, self.pid)
-        self.assertEqual(schema_d['card'], ['string', 'yes'])
-        self.assertEqual(schema_d['merchant'], ['string', 'yes'])
-        self.assertEqual(schema_d['amt'], ['double', 'yes'])
+        (schema, column_key) = self.showschema(self.leader, self.tid, self.pid)
+        self.assertEqual(schema[0], ['0', 'merchant', 'string', 'yes'])
+        self.assertEqual(schema[1], ['1', 'amt', 'double', 'yes'])
+        self.assertEqual(schema[2], ['2', 'card', 'string', 'yes'])
 
 
     @multi_dimension(True)
@@ -71,9 +71,9 @@ class TestCreateTable(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
                           card='string:index', merchant='string')
         self.assertIn('Create table ok' ,rs1)
-        schema_d = self.showschema(self.leader, self.tid, self.pid)
-        self.assertEqual(schema_d['card'], ['string', 'yes'])
-        self.assertEqual(schema_d['merchant'], ['string', 'no'])
+        (schema, column_key) = self.showschema(self.leader, self.tid, self.pid)
+        self.assertEqual(schema[0], ['0', 'merchant', 'string', 'no'])
+        self.assertEqual(schema[1], ['1', 'card', 'string', 'yes'])
         rs2 = self.get_table_meta(self.leaderpath, self.tid, self.pid)
         self.assertEqual(rs2['ttl'], '144000')
         self.assertEqual(rs2['ttl_type'], 'kAbsoluteTime')
@@ -109,8 +109,8 @@ class TestCreateTable(TestCaseBase):
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true', card='string:index')
         self.assertIn('Create table ok' ,rs1)
-        schema_d = self.showschema(self.leader, self.tid, self.pid)
-        self.assertEqual(schema_d['card'], ['string', 'yes'])
+        schema, column_key = self.showschema(self.leader, self.tid, self.pid)
+        self.assertEqual(schema[0], ['0', 'card', 'string', 'yes'])
 
 
     @multi_dimension(True)
@@ -135,10 +135,10 @@ class TestCreateTable(TestCaseBase):
             'screate t {} {} latest:10 2 true k1:string:index k2:string:index k3:string:index'.format(
             self.tid, self.pid))
         self.assertIn('Create table ok' ,rs1)
-        schema_d = self.showschema(self.leader, self.tid, self.pid)
-        self.assertEqual(schema_d['k1'], ['string', 'yes'])
-        self.assertEqual(schema_d['k2'], ['string', 'yes'])
-        self.assertEqual(schema_d['k3'], ['string', 'yes'])
+        schema, column_key = self.showschema(self.leader, self.tid, self.pid)
+        self.assertEqual(schema[0], ['0', 'k1', 'string', 'yes'])
+        self.assertEqual(schema[1], ['1', 'k2', 'string', 'yes'])
+        self.assertEqual(schema[2], ['2', 'k3', 'string', 'yes'])
         rs2 = self.get_table_meta(self.leaderpath, self.tid, self.pid)
         infoLogger.info(rs2)
         self.assertEqual(rs2['ttl_type'], 'kLatestTime')

@@ -104,6 +104,8 @@ public:
     bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
              const std::string& value);
 
+    bool Put(const ::rtidb::api::LogEntry& entry);
+
     bool Delete(const std::string& pk, uint32_t idx);
 
     // use the first demission
@@ -143,7 +145,6 @@ public:
         return record_cnt_.load(std::memory_order_relaxed);
     }
 
-
     inline std::string GetName() const {
         return name_;
     }
@@ -182,6 +183,10 @@ public:
 
     inline const std::string& GetSchema() {
         return schema_;
+    }
+
+    const ::rtidb::api::TableMeta& GetTableMeta() const {
+        return table_meta_;
     }
 
     inline void SetExpire(bool is_expire) {
