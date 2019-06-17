@@ -4,64 +4,26 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.ut.Config;
+import com._4paradigm.rtidb.client.base.ClientBuilder;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.client.base.Config;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
-import com._4paradigm.rtidb.client.TableAsyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 
-public class TableAsyncClientTest {
+public class TableAsyncClientTest extends TestCaseBase {
 
-    private static String zkEndpoints = Config.ZK_ENDPOINTS;
-    private static String zkRootPath = Config.ZK_ROOT_PATH;
-    private static String leaderPath  = zkRootPath + "/leader";
     private static AtomicInteger id = new AtomicInteger(20000);
-    private static NameServerClientImpl nsc = null;
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBClusterClient client = null;
-    private static TableAsyncClient tableAsyncClient = null;
-    private static String[] nodes = Config.NODES;
-
-    @BeforeClass
-    public static void setUp() {
-        try {
-            config.setZkEndpoints(zkEndpoints);
-            config.setZkRootPath(zkRootPath);
-            config.setWriteTimeout(1000000);
-            config.setReadTimeout(1000000);
-            nsc = new NameServerClientImpl(config);
-            nsc.init();
-            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
-            client = new RTIDBClusterClient(config);
-            client.init();
-            tableAsyncClient = new TableAsyncClientImpl(client);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-
-    @AfterClass
-    public static void closeResource() {
-        nsc.close();
-        client.close();
-    }
+    private static String[] nodes = com._4paradigm.rtidb.client.base.Config.NODES;
 
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
@@ -295,7 +257,7 @@ public class TableAsyncClientTest {
 
     @Test
     public void testScanDuplicateRecord() {
-        config.setRemoveDuplicateByTime(true);
+        ClientBuilder.config.setRemoveDuplicateByTime(true);
         String name = createSchemaTable();
         try {
             PutFuture pf = tableAsyncClient.put(name, 10, new Object[]{"card0", "1222", 1.0});
@@ -313,7 +275,7 @@ public class TableAsyncClientTest {
         } catch (Exception e) {
             Assert.fail();
         } finally {
-            config.setRemoveDuplicateByTime(false);
+            ClientBuilder.config.setRemoveDuplicateByTime(false);
         }
 
     }
@@ -361,8 +323,6 @@ public class TableAsyncClientTest {
 
         } catch (Exception e) {
             Assert.fail();
-        } finally {
-            config.setRemoveDuplicateByTime(false);
         }
     }
 
@@ -426,8 +386,6 @@ public class TableAsyncClientTest {
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
-        } finally {
-            config.setRemoveDuplicateByTime(false);
         }
     }
 

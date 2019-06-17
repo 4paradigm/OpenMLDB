@@ -76,7 +76,15 @@ public class TabletSyncClientImpl implements TabletSyncClient {
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException {
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
-        Tablet.GetResponse response = client.getHandler(tid).getHandler(pid).getLeader().get(request);
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            return null;
+        }
+        PartitionHandler ph = th.getHandler(pid);
+        if (ph == null) {
+            return null;
+        }
+        Tablet.GetResponse response = ph.getLeader().get(request);
         if (response != null && response.getCode() == 0) {
             return response.getValue();
         }

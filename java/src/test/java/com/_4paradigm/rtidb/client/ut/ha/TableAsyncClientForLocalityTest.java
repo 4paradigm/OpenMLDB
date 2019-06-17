@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ut.Config;
 import org.testng.Assert;
@@ -39,6 +40,7 @@ public class TableAsyncClientForLocalityTest {
     private static RTIDBClusterClient client = null;
     private static TableAsyncClient tableAsyncClient = null;
     private static String[] nodes = Config.NODES;
+
     @BeforeClass
     public static void setUp() {
         try {
@@ -54,11 +56,12 @@ public class TableAsyncClientForLocalityTest {
             e.printStackTrace();
         }
     }
+
     @AfterClass
     public static void closeResource() {
         nsc.close();
     }
-    
+
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
