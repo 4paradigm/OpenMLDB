@@ -125,8 +125,7 @@ public:
              std::string& msg,
              bool showm = false);
 
-    bool GetTableSchema(uint32_t tid, uint32_t pid, 
-                        std::string& schema);
+    bool GetTableSchema(uint32_t tid, uint32_t pid, ::rtidb::api::TableMeta& table_meta);
 
     bool DropTable(uint32_t id, uint32_t pid,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());

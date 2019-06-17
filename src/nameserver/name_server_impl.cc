@@ -1162,7 +1162,7 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
 }
 
 int NameServerImpl::FillColumnKey(TableInfo& table_info) {
-    if (table_info.column_key_size() > 0) {
+    if (table_info.column_key_size() > 0 || table_info.column_desc_v1_size() == 0) {
         return 0;
     }
     std::vector<std::string> ts_vec;

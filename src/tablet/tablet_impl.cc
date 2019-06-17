@@ -1611,6 +1611,7 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     response->set_code(0);
     response->set_msg("ok");
     response->set_schema(table->GetSchema());
+    response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
 }
 
 void TabletImpl::GetTableStatus(RpcController* controller,

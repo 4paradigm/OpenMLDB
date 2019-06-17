@@ -393,14 +393,20 @@ class TestCreateTableByNsClient(TestCaseBase):
             rs1 = self.showtable(self.ns_leader, name)
             tid = rs1.keys()[0][1]
             for edp in (self.leader, self.slave1, self.slave2):
-                schema = self.showschema(edp, tid, 2)
+                (schema, column_key) = self.showschema(edp, tid, 2)
+                index_set = []
+                for arr in column_key:
+                    index_set.append(arr[1])
                 infoLogger.info(schema)
                 self.assertEqual(len(schema), len(column_descs))
+                idx = 0
                 for i in column_descs:
                     key = i[1][1:-1]
                     type = i[2][1:-1]
-                    index = 'yes' if i[3] == 'true' else 'no'
-                    self.assertEqual(schema[key], [type, index])
+                    self.assertEqual(schema[idx][2], type)
+                    if i[3] == 'true':
+                        self.assertTrue(key in index_set)
+                    idx += 1
         self.ns_drop(self.ns_leader, name)
 
 
@@ -458,12 +464,14 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(rs1[(tname, tid, '0', self.leader)], ['leader', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs1[(tname, tid, '0', self.slave1)], ['follower', '144000min', 'yes', 'kNoCompress'])
         self.assertEqual(rs1[(tname, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
-        schema = self.showschema(self.slave1, tid, 0)
-        infoLogger.info(schema)
+        (schema, column_key) = self.showschema(self.slave1, tid, 0)
         self.assertEqual(len(schema), 3)
-        self.assertEqual(schema['k1'], ['string', 'yes'])
-        self.assertEqual(schema['k2'], ['double', 'no'])
-        self.assertEqual(schema['k3'], ['int32', 'yes'])
+        self.assertEqual(len(column_key), 2)
+        self.assertEqual(schema[0], ['0', 'k1', 'string'])
+        self.assertEqual(schema[1], ['1', 'k2', 'double'])
+        self.assertEqual(schema[2], ['2', 'k3', 'int32'])
+        self.assertEqual(column_key[0], ['0', 'k1', 'k1', '-', '144000min'])
+        self.assertEqual(column_key[1], ['1', 'k3', 'k3', '-', '144000min'])
         self.ns_drop(self.ns_leader, tname)
 
     @ddt.data(
@@ -487,12 +495,11 @@ class TestCreateTableByNsClient(TestCaseBase):
             rs1 = self.showtable(self.ns_leader, tname)
             tid = rs1.keys()[0][1]
             infoLogger.info(rs1)
-            schema = self.showschema(self.slave1, tid, 0)
-            infoLogger.info(schema)
+            (schema, column_key) = self.showschema(self.slave1, tid, 0)
             self.assertEqual(len(schema), 3)
-            self.assertEqual(schema['k1'], ['string', 'yes'])
-            self.assertEqual(schema['k2'], ['double', 'no'])
-            self.assertEqual(schema['k3'], ['int32', 'yes'])
+            self.assertEqual(schema[0], ['0', 'k1', 'string', 'yes'])
+            self.assertEqual(schema[1], ['1', 'k2', 'double', 'no'])
+            self.assertEqual(schema[2], ['2', 'k3', 'int32', 'yes'])
         self.ns_drop(self.ns_leader, tname)
 
     @ddt.data(
