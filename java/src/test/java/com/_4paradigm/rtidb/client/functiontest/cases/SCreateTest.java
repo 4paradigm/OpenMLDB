@@ -18,12 +18,12 @@ public class SCreateTest extends TestCaseBase {
     private final static AtomicInteger id = new AtomicInteger(20);
     @BeforeClass
     public void setUp() {
-        setUp();
+        super.setUp();
     }
 
     @AfterClass
     public void tearDown() {
-        tearDown();
+        super.tearDown();
     }
     public static String genLongString(int len) {
         String str = "";

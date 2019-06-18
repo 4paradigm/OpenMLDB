@@ -30,12 +30,12 @@ public class HaPutTest extends TestCaseBase {
 
     @BeforeClass
     public void setUp() {
-        setUp();
+        super.setUp();
     }
 
     @AfterClass
     public void tearDown() {
-        tearDown();
+        super.tearDown();
     }
 
     private String createKvTable() {

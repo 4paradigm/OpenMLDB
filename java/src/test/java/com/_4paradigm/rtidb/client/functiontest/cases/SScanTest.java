@@ -17,12 +17,12 @@ public class SScanTest extends TestCaseBase {
     private final static AtomicInteger id = new AtomicInteger(200);
     @BeforeClass
     public void setUp() {
-        setUp();
+        super.setUp();
     }
 
     @AfterClass
     public void tearDown() {
-        tearDown();
+        super.tearDown();
     }
     @DataProvider(name = "putdata")
     public Object[][] putdata() {

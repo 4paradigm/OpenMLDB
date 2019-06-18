@@ -23,12 +23,12 @@ public class ColumnKeyTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(50000);
     @BeforeClass
     public void setUp() {
-        setUp();
+        super.setUp();
     }
 
     @AfterClass
     public void tearDown() {
-        tearDown();
+        super.tearDown();
     }
     @Test
     public void testPutNoTs() {

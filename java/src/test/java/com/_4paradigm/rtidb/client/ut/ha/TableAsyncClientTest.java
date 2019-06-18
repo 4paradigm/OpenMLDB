@@ -28,12 +28,12 @@ public class TableAsyncClientTest extends TestCaseBase {
     private static String[] nodes = com._4paradigm.rtidb.client.base.Config.NODES;
     @BeforeClass
     public void setUp() {
-        setUp();
+        super.setUp();
     }
 
     @AfterClass
     public void tearDown() {
-        tearDown();
+        super.tearDown();
     }
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());

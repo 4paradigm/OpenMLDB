@@ -13,7 +13,6 @@ import org.testng.annotations.*;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Listeners({com._4paradigm.rtidb.client.functiontest.utils.TestReport.class})
@@ -23,12 +22,12 @@ public class TtlCreateTest extends TestCaseBase {
 
     @BeforeClass
     public void setUp() {
-        setUp();
+        super.setUp();
     }
 
     @AfterClass
     public void tearDown() {
-        tearDown();
+        super.tearDown();
     }
     @DataProvider(name = "latest")
     public Object[][] latest() {

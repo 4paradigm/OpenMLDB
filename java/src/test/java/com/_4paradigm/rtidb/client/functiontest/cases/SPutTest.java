@@ -26,12 +26,12 @@ public class SPutTest extends TestCaseBase {
     }
     @BeforeClass
     public void setUp() {
-        setUp();
+        super.setUp();
     }
 
     @AfterClass
     public void tearDown() {
-        tearDown();
+        super.tearDown();
     }
     @DataProvider(name = "putdata")
     public Object[][] putdata() {
