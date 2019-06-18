@@ -30,6 +30,7 @@ public class ColumnKeyTest extends TestCaseBase {
     public void tearDown() {
         super.tearDown();
     }
+
     @Test
     public void testPutNoTs() {
         String name = String.valueOf(id.incrementAndGet());

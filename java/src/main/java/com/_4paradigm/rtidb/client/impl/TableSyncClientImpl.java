@@ -103,7 +103,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException {
-        return getRow(tname, keyMap, idxName, time, tsName, type);
+        return getRow(tname, keyMap, idxName, time, tsName, type, 0l, null);
     }
 
     @Override
