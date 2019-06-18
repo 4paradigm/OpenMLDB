@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -15,37 +16,18 @@ import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
-import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
-import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com.google.protobuf.ByteString;
 
-import io.brpc.client.EndPoint;
-
-public class TableAsyncClientTest {
+public class TableAsyncClientTest extends TestCaseBase {
 
     private AtomicInteger id = new AtomicInteger(11000);
-    private static TableAsyncClientImpl tableClient = null;
-    private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     @BeforeClass
-    public static void setUp() {
-         try {
-            snc.init();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        tableClient = new TableAsyncClientImpl(snc);
-        tabletClient = new TabletClientImpl(snc);
-
+    public  void setUp() {
+        super.setUp();
     }
     @AfterClass
-    public static void tearDown() {
-        snc.close();
+    public  void tearDown() {
+        super.tearDown();
     }
 
     @Test
@@ -53,9 +35,9 @@ public class TableAsyncClientTest {
         int tid = id.incrementAndGet();
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
-        PutFuture future = tableClient.put(tid, 0, "pk", 9527, "test0");
+        PutFuture future = tabletAsyncClient.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(future.get());
-        GetFuture gf = tableClient.get(tid, 0, "pk");
+        GetFuture gf = tabletAsyncClient.get(tid, 0, "pk");
         Assert.assertEquals("test0", gf.get().toStringUtf8());
         tabletClient.dropTable(tid, 0);
     }
@@ -65,9 +47,9 @@ public class TableAsyncClientTest {
         int tid = id.incrementAndGet();
         boolean ok = tabletClient.createTable("tj1", tid, 0, 0, 8);
         Assert.assertTrue(ok);
-        PutFuture pf = tableClient.put(tid, 0, "pk", 9527, "test0");
+        PutFuture pf = tabletAsyncClient.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(pf.get());
-        ScanFuture sf = tableClient.scan(tid, 0, "pk", 9527l, 9526l);
+        ScanFuture sf = tabletAsyncClient.scan(tid, 0, "pk", 9527l, 9526l);
         KvIterator it = sf.get();
         Assert.assertTrue(it != null);
         Assert.assertTrue(it.valid());
@@ -87,12 +69,12 @@ public class TableAsyncClientTest {
         String tableName = "tj1";
         boolean ok = tabletClient.createTable(tableName, tid, 0, 0, 8);
         Assert.assertTrue(ok);
-        PutFuture pf = tableClient.put(tid, 0, "pk", 9527, "test0");
+        PutFuture pf = tabletAsyncClient.put(tid, 0, "pk", 9527, "test0");
         Assert.assertTrue(pf.get());
-        GetFuture gf = tableClient.get(tid, 0, "pk");
+        GetFuture gf = tabletAsyncClient.get(tid, 0, "pk");
         ByteString response = gf.get();
         Assert.assertNotNull(response);
-        gf = tableClient.get(tid, 0, "pksss");
+        gf = tabletAsyncClient.get(tid, 0, "pksss");
         response = gf.get();
         Assert.assertNull(response);
         tabletClient.dropTable(tid, 0);

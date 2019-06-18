@@ -249,7 +249,7 @@ public:
 
     // scan the latest index
     int32_t ScanLatestIndex(uint64_t ttl,
-                            ::rtidb::storage::Iterator* it,
+                            const ::rtidb::storage::Iterator* it,
                             uint32_t limit,
                             uint64_t st,
                             const rtidb::api::GetType& st_type,
@@ -260,7 +260,7 @@ public:
 
     // get one value from latest index
     int32_t GetLatestIndex(uint64_t ttl,
-                           ::rtidb::storage::Iterator* it,
+                           const ::rtidb::storage::Iterator* it,
                            uint64_t st,
                            const rtidb::api::GetType& st_type,
                            uint64_t et,
@@ -270,7 +270,7 @@ public:
 
     // get one value from time index
     int32_t GetTimeIndex(uint64_t expire_ts,
-                         ::rtidb::storage::Iterator* it,
+                         const ::rtidb::storage::Iterator* it,
                          uint64_t st,
                          const rtidb::api::GetType& st_type,
                          uint64_t et,
@@ -280,7 +280,7 @@ public:
 
     // scan the time index 
     int32_t ScanTimeIndex(uint64_t expire_ts, 
-                          ::rtidb::storage::Iterator* it,
+                          const ::rtidb::storage::Iterator* it,
                           uint32_t limit,
                           uint64_t st,
                           const rtidb::api::GetType& st_type,

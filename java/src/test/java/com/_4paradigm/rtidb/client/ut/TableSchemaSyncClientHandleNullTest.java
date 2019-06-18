@@ -2,6 +2,8 @@ package com._4paradigm.rtidb.client.ut;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.base.ClientBuilder;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
@@ -20,36 +22,24 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TableSchemaSyncClientHandleNullTest {
+public class TableSchemaSyncClientHandleNullTest extends TestCaseBase {
 
     private final static AtomicInteger id = new AtomicInteger(7100);
-    private static TableSyncClientImpl tableClient = null;
-    private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
-//    private static EndPoint endpoint = new EndPoint("192.168.22.152:9501");
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
+    private  TableSyncClientImpl tableClient = null;
+    private  TabletClientImpl tabletClient = null;
 
     @BeforeClass
-    public static void setUp() {
-        try {
-            snc.init();
-            snc.getConfig().setHandleNull(true);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        tableClient = new TableSyncClientImpl(snc);
-        tabletClient = new TabletClientImpl(snc);
+    public void setUp() {
+        super.setUp();
+
+        tableClient = (TableSyncClientImpl)super.tableSingleNodeSyncClient;
+        tabletClient = super.tabletClient;
 
     }
 
     @AfterClass
-    public static void tearDown() {
-        for (int i = id.get(); i >= 7100; i--) {
-            tabletClient.dropTable(i, 0);
-        }
-        snc.close();
+    public void tearDown() {
+        super.tearDown();
     }
 
     private int createTable() {
@@ -134,6 +124,7 @@ public class TableSchemaSyncClientHandleNullTest {
 
     @Test
     public void testNullEmptyKeyScan() {
+        ClientBuilder.config.setHandleNull(true);
         int tid = createTable();
         try {
             tableClient.put(tid, 0, 10, new Object[]{null, "1222", 1.0});
@@ -184,6 +175,8 @@ public class TableSchemaSyncClientHandleNullTest {
             Assert.assertEquals(1.0, row[2]);
         } catch (Exception e) {
             Assert.fail();
+        } finally {
+            ClientBuilder.config.setHandleNull(false);
         }
 
     }

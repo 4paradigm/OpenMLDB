@@ -5,6 +5,8 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.TableSyncClient;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -12,36 +14,25 @@ import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
-import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.client.impl.TabletClientImpl;
 import com.google.protobuf.ByteString;
 
-import io.brpc.client.EndPoint;
 
-public class TableSyncClientTest {
+public class TableSyncClientTest extends TestCaseBase {
     private AtomicInteger id = new AtomicInteger(7000);
-    private static TableSyncClientImpl tableClient = null;
-    private static TabletClientImpl tabletClient = null;
-    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
+    private TableSyncClient tableClient = null;
+    private TabletClientImpl tabletClient = null;
 
     @BeforeClass
-    public static void setUp() {
-         try {
-            snc.init();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        tableClient = new TableSyncClientImpl(snc);
-        tabletClient = new TabletClientImpl(snc);
+    public void setUp() {
+        super.setUp();
+        tableClient = super.tableSingleNodeSyncClient;
+        tabletClient =super.tabletClient;
 
     }
     @AfterClass
-    public static void tearDown() {
-        snc.close();
+    public void tearDown() {
+        super.tearDown();
     }
 
     @Test

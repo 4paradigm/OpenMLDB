@@ -286,7 +286,7 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,  uint64_t
 }
 
 int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
-                                 ::rtidb::storage::Iterator* it,
+                                 const ::rtidb::storage::Iterator* it,
                                  uint64_t st,
                                  const rtidb::api::GetType& st_type,
                                  uint64_t et,
@@ -385,7 +385,7 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
 
 
 int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
-                               ::rtidb::storage::Iterator* it,
+                               const ::rtidb::storage::Iterator* it,
                                uint64_t st,
                                const rtidb::api::GetType& st_type,
                                uint64_t et,
@@ -779,7 +779,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
 }
 
 int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts, 
-                                 ::rtidb::storage::Iterator* it,
+                                 const ::rtidb::storage::Iterator* it,
                                  uint32_t limit,
                                  uint64_t st,
                                  const rtidb::api::GetType& st_type,
@@ -872,7 +872,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
 }
 
 int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
-                                    ::rtidb::storage::Iterator* it,
+                                    const ::rtidb::storage::Iterator* it,
                                     uint32_t limit,
                                     uint64_t st,
                                     const rtidb::api::GetType& st_type,
