@@ -353,7 +353,7 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
         it->SeekToFirst(); 
     }
 
-    while (it->Valid()) {
+    if (it->Valid()) {
         bool jump_out = false;
         switch(et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
@@ -375,7 +375,7 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
                 PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
                 return -2;
         }
-        if (jump_out) break;
+        if (jump_out) return 1;
         value->assign(it->GetValue()->data, it->GetValue()->size);
         *ts = it->GetKey();
         return 0;
@@ -459,7 +459,7 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
             }
         }
     }
-    while (it->Valid() && (it_count < ttl || ttl == 0)) {
+    if (it->Valid() && (it_count < ttl || ttl == 0)) {
         it_count++;
         bool jump_out = false;
         switch(et_type) {
@@ -485,7 +485,7 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
                 PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
                 return -2;
         }
-        if (jump_out) break;
+        if (jump_out) return 1;
         value->assign(it->GetValue()->data, it->GetValue()->size);
         *ts = it->GetKey();
         return 0;
