@@ -588,10 +588,10 @@ void TabletImpl::Get(RpcController* controller,
             return;
         case -1:
             response->set_msg("invalid args");
-            response->set_code(109);
+            response->set_code(307);
             return;
         case -2:
-            response->set_code(109);
+            response->set_code(307);
             response->set_msg("st/et sub key type is invalid");
             return;
         default:
@@ -1065,9 +1065,11 @@ void TabletImpl::Scan(RpcController* controller,
             return;
         case -1:
             response->set_msg("invalid args");
+            response->set_code(307);
             return;
         case -2:
             response->set_msg("st/et sub key type is invalid");
+            response->set_code(307);
             return;
         case -3:
             response->set_code(118);
@@ -1075,6 +1077,7 @@ void TabletImpl::Scan(RpcController* controller,
             return;
         case -4:
             response->set_msg("fail to encode data rows");
+            response->set_code(322);
             return;
         default:
             return;
