@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.GetFuture;
+import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
@@ -617,5 +619,48 @@ public class TableSyncClientTest extends TestCaseBase {
             nsc.dropTable(name);
         }
 //        return name;
+    }
+
+
+    @Test
+    public void testGetWithOpDefault() {
+        String name = createSchemaTable("kLatestTime");
+        try {
+            boolean ok  = tableSyncClient.put(name, 10, new Object[]{"card0", "1222", 1.0});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 11, new Object[]{"card0", "1224", 2.0});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 13, new Object[]{"card0", "1224", 3.0});
+            Assert.assertTrue(ok);
+            // range
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0", "card", 14, null, Tablet.GetType.kSubKeyLe,
+                        9, Tablet.GetType.kSubKeyGe);
+                Assert.assertEquals(new Object[]{"card0", "1224", 3.0}, row);
+            }
+
+            //
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0","card", 14, null, Tablet.GetType.kSubKeyLe,
+                        14, Tablet.GetType.kSubKeyGe);
+                Assert.assertEquals(null, row);
+            }
+
+            //
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0","card", 13, null, Tablet.GetType.kSubKeyEq,
+                        13, Tablet.GetType.kSubKeyEq);
+                Assert.assertEquals(new Object[]{"card0", "1224", 3.0}, row);
+            }
+
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0","card", 11, null, Tablet.GetType.kSubKeyEq,
+                        11, Tablet.GetType.kSubKeyEq);
+                Assert.assertEquals(new Object[]{"card0", "1224", 2.0}, row);
+            }
+
+        } catch (Exception e) {
+            Assert.fail();
+        }
     }
 }

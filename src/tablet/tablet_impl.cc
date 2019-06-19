@@ -795,6 +795,10 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
     }
 
     uint64_t end_time = std::max(et, expire_ts);
+    rtidb::api::GetType real_type = et_type;
+    if (et < expire_ts && et_type == ::rtidb::api::GetType::kSubKeyGt) {
+        real_type = ::rtidb::api::GetType::kSubKeyGe;
+    }
     if (st > 0) {
         if (st < end_time) {
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
@@ -820,6 +824,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
     uint64_t last_time = 0;
     std::vector<std::pair<uint64_t, DataBlock*> > tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
+
     uint32_t total_block_size = 0;
     while (it->Valid()) {
         if (limit > 0 && tmp.size() >= limit) {
