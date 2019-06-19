@@ -310,7 +310,7 @@ TEST_F(TabletImplTest, Get) {
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(109, response.code());
+        ASSERT_EQ(307, response.code());
     }
     // create latest ttl table
     id = counter++;
@@ -1843,7 +1843,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         request.set_ts(now3);
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(109, response.code());
+        ASSERT_EQ(307, response.code());
         ASSERT_EQ("invalid args", response.msg());
     }
     FLAGS_gc_interval = old_gc_interval;
