@@ -106,14 +106,19 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             }
         };
         if (bs == null) {
-            RpcClientOptions options = new RpcClientOptions();
-            options.setIoThreadNum(config.getIoThreadNum());
-            options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
-            options.setReadTimeoutMillis(config.getReadTimeout());
-            options.setWriteTimeoutMillis(config.getWriteTimeout());
-            options.setMaxTryTimes(config.getMaxRetryCnt());
-            options.setTimerBucketSize(config.getTimerBucketSize());
-            bs = new RpcBaseClient(options);
+            if (config != null) {
+                RpcClientOptions options = new RpcClientOptions();
+                options.setIoThreadNum(config.getIoThreadNum());
+                options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
+                options.setReadTimeoutMillis(config.getReadTimeout());
+                options.setWriteTimeoutMillis(config.getWriteTimeout());
+                options.setMaxTryTimes(config.getMaxRetryCnt());
+                options.setTimerBucketSize(config.getTimerBucketSize());
+                bs = new RpcBaseClient(options);
+            }else {
+                bs = new RpcBaseClient();
+            }
+
         }
         connectZk();
         connectNS();
