@@ -214,7 +214,7 @@ void RunGetLatestIndexAssert(::rtidb::storage::Iterator* it) {
     {
         code = tablet_impl.GetLatestIndex(10, it, 1100, ::rtidb::api::GetType::kSubKeyEq, 1101, ::rtidb::api::GetType::kSubKeyEq,
                 &value, &ts);
-        ASSERT_EQ(1, code);
+        ASSERT_EQ(-1, code);
     }
 
     // get the st > et
