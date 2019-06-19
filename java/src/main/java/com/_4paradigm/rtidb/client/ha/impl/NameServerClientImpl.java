@@ -52,6 +52,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private AtomicBoolean watching = new AtomicBoolean(true);
     private AtomicBoolean isClose = new AtomicBoolean(false);
     private RTIDBClientConfig config;
+    private RpcBaseClient bs = null;
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -75,7 +76,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     @Deprecated
     public NameServerClientImpl(String endpoint) {
         EndPoint addr = new EndPoint(endpoint);
-        RpcBaseClient bs = new RpcBaseClient();
+        bs = new RpcBaseClient();
         rpcClient = new SingleEndpointRpcClient(bs);
         BrpcChannelGroup bcg = new BrpcChannelGroup(addr.getIp(), addr.getPort(),
                 bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
@@ -104,6 +105,21 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 }
             }
         };
+        if (bs == null) {
+            if (config != null) {
+                RpcClientOptions options = new RpcClientOptions();
+                options.setIoThreadNum(config.getIoThreadNum());
+                options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
+                options.setReadTimeoutMillis(config.getReadTimeout());
+                options.setWriteTimeoutMillis(config.getWriteTimeout());
+                options.setMaxTryTimes(config.getMaxRetryCnt());
+                options.setTimerBucketSize(config.getTimerBucketSize());
+                bs = new RpcBaseClient(options);
+            }else {
+                bs = new RpcBaseClient();
+            }
+
+        }
         connectZk();
         connectNS();
         tryWatch();
@@ -155,19 +171,6 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
         EndPoint endpoint = new EndPoint(new String(bytes));
-        RpcBaseClient bs = null;
-        if (config != null) {
-            RpcClientOptions options = new RpcClientOptions();
-            options.setIoThreadNum(config.getIoThreadNum());
-            options.setMaxConnectionNumPerHost(config.getMaxCntCnnPerHost());
-            options.setReadTimeoutMillis(config.getReadTimeout());
-            options.setWriteTimeoutMillis(config.getWriteTimeout());
-            options.setMaxTryTimes(config.getMaxRetryCnt());
-            options.setTimerBucketSize(config.getTimerBucketSize());
-            bs = new RpcBaseClient(options);
-        } else {
-            bs = new RpcBaseClient();
-        }
         if (rpcClient != null) {
             rpcClient.stop();
         }
@@ -255,12 +258,25 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             if (zookeeper != null) {
                 zookeeper.close();
             }
+
         }catch(Exception e) {
             logger.error("fail to close zookeeper", e);
         }
-        if (rpcClient != null) {
-            rpcClient.stop();
+        try {
+            if (bs != null) {
+                bs.stop();
+            }
+        }catch (Exception e) {
+            logger.error("fail to close bs client", e);
         }
+        try {
+            if (rpcClient != null) {
+                rpcClient.stop();
+            }
+        } catch (Exception e) {
+            logger.error("fail to close rpc client ", e);
+        }
+
     }
 
     @Override

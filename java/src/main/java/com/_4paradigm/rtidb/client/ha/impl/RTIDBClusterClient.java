@@ -340,10 +340,19 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             }
         }
         if (nodeManager != null) {
-            nodeManager.close();
+            try {
+
+                nodeManager.close();
+            } catch (Exception e) {
+                logger.error("fail to close node manager", e);
+            }
         }
         if (baseClient != null) {
-            baseClient.stop();
+            try {
+                baseClient.stop();
+            } catch (Exception e) {
+                logger.error("fail to close base client", e);
+            }
         }
     }
 
