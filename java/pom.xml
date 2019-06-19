@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com._4paradigm</groupId>
 	<artifactId>rtidb-client</artifactId>
-	<version>1.4.0.1-RELEASE</version>
+	<version>1.4.0.3-RELEASE</version>
 	<packaging>jar</packaging>
 	<dependencies>
 
