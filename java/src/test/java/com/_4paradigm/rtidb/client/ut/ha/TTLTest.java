@@ -240,7 +240,7 @@ public class TTLTest extends TestCaseBase {
             // Assert.assertEquals(row[0], null);
             Assert.assertNull(row);
         } catch (TabletException e) {
-            Assert.assertEquals(e.getCode(), 109);
+            Assert.assertEquals(e.getCode(), 307);
         } catch (Exception e) {
             Assert.assertTrue(false);
         }

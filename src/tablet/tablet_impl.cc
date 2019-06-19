@@ -300,9 +300,13 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
     }
     if (st_type == ::rtidb::api::kSubKeyEq
             && et_type == ::rtidb::api::kSubKeyEq
-            && st != et) return 1;
+            && st != et) return -1;
 
     uint64_t end_time = std::max(et, expire_ts);
+    ::rtidb::api::GetType real_et_type = et_type;
+    if (et < expire_ts && et_type == ::rtidb::api::GetType::kSubKeyGt) {
+        real_et_type = ::rtidb::api::GetType::kSubKeyGe; 
+    }
     if (st > 0) {
         if (st < end_time) {
             PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
@@ -355,7 +359,7 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
 
     if (it->Valid()) {
         bool jump_out = false;
-        switch(et_type) {
+        switch(real_et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
                 if (it->GetKey() != end_time) {
                     jump_out = true;
@@ -397,9 +401,16 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
         PDLOG(WARNING, "invalid args");
         return -1;
     }
+
     if (st_type == ::rtidb::api::kSubKeyEq
         && et_type == ::rtidb::api::kSubKeyEq
-        && st != et) return 1;
+        && st != et) return -1;
+
+    if (st < et) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+
     uint32_t it_count = 0;
     // go to start point
     it->SeekToFirst();
