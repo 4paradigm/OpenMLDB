@@ -5,8 +5,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.GetFuture;
+import com._4paradigm.rtidb.client.PutFuture;
+import com._4paradigm.rtidb.client.base.ClientBuilder;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.ut.Config;
+import com._4paradigm.rtidb.client.base.Config;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -14,8 +18,6 @@ import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
@@ -25,35 +27,16 @@ import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
 
-public class TableSyncClientTest {
-    private static String zkEndpoints = Config.ZK_ENDPOINTS;
-    private static String zkRootPath = Config.ZK_ROOT_PATH;
-    private static String leaderPath  = zkRootPath + "/leader";
+public class TableSyncClientTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(10000);
-    private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBClusterClient client = null;
-    private static TableSyncClient tableSyncClient = null;
     private static String[] nodes = Config.NODES;
     @BeforeClass
-    public static void setUp() {
-        try {
-            nsc.init();
-            config.setZkEndpoints(zkEndpoints);
-            config.setZkRootPath(zkRootPath);
-            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
-            client = new RTIDBClusterClient(config);
-            client.init();
-            tableSyncClient = new TableSyncClientImpl(client);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+    public  void setUp() {
+        super.setUp();
     }
     @AfterClass
-    public static void tearDown() {
-        nsc.close();
-        client.close();
+    public  void tearDown() {
+        super.tearDown();
     }
     
     private String createKvTable() {
@@ -520,7 +503,7 @@ public class TableSyncClientTest {
     
     @Test
     public void testScanDuplicateRecord() {
-        config.setRemoveDuplicateByTime(true);
+        ClientBuilder.config.setRemoveDuplicateByTime(true);
         String name = createSchemaTable();
         try {
             boolean ok = tableSyncClient.put(name, 10, new Object[] { "card0", "1222", 1.0 });
@@ -537,7 +520,7 @@ public class TableSyncClientTest {
         } catch (Exception e) {
             Assert.fail();
         } finally {
-            config.setRemoveDuplicateByTime(false);
+            ClientBuilder.config.setRemoveDuplicateByTime(false);
         }
        
     }
@@ -593,8 +576,6 @@ public class TableSyncClientTest {
             }
         } catch (Exception e) {
             Assert.fail();
-        } finally {
-            config.setRemoveDuplicateByTime(false);
         }
     }
 
@@ -638,5 +619,48 @@ public class TableSyncClientTest {
             nsc.dropTable(name);
         }
 //        return name;
+    }
+
+
+    @Test
+    public void testGetWithOpDefault() {
+        String name = createSchemaTable("kLatestTime");
+        try {
+            boolean ok  = tableSyncClient.put(name, 10, new Object[]{"card0", "1222", 1.0});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 11, new Object[]{"card0", "1224", 2.0});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, 13, new Object[]{"card0", "1224", 3.0});
+            Assert.assertTrue(ok);
+            // range
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0", "card", 14, null, Tablet.GetType.kSubKeyLe,
+                        9, Tablet.GetType.kSubKeyGe);
+                Assert.assertEquals(new Object[]{"card0", "1224", 3.0}, row);
+            }
+
+            //
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0","card", 14, null, Tablet.GetType.kSubKeyLe,
+                        14, Tablet.GetType.kSubKeyGe);
+                Assert.assertEquals(null, row);
+            }
+
+            //
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0","card", 13, null, Tablet.GetType.kSubKeyEq,
+                        13, Tablet.GetType.kSubKeyEq);
+                Assert.assertEquals(new Object[]{"card0", "1224", 3.0}, row);
+            }
+
+            {
+                Object[] row = tableSyncClient.getRow(name, "card0","card", 11, null, Tablet.GetType.kSubKeyEq,
+                        11, Tablet.GetType.kSubKeyEq);
+                Assert.assertEquals(new Object[]{"card0", "1224", 2.0}, row);
+            }
+
+        } catch (Exception e) {
+            Assert.fail();
+        }
     }
 }

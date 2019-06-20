@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.tablet.Tablet;
 
 public class PutFuture implements Future<Boolean> {

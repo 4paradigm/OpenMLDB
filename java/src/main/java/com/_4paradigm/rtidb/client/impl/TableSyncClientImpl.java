@@ -2,12 +2,11 @@ package com._4paradigm.rtidb.client.impl;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.sql.Timestamp;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
@@ -16,20 +15,15 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.client.schema.RowCodec;
-import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
-import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
 
-import org.joda.time.DateTime;
 import rtidb.api.TabletServer;
 
 public class TableSyncClientImpl implements TableSyncClient {
@@ -80,7 +74,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
-        return get(tid, pid, key, null, time, null, null, client.getHandler(tid));
+        return get(tid, pid, key, null, time, null, null, client.getHandler(tid), 0l, null);
     }
 
     @Override
@@ -94,12 +88,22 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
-        ByteString response = get(tid, pid, key, idxName, time, null, null, th);
+        ByteString response = get(tid, pid, key, idxName, time, null, null, th, 0l, null);
         if (response == null || response.isEmpty()) {
             return null;
         }
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
         return row;
+    }
+
+    @Override
+    public Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, keyArr, idxName, time, tsName, type, 0l, null);
+    }
+
+    @Override
+    public Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, keyMap, idxName, time, tsName, type, 0l, null);
     }
 
     @Override
@@ -134,13 +138,19 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, key, idxName, time, tsName, type, 0l, null);
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type,
+                            long et, Tablet.GetType etType) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, th, et, etType);
         if (response == null || response.isEmpty()) {
             return null;
         }
@@ -149,8 +159,8 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type)
-            throws TimeoutException, TabletException {
+    public Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type,
+                           long et, Tablet.GetType etType) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -164,7 +174,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th, et, etType);
         if (response == null || response.isEmpty()) {
             return null;
         }
@@ -174,7 +184,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName,
-                           Tablet.GetType type) throws TimeoutException, TabletException {
+                           Tablet.GetType type, long et, Tablet.GetType etType) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
@@ -185,7 +195,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th, et, etType);
         if (response == null || response.isEmpty()) {
             return null;
         }
@@ -207,7 +217,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, null, time, null, null, th);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, null, time, null, null, th, 0l, null);
         return response;
     }
 
@@ -231,7 +241,8 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     private ByteString get(int tid, int pid, String key, String idxName, long time, String tsName, Tablet.GetType type,
-                           TableHandler th) throws TabletException {
+                           TableHandler th,
+                           long et, Tablet.GetType etType) throws TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -243,7 +254,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setPid(pid);
         builder.setKey(key);
         builder.setTs(time);
+        builder.setEt(et);
         if (type != null) builder.setType(type);
+        if (etType != null) builder.setEtType(etType);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }

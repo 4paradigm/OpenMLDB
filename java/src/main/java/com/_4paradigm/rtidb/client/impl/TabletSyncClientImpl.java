@@ -20,7 +20,6 @@ import com._4paradigm.rtidb.client.TabletSyncClient;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
@@ -76,7 +75,15 @@ public class TabletSyncClientImpl implements TabletSyncClient {
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException {
         Tablet.GetRequest request = Tablet.GetRequest.newBuilder().setPid(pid).setTid(tid).setKey(key).setTs(time)
                 .build();
-        Tablet.GetResponse response = client.getHandler(tid).getHandler(pid).getLeader().get(request);
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            return null;
+        }
+        PartitionHandler ph = th.getHandler(pid);
+        if (ph == null) {
+            return null;
+        }
+        Tablet.GetResponse response = ph.getLeader().get(request);
         if (response != null && response.getCode() == 0) {
             return response.getValue();
         }

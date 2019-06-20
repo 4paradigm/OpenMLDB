@@ -7,7 +7,6 @@ import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
@@ -20,24 +19,24 @@ public class GetFuture implements Future<ByteString>{
 	private TableHandler t;
 	private RTIDBClientConfig config = null;
 
-	public static GetFuture wrappe(Future<Tablet.GetResponse> f, long startTime, RTIDBClientConfig config) {
-        return new GetFuture(f, startTime, config);
-    }
+	public static GetFuture wrappe(Future<Tablet.GetResponse> f, RTIDBClientConfig config) {
+		return new GetFuture(f, config);
+	}
 
-    public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, long startTime, RTIDBClientConfig config) {
-        return new GetFuture(f, t, startTime, config);
-    }
+	public static GetFuture wrappe(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
+		return new GetFuture(f, t, config);
+	}
 
-	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, long startTime, RTIDBClientConfig config) {
+	public GetFuture(Future<Tablet.GetResponse> f, TableHandler t, RTIDBClientConfig config) {
 		this.f = f;
 		this.t = t;
 		this.config = config;
 	}
 
-	public GetFuture(Future<Tablet.GetResponse> f,  long startTime, RTIDBClientConfig config) {
-        this.f = f;
-        this.config = config;
-    }
+	public GetFuture(Future<Tablet.GetResponse> f,  RTIDBClientConfig config) {
+		this.f = f;
+		this.config = config;
+	}
 
 	@Override
 	public boolean cancel(boolean mayInterruptIfRunning) {
@@ -68,12 +67,13 @@ public class GetFuture implements Future<ByteString>{
 	}
 
 	public Object[] getRow() throws InterruptedException, ExecutionException, TabletException{
-	    if (t == null || t.getSchema().isEmpty()) {
-            throw new TabletException("no schema for table " + t);
-        }
+		if (t == null || t.getSchema().isEmpty()) {
+			throw new TabletException("no schema for table " + t);
+		}
 		ByteString raw = get();
 		if (raw == null || raw.isEmpty()) {
-            return null;
+			return null;
+
 		}
 		Object[] row = new Object[t.getSchema().size()];
 		decode(raw, row, 0, row.length);
@@ -82,20 +82,20 @@ public class GetFuture implements Future<ByteString>{
 
 	@Deprecated
 	public void getRow(Object[] row, int start, int length) throws TabletException, InterruptedException, ExecutionException {
-	    if (t == null || t.getSchema().isEmpty()) {
-            throw new TabletException("no schema for table " + t);
-        }
-        ByteString raw = get();
-        if (raw == null) {
-            return ;
-        }
-        decode(raw, row, start, length);
+		if (t == null || t.getSchema().isEmpty()) {
+			throw new TabletException("no schema for table " + t);
+		}
+		ByteString raw = get();
+		if (raw == null) {
+			return ;
+		}
+		decode(raw, row, start, length);
 	}
-	
+
 	private void decode(ByteString raw, Object[] row, int start, int length) throws TabletException {
-	    RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema(), row, start, length);
+		RowCodec.decode(raw.asReadOnlyByteBuffer(), t.getSchema(), row, start, length);
 	}
-	
+
 	@Override
 	public ByteString get() throws InterruptedException, ExecutionException {
 		GetResponse response = f.get();

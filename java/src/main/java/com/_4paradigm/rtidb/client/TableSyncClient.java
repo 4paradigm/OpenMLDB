@@ -73,7 +73,12 @@ public interface TableSyncClient {
     Object[] getRow(String tname, String key, String idxName, long time, Tablet.GetType type) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
-
+    Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type,
+                    long et, Tablet.GetType etType) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type,
+                    long et, Tablet.GetType etType) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type,
+                    long et, Tablet.GetType etType) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
     Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
 

@@ -25,6 +25,58 @@ public:
 
 };
 
+void RunHasTs(::rtidb::storage::DataBlock* db) {
+    std::vector<std::pair<uint64_t, ::rtidb::storage::DataBlock*> > datas;
+    datas.reserve(1000);
+    uint32_t total_block_size = 0;
+    for (uint32_t i = 0; i < 1000; i++) {
+        datas.push_back(std::make_pair(1000 ,db));
+        total_block_size += db->size;
+    }
+    std::string pairs;
+    ::rtidb::base::EncodeRows(datas, total_block_size, &pairs);
+}
+
+void RunNoneTs(::rtidb::storage::DataBlock* db) {
+    std::vector<::rtidb::storage::DataBlock* > datas;
+    datas.reserve(1000);
+    uint32_t total_block_size = 0;
+    for (uint32_t i = 0; i < 1000; i++) {
+        datas.push_back(db);
+        total_block_size += db->size;
+    }
+    std::string pairs;
+    ::rtidb::base::EncodeRows(datas, total_block_size, &pairs);
+}
+
+TEST_F(CodecBenchmarkTest, Encode_ts_vs_none_ts) {
+    char* bd = new char[128];
+    for (uint32_t i = 0; i < 128; i++) {
+        bd[i] = 'a';
+    }
+    ::rtidb::storage::DataBlock* block = new ::rtidb::storage::DataBlock(1, bd, 128);
+    for (uint32_t i = 0; i < 10; i++) {
+        RunHasTs(block);
+        RunNoneTs(block);
+    }
+
+    uint64_t consumed = ::baidu::common::timer::get_micros();
+
+    for (uint32_t i = 0; i < 10000; i++) {
+        RunHasTs(block);
+    }
+    consumed = ::baidu::common::timer::get_micros() - consumed;
+
+    
+    uint64_t pconsumed = ::baidu::common::timer::get_micros();
+    for (uint32_t i = 0; i < 10000; i++) {
+        RunNoneTs(block);
+    }
+    pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
+    std::cout << "encode 1000 records has ts avg consumed:" << consumed /10000 << "μs"<< std::endl;
+    std::cout << "encode 1000 records has no ts avg consumed " << pconsumed/10000<< "μs" << std::endl;
+}
+
 TEST_F(CodecBenchmarkTest, Encode) {
     std::vector<::rtidb::storage::DataBlock*> data;
     char* bd = new char[400];
@@ -119,7 +171,6 @@ TEST_F(CodecBenchmarkTest, Decode) {
     pconsumed = ::baidu::common::timer::get_micros() - pconsumed;
     std::cout << "Decode rtidb: " << consumed/1000 << std::endl;
     std::cout << "Decode protobuf: " << pconsumed/1000 << std::endl;
-
 }
 
 }

@@ -28,8 +28,7 @@ sleep 2
 cd onebox && sh start_onebox.sh && cd $ROOT_DIR
 sleep 3
 cd $ROOT_DIR/java
-#mvn clean test -Dproject.build.sourceEncoding=UTF-8 -Dproject.reporting.outputEncoding=UTF-8 -Dtest=com._4paradigm.rtidb.client.ut.*Test,com._4paradigm.rtidb.client.ut.ha.*Test
-mvn clean test  -Dtest=com._4paradigm.rtidb.client.ut.*Test,com._4paradigm.rtidb.client.ut.ha.*Test
+mvn clean test 
 clear_debug
 cd $ROOT_DIR
 cd onebox && sh stop_all.sh

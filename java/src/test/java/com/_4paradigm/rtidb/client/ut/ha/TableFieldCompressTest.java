@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.ut.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.client.base.Config;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -17,52 +17,24 @@ import com._4paradigm.rtidb.client.GetFuture;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
-import com._4paradigm.rtidb.client.TableAsyncClient;
-import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.TableAsyncClientImpl;
-import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS;
 import com.google.protobuf.ByteString;
 
 
 import java.nio.ByteBuffer;
 
-public class TableFieldCompressTest {
-    private static String zkEndpoints = Config.ZK_ENDPOINTS;
-    private static String zkRootPath = Config.ZK_ROOT_PATH;
-    private static String leaderPath  = zkRootPath + "/leader";
+public class TableFieldCompressTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(10000);
-    private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBClusterClient client = null;
-    private static TableSyncClient tableSyncClient = null;
-    private static TableAsyncClient tableAsyncClient = null;
     private static String[] nodes = Config.NODES;
 
     @BeforeClass
-    public static void setUp() {
-        try {
-            nsc.init();
-            config.setZkEndpoints(zkEndpoints);
-            config.setZkRootPath(zkRootPath);
-            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
-            client = new RTIDBClusterClient(config);
-            client.init();
-            tableSyncClient = new TableSyncClientImpl(client);
-            tableAsyncClient = new TableAsyncClientImpl(client);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+    public void setUp() {
+        super.setUp();
     }
 
     @AfterClass
-    public static void closeResource() {
-        nsc.close();
-        client.close();
+    public  void closeResource() {
+        super.tearDown();
     }
     
     private String createSchemaTable(int schema_num) {

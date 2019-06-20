@@ -310,7 +310,7 @@ TEST_F(TabletImplTest, Get) {
         ::rtidb::api::GetResponse response;
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(109, response.code());
+        ASSERT_EQ(307, response.code());
     }
     // create latest ttl table
     id = counter++;
@@ -1305,7 +1305,6 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.ts());
-        ASSERT_EQ("test1", response.key());
         ASSERT_EQ("test1", response.value());
     }
 
@@ -1819,7 +1818,6 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(now3, response.ts());
-        ASSERT_EQ("test1", response.key());
         ASSERT_EQ("test3", response.value());
     }
 
@@ -1845,8 +1843,8 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
         request.set_ts(now3);
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
-        ASSERT_EQ(109, response.code());
-        ASSERT_EQ("key not found", response.msg());
+        ASSERT_EQ(307, response.code());
+        ASSERT_EQ("invalid args", response.msg());
     }
     FLAGS_gc_interval = old_gc_interval;
 }
@@ -1988,7 +1986,6 @@ TEST_F(TabletImplTest, TestGetType) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(1, response.ts());
-        ASSERT_EQ("test", response.key());
         ASSERT_EQ("test1", response.value());
     }
     // le
@@ -2004,7 +2001,6 @@ TEST_F(TabletImplTest, TestGetType) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(3, response.ts());
-        ASSERT_EQ("test", response.key());
         ASSERT_EQ("test3", response.value());
     }
     // lt
@@ -2021,7 +2017,6 @@ TEST_F(TabletImplTest, TestGetType) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(2, response.ts());
-        ASSERT_EQ("test", response.key());
         ASSERT_EQ("test2", response.value());
     }
     // gt
@@ -2037,7 +2032,6 @@ TEST_F(TabletImplTest, TestGetType) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(6, response.ts());
-        ASSERT_EQ("test", response.key());
         ASSERT_EQ("test6", response.value());
     }
     // ge
@@ -2053,7 +2047,6 @@ TEST_F(TabletImplTest, TestGetType) {
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(6, response.ts());
-        ASSERT_EQ("test", response.key());
         ASSERT_EQ("test6", response.value());
     }
 }

@@ -7,7 +7,6 @@ import java.util.List;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;

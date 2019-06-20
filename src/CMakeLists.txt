@@ -72,6 +72,9 @@ target_link_libraries(kv_iterator_test gtest pthread common protobuf)
 add_executable(tablet_impl_test  tablet/tablet_impl_test.cc base/status.cc)
 target_link_libraries(tablet_impl_test  gtest pthread  tablet gflags storage replica log common brpc rt ssl crypto dl leveldb rt protobuf z snappy zk_client  zookeeper_mt tcmalloc_minimal)
 
+add_executable(tablet_func_test  tablet/tablet_impl_func_test.cc base/status.cc)
+target_link_libraries(tablet_func_test  gtest pthread  tablet gflags storage replica log common brpc rt ssl crypto dl leveldb rt protobuf z snappy zk_client  zookeeper_mt tcmalloc_minimal)
+
 add_executable(tablet_impl_keep_alive_test tablet/tablet_impl_keep_alive_test.cc base/status.cc)
 target_link_libraries(tablet_impl_keep_alive_test   gtest pthread tablet gflags storage replica log common brpc rt ssl crypto dl leveldb protobuf z snappy zk_client zookeeper_mt tcmalloc_minimal)
 
@@ -80,6 +83,9 @@ target_link_libraries(tablet_impl_mem_test   gtest pthread tablet gflags storage
 
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/common.pb.cc)
 target_link_libraries(codec_bench_test   gtest pthread storage tablet gflags storage common protobuf tcmalloc_minimal)
+
+add_executable(codec_test  base/codec_test.cc proto/common.pb.cc)
+target_link_libraries(codec_test   gtest pthread storage tablet gflags storage common protobuf tcmalloc_minimal)
 
 add_executable(log_test  log/log_test.cc)
 target_link_libraries(log_test   gtest pthread storage tablet base log gflags storage common protobuf tcmalloc_minimal)

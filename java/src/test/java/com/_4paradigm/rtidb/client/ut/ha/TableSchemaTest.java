@@ -6,8 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.ut.Config;
+import com._4paradigm.rtidb.client.base.Config;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.testng.Assert;
@@ -17,9 +18,6 @@ import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
@@ -27,37 +25,18 @@ import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 
-public class TableSchemaTest {
+public class TableSchemaTest extends TestCaseBase {
     private final static Logger logger = LoggerFactory.getLogger(TableSchemaTest.class);
-    private static String zkEndpoints = Config.ZK_ENDPOINTS;
-    private static String zkRootPath = Config.ZK_ROOT_PATH;
-    private static String leaderPath  = zkRootPath + "/leader";
     private static AtomicInteger id = new AtomicInteger(50000);
-    private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBClusterClient client = null;
-    private static TableSyncClient tableSyncClient = null;
     private static String[] nodes = Config.NODES;
 
     @BeforeClass
-    public static void setUp() {
-        try {
-            nsc.init();
-            config.setZkEndpoints(zkEndpoints);
-            config.setZkRootPath(zkRootPath);
-            config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
-            client = new RTIDBClusterClient(config);
-            client.init();
-            tableSyncClient = new TableSyncClientImpl(client);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+    public void setUp() {
+        super.setUp();
     }
     @AfterClass
-    public static void tearDown() {
-        nsc.close();
-        //client.close();
+    public void tearDown() {
+        super.tearDown();
     }
 
     private String createSchemaTable() {

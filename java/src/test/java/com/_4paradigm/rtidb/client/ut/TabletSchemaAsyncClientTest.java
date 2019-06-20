@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -15,38 +16,21 @@ import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TabletAsyncClient;
 import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.client.TabletSyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
-import com._4paradigm.rtidb.client.impl.TabletAsyncClientImpl;
-import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 
-import io.brpc.client.EndPoint;
-
-public class TabletSchemaAsyncClientTest {
+public class TabletSchemaAsyncClientTest extends TestCaseBase {
 
     private final static AtomicInteger id = new AtomicInteger(4000);
     private static TabletAsyncClient aclient = null;
-    private static TabletSyncClient sclient = null;
-    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
     @BeforeClass
-    public static void setUp() {
-        try {
-            snc.init();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        aclient = new TabletAsyncClientImpl(snc);
-        sclient = new TabletSyncClientImpl(snc);
+    public void setUp() {
+        super.setUp();
+        aclient = super.tabletAsyncClient;
     }
     @AfterClass
-    public static void tearDown() {
-        snc.close();
+    public void tearDown() {
+        super.tearDown();
     }
     
     private int createTable() {
@@ -67,7 +51,7 @@ public class TabletSchemaAsyncClientTest {
         desc3.setName("amt");
         desc3.setType(ColumnType.kDouble);
         schema.add(desc3);
-        boolean ok = sclient.createTable("tj0", tid, 0, 0, 8, schema);
+        boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertTrue(ok);
         return tid;
     }
@@ -117,9 +101,9 @@ public class TabletSchemaAsyncClientTest {
     @Test
     public void testAsyncScanTable() throws TimeoutException, TabletException {
         int tid = createTable();
-        Assert.assertTrue(sclient.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 }));
-        Assert.assertTrue(sclient.put(tid, 0, 11, new Object[] { "9527", "1221", 2.0 }));
-        Assert.assertTrue(sclient.put(tid, 0, 12, new Object[] { "9524", "1222", 3.0 }));
+        Assert.assertTrue(tableSingleNodeSyncClient.put(tid, 0, 10, new Object[] { "9527", "1222", 1.0 }));
+        Assert.assertTrue(tableSingleNodeSyncClient.put(tid, 0, 11, new Object[] { "9527", "1221", 2.0 }));
+        Assert.assertTrue(tableSingleNodeSyncClient.put(tid, 0, 12, new Object[] { "9524", "1222", 3.0 }));
         ScanFuture sf = aclient.scan(tid, 0, "9527", "card", 12, 9);
         try {
             KvIterator it = sf.get();
