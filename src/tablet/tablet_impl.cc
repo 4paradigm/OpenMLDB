@@ -848,7 +848,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
             continue;
         }
         bool jump_out = false;
-        switch(et_type) {
+        switch(real_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
                 if (it->GetKey() != end_time) {
                     jump_out = true;
