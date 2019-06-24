@@ -60,6 +60,9 @@ public class RTIDBClientConfig {
         this.timerBucketSize = timerBucketSize;
     }
 
+    @Deprecated
+    public void disableMetrics() {}
+
     /**
      * @return the nsEndpoint
      */
@@ -163,6 +166,14 @@ public class RTIDBClientConfig {
 
     public int getZkSesstionTimeout() {
         return zkSesstionTimeout;
+    }
+
+    @Deprecated
+    public void enableMetrics() {}
+
+    @Deprecated
+    public boolean isMetricsEnabled() {
+        return true;
     }
 
     public void setZkSesstionTimeout(int zkSesstionTimeout) {
