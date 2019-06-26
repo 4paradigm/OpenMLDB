@@ -41,7 +41,6 @@ TEST_F(StringsTest, ReadableTime) {
     ASSERT_EQ("5h", result);
     result = HumanReadableTime(60000 * 60 * 24 * 5 + 100);
     ASSERT_EQ("5d", result);
-    ASSERT_TRUE(false);
 }
 
 }
