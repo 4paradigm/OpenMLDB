@@ -29,8 +29,10 @@ cd onebox && sh start_onebox.sh && cd $ROOT_DIR
 sleep 3
 cd $ROOT_DIR/java
 mvn clean test 
+code=$?
 clear_debug
 cd $ROOT_DIR
 cd onebox && sh stop_all.sh
 cd $ROOT_DIR
 cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
+exit $code
