@@ -315,7 +315,7 @@ public class TableClientCommonTest {
             keyMap.put("amt", 1.5d);
             keyMap.put("col1", 1234);
             keyMap.put("ts1", 1122l);
-            keyMap.put("ts2", ts;
+            keyMap.put("ts2", ts);
             Object[] arrayRow = new Object[th.getSchema().size()];
             List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
             TableClientCommon.parseMapInput(keyMap, th, arrayRow, tsDimensions);
