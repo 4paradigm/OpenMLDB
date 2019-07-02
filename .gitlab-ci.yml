@@ -37,20 +37,6 @@ java_ut:
                 - java/target/surefire-reports/TEST-*.xml
                 - java/target/failsafe-reports/junitreports/TEST-*.xml
                 - java/target/failsafe-reports/TEST-*.xml
-
-java_ft:
-    stage: it
-    script:
-        - ln -sf /usr/workdir/thirdparty thirdparty
-        - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ft.sh
-    artifacts:
-        reports:
-            junit:
-                - java/target/surefire-reports/junitreports/TEST-*.xml
-                - java/target/surefire-reports/TEST-*.xml
-                - java/target/failsafe-reports/junitreports/TEST-*.xml
-                - java/target/failsafe-reports/TEST-*.xml
             
 it_one_demension:
     stage: it
