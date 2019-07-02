@@ -2,7 +2,6 @@ image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.4
 stages:
     - build
     - ut
-    - it
 
 build_rtidb_and_case:
     stage: build
@@ -39,7 +38,7 @@ java_ut:
                 - java/target/failsafe-reports/TEST-*.xml
             
 it_one_demension:
-    stage: it
+    stage: ut
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
@@ -54,7 +53,7 @@ it_one_demension:
                 - one-demension/*.xml
 
 it_multi_demension:
-    stage: it
+    stage: ut
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
