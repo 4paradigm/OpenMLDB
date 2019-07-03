@@ -56,26 +56,25 @@ it_one_demension:
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/integration_test.sh 0 "ns_client"
-        - rm -rf ./test-output/integrationtest/test-reports/one-demension 
-        - mkdir -p ./one-demension
-        - mv ./test-output/integrationtest/test-reports/*.xml ./one-demension
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH 
+        - bash steps/integration_test.sh 0 "ns_client"
     artifacts:
         reports:
             junit:
-                - one-demension/*.xml
+                - ./test-output/integrationtest/test-reports/*.xml
 
 it_multi_demension:
     stage: ut
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/integration_test.sh 1 "ns_client"
-        - mkdir -p ./multi-demension
-        - mv ./test-output/integrationtest/test-reports/*.xml ./multi-demension
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH 
+        - bash steps/integration_test.sh 1 "ns_client"
     artifacts:
         reports:
             junit:
-                - multi-demension/*.xml
+                - ./test-output/integrationtest/test-reports/*.xml
