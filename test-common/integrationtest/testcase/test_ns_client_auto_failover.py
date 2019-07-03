@@ -354,12 +354,10 @@ class TestAutoFailover(TestCaseBase):
         rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
         rs = self.start_client(self.slave1)
         time.sleep(1)
-        rs_after = self.gettablestatus(self.slave1)
-        rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
         for i in range(20):
             rs_after = self.gettablestatus(self.slave1)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-            if '{}'.format(rs_after) == '{}':
+            if len(rs_after.keys()) == 0:
                 time.sleep(2)
                 continue
 
