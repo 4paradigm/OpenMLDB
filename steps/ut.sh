@@ -22,4 +22,5 @@ done
 code=`cat $TMPFILE`
 rm $TMPFILE
 cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
+cd -
 exit $code
