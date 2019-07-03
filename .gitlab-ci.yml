@@ -37,6 +37,22 @@ java_ut:
                 - java/target/failsafe-reports/junitreports/TEST-*.xml
                 - java/target/failsafe-reports/TEST-*.xml
             
+it_client_test:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH 
+        - sh steps/integration_test.sh 0 "test" "ns_client"
+        - rm -rf ./test-output/integrationtest/test-reports/client/ 
+        - mkdir -p ./client-report
+        - mv ./test-output/integrationtest/test-reports/client/*.xml ./client-report
+    artifacts:
+        reports:
+            junit:
+                - client-report/*.xml
+
 it_one_demension:
     stage: ut
     script:
