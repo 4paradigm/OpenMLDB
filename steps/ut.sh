@@ -19,7 +19,7 @@ do
         echo $RET > $TMPFILE
     fi 
 done
-cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
 code=`cat $TMPFILE`
 rm $TMPFILE
+cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
 exit $code
