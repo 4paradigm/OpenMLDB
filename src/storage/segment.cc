@@ -459,7 +459,9 @@ void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_
             }
             KeyEntry* entry = entry_arr[pos->second];
             ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
-            if (node == NULL || node->GetKey() > kv.second) {
+            if (node == NULL) {
+                continue;
+            } else if (node->GetKey() > kv.second) {
                 PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lu ts_idx %lu need not ttl, node key %lu", 
                              kv.second, pos->second, node->GetKey());
                 continue;
