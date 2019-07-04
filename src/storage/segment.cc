@@ -405,7 +405,9 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
         Slice key = it->GetKey();
         it->Next();
         ::rtidb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
-        if (node == NULL || node->GetKey() > time) {
+        if (node == NULL) {
+            continue;
+        } else if (node->GetKey() > time) {
             PDLOG(DEBUG, "[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu", time, node->GetKey());
             continue;
         }
