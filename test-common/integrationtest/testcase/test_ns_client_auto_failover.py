@@ -607,7 +607,7 @@ class TestAutoFailover(TestCaseBase):
             tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
             for status in tablestatus:
                 if status[2] == name:
-                    if tablestatus.values()[index][0] == 'kDone':
+                    if tablestatus.values()[index][0] == 'kDone' or tablestatus.values()[index][0] == 'kFailed':
                         row = row + 1
                     index = index + 1
             if row == index:
