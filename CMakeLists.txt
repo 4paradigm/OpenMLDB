@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project(rtidb)
 
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(RTIDB_VERSION_MAJOR 1)
 set(RTIDB_VERSION_MINOR 4)
 set(RTIDB_VERSION_BUG 1)
