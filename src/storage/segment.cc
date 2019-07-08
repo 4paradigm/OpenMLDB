@@ -278,14 +278,16 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
             KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();
             for (uint32_t i = 0; i < ts_cnt_; i++) {
                 uint64_t old = gc_idx_cnt;
-                TimeEntries::Iterator* it = entry_arr[i]->entries.NewIterator();
+                KeyEntry* entry = entry_arr[i];
+                TimeEntries::Iterator* it = entry->entries.NewIterator();
                 it->SeekToFirst();
                 if (it->Valid()) {
                     uint64_t ts = it->GetKey();
-                    ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry_arr[i]->entries.Split(ts);
+                    ::rtidb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
                     FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                 }
                 delete it;
+                delete entry;
                 idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
             }
             delete[] entry_arr;
