@@ -1,12 +1,13 @@
 image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.4
 stages:
     - build
-    #- ut
-    - it
+    - ut
+    - it-tablet
+    - it-ns
 
 build_rtidb_and_case:
     stage: build
-    script: 
+    script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/compile.sh
@@ -14,15 +15,80 @@ build_rtidb_and_case:
         expire_in: 1h
         paths:
             - build/
+cpp_ut:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+    artifacts:
+        reports:
+            junit:
+                - reports/*.xml
+java_ut:
+    stage: ut
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+    artifacts:
+        reports:
+            junit:
+                - java/target/surefire-reports/junitreports/TEST-*.xml
+                - java/target/surefire-reports/TEST-*.xml
+                - java/target/failsafe-reports/junitreports/TEST-*.xml
+                - java/target/failsafe-reports/TEST-*.xml
 
-ns_multi_demension:
-    stage: it
+tablet_one_demension:
+    stage: it-tablet
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
         - rm -rf ./test-output/integrationtest/test-reports/
         - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH 
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
+        - sh steps/integration_test.sh 0 "test" "ns_client"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+
+tablet_multi_demension:
+    stage: it-tablet
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
+        - sh steps/integration_test.sh 1 "test" "ns_client"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+
+ns_one_demension:
+    stage: it-ns
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
+        - bash steps/integration_test.sh 0 "ns_client"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+
+ns_multi_demension:
+    stage: it-ns
+    script:
+        - ln -sf /usr/workdir/thirdparty thirdparty
+        - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH
         - bash steps/integration_test.sh 1 "ns_client"
     artifacts:
         reports:
