@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.common.Common;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.testng.Assert;
@@ -181,6 +182,46 @@ public class TableSchemaTest extends TestCaseBase {
                 Assert.assertEquals("card0", row[0]);
                 for (int i = 0; i < row.length - 1; i++) {
                     Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Assert.assertTrue(false);
+            } finally {
+                nsc.dropTable(name);
+            }
+        }
+    }
+
+    @Test
+    public void testSchemaSize() {
+        int[] schemaArr = {100, 127, 128, 129, 1000};
+        for (int schemaSize : schemaArr) {
+            String name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            TableInfo.Builder builder = TableInfo.newBuilder().setName(name).setTtl(0);
+            Common.ColumnDesc col = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+            builder.addColumnDescV1(col);
+            for (int i = 0; i < schemaSize - 1; i++) {
+                col = Common.ColumnDesc.newBuilder().setName("card" + i).setType("string").build();
+                builder.addColumnDescV1(col);
+            }
+            TableInfo table = builder.build();
+            boolean ok = nsc.createTable(table);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            long time = System.currentTimeMillis();
+            try {
+                Object[] objects = new Object[schemaSize];
+                for (int i = 0; i < schemaSize; i++) {
+                    objects[i] = String.valueOf(i);
+                }
+                ok = tableSyncClient.put(name, time, objects);
+                Assert.assertTrue(ok);
+                Object[] row = tableSyncClient.getRow(name, "0", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schemaSize, row.length);
+                for (int i = 0; i < schemaSize; i++) {
+                    Assert.assertEquals(String.valueOf(i), row[i]);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
