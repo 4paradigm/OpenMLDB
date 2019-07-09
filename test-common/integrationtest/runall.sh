@@ -26,6 +26,7 @@ else
 fi  
 
 python ${testpath}/runall.py -R="${runlist}" -N="${norunlist}"
-
+code=$?
 # teardown kill services
 python ${testpath}/setup.py -T=true
+exit $code

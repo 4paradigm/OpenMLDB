@@ -613,7 +613,7 @@ TEST_F(NameServerImplTest, CancelOP) {
 }
 
 int main(int argc, char** argv) {
-
+    FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
     ::baidu::common::SetLogLevel(::baidu::common::INFO);

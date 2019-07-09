@@ -23,14 +23,16 @@ netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs ki
 ./bin/zkServer.sh start && cd $ROOT_DIR
 ./build/bin/rtidb --db_root_path=/tmp/$RANDOM --log_level=debug --gc_safe_offset=0 --gc_interval=1 --endpoint=0.0.0.0:9501 --role=tablet &
 
-sleep 2
+sleep 5
 
 cd onebox && sh start_onebox.sh && cd $ROOT_DIR
 sleep 3
 cd $ROOT_DIR/java
 mvn clean test 
+code=$?
 clear_debug
 cd $ROOT_DIR
 cd onebox && sh stop_all.sh
 cd $ROOT_DIR
 cd thirdsrc/zookeeper-3.4.10 && ./bin/zkServer.sh stop
+exit $code

@@ -252,11 +252,12 @@ public class TableClientCommonTest {
         TableHandler th = new TableHandler(table);
         th.setPartitions( new PartitionHandler[] {new PartitionHandler(), new PartitionHandler(), new PartitionHandler()});
         try {
-            Object[] row1 = new Object[] {"card1", "mcc1", 1.5d, 1122l, 1234l, Timestamp.valueOf("2019-05-30 19:50:43")};
+            Timestamp ts = Timestamp.valueOf("2019-05-30 19:50:43");
+            Object[] row1 = new Object[] {"card1", "mcc1", 1.5d, 1122l, 1234l, ts};
             List<Tablet.TSDimension> list = TableClientCommon.parseArrayInput(row1, th);
             Assert.assertEquals(list.size(), 2);
             Assert.assertEquals(list.get(0).getTs(), 1234);
-            Assert.assertEquals(list.get(1).getTs(), 1559217043000l);
+            Assert.assertEquals(list.get(1).getTs(), ts.getTime());
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
@@ -307,13 +308,14 @@ public class TableClientCommonTest {
         TableHandler th = new TableHandler(table);
         th.setPartitions( new PartitionHandler[] {new PartitionHandler(), new PartitionHandler(), new PartitionHandler()});
         try {
+            Timestamp ts = Timestamp.valueOf("2019-05-30 19:50:43");
             Map<String, Object> keyMap = new HashMap<String, Object>();
             keyMap.put("card", "card1");
             keyMap.put("mcc", "mcc1");
             keyMap.put("amt", 1.5d);
             keyMap.put("col1", 1234);
             keyMap.put("ts1", 1122l);
-            keyMap.put("ts2", Timestamp.valueOf("2019-05-30 19:50:43"));
+            keyMap.put("ts2", ts);
             Object[] arrayRow = new Object[th.getSchema().size()];
             List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
             TableClientCommon.parseMapInput(keyMap, th, arrayRow, tsDimensions);
@@ -322,7 +324,7 @@ public class TableClientCommonTest {
             Assert.assertEquals(arrayRow[2], 1.5d);
             Assert.assertEquals(tsDimensions.size(), 2);
             Assert.assertEquals(tsDimensions.get(0).getTs(), 1122);
-            Assert.assertEquals(tsDimensions.get(1).getTs(), 1559217043000l);
+            Assert.assertEquals(tsDimensions.get(1).getTs(), ts.getTime());
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
