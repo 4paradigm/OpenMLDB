@@ -51,6 +51,77 @@ public class RowCodecTest {
 		}
 	}
 
+	public String genString(char a, int length) {
+		char[] value = new char[length];
+		for (int i = 0; i < length; i++) {
+			value[i] = a;
+		}
+		return new String(value);
+	}
+
+	@Test
+	public void testStringCodec() {
+		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+		for (int i = 0; i < 10; i++) {
+			ColumnDesc col = new ColumnDesc();
+			col.setAddTsIndex(true);
+			col.setName("col" + i);
+			col.setType(ColumnType.kString);
+			schema.add(col);
+		}
+		ColumnDesc col = new ColumnDesc();
+		col.setAddTsIndex(false);
+		col.setName("amt");
+		col.setType(ColumnType.kDouble);
+		schema.add(col);
+		String str_127 = genString('a', 127);
+		String str_128 = genString('b', 128);
+		String str_129 = genString('c', 129);
+		String str_255 = genString('d', 255);
+		String str_256 = genString('e', 256);
+		String str_257 = genString('f', 257);
+		String str_1000 = genString('g', 1000);
+		String str_32766 = genString('h', 32766);
+		String str_32767 = genString('i', 32767);
+		try {
+			ByteBuffer buffer = RowCodec.encode(new Object[] { "abcd", str_127, str_128, str_129, str_255, str_256,
+					str_257, str_1000, str_32766, str_32767, 1.0}, schema); buffer.rewind();
+			Object[] row = RowCodec.decode(buffer, schema);
+			Assert.assertEquals(11, row.length);
+			Assert.assertEquals("abcd", row[0]);
+			Assert.assertEquals(str_127, row[1]);
+			Assert.assertEquals(str_128, row[2]);
+			Assert.assertEquals(str_129, row[3]);
+			Assert.assertEquals(str_255, row[4]);
+			Assert.assertEquals(str_256, row[5]);
+			Assert.assertEquals(str_257, row[6]);
+			Assert.assertEquals(str_1000, row[7]);
+			Assert.assertEquals(str_32766, row[8]);
+			Assert.assertEquals(str_32767, row[9]);
+			Assert.assertEquals(1.0, row[10]);
+		} catch (TabletException e) {
+			e.printStackTrace();
+			Assert.assertTrue(false);
+		}
+	}
+
+	@Test
+	public void testCodecMaxLength() {
+		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+		ColumnDesc col1 = new ColumnDesc();
+		col1.setAddTsIndex(true);
+		col1.setName("card");
+		col1.setType(ColumnType.kString);
+		schema.add(col1);
+		String str_32768 = genString('a', 32768);
+		try {
+			ByteBuffer buffer = RowCodec.encode(new Object[]{str_32768}, schema);
+			Object[] row = RowCodec.decode(buffer, schema);
+		} catch (Exception e) {
+			Assert.assertTrue(true);
+		}
+	}
+
 	@Test
 	public void testCodecWithTimestamp() {
 		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
