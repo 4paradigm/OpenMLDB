@@ -54,10 +54,8 @@ public class RowCodec {
                     if (bytes.length < 128) {
                         buffer.put((byte) bytes.length);
                     } else if (bytes.length <= stringMaxLength) {
-                        byte high = (byte)(bytes.length >> 8 | 0x80);
-                        buffer.put(high);
-                        byte low = (byte)(bytes.length & 0xFF);
-                        buffer.put(low);
+                        buffer.put((byte)(bytes.length >> 8 | 0x80));
+                        buffer.put((byte)(bytes.length & 0xFF));
                     } else {
                         throw new TabletException("kString length should be less than or equal " + stringMaxLength);
                     }
