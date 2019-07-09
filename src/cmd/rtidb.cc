@@ -106,18 +106,18 @@ void StartNameServer() {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start nameserver on endpoint %d with version %d.%d.%d", 
-                    FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+        PDLOG(INFO, "start nameserver on endpoint %d with version %d.%d.%d.%d", 
+                    FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     } else {
         if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d", 
-                    FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+        PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d.%d", 
+                    FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     std::ostringstream oss;
-    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
@@ -207,22 +207,22 @@ void StartTablet() {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d", 
-                    FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d", 
+                    FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     } else {
         if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
             PDLOG(WARNING, "Fail to start server");
             exit(1);
         }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d", 
-                    FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d", 
+                    FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM, RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     }
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
     std::ostringstream oss;
-    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
+    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
     server.set_version(oss.str());
     server.RunUntilAskedToQuit();
 }
@@ -3680,6 +3680,7 @@ void StartClient() {
     }
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+            << "." << RTIDB_VERSION_MEDIUM
             << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     }
     ::rtidb::client::TabletClient client(FLAGS_endpoint);
@@ -3794,6 +3795,7 @@ void StartNsClient() {
     std::string endpoint;
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version "<< RTIDB_VERSION_MAJOR
+            << "." << RTIDB_VERSION_MEDIUM
             << "." << RTIDB_VERSION_MINOR << "."<<RTIDB_VERSION_BUG << std::endl;
     }
     std::shared_ptr<ZkClient> zk_client;
