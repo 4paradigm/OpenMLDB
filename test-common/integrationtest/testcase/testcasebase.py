@@ -108,7 +108,7 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info(cmd)
         args = shlex.split(cmd)
         need_start = False
-        for _ in range(10):
+        for _ in range(20):
             rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
             if 'rtidb' not in rs:
                 need_start = True
@@ -116,7 +116,10 @@ class TestCaseBase(unittest.TestCase):
                 subprocess.Popen(args, stdout=open('{}/info.log'.format(client_path), 'a'),
                                  stderr=open('{}/warning.log'.format(client_path), 'a'))
             else:
-                return True, need_start
+                time.sleep(1)
+                rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
+                if 'rtidb' in rs:
+                    return True, need_start
         return False, need_start
 
     def stop_client(self, endpoint):
