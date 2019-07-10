@@ -68,6 +68,7 @@ DECLARE_uint32(latest_default_skiplist_height);
 DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
+DECLARE_uint32(max_col_display_length);
 
 void SetupLog() {
     // Config log 
@@ -1034,7 +1035,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             std::cout << "convert table column desc failed" << std::endl; 
             return;
         }
-        ::baidu::common::TPrinter tp(columns.size() + 2, 128);
+        ::baidu::common::TPrinter tp(columns.size() + 2, FLAGS_max_col_display_length);
         std::vector<std::string> row;
         row.push_back("#");
         row.push_back("ts");
@@ -1266,7 +1267,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
             row.push_back(columns[i].name);
         }
     }
-    ::baidu::common::TPrinter tp(row.size(), 128);
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t index = 1;
     for (uint32_t pid = 0; pid < (uint32_t)tables[0].table_partition_size(); pid++) {
@@ -3017,7 +3018,7 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::rtidb::client:
         codec.Decode(schema, columns);
     }
     uint32_t column_num = columns.empty() ? 4 : columns.size() + 2;
-    ::baidu::common::TPrinter tp(column_num, 128);
+    ::baidu::common::TPrinter tp(column_num, FLAGS_max_col_display_length);
     std::vector<std::string> row;
     if (schema.empty()) {
         row.push_back("#");
@@ -3458,7 +3459,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         std::vector<::rtidb::base::ColumnDesc> raw;
         ::rtidb::base::SchemaCodec codec;
         codec.Decode(schema, raw);
-        ::baidu::common::TPrinter tp(raw.size() + 2, 128);
+        ::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
         std::vector<std::string> row;
         row.push_back("#");
         row.push_back("ts");

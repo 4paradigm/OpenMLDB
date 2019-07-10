@@ -14,6 +14,8 @@
 #include "tprinter.h"
 #include "base/schema_codec.h"
 
+DECLARE_uint32(max_col_display_length);
+
 namespace rtidb {
 namespace base {
 
@@ -284,7 +286,7 @@ static void ShowTableRows(const std::vector<ColumnDesc>& raw,
     for (uint32_t i = 0; i < raw.size(); i++) {
         row.push_back(raw[i].name);
     }
-    ::baidu::common::TPrinter tp(row.size(), 128);
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t index = 1;
     while (it->Valid()) {
@@ -309,7 +311,7 @@ static void ShowTableRows(const std::vector<ColumnDesc>& raw,
 
 static void ShowTableRows(const std::string& key, ::rtidb::base::KvIterator* it, 
                 const ::rtidb::nameserver::CompressType compress_type) {
-    ::baidu::common::TPrinter tp(4, 128);
+    ::baidu::common::TPrinter tp(4, FLAGS_max_col_display_length);
     std::vector<std::string> row;
     row.push_back("#");
     row.push_back("key");
