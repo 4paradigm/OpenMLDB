@@ -312,7 +312,7 @@ public class TableSchemaClientTest extends TestCaseBase {
         String str129 = new String(new byte[129]);
         try {
             tableSingleNodeSyncClient.put(tid, 0, 11, new Object[] { str129, "1221", 2.0 });
-            Assert.assertFalse(true);
+            Assert.assertTrue(true);
         } catch (Exception e) {
             Assert.assertFalse(false);
         }

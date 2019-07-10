@@ -20,15 +20,24 @@ public:
 
 TEST_F(FlatArrayTest, Decode) {
     std::string buffer;
-    FlatArrayCodec codec(&buffer, 2);
+    FlatArrayCodec codec(&buffer, 5);
     bool ok = codec.Append(1.2f);
     ASSERT_TRUE(ok);
-    std::string big_col(100,'a'); 
-    ok = codec.Append(big_col);
+    std::string big_col1(100,'a'); 
+    ok = codec.Append(big_col1);
+    ASSERT_TRUE(ok);
+    std::string big_col2(127,'b'); 
+    ok = codec.Append(big_col2);
+    ASSERT_TRUE(ok);
+    std::string big_col3(128,'c'); 
+    ok = codec.Append(big_col3);
+    ASSERT_TRUE(ok);
+    std::string big_col4(32767,'e'); 
+    ok = codec.Append(big_col4);
     ASSERT_TRUE(ok);
     codec.Build();
 
-    FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
+    FlatArrayIterator it(buffer.c_str(), buffer.size(), 5);
     float value = 0;
     ok = it.GetFloat(&value);
     ASSERT_TRUE(ok);
@@ -38,7 +47,25 @@ TEST_F(FlatArrayTest, Decode) {
     ASSERT_TRUE(it.Valid());
     ok = it.GetString(&value2);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(big_col, value2);
+    ASSERT_EQ(big_col1, value2);
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    value2.clear();
+    ok = it.GetString(&value2);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(big_col2, value2);
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    value2.clear();
+    ok = it.GetString(&value2);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(big_col3, value2);
+    it.Next();
+    ASSERT_TRUE(it.Valid());
+    value2.clear();
+    ok = it.GetString(&value2);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(big_col4, value2);
     it.Next();
     ASSERT_FALSE(it.Valid());
 }

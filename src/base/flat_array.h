@@ -22,6 +22,7 @@ namespace base {
 static const uint8_t bool_true = 1;
 static const uint8_t bool_false = 0;
 static const uint32_t max_row_size = 1024 * 1024;
+static const uint16_t MAX_STRING_LENGTH = 32767;
 
 class FlatArrayCodec {
 
@@ -151,11 +152,11 @@ public:
             return false;
         }
 
-        if (data.length() > 128) {
+        if (data.length() > MAX_STRING_LENGTH) {
             return false;
         }
 
-        uint8_t size = (uint8_t) data.length();
+        uint16_t size = (uint16_t)data.length();
         Encode(kString, static_cast<const void*>(data.c_str()), size);
         cur_cnt_ ++;
         return true;
@@ -174,7 +175,7 @@ public:
         //TODO limit the total size of single row
         buffer_->resize(GetSize());
         char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0]));
-        if (col_cnt_ > 128) {
+        if (col_cnt_ >= 128) {
             memcpy(cbuffer, static_cast<const void*>(&col_cnt_), 2);
             memrev16ifbe(static_cast<void*>(cbuffer));
             cbuffer += 2;
@@ -188,9 +189,19 @@ public:
             Column& col = *it;
             memcpy(cbuffer, static_cast<const void*>(&col.type), 1);
             cbuffer += 1;
-            uint8_t buffer_size = (uint8_t)col.buffer.size();
-            memcpy(cbuffer, static_cast<const void*>(&buffer_size), 1);
-            cbuffer += 1;
+            uint16_t buffer_size = (uint16_t)col.buffer.size();
+            if (buffer_size < 128) {
+                uint8_t size_value = (uint8_t)buffer_size;
+                memcpy(cbuffer, static_cast<const void*>(&size_value), 1);
+                cbuffer += 1;
+            } else {
+                uint8_t first_value = (uint8_t)(buffer_size >> 8 | 0x80);
+                uint8_t second_value = (uint8_t)(buffer_size & 0xFF);
+                memcpy(cbuffer, static_cast<const void*>(&first_value), 1);
+                cbuffer += 1;
+                memcpy(cbuffer, static_cast<const void*>(&second_value), 1);
+                cbuffer += 1;
+            }
             memcpy(cbuffer, static_cast<const void*>(col.buffer.c_str()), col.buffer.size());
             cbuffer += col.buffer.size();
         }
@@ -201,19 +212,22 @@ private:
     uint32_t GetSize() {
         // one byte for column count
         uint32_t size = 1;
-        if (datas_.size() > 128) {
+        if (datas_.size() >= 128) {
             size++;
         }
         std::vector<Column>::iterator it = datas_.begin();
         for (; it != datas_.end(); ++it) {
             Column& col = *it;
             size += (col.buffer.size() + 1 + 1);
+            if (col.buffer.size() >= 128) {
+                size++;
+            }
         }
         return size;
     }
 
     // encode data to buffer
-    void Encode(const ColType& type, const void* data, uint8_t size) {
+    void Encode(const ColType& type, const void* data, uint16_t size) {
         Column& col = datas_[cur_cnt_];
         col.buffer.resize(size);
         char* buffer = reinterpret_cast<char*>(&(col.buffer[0]));
@@ -236,7 +250,7 @@ public:
 
     FlatArrayIterator(const char* buffer, uint32_t bsize, uint16_t column_size):buffer_(buffer), 
     col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0){
-        if (column_size > 128) {
+        if (column_size >= 128) {
             memcpy(static_cast<void*>(&col_cnt_), buffer_, 2);
             memrev16ifbe(static_cast<void*>(&col_cnt_));
             buffer_ += 2;
@@ -482,9 +496,17 @@ public:
         memcpy(static_cast<void*>(&type), buffer_, 1);
         type_ = static_cast<ColType>(type);
         buffer_ += 1;
-        memcpy(static_cast<void*>(&fsize_), buffer_, 1);
-        buffer_ += 1;
-        offset_ += 2;
+        offset_++;
+        if (((uint8_t)(buffer_[0]) & 0x80) == 0) {
+            memcpy(static_cast<void*>(&fsize_), buffer_, 1);
+            fsize_ = (uint8_t)(buffer_[0]);
+            buffer_ += 1;
+            offset_++;
+        } else {
+            fsize_ = (((uint8_t)(buffer_[0]) & 0x7F) << 8) | ((uint8_t)buffer_[1] & 0xFF);
+            buffer_ += 2;
+            offset_ += 2;
+        }
     }
 
     bool Valid() {
@@ -501,7 +523,7 @@ private:
     // some run time field
     ColType type_;
     // data size of field
-    uint8_t fsize_;
+    uint16_t fsize_;
     uint32_t offset_;
 };
 

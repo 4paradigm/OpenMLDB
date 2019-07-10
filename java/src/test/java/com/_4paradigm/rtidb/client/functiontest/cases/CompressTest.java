@@ -4,6 +4,7 @@ import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.impl.TableClientCommon;
 import com._4paradigm.rtidb.ns.NS.*;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteString;
@@ -145,7 +146,7 @@ public class CompressTest extends TestCaseBase {
                 {true, "string", "", false, "string", "1111", false},
                 {true, "string", "1111", false, "string", "", true},
                 {true, "string", genLongString(128), true, "string", "1111", true},
-                {true, "string", genLongString(129), true, "string", "1111", false},
+                {true, "string", genLongString(129), true, "string", "1111", true},
                 {true, "string", "1111", true, "float", 10.0f, true},
                 {true, "string", "1111", true, "float", 10.01f, true},
                 {true, "string", "1111", true, "float", -1e-1f, true},
@@ -217,7 +218,7 @@ public class CompressTest extends TestCaseBase {
 
                     TableHandler tbHandler = client.getHandler(name);
                     int tid = tbHandler.getTableInfo().getTid();
-                    int pid1 = (int) (MurmurHash.hash64(value1.toString()) % tbHandler.getPartitions().length);
+                    int pid1 = TableClientCommon.computePidByKey(value1.toString(), tbHandler.getPartitions().length);
                     System.out.println("pid1 = " + pid1);
                     int pid1Col2 = -1;
 
@@ -225,7 +226,7 @@ public class CompressTest extends TestCaseBase {
                     rowScan = it.getDecodedValue();
                     Assert.assertEquals(rowScan[0], value1);
                     if (isIndex2 == true && value2 == "3") {
-                        pid1Col2 = (int) (MurmurHash.hash64(value2.toString()) % tbHandler.getPartitions().length);
+                        pid1Col2 = TableClientCommon.computePidByKey(value2.toString(), tbHandler.getPartitions().length);
                         System.out.println("pid1Col2 = " + pid1Col2);
                         it = tableSyncClient.scan(tid, pid1Col2, value2.toString(), "mcc", 1666666666665L, 1L);
                         rowScan = it.getDecodedValue();
@@ -233,13 +234,13 @@ public class CompressTest extends TestCaseBase {
                         Assert.assertEquals(rowScan[1], value2);
                     }
 
-                    int pid2 = (int) (MurmurHash.hash64("t1") % tbHandler.getPartitions().length);
+                    int pid2 = TableClientCommon.computePidByKey("t1", tbHandler.getPartitions().length);
                     System.out.println("pid2 = " + pid2);
                     it = tableSyncClient.scan(tid, pid2, "t1", "card", 1999999999999L, 1L);
                     rowScan = it.getDecodedValue();
                     Assert.assertEquals(rowScan[0], "t1");
 
-                    int pid3 = (int) (MurmurHash.hash64("t2") % tbHandler.getPartitions().length) * -1;
+                    int pid3 = TableClientCommon.computePidByKey("t2", tbHandler.getPartitions().length);
                     System.out.println("pid3 = " + pid3);
                     it = tableSyncClient.scan(tid, pid3, "t2", "card", 1999999999999L, 1L);
                     rowScan = it.getDecodedValue();

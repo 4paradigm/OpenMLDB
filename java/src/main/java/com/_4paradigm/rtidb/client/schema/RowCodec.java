@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 public class RowCodec {
     private static Charset charset = Charset.forName("utf-8");
     private final static Logger logger = LoggerFactory.getLogger(RowCodec.class);
+    private final static int stringMaxLength = 32767;
 
     public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
         if (row.length != schema.size()) {
@@ -30,7 +31,7 @@ public class RowCodec {
         // TODO limit the max size
         int size = getSize(row, schema, cache);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-        if (row.length > 128) {
+        if (row.length >= 128) {
             buffer.putShort((short) row.length);
         } else {
             buffer.put((byte) row.length);
@@ -50,10 +51,14 @@ public class RowCodec {
             switch (ct) {
                 case kString:
                     byte[] bytes = (byte[]) cache[i];
-                    if (bytes.length > 128) {
-                        throw new TabletException("kString should be less than or equal 128");
+                    if (bytes.length < 128) {
+                        buffer.put((byte) bytes.length);
+                    } else if (bytes.length <= stringMaxLength) {
+                        buffer.put((byte)(bytes.length >> 8 | 0x80));
+                        buffer.put((byte)(bytes.length & 0xFF));
+                    } else {
+                        throw new TabletException("kString length should be less than or equal " + stringMaxLength);
                     }
-                    buffer.put((byte) bytes.length);
                     buffer.put(bytes);
                     break;
                 case kInt32:
@@ -132,7 +137,7 @@ public class RowCodec {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
         int colLength = 0;
-        if (schema.size() > 128) {
+        if (schema.size() >= 128) {
             colLength = buffer.getShort();
         } else {
             colLength = buffer.get() & 0xFF;
@@ -144,7 +149,14 @@ public class RowCodec {
         int count = 0;
         while (buffer.position() < buffer.limit() && count < colLength) {
             byte type = buffer.get();
-            int size = buffer.get() & 0xFF;
+            byte tmpSize = buffer.get();
+            int size = 0;
+            if ((tmpSize & 0x80) == 0) {
+                size = tmpSize;
+            } else {
+                byte lowData = buffer.get();
+                size = ((tmpSize & 0x7F) << 8) | (lowData & 0xFF);
+            }
             ColumnType ctype = ColumnType.valueOf((int) type);
             if (size == 0 && ctype == ColumnType.kEmptyString) {
                 row[index] = "";
@@ -215,7 +227,7 @@ public class RowCodec {
 
     private static int getSize(Object[] row, List<ColumnDesc> schema, Object[] cache) {
         int totalSize = 1;
-        if (schema.size() > 128) {
+        if (schema.size() >= 128) {
             totalSize++;
         }
         for (int i = 0; i < row.length; i++) {
@@ -228,6 +240,9 @@ public class RowCodec {
                     byte[] bytes = ((String) row[i]).getBytes(charset);
                     cache[i] = bytes;
                     totalSize += bytes.length;
+                    if (bytes.length >= 128) {
+                        totalSize++;
+                    }
                     break;
                 case kBool:
                     totalSize += 1;
