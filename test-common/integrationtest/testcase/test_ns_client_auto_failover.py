@@ -352,15 +352,15 @@ class TestAutoFailover(TestCaseBase):
         rs = self.stop_client(self.slave1)
         rs_before = self.gettablestatus(self.leader)
         rs_before = self.parse_tb(rs_before, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
+        time.sleep(10)
         rs = self.start_client(self.slave1)
         time.sleep(1)
         for i in range(20):
             rs_after = self.gettablestatus(self.slave1)
             rs_after = self.parse_tb(rs_after, ' ', [0, 1, 2, 3], [4, 5, 6, 7,8, 9,10])
-            if '{}'.format(rs_after) == 'gettablestatus failed':
+            if '{}'.format(rs_after) == 'gettablestatus failed' or isinstance(rs_after, str) or len(rs_after.keys()) == 0:
                 time.sleep(2)
                 continue
-
             if rs_before.keys()[0][2] == rs_after.keys()[0][2]:
                 self.assertIn(rs_before.keys()[0][2], rs_after.keys()[0][2])
                 break
@@ -512,7 +512,7 @@ class TestAutoFailover(TestCaseBase):
         tid = rs_before.keys()[0][1]
         pid = rs_before.keys()[0][2]
         self.stop_client(self.slave1)
-        time.sleep(1)
+        time.sleep(10)
         self.start_client(self.slave1)
         time.sleep(1)
         row = 0
