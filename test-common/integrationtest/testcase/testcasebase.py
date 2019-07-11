@@ -596,16 +596,13 @@ class TestCaseBase(unittest.TestCase):
         return utils.exe_shell('cat {}/ns_leader'.format(self.testpath))
 
     def find_new_tb_leader(self, tname, tid, pid):
-        line_count = utils.exe_shell('cat {}/info.log|wc -l'.format(self.ns_leader_path))
-        cmd = "grep -a -n {} {}/info.log -m 1".format(tname, self.ns_leader_path)
-        op_start_line = utils.exe_shell(cmd + "|awk -F ':' '{print $1}'")
-        cmd1 = "tail -n {} {}/info.log|grep -a \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
-            int(line_count) - int(op_start_line),
-            self.ns_leader_path, tname, tid, pid) + \
-               "|awk -F 'new leader is\\\\[' '{print $2}'" \
-               "|awk -F '\\\\]. name\\\\[tname' '{print $1}'" \
-               "|tail -n 1"
-        new_leader = utils.exe_shell(cmd1)
+        rs = self.showtable(self.ns_leader, tname)
+        infoLogger.info(rs)
+        for (key, value) in rs.items():
+            if key[1] == str(tid) and key[2] == str(pid):
+                infoLogger.info(value)
+                if value[0] == "leader" and value[2] == "yes":
+                    new_leader = key[3]
         self.new_tb_leader = new_leader
         return new_leader
 
