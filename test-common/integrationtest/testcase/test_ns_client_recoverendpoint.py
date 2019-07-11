@@ -98,6 +98,7 @@ class TestRecoverEndpoint(TestCaseBase):
             35: 'self.createtable_nofollower_put(1)',
             36: 'self.assertEqual(self.get_op_by_opid(self.latest_opid), "kUpdatePartitionStatusOP")',
             37: 'self.assertEqual(self.get_op_by_opid(self.latest_opid), "kReLoadTableOP")',
+            38: 'self.wait_op_done(self.tname)',
         }
 
     @ddt.data(
@@ -133,8 +134,8 @@ class TestRecoverEndpoint(TestCaseBase):
         self.ns_drop(self.ns_leader, self.tname)
 
     @ddt.data(
-        (35, 3, -2, 26, -1, 6, 15, -2, 25, 0, 33, 36, 27),  # 没有从节点的情况下主节点断网后恢复，手动恢复后仍为主节点
-        (35, 2, -2, 26, -1, 13, -2, 25, 0, 33, 37, 27),  # 没有从节点的情况下主节点挂掉后恢复，手动恢复后仍为主节点
+        (35, 3, -2, 26, -2, 38, 15, -2, 25, -2, 38, 33, 36, 27),  # 没有从节点的情况下主节点断网后恢复，手动恢复后仍为主节点
+        (35, 2, -2, 26, -2, 38, 13, -2, 25, -2, 38, 33, 37, 27),  # 没有从节点的情况下主节点挂掉后恢复，手动恢复后仍为主节点
     )
     @ddt.unpack
     def test_recover_endpoint1(self, *steps):

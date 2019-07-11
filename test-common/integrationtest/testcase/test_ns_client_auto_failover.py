@@ -514,38 +514,15 @@ class TestAutoFailover(TestCaseBase):
         tid = rs_before.keys()[0][1]
         pid = rs_before.keys()[0][2]
         self.stop_client(self.slave1)
-        time.sleep(10)
+        time.sleep(5)
         self.start_client(self.slave1)
         time.sleep(1)
-        row = 0
-        for times in range(20):
-            row = 0
-            index = 0
-            rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6, 7])
-            for status in tablestatus:
-                if status[2] == name:
-                    index = index + 1
-                    if tablestatus[status][0] == 'kFailed':
-                        infoLogger.debug('{}'.format(rs))
-                        infoLogger.debug('{} =  {}'.format(status, tablestatus[status]))
-                        row = index
-                        break
-                    if tablestatus[status][0] == 'kDone':
-                        row = row + 1
-            if row == index:
-                self.assertEqual(row, index)
-                break
-            time.sleep(2)
-        if row != index:
-            infoLogger.info(name)
-            infoLogger.info(row)
-            infoLogger.info(index)
-        self.assertEqual(row, index)
+        self.wait_op_done(name)
         self.stop_client(self.slave1)
-        time.sleep(10)
+        time.sleep(5)
         self.start_client(self.slave1)
         time.sleep(1)
+        self.wait_op_done(name)
 
         for i in range(number):
             rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
@@ -600,22 +577,8 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(1)
         self.start_client(self.slave1)
         time.sleep(1)
+        self.wait_op_done(name)
 
-        row = 0
-        index = 0
-        for times in range(10):
-            time.sleep(2)
-            row = 0
-            index = 0
-            rs = self.ns_showopstatus(self.ns_leader)
-            tablestatus = self.parse_tb(rs, ' ', [0, 1, 2, 3], [4, 5, 6])
-            for status in tablestatus:
-                if status[2] == name:
-                    if tablestatus.values()[index][0] == 'kDone' or tablestatus.values()[index][0] == 'kFailed':
-                        row = row + 1
-                    index = index + 1
-            if row == index:
-                break
         # self.assertEqual(row, index)
         for i in range(number):
             rs_put = self.ns_put_kv(self.ns_leader, name, 'key{}'.format(i), self.now() - 1, 'value{}'.format(i))
