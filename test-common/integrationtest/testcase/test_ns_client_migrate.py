@@ -144,8 +144,9 @@ class TestNameserverMigrate(TestCaseBase):
         self.stop_client(self.leader)
         time.sleep(2)
         self.offlineendpoint(self.ns_leader, self.leader)
+        time.sleep(10)
         rs1 = self.migrate(self.ns_leader, self.slave1, tname, '4-6', self.slave2)
-        time.sleep(8)
+        time.sleep(10)
         rs2 = self.showtable(self.ns_leader, tname)
 
         self.start_client(self.leader)  # recover table
@@ -160,7 +161,7 @@ class TestNameserverMigrate(TestCaseBase):
         rs5 = self.get_table_status(self.slave2, self.tid, self.pid)  # get offset slave2
         self.showopstatus(self.ns_leader)
 
-        self.assertIn('partition migrate ok', rs1)
+        self.assertIn('failed to migrate partition. error msg: cannot migrate leader', rs1)
         self.assertIn('partition migrate ok', rs3)
         for i in range(4, 7):
             self.assertIn((tname, str(self.tid), str(i), self.slave1), rs2)

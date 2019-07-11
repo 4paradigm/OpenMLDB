@@ -540,6 +540,8 @@ class TestAutoFailover(TestCaseBase):
             infoLogger.info(row)
             infoLogger.info(index)
         self.assertEqual(row, index)
+        self.stop_client(self.slave1)
+        time.sleep(10)
         self.start_client(self.slave1)
         time.sleep(1)
 
