@@ -82,7 +82,7 @@ class TestAutoRecoverTable(TestCaseBase):
         (34, 1, 3, -1, 36, 6, 7, 12, 15, -1, 36, 33, 19, 35),  # not match
         (34, 1, 3, -1, 36, 6, 7, 8, 15, -1, 36, 33, 19, 35),  # not match
         (34, 1, 3, 0, 7, 10, 2, -1, 12, 13, -1, 36, 33, 17, 35),  # not match
-        (34, 1, 12, 2, 0, 6, 12, 13, -1, 36, 33, 18, 22, 35),  # offset = manifest.offset
+        (34, 1, 12, 2, -1, 36, 6, 12, 13, -1, 36, 33, 18, 22, 35),  # offset = manifest.offset
         (34, 1, 11, 7, 10, 2, 0, 13, -1, 36, 33, 18, 35),  # 12 offset > manifest.offset
         (34, 1, 11, 7, 7, 10, 2, -1, 36, 6, 8, 13, -1, 36, 33, 18, 35),  # 13 offset > manifest.offset
         (34, 1, 2, -1, 36, 6, 13, -1, 36, 33, 17, 21, 35),  # offset < manifest.offset
