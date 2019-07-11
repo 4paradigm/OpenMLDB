@@ -317,6 +317,7 @@ class TestAutoFailover(TestCaseBase):
         time.sleep(3)
         rs = self.changeleader(self.ns_leader, name, 0, 'auto')
         self.assertIn('change leader ok', rs)
+        time.sleep(3)
         rs = self.recovertable(self.ns_leader, name, 0, self.leader)
         self.assertIn('recover table ok', rs)
         rs = self.recoverendpoint(self.ns_leader, self.leader)

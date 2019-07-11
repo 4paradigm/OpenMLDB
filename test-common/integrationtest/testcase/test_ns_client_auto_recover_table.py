@@ -69,18 +69,18 @@ class TestAutoRecoverTable(TestCaseBase):
         }
 
     @ddt.data(
-        (34, 1, 3, -1, 6, 15, 0, 33, 20, 24, 35),  # failover not finish and start recover  RTIDB-259
+        (34, 1, 3, 0, 6, 15, 0, 33, 20, 24, 35),  # failover not finish and start recover  RTIDB-259
         (34, 1, 2, 0, 6, 13, 0, 33, 17, 21, 35),  # failover not finish and start recover  RTIDB-259
-        (34, 1, 3, -1, 6, 15, 0, 33, 20, 24, 35),  # offset = manifest.offset
-        (34, 1, 3, -1, 6, 12, 15, 0, 33, 20, 35),  # offset = manifest.offset
-        (34, 1, 3, -1, 6, 8, 15, 0, 33, 20, 35),  # offset = manifest.offset  RTIDB-210
-        (34, 1, 3, -1, 6, 8, 12, 15, 0, 33, 19, 23, 35),  # offset < manifest.offset
+        (34, 1, 3, 0, 6, 15, 0, 33, 20, 24, 35),  # offset = manifest.offset
+        (34, 1, 3, 0, 6, 12, 15, 0, 33, 20, 35),  # offset = manifest.offset
+        (34, 1, 3, 0, 6, 8, 15, 0, 33, 20, 35),  # offset = manifest.offset  RTIDB-210
+        (34, 1, 3, 0, 6, 8, 12, 15, 0, 33, 19, 23, 35),  # offset < manifest.offset
         (34, 1, 12, 3, -1, 12, 15, 0, 33, 20, 35),  # offset = manifest.offset
         (34, 1, 11, 7, 10, 3, -1, 15, 0, 33, 20, 35),  # offset > manifest.offset
-        (34, 1, 3, -1, 6, 7, 15, 0, 33, 19, 35),  # not match
-        (34, 1, 3, -1, 6, 7, 12, 15, 0, 33, 19, 35),  # not match
-        (34, 1, 3, -1, 6, 7, 8, 15, 0, 33, 19, 35),  # not match
-        (34, 1, 3, -1, 7, 10, 2, -1, 12, 13, 0, 33, 17, 35),  # not match
+        (34, 1, 3, 0, 6, 7, 15, 0, 33, 19, 35),  # not match
+        (34, 1, 3, 0, 6, 7, 12, 15, 0, 33, 19, 35),  # not match
+        (34, 1, 3, 0, 6, 7, 8, 15, 0, 33, 19, 35),  # not match
+        (34, 1, 3, 0, 7, 10, 2, -1, 12, 13, 0, 33, 17, 35),  # not match
         (34, 1, 12, 2, 0, 6, 12, 13, 0, 33, 18, 22, 35),  # offset = manifest.offset
         (34, 1, 11, 7, 10, 2, 0, 13, 0, 33, 18, 35),  # 12 offset > manifest.offset
         (34, 1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 33, 18, 35),  # 13 offset > manifest.offset
