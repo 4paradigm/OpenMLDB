@@ -44,7 +44,8 @@ class TestAutoFailover(TestCaseBase):
             self.stop_client(self.leader)
         elif failover_reason == 'network_failure':
             self.disconnectzk(self.leader)
-        time.sleep(10)
+        time.sleep(5)
+        self.wait_op_done(name)
 
         rs2 = self.showtablet(self.ns_leader)
         rs3 = self.showtable(self.ns_leader)
@@ -52,7 +53,8 @@ class TestAutoFailover(TestCaseBase):
             self.start_client(self.leader)
         elif failover_reason == 'network_failure':
             self.connectzk(self.leader)
-        time.sleep(10)
+        time.sleep(2)
+        self.wait_op_done(name)
         self.assertIn('kTabletOffline', rs2[self.leader])
         self.confset(self.ns_leader, 'auto_failover', 'false')
 
@@ -105,7 +107,7 @@ class TestAutoFailover(TestCaseBase):
             self.stop_client(self.slave1)
         elif failover_reason == 'network_failure':
             self.disconnectzk(self.slave1)
-        time.sleep(10)
+        time.sleep(5)
 
         rs2 = self.showtablet(self.ns_leader)
         rs3 = self.showtable(self.ns_leader)
@@ -113,7 +115,7 @@ class TestAutoFailover(TestCaseBase):
             self.start_client(self.slave1)
         elif failover_reason == 'network_failure':
             self.connectzk(self.slave1)
-        time.sleep(10)
+        time.sleep(5)
         self.assertIn('kTabletOffline', rs2[self.slave1])
         self.confset(self.ns_leader, 'auto_failover', 'false')
 
@@ -152,11 +154,13 @@ class TestAutoFailover(TestCaseBase):
 
         self.connectzk(self.leader)  # flashbreak
         self.showtable(self.ns_leader)
-        time.sleep(10)
+        time.sleep(2)
+        self.wait_op_done(name)
         rs2 = self.showtable(self.ns_leader)
         self.connectzk(self.slave1)  # flashbreak
         self.showtable(self.ns_leader)
-        time.sleep(10)
+        time.sleep(2)
+        self.wait_op_done(name)
         rs3 = self.showtable(self.ns_leader)
         rs4 = self.showtablet(self.ns_leader)
         self.assertIn('kTabletHealthy', rs4[self.leader])
@@ -406,6 +410,7 @@ class TestAutoFailover(TestCaseBase):
         self.assertFalse('gettablestatus failed' in '{}'.format(rs_before))
         rs = self.ns_showopstatus(self.ns_leader)
         self.stop_client(self.slave1)
+        time.sleep(2)
         self.stop_client(self.ns_leader)
         time.sleep(10)
         self.start_client(self.slave1)
