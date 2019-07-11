@@ -620,13 +620,6 @@ class TestCaseBase(unittest.TestCase):
         if conf_value is not None:
             utils.exe_shell("sed -i '1i--{}={}' {}/conf/{}".format(conf_item, conf_value, nodepath, conf_file))
 
-    def get_opid_by_tname_pid(self, tname, pid):
-        opid_rs = utils.exe_shell("grep -a {} {}/info.log|grep op_id|grep \"name\[\"|grep \"pid\[{}\]\""
-                                  "|sed 's/\(.*\)op_id\[\(.*\)\] name\(.*\)/\\2/g'".format(
-            tname, self.ns_leader_path, pid))
-        opid_x = opid_rs.split('\n')
-        return opid_x
-
     def get_latest_opid_by_tname_pid(self, tname, pid):
         rs = self.run_client(self.ns_leader, 'showopstatus {} {}'.format(tname, pid), 'ns_client')
         opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
@@ -636,6 +629,21 @@ class TestCaseBase(unittest.TestCase):
         self.latest_opid = sorted(op_id_arr)[-1]
         infoLogger.debug('------latest_opid:' + str(self.latest_opid) + '---------------')
         return self.latest_opid
+
+    def check_op_done(self, tname):
+        rs = self.run_client(self.ns_leader, 'showopstatus {} '.format(tname), 'ns_client')
+        opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
+        infoLogger.info(opstatus)
+        for op_id in opstatus.keys():
+            if opstatus[op_id][1] == "kDoing" or opstatus[op_id][1] == "kInited":
+                return False
+        return True    
+
+    def wait_op_done(self, tname):
+        for cnt in xrange(10):
+            if self.check_op_done(tname):
+                return
+            time.sleep(2)
 
     def get_op_by_opid(self, op_id):
         rs = self.showopstatus(self.ns_leader)
