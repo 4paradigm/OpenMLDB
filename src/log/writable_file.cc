@@ -43,7 +43,7 @@ public:
     }
 
     virtual Status Append(const Slice& data) {
-        size_t r = fwrite_unlocked(data.data(), 1, data.size(), file_);
+        size_t r = fwrite(data.data(), 1, data.size(), file_);
         if (r != data.size()) {
             return IOError(filename_, errno);
         }
@@ -61,7 +61,7 @@ public:
     }
 
     virtual Status Flush() {
-        if (fflush_unlocked(file_) != 0) {
+        if (fflush(file_) != 0) {
             return IOError(filename_, errno);
         }
         return Status::OK();
@@ -69,7 +69,7 @@ public:
 
     virtual Status Sync() {
         // Ensure new files referred to by the manifest are in the filesystem.
-        if (fflush_unlocked(file_) != 0 ||
+        if (fflush(file_) != 0 ||
             fdatasync(fileno(file_)) != 0) {
             return IOError(filename_, errno);
         }

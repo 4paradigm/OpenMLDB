@@ -191,7 +191,8 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
             if (status.ok()) {
                 ::rtidb::api::LogEntry* entry = request.add_entries();
                 if (!entry->ParseFromString(record.ToString())) {
-                    PDLOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                    PDLOG(WARNING, "bad protobuf format %s size %ld. tid %u pid %u", 
+                            ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size(), tid_, pid_);
                     request.mutable_entries()->RemoveLast();
                     break;
                 }
