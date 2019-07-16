@@ -53,6 +53,7 @@ DEFINE_int32(binlog_delete_interval, 60000, "config the interval of delete binlo
 DEFINE_int32(binlog_match_logoffset_interval, 1000, "config the interval of match log offset ");
 DEFINE_int32(binlog_name_length, 8, "binlog name length");
 DEFINE_uint32(check_binlog_sync_progress_delta, 100000, "config the delta of check binlog sync progress");
+DEFINE_uint32(go_back_max_try_cnt, 10, "config max try time of go back");
 
 // local db config
 DEFINE_string(db_root_path,"/tmp/", "the root path of db");

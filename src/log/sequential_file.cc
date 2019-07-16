@@ -37,7 +37,7 @@ public:
 
     virtual Status Read(size_t n, Slice* result, char* scratch) {
         Status s;
-        size_t r = fread(scratch, 1, n, file_);
+        size_t r = fread_unlocked(scratch, 1, n, file_);
         *result = Slice(scratch, r);
         if (r < n) {
             if (feof(file_)) {

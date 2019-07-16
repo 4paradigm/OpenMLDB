@@ -134,6 +134,9 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
             s = dest_->Flush();
         }
     }
+    if (!s.ok()) {
+        PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+    }
 
     block_offset_ += kHeaderSize + n;
     return s;

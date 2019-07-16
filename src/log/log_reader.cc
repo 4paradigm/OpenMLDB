@@ -250,6 +250,14 @@ void Reader::GoBackToLastBlock() {
     file_->Seek(block_start_location);
 }
 
+void Reader::GoBackToStart() {
+    uint64_t block_start_location = 0;
+    PDLOG(DEBUG, "go back block to start");
+    end_of_buffer_offset_ = block_start_location;
+    buffer_.clear();
+    file_->Seek(block_start_location);
+}
+
 unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     if (buffer_.size() < kHeaderSize) {
         // Last read was a full read, so this is a trailer to skip
@@ -302,7 +310,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     // Get Eof flag
     if (type == kEofType && length == 0) {
       buffer_.clear();
-      PDLOG(WARNING, "end of file");
+      PDLOG(INFO, "end of file");
       return kEof;
     }
 
@@ -351,6 +359,13 @@ void LogReader::GoBackToLastBlock() {
     reader_->GoBackToLastBlock();
 }
 
+void LogReader::GoBackToStart() {
+    if (sf_ == NULL || reader_ == NULL) {
+        return;
+    }
+    reader_->GoBackToStart();
+}
+
 int LogReader::GetLogIndex() {
     return log_part_index_;
 }
@@ -374,7 +389,7 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
-        PDLOG(WARNING, "reach the end of file. index %d", log_part_index_);
+        PDLOG(INFO, "reach the end of file. index %d", log_part_index_);
         if (RollRLogFile() < 0) {
             // reache the latest log part
             return status;
