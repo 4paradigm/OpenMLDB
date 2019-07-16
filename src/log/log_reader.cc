@@ -122,7 +122,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           if (scratch->empty()) {
             in_fragmented_record = false;
           } else {
-            ReportCorruption(scratch->size(), "partial record without end(1)");
+            PDLOG(WARNING, "partial record without end(1)");
           }
         }
         prospective_record_offset = physical_record_offset;
@@ -154,7 +154,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           if (scratch->empty()) {
             in_fragmented_record = false;
           } else {
-            ReportCorruption(scratch->size(), "partial record without end(2)");
+            PDLOG(WARNING, "partial record without end(2)");
           }
         }
         prospective_record_offset = physical_record_offset;
@@ -164,8 +164,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kMiddleType:
         if (!in_fragmented_record) {
-          ReportCorruption(fragment.size(),
-                           "missing start of fragmented record(1)");
+          PDLOG(WARNING, "missing start of fragmented record(1). fragment size %u", fragment.size());
         } else {
           scratch->append(fragment.data(), fragment.size());
         }
@@ -173,8 +172,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kLastType:
         if (!in_fragmented_record) {
-          ReportCorruption(fragment.size(),
-                           "missing start of fragmented record(2)");
+          PDLOG(WARNING, "missing start of fragmented record(2). fragment size %u", fragment.size());
         } else {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
@@ -198,7 +196,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kBadRecord:
         if (in_fragmented_record) {
-          ReportCorruption(scratch->size(), "error in middle of record");
+          PDLOG(WARNING, "error in middle of record");
           in_fragmented_record = false;
           scratch->clear();
         }
@@ -207,6 +205,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
       default: {
         char buf[40];
         snprintf(buf, sizeof(buf), "unknown record type %u", record_type);
+        PDLOG(WARNING, "unknown record type %s", buf);
         ReportCorruption(
             (fragment.size() + (in_fragmented_record ? scratch->size() : 0)),
             buf);
