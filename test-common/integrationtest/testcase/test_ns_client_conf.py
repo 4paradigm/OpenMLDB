@@ -32,6 +32,9 @@ class TestConfSetGet(TestCaseBase):
         self.assertIn(msg, rs)
         rs1 = self.confget(self.ns_leader, 'auto_failover')
         self.assertIn(get_value, rs1)
+        if set_value == "true" or set_value == "TRUE":
+            self.confset(self.ns_leader, 'auto_failover', 'false')
+
 
 if __name__ == "__main__":
     load(TestConfSetGet)

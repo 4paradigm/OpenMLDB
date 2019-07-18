@@ -46,6 +46,7 @@ class TestRecoverTable(TestCaseBase):
 
         self.changeleader(self.ns_leader, name, pid, self.slave1)
         time.sleep(1)
+        self.wait_op_done(name)
         rs_old_leader_put = self.put(self.leader, tid, pid, 'testkey1', self.now(), 'testvalue1')
         self.assertIn('Put ok', rs_old_leader_put)
         time.sleep(1)
@@ -54,11 +55,13 @@ class TestRecoverTable(TestCaseBase):
 
         rs_new_leader_put = self.put(self.slave1, tid, pid, 'testkey2', self.now(), 'testvalue2')
         self.assertIn('Put ok', rs_new_leader_put)
-        time.sleep(1)
+        time.sleep(2)
         self.assertFalse('testvalue2' in self.scan(self.leader, tid, pid, 'testkey2', self.now(), 1))
         self.assertTrue('testvalue2' in  self.scan(self.slave2, tid, pid, 'testkey2', self.now(), 1))
 
         self.ns_recover_table_cmd(self.ns_leader, 'recovertable', name, pid, self.leader)
+        time.sleep(1)
+        self.wait_op_done(name)
         time.sleep(1)
         self.assertTrue('testvalue2' in self.scan(self.leader, tid, pid, 'testkey2', self.now(), 1))
 
