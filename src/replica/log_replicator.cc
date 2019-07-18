@@ -460,7 +460,8 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
             return false;
         }
     }
-    entry.set_log_index(1 + log_offset_.fetch_add(1, std::memory_order_relaxed));
+    uint64_t cur_offset = log_offset_.load(std::memory_order_relaxed);
+    entry.set_log_index(1 + cur_offset);
     std::string buffer;
     entry.SerializeToString(&buffer);
     ::rtidb::base::Slice slice(buffer);
@@ -469,6 +470,7 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
         PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
+    log_offset_.fetch_add(1, std::memory_order_relaxed);
     // add record header size
     PDLOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(std::memory_order_relaxed));
     return true;

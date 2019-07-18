@@ -43,6 +43,10 @@ public:
         return Status(kIOError, msg, msg2);
     }
 
+    static Status InvalidRecord(const Slice& msg, const Slice& msg2 = Slice()) {
+        return Status(kInvalidRecord, msg, msg2);
+    }
+
     static Status WaitRecord() {
         return Status(kWaitRecord, "", "");
     }
@@ -69,6 +73,8 @@ public:
     // Returns true iff the status indicates an InvalidArgument.
     bool IsInvalidArgument() const { return code() == kInvalidArgument; }
 
+    bool IsInvalidRecord() const { return code() == kInvalidRecord; }
+
     bool IsWaitRecord() const { return code() == kWaitRecord; }
     bool IsEof() const { return code() == kEof; }
 
@@ -93,7 +99,8 @@ private:
         kInvalidArgument = 4,
         kIOError = 5,
         kWaitRecord = 6,
-        kEof = 7
+        kEof = 7,
+        kInvalidRecord = 8
     };
 
     Code code() const {

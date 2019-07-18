@@ -224,6 +224,18 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                 PDLOG(DEBUG, "got a coffee time for[%s]", endpoint_.c_str());
                 need_wait = true;
                 break;
+            } else if (status.IsInvalidRecord()) {
+                PDLOG(WARNING, "fail to get record. %s. tid %u pid %u", status.ToString().c_str(), tid_, pid_);
+                need_wait = true;
+                if (go_back_cnt_ > FLAGS_go_back_max_try_cnt) {
+                    log_reader_.GoBackToStart();
+                    go_back_cnt_ = 0;
+                    PDLOG(WARNING, "go back to start. tid %u pid %u endpoint %s", tid_, pid_, endpoint_.c_str());
+                } else {
+                    log_reader_.GoBackToLastBlock();
+                    go_back_cnt_++;
+                }
+                break;
             } else {
                 PDLOG(WARNING, "fail to get record: %s. tid %u pid %u", 
                                 status.ToString().c_str(), tid_, pid_);

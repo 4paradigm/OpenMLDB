@@ -19,6 +19,7 @@
 #include "base/status.h"
 #include <gflags/gflags.h>
 #include "base/strings.h"
+#include <fcntl.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
@@ -164,7 +165,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kMiddleType:
         if (!in_fragmented_record) {
-          PDLOG(WARNING, "missing start of fragmented record(1). fragment size %u", fragment.size());
+          PDLOG(DEBUG, "missing start of fragmented record(1). fragment size %u", fragment.size());
         } else {
           scratch->append(fragment.data(), fragment.size());
         }
@@ -172,7 +173,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kLastType:
         if (!in_fragmented_record) {
-          PDLOG(WARNING, "missing start of fragmented record(2). fragment size %u", fragment.size());
+          PDLOG(DEBUG, "missing start of fragmented record(2). fragment size %u", fragment.size());
         } else {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
@@ -205,13 +206,13 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
       default: {
         char buf[40];
         snprintf(buf, sizeof(buf), "unknown record type %u", record_type);
-        PDLOG(WARNING, "unknown record type %s", buf);
+        PDLOG(WARNING, "%s", buf);
         ReportCorruption(
             (fragment.size() + (in_fragmented_record ? scratch->size() : 0)),
             buf);
         in_fragmented_record = false;
         scratch->clear();
-        break;
+        return Status::InvalidRecord(Slice(buf, strlen(buf)));
       }
     }
   }
@@ -251,7 +252,7 @@ void Reader::GoBackToLastBlock() {
 
 void Reader::GoBackToStart() {
     uint64_t block_start_location = 0;
-    PDLOG(DEBUG, "go back block to start");
+    PDLOG(WARNING, "go back block to start");
     end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
     file_->Seek(block_start_location);
