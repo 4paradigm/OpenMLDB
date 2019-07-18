@@ -15,7 +15,7 @@ import libs.conf as conf
 @ddt.ddt
 class TestNameserverHa(TestCaseBase):
 
-    def confset_createtable_put(self):
+    def createtable_put(self):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
@@ -57,7 +57,7 @@ class TestNameserverHa(TestCaseBase):
         return {
             -1: 'time.sleep(3)',
             0: 'time.sleep(10)',
-            1: 'self.confset_createtable_put()',
+            1: 'self.createtable_put()',
             2: 'self.stop_client(self.ns_leader)',
             3: 'self.disconnectzk(self.ns_leader, "ns_client")',
             4: 'self.put_large_datas(500, 7)',
@@ -146,7 +146,7 @@ class TestNameserverHa(TestCaseBase):
         :param steps:
         :return:
         """
-        self.confset_createtable_put()
+        self.createtable_put()
         rs1 = self.showtable(self.ns_leader, self.tname)
         steps_dict = self.get_steps_dict()
         for i in steps:
@@ -225,7 +225,7 @@ class TestNameserverHa(TestCaseBase):
         zk没挂，集群机房挂掉，重启后可正常加载table信息
         :return:
         """
-        self.confset_createtable_put()
+        self.createtable_put()
         rs1 = self.showtable(self.ns_leader, self.tname)
         nsc = NsCluster(conf.zk_endpoint, *(i for i in conf.ns_endpoints))
         tbc = TbCluster(conf.zk_endpoint, conf.tb_endpoints)
