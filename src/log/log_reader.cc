@@ -201,7 +201,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           in_fragmented_record = false;
           scratch->clear();
         }
-        break;
+        return Status::InvalidRecord(Slice("kBadRecord"));
 
       default: {
         char buf[40];
