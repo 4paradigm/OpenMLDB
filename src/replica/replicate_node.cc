@@ -225,7 +225,7 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                 need_wait = true;
                 break;
             } else if (status.IsInvalidRecord()) {
-                PDLOG(WARNING, "fail to get record. %s. tid %u pid %u", status.ToString().c_str(), tid_, pid_);
+                PDLOG(DEBUG, "fail to get record. %s. tid %u pid %u", status.ToString().c_str(), tid_, pid_);
                 need_wait = true;
                 if (go_back_cnt_ > FLAGS_go_back_max_try_cnt) {
                     log_reader_.GoBackToStart();
