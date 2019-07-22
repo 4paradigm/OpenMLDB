@@ -97,7 +97,6 @@ int Table::InitColumnDesc() {
         }
         if (ts_mapping_.size() > 1 && !mapping_.empty()) {
             mapping_.clear();
-            key_idx = 0;
         }
         if (table_meta_.column_key_size() > 0) {
             mapping_.clear();
