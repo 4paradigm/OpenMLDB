@@ -4,11 +4,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.sql.Timestamp;
-import java.util.Calendar;
-import java.util.Date;
+import java.sql.Date;
 import java.util.List;
 
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import org.joda.time.DateTime;
 
 import com._4paradigm.rtidb.client.TabletException;
@@ -186,7 +184,7 @@ public class RowCodec {
                     break;
                 case kDate:
                     long date = buffer.getLong();
-                    row[index] = new LocalDate(date);
+                    row[index] = new Date(date);
                     break;
                 case kBool:
                     int byteValue = buffer.get();

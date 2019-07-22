@@ -1,12 +1,12 @@
 package com._4paradigm.rtidb.client.ut;
 
 import java.nio.ByteBuffer;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -137,7 +137,7 @@ public class RowCodecTest {
 		col1.setType(ColumnType.kDate);
 		schema.add(col1);
 		long time = 1530772193000l;
-		LocalDate target = new LocalDate(time);
+		Date target = new Date(time);
 		DateTime jodaTime=new DateTime(time);
 		System.out.println(target);
         System.out.println(jodaTime);
@@ -146,10 +146,8 @@ public class RowCodecTest {
 			buffer.rewind();
 			Object[] row = RowCodec.decode(buffer, schema);
 			Assert.assertEquals(1, row.length);
-			Assert.assertTrue(row[0] instanceof LocalDate);
-			Assert.assertEquals(target.getYear(), ((LocalDate)row[0]).getYear());
-			Assert.assertEquals(target.getMonthOfYear(), ((LocalDate)row[0]).getMonthOfYear());
-			Assert.assertEquals(target.getDayOfMonth(), ((LocalDate)row[0]).getDayOfMonth());
+			Assert.assertTrue(row[0] instanceof Date);
+			Assert.assertEquals(target, (Date)row[0]);
 			buffer = RowCodec.encode(new Object[]{null}, schema);
 			buffer.rewind();
 			row = RowCodec.decode(buffer, schema);

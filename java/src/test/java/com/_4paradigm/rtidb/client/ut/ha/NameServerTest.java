@@ -28,7 +28,7 @@ public class NameServerTest {
     private static String zkRootPath = Config.ZK_ROOT_PATH;
     private static String leaderPath = zkRootPath + "/leader";
     private static String[] nodes = Config.NODES;
-
+    private static RTIDBClientConfig config = new RTIDBClientConfig();
     static {
         String envZkEndpoints = System.getenv("zkEndpoints");
         if (envZkEndpoints != null) {
@@ -159,7 +159,6 @@ public class NameServerTest {
     }
 
     @Test
-<<<<<<< HEAD
     public void testCreateTableHDD() {
         NameServerClientImpl nsc = new NameServerClientImpl(config);
         try {
@@ -200,6 +199,8 @@ public class NameServerTest {
             nsc.close();
         }
     }
+
+    @Test
     public void testTableHandler() {
         NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
                 .setName("test")  // 设置表名
