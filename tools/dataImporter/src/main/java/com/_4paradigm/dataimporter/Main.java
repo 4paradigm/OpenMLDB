@@ -5,7 +5,7 @@ import com._4paradigm.dataimporter.parseutil.ParseCsvUtil;
 import com._4paradigm.dataimporter.parseutil.ParseOrcUtil;
 import com._4paradigm.dataimporter.parseutil.ParseParquetUtil;
 import com._4paradigm.dataimporter.task.PutTask;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.orc.TypeDescription;

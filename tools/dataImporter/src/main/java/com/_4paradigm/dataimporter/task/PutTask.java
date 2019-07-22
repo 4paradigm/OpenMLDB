@@ -13,15 +13,15 @@ public class PutTask implements Runnable {
     public static AtomicLong successfulCount = new AtomicLong(0);
     public static AtomicLong failedCount = new AtomicLong(0);
     private String id;
-    private long timestamp;
+    private boolean hasTs;
     private TableSyncClient tableSyncClient;
     private String tableName;
     private HashMap map;
     private final int LOG_INTERVAL = Constant.LOG_INTERVAL;
 
-    public PutTask(String id, long timestamp, TableSyncClient tableSyncClient, String tableName, HashMap map) {
+    public PutTask(String id, boolean hasTs, TableSyncClient tableSyncClient, String tableName, HashMap map) {
         this.id = id;
-        this.timestamp = timestamp;
+        this.hasTs = hasTs;
         this.tableSyncClient = tableSyncClient;
         this.tableName = tableName;
         this.map = map;
@@ -36,8 +36,14 @@ public class PutTask implements Runnable {
         int limit = 10;//retry times
         while (limit-- > 0) {
             try {
-                if (tableSyncClient.put(tableName, timestamp, map)) {
-                    break;
+                if (!hasTs) {
+                    if (tableSyncClient.put(tableName, System.currentTimeMillis(), map)) {
+                        break;
+                    }
+                }else {
+                    if (tableSyncClient.put(tableName, map)) {
+                        break;
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
