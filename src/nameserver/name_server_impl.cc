@@ -1260,8 +1260,10 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
             }
             pos++;
         }
-        leader_partition_meta->set_is_leader(true);
-        endpoint_leader[leader_partition_meta->endpoint()]++;
+        if (leader_partition_meta != NULL) {
+            leader_partition_meta->set_is_leader(true);
+            endpoint_leader[leader_partition_meta->endpoint()]++;
+        }
     }
     PDLOG(INFO, "set table partition ok. name[%s] partition_num[%u] replica_num[%u]", 
                  table_info.name().c_str(), partition_num, replica_num);

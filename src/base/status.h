@@ -6,7 +6,7 @@
 //
 
 #ifndef RTIDB_BASE_STATUS_H
-#define RTIBD_BASE_STATUS_H
+#define RTIDB_BASE_STATUS_H
 
 #include "base/slice.h"
 

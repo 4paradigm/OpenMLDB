@@ -60,7 +60,6 @@ bool Reader::SkipToInitialBlock() {
 
   // Don't search a block if we'd be in the trailer
   if (offset_in_block > kBlockSize - 6) {
-    offset_in_block = 0;
     block_start_location += kBlockSize;
   }
 
@@ -119,9 +118,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           // it could emit an empty kFirstType record at the tail end
           // of a block followed by a kFullType or kFirstType record
           // at the beginning of the next block.
-          if (scratch->empty()) {
-            in_fragmented_record = false;
-          } else {
+          if (!scratch->empty()) {
             ReportCorruption(scratch->size(), "partial record without end(1)");
           }
         }
@@ -151,9 +148,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           // it could emit an empty kFirstType record at the tail end
           // of a block followed by a kFullType or kFirstType record
           // at the beginning of the next block.
-          if (scratch->empty()) {
-            in_fragmented_record = false;
-          } else {
+          if (!scratch->empty()) {
             ReportCorruption(scratch->size(), "partial record without end(2)");
           }
         }
