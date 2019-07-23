@@ -10,12 +10,6 @@ enum CompressType {
     kSnappy = 1;
 }
 
-enum StorageMode {
-    kMemory = 1;
-    kSSD = 2;
-    kHDD = 3;
-}
-
 message ColumnDesc {
     required string name = 1;
     required string type = 2;
