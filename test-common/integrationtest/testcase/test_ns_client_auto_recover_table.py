@@ -12,7 +12,7 @@ import libs.ddt as ddt
 @ddt.ddt
 class TestAutoRecoverTable(TestCaseBase):
 
-    def confset_createtable_put(self, data_count, data_thread=2):
+    def createtable_put(self, data_count, data_thread=2):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata(
@@ -40,7 +40,7 @@ class TestAutoRecoverTable(TestCaseBase):
         return {
             -1: 'time.sleep(5)',
             0: 'time.sleep(10)',
-            1: 'self.confset_createtable_put(1)',
+            1: 'self.createtable_put(1)',
             2: 'self.stop_client(self.leader)',
             3: 'self.disconnectzk(self.leader)',
             4: 'self.stop_client(self.slave1)',
@@ -66,33 +66,34 @@ class TestAutoRecoverTable(TestCaseBase):
             33: 'self.get_latest_opid_by_tname_pid(self.tname, self.pid)',
             34: 'self.confset(self.ns_leader, "auto_failover", "true")',
             35: 'self.confset(self.ns_leader, "auto_failover", "false")',
+            36: 'self.wait_op_done(self.tname)',
         }
 
     @ddt.data(
-        (34, 1, 3, -1, 6, 15, 0, 33, 20, 24, 35),  # failover not finish and start recover  RTIDB-259
-        (34, 1, 2, 0, 6, 13, 0, 33, 17, 21, 35),  # failover not finish and start recover  RTIDB-259
-        (34, 1, 3, -1, 6, 15, 0, 33, 20, 24, 35),  # offset = manifest.offset
-        (34, 1, 3, -1, 6, 12, 15, 0, 33, 20, 35),  # offset = manifest.offset
-        (34, 1, 3, -1, 6, 8, 15, 0, 33, 20, 35),  # offset = manifest.offset  RTIDB-210
-        (34, 1, 3, -1, 6, 8, 12, 15, 0, 33, 19, 23, 35),  # offset < manifest.offset
-        (34, 1, 12, 3, -1, 12, 15, 0, 33, 20, 35),  # offset = manifest.offset
-        (34, 1, 11, 7, 10, 3, -1, 15, 0, 33, 20, 35),  # offset > manifest.offset
-        (34, 1, 3, -1, 6, 7, 15, 0, 33, 19, 35),  # not match
-        (34, 1, 3, -1, 6, 7, 12, 15, 0, 33, 19, 35),  # not match
-        (34, 1, 3, -1, 6, 7, 8, 15, 0, 33, 19, 35),  # not match
-        (34, 1, 3, -1, 7, 10, 2, -1, 12, 13, 0, 33, 17, 35),  # not match
-        (34, 1, 12, 2, 0, 6, 12, 13, 0, 33, 18, 22, 35),  # offset = manifest.offset
-        (34, 1, 11, 7, 10, 2, 0, 13, 0, 33, 18, 35),  # 12 offset > manifest.offset
-        (34, 1, 11, 7, 7, 10, 2, 0, 6, 8, 13, 0, 33, 18, 35),  # 13 offset > manifest.offset
-        (34, 1, 2, 0, 6, 13, 0, 33, 17, 21, 35),  # offset < manifest.offset
-        (34, 1, 2, 0, 6, 12, 13, 0, 33, 17, 35),  # offset < manifest.offset
-        (34, 1, 2, 0, 6, 8, 13, 0, 33, 17, 35),
-        (34, 1, 2, 0, 6, 10, 12, 13, 0, 33, 17, 35),
-        (34, 1, 2, 0, 6, 8, 12, 13, 0, 33, 17, 35),
-        (34, 1, 2, 0, 6, 8, 12, 8, 13, 0, 33, 17, 35),  # 19 new leader makesnapshot and put data, ori leader recover
-        (34, 1, 5, -1, 16, 0, 33, 20, 35),
-        (34, 1, 4, 0, 14, 0, 33, 17, 35),  # RTIDB-213
-        (34, 1, 12, 3, 7, 2, 0, 13, 0, 33, 18, 35),  # RTIDB-222
+        (34, 1, 3, -1, 36, 6, 15, -1, 36, 33, 20, 24, 35),  # failover not finish and start recover  RTIDB-259
+        (34, 1, 2, -1, 36, 6, 13, -1, 36, 33, 17, 21, 35),  # failover not finish and start recover  RTIDB-259
+        (34, 1, 3, -1, 36, 6, 15, -1, 36, 33, 20, 24, 35),  # offset = manifest.offset
+        (34, 1, 3, -1, 36, 6, 12, 15, -1, 36, 33, 20, 35),  # offset = manifest.offset
+        (34, 1, 3, -1, 36, 6, 8, 15, -1, 36, 33, 20, 35),  # offset = manifest.offset  RTIDB-210
+        (34, 1, 3, -1, 36, 6, 8, 12, 15, -1, 36, 33, 19, 23, 35),  # offset < manifest.offset
+        (34, 1, 12, 3, -1, 12, 15, -1, 36, 33, 20, 35),  # offset = manifest.offset
+        (34, 1, 11, 7, 10, 3, -1, 15, -1, 36, 33, 20, 35),  # offset > manifest.offset
+        (34, 1, 3, -1, 36, 6, 7, 15, -1, 36, 33, 19, 35),  # not match
+        (34, 1, 3, -1, 36, 6, 7, 12, 15, -1, 36, 33, 19, 35),  # not match
+        (34, 1, 3, -1, 36, 6, 7, 8, 15, -1, 36, 33, 19, 35),  # not match
+        (34, 1, 3, 0, 7, 10, 2, -1, 12, 13, -1, 36, 33, 17, 35),  # not match
+        (34, 1, 12, 2, -1, 36, 6, 12, 13, -1, 36, 33, 18, 22, 35),  # offset = manifest.offset
+        (34, 1, 11, 7, 10, 2, 0, 13, -1, 36, 33, 18, 35),  # 12 offset > manifest.offset
+        (34, 1, 11, 7, 7, 10, 2, -1, 36, 6, 8, 13, -1, 36, 33, 18, 35),  # 13 offset > manifest.offset
+        (34, 1, 2, -1, 36, 6, 13, -1, 36, 33, 17, 21, 35),  # offset < manifest.offset
+        (34, 1, 2, -1, 36, 6, 12, 13, -1, 36, 33, 17, 35),  # offset < manifest.offset
+        (34, 1, 2, -1, 36, 6, 8, 13, -1, 36, 33, 17, 35),
+        (34, 1, 2, -1, 36, 6, 10, 12, 13, -1, 36, 33, 17, 35),
+        (34, 1, 2, -1, 36, 6, 8, 12, 13, -1, 36, 33, 17, 35),
+        (34, 1, 2, -1, 36, 6, 8, 12, 8, 13, -1, 36, 33, 17, 35),  # 19 new leader makesnapshot and put data, ori leader recover
+        (34, 1, 5, -1, 16, -1, 36, 33, 20, 35),
+        (34, 1, 4, 0, 14, -1, 36, 33, 17, 35),  # RTIDB-213
+        (34, 1, 12, 3, 7, 2, 0, 13, -1, 36, 33, 18, 35),  # RTIDB-222
     )
     @ddt.unpack
     def test_auto_recover_table(self, *steps):
@@ -114,7 +115,7 @@ class TestAutoRecoverTable(TestCaseBase):
             rs = self.showtable(self.ns_leader, self.tname)
             role_x = [v[0] for k, v in rs.items()]
             is_alive_x = [v[-2] for k, v in rs.items()]
-            if role_x.count('leader') == 10 and role_x.count('follower') == 18:
+            if role_x.count('leader') == 10 and role_x.count('follower') == 18 and is_alive_x.count('yes') == 28:
                 break
             time.sleep(2)
         self.assertEqual(role_x.count('leader'), 10)
@@ -148,7 +149,7 @@ class TestAutoRecoverTable(TestCaseBase):
         self.start_client(self.slave1)
         self.start_client(self.slave2)
 
-        self.confset_createtable_put(50, 7)
+        self.createtable_put(50, 7)
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))

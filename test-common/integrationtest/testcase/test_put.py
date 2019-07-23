@@ -285,7 +285,7 @@ class TestPut(TestCaseBase):
         ({'card': ('string:index', '2'), 's2': ('string', 'a' * 128)},
          'Put ok', {'card': '2'}, 'a' * 128),
         ({'card': ('string:index', '3'), 's2': ('string', 'a' * 129)},
-         'Encode data error', {}, ''),
+         'Put ok', {'card': '3'}, 'a' * 129),
     )
     @ddt.unpack
     def test_sput_string(self, kv, rsp_msg, scan_kv, scan_value):

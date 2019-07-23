@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <atomic>
+#include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 #include <gflags/gflags.h>
 #include <rocksdb/db.h>
@@ -197,7 +198,7 @@ public:
                 const std::map<std::string, uint32_t>& mapping,
                 uint64_t ttl,
                 ::rtidb::api::TTLType ttl_type,
-                ::rtidb::api::StorageMode storage_mode);
+                ::rtidb::common::StorageMode storage_mode);
 
     virtual ~DiskTable();
 
@@ -276,7 +277,7 @@ public:
         return mapping_;
     }
 
-    inline ::rtidb::api::StorageMode GetStorageMode() {
+    inline ::rtidb::common::StorageMode GetStorageMode() {
         return storage_mode_;
     }
 
@@ -310,7 +311,7 @@ private:
     std::map<std::string, uint32_t> mapping_;
     std::atomic<uint64_t> ttl_;
     ::rtidb::api::TTLType ttl_type_;
-    ::rtidb::api::StorageMode storage_mode_;
+    ::rtidb::common::StorageMode storage_mode_;
     KeyTSComparator cmp_;
     bool is_leader_;
     std::atomic<uint64_t> offset_;

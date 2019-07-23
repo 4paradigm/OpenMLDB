@@ -6,6 +6,4 @@ then
     export runlist=$2
     export norunlist=$3
     sh test-common/integrationtest/runall.sh $1 $2 $3
-    unset runlist
-    unset norunlist
 fi

@@ -203,6 +203,384 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.assertEqual(mf['count'], '1')
         self.ns_drop(self.ns_leader, name)
 
+    def test_one_ts(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 10,
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "false"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', str(curtime)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', str(curtime - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc2', '1.3', str(curtime - 20)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', str(curtime - 30)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc4', '1.5', str(curtime - 40)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc6', '1.7', str(curtime - 10*60*1000 - 20)])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '5')
+        self.ns_drop(self.ns_leader, name)
+
+    def test_one_ts(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 10,
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "false"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', str(curtime)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', str(curtime - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc2', '1.3', str(curtime - 20)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', str(curtime - 30)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc4', '1.5', str(curtime - 40)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc6', '1.7', str(curtime - 10*60*1000 - 20)])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '5')
+
+    def test_two_ts(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 10,
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    ],
+		"column_key":[
+                    {"index_name":"card", "ts_name":["ts", "ts1"]},
+                    {"index_name":"mcc", "ts_name":["ts1"]},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', str(curtime), str(curtime - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', str(curtime - 10), str(curtime)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc2', '1.3', str(curtime), str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', str(curtime - 10*60*1000 - 10), str(curtime - 30)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', str(curtime - 10*60*1000 - 10), str(curtime - 10*60*1000 - 20)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc2', '1.7', str(curtime - 10*60*1000 - 20), str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card3', 'mcc6', '1.7', str(curtime - 10*60*1000 - 20), str(curtime - 10*60*1000 - 10)])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '4')
+
+    def test_two_ts_1(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 10,
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    ],
+		"column_key":[
+                    {"index_name":"card_mcc", "col_name": ["card", "mcc"], "ts_name":["ts"]},
+                    {"index_name":"mcc", "ts_name":["ts"]},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', str(curtime), str(curtime - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', str(curtime - 10), str(curtime)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc2', '1.3', str(curtime), str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', str(curtime - 10*60*1000 - 10), str(curtime - 30)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', str(curtime - 10*60*1000 - 10), str(curtime - 10*60*1000 - 20)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc2', '1.7', str(curtime - 10*60*1000 - 20), str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card3', 'mcc6', '1.7', str(curtime - 10*60*1000 - 20), str(curtime - 10*60*1000 - 10)])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '4')
+
+    def test_two_ts_ttl(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 10,
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 20},
+                    ],
+		"column_key":[
+                    {"index_name":"card_mcc", "col_name": ["card", "mcc"], "ts_name":["ts", "ts1"]},
+                    {"index_name":"mcc", "ts_name":["ts"]},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', str(curtime), str(curtime - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', str(curtime - 10), str(curtime)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc2', '1.3', str(curtime), str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', str(curtime - 10*60*1000 - 10), str(curtime - 30)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', str(curtime - 10*60*1000 - 10), str(curtime - 20*60*1000 - 20)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc2', '1.7', str(curtime - 20*60*1000 - 20), str(curtime - 10*60*1000 - 10)])
+        self.ns_put_multi(self.ns_leader, name, '', ['card3', 'mcc6', '1.7', str(curtime - 20*60*1000 - 20), str(curtime - 20*60*1000 - 10)])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '5')
+
+    def test_one_ts_latest(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 2,
+                "ttl_type": "kLatestTime",
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    ],
+		"column_key":[
+                    {"index_name":"card", "ts_name":["ts"]},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', '1'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', '2'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc2', '1.3', '3'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card1', 'mcc3', '1.4', '4'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', '5'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc2', '1.7', '6'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card3', 'mcc6', '1.7', '7'])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+        tablet_endpoint = table_info.keys()[0][3]
+        self.execute_gc(tablet_endpoint, tid, '0')
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '6')
+
+    def test_one_ts_two_index_latest(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 2,
+                "ttl_type": "kLatestTime",
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    ],
+		"column_key":[
+                    {"index_name":"card", "ts_name":["ts"]},
+                    {"index_name":"mcc", "ts_name":["ts"]},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', '1'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.2', '2'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.3', '3'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.4', '4'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc1', '1.6', '5'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc1', '1.7', '6'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card3', 'mcc6', '1.7', '7'])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+        tablet_endpoint = table_info.keys()[0][3]
+        self.execute_gc(tablet_endpoint, tid, '0')
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '6')
+
+    def test_two_ts_latest_ttl(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 2,
+                "ttl_type": "kLatestTime",
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 3},
+                    ],
+		"column_key":[
+                    {"index_name":"card", "ts_name":["ts", "ts1"]},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', '1', '11'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', '2', '12'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc2', '1.3', '3', '13'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc3', '1.4', '4', '14'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc5', '1.6', '5', '15'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc2', '1.7', '6', '16'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc6', '1.7', '7', '17'])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+        tablet_endpoint = table_info.keys()[0][3]
+        self.execute_gc(tablet_endpoint, tid, '0')
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '7')
+        self.assertEqual(mf['count'], '6')
+
+    def test_two_ts_two_index_latest_ttl(self):
+        name = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": name,
+                "ttl": 2,
+                "ttl_type": "kLatestTime",
+                "partition_num": 1,
+                "replica_num": 1,
+                "column_desc":[
+                    {"name": "card", "type": "string", "add_ts_idx": "true"},
+                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
+                    {"name": "ts", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
+                    {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 3},
+                    ],
+		"column_key":[
+                    {"index_name":"card", "ts_name":["ts", "ts1"]},
+                    {"index_name":"mcc", "ts_name":["ts"]},
+                    ]
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertIn('Create table ok', rs)
+        curtime = int(time.time() * 1000)
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.1', '1', '11'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc1', '1.2', '2', '12'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc2', '1.3', '3', '13'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc3', '1.4', '4', '14'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.6', '5', '15'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card0', 'mcc0', '1.7', '6', '16'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc1', '1.8', '7', '17'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card2', 'mcc1', '1.9', '8', '18'])
+        self.ns_put_multi(self.ns_leader, name, '', ['card3', 'mcc4', '2.0', '9', '19'])
+        rs3 = self.makesnapshot(self.ns_leader, name, 0, 'ns_client')
+
+        table_info = self.showtable(self.ns_leader, name)
+        tid = table_info.keys()[0][1]
+        tablet_endpoint = table_info.keys()[0][3]
+        self.execute_gc(tablet_endpoint, tid, '0')
+
+        rs3 = self.makesnapshot(self.ns_leader, name, '0', 'ns_client')
+        self.assertIn('MakeSnapshot ok', rs3)
+        mf = self.get_manifest(self.leaderpath, tid, 0)
+        self.assertEqual(mf['offset'], '9')
+        self.assertEqual(mf['count'], '7')
 
 if __name__ == "__main__":
     load(TestMakeSnapshotNsClient)

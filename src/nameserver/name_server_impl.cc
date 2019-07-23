@@ -1161,6 +1161,33 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
+int NameServerImpl::FillColumnKey(TableInfo& table_info) {
+    if (table_info.column_key_size() > 0 || table_info.column_desc_v1_size() == 0) {
+        return 0;
+    }
+    std::vector<std::string> ts_vec;
+    std::vector<std::string> index_vec;
+    for (const auto& column_desc : table_info.column_desc_v1()) {
+        if (column_desc.is_ts_col()) {
+            ts_vec.push_back(column_desc.name());
+        }
+        if (column_desc.add_ts_idx()) {
+            index_vec.push_back(column_desc.name());
+        }
+    }
+    if (ts_vec.size() > 1) {
+        return -1;
+    }
+    for (const auto& index : index_vec) {
+        ::rtidb::common::ColumnKey* column_key = table_info.add_column_key();
+        column_key->set_index_name(index);
+        if (!ts_vec.empty()) {
+            column_key->add_ts_name(ts_vec[0]);
+        }
+    }
+    return 0;
+}
+
 int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     uint32_t partition_num = FLAGS_partition_num;
     if (table_info.has_partition_num() && table_info.partition_num() > 0) {
@@ -1252,11 +1279,11 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
         compress_type = ::rtidb::api::CompressType::kSnappy;
     }
-    ::rtidb::api::StorageMode storage_mode = ::rtidb::api::StorageMode::kMemory;
-    if (table_info->storage_mode() == ::rtidb::nameserver::kSSD) {
-        storage_mode = ::rtidb::api::StorageMode::kSSD;
-    } else if (table_info->storage_mode() == ::rtidb::nameserver::kHDD) {
-        storage_mode = ::rtidb::api::StorageMode::kHDD;
+    ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
+    if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
+        storage_mode = ::rtidb::common::StorageMode::kSSD;
+    } else if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
+        storage_mode = ::rtidb::common::StorageMode::kHDD;
     }
     ::rtidb::api::TableMeta table_meta;
     for (uint32_t i = 0; i < columns.size(); i++) {
@@ -1280,6 +1307,14 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     table_meta.set_storage_mode(storage_mode);
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
+    }
+    for (int idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
+        ::rtidb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
+        column_desc->CopyFrom(table_info->column_desc_v1(idx));
+    }
+    for (int idx = 0; idx < table_info->column_key_size(); idx++) {
+        ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
+        column_key->CopyFrom(table_info->column_key(idx));
     }
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         uint32_t pid = table_info->table_partition(idx).pid();
@@ -1942,6 +1977,12 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
+    if (FillColumnKey(*table_info) < 0) {
+        response->set_code(307);
+        response->set_msg("fill column key failed");
+        PDLOG(WARNING, "fill column key failed");
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info_.find(table_info->name()) != table_info_.end()) {
@@ -1960,7 +2001,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
                         table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
         return;
     }
-    if (table_info->has_storage_mode() && table_info->storage_mode() != rtidb::nameserver::StorageMode::kMemory && 
+    if (table_info->has_storage_mode() && table_info->storage_mode() != rtidb::common::StorageMode::kMemory && 
             table_info->replica_num() > 1) {
         response->set_code(307);
         response->set_msg("invalid parameter");
@@ -3966,7 +4007,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name, 
                     uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
-                    ::rtidb::nameserver::StorageMode storage_mode) {
+                    ::rtidb::common::StorageMode storage_mode) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -3978,11 +4019,11 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
 
-    ::rtidb::api::StorageMode cur_storage_mode = ::rtidb::api::StorageMode::kMemory;
-    if (storage_mode == ::rtidb::nameserver::kSSD) {
-        cur_storage_mode = ::rtidb::api::StorageMode::kSSD;
-    } else if (storage_mode == ::rtidb::nameserver::kHDD) {
-        cur_storage_mode = ::rtidb::api::StorageMode::kHDD;
+    ::rtidb::common::StorageMode cur_storage_mode = ::rtidb::common::StorageMode::kMemory;
+    if (storage_mode == ::rtidb::common::StorageMode::kSSD) {
+        cur_storage_mode = ::rtidb::common::StorageMode::kSSD;
+    } else if (storage_mode == ::rtidb::common::StorageMode::kHDD) {
+        cur_storage_mode = ::rtidb::common::StorageMode::kHDD;
     }
     ::rtidb::api::TableMeta table_meta;
     table_meta.set_name(name);
@@ -4764,9 +4805,25 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         response->set_msg("invalid parameter");
         return;
     }
-    uint64_t old_ttl = table->ttl();
-    table->set_ttl(request->value());
-
+    std::string ts_name;
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        ts_name = request->ts_name();
+        bool has_found = false;
+        for (int i = 0; i < table->column_desc_v1_size(); i++) {
+            if (table->column_desc_v1(i).is_ts_col() 
+                    && table->column_desc_v1(i).name() == ts_name) {
+                has_found = true;
+                break;
+            }
+        }
+        if (!has_found) {
+            PDLOG(WARNING, "ts name %s not found in table %s", 
+                    ts_name.c_str(), request->name().c_str());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+    }
     // update the tablet
     bool all_ok = true;
     for (int32_t i = 0; i < table->table_partition_size(); i++) {
@@ -4776,19 +4833,32 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         const TablePartition& table_partition = table->table_partition(i);
         for (int32_t j = 0; j < table_partition.partition_meta_size(); j++) {
             const PartitionMeta& meta = table_partition.partition_meta(j);
-            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), table_partition.pid(), ttl_type, request->value()); 
+            all_ok = all_ok && UpdateTTLOnTablet(meta.endpoint(), table->tid(), 
+                    table_partition.pid(), ttl_type, request->value(), ts_name); 
         }
     }
-
     if (!all_ok) {
-        table->set_ttl(old_ttl);
         response->set_code(322);
         response->set_msg("fail to update ttl from tablet");
         return;
     }
+    TableInfo table_info;
+    std::lock_guard<std::mutex> lock(mu_);
+    table_info.CopyFrom(*table);
+    if (ts_name.empty()) {
+        table_info.set_ttl(request->value());
+    } else {
+        for (int i = 0; i < table_info.column_desc_v1_size(); i++) {
+            if (table_info.column_desc_v1(i).is_ts_col() 
+                    && table_info.column_desc_v1(i).name() == ts_name) {
+                ::rtidb::common::ColumnDesc* column_desc = table_info.mutable_column_desc_v1(i);
+                column_desc->set_ttl(request->value());
+            }
+        }
+    }
     // update zookeeper
     std::string table_value;
-    table->SerializeToString(&table_value);
+    table_info.SerializeToString(&table_value);
     if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table->name(), table_value)) {
         PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
                         zk_table_data_path_.c_str(), table->name().c_str(), table_value.c_str());
@@ -4796,6 +4866,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller,
         response->set_msg("set zk failed");
         return;
     }
+    table->CopyFrom(table_info);
     response->set_code(0);
     response->set_msg("ok");
 }
@@ -4919,7 +4990,7 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfo(const std::string& end
 
 bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
         int32_t tid, int32_t pid, const ::rtidb::api::TTLType& type,
-        uint64_t ttl) {
+        uint64_t ttl, const std::string& ts_name) {
     std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
     if (!tablet) {
         PDLOG(WARNING, "tablet with endpoint %s is not found", endpoint.c_str());
@@ -4930,7 +5001,7 @@ bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint,
         PDLOG(WARNING, "tablet with endpoint %s has not client", endpoint.c_str());
         return false;
     }
-    bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl);
+    bool ok = tablet->client_->UpdateTTL(tid, pid, type, ttl, ts_name);
     if (!ok) {
         PDLOG(WARNING, "fail to update ttl with tid %d, pid %d, ttl %lu, endpoint %s", tid, pid, ttl, endpoint.c_str());
     }else {

@@ -218,7 +218,9 @@ private:
 
     bool RecoverOPTask();
 
-    int SetPartitionInfo(::rtidb::nameserver::TableInfo& table_info);
+    int SetPartitionInfo(TableInfo& table_info);
+
+    int FillColumnKey(TableInfo& table_info);
 
     int CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data);
 
@@ -292,7 +294,7 @@ private:
     std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name,
                     uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
-                    ::rtidb::nameserver::StorageMode storage_mode);
+                    ::rtidb::common::StorageMode storage_mode);
 
     std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, 
                     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
@@ -400,7 +402,7 @@ private:
     bool UpdateTTLOnTablet(const std::string& endpoint,
                            int32_t tid, int32_t pid, 
                            const ::rtidb::api::TTLType& type, 
-                           uint64_t ttl);
+                           uint64_t ttl, const std::string& ts_name);
 
 private:
     std::mutex mu_;

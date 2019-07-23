@@ -47,6 +47,7 @@ struct ColumnDesc {
     ColType type;
     std::string name;
     bool add_ts_idx;
+    bool is_ts_col;
 };
 
 class SchemaCodec {
@@ -116,45 +117,85 @@ public:
         }
     }
 
+    static ::rtidb::base::ColType ConvertType(const std::string& raw_type) {
+        ::rtidb::base::ColType type;
+        if (raw_type == "int32") {
+            type = ::rtidb::base::ColType::kInt32;
+        } else if (raw_type == "int64") {
+            type = ::rtidb::base::ColType::kInt64;
+        } else if (raw_type == "uint32") {
+            type = ::rtidb::base::ColType::kUInt32;
+        } else if (raw_type == "uint64") {
+            type = ::rtidb::base::ColType::kUInt64;
+        } else if (raw_type == "float") {
+            type = ::rtidb::base::ColType::kFloat;
+        } else if (raw_type == "double") {
+            type = ::rtidb::base::ColType::kDouble;
+        } else if (raw_type == "string") {
+            type = ::rtidb::base::ColType::kString;
+        } else if (raw_type == "timestamp") {
+            type = ::rtidb::base::ColType::kTimestamp;
+        } else if (raw_type == "int16") {
+            type = ::rtidb::base::ColType::kInt16;
+        } else if (raw_type == "uint16"){
+            type = ::rtidb::base::ColType::kUInt16;
+        } else if (raw_type == "bool"){
+            type = ::rtidb::base::ColType::kBool;
+        } else if (raw_type == "date") {
+            type = ::rtidb::base::ColType::kDate;
+        } else {
+            type = ::rtidb::base::ColType::kUnknown;
+        }
+        return type;
+    }
+
     static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
                         std::vector<ColumnDesc>& columns) {
+        columns.clear();
+        if (table_info.column_desc_v1_size() > 0) {
+            return ConvertColumnDesc(table_info.column_desc_v1(), columns);
+        }
         for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
-            ::rtidb::base::ColType type;
-            std::string raw_type = table_info.column_desc(idx).type();
-            if (raw_type == "int32") {
-                type = ::rtidb::base::ColType::kInt32;
-            } else if (raw_type == "int64") {
-                type = ::rtidb::base::ColType::kInt64;
-            } else if (raw_type == "uint32") {
-                type = ::rtidb::base::ColType::kUInt32;
-            } else if (raw_type == "uint64") {
-                type = ::rtidb::base::ColType::kUInt64;
-            } else if (raw_type == "float") {
-                type = ::rtidb::base::ColType::kFloat;
-            } else if (raw_type == "double") {
-                type = ::rtidb::base::ColType::kDouble;
-            } else if (raw_type == "string") {
-                type = ::rtidb::base::ColType::kString;
-            } else if (raw_type == "timestamp") {
-                type = ::rtidb::base::ColType::kTimestamp;
-            } else if (raw_type == "int16") {
-                type = ::rtidb::base::ColType::kInt16;
-            } else if (raw_type == "uint16"){
-                type = ::rtidb::base::ColType::kUInt16;
-            } else if (raw_type == "bool"){
-                type = ::rtidb::base::ColType::kBool;
-            } else if (raw_type == "date") {
-                type = ::rtidb::base::ColType::kDate;
-            } else {
+            ::rtidb::base::ColType type = ConvertType(table_info.column_desc(idx).type());
+            if (type == ::rtidb::base::ColType::kUnknown) {
                 return -1;
             }
             ColumnDesc column_desc;
             column_desc.type = type;
             column_desc.name = table_info.column_desc(idx).name();
             column_desc.add_ts_idx = table_info.column_desc(idx).add_ts_idx();
+            column_desc.is_ts_col = false;
             columns.push_back(column_desc);
         }
         return 0;
+    }
+
+    static int ConvertColumnDesc(
+            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
+             std::vector<ColumnDesc>& columns) {
+        columns.clear();
+        for (const auto& cur_column_desc : column_desc_field) {
+            ::rtidb::base::ColType type = ConvertType(cur_column_desc.type());
+            if (type == ::rtidb::base::ColType::kUnknown) {
+                return -1;
+            }
+            ColumnDesc column_desc;
+            column_desc.type = type;
+            column_desc.name = cur_column_desc.name();
+            column_desc.add_ts_idx = cur_column_desc.add_ts_idx();
+            column_desc.is_ts_col = cur_column_desc.is_ts_col();
+            columns.push_back(column_desc);
+        }
+        return 0;
+    }
+
+    static bool HasTSCol(const std::vector<ColumnDesc>& columns) {
+        for (const auto& column_desc : columns) {
+            if (column_desc.is_ts_col) {
+                return true;
+            }
+        }
+        return false;
     }
 
 private:

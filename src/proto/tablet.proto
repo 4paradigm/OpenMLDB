@@ -1,16 +1,10 @@
-syntax="proto2";
+import "common.proto";
 package rtidb.api;
 
 option cc_generic_services = true;
 option java_generic_services = true;
 option java_package = "com._4paradigm.rtidb.tablet";
 option java_outer_classname = "Tablet";
-
-enum StorageMode {
-    kMemory = 1;
-    kSSD = 2;
-    kHDD = 3;
-}
 
 enum TableMode {
     kTableLeader = 1;
@@ -143,6 +137,11 @@ message Dimension {
     optional uint32 idx = 2;
 }
 
+message TSDimension {
+    optional uint64 ts = 1;
+    optional uint32 idx = 2;
+}
+
 message PutRequest {
 	// the prefix key
     // abandoned
@@ -153,6 +152,7 @@ message PutRequest {
 	optional uint32 tid = 4;
     optional uint32 pid = 5;
     repeated Dimension dimensions = 6;
+    repeated TSDimension ts_dimensions = 7;
 }
 
 message PutResponse {
@@ -197,18 +197,22 @@ message GeneralResponse {
 }
 
 message ScanRequest {
-	// the prefix key
-	optional string pk = 1;
-	// the start subfix key
-	optional uint64 st = 2;
-	// the end subfix key
-	optional uint64 et = 3;
-	optional uint32 limit = 4;
-	optional RpcMetric metric = 5;
-	optional uint32 tid = 6;
-	optional uint32 pid = 7;
+    // the prefix key
+    optional string pk = 1;
+    // the start subfix key
+    optional uint64 st = 2;
+    // the end subfix key
+    optional uint64 et = 3;
+    optional uint32 limit = 4;
+    optional RpcMetric metric = 5 [deprecated = true];
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
     optional bool enable_remove_duplicated_record = 8 [default=false];
     optional string idx_name = 9;
+    optional string ts_name = 10;
+    optional GetType st_type = 11 [default = kSubKeyLe];
+    optional GetType et_type = 12 [default = kSubKeyGt];
+    optional bool enable_remove_ts = 13 [default = false];
 }
 
 message RpcMetric {
@@ -236,6 +240,7 @@ message TraverseRequest {
 	optional string pk = 5;
 	optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
+    optional string ts_name = 8;
 }
 
 message TraverseResponse {
@@ -252,7 +257,7 @@ message ScanResponse {
 	optional string msg = 2;
 	optional int32 code = 3;
 	optional uint32 count = 4;
-	optional RpcMetric metric = 6;
+	optional RpcMetric metric = 6 [deprecated = true];
 }
 
 message ReplicaRequest {
@@ -278,14 +283,16 @@ message TableMeta {
     // the slave endpoints
 	repeated string replicas = 7;
 	optional TableMode mode = 8;
-    optional bool wal = 9 [default = true];
+    optional bool wal = 9; // unused
     // term for change role
     optional uint64 term = 10 [default = 0];
-    optional bytes schema = 11;
-    repeated string dimensions = 12;
+    optional bytes schema = 11 [deprecated = true];
+    repeated string dimensions = 12 [deprecated = true];
     optional CompressType compress_type = 13;
     optional uint32 key_entry_max_height = 14;
-    optional StorageMode storage_mode = 15;
+    repeated rtidb.common.ColumnDesc column_desc = 15;
+    repeated rtidb.common.ColumnKey column_key = 16;
+    optional rtidb.common.StorageMode storage_mode = 17;
 }
 
 message CreateTableRequest {
@@ -334,6 +341,7 @@ message GetTableSchemaResponse {
     optional int32 code = 1;
     optional string msg = 2;
     optional bytes schema = 3;
+    optional TableMeta table_meta = 4;
 }
 
 message UpdateTTLRequest {
@@ -341,6 +349,7 @@ message UpdateTTLRequest {
     optional int32 pid = 2;
     optional TTLType type = 3;
     optional uint64 value = 4;
+    optional string ts_name = 5;
 }
 
 message UpdateTTLResponse {
@@ -363,12 +372,12 @@ message LogEntry {
     // term for leader
     optional uint64 term = 1;
     optional uint64 log_index = 2;
-    // abandoned
     optional string pk = 3;
     optional bytes value = 4;
     optional uint64 ts = 5;
     repeated Dimension dimensions = 6;
     optional MethodType method_type = 7;
+    repeated TSDimension ts_dimensions = 8;
 }
 
 message AppendEntriesRequest {
@@ -448,7 +457,7 @@ message TableStatus {
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
-    optional StorageMode storage_mode = 20;
+    optional rtidb.common.StorageMode storage_mode = 20;
 }
 
 message GetTableStatusResponse {
@@ -464,6 +473,9 @@ message GetRequest {
     optional uint64 ts = 4 [default = 0];
     optional string idx_name = 5;
     optional GetType type = 6 [default = kSubKeyEq];
+    optional string ts_name = 7;
+    optional uint64 et = 8;
+    optional GetType et_type = 9 [default = kSubKeyGe];
 }
 
 message GetResponse {
@@ -480,6 +492,7 @@ message CountRequest {
     optional string idx_name = 3;
     optional string key = 4;
     optional bool filter_expired_data = 5 [default = false];
+    optional string ts_name = 6;
 }    
 
 message CountResponse {

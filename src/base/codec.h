@@ -22,6 +22,7 @@
 using ::rtidb::storage::DataBlock;
 
 using ::baidu::common::DEBUG;
+using ::baidu::common::WARNING;
 
 namespace rtidb {
 namespace base {
@@ -43,6 +44,61 @@ static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, ui
     return Encode(time, data->data, data->size, buffer, offset);
 }
 
+static inline void Encode(const DataBlock* data, char* buffer, uint32_t offset) {
+    buffer += offset;
+    memcpy(buffer, static_cast<const void*>(&data->size), 4);
+    memrev32ifbe(buffer);
+    buffer += 4;
+    memcpy(buffer, static_cast<const void*>(data->data), data->size);
+}
+
+static inline int32_t EncodeRows(const std::vector<DataBlock*>& rows,
+                                 uint32_t total_block_size, std::string* body) {
+    if (body == NULL) {
+        PDLOG(WARNING, "invalid output body");
+        return -1;
+    }
+
+    uint32_t total_size = rows.size() * 4 + total_block_size;
+    if (rows.size() > 0) {
+        body->resize(total_size);
+    }
+    uint32_t offset = 0;
+    char* rbuffer = reinterpret_cast<char*>(& ((*body)[0]));
+    std::vector<DataBlock*>::const_iterator lit = rows.begin();
+    for (; lit != rows.end(); ++lit) {
+        const DataBlock* db = *lit;
+        ::rtidb::base::Encode(db, rbuffer, offset);
+        offset += (4 + db->size);
+    }
+    return total_size;
+}
+
+static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, DataBlock*>>& rows,
+                                 uint32_t total_block_size, std::string* pairs) {
+
+    if (pairs == NULL) {
+        PDLOG(WARNING, "invalid output pairs");
+        return -1;
+    }
+
+    uint32_t total_size = rows.size() * (8+4) + total_block_size;
+    if (rows.size() > 0) {
+        pairs->resize(total_size);
+    }
+
+    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
+    uint32_t offset = 0;
+    std::vector<std::pair<uint64_t, DataBlock*> >::const_iterator lit = rows.begin();
+    for (; lit != rows.end(); ++lit) {
+        const std::pair<uint64_t, DataBlock*>& pair = *lit;
+        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
+        offset += (4 + 8 + pair.second->size);
+    }
+    return total_size;
+}
+
+// encode pk, ts and value
 static inline void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset) {
     buffer += offset;
     uint32_t pk_size = pk.length();
@@ -62,7 +118,6 @@ static inline void EncodeFull(const std::string& pk, uint64_t time, const char* 
     memcpy(buffer, static_cast<const void*>(data), size);
 }
 
-// encode pk, ts and value
 static inline void EncodeFull(const std::string& pk, uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
     return EncodeFull(pk, time, data->data, data->size, buffer, offset);
 }
@@ -128,3 +183,4 @@ static inline void DecodeFull(const std::string* str, std::map<std::string, std:
 }
 
 #endif /* !CODEC_H */
+

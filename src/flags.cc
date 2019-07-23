@@ -91,3 +91,4 @@ DEFINE_uint32(key_entry_max_height, 8, "the max height of key entry");
 DEFINE_uint32(latest_default_skiplist_height, 1, "the default height of skiplist for latest table");
 DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skiplist for absolute table");
 DEFINE_bool(enable_show_tp, false, "enable show tp");
+DEFINE_uint32(max_col_display_length, 256, "config the max length of column display");

@@ -111,25 +111,57 @@ TEST_F(SegmentTest, Delete) {
 }
 
 TEST_F(SegmentTest, GetCount) {
-   Segment segment; 
-   Slice pk("test1");
-   std::string value = "test0";
-   uint64_t count = 0;
-   segment.Put(pk, 9527, value.c_str(), value.size());
-   segment.Put(pk, 9528, value.c_str(), value.size());
-   segment.Put(pk, 9529, value.c_str(), value.size());
-   ASSERT_EQ(0, segment.GetCount(pk, count));
-   ASSERT_EQ(3, count);
-   segment.Put(pk, 9530, value.c_str(), value.size());
-   ASSERT_EQ(0, segment.GetCount(pk, count));
-   ASSERT_EQ(4, count);
+    Segment segment; 
+    Slice pk("test1");
+    std::string value = "test0";
+    uint64_t count = 0;
+    segment.Put(pk, 9527, value.c_str(), value.size());
+    segment.Put(pk, 9528, value.c_str(), value.size());
+    segment.Put(pk, 9529, value.c_str(), value.size());
+    ASSERT_EQ(0, segment.GetCount(pk, count));
+    ASSERT_EQ(3, count);
+    segment.Put(pk, 9530, value.c_str(), value.size());
+    ASSERT_EQ(0, segment.GetCount(pk, count));
+    ASSERT_EQ(4, count);
 
-   uint64_t gc_idx_cnt = 0;
-   uint64_t gc_record_cnt = 0;
-   uint64_t gc_record_byte_size = 0;
-   segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-   ASSERT_EQ(0, segment.GetCount(pk, count));
-   ASSERT_EQ(2, count);
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
+    uint64_t gc_record_byte_size = 0;
+    segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    ASSERT_EQ(0, segment.GetCount(pk, count));
+    ASSERT_EQ(2, count);
+
+    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
+    Segment segment1(8, ts_idx_vec); 
+    Slice pk1("pk");
+    ::rtidb::api::LogEntry logEntry;
+    for (int i = 0; i < 6; i++) {
+       ::rtidb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+       ts->set_ts(1100 + i);
+       ts->set_idx(i);
+    }
+    DataBlock db(1, "test1", 5);
+    segment1.Put(pk1, logEntry.ts_dimensions(), &db);
+    ASSERT_EQ(-1, segment1.GetCount(pk1, 0, count));
+    ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
+    ASSERT_EQ(1, count);
+    ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
+    ASSERT_EQ(1, count);
+
+    logEntry.Clear();
+    for (int i = 0; i < 6; i++) {
+        if (i == 3) {
+            continue;
+        }
+        ::rtidb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+        ts->set_ts(1200 + i);
+        ts->set_idx(i);
+    }
+    segment1.Put(pk1, logEntry.ts_dimensions(), &db);
+    ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
+    ASSERT_EQ(2, count);
+    ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
+    ASSERT_EQ(1, count);
 }
 
 TEST_F(SegmentTest, Iterator) {
@@ -220,11 +252,51 @@ TEST_F(SegmentTest, TestStat) {
     ASSERT_EQ(0, segment.GetIdxCnt());
 }
 
+TEST_F(SegmentTest, GetTsIdx) {
+    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
+    Segment segment(8, ts_idx_vec);
+    ASSERT_EQ(3, segment.GetTsCnt());
+    uint32_t real_idx = UINT32_MAX;
+    ASSERT_EQ(-1, segment.GetTsIdx(0, real_idx));
+    ASSERT_EQ(0, segment.GetTsIdx(1, real_idx));
+    ASSERT_EQ(0, real_idx);
+    ASSERT_EQ(-1, segment.GetTsIdx(2, real_idx));
+    ASSERT_EQ(0, segment.GetTsIdx(3, real_idx));
+    ASSERT_EQ(1, real_idx);
+    ASSERT_EQ(-1, segment.GetTsIdx(4, real_idx));
+    ASSERT_EQ(0, segment.GetTsIdx(5, real_idx));
+    ASSERT_EQ(2, real_idx);
+}
+
+TEST_F(SegmentTest, PutAndGetTS) {
+   std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
+   Segment segment(8, ts_idx_vec); 
+   Slice pk("pk");
+   ::rtidb::api::LogEntry logEntry;
+   for (int i = 0; i < 6; i++) {
+       ::rtidb::api::TSDimension* ts = logEntry.add_ts_dimensions();
+       ts->set_ts(1100 + i);
+       ts->set_idx(i);
+   }
+   DataBlock db(1, "test1", 5);
+   segment.Put(pk, logEntry.ts_dimensions(), &db);
+   DataBlock* result = NULL;
+   bool ret = segment.Get(pk, 0, 1101, &result);
+   ASSERT_FALSE(ret);
+   ret = segment.Get(pk, 1, 1101, &result);
+   ASSERT_TRUE(ret);
+   ASSERT_TRUE(result != NULL);
+   ASSERT_EQ(5, result->size);
+   std::string t(result->data, result->size);
+   std::string e = "test1";
+   ASSERT_EQ(e, t);
+}
+
 }
 }
 
 int main(int argc, char** argv) {
-    ::baidu::common::SetLogLevel(::baidu::common::DEBUG);
+    ::baidu::common::SetLogLevel(::baidu::common::INFO);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

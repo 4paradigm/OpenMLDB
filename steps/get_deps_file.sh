@@ -16,6 +16,4 @@ if [ ! -d ${DEPS_SOURCE} ];then
     cd ${DEPS_SOURCE}
     wget http://pkg.4paradigm.com/rtidb/dev/zookeeper-3.4.10.tar.gz
     tar -zxvf zookeeper-3.4.10.tar.gz >/dev/null
-    wget http://pkg.4paradigm.com/rtidb/dev/protobuf-2.6.1.tar.gz >/dev/null
-    tar -zxvf protobuf-2.6.1.tar.gz >/dev/null
 fi

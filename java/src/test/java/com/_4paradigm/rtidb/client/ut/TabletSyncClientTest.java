@@ -5,6 +5,8 @@ import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.TabletSyncClient;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -18,28 +20,20 @@ import com.google.protobuf.ByteString;
 
 import io.brpc.client.EndPoint;
 
-public class TabletSyncClientTest {
+public class TabletSyncClientTest extends TestCaseBase {
 
     private AtomicInteger id = new AtomicInteger(6000);
-    private static TabletSyncClientImpl client = null;
-    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
+    private static TabletSyncClient client = null;
 
     @BeforeClass
-    public static void setUp() {
-        try {
-            snc.init();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        client = new TabletSyncClientImpl(snc);
+    public void setUp() {
+        super.setUp();
+        client = super.tabletSyncClient;
     }
 
     @AfterClass
-    public static void tearDown() {
-        snc.close();
+    public void tearDown() {
+        super.tearDown();
     }
     @Test
     public void testInvalidTtlCreate() {

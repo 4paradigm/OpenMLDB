@@ -3,13 +3,7 @@ package com._4paradigm.rtidb.client.ha.impl;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -54,8 +48,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         }
     });
     private volatile ZooKeeper zookeeper;
-    private volatile Map<String, TableHandler> name2tables = new HashMap<String, TableHandler>();
-    private volatile Map<Integer, TableHandler> id2tables = new HashMap<Integer, TableHandler>();
+    private volatile Map<String, TableHandler> name2tables = new TreeMap<String, TableHandler>();
+    private volatile Map<Integer, TableHandler> id2tables = new TreeMap<Integer, TableHandler>();
     private RpcBaseClient baseClient;
     private NodeManager nodeManager;
     private RTIDBClientConfig config;
@@ -205,9 +199,9 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     
     public void refreshRouteTable() {
         Map<String, TableHandler> oldTables = name2tables;
-        Map<String, TableHandler> newTables = new HashMap<String, TableHandler>();
+        Map<String, TableHandler> newTables = new TreeMap<String, TableHandler>();
         Map<Integer, TableHandler> oldid2tables = id2tables;
-        Map<Integer, TableHandler> newid2tables = new HashMap<Integer, TableHandler>();
+        Map<Integer, TableHandler> newid2tables = new TreeMap<Integer, TableHandler>();
         try {
             Stat stat = zookeeper.exists(config.getZkTableRootPath(), false);
             if (stat == null) {
@@ -232,6 +226,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 TableHandler handler = new TableHandler(table);
                 if (config.getReadStrategies().containsKey(table.getName())) {
                     handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
+                } else {
+                    handler.setReadStrategy(config.getGlobalReadStrategies());
                 }
                 PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
                 for (TablePartition partition : table.getTablePartitionList()) {

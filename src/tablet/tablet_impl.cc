@@ -36,7 +36,6 @@ using ::rtidb::storage::DataBlock;
 DECLARE_int32(gc_interval);
 DECLARE_int32(disk_gc_interval);
 DECLARE_int32(gc_pool_size);
-DECLARE_int32(gc_safe_offset);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
 DECLARE_uint32(scan_reserve_size);
@@ -72,10 +71,6 @@ DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
-DECLARE_uint32(skiplist_max_height);
-DECLARE_uint32(key_entry_max_height);
-DECLARE_uint32(latest_default_skiplist_height);
-DECLARE_uint32(absolute_default_skiplist_height);
 
 namespace rtidb {
 namespace tablet {
@@ -232,11 +227,24 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
         PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
         return;
     }
-
-    table->SetTTL(ttl);
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+		auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        table->SetTTL(iter->second, ttl);
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu, ts_name %u",
+                request->tid(), request->pid(), request->value(), request->ts_name().c_str());
+    } else {
+        table->SetTTL(ttl);
+        PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
+    }
     response->set_code(0);
     response->set_msg("ok");
-    PDLOG(INFO, "update table #tid %d #pid %d ttl to %lu", request->tid(), request->pid(), request->value());
 }
 
 bool TabletImpl::RegisterZK() {
@@ -281,6 +289,227 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,  uint64_t
     return false;
 }
 
+int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
+                                 ::rtidb::storage::Iterator* it,
+                                 uint64_t st,
+                                 const rtidb::api::GetType& st_type,
+                                 uint64_t et,
+                                 const rtidb::api::GetType& et_type,
+                                 std::string* value,
+                                 uint64_t* ts) {
+
+    if (it == NULL || value == NULL || ts == NULL) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+    if (st_type == ::rtidb::api::kSubKeyEq
+            && et_type == ::rtidb::api::kSubKeyEq
+            && st != et) return -1;
+
+    uint64_t end_time = std::max(et, expire_ts);
+    ::rtidb::api::GetType real_et_type = et_type;
+    if (et < expire_ts && et_type == ::rtidb::api::GetType::kSubKeyGt) {
+        real_et_type = ::rtidb::api::GetType::kSubKeyGe; 
+    }
+    if (st > 0) {
+        if (st < end_time) {
+            PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
+            return -1;
+        }
+        switch (st_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                it->Seek(st);
+                if (it->Valid() && it->GetKey() == st) {
+                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    *ts = it->GetKey();
+                    return 0;
+                }else {
+                    return 1;
+                }
+            case ::rtidb::api::GetType::kSubKeyLe:
+                it->Seek(st);
+                break;
+            case ::rtidb::api::GetType::kSubKeyLt:
+                //NOTE the st is million second
+                it->Seek(st - 1);
+                break;
+            // adopt for legacy
+            case ::rtidb::api::GetType::kSubKeyGt:
+                it->SeekToFirst();
+                if (it->Valid() && it->GetKey() > st) {
+                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    *ts = it->GetKey();
+                    return 0;
+                }else {
+                    return 1;
+                }
+            // adopt for legacy
+            case ::rtidb::api::GetType::kSubKeyGe:
+                it->SeekToFirst();
+                if (it->Valid() && it->GetKey() >= st) {
+                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    *ts = it->GetKey();
+                    return 0;
+                }else {
+                    return 1;
+                }
+            default:
+                PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
+                return -2;
+        }
+    }else {
+        it->SeekToFirst(); 
+    }
+
+    if (it->Valid()) {
+        bool jump_out = false;
+        switch(real_et_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it->GetKey() != end_time) {
+                    jump_out = true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGt:
+                if (it->GetKey() <= end_time) {
+                    jump_out = true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGe:
+                if (it->GetKey() < end_time) {
+                    jump_out = true;
+                }
+                break;
+            default:
+                PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                return -2;
+        }
+        if (jump_out) return 1;
+        value->assign(it->GetValue()->data, it->GetValue()->size);
+        *ts = it->GetKey();
+        return 0;
+    }
+    return 1;
+}
+
+
+int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
+                               ::rtidb::storage::Iterator* it,
+                               uint64_t st,
+                               const rtidb::api::GetType& st_type,
+                               uint64_t et,
+                               const rtidb::api::GetType& et_type,
+                               std::string* value,
+                               uint64_t* ts) {
+
+    if (it == NULL || value == NULL || ts == NULL) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+
+    if (st_type == ::rtidb::api::kSubKeyEq
+        && et_type == ::rtidb::api::kSubKeyEq
+        && st != et) return -1;
+
+    if (st < et) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+
+    uint32_t it_count = 0;
+    // go to start point
+    it->SeekToFirst();
+    if (st > 0) {
+        while (it->Valid() && (it_count < ttl || ttl == 0)) {
+            it_count++;
+            bool jump_out = false;
+            switch (st_type) {
+                case ::rtidb::api::GetType::kSubKeyEq:
+                    if (it->GetKey() <= st) {
+                        if (it->GetKey() == st)  {
+                            value->assign(it->GetValue()->data, it->GetValue()->size);
+                            *ts = it->GetKey();
+                            return 0;
+                        }else {
+                            return 1;
+                        }
+                    }
+                    break;
+                case ::rtidb::api::GetType::kSubKeyLe:
+                    if (it->GetKey() <= st) {
+                        jump_out = true;
+                    }
+                    break;
+
+                case ::rtidb::api::GetType::kSubKeyLt:
+                    if (it->GetKey() < st) {
+                        jump_out = true;
+                    }
+                    break;
+                // adopt for the legacy
+                case ::rtidb::api::GetType::kSubKeyGe:
+                    if (it->GetKey() >= st) {
+                        value->assign(it->GetValue()->data, it->GetValue()->size);
+                        *ts = it->GetKey();
+                        return 0;
+                    }else {
+                        return 1;
+                    }
+                // adopt for the legacy
+                case ::rtidb::api::GetType::kSubKeyGt:
+                    if (it->GetKey() > st) {
+                        value->assign(it->GetValue()->data, it->GetValue()->size);
+                        *ts = it->GetKey();
+                        return 0;
+                    }else {
+                        return 1;
+                    }
+                default:
+                    PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
+                    return -2;
+            }
+            if (!jump_out) {
+                it->Next();
+            }else {
+                break;
+            }
+        }
+    }
+    if (it->Valid() && (it_count < ttl || ttl == 0)) {
+        it_count++;
+        bool jump_out = false;
+        switch(et_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it->GetKey() != et) {
+                    jump_out = true;
+                }
+                break;
+
+            case ::rtidb::api::GetType::kSubKeyGt:
+                if (it->GetKey() <= et) {
+                    jump_out = true;
+                }
+                break;
+
+            case ::rtidb::api::GetType::kSubKeyGe:
+                if (it->GetKey() < et) {
+                    jump_out = true;
+                }
+                break;
+
+            default:
+                PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                return -2;
+        }
+        if (jump_out) return 1;
+        value->assign(it->GetValue()->data, it->GetValue()->size);
+        *ts = it->GetKey();
+        return 0;
+    }
+    // not found
+    return 1;
+}
+
+
 void TabletImpl::Get(RpcController* controller,
              const ::rtidb::api::GetRequest* request,
              ::rtidb::api::GetResponse* response,
@@ -307,8 +536,8 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
 
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    uint32_t index = 0;
+    int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -318,66 +547,74 @@ void TabletImpl::Get(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewIterator(iit->second,
-                                request->key(), ticket);
-    } else {
-        it = table->NewIterator(request->key(), ticket);
+        index = iit->second;
     }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }    
+
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->key(), ticket);
+    } else {
+        it = table->NewIterator(index, request->key(), ticket);
+    }
+
     if (it == NULL) {
         response->set_code(109);
         response->set_msg("key not found");
         return;
     }
-    ::rtidb::api::GetType get_type = ::rtidb::api::GetType::kSubKeyEq;
-    if (request->has_type()) {
-        get_type = request->type();
-    }
-    bool has_found = true;
-    // filter with time
-    if (request->ts() > 0) {
-        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
-            uint64_t keep_cnt = table->GetTTL();
-            it->SeekToFirst();
-            while (it->Valid()) {
-                if (CheckGetDone(get_type, it->GetKey(), request->ts())) {
-                    break;
-                }
-                keep_cnt--;
-                if (keep_cnt == 0) {
-                    has_found = false;
-                    break;
-                }
-                it->Next();
-            }
-        } else if (request->ts() > table->GetExpireTime()) {
-            it->Seek(request->ts());
-            if (it->Valid() && it->GetKey() != request->ts()) {
-                has_found = false;
-            }
-        }
+    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    std::string* value = response->mutable_value(); 
+    uint64_t ts = 0;
+    int32_t code = 0;
+    switch(table->GetTTLType()) {
+        case ::rtidb::api::TTLType::kLatestTime:
+            code = GetLatestIndex(ttl, it,
+                        request->ts(), request->type(),
+                        request->et(), request->et_type(),
+                        value, &ts);
+            break;
 
-    } else {
-        it->SeekToFirst();
-        if (it->Valid() && table->GetTTLType() == ::rtidb::api::TTLType::kAbsoluteTime) {
-            if (it->GetKey() <= table->GetExpireTime()) {
-                has_found = false;
-            }
-        }
+        default:
+            uint64_t expire_ts = table->GetExpireTime(ttl);
+            code = GetTimeIndex(expire_ts, it,
+                    request->ts(), request->type(),
+                    request->et(), request->et_type(),
+                    value, &ts);
+            break;
     }
-    if (it->Valid() && has_found) {
-        response->set_code(0);
-        response->set_msg("ok");
-        response->set_key(request->key());
-        response->set_ts(it->GetKey());
-        response->set_value(it->GetValue()->data, it->GetValue()->size);
-    } else {
-        response->set_code(109);
-        response->set_msg("key not found");
-        PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
-                request->ts());
-
+    delete it;
+    response->set_ts(ts);
+    response->set_code(code);
+    switch(code) {
+        case 1:
+            response->set_code(109);
+            response->set_msg("key not found");
+            return;
+        case 0:
+            return;
+        case -1:
+            response->set_msg("invalid args");
+            response->set_code(307);
+            return;
+        case -2:
+            response->set_code(307);
+            response->set_msg("st/et sub key type is invalid");
+            return;
+        default:
+            return;
     }
-    delete it; 
 }
 
 void TabletImpl::GetFromDiskTable(std::shared_ptr<DiskTable> disk_table,
@@ -444,17 +681,15 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<DiskTable> disk_table,
         response->set_msg("key not found");
         PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
                 request->ts());
-
-    }
-    delete it; 
+    }        
+    delete it;
 }
 
 void TabletImpl::Put(RpcController* controller,
         const ::rtidb::api::PutRequest* request,
         ::rtidb::api::PutResponse* response,
         Closure* done) {
-
-    if (request->time() == 0) {
+    if (request->time() == 0 && request->ts_dimensions_size() == 0) {
         response->set_code(114);
         response->set_msg("ts must be greater than zero");
         done->Run();
@@ -524,9 +759,11 @@ void TabletImpl::Put(RpcController* controller,
             done->Run();
             return;
         }
-        ok = table->Put(request->time(), 
-                   request->value(),
-                   request->dimensions());
+        if (request->ts_dimensions_size() > 0) {
+            ok = table->Put(request->dimensions(), request->ts_dimensions(), request->value());
+        } else {
+            ok = table->Put(request->time(), request->value(), request->dimensions());
+        }
     } else {
         ok = table->Put(request->pk(), 
                    request->time(), 
@@ -556,6 +793,9 @@ void TabletImpl::Put(RpcController* controller,
         if (request->dimensions_size() > 0) {
             entry.mutable_dimensions()->CopyFrom(request->dimensions());
         }
+        if (request->ts_dimensions_size() > 0) {
+            entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
+        }
         replicator->AppendEntry(entry);
     } while(false);
     done->Run();
@@ -566,21 +806,294 @@ void TabletImpl::Put(RpcController* controller,
     }
 }
 
-inline bool TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta) {
+int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg) {
+    msg.clear();
     if (table_meta->name().size() <= 0) {
-        return false;
+        msg = "table name is empty";
+        return -1;
     }
     if (table_meta->tid() <= 0) {
-        return false;
+        msg = "tid is zero";
+        return -1;
     }
-    return true;
+    ::rtidb::api::TTLType type = table_meta->ttl_type();
+    uint64_t ttl = table_meta->ttl();
+    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+        msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
+        return -1;
+    }
+    std::set<std::string> column_set;
+    std::set<std::string> ts_set;
+    if (table_meta->column_desc_size() > 0) {
+        for (const auto& column_desc : table_meta->column_desc()) {
+            if (column_set.find(column_desc.name()) != column_set.end()) {
+                msg = "has repeated column name " + column_desc.name();
+                return -1;
+            }
+            if (column_desc.is_ts_col()) {
+                if (column_desc.add_ts_idx()) {
+                    msg = "can not set add_ts_idx and is_ts_col together. column name " + column_desc.name();
+                    return -1;
+                }
+                if (column_desc.type() != "int64" && column_desc.type() != "uint64" && 
+                        column_desc.type() != "timestamp") {
+                    msg = "ttl column type must be int64, uint64, timestamp";
+                    return -1;
+                }
+                if (column_desc.has_ttl()) {
+                    ttl = column_desc.ttl();
+                    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
+                            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
+                        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
+                        msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
+                        return -1;
+                    }
+                }
+                ts_set.insert(column_desc.name());
+            }
+            column_set.insert(column_desc.name());
+        }
+    }
+    std::set<std::string> index_set;
+    if (table_meta->column_key_size() > 0) {
+        for (const auto& column_key : table_meta->column_key()) {
+            if (index_set.find(column_key.index_name()) != index_set.end()) {
+                msg = "has repeated index name " + column_key.index_name();
+                return -1;
+            }
+            index_set.insert(column_key.index_name());
+            for (const auto& column_name : column_key.col_name()) {
+                if (column_set.find(column_name) == column_set.end()) {
+                    msg = "not found column name " + column_name;
+                    return -1;
+                }
+                if (ts_set.find(column_name) != ts_set.end()) {
+                    msg = "column name in column key can not set ts col. column name " + column_name;
+                    return -1;
+                }
+            }
+            std::set<std::string> ts_name_set;
+            for (const auto& ts_name : column_key.ts_name()) {
+                if (ts_set.find(ts_name) == ts_set.end()) {
+                    msg = "not found ts_name " + ts_name;
+                    return -1;
+                }
+                if (ts_name_set.find(ts_name) != ts_name_set.end()) {
+                    msg = "has repeated ts_name " + ts_name;
+                    return -1;
+                }
+                ts_name_set.insert(ts_name);
+            }
+            if (ts_set.size() > 1 && column_key.ts_name_size() == 0) {
+                msg = "ts column num more than one, must set ts name";
+                return -1;
+            }
+        }
+    } else if (ts_set.size() > 1) {
+        msg = "column_key should be set when has two or more ts columns";
+        return -1;
+    }
+    return 0;
+}
+
+int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts, 
+                                 ::rtidb::storage::Iterator* it,
+                                 uint32_t limit,
+                                 uint64_t st,
+                                 const rtidb::api::GetType& st_type,
+                                 uint64_t et,
+                                 const rtidb::api::GetType& et_type,
+                                 std::string* pairs,
+                                 uint32_t* count,
+                                 bool remove_duplicated_record) {
+
+    if (it == NULL || pairs == NULL || count == NULL) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+
+    uint64_t end_time = std::max(et, expire_ts);
+    rtidb::api::GetType real_type = et_type;
+    if (et < expire_ts && et_type == ::rtidb::api::GetType::kSubKeyGt) {
+        real_type = ::rtidb::api::GetType::kSubKeyGe;
+    }
+    if (st > 0) {
+        if (st < end_time) {
+            PDLOG(WARNING, "invalid args for st %lu less than et %lu or expire time %lu", st, et, expire_ts);
+            return -1;
+        }
+        switch (st_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+            case ::rtidb::api::GetType::kSubKeyLe:
+                it->Seek(st);
+                break;
+            case ::rtidb::api::GetType::kSubKeyLt:
+                //NOTE the st is million second
+                it->Seek(st - 1);
+                break;
+            default:
+                PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
+                return -2;
+        }
+    }else {
+        it->SeekToFirst(); 
+    }
+
+    uint64_t last_time = 0;
+    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    tmp.reserve(FLAGS_scan_reserve_size);
+
+    uint32_t total_block_size = 0;
+    while (it->Valid()) {
+        if (limit > 0 && tmp.size() >= limit) {
+            break;
+        }
+        // skip duplicate record 
+        if (remove_duplicated_record 
+            && tmp.size() > 0 && last_time == it->GetKey()) {
+            it->Next();
+            continue;
+        }
+        bool jump_out = false;
+        switch(real_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it->GetKey() != end_time) {
+                    jump_out = true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGt:
+                if (it->GetKey() <= end_time) {
+                    jump_out = true;
+                }
+                break;
+            case ::rtidb::api::GetType::kSubKeyGe:
+                if (it->GetKey() < end_time) {
+                    jump_out = true;
+                }
+                break;
+            default:
+                PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                return -2;
+        }
+        if (jump_out) break;
+        last_time = it->GetKey();
+        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
+        total_block_size += it->GetValue()->size;
+        if (total_block_size > FLAGS_scan_max_bytes_size) {
+            PDLOG(WARNING, "reach the max byte size");
+            return -3;
+        }
+        it->Next();
+    }
+    int32_t ok = ::rtidb::base::EncodeRows(tmp, total_block_size, pairs);
+    if (ok == -1) {
+        PDLOG(WARNING, "fail to encode rows");
+        return -4;
+    }
+    *count = tmp.size();
+    return 0;
+}
+
+int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
+                                    ::rtidb::storage::Iterator* it,
+                                    uint32_t limit,
+                                    uint64_t st,
+                                    const rtidb::api::GetType& st_type,
+                                    uint64_t et,
+                                    const rtidb::api::GetType& et_type,
+                                    std::string* pairs,
+                                    uint32_t* count) {
+    if (it == NULL || pairs == NULL || count == NULL) {
+        PDLOG(WARNING, "invalid args");
+        return -1;
+    }
+    uint32_t it_count = 0;
+    // go to start point
+    it->SeekToFirst();
+    if (st > 0) {
+        while (it->Valid() && (it_count < ttl || ttl == 0)) {
+            it_count++;
+            bool jump_out = false;
+            switch (st_type) {
+                case ::rtidb::api::GetType::kSubKeyEq:
+                case ::rtidb::api::GetType::kSubKeyLe:
+                    if (it->GetKey() <= st) {
+                        jump_out = true;
+                    }
+                    break;
+
+                case ::rtidb::api::GetType::kSubKeyLt:
+                    if (it->GetKey() < st) {
+                        jump_out = true;
+                    }
+                    break;
+
+                default:
+                    PDLOG(WARNING, "invalid st type %s", ::rtidb::api::GetType_Name(st_type).c_str());
+                    return -2;
+            }
+            if (!jump_out) {
+                it->Next();
+            }else {
+                break;
+            }
+        }
+    }
+    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    tmp.reserve(FLAGS_scan_reserve_size);
+    uint32_t total_block_size = 0;
+    while (it->Valid() && (it_count < ttl || ttl == 0)) {
+        it_count++;
+        if (limit > 0 && tmp.size() >= limit) break;
+        bool jump_out = false;
+        switch(et_type) {
+            case ::rtidb::api::GetType::kSubKeyEq:
+                if (it->GetKey() != et) {
+                    jump_out = true;
+                }
+                break;
+
+            case ::rtidb::api::GetType::kSubKeyGt:
+                if (it->GetKey() <= et) {
+                    jump_out = true;
+                }
+                break;
+
+            case ::rtidb::api::GetType::kSubKeyGe:
+                if (it->GetKey() < et) {
+                    jump_out = true;
+                }
+                break;
+
+            default:
+                PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
+                return -2;
+        }
+        if (jump_out) break;
+        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
+        total_block_size += it->GetValue()->size;
+        it->Next();
+        if (total_block_size > FLAGS_scan_max_bytes_size) {
+            PDLOG(WARNING, "reach the max byte size");
+            return -3;
+        }
+    }
+    int32_t ok = ::rtidb::base::EncodeRows(tmp, total_block_size, pairs);
+    if (ok == -1) {
+        PDLOG(WARNING, "fail to encode rows");
+        return -4;
+    }
+    *count = tmp.size();
+    return 0;
 }
 
 void TabletImpl::Scan(RpcController* controller,
               const ::rtidb::api::ScanRequest* request,
               ::rtidb::api::ScanResponse* response,
               Closure* done) {
-    brpc::ClosureGuard done_guard(done);         
+    brpc::ClosureGuard done_guard(done);
     if (request->st() < request->et()) {
         response->set_code(117);
         response->set_msg("starttime less than endtime");
@@ -611,11 +1124,8 @@ void TabletImpl::Scan(RpcController* controller,
         response->set_msg("table ttl type is kLatestTime, cannot scan");
         return;
     }
-
-    // Use seek to process scan request
-    // the first seek to find the total size to copy
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    uint32_t index = 0;
+    int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -625,82 +1135,83 @@ void TabletImpl::Scan(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewIterator(iit->second,
-                                request->pk(), ticket);
-    }else {
-        it = table->NewIterator(request->pk(), ticket);
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }    
+
+    // Use seek to process scan request
+    // the first seek to find the total size to copy
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->pk(), ticket);
+    } else {
+        it = table->NewIterator(index, request->pk(), ticket);
     }
     if (it == NULL) {
         response->set_code(109);
         response->set_msg("key not found");
         return;
     }
-    if (request->st() == 0) {
-        it->SeekToFirst();
-    } else {
-        it->Seek(request->st());
-    }
-    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
-    // reduce the times of memcpy in vector
-    tmp.reserve(FLAGS_scan_reserve_size);
-    uint32_t total_block_size = 0;
-    uint64_t end_time = request->et();
-    bool remove_duplicated_record = false;
-    if (request->has_enable_remove_duplicated_record()) {
-        remove_duplicated_record = request->enable_remove_duplicated_record();
-    }
-    uint32_t scount = 0;
-    uint64_t last_time = 0;
-    end_time = std::max(end_time, table->GetExpireTime());
-    uint32_t limit = 0;
-    if (request->has_limit()) {
-        limit = request->limit();
-    }
-    while (it->Valid()) {
-        scount ++;
-        if (it->GetKey() <= end_time) {
+    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    std::string* pairs = response->mutable_pairs(); 
+    uint32_t count = 0;
+    int32_t code = 0;
+    switch(table->GetTTLType()) {
+        case ::rtidb::api::TTLType::kLatestTime:
+            code = ScanLatestIndex(ttl, it, request->limit(),
+                        request->st(), request->st_type(),
+                        request->et(), request->et_type(),
+                        pairs, &count);
             break;
-        }
-        // skip duplicate record 
-        if (remove_duplicated_record && scount > 1 && last_time == it->GetKey()) {
-            last_time = it->GetKey();
-            it->Next();
-            continue;
-        }
-        last_time = it->GetKey();
-        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
-        total_block_size += it->GetValue()->size;
-        it->Next();
-        if (limit > 0 && scount >= limit) {
+
+        default:
+            bool remove_duplicated_record = false;
+            if (request->has_enable_remove_duplicated_record()) {
+                remove_duplicated_record = request->enable_remove_duplicated_record();
+            }
+            uint64_t expire_ts = table->GetExpireTime(ttl);
+            code = ScanTimeIndex(expire_ts, it, request->limit(),
+                    request->st(), request->st_type(),
+                    request->et(), request->et_type(),
+                    pairs, &count, remove_duplicated_record);
             break;
-        }
-        // check reach the max bytes size
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
-            response->set_code(118);
-            response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
-            done->Run();
-            delete it;
-            return;
-        }
     }
     delete it;
-    uint32_t total_size = tmp.size() * (8+4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (tmp.size() <= 0) {
-        pairs->resize(0);
-    }else {
-        pairs->resize(total_size);
+    response->set_code(code);
+    response->set_count(count);
+    switch(code) {
+        case 0:
+            return;
+        case -1:
+            response->set_msg("invalid args");
+            response->set_code(307);
+            return;
+        case -2:
+            response->set_msg("st/et sub key type is invalid");
+            response->set_code(307);
+            return;
+        case -3:
+            response->set_code(118);
+            response->set_msg("reach the max scan byte size");
+            return;
+        case -4:
+            response->set_msg("fail to encode data rows");
+            response->set_code(322);
+            return;
+        default:
+            return;
     }
-    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
-    uint32_t offset = 0;
-    std::vector<std::pair<uint64_t, DataBlock*> >::iterator lit = tmp.begin();
-    for (; lit != tmp.end(); ++lit) {
-        std::pair<uint64_t, DataBlock*>& pair = *lit;
-        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
-        offset += (4 + 8 + pair.second->size);
-    }
-    response->set_code(0);
-    response->set_count(tmp.size());
 }
 
 void TabletImpl::ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
@@ -801,30 +1312,8 @@ void TabletImpl::Count(RpcController* controller,
         response->set_msg("table is loading");
         return;
     }
-    if (!request->filter_expired_data()) {
-        uint32_t index = 0;
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(108);
-                response->set_msg("idx name not found");
-                return;
-            }
-            index = iit->second;
-        }
-        uint64_t count = 0;
-        if (table->GetCount(index, request->key(), count) < 0) {
-            count = 0;
-        }
-        response->set_code(0);
-        response->set_msg("ok");
-        response->set_count(count);
-        return;
-    }
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    uint32_t index = 0;
+    int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
         if (iit == table->GetMapping().end()) {
@@ -834,10 +1323,41 @@ void TabletImpl::Count(RpcController* controller,
             response->set_msg("idx name not found");
             return;
         }
-        it = table->NewIterator(iit->second,
-                                request->key(), ticket);
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }    
+    if (!request->filter_expired_data()) {
+        uint64_t count = 0;
+        if (ts_index >= 0) {
+            if (table->GetCount(index, ts_index, request->key(), count) < 0) {
+                count = 0;
+            }
+        } else {
+            if (table->GetCount(index, request->key(), count) < 0) {
+                count = 0;
+            }
+        }
+        response->set_code(0);
+        response->set_msg("ok");
+        response->set_count(count);
+        return;
+    }
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::Iterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->key(), ticket);
     } else {
-        it = table->NewIterator(request->key(), ticket);
+        it = table->NewIterator(index, request->key(), ticket);
     }
     if (it == NULL) {
         response->set_code(109);
@@ -845,22 +1365,26 @@ void TabletImpl::Count(RpcController* controller,
         return;
     }
     it->SeekToFirst();
-    uint64_t end_time = table->GetExpireTime();
+    uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
+    uint64_t end_time = table->GetExpireTime(ttl);
     PDLOG(DEBUG, "end_time %lu", end_time);
     uint64_t scount = 0;
-    uint64_t ttl = table->GetTTL();
     while (it->Valid()) {
-        if (it->GetKey() <= end_time) {
-            break;
-        }
-        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime && scount >= ttl) {
-            break;
+        if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
+            if (scount >= ttl) {
+                break;
+            }
+        } else {
+            if (it->GetKey() <= end_time) {
+                break;
+            }
         }
         scount ++;
         it->Next();
     }
     delete it;
     response->set_code(0);
+    response->set_msg("ok");
     response->set_count(scount);
 }
 
@@ -870,52 +1394,48 @@ void TabletImpl::Traverse(RpcController* controller,
               Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
-    std::shared_ptr<DiskTable> disk_table;
     if (!table) {
-        disk_table = GetDiskTable(request->tid(), request->pid());
-        if (!disk_table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
-            response->set_code(100);
-            response->set_msg("table is not exist");
-            return;
-        }
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_code(100);
+        response->set_msg("table is not exist");
+        return;
     }
-    ::rtidb::storage::TableIterator* it = NULL;
-    if (table) {
-        if (table && table->GetTableStat() == ::rtidb::storage::kLoading) {
-            PDLOG(WARNING, "table is loading. tid %u, pid %u", 
-                          request->tid(), request->pid());
-            response->set_code(104);
-            response->set_msg("table is loading");
+	if (table->GetTableStat() == ::rtidb::storage::kLoading) {
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", 
+                      request->tid(), request->pid());
+        response->set_code(104);
+        response->set_msg("table is loading");
+        return;
+    }
+    uint32_t index = 0;
+    int ts_index = -1;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
+        if (iit == table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(108);
+            response->set_msg("idx name not found");
             return;
         }
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = table->GetMapping().find(request->idx_name());
-            if (iit == table->GetMapping().end()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(108);
-                response->set_msg("idx name not found");
-                return;
-            }
-            it = table->NewTraverseIterator(iit->second);
-        } else {
-            it = table->NewTraverseIterator(0);
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = table->GetTSMapping().find(request->ts_name());
+        if (iter == table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
         }
+        ts_index = iter->second;
+    }    
+    ::rtidb::storage::TableIterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewTraverseIterator(index, ts_index);
     } else {
-        if (request->has_idx_name() && request->idx_name().size() > 0) {
-            std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
-            if (iit == disk_table->GetMapping().end()) {
-                PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(108);
-                response->set_msg("idx name not found");
-                return;
-            }
-            it = disk_table->NewTraverseIterator(iit->second);
-        } else {
-            it = disk_table->NewTraverseIterator(0);
-        }
+        it = table->NewTraverseIterator(index);
     }
     uint64_t last_time = 0;
     std::string last_pk;
@@ -1125,7 +1645,6 @@ void TabletImpl::ChangeRole(RpcController* controller,
             }
             PDLOG(INFO, "change to leader. tid[%u] pid[%u] term[%lu]", tid, pid, request->term());
             table->SetLeader(true);
-            table->SetReplicas(vec);
             replicator->SetRole(ReplicatorRole::kLeaderNode);
             if (!FLAGS_zk_cluster.empty()) {
                 replicator->SetLeaderTerm(request->term());
@@ -1338,6 +1857,8 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     }
     response->set_code(0);
     response->set_msg("ok");
+    response->set_schema(table->GetSchema());
+    response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
 }
 
 void TabletImpl::GetTableStatus(RpcController* controller,
@@ -1378,7 +1899,7 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             status->set_record_idx_byte_size(table->GetRecordIdxByteSize());
             status->set_record_pk_cnt(table->GetRecordPkCnt());
             status->set_skiplist_height(table->GetKeyEntryHeight());
-            status->set_storage_mode(rtidb::api::StorageMode::kMemory);
+            status->set_storage_mode(rtidb::common::StorageMode::kMemory);
             uint64_t record_idx_cnt = 0;
             std::map<std::string, uint32_t>::iterator iit = table->GetMapping().begin();
             for (;iit != table->GetMapping().end(); ++iit) {
@@ -1515,7 +2036,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset <= snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
+    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
         PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", tid, pid, cur_offset, snapshot_offset);
     }else {
 		uint64_t offset = 0;
@@ -2068,17 +2589,18 @@ void TabletImpl::LoadTable(RpcController* controller,
     do {
         ::rtidb::api::TableMeta table_meta;
         table_meta.CopyFrom(request->table_meta());
-        if (!CheckTableMeta(&table_meta)) {
+        std::string msg;
+        if (CheckTableMeta(&table_meta, msg) != 0) {
             response->set_code(129);
-            response->set_msg("table meta is illegal");
+            response->set_msg(msg);
             break;
         }
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
         std::string root_path = FLAGS_db_root_path;
-        if (table_meta.storage_mode() == ::rtidb::api::kHDD) {
+        if (table_meta.storage_mode() == ::rtidb::common::kHDD) {
             root_path = FLAGS_hdd_root_path;
-        } else if (table_meta.storage_mode() == ::rtidb::api::kSSD) {
+        } else if (table_meta.storage_mode() == ::rtidb::common::kSSD) {
             root_path = FLAGS_ssd_root_path;
         }
         std::string db_path = root_path + "/" + std::to_string(tid) + 
@@ -2089,7 +2611,7 @@ void TabletImpl::LoadTable(RpcController* controller,
             response->set_msg("table db path is not exist");
             break;
         }
-        if (table_meta.storage_mode() != rtidb::api::kMemory) {
+        if (table_meta.storage_mode() != rtidb::common::kMemory) {
             std::lock_guard<std::mutex> lock(mu_);
             std::shared_ptr<DiskTable> disk_table = GetDiskTableUnLock(tid, pid);
             if (disk_table) {
@@ -2112,12 +2634,12 @@ void TabletImpl::LoadTable(RpcController* controller,
                 return;
             }
             if (table_meta.ttl() > 0) {
-                gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+                gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
             }
             response->set_code(0);
             response->set_msg("ok");
             PDLOG(INFO, "load table ok. tid[%u] pid[%u] storage mode[%s]", 
-                        tid, pid, ::rtidb::api::StorageMode_Name(table_meta.storage_mode()).c_str());
+                        tid, pid, ::rtidb::common::StorageMode_Name(table_meta.storage_mode()).c_str());
             return;
         }
         {
@@ -2192,9 +2714,7 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
             replicator->StartSyncing();
             table->SchedGc();
-            if (table->GetTTL() > 0) {
-                gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
-            }
+            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
             io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
             task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
@@ -2229,7 +2749,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             return -1;
         }
         root_path = FLAGS_hdd_root_path;
-        if (disk_table->GetStorageMode() == ::rtidb::api::StorageMode::kSSD) {
+        if (disk_table->GetStorageMode() == ::rtidb::common::StorageMode::kSSD) {
             root_path = FLAGS_ssd_root_path;
             recycle_bin_root_path = FLAGS_recycle_ssd_bin_root_path;
         }
@@ -2266,8 +2786,8 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
            "_" + std::to_string(pid) + "_" + ::rtidb::base::GetNowTime();
     ::rtidb::base::Rename(source_path, recycle_path);
     if (task_ptr) {
-		std::lock_guard<std::mutex> lock(mu_);
-	    task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+        std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
     }
     PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
     return 0;
@@ -2277,31 +2797,23 @@ void TabletImpl::CreateTable(RpcController* controller,
             const ::rtidb::api::CreateTableRequest* request,
             ::rtidb::api::CreateTableResponse* response,
             Closure* done) {
+    brpc::ClosureGuard done_guard(done);
     const ::rtidb::api::TableMeta* table_meta = &request->table_meta();
-    if (!CheckTableMeta(table_meta)) {
-        response->set_code(129);
-        response->set_msg("table meta is illegal");
-        done->Run();
-        return;
-    }
+    std::string msg;
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    ::rtidb::api::TTLType type = table_meta->ttl_type();
-    uint64_t ttl = table_meta->ttl();
-    if ((type == ::rtidb::api::kAbsoluteTime && ttl > FLAGS_absolute_ttl_max) ||
-            (type == ::rtidb::api::kLatestTime && ttl > FLAGS_latest_ttl_max)) {
-        response->set_code(132);
-        uint32_t max_ttl = type == ::rtidb::api::kAbsoluteTime ? FLAGS_absolute_ttl_max : FLAGS_latest_ttl_max;
-        response->set_msg("ttl is greater than conf value. max ttl is " + std::to_string(max_ttl));
-        PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
-                        ttl, ::rtidb::api::TTLType_Name(type).c_str(), max_ttl);
-        done->Run();
+    if (CheckTableMeta(table_meta, msg) != 0) {
+        response->set_code(129);
+        response->set_msg(msg);
+        PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
         return;
     }
+    ::rtidb::api::TTLType type = table_meta->ttl_type();
+    uint64_t ttl = table_meta->ttl();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
-                tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
+            tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string name = table_meta->name();
-    if (table_meta->storage_mode() != rtidb::api::kMemory) {
+    if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::lock_guard<std::mutex> lock(mu_);
         std::shared_ptr<DiskTable> disk_table = GetDiskTableUnLock(tid, pid);
         if (disk_table) {
@@ -2312,7 +2824,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
         std::string db_root_path = table_meta->storage_mode() == 
-                    ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+                    ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     	std::string table_db_path = db_root_path + "/" + std::to_string(tid) +
                         "_" + std::to_string(pid);
 		if (WriteTableMeta(table_db_path, table_meta) < 0) {
@@ -2330,13 +2842,13 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
         if (table_meta->ttl() > 0) {
-            gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+            gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
         }
         response->set_code(0);
         response->set_msg("ok");
         done->Run();
         PDLOG(INFO, "create table ok. tid[%u] pid[%u] storage mode[%s]", 
-                    tid, pid, ::rtidb::api::StorageMode_Name(table_meta->storage_mode()).c_str());
+                    tid, pid, ::rtidb::common::StorageMode_Name(table_meta->storage_mode()).c_str());
         return;
     }
     uint32_t seg_cnt = 8;
@@ -2356,7 +2868,6 @@ void TabletImpl::CreateTable(RpcController* controller,
             }
             response->set_code(101);
             response->set_msg("table already exists");
-            done->Run();
             return;
         }       
     	std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(tid) +
@@ -2365,20 +2876,17 @@ void TabletImpl::CreateTable(RpcController* controller,
         	PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
             response->set_code(127);
             response->set_msg("write data failed");
-            done->Run();
             return;
 		}
         std::string msg;
         if (CreateTableInternal(table_meta, msg) < 0) {
             response->set_code(131);
             response->set_msg(msg.c_str());
-            done->Run();
             return;
         }
     }
     response->set_code(0);
     response->set_msg("ok");
-    done->Run();
     std::shared_ptr<Table> table = GetTable(tid, pid);        
     if (!table) {
         PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
@@ -2395,25 +2903,25 @@ void TabletImpl::CreateTable(RpcController* controller,
     task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
             pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
-    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+    gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
 }
 
 void TabletImpl::ExecuteGc(RpcController* controller,
             const ::rtidb::api::ExecuteGcRequest* request,
             ::rtidb::api::GeneralResponse* response,
             Closure* done) {
-	brpc::ClosureGuard done_guard(done);
+    brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     std::shared_ptr<DiskTable> disk_table = GetDiskTable(tid, pid);
     if (!table && !disk_table) {
         PDLOG(DEBUG, "table is not exist. tid %u pid %u", tid, pid);
-	    response->set_code(-1);
+        response->set_code(-1);
         response->set_msg("table not found");
         return;
     }
-    gc_pool_.AddTask(boost::bind(&TabletImpl::GcTable, this, tid, pid));
+    gc_pool_.AddTask(boost::bind(&TabletImpl::GcTable, this, tid, pid, true));
     response->set_code(0);
     response->set_msg("ok");
     PDLOG(INFO, "ExecuteGc. tid %u pid %u", tid, pid);
@@ -2656,66 +3164,25 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
 }
 
 int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
-    uint32_t seg_cnt = 8;
-    std::string name = table_meta->name();
-    if (table_meta->seg_cnt() > 0) {
-        seg_cnt = table_meta->seg_cnt();
-    }
-    bool is_leader = false;
-    if (table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
-        is_leader = true;
-    }
     std::vector<std::string> endpoints;
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
-    // config dimensions
-    std::map<std::string, uint32_t> mapping;
-    for (int32_t i = 0; i < table_meta->dimensions_size(); i++) {
-        mapping.insert(std::make_pair(table_meta->dimensions(i), 
-                       (uint32_t)i));
-        PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta->dimensions(i).c_str(),
-                i, table_meta->name().c_str(), table_meta->tid(), table_meta->pid());
-    }
-    // add default dimension
-    if (mapping.empty()) {
-        mapping.insert(std::make_pair("idx0", 0));
-        PDLOG(INFO, "no index specified with default");
-    }
-    uint32_t key_entry_max_height = FLAGS_key_entry_max_height;
-    if (table_meta->has_key_entry_max_height() && table_meta->key_entry_max_height() <= FLAGS_skiplist_max_height 
-            && table_meta->key_entry_max_height() > 0) {
-        key_entry_max_height = table_meta->key_entry_max_height();
-    }else {
-        if (table_meta->ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
-            key_entry_max_height = FLAGS_latest_default_skiplist_height;
-        }else if (table_meta->ttl_type() == ::rtidb::api::TTLType::kAbsoluteTime) {
-            key_entry_max_height = FLAGS_absolute_default_skiplist_height;
-        }
-    }
-    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta->name(), 
-                                                           table_meta->tid(),
-                                                           table_meta->pid(), seg_cnt, 
-                                                           mapping,
-                                                           table_meta->ttl(), is_leader,
-                                                           endpoints,
-                                                           key_entry_max_height);
-    table->Init();
-    table->SetGcSafeOffset(FLAGS_gc_safe_offset * 60 * 1000);
-    table->SetSchema(table_meta->schema());
-    table->SetTTLType(table_meta->ttl_type());
-    if (table_meta->has_compress_type()) {
-        table->SetCompressType(table_meta->compress_type());
+    std::shared_ptr<Table> table = std::make_shared<Table>(*table_meta);
+    if (table->Init() < 0) {
+        PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
+        msg.assign("fail to init table");
+        return -1;
     }
     std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(table_meta->tid()) +
                 "_" + std::to_string(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
-                                                     table->GetReplicas(), 
+                                                     endpoints,
                                                      ReplicatorRole::kLeaderNode, 
                                                      table);
-    }else {
+    } else {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
                                                      std::vector<std::string>(), 
                                                      ReplicatorRole::kFollowerNode,
@@ -2733,7 +3200,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         msg.assign("fail init replicator for table");
         return -1;
     }
-    if (!FLAGS_zk_cluster.empty() && is_leader) {
+    if (!FLAGS_zk_cluster.empty() && table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
         replicator->SetLeaderTerm(table_meta->term());
     }
     std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(table_meta->tid(), table_meta->pid(), replicator->GetLogPart());
@@ -2966,17 +3433,21 @@ std::shared_ptr<::rtidb::api::TaskInfo> TabletImpl::FindTask(
     return std::shared_ptr<::rtidb::api::TaskInfo>();
 }
 
-void TabletImpl::GcTable(uint32_t tid, uint32_t pid) {
+void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (table) {
         table->SchedGc();
-        gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+        if (!execute_once) {
+            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+        }
         return;
     }
     std::shared_ptr<DiskTable> disk_table = GetDiskTable(tid, pid);
     if (disk_table) {
         disk_table->SchedGc();
-        gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid));
+        if (!execute_once) {
+            gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+        }
         return;
     }
 }
@@ -3112,6 +3583,7 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
 
 }
 }
+
 
 
 

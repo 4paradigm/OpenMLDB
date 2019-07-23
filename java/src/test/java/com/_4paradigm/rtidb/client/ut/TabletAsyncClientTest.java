@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -16,37 +17,23 @@ import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.TabletAsyncClient;
 import com._4paradigm.rtidb.client.TabletSyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBSingleNodeClient;
-import com._4paradigm.rtidb.client.impl.TabletAsyncClientImpl;
-import com._4paradigm.rtidb.client.impl.TabletSyncClientImpl;
 
-import io.brpc.client.EndPoint;
-
-public class TabletAsyncClientTest {
+public class TabletAsyncClientTest extends TestCaseBase {
 
     private AtomicInteger id = new AtomicInteger(3000);
-    private static TabletAsyncClient client = null;
-    private static TabletSyncClient syncClient = null;
-    private static EndPoint endpoint = new EndPoint(Config.ENDPOINT);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBSingleNodeClient snc = new RTIDBSingleNodeClient(config, endpoint);
-    
+    private TabletAsyncClient client = null;
+    private TabletSyncClient syncClient = null;
+
     @BeforeClass
-    public static void setUp() {
-        try {
-            snc.init();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        client = new TabletAsyncClientImpl(snc);
-        syncClient = new TabletSyncClientImpl(snc);
+    public void setUp() {
+        super.setUp();
+        client = super.tabletAsyncClient;
+        syncClient = super.tabletSyncClient;
 
     }
     @AfterClass
-    public static void tearDown() {
-        snc.close();
+    public void tearDown() {
+        super.tearDown();
     }
 
     @Test

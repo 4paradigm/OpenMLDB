@@ -24,7 +24,7 @@ static bool options_template_initialized = false;
 DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      const std::map<std::string, uint32_t> &mapping, 
                      uint64_t ttl, ::rtidb::api::TTLType ttl_type,
-                     ::rtidb::api::StorageMode storage_mode) :
+                     ::rtidb::common::StorageMode storage_mode) :
         name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()), schema_(), mapping_(mapping),
         ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode), offset_(0) {
     if (!options_template_initialized) {
@@ -96,7 +96,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
             rocksdb::ColumnFamilyOptions()));
     for (auto iter = mapping_.begin(); iter != mapping_.end(); ++iter) {
         rocksdb::ColumnFamilyOptions cfo;
-        if (storage_mode_ == ::rtidb::api::StorageMode::kSSD) {
+        if (storage_mode_ == ::rtidb::common::StorageMode::kSSD) {
             cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
             options_ = ssd_option_template;
         } else {
@@ -116,7 +116,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
 
 bool DiskTable::Init() {
     InitColumnFamilyDescriptor();
-    std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+    std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!::rtidb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
@@ -201,7 +201,7 @@ bool DiskTable::LoadTable() {
     options_.create_if_missing = false;
     options_.error_if_exists = false;
     options_.create_missing_column_families = false;
-    std::string root_path = storage_mode_ == ::rtidb::api::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+    std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!rtidb::base::IsExists(path)) {
         return false;

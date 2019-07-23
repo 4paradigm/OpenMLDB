@@ -8,13 +8,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.tablet.Tablet;
 
 public class PutFuture implements Future<Boolean> {
 
     private List<Future<Tablet.PutResponse>> bf = new ArrayList<Future<Tablet.PutResponse>>();
-    private Long startTime = -1l;
     private RTIDBClientConfig config = null;
 
     public PutFuture(Future<Tablet.PutResponse> f) {
@@ -23,7 +21,6 @@ public class PutFuture implements Future<Boolean> {
 
     public PutFuture(Future<Tablet.PutResponse> f, Long startTime, RTIDBClientConfig config) {
         this(f);
-        this.startTime = startTime;
         this.config = config;
     }
 
@@ -75,12 +72,6 @@ public class PutFuture implements Future<Boolean> {
         boolean ok = true;
         for (Future<Tablet.PutResponse> f : bf) {
             ok = ok && f.get() != null && f.get().getCode() == 0;
-        }
-        if (startTime > 0) {
-            Long network = System.nanoTime() - startTime;
-            if (config != null && config.isMetricsEnabled()) {
-                TabletMetrics.getInstance().addPut(-1l, network);
-            }
         }
         return ok;
     }

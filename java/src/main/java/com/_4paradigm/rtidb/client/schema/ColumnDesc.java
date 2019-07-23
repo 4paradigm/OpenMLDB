@@ -5,6 +5,7 @@ public class ColumnDesc {
 	private ColumnType type;
 	private String name;
 	private boolean addTsIndex;
+	private boolean tsCol;
 	public boolean isAddTsIndex() {
 		return addTsIndex;
 	}
@@ -23,5 +24,10 @@ public class ColumnDesc {
 	public void setName(String name) {
 		this.name = name;
 	}
-	
+	public boolean isTsCol() {
+		return tsCol;
+	}
+	public void setTsCol(boolean isTsCol) {
+		this.tsCol = isTsCol;
+	}
 }

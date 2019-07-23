@@ -19,4 +19,19 @@ if __name__ == "__main__":
     test_suite = load_all(runlist, norunlist)
     suite = unittest.TestSuite(test_suite)
     runner = xmlrunner.XMLTestRunner(output=os.getenv('reportpath'), failfast=conf.failfast)
-    runner.run(suite)
+    ret = runner.run(suite)
+    arr = str(ret)[1:-1].split(' ')
+    errors = 0
+    failures = 0
+    for item in arr:
+        pair = item.strip().split('=')
+        if len(pair) != 2:
+            continue
+        if (pair[0] == "errors"):
+            errors = int(pair[1])
+        elif (pair[0] == "failures"):
+            failures = int(pair[1])
+    if errors == 0 and failures == 0:
+        exit(0)
+    else:
+        exit(1)

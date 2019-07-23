@@ -7,7 +7,7 @@ if [ "$1" = "DEBUG" ]
 then
     sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE Debug)' CMakeLists.txt 
 else
-    sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE Release)' CMakeLists.txt 
+    sed -i '/set(CMAKE_BUILD_TYPE/c\set(CMAKE_BUILD_TYPE RelWithDebInfo)' CMakeLists.txt 
 fi
 
 sh steps/gen_code.sh

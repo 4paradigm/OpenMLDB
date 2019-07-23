@@ -43,13 +43,21 @@ public interface TableSyncClient {
     KvIterator scan(int tid, int pid, String key, String idxName, int limit)
             throws TimeoutException, TabletException;
 
+    KvIterator scan(int tid, int pid, Object[] row, String idxName, long st, long et, String tsName)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(int tid, int pid, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException;
+
     // for cluster
     boolean put(String tname, String key, long time, byte[] bytes) throws TimeoutException, TabletException;
 
     boolean put(String tname, String key, long time, String value) throws TimeoutException, TabletException;
 
     boolean put(String tname, long time, Object[] row) throws TimeoutException, TabletException;
+    boolean put(String tname, Object[] row) throws TimeoutException, TabletException;
     boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException;
+    boolean put(String tname, Map<String, Object> row) throws TimeoutException, TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
 
@@ -63,6 +71,16 @@ public interface TableSyncClient {
     Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException;
 
     Object[] getRow(String tname, String key, String idxName, long time, Tablet.GetType type) throws TimeoutException, TabletException;
+
+    Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type,
+                    long et, Tablet.GetType etType) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type,
+                    long et, Tablet.GetType etType) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type,
+                    long et, Tablet.GetType etType) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
+    Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException;
 
     KvIterator scan(String tname, String key, long st, long et) throws TimeoutException, TabletException;
 
@@ -79,14 +97,27 @@ public interface TableSyncClient {
     KvIterator scan(String tname, String key, String idxName, int limit)
             throws TimeoutException, TabletException;
 
-    KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException;
+    KvIterator scan(String tname, String key, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException;
 
+    KvIterator scan(String tname, Object[] keyArr, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException;
+
+    KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException;
+
+    KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException;
     KvIterator traverse(String tname) throws TimeoutException, TabletException;
+    KvIterator traverse(String tname, String idxName, String tsName) throws TimeoutException, TabletException;
 
     int count(String tname, String key) throws TimeoutException, TabletException;
     int count(String tname, String key, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
+    int count(String tname, String key, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
+    int count(String tname, Map<String, Object> keyMap, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
+    int count(String tname, Object[] keyArr, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
+
     int count(int tid, int pid, String key, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(int tid, int pid, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
 

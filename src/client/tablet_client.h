@@ -69,6 +69,12 @@ public:
              const std::string& value,
              const std::vector<std::pair<std::string, uint32_t> >& dimensions);
 
+    bool Put(uint32_t tid,
+             uint32_t pid,
+             const std::vector<std::pair<std::string, uint32_t>>& dimensions,
+             const std::vector<uint64_t>& ts_dimensions,
+             const std::string& value);
+
     bool Get(uint32_t tid, 
              uint32_t pid,
              const std::string& pk,
@@ -119,8 +125,7 @@ public:
              std::string& msg,
              bool showm = false);
 
-    bool GetTableSchema(uint32_t tid, uint32_t pid, 
-                        std::string& schema);
+    bool GetTableSchema(uint32_t tid, uint32_t pid, ::rtidb::api::TableMeta& table_meta);
 
     bool DropTable(uint32_t id, uint32_t pid,
                 std::shared_ptr<TaskInfo> task_info = std::shared_ptr<TaskInfo>());
@@ -158,7 +163,7 @@ public:
 
     bool UpdateTTL(uint32_t tid, uint32_t pid, 
                    const ::rtidb::api::TTLType& type,
-                   uint64_t ttl);
+                   uint64_t ttl, const std::string& ts_name);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
     bool DeleteBinlog(uint32_t tid, uint32_t pid);
 

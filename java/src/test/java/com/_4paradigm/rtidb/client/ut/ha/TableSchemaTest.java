@@ -6,7 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com._4paradigm.rtidb.client.ut.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.common.Common;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.testng.Assert;
@@ -16,9 +19,6 @@ import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
@@ -26,36 +26,18 @@ import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 
-public class TableSchemaTest {
+public class TableSchemaTest extends TestCaseBase {
     private final static Logger logger = LoggerFactory.getLogger(TableSchemaTest.class);
-    private static String zkEndpoints = Config.ZK_ENDPOINTS;
-    private static String zkRootPath = Config.ZK_ROOT_PATH;
-    private static String leaderPath  = zkRootPath + "/leader";
     private static AtomicInteger id = new AtomicInteger(50000);
-    private static NameServerClientImpl nsc = new NameServerClientImpl(zkEndpoints, leaderPath);
-    private static RTIDBClientConfig config = new RTIDBClientConfig();
-    private static RTIDBClusterClient client = null;
-    private static TableSyncClient tableSyncClient = null;
     private static String[] nodes = Config.NODES;
 
     @BeforeClass
-    public static void setUp() {
-        try {
-            nsc.init();
-            config.setZkEndpoints(zkEndpoints);
-            config.setZkRootPath(zkRootPath);
-            client = new RTIDBClusterClient(config);
-            client.init();
-            tableSyncClient = new TableSyncClientImpl(client);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+    public void setUp() {
+        super.setUp();
     }
     @AfterClass
-    public static void tearDown() {
-        nsc.close();
-        //client.close();
+    public void tearDown() {
+        super.tearDown();
     }
 
     private String createSchemaTable() {
@@ -200,6 +182,46 @@ public class TableSchemaTest {
                 Assert.assertEquals("card0", row[0]);
                 for (int i = 0; i < row.length - 1; i++) {
                     Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Assert.assertTrue(false);
+            } finally {
+                nsc.dropTable(name);
+            }
+        }
+    }
+
+    @Test
+    public void testSchemaSize() {
+        int[] schemaArr = {100, 127, 128, 129, 1000};
+        for (int schemaSize : schemaArr) {
+            String name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            TableInfo.Builder builder = TableInfo.newBuilder().setName(name).setTtl(0);
+            Common.ColumnDesc col = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+            builder.addColumnDescV1(col);
+            for (int i = 0; i < schemaSize - 1; i++) {
+                col = Common.ColumnDesc.newBuilder().setName("card" + i).setType("string").build();
+                builder.addColumnDescV1(col);
+            }
+            TableInfo table = builder.build();
+            boolean ok = nsc.createTable(table);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            long time = System.currentTimeMillis();
+            try {
+                Object[] objects = new Object[schemaSize];
+                for (int i = 0; i < schemaSize; i++) {
+                    objects[i] = String.valueOf(i);
+                }
+                ok = tableSyncClient.put(name, time, objects);
+                Assert.assertTrue(ok);
+                Object[] row = tableSyncClient.getRow(name, "0", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schemaSize, row.length);
+                for (int i = 0; i < schemaSize; i++) {
+                    Assert.assertEquals(String.valueOf(i), row[i]);
                 }
             } catch (Exception e) {
                 e.printStackTrace();

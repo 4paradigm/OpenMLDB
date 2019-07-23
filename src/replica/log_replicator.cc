@@ -288,13 +288,7 @@ bool LogReplicator::ApplyEntryToTable(const LogEntry& entry) {
         table_->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
         return true;
     }
-    if (entry.dimensions_size() > 0) {
-        return table_->Put(entry.ts(), entry.value(), entry.dimensions());
-    } else {
-        return table_->Put(entry.pk(), entry.ts(),
-                       entry.value().c_str(),
-                       entry.value().size());
-    }
+    return table_->Put(entry);
 }
 
 bool LogReplicator::AppendEntries(const ::rtidb::api::AppendEntriesRequest* request,

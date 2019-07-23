@@ -2,7 +2,7 @@ package com._4paradigm.rtidb.client.impl;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -15,13 +15,11 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.metrics.TabletMetrics;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.utils.Compress;
-import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
@@ -60,49 +58,13 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public boolean put(int tid, int pid, long time, Object[] row) throws TimeoutException, TabletException {
-        boolean handleNull = client.getConfig().isHandleNull();
-        TableHandler tableHandler = client.getHandler(tid);
-        if (tableHandler == null) {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
-        ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
-        List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
-        int index = 0;
-        int count = 0;
-        for (int i = 0; i < tableHandler.getSchema().size(); i++) {
-            if (tableHandler.getSchema().get(i).isAddTsIndex()) {
-                String value = null;
-                if (row[i] == null) {
-                    if (handleNull) {
-                        value = RTIDBClientConfig.NULL_STRING;
-                    } else {
-                        index++;
-                        continue;
-                    }
-                }
-                if (row[i] != null) {
-                    value = row[i].toString();
-                }
-
-                if (value.isEmpty()) {
-                    if (handleNull) {
-                        value = RTIDBClientConfig.EMPTY_STRING;
-                    } else {
-                        index++;
-                        continue;
-                    }
-                }
-
-                Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
-                dimList.add(dim);
-                index++;
-                count++;
-            }
-        }
-        if (count == 0) {
-            throw new TabletException("no dimension in this row");
-        }
-        return put(tid, pid, null, time, dimList, buffer, tableHandler);
+        ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
+        List<Tablet.Dimension> dimList = TableClientCommon.fillTabletDimension(row, th, client.getConfig().isHandleNull());
+        return put(tid, pid, null, time, dimList, null, buffer, th);
     }
 
     @Override
@@ -112,7 +74,7 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public ByteString get(int tid, int pid, String key, long time) throws TimeoutException, TabletException {
-        return get(tid, pid, key, null, time, null, client.getHandler(tid));
+        return get(tid, pid, key, null, time, null, null, client.getHandler(tid), 0l, null);
     }
 
     @Override
@@ -126,25 +88,22 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
-        long consumed = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            consumed = System.nanoTime();
-        }
-        ByteString response = get(tid, pid, key, idxName, time, null, th);
-        if (response == null) {
-            return new Object[th.getSchema().size()];
-        }
-        long network = 0;
-        if (client.getConfig().isMetricsEnabled()) {
-            network = System.nanoTime() - consumed;
-            consumed = System.nanoTime();
+        ByteString response = get(tid, pid, key, idxName, time, null, null, th, 0l, null);
+        if (response == null || response.isEmpty()) {
+            return null;
         }
         Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        if (client.getConfig().isMetricsEnabled()) {
-            long decode = System.nanoTime() - consumed;
-            TabletMetrics.getInstance().addGet(decode, network);
-        }
         return row;
+    }
+
+    @Override
+    public Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, keyArr, idxName, time, tsName, type, 0l, null);
+    }
+
+    @Override
+    public Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, keyMap, idxName, time, tsName, type, 0l, null);
     }
 
     @Override
@@ -169,9 +128,85 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public Object[] getRow(String tname, String key, String idxName, long time) throws TimeoutException, TabletException {
-        return getRow(tname, key, idxName, time, null);
+        return getRow(tname, key, idxName, time, null,null);
     }
 
+    @Override
+    public Object[] getRow(String tname, String key, String idxName, long time, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, key, idxName, time, null, type);
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, key, idxName, time, tsName, type, 0l, null);
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, String idxName, long time, String tsName, Tablet.GetType type,
+                            long et, Tablet.GetType etType) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, th, et, etType);
+        if (response == null || response.isEmpty()) {
+            return null;
+        }
+        Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
+        return row;
+    }
+
+    @Override
+    public Object[] getRow(String tname, Object[] keyArr, String idxName, long time, String tsName, Tablet.GetType type,
+                           long et, Tablet.GetType etType) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        if (keyArr.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th, et, etType);
+        if (response == null || response.isEmpty()) {
+            return null;
+        }
+        Object[] resultRow = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
+        return resultRow;
+    }
+
+    @Override
+    public Object[] getRow(String tname, Map<String, Object> keyMap, String idxName, long time, String tsName,
+                           Tablet.GetType type, long et, Tablet.GetType etType) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        ByteString response = get(th.getTableInfo().getTid(), pid, combinedKey, idxName, time, tsName, type, th, et, etType);
+        if (response == null || response.isEmpty()) {
+            return null;
+        }
+        Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
+        return row;
+    }
+
+    @Override
+    public Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException {
+        return getRow(tname, key, null, time, null, type);
+    }
 
     @Override
     public ByteString get(String tname, String key, long time) throws TimeoutException, TabletException {
@@ -181,11 +216,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
 
         key = validateKey(key);
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
-        }
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, null, time, null, th);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        ByteString response = get(th.getTableInfo().getTid(), pid, key, null, time, null, null, th, 0l, null);
         return response;
     }
 
@@ -208,7 +240,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         return key;
     }
 
-    private ByteString get(int tid, int pid, String key, String idxName, long time, Tablet.GetType type, TableHandler th) throws TabletException {
+    private ByteString get(int tid, int pid, String key, String idxName, long time, String tsName, Tablet.GetType type,
+                           TableHandler th,
+                           long et, Tablet.GetType etType) throws TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -220,9 +254,14 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setPid(pid);
         builder.setKey(key);
         builder.setTs(time);
+        builder.setEt(et);
         if (type != null) builder.setType(type);
+        if (etType != null) builder.setEtType(etType);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
+        }
+        if (tsName != null && !tsName.isEmpty()) {
+            builder.setTsName(tsName);
         }
         Tablet.GetRequest request = builder.build();
         Tablet.GetResponse response = ts.get(request);
@@ -235,6 +274,9 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
         }
         if (response != null) {
+            if (response.getCode() == 109) {
+                return null;
+            }
             throw new TabletException(response.getCode(), response.getMsg());
         }
         return null;
@@ -242,31 +284,69 @@ public class TableSyncClientImpl implements TableSyncClient {
 
     @Override
     public int count(String tname, String key) throws TimeoutException, TabletException {
-        return count(tname, key, null, false);
+        return count(tname, key, null, null, false);
     }
 
     @Override
     public int count(String tname, String key, boolean filter_expired_data) throws TimeoutException, TabletException {
-        return count(tname, key, null, filter_expired_data);
+        return count(tname, key, null, null, filter_expired_data);
     }
 
     @Override
     public int count(String tname, String key, String idxName) throws TimeoutException, TabletException {
-        return count(tname, key, idxName, false);
+        return count(tname, key, idxName, null, false);
     }
 
     @Override
     public int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException {
+        return count(tname, key, idxName, null, filter_expired_data);
+    }
+
+    @Override
+    public int count(String tname, String key, String idxName, String tsName, boolean filter_expired_data)
+            throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, filter_expired_data, th);
+    }
+
+    @Override
+    public int count(String tname, Map<String, Object> keyMap, String idxName, String tsName, boolean filter_expired_data)
+            throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
         }
-        return count(th.getTableInfo().getTid(), pid, key, idxName, filter_expired_data, th);
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th);
+    }
+
+    @Override
+    public int count(String tname, Object[] keyArr, String idxName, String tsName, boolean filter_expired_data)
+            throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        if (keyArr.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th);
     }
 
     @Override
@@ -280,10 +360,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with tid" + tid);
         }
-        return count(tid, pid, key, idxName, filter_expired_data, th);
+        return count(tid, pid, key, idxName, null, filter_expired_data, th);
     }
 
-    private int count(int tid, int pid, String key, String idxName, boolean filter_expired_data, TableHandler th) throws TimeoutException, TabletException {
+    private int count(int tid, int pid, String key, String idxName, String tsName, boolean filter_expired_data,
+                      TableHandler th) throws TimeoutException, TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -297,6 +378,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setFilterExpiredData(filter_expired_data);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
+        }
+        if (tsName != null && !tsName.isEmpty()) {
+            builder.setTsName(tsName);
         }
         Tablet.CountRequest request = builder.build();
         Tablet.CountResponse response = ts.count(request);
@@ -321,10 +405,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
-        }
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
         return delete(th.getTableInfo().getTid(), pid, key, idxName, th);
 
     }
@@ -394,7 +475,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with tid" + tid);
         }
-        return scan(tid, pid, key, idxName, st, et, limit, th);
+        return scan(tid, pid, key, idxName, st, et, null, limit, th);
     }
 
     @Override
@@ -431,11 +512,8 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
-        }
-        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, limit, th);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, null, limit, th);
     }
 
     @Override
@@ -444,31 +522,118 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
-    public KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException {
+    public KvIterator scan(String tname, String key, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        TraverseKvIterator it = new TraverseKvIterator(client, th, idxName);
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, key, idxName, st, et, tsName, limit, th);
+    }
+
+    @Override
+    public KvIterator scan(String tname, Object[] keyArr, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        if (keyArr.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, th);
+    }
+
+    @Override
+    public KvIterator scan(String tname, Map<String, Object> keyMap, String idxName, long st, long et, String tsName, int limit)
+            throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return scan(th.getTableInfo().getTid(), pid, combinedKey, idxName, st, et, tsName, limit, th);
+    }
+
+    @Override
+    public KvIterator traverse(String tname, String idxName, String tsName) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        TraverseKvIterator it = new TraverseKvIterator(client, th, idxName, tsName);
         it.next();
         return it;
     }
 
     @Override
-    public KvIterator traverse(String tname) throws TimeoutException, TabletException {
-        return traverse(tname, null);
+    public KvIterator traverse(String tname, String idxName) throws TimeoutException, TabletException {
+        return traverse(tname, idxName, null);
     }
 
-    private KvIterator scan(int tid, int pid, String key, String idxName, long st, long et, int limit, TableHandler th) throws TimeoutException, TabletException {
-        key = validateKey(key);
+    @Override
+    public KvIterator traverse(String tname) throws TimeoutException, TabletException {
+        return traverse(tname, null, null);
+    }
 
+    @Override
+    public KvIterator scan(int tid, int pid, Object[] keyArr, String idxName, long st, long et, String tsName)
+            throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with tid" + tid);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        if (keyArr.length != list.size()) {
+            throw new TabletException("check key number failed");
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
+        return scan(tid, pid, combinedKey, idxName, st, et, tsName, 0, th);
+    }
+
+    @Override
+    public KvIterator scan(int tid, int pid, Map<String, Object> keyMap, String idxName,
+                           long st, long et, String tsName, int limit) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tid);
+        if (th == null) {
+            throw new TabletException("no table with tid" + tid);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        return scan(tid, pid, combinedKey, idxName, st, et, tsName, limit, th);
+    }
+
+    private KvIterator scan(int tid, int pid, String key, String idxName,
+                            long st, long et, String tsName, int limit, TableHandler th) throws TimeoutException, TabletException {
+        key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
         if (ts == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
         Tablet.ScanRequest.Builder builder = Tablet.ScanRequest.newBuilder();
-        builder.setPk(key);
+        if (key != null) {
+            builder.setPk(key);
+        }
         builder.setTid(tid);
         builder.setEt(et);
         builder.setSt(st);
@@ -477,20 +642,16 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
+        if (tsName != null && !tsName.isEmpty()) {
+            builder.setTsName(tsName);
+        }
         if (client.getConfig().isRemoveDuplicateByTime()) {
             builder.setEnableRemoveDuplicatedRecord(true);
         }
         Tablet.ScanRequest request = builder.build();
-        long consuemd = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            consuemd = System.nanoTime();
-        }
         Tablet.ScanResponse response = ts.scan(request);
         if (response != null && response.getCode() == 0) {
             Long network = null;
-            if (client.getConfig().isMetricsEnabled()) {
-                network = System.nanoTime() - consuemd;
-            }
             DefaultKvIterator it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
             it.setCount(response.getCount());
             if (th.getTableInfo().hasCompressType()) {
@@ -511,86 +672,65 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("no table with name " + name);
         }
         key = validateKey(key);
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
-        }
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
         return put(th.getTableInfo().getTid(), pid, key, time, bytes, th);
     }
 
     @Override
     public boolean put(String name, long time, Object[] row) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        if (th.hasTsCol()) {
+            throw new TabletException("has ts column. should not set time");
+        }
+        return put(name, time, row, null);
+    }
+
+    @Override
+    public boolean put(String name, Object[] row) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(name);
+        if (th == null) {
+            throw new TabletException("no table with name " + name);
+        }
+        List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
+        return put(name, 0, row, tsDimensions);
+    }
+
+    private boolean put(String name, long time, Object[] row, List<Tablet.TSDimension> ts) throws TimeoutException, TabletException {
         boolean handleNull = client.getConfig().isHandleNull();
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
         ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
-        Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
-        int index = 0;
-        int count = 0;
-        for (int i = 0; i < th.getSchema().size(); i++) {
-            if (th.getSchema().get(i).isAddTsIndex()) {
-                String value = null;
-                if (row[i] == null) {
-                    if (handleNull) {
-                        value = RTIDBClientConfig.NULL_STRING;
-                    } else {
-                        index++;
-                        continue;
-                    }
-                }
-                if (row[i] != null) {
-                    value = row[i].toString();
-                }
-
-                if (value.isEmpty()) {
-                    if (handleNull) {
-                        value = RTIDBClientConfig.EMPTY_STRING;
-                    } else {
-                        index++;
-                        continue;
-                    }
-                }
-                int pid = (int) (MurmurHash.hash64(value) % th.getPartitions().length);
-                if (pid < 0) {
-                    pid = pid * -1;
-                }
-                Tablet.Dimension dim = Tablet.Dimension.newBuilder().setIdx(index).setKey(value).build();
-                List<Tablet.Dimension> dimList = mapping.get(pid);
-                if (dimList == null) {
-                    dimList = new ArrayList<Tablet.Dimension>();
-                    mapping.put(pid, dimList);
-                }
-                dimList.add(dim);
-                index++;
-                count++;
-            }
-        }
-        if (count == 0) {
-            throw new TabletException("no dimension in this row");
-        }
+        Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, handleNull);
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
         boolean ret = true;
         while (it.hasNext()) {
             Map.Entry<Integer, List<Tablet.Dimension>> entry = it.next();
             ret = ret && put(th.getTableInfo().getTid(), entry.getKey(), null,
-                    time, entry.getValue(), buffer, th);
+                    time, entry.getValue(), ts, buffer, th);
         }
         return ret;
     }
 
 
     private boolean put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
-        return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), th);
+        return put(tid, pid, key, time, null, null, ByteBuffer.wrap(bytes), th);
     }
 
     private boolean put(int tid, int pid,
                         String key, long time,
                         List<Tablet.Dimension> ds,
+                        List<Tablet.TSDimension> ts,
                         ByteBuffer row, TableHandler th) throws TabletException {
         if ((ds == null || ds.isEmpty()) && (key == null || key.isEmpty())) {
             throw new TabletException("key is null or empty");
+        }
+        if (time == 0 && (ts == null || ts.isEmpty())) {
+            throw new TabletException("ts is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
         if (th.getTableInfo().hasCompressType() && th.getTableInfo().getCompressType() == NS.CompressType.kSnappy) {
@@ -602,39 +742,33 @@ public class TableSyncClientImpl implements TableSyncClient {
             ByteBuffer buffer = ByteBuffer.wrap(compressed);
             row = buffer;
         }
-        long consumed = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            consumed = System.nanoTime();
-        }
         TabletServer tablet = ph.getLeader();
         if (tablet == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);
         }
         Tablet.PutRequest.Builder builder = Tablet.PutRequest.newBuilder();
-        if (ds != null) {
+        builder.setPid(pid);
+        builder.setTid(tid);
+        if (time != 0) {
+            builder.setTime(time);
+        }
+        if (ts != null) {
+            for (Tablet.TSDimension tsDim : ts) {
+                builder.addTsDimensions(tsDim);
+            }
+        }
+        if (key != null) {
+            builder.setPk(key);
+        }
+        if (ds != null){
             for (Tablet.Dimension dim : ds) {
                 builder.addDimensions(dim);
             }
         }
-        builder.setPid(pid);
-        builder.setTid(tid);
-        builder.setTime(time);
-        if (key != null) {
-            builder.setPk(key);
-        }
         row.rewind();
         builder.setValue(ByteBufferNoCopy.wrap(row.asReadOnlyBuffer()));
         Tablet.PutRequest request = builder.build();
-        long encode = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            encode = System.nanoTime() - consumed;
-            consumed = System.nanoTime();
-        }
         Tablet.PutResponse response = tablet.put(request);
-        if (client.getConfig().isMetricsEnabled()) {
-            Long network = System.nanoTime() - consumed;
-            TabletMetrics.getInstance().addPut(encode, network);
-        }
         if (response != null && response.getCode() == 0) {
             return true;
         }
@@ -645,10 +779,25 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public boolean put(String tname, Map<String, Object> row) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        Object[] arrayRow = new Object[th.getSchema().size()];
+        List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
+        TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
+        return put(tname, 0, arrayRow, tsDimensions);
+    }
+
+    @Override
     public boolean put(String tname, long time, Map<String, Object> row) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
+        }
+        if (th.hasTsCol()) {
+            throw new TabletException("has ts column. should not set time");
         }
         Object[] arrayRow = new Object[th.getSchema().size()];
         for (int i = 0; i < th.getSchema().size(); i++) {
@@ -686,42 +835,5 @@ public class TableSyncClientImpl implements TableSyncClient {
             throw new TabletException("fail to find table with id " + tid);
         }
         return th.getSchema();
-    }
-
-    @Override
-    public Object[] getRow(String tname, String key, String idxName, long time, Tablet.GetType type) throws TimeoutException, TabletException {
-        TableHandler th = client.getHandler(tname);
-        if (th == null) {
-            throw new TabletException("no table with name " + tname);
-        }
-        key = validateKey(key);
-        int pid = (int) (MurmurHash.hash64(key) % th.getPartitions().length);
-        if (pid < 0) {
-            pid = pid * -1;
-        }
-        long consumed = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            consumed = System.nanoTime();
-        }
-        ByteString response = get(th.getTableInfo().getTid(), pid, key, idxName, time, type, th);
-        if (response == null) {
-            return new Object[th.getSchema().size()];
-        }
-        long network = 0l;
-        if (client.getConfig().isMetricsEnabled()) {
-            network = System.nanoTime() - consumed;
-            consumed = System.nanoTime();
-        }
-        Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
-        if (client.getConfig().isMetricsEnabled()) {
-            long decode = System.nanoTime() - consumed;
-            TabletMetrics.getInstance().addGet(decode, network);
-        }
-        return row;
-    }
-
-    @Override
-    public Object[] getRow(String tname, String key, long time, Tablet.GetType type) throws TimeoutException, TabletException {
-        return getRow(tname, key, null, time, type);
     }
 }

@@ -88,10 +88,14 @@ if __name__ == "__main__":
 
     gauge["log"] = Gauge("rtidb_log", "log", ["role", "type"])
 
-    endpoint = conf_map["endpoint"]
+    endpoint = ""
+    if "endpoint" in conf_map:
+        endpoint = conf_map["endpoint"]
     if "endpoint" in env_dist:
         endpoint = env_dist["endpoint"]
-    url = "http://" + endpoint + "/status"
+    url = ""
+    if endpoint != "":
+        url = "http://" + endpoint + "/status"
     log_file_name = conf_map["log_dir"] + "/monitor.log"
     if not os.path.exists(conf_map["log_dir"]):
         os.mkdir(conf_map["log_dir"])
@@ -107,6 +111,8 @@ if __name__ == "__main__":
                 last_date = new_date
                 log_file = open(log_file_name, 'w')
             for module in rtidb_log.keys():
+                if module not in conf_map:
+                    continue
                 for var in rtidb_log[module]:
                     (count, offset) = search_key(conf_map[module] + var["file_name"], var["offset"], var["item"]["key"])
                     if var["item"]["name"] == "restart_num":
@@ -121,7 +127,8 @@ if __name__ == "__main__":
                         var["item"]["num"] += count
                         var["offset"] = offset
                         gauge["log"].labels(module, var["item"]["name"]).set(str(var["item"]["num"]))
-
+            if url == "":
+                continue
             result = get_data(url)
             for method_data in result:
                 data = time_stamp + "\t" + method_data + "\t"

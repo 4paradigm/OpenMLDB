@@ -257,6 +257,48 @@ public:
     void ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
             const ::rtidb::api::ScanRequest* request, 
             ::rtidb::api::ScanResponse* response);
+    // scan the latest index
+    int32_t ScanLatestIndex(uint64_t ttl,
+                            ::rtidb::storage::Iterator* it,
+                            uint32_t limit,
+                            uint64_t st,
+                            const rtidb::api::GetType& st_type,
+                            uint64_t et,
+                            const rtidb::api::GetType& et_type,
+                            std::string* pairs,
+                            uint32_t* count);
+
+    // get one value from latest index
+    int32_t GetLatestIndex(uint64_t ttl,
+                           ::rtidb::storage::Iterator* it,
+                           uint64_t st,
+                           const rtidb::api::GetType& st_type,
+                           uint64_t et,
+                           const rtidb::api::GetType& et_type,
+                           std::string* value,
+                           uint64_t* ts);
+
+    // get one value from time index
+    int32_t GetTimeIndex(uint64_t expire_ts,
+                         ::rtidb::storage::Iterator* it,
+                         uint64_t st,
+                         const rtidb::api::GetType& st_type,
+                         uint64_t et,
+                         const rtidb::api::GetType& et_type,
+                         std::string* value,
+                         uint64_t* ts);
+
+    // scan the time index 
+    int32_t ScanTimeIndex(uint64_t expire_ts, 
+                          ::rtidb::storage::Iterator* it,
+                          uint32_t limit,
+                          uint64_t st,
+                          const rtidb::api::GetType& st_type,
+                          uint64_t et,
+                          const rtidb::api::GetType& et_type,
+                          std::string* pairs,
+                          uint32_t* count,
+                          bool remove_duplicated_record);
 
 private:
     // Get table by table id , no need external synchronization
@@ -270,9 +312,9 @@ private:
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
-    void GcTable(uint32_t tid, uint32_t pid);
+    void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
 
-    inline bool CheckTableMeta(const rtidb::api::TableMeta* table_meta);
+    int CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg);
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
 
@@ -313,7 +355,9 @@ private:
     // sched replicator to delete binlog
     void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
-    bool CheckGetDone(::rtidb::api::GetType type, uint64_t ts, uint64_t target_ts); 
+    bool CheckGetDone(::rtidb::api::GetType type, 
+                      uint64_t ts, uint64_t target_ts); 
+
 
 private:
     Tables tables_;

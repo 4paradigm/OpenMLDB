@@ -13,6 +13,7 @@
 #include "logging.h"
 #include "timer.h"
 #include <gflags/gflags.h>
+#include <algorithm>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -20,7 +21,11 @@ using ::baidu::common::DEBUG;
 
 DECLARE_string(db_root_path);
 DECLARE_uint32(skiplist_max_height);
-
+DECLARE_int32(gc_safe_offset);
+DECLARE_uint32(skiplist_max_height);
+DECLARE_uint32(key_entry_max_height);
+DECLARE_uint32(absolute_default_skiplist_height);
+DECLARE_uint32(latest_default_skiplist_height);
 
 namespace rtidb {
 namespace storage {
@@ -32,39 +37,34 @@ Table::Table(const std::string& name,
         uint32_t pid,
         uint32_t seg_cnt,
         const std::map<std::string, uint32_t>& mapping,
-        uint64_t ttl,
-        bool is_leader,
-        const std::vector<std::string>& replicas,
-        uint32_t key_entry_max_height):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
+        uint64_t ttl):name_(name), id_(id),
+    pid_(pid), seg_cnt_(seg_cnt),
     segments_(NULL), 
-    enable_gc_(false), ttl_(ttl * 60 * 1000), 
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(is_leader), time_offset_(0),
-    replicas_(replicas), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), record_byte_size_(0), ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(key_entry_max_height)
+    enable_gc_(false), ttl_(ttl * 60 * 1000),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
+    table_status_(kUndefined), schema_(),
+    mapping_(mapping), segment_released_(false), record_byte_size_(0), 
+    ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress)
 {
     new_ttl_.store(ttl_.load());
 }
 
-Table::Table(const std::string& name,
-        uint32_t id,
-        uint32_t pid,
-        uint32_t seg_cnt,
-        const std::map<std::string, uint32_t>& mapping,
-        uint64_t ttl):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),idx_cnt_(mapping.size()),
+Table::Table(const ::rtidb::api::TableMeta& table_meta) : name_(table_meta.name()), id_(table_meta.tid()), 
+    pid_(table_meta.pid()), seg_cnt_(8), 
     segments_(NULL), 
-    enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(false), time_offset_(0),
-    replicas_(), table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false),ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-    compress_type_(::rtidb::api::CompressType::kNoCompress), key_entry_max_height_(FLAGS_skiplist_max_height)
-{
-    new_ttl_.store(ttl_.load());
+    enable_gc_(false),
+    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
+    segment_released_(false), record_byte_size_(0), 
+    ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
+    compress_type_(::rtidb::api::CompressType::kNoCompress) {
+    table_meta_.CopyFrom(table_meta);
 }
 
 Table::~Table() {
+    if (segments_ == NULL) {
+        return;
+    }
     Release();
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -75,20 +75,155 @@ Table::~Table() {
     delete[] segments_;
 }
 
-void Table::Init() {
+int Table::InitColumnDesc() {
+    if (table_meta_.column_desc_size() > 0) {
+        uint32_t key_idx = 0;
+        uint32_t ts_idx = 0;
+        for (const auto& column_desc : table_meta_.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                mapping_.insert(std::make_pair(column_desc.name(), key_idx));
+                key_idx++;
+            } else if (column_desc.is_ts_col()) {
+                ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx));
+                if (column_desc.has_ttl()) {
+                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                } else {
+                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
+                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
+                }
+                ts_idx++;
+            }
+        }
+        if (ts_mapping_.size() > 1 && !mapping_.empty()) {
+            mapping_.clear();
+            key_idx = 0;
+        }
+        if (table_meta_.column_key_size() > 0) {
+            mapping_.clear();
+            key_idx = 0;
+            for (const auto& column_key : table_meta_.column_key()) {
+                uint32_t cur_key_idx = key_idx;
+                std::string name = column_key.index_name();
+                auto it = mapping_.find(name);
+                if (it != mapping_.end()) {
+                    return -1;
+                }    
+                mapping_.insert(std::make_pair(name, key_idx));
+                key_idx++;
+                if (ts_mapping_.empty()) {
+                    continue;
+                }
+                if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
+                    column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                }
+                if (ts_mapping_.size() == 1) {
+                    column_key_map_[cur_key_idx].push_back(ts_mapping_.begin()->second);
+                    continue;
+                }
+                for (const auto& ts_name : column_key.ts_name()) {
+                    auto ts_iter = ts_mapping_.find(ts_name);
+                    if (ts_iter == ts_mapping_.end()) {
+                        PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u",
+                                        ts_name.c_str(), id_, pid_);
+                        return -1;
+                    }
+                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
+                                ts_iter->second) == column_key_map_[cur_key_idx].end()) {
+                        column_key_map_[cur_key_idx].push_back(ts_iter->second);
+                    }
+                }
+            }
+        } else {
+            if (!ts_mapping_.empty()) {
+                for (const auto& kv : mapping_) {
+                    uint32_t cur_key_idx = kv.second;
+                    if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
+                        column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                    }
+                    uint32_t cur_ts_idx = ts_mapping_.begin()->second;
+                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(), 
+                                cur_ts_idx) == column_key_map_[cur_key_idx].end()) {
+                        column_key_map_[cur_key_idx].push_back(cur_ts_idx);
+                    }
+                }
+            }
+        }
+    } else {
+        for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
+            mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t)i));
+            PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", 
+                        table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
+        }
+    }
+    // add default dimension
+    if (mapping_.empty()) {
+        mapping_.insert(std::make_pair("idx0", 0));
+        PDLOG(INFO, "no index specified with default");
+    }
+    return 0;
+}
+
+int Table::Init() {
+    key_entry_max_height_ = FLAGS_key_entry_max_height;
+    ttl_offset_ = FLAGS_gc_safe_offset * 60 * 1000;
+    if (table_meta_.seg_cnt() > 0) {
+        seg_cnt_ = table_meta_.seg_cnt();
+    }
+    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = false;
+    }
+    if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed");
+        return -1;
+    }
+    if (table_meta_.has_ttl()) {
+        ttl_ = table_meta_.ttl() * 60 * 1000;
+        new_ttl_.store(ttl_.load());
+    }    
+    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
+    if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
+    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
+    if (table_meta_.has_key_entry_max_height() && table_meta_.key_entry_max_height() <= FLAGS_skiplist_max_height
+            && table_meta_.key_entry_max_height() > 0) {
+        key_entry_max_height_ = table_meta_.key_entry_max_height();
+    } else {
+        if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+            key_entry_max_height_ = FLAGS_latest_default_skiplist_height;
+        } else if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+            key_entry_max_height_ = FLAGS_absolute_default_skiplist_height;
+        }
+    }
+    idx_cnt_ = mapping_.size();
+
     segments_ = new Segment**[idx_cnt_];
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         segments_[i] = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            segments_[i][j] = new Segment(key_entry_max_height_);
-            PDLOG(INFO, "init %u, %u segment. height %u", i, j, key_entry_max_height_);
+            if (column_key_map_.find(i) != column_key_map_.end()) {
+                segments_[i][j] = new Segment(key_entry_max_height_, column_key_map_[i]);
+                PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u", 
+                            i, j, key_entry_max_height_, column_key_map_[i].size());
+            } else {
+                segments_[i][j] = new Segment(key_entry_max_height_);
+                PDLOG(INFO, "init %u, %u segment. height %u", 
+                            i, j, key_entry_max_height_);
+            }
         }
     }
     if (ttl_ > 0) {
         enable_gc_ = true;
+    } else {
+        for (auto& ttl : ttl_vec_) {
+            if (*ttl > 0) {
+                enable_gc_ = true;
+                break;
+            }
+        }
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
-            id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+                id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
+    return 0;
 }
 
 void Table::SetCompressType(::rtidb::api::CompressType compress_type) {
@@ -142,6 +277,51 @@ bool Table::Put(uint64_t time,
     return true;
 }
 
+bool Table::Put(const Dimensions& dimensions,
+                const TSDimensions& ts_dimemsions,
+                const std::string& value) {
+    if (dimensions.size() == 0 || ts_dimemsions.size() == 0) {
+        PDLOG(WARNING, "empty dimesion. tid %u pid %u", id_, pid_);
+        return false;
+    }
+    uint32_t real_ref_cnt = 0;
+    for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
+        auto pos = column_key_map_.find(iter->idx());
+        if (pos == column_key_map_.end()) {
+            PDLOG(WARNING, "can not found dimension idx %u. tid %u pid %u", 
+                            iter->idx(), id_, pid_);
+            return false;
+        }
+        bool has_ts = false;
+        for (auto ts_idx : pos->second) {
+            for (auto it = ts_dimemsions.begin(); it != ts_dimemsions.end(); it++) {
+                if (it->idx() == ts_idx) {
+                    real_ref_cnt++;
+                    has_ts = true;
+                    break;
+                }
+            }
+        }
+        if (!has_ts) {
+            PDLOG(WARNING, "can not found ts in dimension idx %u. tid %u pid %u", 
+                            iter->idx(), id_, pid_);
+            return false;
+        }
+    }
+    DataBlock* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
+    for (auto it = dimensions.begin(); it != dimensions.end(); it++) {
+        Slice spk(it->key());
+        uint32_t seg_idx = 0;
+        if (seg_cnt_ > 1) {
+            seg_idx = ::rtidb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+        }
+        Segment* segment = segments_[it->idx()][seg_idx];
+        segment->Put(spk, ts_dimemsions, block);
+    }
+    record_cnt_.fetch_add(1, std::memory_order_relaxed);
+    record_byte_size_.fetch_add(GetRecordSize(value.length()));
+    return true;
+}
 
 bool Table::Put(const Slice& pk,
                 uint64_t time, 
@@ -157,6 +337,16 @@ bool Table::Put(const Slice& pk,
     Segment* segment = segments_[idx][seg_idx];
     segment->Put(pk, time, row);
     return true;
+}
+
+bool Table::Put(const ::rtidb::api::LogEntry& entry) {
+    if (entry.dimensions_size() > 0) {
+		return entry.ts_dimensions_size() > 0 ?
+			Put(entry.dimensions(), entry.ts_dimensions(), entry.value()) :
+			Put(entry.ts(), entry.value(), entry.dimensions());
+	} else {
+		return Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
+	}
 }
 
 bool Table::Delete(const std::string& pk, uint32_t idx) {
@@ -176,6 +366,9 @@ uint64_t Table::Release() {
     if (segment_released_) {
         return 0;
     }
+    if (segments_ == NULL) {
+        return 0;
+    }
     uint64_t total_cnt = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -188,10 +381,6 @@ uint64_t Table::Release() {
     return total_cnt;
 }
 
-void Table::SetGcSafeOffset(uint64_t offset) {
-    ttl_offset_ = offset;
-}
-
 uint64_t Table::SchedGc() {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
@@ -202,6 +391,26 @@ uint64_t Table::SchedGc() {
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
+        std::map<uint32_t, uint64_t> cur_ttl_map;
+        if (!column_key_map_.empty()) {
+            auto pos = column_key_map_.find(i);
+            if (pos == column_key_map_.end()) {
+                continue;
+            }
+            for (auto ts_idx : pos->second) {
+                if (ts_idx >= ttl_vec_.size()) {
+                    continue;
+                }
+                if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+                    cur_ttl_map.insert(std::make_pair(ts_idx, 
+                                cur_time + time_offset_.load(std::memory_order_relaxed) - 
+                                ttl_offset_ - ttl_vec_[ts_idx]->load(std::memory_order_relaxed)));
+                } else {
+                    cur_ttl_map.insert(std::make_pair(ts_idx, 
+                                ttl_vec_[ts_idx]->load(std::memory_order_relaxed) / 60 / 1000));
+                }
+            }
+        }
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
@@ -211,14 +420,22 @@ uint64_t Table::SchedGc() {
                 continue;
             }
             switch (ttl_type_) {
-            case ::rtidb::api::TTLType::kAbsoluteTime:
-                segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                break;
-            case ::rtidb::api::TTLType::kLatestTime:
-                segment->Gc4Head(ttl_.load(std::memory_order_relaxed) / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                break;
-            default:
-                PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
+                case ::rtidb::api::TTLType::kAbsoluteTime:
+                    if (cur_ttl_map.empty()) {
+                        segment->Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    } else {
+                        segment->Gc4TTL(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    }
+                    break;
+                case ::rtidb::api::TTLType::kLatestTime:
+                    if (cur_ttl_map.empty()) {
+                        segment->Gc4Head(ttl_.load(std::memory_order_relaxed) / 60 / 1000, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    } else {
+                        segment->Gc4Head(cur_ttl_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    }
+                    break;
+                default:
+                    PDLOG(WARNING, "not supported ttl type %s", ::rtidb::api::TTLType_Name(ttl_type_).c_str());
             }
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
             PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time, name_.c_str(), id_, pid_);
@@ -236,51 +453,126 @@ uint64_t Table::SchedGc() {
                     name_.c_str(), id_, pid_);
         ttl_.store(new_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     }
+    for (uint32_t i = 0; i < ttl_vec_.size(); i++) {
+        if (ttl_vec_[i]->load(std::memory_order_relaxed) != new_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
+                    ttl_vec_[i]->load(std::memory_order_relaxed),
+                    new_ttl_vec_[i]->load(std::memory_order_relaxed),
+                    name_.c_str(), id_, pid_, i);
+            ttl_vec_[i]->store(new_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+    }
     return gc_record_cnt;
 }
 
-uint64_t Table::GetExpireTime() {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0 
+uint64_t Table::GetTTL() {
+    return GetTTL(0);
+}
+
+uint64_t Table::GetTTL(uint32_t index) {
+    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        if (pos->second.front() < ttl_vec_.size()) {
+            ttl = ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed);
+        }
+    }
+    return ttl / (60 * 1000);
+}
+
+uint64_t Table::GetTTL(uint32_t index, uint32_t ts_index) {
+    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+    if (ts_index < ttl_vec_.size()) {
+        ttl = ttl_vec_[ts_index]->load(std::memory_order_relaxed);
+    }
+    return ttl / (60 * 1000);
+}
+
+uint64_t Table::GetExpireTime(uint64_t ttl) {
+    if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
     }
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_.load(std::memory_order_relaxed);
+    return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl * 60 * 1000;
 }
 
 bool Table::IsExpire(const LogEntry& entry) {
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_.load(std::memory_order_relaxed) == 0) { 
+    if (!enable_gc_.load(std::memory_order_relaxed)) { 
         return false;
     }
-    uint64_t expired_time = 0;
+    std::map<uint32_t, uint64_t> ts_dimemsions_map;
+    for (auto iter = entry.ts_dimensions().begin(); iter != entry.ts_dimensions().end(); iter++) {
+        ts_dimemsions_map.insert(std::make_pair(iter->idx(), iter->ts()));
+    }
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         if (entry.dimensions_size() > 0) {
             for (auto iter = entry.dimensions().begin(); iter != entry.dimensions().end(); ++iter) {
-                ::rtidb::storage::Ticket ticket;
-                ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), iter->key(), ticket);
-                it->SeekToLast();
-                if (it->Valid()) {
-                    if (expired_time == 0) {
-                        expired_time = it->GetKey();
+                auto pos = column_key_map_.find(iter->idx());
+                if (pos != column_key_map_.end()) {
+                    for (auto ts_idx : pos->second) {
+                        auto inner_pos = ts_dimemsions_map.find(ts_idx);
+                        if (inner_pos == ts_dimemsions_map.end()) {
+                            continue;
+                        }
+                        ::rtidb::storage::Ticket ticket;
+                        ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
+                        it->SeekToLast();
+                        if (it->Valid()) {
+                            if (inner_pos->second >= it->GetKey()) {
+                                delete it;
+                                return false;
+                            }
+                        }
+                        delete it;
+                    }    
+                } else {
+                    uint64_t ts = 0;
+                    ::rtidb::storage::Iterator* it = NULL;
+                    ::rtidb::storage::Ticket ticket;
+                    if (ts_dimemsions_map.empty()) {
+                        ts = entry.ts();
+                        it = NewIterator(iter->idx(), iter->key(), ticket);
                     } else {
-                        expired_time = std::min(expired_time, it->GetKey());
+                        ts = ts_dimemsions_map.begin()->second;
+                        it = NewIterator(iter->idx(), ts_dimemsions_map.begin()->first, iter->key(), ticket);
                     }
+                    it->SeekToLast();
+                    if (it->Valid()) {
+                        if (ts >= it->GetKey()) {
+                            delete it;
+                            return false;
+                        }
+                    }
+                    delete it;
                 }
-                delete it;
             }
         } else {
             ::rtidb::storage::Ticket ticket;
             ::rtidb::storage::Iterator* it = NewIterator(entry.pk(), ticket);
             it->SeekToLast();
             if (it->Valid()) {
-                expired_time = it->GetKey();
+                if (entry.ts() >= it->GetKey()) {
+                    delete it;
+                    return false;
+                }
             }
             delete it;
         }
     } else {
-        expired_time = GetExpireTime();
+        if (ts_dimemsions_map.empty()) {
+            if (entry.ts() >= GetExpireTime(GetTTL())) {
+                return false;
+            }
+        } else {
+            for (auto kv : ts_dimemsions_map) {
+                if (kv.second >= GetExpireTime(GetTTL(0, kv.first))) {
+                    return false;
+                }
+            }
+        }
     }
-    return entry.ts() < expired_time;
+    return true;
 }
 
 int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
@@ -293,7 +585,24 @@ int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     }
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        return segment->GetCount(spk, pos->second.front(), count);
+    } 
     return segment->GetCount(spk, count);
+}
+
+int Table::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count) {
+    if (index >= idx_cnt_) {
+        return -1;
+    }
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(pk);
+    Segment* segment = segments_[index][seg_idx];
+    return segment->GetCount(spk, ts_idx, count);
 }
 
 Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
@@ -305,6 +614,10 @@ Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& tick
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
     }
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        return NewIterator(index, pos->second.front(), pk, ticket);
+    } 
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
         seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
@@ -312,6 +625,20 @@ Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& tick
     Slice spk(pk);
     Segment* segment = segments_[index][seg_idx];
     return segment->NewIterator(spk, ticket);
+}
+
+Iterator* Table::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+    if (index >= idx_cnt_) {
+        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
+        return NULL;
+    }
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::rtidb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
+    }
+    Slice spk(pk);
+    Segment* segment = segments_[index][seg_idx];
+    return segment->NewIterator(spk, ts_idx, ticket);
 }
 
 uint64_t Table::GetRecordIdxByteSize() {
@@ -361,21 +688,38 @@ bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
 }
 
 MemTableTraverseIterator* Table::NewTraverseIterator(uint32_t index) {
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && !pos->second.empty()) {
+        return NewTraverseIterator(index, pos->second.front());
+    } else {
+        return NewTraverseIterator(index, 0);
+    }
+}
+
+MemTableTraverseIterator* Table::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
     uint64_t expire_value = 0;
-    if (!enable_gc_.load(std::memory_order_relaxed) || ttl_ == 0) {
+    if (!enable_gc_.load(std::memory_order_relaxed)) {
         expire_value = 0;
     } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        expire_value = ttl_ / 60 / 1000;
+        expire_value = GetTTL(index, ts_index);
     } else {
-        expire_value = GetExpireTime();
+        expire_value = GetExpireTime(GetTTL(index, ts_index));
     }
-    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_value);
+    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, ts_index);
 }
 
 MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, 
-            ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : segments_(segments),
+            ::rtidb::api::TTLType ttl_type, uint64_t expire_value, 
+            uint32_t ts_index) : segments_(segments),
         seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
-        ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value), ticket_() {}
+        ttl_type_(ttl_type), record_idx_(0), ts_idx_(0), 
+        expire_value_(expire_value), ticket_() {
+    uint32_t idx = 0;
+    if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
+        ts_idx_ = idx;
+    }
+}
+
 
 MemTableTraverseIterator::~MemTableTraverseIterator() {
     if (pk_it_ != NULL) delete pk_it_;
@@ -430,8 +774,14 @@ void MemTableTraverseIterator::NextPK() {
         if (it_ != NULL) {
             delete it_;
         }
-        it_ = pk_it_->GetValue()->entries.NewIterator();
-        ticket_.Push(pk_it_->GetValue());
+        if (segments_[seg_idx_]->GetTsCnt() > 1) {
+            KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];
+            it_ = entry->entries.NewIterator();
+            ticket_.Push(entry);
+        } else {
+            it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            ticket_.Push((KeyEntry*)pk_it_->GetValue());
+        }
         it_->SeekToFirst();
         record_idx_ = 1;
     } while(it_ == NULL || !it_->Valid() || IsExpired());
@@ -454,8 +804,14 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
     pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
     pk_it_->Seek(spk);
     if (pk_it_->Valid()) {
-        ticket_.Push(pk_it_->GetValue());
-        it_ = pk_it_->GetValue()->entries.NewIterator();
+        if (segments_[seg_idx_]->GetTsCnt() > 1) {
+            KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];
+            ticket_.Push(entry);
+            it_ = entry->entries.NewIterator();
+        } else {    
+            ticket_.Push((KeyEntry*)pk_it_->GetValue());
+            it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+        }
         if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
             record_idx_ = 1;
@@ -515,8 +871,14 @@ void MemTableTraverseIterator::SeekToFirst() {
         pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
         pk_it_->SeekToFirst();
         while (pk_it_->Valid()) {
-            ticket_.Push(pk_it_->GetValue());
-            it_ = pk_it_->GetValue()->entries.NewIterator();
+            if (segments_[seg_idx_]->GetTsCnt() > 1) {
+                KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];
+                ticket_.Push(entry);
+                it_ = entry->entries.NewIterator();
+            } else {    
+                ticket_.Push((KeyEntry*)pk_it_->GetValue());
+                it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
+            }
             it_->SeekToFirst();
             if (it_->Valid() && !IsExpired()) {
                 record_idx_ = 1;
@@ -534,5 +896,3 @@ void MemTableTraverseIterator::SeekToFirst() {
 
 }
 }
-
-

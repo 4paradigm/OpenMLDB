@@ -1,3 +1,4 @@
+import "common.proto";
 package rtidb.nameserver;
 
 option cc_generic_services = true;
@@ -61,13 +62,15 @@ message TableInfo {
     optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
     optional uint32 tid = 5;
-    repeated ColumnDesc column_desc = 6;
+    repeated ColumnDesc column_desc = 6 [deprecated = true];
     optional string ttl_type = 7 [default = "kAbsoluteTime"];
     optional uint32 partition_num = 8;
     optional uint32 replica_num = 9; // contain the leader
     optional CompressType compress_type = 10 [default = kNoCompress];
     optional uint32 key_entry_max_height = 11;
-    optional StorageMode storage_mode = 12 [default = kMemory];
+    repeated rtidb.common.ColumnDesc column_desc_v1 = 12;
+    repeated rtidb.common.ColumnKey column_key = 13;
+    optional StorageMode storage_mode = 14 [default = kMemory];
 }
 
 message CreateTableRequest {
