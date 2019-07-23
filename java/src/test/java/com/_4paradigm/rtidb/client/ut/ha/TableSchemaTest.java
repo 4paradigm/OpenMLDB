@@ -12,6 +12,7 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.common.Common;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
+import java.sql.Date;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -141,9 +142,7 @@ public class TableSchemaTest extends TestCaseBase {
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(time,((DateTime)row[1]).getMillis());
             Assert.assertEquals((short) 1, row[2]);
-            Assert.assertEquals(target.getYear(), ((LocalDate)row[3]).getYear());
-            Assert.assertEquals(target.getMonthOfYear(), ((LocalDate)row[3]).getMonthOfYear());
-            Assert.assertEquals(target.getDayOfMonth(), ((LocalDate)row[3]).getDayOfMonth());
+            Assert.assertEquals(target.toDate(), row[3]);
             Assert.assertEquals(true, row[4]);
 
             ok = tableSyncClient.put(name, time, new Object[] {"card0", new DateTime(time), (short)1, target, false});
