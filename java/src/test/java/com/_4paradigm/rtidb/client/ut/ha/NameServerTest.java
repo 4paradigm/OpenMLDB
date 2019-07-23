@@ -89,13 +89,8 @@ public class NameServerTest extends TestCaseBase {
             Assert.assertTrue(nsc.createTable(tableInfo));
             List<TableInfo> tables = nsc.showTable(tname);
             Assert.assertTrue(tables.size() == 1);
-<<<<<<< HEAD
             Assert.assertEquals(tables.get(0).getStorageMode(), NS.StorageMode.kMemory);
-            Assert.assertTrue( nsc.dropTable("t1"));
-            nsc.close();
-=======
             Assert.assertTrue(nsc.dropTable(tname));
->>>>>>> origin/develop
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -170,8 +165,6 @@ public class NameServerTest extends TestCaseBase {
         } catch(Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
-        } finally {
-            nsc.close();
         }
     }
 
@@ -191,8 +184,6 @@ public class NameServerTest extends TestCaseBase {
         } catch(Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
-        } finally {
-            nsc.close();
         }
     }
 

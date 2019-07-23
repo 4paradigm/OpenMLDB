@@ -17,6 +17,225 @@ mkdir -p ${DEPS_SOURCE} ${DEPS_PREFIX}
 
 cd ${DEPS_SOURCE}
 
+# boost
+if [ -f "boost_succ" ]
+then
+    echo "boost exist"
+else
+    echo "start install boost...."
+    wget http://pkg.4paradigm.com/rtidb/dev/boost-header-only.tar.gz >/dev/null
+    tar zxf boost-header-only.tar.gz >/dev/null
+    mv boost ${DEPS_PREFIX}/include
+    touch boost_succ
+    echo "install boost done"
+fi
+
+if [ -f "gtest_succ" ]
+then 
+   echo "gtest exist"
+else
+   echo "install gtest ...."
+   wget http://pkg.4paradigm.com/rtidb/dev/gtest-1.7.0.zip >/dev/null
+   unzip gtest-1.7.0.zip 
+   GTEST_DIR=$DEPS_SOURCE/googletest-release-1.7.0
+   cd googletest-release-1.7.0
+   cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DCMAKE_CXX_FLAGS=-fPIC >/dev/null
+   make -j2 
+   cp -rf include/gtest ${DEPS_PREFIX}/include 
+   cp libgtest.a libgtest_main.a ${DEPS_PREFIX}/lib
+   cd $DEPS_SOURCE 
+   touch gtest_succ
+   echo "install gtest done"
+fi
+
+if [ -f "zlib_succ" ]
+then
+    echo "zlib exist"
+else
+    echo "start install zlib..."
+    wget http://pkg.4paradigm.com/rtidb/dev/zlib-1.2.11.tar.gz
+    tar zxf zlib-1.2.11.tar.gz 
+    cd zlib-1.2.11
+    sed -i '/CFLAGS="${CFLAGS--O3}"/c\  CFLAGS="${CFLAGS--O3} -fPIC"' configure
+    ./configure --static --prefix=${DEPS_PREFIX} >/dev/null
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch zlib_succ
+    echo "install zlib done"
+fi
+
+if [ -f "protobuf_succ" ]
+then
+    echo "protobuf exist"
+else
+    echo "start install protobuf ..."
+    # protobuf
+    # wget --no-check-certificate https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
+    wget http://pkg.4paradigm.com/rtidb/dev/protobuf-2.6.1.tar.gz >/dev/null
+    tar zxf protobuf-2.6.1.tar.gz >/dev/null
+    cd protobuf-2.6.1
+    export CPPFLAGS=-I${DEPS_PREFIX}/include
+    export LDFLAGS=-L${DEPS_PREFIX}/lib
+    ./configure ${DEPS_CONFIG} >/dev/null
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch protobuf_succ
+    echo "install protobuf done"
+fi
+
+if [ -f "snappy_succ" ]
+then
+    echo "snappy exist"
+else
+    echo "start install snappy ..."
+    # snappy
+    # wget --no-check-certificate https://snappy.googlecode.com/files/snappy-1.1.1.tar.gz
+    wget http://pkg.4paradigm.com/rtidb/dev/snappy-1.1.1.tar.gz
+    tar zxf snappy-1.1.1.tar.gz >/dev/null
+    cd snappy-1.1.1
+    ./configure ${DEPS_CONFIG} >/dev/null
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch snappy_succ
+    echo "install snappy done"
+fi
+
+if [ -f "gflags_succ" ]
+then
+    echo "gflags-2.1.1.tar.gz exist"
+else
+    # gflags
+    wget http://pkg.4paradigm.com/rtidb/dev/gflags-2.2.0.tar.gz 
+    tar zxf gflags-2.2.0.tar.gz
+    cd gflags-2.2.0
+    cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC >/dev/null
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch gflags_succ
+fi
+
+if [ -f "common_succ" ]
+then 
+   echo "common exist"
+else
+  # common
+  wget http://pkg.4paradigm.com/rtidb/dev/common.tar.gz
+  tar -zxvf common.tar.gz
+  cd common
+  sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/include/' Makefile
+  make -j2 >/dev/null
+  cp -rf include/* ${DEPS_PREFIX}/include
+  cp -rf libcommon.a ${DEPS_PREFIX}/lib
+  cd -
+  touch common_succ
+fi
+
+if [ -f "unwind_succ" ] 
+then
+    echo "unwind_exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/libunwind-1.1.tar.gz  
+    tar -zxvf libunwind-1.1.tar.gz
+    cd libunwind-1.1
+    autoreconf -i
+    ./configure --prefix=${DEPS_PREFIX}
+    make -j4 && make install 
+    cd -
+    touch unwind_succ
+fi
+
+if [ -f "gperf_tool" ]
+then
+    echo "gperf_tool exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/gperftools-2.5.tar.gz 
+    tar -zxvf gperftools-2.5.tar.gz 
+    cd gperftools-2.5 
+    ./configure --enable-cpu-profiler --enable-heap-checker --enable-heap-profiler  --enable-static --prefix=${DEPS_PREFIX} 
+    make -j2 >/dev/null
+    make install
+    cd -
+    touch gperf_tool
+fi
+
+if [ -f "rapjson_succ" ]
+then 
+    echo "rapjson exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/rapidjson.1.1.0.tar.gz
+    tar -zxvf rapidjson.1.1.0.tar.gz
+    cp -rf rapidjson-1.1.0/include/rapidjson ${DEPS_PREFIX}/include
+    touch rapjson_succ
+fi
+
+if [ -f "leveldb_succ" ]
+then
+    echo "leveldb exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/leveldb.tar.gz
+    tar -zxvf leveldb.tar.gz
+    cd leveldb
+    sed -i 's/^OPT ?= -O2 -DNDEBUG/OPT ?= -O2 -DNDEBUG -fPIC/' Makefile
+    make -j8
+    cp -rf include/* ${DEPS_PREFIX}/include
+    cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
+    cd -
+    touch leveldb_succ
+fi
+
+if [ -f "openssl_succ" ]
+then
+    echo "openssl exist"
+else
+    wget -O OpenSSL_1_1_0.zip http://pkg.4paradigm.com/rtidb/dev/OpenSSL_1_1_0.zip > /dev/null
+    unzip OpenSSL_1_1_0.zip
+    cd openssl-OpenSSL_1_1_0
+    ./config --prefix=${DEPS_PREFIX} --openssldir=${DEPS_PREFIX}
+    make -j5
+    make install
+    rm -rf ${DEPS_PREFIX}/lib/libssl.so*
+    rm -rf ${DEPS_PREFIX}/lib/libcrypto.so*
+    cd -
+    touch openssl_succ
+    echo "openssl done"
+fi
+
+if [ -f "brpc_succ" ]
+then
+    echo "brpc exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/brpc-legacy-1.3.7.tar.gz
+    tar -zxvf brpc-legacy-1.3.7.tar.gz
+    BRPC_DIR=$DEPS_SOURCE/brpc-legacy
+    cd brpc-legacy
+    sh config_brpc.sh --headers=${DEPS_PREFIX}/include --libs=${DEPS_PREFIX}/lib
+    make -j5 libbrpc.a
+    make output/include
+    cp -rf output/include/* ${DEPS_PREFIX}/include
+    cp libbrpc.a ${DEPS_PREFIX}/lib
+    cd -
+    touch brpc_succ
+    echo "brpc done"
+fi
+
+if [ -f "zk_succ" ]
+then
+    echo "zk exist"
+else
+    wget http://pkg.4paradigm.com/rtidb/dev/zookeeper-3.4.10.tar.gz
+    tar -zxvf zookeeper-3.4.10.tar.gz
+    cd zookeeper-3.4.10/src/c/
+    ./configure --prefix=${DEPS_PREFIX} --enable-shared=no --enable-static=yes
+    make -j4 >/dev/null 
+    make install
+    cd -
+    touch zk_succ
+fi
+
 if [ -f "rocksdb_succ" ]
 then
     echo "rocksdb exist"
@@ -35,4 +254,3 @@ else
     touch rocksdb_succ
     echo "install rocksdb done"
 fi
-

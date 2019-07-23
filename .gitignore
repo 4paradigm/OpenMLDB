@@ -45,4 +45,4 @@ src/proto/*.h
 build
 thirdparty
 thirdsrc
-
+onebox/*.log
