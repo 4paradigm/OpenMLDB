@@ -2820,7 +2820,6 @@ void TabletImpl::CreateTable(RpcController* controller,
             PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
             response->set_code(101);
             response->set_msg("table already exists");
-            done->Run();
             return;
         }
         std::string db_root_path = table_meta->storage_mode() == 
@@ -2831,14 +2830,12 @@ void TabletImpl::CreateTable(RpcController* controller,
         	PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
             response->set_code(127);
             response->set_msg("write data failed");
-            done->Run();
             return;
 		}
         std::string msg;
         if (CreateDiskTableInternal(table_meta, false, msg) < 0) {
             response->set_code(131);
             response->set_msg(msg.c_str());
-            done->Run();
             return;
         }
         if (table_meta->ttl() > 0) {
@@ -2846,7 +2843,6 @@ void TabletImpl::CreateTable(RpcController* controller,
         }
         response->set_code(0);
         response->set_msg("ok");
-        done->Run();
         PDLOG(INFO, "create table ok. tid[%u] pid[%u] storage mode[%s]", 
                     tid, pid, ::rtidb::common::StorageMode_Name(table_meta->storage_mode()).c_str());
         return;
