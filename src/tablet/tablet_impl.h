@@ -13,6 +13,7 @@
 #include "replica/log_replicator.h"
 #include "storage/snapshot.h"
 #include "storage/table.h"
+#include "storage/disk_table.h"
 #include "thread_pool.h"
 #include "base/set.h"
 #include "zk/zk_client.h"
@@ -25,6 +26,7 @@ using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
+using ::rtidb::storage::DiskTable;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
 using ::rtidb::replica::ReplicatorRole;
@@ -34,6 +36,7 @@ namespace rtidb {
 namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
+typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<DiskTable> > > DiskTables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
@@ -247,6 +250,13 @@ public:
         server_ = server;
     }
 
+    void GetFromDiskTable(std::shared_ptr<DiskTable> disk_table,
+            const ::rtidb::api::GetRequest* request, 
+            ::rtidb::api::GetResponse* response);
+
+    void ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
+            const ::rtidb::api::ScanRequest* request, 
+            ::rtidb::api::ScanResponse* response);
     // scan the latest index
     int32_t ScanLatestIndex(uint64_t ttl,
                             ::rtidb::storage::Iterator* it,
@@ -295,6 +305,8 @@ private:
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
     // Get table by table id , and Need external synchronization  
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
+    std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
+    std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
@@ -305,6 +317,8 @@ private:
     int CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::string& msg);
 
     int CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg);
+
+    int CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg);
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task);
 
@@ -334,9 +348,8 @@ private:
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
             uint64_t op_id, ::rtidb::api::TaskType task_type);
 
-    int32_t CheckDimessionPut(const ::rtidb::api::PutRequest* request,
-                              std::shared_ptr<Table>& table);
-
+    int CheckDimessionPut(const ::rtidb::api::PutRequest* request, uint32_t idx_cnt);
+    
     // sync log data from page cache to disk 
     void SchedSyncDisk(uint32_t tid, uint32_t pid);
     // sched replicator to delete binlog
@@ -361,6 +374,7 @@ private:
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
+    DiskTables disk_tables_;
 };
 
 

@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.4
+image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.5
 stages:
     - build
     - ut
@@ -12,14 +12,15 @@ build_rtidb_and_case:
         - ln -sf /usr/workdir/thirdsrc thirdsrc
         - source /root/.bashrc && bash steps/compile.sh
     artifacts:
-        expire_in: 1h
+        expire_in: 2h
         paths:
-            - build/
+            - build/bin/rtidb
 cpp_ut:
     stage: ut
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/compile.sh
         - source /root/.bashrc && LD_LIBRARY_PATH=/usr/workdir/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
     artifacts:
         reports:

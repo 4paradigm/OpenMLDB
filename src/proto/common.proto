@@ -26,3 +26,10 @@ message ColumnKey {
     repeated string col_name = 2;
     repeated string ts_name = 3;
 }
+
+enum StorageMode {
+    kMemory = 1;
+    kSSD = 2;
+    kHDD = 3;
+}
+

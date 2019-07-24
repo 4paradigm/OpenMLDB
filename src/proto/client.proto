@@ -19,4 +19,5 @@ message TableInfo {
 	optional string compress_type = 9 [default = "kNoCompress"];
 	optional uint32 key_entry_max_height = 10;
     repeated rtidb.common.ColumnKey column_key = 11;
+	optional rtidb.common.StorageMode storage_mode = 12 [default = kMemory];
 }

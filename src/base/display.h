@@ -351,6 +351,7 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     row.push_back("offset");
     row.push_back("record_cnt");
     row.push_back("memused");
+    row.push_back("storage_mode");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (const auto& value : tables) {
@@ -391,10 +392,16 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
                 } else {
                     row.push_back("-");
                 }
-                if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size()) {
+				if (value.table_partition(idx).partition_meta(meta_idx).has_record_byte_size() &&
+                        (!value.has_storage_mode() || value.storage_mode() == ::rtidb::common::StorageMode::kMemory)) {
                     row.push_back(::rtidb::base::HumanReadableString(value.table_partition(idx).partition_meta(meta_idx).record_byte_size()));
                 } else {
                     row.push_back("-");
+                }
+                if (value.has_storage_mode()) {
+                    row.push_back(::rtidb::common::StorageMode_Name(value.storage_mode()));
+                } else {
+                    row.push_back("kMemory");
                 }
                 tp.AddRow(row);
             }

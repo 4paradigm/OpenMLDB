@@ -13,6 +13,7 @@
 #include <map>
 #include "storage/segment.h"
 #include "storage/ticket.h"
+#include "storage/iterator.h"
 #include <atomic>
 #include <memory>
 #include "proto/tablet.pb.h"
@@ -38,18 +39,17 @@ enum TableStat {
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 
-class TableIterator {
+class MemTableTraverseIterator : public TableIterator {
 public:
-	TableIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, 
-            uint64_t expire_value, uint32_t ts_index);
-	~TableIterator();
-	bool Valid() const;
-	void Next();
-	void Seek(const std::string& key, uint64_t time);
-	DataBlock* GetValue() const;
-	std::string GetPK() const;
-	uint64_t GetKey() const;
-	void SeekToFirst();
+	MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, uint64_t expire_value, uint32_t ts_index);
+	~MemTableTraverseIterator();
+	virtual bool Valid() override;
+	virtual void Next() override;
+	virtual void Seek(const std::string& key, uint64_t time) override;
+	virtual rtidb::base::Slice GetValue() const override;
+	virtual std::string GetPK() const override;
+	virtual uint64_t GetKey() const override;
+	virtual void SeekToFirst() override;
 
 private:
     void NextPK();
@@ -115,8 +115,8 @@ public:
 
     Iterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
 
-    TableIterator* NewTableIterator(uint32_t index);
-    TableIterator* NewTableIterator(uint32_t index, uint32_t ts_idx);
+    MemTableTraverseIterator* NewTraverseIterator(uint32_t index);
+    MemTableTraverseIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx);
     // release all memory allocated
     uint64_t Release();
 

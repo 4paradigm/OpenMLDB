@@ -1281,6 +1281,12 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     if (table_info->compress_type() == ::rtidb::nameserver::kSnappy) {
         compress_type = ::rtidb::api::CompressType::kSnappy;
     }
+    ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
+    if (table_info->storage_mode() == ::rtidb::common::StorageMode::kSSD) {
+        storage_mode = ::rtidb::common::StorageMode::kSSD;
+    } else if (table_info->storage_mode() == ::rtidb::common::StorageMode::kHDD) {
+        storage_mode = ::rtidb::common::StorageMode::kHDD;
+    }
     ::rtidb::api::TableMeta table_meta;
     for (uint32_t i = 0; i < columns.size(); i++) {
         if (columns[i].add_ts_idx) {
@@ -1300,6 +1306,7 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
     table_meta.set_schema(schema);
     table_meta.set_ttl_type(ttl_type);
     table_meta.set_compress_type(compress_type);
+    table_meta.set_storage_mode(storage_mode);
     if (table_info->has_key_entry_max_height()) {
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
     }
@@ -1996,6 +2003,13 @@ void NameServerImpl::CreateTable(RpcController* controller,
                         table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
         return;
     }
+    if (table_info->has_storage_mode() && table_info->storage_mode() != rtidb::common::StorageMode::kMemory && 
+            table_info->replica_num() > 1) {
+        response->set_code(307);
+        response->set_msg("invalid parameter");
+        PDLOG(WARNING, "muti-replica not supported");
+        return;
+    }
     if (table_info->table_partition_size() > 0) {
         std::set<uint32_t> pid_set;
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
@@ -2208,7 +2222,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(request.endpoint(), op_index, 
                 ::rtidb::api::OPType::kAddReplicaOP, request.name(), 
-                tid, pid, ttl, seg_cnt, false);
+                tid, pid, ttl, seg_cnt, false, pos->second->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -2448,7 +2462,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(des_endpoint, op_index, ::rtidb::api::OPType::kMigrateOP, 
-                 name, tid, pid, table_info->ttl(), table_info->seg_cnt(), false);
+                 name, tid, pid, table_info->ttl(), table_info->seg_cnt(), false, table_info->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", 
                         tid, pid, des_endpoint.c_str());
@@ -3362,7 +3376,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaOP, name, 
-                tid, pid, ttl, seg_cnt, false);
+                tid, pid, ttl, seg_cnt, false, pos->second->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3481,7 +3495,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaWithDropOP, name, 
-                tid, pid, ttl, seg_cnt, false);
+                tid, pid, ttl, seg_cnt, false, pos->second->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3589,7 +3603,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
     op_data->task_list_.push_back(task);
     task = CreateLoadTableTask(endpoint, op_index, 
                 ::rtidb::api::OPType::kReAddReplicaNoSendOP, name, 
-                tid, pid, ttl, seg_cnt, false);
+                tid, pid, ttl, seg_cnt, false, pos->second->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3772,7 +3786,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     uint32_t seg_cnt =  pos->second->seg_cnt();
     std::shared_ptr<Task> task = CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), 
                 ::rtidb::api::OPType::kReLoadTableOP, name, 
-                tid, pid, ttl, seg_cnt, true);
+                tid, pid, ttl, seg_cnt, true, pos->second->storage_mode());
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -3994,7 +4008,8 @@ std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& 
 
 std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint,
                     uint64_t op_index, ::rtidb::api::OPType op_type, const std::string& name, 
-                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader) {
+                    uint32_t tid, uint32_t pid, uint64_t ttl, uint32_t seg_cnt, bool is_leader,
+                    ::rtidb::common::StorageMode storage_mode) {
     std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::rtidb::api::TaskInfo>());
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
@@ -4005,9 +4020,27 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& end
     task->task_info_->set_task_type(::rtidb::api::TaskType::kLoadTable);
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
-    boost::function<bool ()> fun = boost::bind(&TabletClient::LoadTable, it->second->client_, name, tid, pid, 
-                ttl, is_leader, std::vector<std::string>(),
-                seg_cnt, task->task_info_);
+
+    ::rtidb::common::StorageMode cur_storage_mode = ::rtidb::common::StorageMode::kMemory;
+    if (storage_mode == ::rtidb::common::StorageMode::kSSD) {
+        cur_storage_mode = ::rtidb::common::StorageMode::kSSD;
+    } else if (storage_mode == ::rtidb::common::StorageMode::kHDD) {
+        cur_storage_mode = ::rtidb::common::StorageMode::kHDD;
+    }
+    ::rtidb::api::TableMeta table_meta;
+    table_meta.set_name(name);
+    table_meta.set_tid(tid);
+    table_meta.set_pid(pid);
+    table_meta.set_ttl(ttl);
+    table_meta.set_seg_cnt(seg_cnt);
+    table_meta.set_storage_mode(cur_storage_mode);
+    if (is_leader) {
+        table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    } else {
+        table_meta.set_mode(::rtidb::api::TableMode::kTableFollower);
+    }
+    boost::function<bool ()> fun = boost::bind(&TabletClient::LoadTable, it->second->client_, 
+                table_meta, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }

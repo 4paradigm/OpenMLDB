@@ -45,4 +45,6 @@ src/proto/*.h
 build
 thirdparty
 thirdsrc
-
+onebox/*.log
+test-common/integrationtest/ns*
+test-common/integrationtest/tablet*
