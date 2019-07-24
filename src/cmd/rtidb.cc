@@ -1763,10 +1763,14 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
                 return;
             }
             name_set.insert(kv[0]);
-            ::rtidb::nameserver::ColumnDesc* column_desc = ns_table_info.add_column_desc();
+            ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
             column_desc->set_name(kv[0]);
             column_desc->set_type(cur_type);
             if (kv.size() > 2 && kv[2] == "index") {
+                if ((cur_type == "float") || (cur_type == "double")) {
+                    printf("float or double column can not be index");
+                    return;
+                }
                 column_desc->set_add_ts_idx(true);
                 has_index = true;
             } else {
@@ -3186,6 +3190,19 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         std::cout << "Bad create format, input like screate <name> <tid> <pid> <ttl> <seg_cnt> <is_leader> <schema>" << std::endl;
         return;
     }
+    std::set<std::string> type_set;
+    type_set.insert("int32");
+    type_set.insert("uint32");
+    type_set.insert("int64");
+    type_set.insert("uint64");
+    type_set.insert("float");
+    type_set.insert("double");
+    type_set.insert("string");
+    type_set.insert("bool");
+    type_set.insert("timestamp");
+    type_set.insert("date");
+    type_set.insert("int16");
+    type_set.insert("uint16");
     try {
         int64_t ttl = 0;
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
@@ -3224,7 +3241,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         if (parts[6].compare("false") == 0) {
             leader = false;
         }
-        std::vector<::rtidb::base::ColumnDesc> columns;
+        std::vector<::rtidb::common::ColumnDesc> columns;
         // check duplicate column
         std::set<std::string> used_column_names;
         bool has_index = false;
@@ -3239,45 +3256,26 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 std::cout << "Duplicated column " << kv[0] << std::endl;
                 return;
             }
-            used_column_names.insert(kv[0]);
-            bool add_ts_idx = false;
-            if (kv.size() > 2 && kv[2] == "index") {
-                add_ts_idx = true;
-                has_index = true;
-            }
-            ::rtidb::base::ColType type;
-            if (kv[1] == "int32") {
-                type = ::rtidb::base::ColType::kInt32;
-            } else if (kv[1] == "int64") {
-                type = ::rtidb::base::ColType::kInt64;
-            } else if (kv[1] == "uint32") {
-                type = ::rtidb::base::ColType::kUInt32;
-            } else if (kv[1] == "uint64") {
-                type = ::rtidb::base::ColType::kUInt64;
-            } else if (kv[1] == "float") {
-                type = ::rtidb::base::ColType::kFloat;
-            } else if (kv[1] == "double") {
-                type = ::rtidb::base::ColType::kDouble;
-            } else if (kv[1] == "string") {
-                type = ::rtidb::base::ColType::kString;
-            } else if (kv[1] == "timestamp") {
-                type = ::rtidb::base::ColType::kTimestamp;
-            } else if (kv[1] == "date") {
-                type = ::rtidb::base::ColType::kDate;
-            } else if (kv[1] == "int16") {
-                type = ::rtidb::base::ColType::kInt16;
-            } else if (kv[1] == "uint16") {
-                type = ::rtidb::base::ColType::kUInt16;
-            } else if (kv[1] == "bool") {
-                type = ::rtidb::base::ColType::kBool;
-            } else {
-                std::cout << "create failed! undefined type " << kv[1] << std::endl;
+            std::string cur_type = kv[1];
+            std::transform(cur_type.begin(), cur_type.end(), cur_type.begin(), ::tolower);
+            if (type_set.find(cur_type) == type_set.end()) {
+                printf("type %s is invalid\n", kv[1].c_str());
                 return;
             }
-            ::rtidb::base::ColumnDesc desc;
-            desc.add_ts_idx = add_ts_idx;
-            desc.type = type;
-            desc.name = kv[0];
+            used_column_names.insert(kv[0]);
+            ::rtidb::common::ColumnDesc desc;
+            desc.set_add_ts_idx(false);
+            if (kv.size() > 2 && kv[2] == "index") {
+                if ((cur_type == "float") || (cur_type == "double")) {
+                    printf("float or double column can not be index");
+                    return;
+                }
+                desc.set_add_ts_idx(false);
+                has_index = true;
+            }
+
+            desc.set_type(cur_type);
+            desc.set_name(kv[0]);
             columns.push_back(desc);
         }
         if (!has_index) {

@@ -41,7 +41,7 @@ std::string TabletClient::GetEndpoint() {
 bool TabletClient::CreateTable(const std::string& name, 
                      uint32_t tid, uint32_t pid,
                      uint64_t ttl, uint32_t seg_cnt,
-                     const std::vector<::rtidb::base::ColumnDesc>& columns,
+                     const std::vector<::rtidb::common::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
                      uint64_t term, const ::rtidb::api::CompressType compress_type) {
@@ -54,8 +54,8 @@ bool TabletClient::CreateTable(const std::string& name,
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].add_ts_idx) {
-            table_meta->add_dimensions(columns[i].name);
+        if (columns[i].add_ts_idx()) {
+            table_meta->add_dimensions(columns[i].name());
         }
     }
     table_meta->set_name(name);

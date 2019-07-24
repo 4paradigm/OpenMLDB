@@ -43,7 +43,7 @@ public:
     bool CreateTable(const std::string& name, 
                      uint32_t tid, uint32_t pid,
                      uint64_t ttl, uint32_t seg_cnt,
-                     const std::vector<::rtidb::base::ColumnDesc>& columns,
+                     const std::vector<::rtidb::common::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
                      uint64_t term = 0, const ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress);
