@@ -28,6 +28,8 @@ public class ParseCsvUtil {
     private static final String INDEX = Constant.INDEX;
     private static final String TIMESTAMP = Constant.TIMESTAMP;
     private boolean hasTs = false;
+    private boolean schemaTsCol = false;
+    private long timestamp = -1;
     private boolean hasHeader = Constant.HAS_HEADER;
 
     public ParseCsvUtil(String filePath, String tableName, List<String[]> scheamInfo) {
@@ -83,8 +85,20 @@ public class ParseCsvUtil {
                     break;
                 default:
             }
-            if (!hasTs && TIMESTAMP.contains(columnName)) {
+            if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
                 hasTs = true;
+            }
+            if (hasTs && !schemaTsCol) {
+                if (columnName.equals(TIMESTAMP.trim())) {
+                    if (columnType.equals("string") || columnType.equals("int64")) {
+                        timestamp = Long.parseLong(value);
+                    } else if (columnType.equals("timestamp")) {
+                        timestamp = Timestamp.valueOf(value).getTime();
+                    } else {
+                        logger.error("incorrect format for timestamp!");
+                        throw new RuntimeException("incorrect format for timestamp!");
+                    }
+                }
             }
             if (string.length != 3) {
                 columnIndex++;
@@ -97,6 +111,12 @@ public class ParseCsvUtil {
         AtomicLong id = new AtomicLong(1);
         CsvReader reader = null;
         try {
+            List<ColumnDesc> schemaOfRtidb = InitClient.getSchemaOfRtidb(tableName);
+            for (ColumnDesc columnDesc : schemaOfRtidb) {
+                if (columnDesc.getIsTsCol()) {
+                    schemaTsCol = true;
+                }
+            }
             reader = new CsvReader(filePath, Constant.CSV_SEPARATOR.toCharArray()[0], Charset.forName(Constant.CSV_ENCODINGFORMAT));
             if (hasHeader) {
                 reader.readHeaders();
@@ -109,7 +129,7 @@ public class ParseCsvUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
-                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), hasTs, client, tableName, map));
+                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), hasTs, timestamp, client, tableName, map));
                 clientIndex++;
             }
         } catch (IOException e) {
@@ -153,10 +173,10 @@ public class ParseCsvUtil {
             columnName = string[0];
             type = string[1];
             builder.setName(columnName);
-            if (INDEX.contains(columnName)) {
+            if (InitClient.contains(";", INDEX, columnName)) {
                 builder.setAddTsIdx(true);
             }
-            if (TIMESTAMP.contains(columnName)) {
+            if (InitClient.contains(";", TIMESTAMP, columnName)) {
                 builder.setIsTsCol(true);
             }
             switch (type) {

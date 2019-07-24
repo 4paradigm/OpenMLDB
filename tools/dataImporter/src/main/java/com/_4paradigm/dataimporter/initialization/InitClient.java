@@ -61,7 +61,7 @@ public class InitClient {
         }
     }
 
-    public static void createSchemaTable(String tableName, List<ColumnDesc> schemaList) {
+    public static boolean createSchemaTable(String tableName, List<ColumnDesc> schemaList) {
         NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
                 .setName(tableName)  // 设置表名
                 .setReplicaNum(REPLICA_NUM)    // 设置副本数. 此设置是可选的, 默认为3
@@ -81,7 +81,7 @@ public class InitClient {
             }
         }
         NS.TableInfo table = builder.build();
-        logger.debug("table info is:"+table);
+        logger.debug("table info is:" + table);
         // 可以通过返回值判断是否创建成功
         boolean ok = nsc.createTable(table);
         if (ok) {
@@ -92,6 +92,7 @@ public class InitClient {
         for (int i = 0; i < MAX_THREAD_NUM; i++) {
             clusterClient[i].refreshRouteTable();
         }
+        return ok;
     }
 
     /**
@@ -176,12 +177,31 @@ public class InitClient {
         return result;
     }
 
+    public static boolean contains(String delim, String string, String target) {
+        if (string != null && !string.trim().equals("")) {
+            for (String s : string.split(delim)) {
+                if (s.trim().equals(target)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public static List<ColumnDesc> getSchemaOfRtidb(String tableName) {
         if (tableName == null || tableName.isEmpty()) {
             logger.warn("filePath is null or empty ");
             return null;
         }
-        return clusterClient[0].getHandler(tableName).getTableInfo().getColumnDescV1List();
+        List<ColumnDesc> columnDescV1List;
+        try {
+            columnDescV1List = clusterClient[0].getHandler(tableName).getTableInfo().getColumnDescV1List();
+        } catch (Exception e) {
+            logger.warn(e.toString());
+            logger.warn("table "+tableName +" did not exist");
+            return null;
+        }
+        return columnDescV1List;
     }
 
     public static boolean dropTable(String tableName) {

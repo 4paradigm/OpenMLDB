@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,6 +44,8 @@ public class ParseParquetUtil {
     private static final String INDEX = Constant.INDEX;
     private static final String TIMESTAMP = Constant.TIMESTAMP;
     private boolean hasTs = false;
+    private boolean schemaTsCol = false;
+    private long timestamp = -1;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
     private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
             ? null
@@ -52,6 +53,7 @@ public class ParseParquetUtil {
     private final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
     private final long MILLIS_IN_DAY = TimeUnit.DAYS.toMillis(1);
     private final long NANOS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
+
     static {
         if (arr != null) {
             String[] sarr = INPUT_COLUMN_INDEX.split(",");
@@ -108,8 +110,21 @@ public class ParseParquetUtil {
                     break;
                 default:
             }
-            if (!hasTs && TIMESTAMP.contains(columnName)) {
+            if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
                 hasTs = true;
+            }
+            if (hasTs && !schemaTsCol) {
+                if (columnName.equals(TIMESTAMP.trim())) {
+                    if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT64)) {
+                        timestamp = group.getLong(index, 0);
+                    } else if(columnType.equals(PrimitiveType.PrimitiveTypeName.INT96)) {
+                        timestamp = getTimestamp(group.getInt96(index, 0));
+                    }
+                    else {
+                        logger.error("incorrect format for timestamp!");
+                        throw new RuntimeException("incorrect format for timestamp!");
+                    }
+                }
             }
         }
         return map;
@@ -121,6 +136,12 @@ public class ParseParquetUtil {
         int clientIndex = 0;
         ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), new Path(filePath));
         try {
+            List<ColumnDesc> schemaOfRtidb = InitClient.getSchemaOfRtidb(tableName);
+            for (ColumnDesc columnDesc : schemaOfRtidb) {
+                if (columnDesc.getIsTsCol()) {
+                    schemaTsCol = true;
+                }
+            }
             ParquetReader<Group> reader = builder.build();
             while ((group = (SimpleGroup) reader.read()) != null) {
                 HashMap<String, Object> map = read(group);
@@ -128,7 +149,7 @@ public class ParseParquetUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
-                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(taskId.getAndIncrement()), hasTs, client, tableName, map));
+                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(taskId.getAndIncrement()), hasTs, timestamp, client, tableName, map));
                 clientIndex++;
             }
         } catch (IOException e) {
@@ -154,7 +175,7 @@ public class ParseParquetUtil {
         }
         List<Type> typeList = new ArrayList<>();
         for (int i = 0; i < schema.getFieldCount(); i++) {
-            if (INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
+            if (InitClient.contains(",", INPUT_COLUMN_INDEX, String.valueOf(i))) {
                 typeList.add(schema.getType(i));
             }
         }
@@ -171,10 +192,10 @@ public class ParseParquetUtil {
             columnName = schema.getFieldName(i);
             columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
             builder.setName(columnName);
-            if (INDEX.contains(columnName)) {
+            if (InitClient.contains(";", INDEX, columnName)) {
                 builder.setAddTsIdx(true);
             }
-            if (TIMESTAMP.contains(columnName)) {
+            if (InitClient.contains(";", TIMESTAMP, columnName)) {
                 builder.setIsTsCol(true);
             }
             switch (columnType) {

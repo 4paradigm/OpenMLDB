@@ -50,15 +50,19 @@ public class Main {
         }
         List<java.nio.file.Path> filePaths = new ArrayList<>();
         for (File file : files) {
-            if (!table_exists) {
-                if (!createTable(file)) {
-                    logger.warn("creating table failed");
-                    return;
-                }
-                table_exists = true;
-            }
-            filePaths.add(file.toPath());
             logger.info("file path is : " + file.toPath().toString());
+            if (file.toPath().toString().contains("parquet")
+                    || file.toPath().toString().contains("csv")
+                    || file.toPath().toString().contains("orc")) {
+                if (!table_exists) {
+                    if (!createTable(file)) {
+                        logger.warn("creating table failed");
+                        return;
+                    }
+                    table_exists = true;
+                }
+                filePaths.add(file.toPath());
+            }
         }
         for (java.nio.file.Path filePath : filePaths) {
             put(filePath.toString());
@@ -94,8 +98,7 @@ public class Main {
             logger.warn("the schemaList is null");
             return false;
         }
-        InitClient.createSchemaTable(Constant.TABLENAME, schemaList);
-        return true;
+        return InitClient.createSchemaTable(Constant.TABLENAME, schemaList);
     }
 
     private static void put(String filePath) {

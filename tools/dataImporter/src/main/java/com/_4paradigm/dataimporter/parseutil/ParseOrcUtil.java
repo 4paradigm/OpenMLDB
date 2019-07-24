@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -37,6 +36,8 @@ public class ParseOrcUtil {
     private static final String INDEX = Constant.INDEX;
     private static final String TIMESTAMP = Constant.TIMESTAMP;
     private boolean hasTs = false;
+    private boolean schemaTsCol = false;
+    private long timestamp = -1;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
     private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
             ? null
@@ -130,8 +131,22 @@ public class ParseOrcUtil {
                     break;
                 default:
             }
-            if (!hasTs && TIMESTAMP.contains(columnName)) {
+            if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
                 hasTs = true;
+            }
+            if (hasTs && !schemaTsCol) {
+                if (columnName.equals(TIMESTAMP.trim())) {
+                    if (columnType.equals(TypeDescription.Category.STRING) || columnType.equals(TypeDescription.Category.LONG)) {
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                        timestamp = Long.valueOf(s);
+                    } else if (columnType.equals(TypeDescription.Category.TIMESTAMP)) {
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
+                        timestamp = Timestamp.valueOf(s).getTime();
+                    } else {
+                        logger.error("incorrect format for timestamp!");
+                        throw new RuntimeException("incorrect format for timestamp!");
+                    }
+                }
             }
         }
         return map;
@@ -139,6 +154,12 @@ public class ParseOrcUtil {
 
     public void put() {
         try {
+            List<ColumnDesc> schemaOfRtidb = InitClient.getSchemaOfRtidb(tableName);
+            for (ColumnDesc columnDesc : schemaOfRtidb) {
+                if (columnDesc.getIsTsCol()) {
+                    schemaTsCol = true;
+                }
+            }
             Configuration conf = new Configuration();
             conf.set("mapreduce.framework.name", "local");
             conf.set("fs.defaultFS", "file:///");
@@ -158,7 +179,7 @@ public class ParseOrcUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
-                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), hasTs, client, tableName, map));
+                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), hasTs, timestamp, client, tableName, map));
                 clientIndex++;
 
             }
@@ -186,7 +207,7 @@ public class ParseOrcUtil {
         }
         TypeDescription result = TypeDescription.createStruct();
         for (int i = 0; i < schema.getFieldNames().size(); i++) {
-            if (INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
+            if (InitClient.contains(",", INPUT_COLUMN_INDEX, String.valueOf(i))) {
                 result.addField(schema.getFieldNames().get(i), schema.getChildren().get(i));
             }
         }
@@ -203,10 +224,10 @@ public class ParseOrcUtil {
             columnName = schema.getFieldNames().get(i);
             columnType = schema.getChildren().get(i).getCategory();
             builder.setName(columnName);
-            if (INDEX.contains(columnName)) {
+            if (InitClient.contains(";", INDEX, columnName)) {
                 builder.setAddTsIdx(true);
             }
-            if (TIMESTAMP.contains(columnName)) {
+            if (InitClient.contains(";", TIMESTAMP, columnName)) {
                 builder.setIsTsCol(true);
             }
             switch (columnType) {
