@@ -853,6 +853,10 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                 }
                 ts_set.insert(column_desc.name());
             }
+            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
+                msg = "float or double column can not be index";
+                return -1;
+            }
             column_set.insert(column_desc.name());
         }
     }
