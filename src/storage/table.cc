@@ -515,7 +515,7 @@ bool Table::IsExpire(const LogEntry& entry) {
                             continue;
                         }
                         ::rtidb::storage::Ticket ticket;
-                        ::rtidb::storage::Iterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
+                        ::rtidb::storage::MemTableIterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
                         it->SeekToLast();
                         if (it->Valid()) {
                             if (inner_pos->second >= it->GetKey()) {
@@ -527,7 +527,7 @@ bool Table::IsExpire(const LogEntry& entry) {
                     }    
                 } else {
                     uint64_t ts = 0;
-                    ::rtidb::storage::Iterator* it = NULL;
+                    ::rtidb::storage::MemTableIterator* it = NULL;
                     ::rtidb::storage::Ticket ticket;
                     if (ts_dimemsions_map.empty()) {
                         ts = entry.ts();
@@ -548,7 +548,7 @@ bool Table::IsExpire(const LogEntry& entry) {
             }
         } else {
             ::rtidb::storage::Ticket ticket;
-            ::rtidb::storage::Iterator* it = NewIterator(entry.pk(), ticket);
+            ::rtidb::storage::MemTableIterator* it = NewIterator(entry.pk(), ticket);
             it->SeekToLast();
             if (it->Valid()) {
                 if (entry.ts() >= it->GetKey()) {
@@ -604,11 +604,11 @@ int Table::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint
     return segment->GetCount(spk, ts_idx, count);
 }
 
-Iterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
+MemTableIterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
     return NewIterator(0, pk, ticket); 
 }
 
-Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
+MemTableIterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
@@ -626,7 +626,7 @@ Iterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& tick
     return segment->NewIterator(spk, ticket);
 }
 
-Iterator* Table::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+MemTableIterator* Table::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;

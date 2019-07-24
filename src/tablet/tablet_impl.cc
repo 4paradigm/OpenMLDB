@@ -290,7 +290,7 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,  uint64_t
 }
 
 int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
-                                 ::rtidb::storage::Iterator* it,
+                                 ::rtidb::storage::TableIterator* it,
                                  uint64_t st,
                                  const rtidb::api::GetType& st_type,
                                  uint64_t et,
@@ -320,7 +320,8 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
             case ::rtidb::api::GetType::kSubKeyEq:
                 it->Seek(st);
                 if (it->Valid() && it->GetKey() == st) {
-                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    ::rtidb::base::Slice it_value = it->GetValue();
+                    value->assign(it_value.data(), it_value.size());
                     *ts = it->GetKey();
                     return 0;
                 }else {
@@ -337,7 +338,8 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
             case ::rtidb::api::GetType::kSubKeyGt:
                 it->SeekToFirst();
                 if (it->Valid() && it->GetKey() > st) {
-                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    ::rtidb::base::Slice it_value = it->GetValue();
+                    value->assign(it_value.data(), it_value.size());
                     *ts = it->GetKey();
                     return 0;
                 }else {
@@ -347,7 +349,8 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
             case ::rtidb::api::GetType::kSubKeyGe:
                 it->SeekToFirst();
                 if (it->Valid() && it->GetKey() >= st) {
-                    value->assign(it->GetValue()->data, it->GetValue()->size);
+                    ::rtidb::base::Slice it_value = it->GetValue();
+                    value->assign(it_value.data(), it_value.size());
                     *ts = it->GetKey();
                     return 0;
                 }else {
@@ -384,7 +387,8 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
                 return -2;
         }
         if (jump_out) return 1;
-        value->assign(it->GetValue()->data, it->GetValue()->size);
+        ::rtidb::base::Slice it_value = it->GetValue();
+        value->assign(it_value.data(), it_value.size());
         *ts = it->GetKey();
         return 0;
     }
@@ -393,7 +397,7 @@ int32_t TabletImpl::GetTimeIndex(uint64_t expire_ts,
 
 
 int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
-                               ::rtidb::storage::Iterator* it,
+                               ::rtidb::storage::TableIterator* it,
                                uint64_t st,
                                const rtidb::api::GetType& st_type,
                                uint64_t et,
@@ -426,7 +430,8 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
                 case ::rtidb::api::GetType::kSubKeyEq:
                     if (it->GetKey() <= st) {
                         if (it->GetKey() == st)  {
-                            value->assign(it->GetValue()->data, it->GetValue()->size);
+                            ::rtidb::base::Slice it_value = it->GetValue();
+                            value->assign(it_value.data(), it_value.size());
                             *ts = it->GetKey();
                             return 0;
                         }else {
@@ -448,7 +453,8 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
                 // adopt for the legacy
                 case ::rtidb::api::GetType::kSubKeyGe:
                     if (it->GetKey() >= st) {
-                        value->assign(it->GetValue()->data, it->GetValue()->size);
+                        ::rtidb::base::Slice it_value = it->GetValue();
+                        value->assign(it_value.data(), it_value.size());
                         *ts = it->GetKey();
                         return 0;
                     }else {
@@ -457,7 +463,8 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
                 // adopt for the legacy
                 case ::rtidb::api::GetType::kSubKeyGt:
                     if (it->GetKey() > st) {
-                        value->assign(it->GetValue()->data, it->GetValue()->size);
+                        ::rtidb::base::Slice it_value = it->GetValue();
+                        value->assign(it_value.data(), it_value.size());
                         *ts = it->GetKey();
                         return 0;
                     }else {
@@ -501,7 +508,8 @@ int32_t TabletImpl::GetLatestIndex(uint64_t ttl,
                 return -2;
         }
         if (jump_out) return 1;
-        value->assign(it->GetValue()->data, it->GetValue()->size);
+        ::rtidb::base::Slice it_value = it->GetValue();
+        value->assign(it_value.data(), it_value.size());
         *ts = it->GetKey();
         return 0;
     }
@@ -562,7 +570,7 @@ void TabletImpl::Get(RpcController* controller,
     }    
 
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    ::rtidb::storage::TableIterator* it = NULL;
     if (ts_index >= 0) {
         it = table->NewIterator(index, ts_index, request->key(), ticket);
     } else {
@@ -899,7 +907,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
 }
 
 int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts, 
-                                 ::rtidb::storage::Iterator* it,
+                                 ::rtidb::storage::TableIterator* it,
                                  uint32_t limit,
                                  uint64_t st,
                                  const rtidb::api::GetType& st_type,
@@ -942,7 +950,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
     }
 
     uint64_t last_time = 0;
-    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
 
     uint32_t total_block_size = 0;
@@ -979,8 +987,9 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
         }
         if (jump_out) break;
         last_time = it->GetKey();
-        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
-        total_block_size += it->GetValue()->size;
+        ::rtidb::base::Slice it_value = it->GetValue();
+        tmp.push_back(std::make_pair(it->GetKey(), it_value));
+        total_block_size += it_value.size();
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             PDLOG(WARNING, "reach the max byte size");
             return -3;
@@ -997,7 +1006,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
 }
 
 int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
-                                    ::rtidb::storage::Iterator* it,
+                                    ::rtidb::storage::TableIterator* it,
                                     uint32_t limit,
                                     uint64_t st,
                                     const rtidb::api::GetType& st_type,
@@ -1041,7 +1050,7 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
             }
         }
     }
-    std::vector<std::pair<uint64_t, DataBlock*> > tmp;
+    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     tmp.reserve(FLAGS_scan_reserve_size);
     uint32_t total_block_size = 0;
     while (it->Valid() && (it_count < ttl || ttl == 0)) {
@@ -1072,8 +1081,9 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
                 return -2;
         }
         if (jump_out) break;
-        tmp.push_back(std::make_pair(it->GetKey(), it->GetValue()));
-        total_block_size += it->GetValue()->size;
+        ::rtidb::base::Slice it_value = it->GetValue();
+        tmp.push_back(std::make_pair(it->GetKey(), it_value));
+        total_block_size += it_value.size();
         it->Next();
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             PDLOG(WARNING, "reach the max byte size");
@@ -1152,7 +1162,7 @@ void TabletImpl::Scan(RpcController* controller,
     // Use seek to process scan request
     // the first seek to find the total size to copy
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    ::rtidb::storage::TableIterator* it = NULL;
     if (ts_index >= 0) {
         it = table->NewIterator(index, ts_index, request->pk(), ticket);
     } else {
@@ -1353,7 +1363,7 @@ void TabletImpl::Count(RpcController* controller,
         return;
     }
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = NULL;
+    ::rtidb::storage::TableIterator* it = NULL;
     if (ts_index >= 0) {
         it = table->NewIterator(index, ts_index, request->key(), ticket);
     } else {

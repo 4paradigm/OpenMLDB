@@ -162,16 +162,16 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(31, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("key", ticket);
+    MemTableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(0, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -180,12 +180,12 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     it->Seek(11);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(11, it->GetKey());
-    std::string value4_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value4_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value11", value4_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(10, it->GetKey());
-    std::string value5_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value5_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value10", value5_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -240,16 +240,16 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
 
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(0, "card0", ticket);
+        MemTableIterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value1", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(0, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value0", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -257,16 +257,16 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
 
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        MemTableIterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value1", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(0, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value0", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -307,16 +307,16 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("key", ticket);
+    MemTableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(0, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -415,32 +415,32 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     ASSERT_EQ(2, offset);
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(0, "card0", ticket);
+        MemTableIterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test2", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9527, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test1", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
     }
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        MemTableIterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test2", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9527, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test1", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -526,16 +526,16 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(2, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("test0", ticket);
+    MemTableIterator* it = table->NewIterator("test0", ticket);
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9528, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test2", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9527, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test1", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -902,16 +902,16 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(30, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("key_new", ticket);
+    MemTableIterator* it = table->NewIterator("key_new", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(0, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -920,7 +920,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value4_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value4_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_xxx1", value4_str);
 
     // check snapshot
@@ -1022,11 +1022,11 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(1, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator(0, 0, "card0", ticket);
+    MemTableIterator* it = table->NewIterator(0, 0, "card0", ticket);
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1122, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -1035,7 +1035,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Seek(2233);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(2233, it->GetKey());
-    value2_str.assign(it->GetValue()->data, it->GetValue()->size);
+    value2_str.assign(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -1044,7 +1044,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1122, it->GetKey());
-    value2_str.assign(it->GetValue()->data, it->GetValue()->size);
+    value2_str.assign(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());

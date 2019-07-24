@@ -109,11 +109,11 @@ public:
     bool Delete(const std::string& pk, uint32_t idx);
 
     // use the first demission
-    Iterator* NewIterator(const std::string& pk, Ticket& ticket);
+    MemTableIterator* NewIterator(const std::string& pk, Ticket& ticket);
 
-    Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
+    MemTableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
 
-    Iterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
+    MemTableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
 
     MemTableTraverseIterator* NewTraverseIterator(uint32_t index);
     MemTableTraverseIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx);

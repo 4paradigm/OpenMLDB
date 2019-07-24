@@ -25,7 +25,7 @@
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
 using ::rtidb::storage::Ticket;
-using ::rtidb::storage::Iterator;
+using ::rtidb::storage::MemTableIterator;
 using ::rtidb::storage::DataBlock;
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -245,18 +245,18 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     {
         Ticket ticket;
         // check 18527
-        Iterator* it = t8->NewIterator(0, "card0", ticket);
+        MemTableIterator* it = t8->NewIterator(0, "card0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        DataBlock* value = it->GetValue();
-        std::string value_str(value->data, value->size);
+        ::rtidb::base::Slice value = it->GetValue();
+        std::string value_str(value.data(), value.size());
         ASSERT_EQ("value 1", value_str);
         ASSERT_EQ(9527, it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
-        std::string value_str1(value->data, value->size);
+        std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value 3", value_str1);
         ASSERT_EQ(9525, it->GetKey());
 
@@ -266,18 +266,18 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     {
         Ticket ticket;
         // check 18527
-        Iterator* it = t8->NewIterator(1, "merchant0", ticket);
+        MemTableIterator* it = t8->NewIterator(1, "merchant0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        DataBlock* value = it->GetValue();
-        std::string value_str(value->data, value->size);
+        ::rtidb::base::Slice value = it->GetValue();
+        std::string value_str(value.data(), value.size());
         ASSERT_EQ("value 1", value_str);
         ASSERT_EQ(9527, it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
-        std::string value_str1(value->data, value->size);
+        std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value 2", value_str1);
         ASSERT_EQ(9526, it->GetKey());
 
@@ -364,32 +364,32 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     {
         Ticket ticket;
         // check 18527
-        Iterator* it = t8->NewIterator("test_pk", ticket);
+        MemTableIterator* it = t8->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
-        DataBlock* value = it->GetValue();
-        std::string value_str(value->data, value->size);
+        ::rtidb::base::Slice value = it->GetValue();
+        std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
         ASSERT_EQ(9527, it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
-        std::string value_str1(value->data, value->size);
+        std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value2", value_str1);
         ASSERT_EQ(9526, it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
-        std::string value_str2(value->data, value->size);
+        std::string value_str2(value.data(), value.size());
         ASSERT_EQ("value3", value_str2);
         ASSERT_EQ(9525, it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
-        std::string value_str3(value->data, value->size);
+        std::string value_str3(value.data(), value.size());
         ASSERT_EQ("value4", value_str3);
         ASSERT_EQ(9524, it->GetKey());
     }

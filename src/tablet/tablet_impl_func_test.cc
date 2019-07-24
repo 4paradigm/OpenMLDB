@@ -119,7 +119,7 @@ public:
     ~TabletFuncTest() {}
 };
 
-void RunGetTimeIndexAssert(::rtidb::storage::Iterator* it, uint64_t base_ts, uint64_t expired_ts) {
+void RunGetTimeIndexAssert(::rtidb::storage::MemTableIterator* it, uint64_t base_ts, uint64_t expired_ts) {
     ::rtidb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
@@ -185,7 +185,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::Iterator* it, uint64_t base_ts, uin
 }
 
 
-void RunGetLatestIndexAssert(::rtidb::storage::Iterator* it) {
+void RunGetLatestIndexAssert(::rtidb::storage::MemTableIterator* it) {
     ::rtidb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
@@ -240,21 +240,21 @@ void RunGetLatestIndexAssert(::rtidb::storage::Iterator* it) {
 TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = table->NewIterator("card0", ticket);
+    ::rtidb::storage::MemTableIterator* it = table->NewIterator("card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = table->NewIterator(0, 0, "card0", ticket);
+    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 0, "card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = table->NewIterator(0, 1, "card0", ticket);
+    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 1, "card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
@@ -262,7 +262,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = table->NewIterator("card0", ticket);
+    ::rtidb::storage::MemTableIterator* it = table->NewIterator("card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 
@@ -270,7 +270,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = table->NewIterator(0, 0, "card0", ticket);
+    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 0, "card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 
@@ -278,7 +278,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::Iterator* it = table->NewIterator(0, 1, "card0", ticket);
+    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 1, "card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 

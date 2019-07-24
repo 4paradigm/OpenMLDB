@@ -29,12 +29,11 @@ TEST_F(TableTest, Put) {
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, table->GetRecordCnt());
     Ticket ticket;
-    Iterator* it = table->NewIterator("test", ticket);
+    MemTableIterator* it = table->NewIterator("test", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9537, it->GetKey());
-    DataBlock* value1 = it->GetValue();
-    std::string value_str(value1->data, value1->size);
+    std::string value_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test", value_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -129,19 +128,15 @@ TEST_F(TableTest, Iterator) {
     table->Put("pk1", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
     Ticket ticket;
-    Iterator* it = table->NewIterator("pk", ticket);
+    MemTableIterator* it = table->NewIterator("pk", ticket);
 
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
-    DataBlock* value1 = it->GetValue();
-    std::string value_str(value1->data, value1->size);
+    std::string value_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test0", value_str);
-    ASSERT_EQ(5, value1->size);
     it->Next();
-    DataBlock* value2 = it->GetValue();
-    std::string value2_str(value2->data, value2->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test", value2_str);
-    ASSERT_EQ(4, value2->size);
     it->Next();
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -158,19 +153,21 @@ TEST_F(TableTest, Iterator_GetSize) {
     table->Put("pk", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
     Ticket ticket;
-    Iterator* it = table->NewIterator("pk", ticket);
-    ASSERT_EQ(3, it->GetSize());
+    MemTableIterator* it = table->NewIterator("pk", ticket);
+    int size = 0;
+    it->SeekToFirst();
+    while (it->Valid()) {
+        it->Next();
+        size++;
+    }
+    ASSERT_EQ(3, size);
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
-    DataBlock* value1 = it->GetValue();
-    std::string value_str(value1->data, value1->size);
+    std::string value_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test0", value_str);
-    ASSERT_EQ(5, value1->size);
     it->Next();
-    DataBlock* value2 = it->GetValue();
-    std::string value2_str(value2->data, value2->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test", value2_str);
-    ASSERT_EQ(4, value2->size);
     it->Next();
     ASSERT_TRUE(it->Valid());
     delete it;
@@ -239,7 +236,7 @@ TEST_F(TableTest, SchedGcHead1) {
         }
         table->SchedGc();
         Ticket ticket;
-        Iterator* it = table->NewIterator("test", ticket);
+        MemTableIterator* it = table->NewIterator("test", ticket);
 
         it->Seek(ts + 1);
         ASSERT_TRUE(it->Valid());
@@ -283,10 +280,10 @@ TEST_F(TableTest, SchedGc) {
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
 
     Ticket ticket;
-    Iterator* it = table->NewIterator("test", ticket);
+    MemTableIterator* it = table->NewIterator("test", ticket);
     it->Seek(now);
     ASSERT_TRUE(it->Valid());
-    std::string value_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("tes2", value_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -316,10 +313,10 @@ TEST_F(TableTest, OffSet) {
     ASSERT_EQ(1, count);
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator("test", ticket);
+        MemTableIterator* it = table->NewIterator("test", ticket);
         it->Seek(now);
         ASSERT_TRUE(it->Valid());
-        std::string value_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("tes2", value_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -430,9 +427,9 @@ TEST_F(TableTest, TableIterator) {
     ASSERT_TRUE(it1->Valid());
     ASSERT_STREQ("test", it1->GetPK().c_str());
     ASSERT_EQ(20, it1->GetKey());
-    it->Next();
-    ASSERT_STREQ("pk1", it->GetPK().c_str());
-    ASSERT_EQ(9527, it->GetKey());
+    it1->Next();
+    ASSERT_STREQ("pk1", it1->GetPK().c_str());
+    ASSERT_EQ(9527, it1->GetKey());
 
 }
 
@@ -603,7 +600,7 @@ TEST_F(TableTest, TableIteratorTS) {
     delete it;
     
     Ticket ticket;
-    Iterator* iter = table.NewIterator(0, 0, "card5", ticket);
+    MemTableIterator* iter = table.NewIterator(0, 0, "card5", ticket);
     iter->SeekToFirst();
     count = 0;
     while(iter->Valid()) {
