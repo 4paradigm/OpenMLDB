@@ -824,7 +824,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
         msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
         return -1;
     }
-    std::set<std::string> column_set;
+    std::map<std::string, std::string> column_set;
     std::set<std::string> ts_set;
     if (table_meta->column_desc_size() > 0) {
         for (const auto& column_desc : table_meta->column_desc()) {
@@ -857,7 +857,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                 msg = "float or double column can not be index";
                 return -1;
             }
-            column_set.insert(column_desc.name());
+            column_set.insert(std::make_pair(column_desc.name(), column_desc.type()));
         }
     }
     std::set<std::string> index_set;
@@ -869,8 +869,13 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
             }
             index_set.insert(column_key.index_name());
             for (const auto& column_name : column_key.col_name()) {
-                if (column_set.find(column_name) == column_set.end()) {
+                auto iter = column_set.find(column_name);
+                if (iter == column_set.end()) {
                     msg = "not found column name " + column_name;
+                    return -1;
+                }
+                if ((iter->second == "float") || (iter->second == "double")) {
+                    msg = "float or double column can not be index " + column_name;
                     return -1;
                 }
                 if (ts_set.find(column_name) != ts_set.end()) {
