@@ -3245,7 +3245,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         if (parts[6].compare("false") == 0) {
             leader = false;
         }
-        std::vector<::rtidb::common::ColumnDesc> columns;
+        std::vector<::rtidb::base::ColumnDesc> columns;
         // check duplicate column
         std::set<std::string> used_column_names;
         bool has_index = false;
@@ -3267,19 +3267,18 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
                 return;
             }
             used_column_names.insert(kv[0]);
-            ::rtidb::common::ColumnDesc desc;
-            desc.set_add_ts_idx(false);
+            ::rtidb::base::ColumnDesc desc;
+            desc.add_ts_idx = false;
             if (kv.size() > 2 && kv[2] == "index") {
                 if ((cur_type == "float") || (cur_type == "double")) {
                     printf("float or double column can not be index");
                     return;
                 }
-                desc.set_add_ts_idx(true);
+                desc.add_ts_idx = true;
                 has_index = true;
             }
-
-            desc.set_type(cur_type);
-            desc.set_name(kv[0]);
+            desc.type = rtidb::base::SchemaCodec::ConvertType(cur_type);
+            desc.name = kv[0];
             columns.push_back(desc);
         }
         if (!has_index) {

@@ -41,7 +41,7 @@ std::string TabletClient::GetEndpoint() {
 bool TabletClient::CreateTable(const std::string& name, 
                      uint32_t tid, uint32_t pid,
                      uint64_t ttl, uint32_t seg_cnt,
-                     const std::vector<::rtidb::common::ColumnDesc>& columns,
+                     const std::vector<::rtidb::base::ColumnDesc>& columns,
                      const ::rtidb::api::TTLType& type,
                      bool leader, const std::vector<std::string>& endpoints,
                      uint64_t term, const ::rtidb::api::CompressType compress_type) {
