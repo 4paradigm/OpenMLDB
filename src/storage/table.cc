@@ -97,7 +97,6 @@ int Table::InitColumnDesc() {
         }
         if (ts_mapping_.size() > 1 && !mapping_.empty()) {
             mapping_.clear();
-            key_idx = 0;
         }
         if (table_meta_.column_key_size() > 0) {
             mapping_.clear();
@@ -687,16 +686,16 @@ bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
-TableIterator* Table::NewTableIterator(uint32_t index) {
+MemTableTraverseIterator* Table::NewTraverseIterator(uint32_t index) {
     auto pos = column_key_map_.find(index);
     if (pos != column_key_map_.end() && !pos->second.empty()) {
-        return NewTableIterator(index, pos->second.front());
+        return NewTraverseIterator(index, pos->second.front());
     } else {
-        return NewTableIterator(index, 0);
+        return NewTraverseIterator(index, 0);
     }
 }
 
-TableIterator* Table::NewTableIterator(uint32_t index, uint32_t ts_index) {
+MemTableTraverseIterator* Table::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
     uint64_t expire_value = 0;
     if (!enable_gc_.load(std::memory_order_relaxed)) {
         expire_value = 0;
@@ -705,10 +704,10 @@ TableIterator* Table::NewTableIterator(uint32_t index, uint32_t ts_index) {
     } else {
         expire_value = GetExpireTime(GetTTL(index, ts_index));
     }
-    return new TableIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, ts_index);
+    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, ts_index);
 }
 
-TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt, 
+MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, 
             ::rtidb::api::TTLType ttl_type, uint64_t expire_value, 
             uint32_t ts_index) : segments_(segments),
         seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
@@ -720,16 +719,17 @@ TableIterator::TableIterator(Segment** segments, uint32_t seg_cnt,
     }
 }
 
-TableIterator::~TableIterator() {
+
+MemTableTraverseIterator::~MemTableTraverseIterator() {
     if (pk_it_ != NULL) delete pk_it_;
     if (it_ != NULL) delete it_;
 }
 
-bool TableIterator::Valid() const {
+bool MemTableTraverseIterator::Valid() {
     return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid();
 }
 
-void TableIterator::Next() {
+void MemTableTraverseIterator::Next() {
     it_->Next();
     record_idx_++;
     if (!it_->Valid() || IsExpired()) {
@@ -738,17 +738,17 @@ void TableIterator::Next() {
     }
 }
 
-bool TableIterator::IsExpired() {
+bool MemTableTraverseIterator::IsExpired() {
     if (expire_value_ == 0) {
         return false;
     }
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        return record_idx_ > expire_value_;       
+        return record_idx_ > expire_value_;
     }
     return it_->GetKey() < expire_value_;
 }
 
-void TableIterator::NextPK() {
+void MemTableTraverseIterator::NextPK() {
     delete it_;
     it_ = NULL;
     do { 
@@ -786,7 +786,7 @@ void TableIterator::NextPK() {
     } while(it_ == NULL || !it_->Valid() || IsExpired());
 }
 
-void TableIterator::Seek(const std::string& key, uint64_t ts) {
+void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
     if (pk_it_ != NULL) {
         delete pk_it_;
         pk_it_ = NULL;
@@ -844,19 +844,19 @@ void TableIterator::Seek(const std::string& key, uint64_t ts) {
     }
 }
 
-DataBlock* TableIterator::GetValue() const {
-    return it_->GetValue();
+rtidb::base::Slice MemTableTraverseIterator::GetValue() const {
+    return rtidb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
 }
 
-uint64_t TableIterator::GetKey() const {
+uint64_t MemTableTraverseIterator::GetKey() const {
     return it_->GetKey();
 }
 
-std::string TableIterator::GetPK() const {
+std::string MemTableTraverseIterator::GetPK() const {
     return pk_it_->GetKey().ToString();
 }
 
-void TableIterator::SeekToFirst() {
+void MemTableTraverseIterator::SeekToFirst() {
     ticket_.Pop();
     if (pk_it_ != NULL) {
         delete pk_it_;

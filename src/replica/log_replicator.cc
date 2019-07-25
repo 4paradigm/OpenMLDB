@@ -469,8 +469,6 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
         PDLOG(WARNING, "fail to write replication log in dir %s for %s", path_.c_str(), status.ToString().c_str());
         return false;
     }
-    // add record header size
-    PDLOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(std::memory_order_relaxed));
     return true;
 }
 

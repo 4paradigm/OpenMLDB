@@ -19,6 +19,7 @@ import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
+import com._4paradigm.rtidb.common.Common;
 
 
 /**
@@ -89,6 +90,7 @@ public class NameServerTest extends TestCaseBase {
             Assert.assertTrue(nsc.createTable(tableInfo));
             List<TableInfo> tables = nsc.showTable(tname);
             Assert.assertTrue(tables.size() == 1);
+            Assert.assertEquals(tables.get(0).getStorageMode(), Common.StorageMode.kMemory);
             Assert.assertTrue(nsc.dropTable(tname));
         } catch (Exception e) {
             e.printStackTrace();
@@ -143,6 +145,40 @@ public class NameServerTest extends TestCaseBase {
             Assert.assertTrue(nsc.createTable(tableInfo4));
             Assert.assertTrue(nsc.dropTable("t4_ttl"));
         } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testCreateTableHDD() {
+        try {
+            String name = "t1";
+            TableInfo tableInfo1 = TableInfo.newBuilder().setName(name).setSegCnt(8).setTtl(0).setReplicaNum(1)
+                    .setStorageMode(Common.StorageMode.kHDD).build();
+            Assert.assertTrue(nsc.createTable(tableInfo1));
+            List<TableInfo> tables = nsc.showTable(name);
+            Assert.assertTrue(tables.size() == 1);
+            Assert.assertEquals(tables.get(0).getStorageMode(), Common.StorageMode.kHDD);
+            Assert.assertTrue(nsc.dropTable(name));
+        } catch(Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+    }
+
+    @Test
+    public void testCreateTableSSD() {
+        try {
+            String name = "t1";
+            TableInfo tableInfo1 = TableInfo.newBuilder().setName(name).setSegCnt(8).setTtl(0).setReplicaNum(1)
+                    .setStorageMode(Common.StorageMode.kSSD).build();
+            Assert.assertTrue(nsc.createTable(tableInfo1));
+            List<TableInfo> tables = nsc.showTable(name);
+            Assert.assertTrue(tables.size() == 1);
+            Assert.assertEquals(tables.get(0).getStorageMode(), Common.StorageMode.kSSD);
+            Assert.assertTrue(nsc.dropTable(name));
+        } catch(Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         }

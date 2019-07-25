@@ -7,7 +7,7 @@
 
 
 #ifndef RTIDB_LOG_WRITABLE_FILE
-#define RTIBD_LOG_WRITABLE_FILE
+#define RTIDB_LOG_WRITABLE_FILE
 
 #include <string>
 
@@ -46,4 +46,4 @@ WritableFile* NewWritableFile(const std::string& fname, FILE* f);
 } // end of log
 } // end of rtidb
 
-#endif /* !RTIBD_LOG_WRITABLE_FILE_H */
+#endif /* !RTIDB_LOG_WRITABLE_FILE_H */

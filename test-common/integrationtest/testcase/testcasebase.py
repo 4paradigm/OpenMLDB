@@ -108,7 +108,7 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.info(cmd)
         args = shlex.split(cmd)
         need_start = False
-        for _ in range(10):
+        for _ in range(20):
             rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
             if 'rtidb' not in rs:
                 need_start = True
@@ -116,7 +116,10 @@ class TestCaseBase(unittest.TestCase):
                 subprocess.Popen(args, stdout=open('{}/info.log'.format(client_path), 'a'),
                                  stderr=open('{}/warning.log'.format(client_path), 'a'))
             else:
-                return True, need_start
+                time.sleep(1)
+                rs = utils.exe_shell('lsof -i:{}|grep -v "PID"'.format(endpoint.split(':')[1]))
+                if 'rtidb' in rs:
+                    return True, need_start
         return False, need_start
 
     def stop_client(self, endpoint):
@@ -593,16 +596,13 @@ class TestCaseBase(unittest.TestCase):
         return utils.exe_shell('cat {}/ns_leader'.format(self.testpath))
 
     def find_new_tb_leader(self, tname, tid, pid):
-        line_count = utils.exe_shell('cat {}/info.log|wc -l'.format(self.ns_leader_path))
-        cmd = "grep -a -n {} {}/info.log -m 1".format(tname, self.ns_leader_path)
-        op_start_line = utils.exe_shell(cmd + "|awk -F ':' '{print $1}'")
-        cmd1 = "tail -n {} {}/info.log|grep -a \"name\[{}\] tid\[{}\] pid\[{}\] offset\[\"".format(
-            int(line_count) - int(op_start_line),
-            self.ns_leader_path, tname, tid, pid) + \
-               "|awk -F 'new leader is\\\\[' '{print $2}'" \
-               "|awk -F '\\\\]. name\\\\[tname' '{print $1}'" \
-               "|tail -n 1"
-        new_leader = utils.exe_shell(cmd1)
+        rs = self.showtable(self.ns_leader, tname)
+        infoLogger.info(rs)
+        for (key, value) in rs.items():
+            if key[1] == str(tid) and key[2] == str(pid):
+                infoLogger.info(value)
+                if value[0] == "leader" and value[2] == "yes":
+                    new_leader = key[3]
         self.new_tb_leader = new_leader
         return new_leader
 
@@ -617,13 +617,6 @@ class TestCaseBase(unittest.TestCase):
         if conf_value is not None:
             utils.exe_shell("sed -i '1i--{}={}' {}/conf/{}".format(conf_item, conf_value, nodepath, conf_file))
 
-    def get_opid_by_tname_pid(self, tname, pid):
-        opid_rs = utils.exe_shell("grep -a {} {}/info.log|grep op_id|grep \"name\[\"|grep \"pid\[{}\]\""
-                                  "|sed 's/\(.*\)op_id\[\(.*\)\] name\(.*\)/\\2/g'".format(
-            tname, self.ns_leader_path, pid))
-        opid_x = opid_rs.split('\n')
-        return opid_x
-
     def get_latest_opid_by_tname_pid(self, tname, pid):
         rs = self.run_client(self.ns_leader, 'showopstatus {} {}'.format(tname, pid), 'ns_client')
         opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
@@ -633,6 +626,21 @@ class TestCaseBase(unittest.TestCase):
         self.latest_opid = sorted(op_id_arr)[-1]
         infoLogger.debug('------latest_opid:' + str(self.latest_opid) + '---------------')
         return self.latest_opid
+
+    def check_op_done(self, tname):
+        rs = self.run_client(self.ns_leader, 'showopstatus {} '.format(tname), 'ns_client')
+        opstatus = self.parse_tb(rs, ' ', [0], [1, 4, 8])
+        infoLogger.info(opstatus)
+        for op_id in opstatus.keys():
+            if opstatus[op_id][1] == "kDoing" or opstatus[op_id][1] == "kInited":
+                return False
+        return True    
+
+    def wait_op_done(self, tname):
+        for cnt in xrange(10):
+            if self.check_op_done(tname):
+                return
+            time.sleep(2)
 
     def get_op_by_opid(self, op_id):
         rs = self.showopstatus(self.ns_leader)

@@ -28,6 +28,7 @@ DEFINE_uint32(partition_num, 8, "config the default partition_num");
 DEFINE_uint32(replica_num, 3, "config the default replica_num. if set 3, there is one leader and two followers");
 
 DEFINE_int32(gc_interval, 120, "the gc interval of tablet every two hour");
+DEFINE_int32(disk_gc_interval, 1440, "the rocksdb gc interval of tablet");
 DEFINE_int32(gc_pool_size, 2, "the size of tablet gc thread pool");
 DEFINE_int32(gc_safe_offset, 1, "the safe offset of tablet gc in minute");
 DEFINE_uint64(gc_on_table_recover_count, 10000000, "make a gc on recover count");
@@ -55,7 +56,9 @@ DEFINE_int32(binlog_name_length, 8, "binlog name length");
 DEFINE_uint32(check_binlog_sync_progress_delta, 100000, "config the delta of check binlog sync progress");
 
 // local db config
-DEFINE_string(db_root_path,"/tmp/", "the root path of db");
+DEFINE_string(db_root_path, "/tmp/", "the root path of db");
+DEFINE_string(ssd_root_path, "/tmp/ssd/", "the root ssd path of db");
+DEFINE_string(hdd_root_path, "/tmp/hdd/", "the root hdd path of db");
 
 // thread pool config
 DEFINE_int32(scan_concurrency_limit, 8, "the limit of scan concurrency");
@@ -79,6 +82,7 @@ DEFINE_int32(make_snapshot_threshold_offset, 100000, "config the offset to reach
 DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted keys store when make snapshot");
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
+DEFINE_string(recycle_ssd_bin_root_path, "/tmp/ssd_recycle", "specify the ssd root path of recycle bin");
 
 DEFINE_uint32(latest_ttl_max, 1000, "the max ttl of latest");
 DEFINE_uint32(absolute_ttl_max, 60*24*365*30 , "the max ttl of absolute time");
