@@ -193,9 +193,6 @@ public:
             if (type == ::rtidb::base::ColType::kUnknown) {
                 return -1;
             }
-            if ((type == ::rtidb::base::kFloat) || (type == ::rtidb::base::kDouble) && table_info.column_desc(idx).add_ts_idx()) {
-                return -1;
-            }
             ColumnDesc column_desc;
             column_desc.type = type;
             column_desc.name = table_info.column_desc(idx).name();
