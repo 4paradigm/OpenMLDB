@@ -218,7 +218,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
-        } else if (response != null) {
+        } else if (response != null ) {
             logger.warn("fail to create table for error {}", response.getMsg());
         }
         return false;
