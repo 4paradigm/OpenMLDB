@@ -86,39 +86,6 @@ public:
         return true;
     }
 
-    bool Encode(const std::vector<::rtidb::common::ColumnDesc>& columns,
-                std::string& buffer) {
-        //TODO limit the total size
-        uint32_t byte_size = GetSize(columns);
-        if (byte_size >  MAX_ROW_BYTE_SIZE) {
-            return false;
-        }
-        buffer.resize(byte_size);
-        char* cbuffer = reinterpret_cast<char*>(&(buffer[0]));
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            uint8_t type = ConvertType(columns[i].type());
-            memcpy(cbuffer, static_cast<const void*>(&type), 1);
-            cbuffer += 1;
-            uint8_t add_ts_idx = 0;
-            if (columns[i].add_ts_idx()) {
-                add_ts_idx = 1;
-            }
-            memcpy(cbuffer, static_cast<const void*>(&add_ts_idx), 1);
-            cbuffer += 1;
-            //TODO limit the name length
-            const std::string& name = columns[i].name();
-            if (name.size() >= 128) {
-                return false;
-            }
-            uint8_t name_size = (uint8_t)name.size();
-            memcpy(cbuffer, static_cast<const void*>(&name_size), 1);
-            cbuffer += 1;
-            memcpy(cbuffer, static_cast<const void*>(name.c_str()), name_size);
-            cbuffer += name_size;
-        }
-        return true;
-    }
-
     void Decode(const std::string& schema, std::vector<ColumnDesc>& columns) {
         const char* buffer = schema.c_str();
         uint32_t read_size = 0;
@@ -237,13 +204,6 @@ private:
         uint32_t byte_size = 0;
         for (uint32_t i = 0; i < columns.size(); i++) {
             byte_size += (HEADER_BYTE_SIZE + columns[i].name.size());
-        }
-        return byte_size;
-    }
-    uint32_t GetSize(const std::vector<::rtidb::common::ColumnDesc>& columns) {
-        uint32_t byte_size = 0;
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            byte_size += (HEADER_BYTE_SIZE + columns[i].name().size());
         }
         return byte_size;
     }
