@@ -1772,7 +1772,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
             column_desc->set_type(cur_type);
             if (kv.size() > 2 && kv[2] == "index") {
                 if ((cur_type == "float") || (cur_type == "double")) {
-                    printf("float or double column can not be index");
+                    printf("float or double column can not be index\n");
                     return;
                 }
                 column_desc->set_add_ts_idx(true);
