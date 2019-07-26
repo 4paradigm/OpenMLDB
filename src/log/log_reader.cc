@@ -123,7 +123,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           if (scratch->empty()) {
             in_fragmented_record = false;
           } else {
-            PDLOG(WARNING, "partial record without end(1)");
+            PDLOG(DEBUG, "partial record without end(1)");
           }
         }
         prospective_record_offset = physical_record_offset;
@@ -155,7 +155,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           if (scratch->empty()) {
             in_fragmented_record = false;
           } else {
-            PDLOG(WARNING, "partial record without end(2)");
+            PDLOG(DEBUG, "partial record without end(2)");
           }
         }
         prospective_record_offset = physical_record_offset;
@@ -197,7 +197,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kBadRecord:
         if (in_fragmented_record) {
-          PDLOG(WARNING, "error in middle of record");
+          PDLOG(DEBUG, "error in middle of record");
           in_fragmented_record = false;
           scratch->clear();
         }
