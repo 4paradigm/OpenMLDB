@@ -54,8 +54,8 @@ bool TabletClient::CreateTable(const std::string& name,
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     for (uint32_t i = 0; i < columns.size(); i++) {
-        if (columns[i].add_ts_idx()) {
-            table_meta->add_dimensions(columns[i].name());
+        if (columns[i].add_ts_idx) {
+            table_meta->add_dimensions(columns[i].name);
         }
     }
     table_meta->set_name(name);
