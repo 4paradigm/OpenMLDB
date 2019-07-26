@@ -1594,7 +1594,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         }
     }
 
-    std::set<std::string> name_set;
+    std::map<std::string, std::string> name_map;
     std::set<std::string> index_set;
     std::set<std::string> ts_col_set;
     for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
@@ -1605,7 +1605,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             return -1;
         }
         if (table_info.column_desc(idx).name() == "" || 
-                name_set.find(table_info.column_desc(idx).name()) != name_set.end()) {
+                name_map.find(table_info.column_desc(idx).name()) != name_map.end()) {
             printf("check column_desc name failed. name is %s\n", table_info.column_desc(idx).name().c_str());
             return -1;
         }
@@ -1640,7 +1640,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             }
             ts_col_set.insert(table_info.column_desc(idx).name());
         }
-        name_set.insert(table_info.column_desc(idx).name());
+        name_map.insert(std::make_pair(table_info.column_desc(idx).name(), cur_type));
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
     }
@@ -1660,6 +1660,11 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             if (index_set.find(table_info.column_key(idx).index_name()) != index_set.end()) {
                 printf("duplicate index_name %s\n", table_info.column_key(idx).index_name().c_str());
                 return -1;
+            }
+            auto iter = name_map.find(table_info.column_key(idx).index_name());
+            if (iter != name_map.end() && ((iter->second == "float") || (iter->second == "float"))) {
+			    printf("float or double column can not be index");
+			    return -1;
             }
             index_set.insert(table_info.column_key(idx).index_name());
             std::string cur_key;
