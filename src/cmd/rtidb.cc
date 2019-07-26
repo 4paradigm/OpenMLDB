@@ -3271,7 +3271,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
             desc.add_ts_idx = false;
             if (kv.size() > 2 && kv[2] == "index") {
                 if ((cur_type == "float") || (cur_type == "double")) {
-                    printf("float or double column can not be index");
+                    printf("float or double column can not be index\n");
                     return;
                 }
                 desc.add_ts_idx = true;
