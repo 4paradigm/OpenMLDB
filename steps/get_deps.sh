@@ -237,3 +237,22 @@ else
     touch zk_succ
 fi
 
+if [ -f "rocksdb_succ" ]
+then
+    echo "rocksdb exist"
+else
+    echo "start install rocksdb ..."
+    # rocksdb
+    wget -O rocksdb-5.18.3.tar.gz  https://github.com/facebook/rocksdb/archive/v5.18.3.tar.gz >/dev/null
+    tar zxf rocksdb-5.18.3.tar.gz  >/dev/null
+    cd rocksdb-5.18.3
+    export CPPFLAGS=-I${DEPS_PREFIX}/include
+    export LDFLAGS=-L${DEPS_PREFIX}/lib
+    make static_lib -j2 >/dev/null
+    cp -rf ./include/* ${DEPS_PREFIX}/include
+    cp librocksdb.a ${DEPS_PREFIX}/lib
+    cd -
+    touch rocksdb_succ
+    echo "install rocksdb done"
+fi
+

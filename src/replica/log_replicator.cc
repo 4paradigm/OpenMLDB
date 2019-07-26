@@ -471,8 +471,6 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
         return false;
     }
     log_offset_.fetch_add(1, std::memory_order_relaxed);
-    // add record header size
-    PDLOG(DEBUG, "entry index %lld, log offset %lld", entry.log_index(), log_offset_.load(std::memory_order_relaxed));
     return true;
 }
 

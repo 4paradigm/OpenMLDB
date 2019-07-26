@@ -375,7 +375,7 @@ TEST_F(TableTest, TableIterator) {
     table->Put("pk1", 100, "test4", 5);
     table->Put("test", 20, "test5", 5);
     // Ticket ticket;
-    TableIterator* it = table->NewTableIterator(0);
+    TableIterator* it = table->NewTraverseIterator(0);
     // it->Test();
     it->SeekToFirst();
     ASSERT_STREQ("pk", it->GetPK().c_str());
@@ -421,7 +421,7 @@ TEST_F(TableTest, TableIterator) {
     table1->Put("test", 20, "test5", 5);
     table1->Put("pk", 200, "test6", 5);
     // Ticket ticket;
-    TableIterator* it1 = table1->NewTableIterator(0);
+    TableIterator* it1 = table1->NewTraverseIterator(0);
     it1->Seek("pk", 9528);
     ASSERT_TRUE(it1->Valid());
     ASSERT_STREQ("pk", it1->GetPK().c_str());
@@ -449,7 +449,7 @@ TEST_F(TableTest, TableIteratorNoPk) {
     table->Put("pk2", 9523, "test2", 5);
     table->Put("pk0", 9522, "test0", 5);
     // Ticket ticket;
-    TableIterator* it = table->NewTableIterator(0);
+    TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
     ASSERT_STREQ("pk10", it->GetPK().c_str());
     ASSERT_EQ(9527, it->GetKey());
@@ -463,14 +463,14 @@ TEST_F(TableTest, TableIteratorNoPk) {
     ASSERT_STREQ("pk0", it->GetPK().c_str());
     ASSERT_EQ(9522, it->GetKey());
     delete it;
-    it = table->NewTableIterator(0);
+    it = table->NewTraverseIterator(0);
     it->Seek("pk4", 9526);
     ASSERT_STREQ("pk4", it->GetPK().c_str());
     ASSERT_EQ(9524, it->GetKey());
     delete it;
 
     ASSERT_TRUE(table->Delete("pk4", 0));
-    it = table->NewTableIterator(0);
+    it = table->NewTraverseIterator(0);
     it->Seek("pk4", 9526);
     ASSERT_TRUE(it->Valid());
     ASSERT_STREQ("pk8", it->GetPK().c_str());
@@ -492,7 +492,7 @@ TEST_F(TableTest, TableIteratorCount) {
         table->Put(key, 9527, value.c_str(), value.size());
         table->Put(key, 9528, value.c_str(), value.size());
     }
-    TableIterator* it = table->NewTableIterator(0);
+    TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
     int count = 0;
     while(it->Valid()) {
@@ -502,7 +502,7 @@ TEST_F(TableTest, TableIteratorCount) {
     ASSERT_EQ(100000, count);
     delete it;
 
-    it = table->NewTableIterator(0);
+    it = table->NewTraverseIterator(0);
     it->Seek("pk500", 9528);
     ASSERT_STREQ("pk500", it->GetPK().c_str());
     ASSERT_EQ(9527, it->GetKey());
@@ -515,7 +515,7 @@ TEST_F(TableTest, TableIteratorCount) {
     delete it;
 
     for (int i = 0; i < 200000; i++) {
-        TableIterator* cur_it = table->NewTableIterator(0);
+        TableIterator* cur_it = table->NewTraverseIterator(0);
         std::string key = "pk" + std::to_string(i);
         cur_it->Seek(key, 9528);
         ASSERT_TRUE(cur_it->Valid());
@@ -582,7 +582,7 @@ TEST_F(TableTest, TableIteratorTS) {
         std::string value = "value" + std::to_string(i);
         table.Put(request.dimensions(), request.ts_dimensions(), value);
     }
-    TableIterator* it = table.NewTableIterator(0, 0);
+    TableIterator* it = table.NewTraverseIterator(0, 0);
     it->SeekToFirst();
     int count = 0;
     while(it->Valid()) {
@@ -592,7 +592,7 @@ TEST_F(TableTest, TableIteratorTS) {
     ASSERT_EQ(1000, count);
     delete it;
 
-    it = table.NewTableIterator(0, 1);
+    it = table.NewTraverseIterator(0, 1);
     it->SeekToFirst();
     count = 0;
     while(it->Valid()) {

@@ -65,6 +65,7 @@ message TableInfo {
     optional uint32 key_entry_max_height = 11;
     repeated rtidb.common.ColumnDesc column_desc_v1 = 12;
     repeated rtidb.common.ColumnKey column_key = 13;
+    optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
 }
 
 message CreateTableRequest {
