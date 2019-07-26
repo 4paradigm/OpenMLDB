@@ -1609,8 +1609,8 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             printf("check column_desc name failed. name is %s\n", table_info.column_desc(idx).name().c_str());
             return -1;
         }
-        if (table_info.column_desc(idx).add_ts_idx() && (cur_type == "float") || (cur_type == "double")) {
-            printf("float or double column can not be index: %s\n", cur_type);
+        if (table_info.column_desc(idx).add_ts_idx() && ((cur_type == "float") || (cur_type == "double"))) {
+            printf("float or double column can not be index: %s\n", cur_type.c_str());
             return -1;
         }
         if (table_info.column_desc(idx).add_ts_idx()) {
