@@ -1662,7 +1662,11 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                 return -1;
             }
             auto iter = name_map.find(table_info.column_key(idx).index_name());
-            if (iter != name_map.end() && ((iter->second == "float") || (iter->second == "float"))) {
+            if (iter == name_map.end()) {
+                printf("column key index name :%s is not member of columns ", column_key.index_name());
+                return -1;
+            }
+            if ((iter->second == "float") || (iter->second == "float")) {
 			    printf("float or double column can not be index");
 			    return -1;
             }

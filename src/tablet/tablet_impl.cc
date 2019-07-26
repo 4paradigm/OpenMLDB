@@ -867,15 +867,19 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                 msg = "has repeated index name " + column_key.index_name();
                 return -1;
             }
+            auto iter = column_map.find(column_key.index_name());
+            if (iter == column_map.end()) {
+                msg = "column key index name must member of columns " + column_key.index_name();
+                return -1;
+            }
+            if ((iter->second == "float") || (iter->second == "double")) {
+                msg = "float or double column can not be index" + column_key.index_name();
+                return -1;
+            }
             index_set.insert(column_key.index_name());
             for (const auto& column_name : column_key.col_name()) {
-                auto iter = column_map.find(column_name);
-                if (iter == column_map.end()) {
+                if (column_map.find(column_name) == column_map.end()) {
                     msg = "not found column name " + column_name;
-                    return -1;
-                }
-                if ((iter->second == "float") || (iter->second == "double")) {
-                    msg = "float or double column can not be index " + column_name;
                     return -1;
                 }
                 if (ts_set.find(column_name) != ts_set.end()) {
