@@ -824,11 +824,11 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
         msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
         return -1;
     }
-    std::map<std::string, std::string> column_set;
+    std::map<std::string, std::string> column_map;
     std::set<std::string> ts_set;
     if (table_meta->column_desc_size() > 0) {
         for (const auto& column_desc : table_meta->column_desc()) {
-            if (column_set.find(column_desc.name()) != column_set.end()) {
+            if (column_map.find(column_desc.name()) != column_map.end()) {
                 msg = "has repeated column name " + column_desc.name();
                 return -1;
             }
@@ -857,7 +857,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                 msg = "float or double column can not be index";
                 return -1;
             }
-            column_set.insert(std::make_pair(column_desc.name(), column_desc.type()));
+            column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
         }
     }
     std::set<std::string> index_set;
@@ -869,8 +869,8 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
             }
             index_set.insert(column_key.index_name());
             for (const auto& column_name : column_key.col_name()) {
-                auto iter = column_set.find(column_name);
-                if (iter == column_set.end()) {
+                auto iter = column_map.find(column_name);
+                if (iter == column_map.end()) {
                     msg = "not found column name " + column_name;
                     return -1;
                 }
