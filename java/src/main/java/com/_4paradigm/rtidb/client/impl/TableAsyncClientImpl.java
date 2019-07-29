@@ -77,7 +77,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with name " + name);
         }
         if (!th.getSchema().isEmpty()) {
-            throw new TabletException("fail to put the schema table in the way of putting kv table");
+            throw new TabletException("fail to put the schema table "+ th.getTableInfo().getName()+" in the way of putting kv table");
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
