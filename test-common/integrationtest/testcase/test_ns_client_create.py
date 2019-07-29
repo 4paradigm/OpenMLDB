@@ -479,6 +479,8 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('Create table ok', 'latest:10', '8', '3', ''),
         ('Create table ok', '144000', '8', '3', 'k1:string:index k2:double k3:int32:index'),
         ('partition_num should be large than zero', '144000', '0', '3', ''),
+        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:float:index'),
+        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:double:index'),
     )
     @ddt.unpack
     def test_create_cmd(self, exp_msg, ttl, partition_num, replica_num, schema):
