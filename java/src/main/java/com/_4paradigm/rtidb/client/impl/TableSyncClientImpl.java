@@ -671,7 +671,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        if (th.getSchema() != null) {
+        if (!th.getSchema().isEmpty()) {
             throw new TabletException("fail to put the schema table in the way of putting kv table");
         }
         key = validateKey(key);

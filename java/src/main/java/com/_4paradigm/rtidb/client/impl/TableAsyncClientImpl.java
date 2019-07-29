@@ -76,7 +76,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with name " + name);
         }
-        if (th.getSchema() != null) {
+        if (!th.getSchema().isEmpty()) {
             throw new TabletException("fail to put the schema table in the way of putting kv table");
         }
         key = validateKey(key);
