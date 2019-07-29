@@ -1487,6 +1487,7 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
     }
+    ns_table_info.set_storage_mode(table_info.storage_mode());
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
             printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n", 
@@ -1803,38 +1804,38 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
 
 void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() == 1) {
+        printf("addreplica - add replica to leader\n");
+        printf("cancelop - cancel the op\n");
         printf("create - create table\n");
-        printf("drop - drop table\n");
-        printf("put -  insert data into table\n");
-        printf("scan - get records for a period of time\n");
-        printf("get - get only one record\n");
-        printf("delete - delete pk\n");
+        printf("confset - update conf\n");
+        printf("confget - get conf\n");
         printf("count - count the num of data in specified key\n");
+        printf("changeleader - select leader again when the endpoint of leader offline\n");
+        printf("delete - delete pk\n");
+        printf("delreplica - delete replica from leader\n");
+        printf("drop - drop table\n");
+        printf("exit - exit client\n");
+        printf("get - get only one record\n");
+        printf("gettablepartition - get partition info\n");
+        printf("help - get cmd info\n");
+        printf("makesnapshot - make snapshot\n");
+        printf("migrate - migrate partition form one endpoint to another\n");
+        printf("man - get cmd info\n");
+        printf("offlineendpoint - select leader and delete replica when endpoint offline\n");
         printf("preview - preview data\n");
+        printf("put -  insert data into table\n");
+        printf("quit - exit client\n");
+        printf("recovertable - recover only one table partition\n");
+        printf("recoverendpoint - recover all tables in endpoint when online\n");
+        printf("scan - get records for a period of time\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
         printf("showns - show nameserver info\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
-        printf("makesnapshot - make snapshot\n");
-        printf("addreplica - add replica to leader\n");
-        printf("delreplica - delete replica from leader\n");
-        printf("confset - update conf\n");
-        printf("confget - get conf\n");
-        printf("changeleader - select leader again when the endpoint of leader offline\n");
-        printf("offlineendpoint - select leader and delete replica when endpoint offline\n");
-        printf("recovertable - recover only one table partition\n");
-        printf("recoverendpoint - recover all tables in endpoint when online");
-        printf("migrate - migrate partition form one endpoint to another\n");
-        printf("gettablepartition - get partition info\n");
         printf("settablepartition - update partition info\n");
-        printf("updatetablealive - update table alive status\n");
         printf("setttl - set table ttl\n");
-        printf("cancelop - cancel the op\n");
-        printf("exit - exit client\n");
-        printf("quit - exit client\n");
-        printf("help - get cmd info\n");
-        printf("man - get cmd info\n");
+        printf("updatetablealive - update table alive status\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -2536,36 +2537,36 @@ void HandleClientDisConnectZK(const std::vector<std::string> parts, ::rtidb::cli
 
 void HandleClientHelp(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 2) {
-        printf("create - create table\n");
-        printf("screate - create multi dimension table\n");
-        printf("drop - drop table\n");
-        printf("put - insert data into table\n");
-        printf("sput - insert data into table of multi dimension\n");
-        printf("scan - get records for a period of time\n");
-        printf("sscan - get records for a period of time from multi dimension table\n");
-        printf("count - count the num of data in specified key\n");
-        printf("get - get only one record\n");
-        printf("sget - get only one record from multi dimension table\n");
-        printf("delete - delete pk\n");
-        printf("preview - preview data\n");
         printf("addreplica - add replica to leader\n");
-        printf("delreplica - delete replica from leader\n");
-        printf("makesnapshot - make snapshot\n");
-        printf("pausesnapshot - pause snapshot\n");
-        printf("recoversnapshot - recover snapshot\n");
-        printf("sendsnapshot - send snapshot to another endpoint\n");
-        printf("loadtable - create table and load data\n");
         printf("changerole - change role\n");
-        printf("setexpire - enable or disable ttl\n");
-        printf("showschema - show schema\n");
+        printf("count - count the num of data in specified key\n");
+        printf("create - create table\n");
+        printf("delreplica - delete replica from leader\n");
+        printf("delete - delete pk\n");
+        printf("drop - drop table\n");
+        printf("exit - exit client\n");
+        printf("get - get only one record\n");
         printf("gettablestatus - get table status\n");
         printf("getfollower - get follower\n");
+        printf("help - get cmd info\n");
+        printf("loadtable - create table and load data\n");
+        printf("man - get cmd info\n");
+        printf("makesnapshot - make snapshot\n");
+        printf("pausesnapshot - pause snapshot\n");
+        printf("preview - preview data\n");
+        printf("put - insert data into table\n");
+        printf("quit - exit client\n");
+        printf("recoversnapshot - recover snapshot\n");
+        printf("sput - insert data into table of multi dimension\n");
+        printf("screate - create multi dimension table\n");
+        printf("scan - get records for a period of time\n");
+        printf("sscan - get records for a period of time from multi dimension table\n");
+        printf("sget - get only one record from multi dimension table\n");
+        printf("sendsnapshot - send snapshot to another endpoint\n");
+        printf("setexpire - enable or disable ttl\n");
+        printf("showschema - show schema\n");
         printf("setttl - set ttl for partition\n");
         printf("setlimit - set tablet max concurrency limit\n");
-        printf("exit - exit client\n");
-        printf("quit - exit client\n");
-        printf("help - get cmd info\n");
-        printf("man - get cmd info\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");

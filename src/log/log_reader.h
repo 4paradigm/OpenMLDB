@@ -71,6 +71,7 @@ public:
     uint64_t LastRecordEndOffset();
 
     void GoBackToLastBlock();
+    void GoBackToStart();
 
 private:
     SequentialFile* const file_;
@@ -135,6 +136,7 @@ public:
     int RollRLogFile();
     int OpenSeqFile(const std::string& path);
     void GoBackToLastBlock();
+    void GoBackToStart();
     int GetLogIndex();
     int GetEndLogIndex();
     uint64_t GetLastRecordEndOffset();

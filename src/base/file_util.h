@@ -145,7 +145,23 @@ inline static int GetSize(const std::string& file_path, uint64_t& size) {
     }
     PDLOG(WARNING, "[%s] is not a regular file", file_path.c_str());
     return -1;
-}    
+}
+
+inline static bool RemoveDir(const std::string& path) {
+    std::vector<std::string> file_vec;
+    if (GetFileName(path, file_vec) < 0) {
+        return false;
+    }
+    for (auto file : file_vec) {
+        if (remove(file.c_str()) != 0) {
+            return false;
+        }
+    }
+    if (remove(path.c_str()) != 0) {
+        return false;
+    }
+    return true;
+}
 
 }
 }

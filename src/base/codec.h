@@ -27,9 +27,9 @@ using ::baidu::common::WARNING;
 namespace rtidb {
 namespace base {
 
-static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+static inline void Encode(uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset) {
     buffer += offset;
-    uint32_t total_size = 8 + data->size;
+    uint32_t total_size = 8 + size;
     PDLOG(DEBUG, "encode size %d", total_size);
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
@@ -37,7 +37,11 @@ static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, ui
     memcpy(buffer, static_cast<const void*>(&time), 8);
     memrev64ifbe(buffer);
     buffer += 8;
-    memcpy(buffer, static_cast<const void*>(data->data), data->size);
+    memcpy(buffer, static_cast<const void*>(data), size);
+}
+
+static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+    return Encode(time, data->data, data->size, buffer, offset);
 }
 
 static inline void Encode(const DataBlock* data, char* buffer, uint32_t offset) {
@@ -94,13 +98,11 @@ static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, DataBlock
     return total_size;
 }
 
-
-
 // encode pk, ts and value
-static inline void EncodeFull(const std::string& pk, uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+static inline void EncodeFull(const std::string& pk, uint64_t time, const char* data, const size_t size, char* buffer, uint32_t offset) {
     buffer += offset;
     uint32_t pk_size = pk.length();
-    uint32_t total_size = 8 + pk_size + data->size;
+    uint32_t total_size = 8 + pk_size + size;
     PDLOG(DEBUG, "encode total size %u pk size %u", total_size, pk_size);
     memcpy(buffer, static_cast<const void*>(&total_size), 4);
     memrev32ifbe(buffer);
@@ -113,7 +115,11 @@ static inline void EncodeFull(const std::string& pk, uint64_t time, const DataBl
     buffer += 8;
     memcpy(buffer, static_cast<const void*>(pk.c_str()), pk_size);
     buffer += pk_size;
-    memcpy(buffer, static_cast<const void*>(data->data), data->size);
+    memcpy(buffer, static_cast<const void*>(data), size);
+}
+
+static inline void EncodeFull(const std::string& pk, uint64_t time, const DataBlock* data, char* buffer, uint32_t offset) {
+    return EncodeFull(pk, time, data->data, data->size, buffer, offset);
 }
 
 static inline void Decode(const std::string* str, std::vector<std::pair<uint64_t, std::string*> >& pairs) {
@@ -177,3 +183,4 @@ static inline void DecodeFull(const std::string* str, std::map<std::string, std:
 }
 
 #endif /* !CODEC_H */
+

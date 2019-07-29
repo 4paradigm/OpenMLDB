@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 sys.path.append(os.getenv('testpath'))
 import libs.conf as conf
 from libs.clients.ns_cluster import NsCluster
@@ -30,6 +31,7 @@ if __name__ == '__main__':
     if not args.teardown or args.teardown.lower() == 'false':
         nsc.start_zk()
         nsc.start(*nsc.endpoints)
+        time.sleep(2)
         nsc.get_ns_leader()
         tbc.start(tbc.endpoints)
         nsc_leader = nsc.leader

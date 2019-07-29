@@ -19,6 +19,7 @@
 #include "base/status.h"
 #include <gflags/gflags.h>
 #include "base/strings.h"
+#include <fcntl.h>
 
 using ::baidu::common::INFO;
 using ::baidu::common::DEBUG;
@@ -60,7 +61,6 @@ bool Reader::SkipToInitialBlock() {
 
   // Don't search a block if we'd be in the trailer
   if (offset_in_block > kBlockSize - 6) {
-    offset_in_block = 0;
     block_start_location += kBlockSize;
   }
 
@@ -119,10 +119,8 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           // it could emit an empty kFirstType record at the tail end
           // of a block followed by a kFullType or kFirstType record
           // at the beginning of the next block.
-          if (scratch->empty()) {
-            in_fragmented_record = false;
-          } else {
-            ReportCorruption(scratch->size(), "partial record without end(1)");
+          if (!scratch->empty()) {
+            PDLOG(DEBUG, "partial record without end(1)");
           }
         }
         prospective_record_offset = physical_record_offset;
@@ -151,10 +149,8 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
           // it could emit an empty kFirstType record at the tail end
           // of a block followed by a kFullType or kFirstType record
           // at the beginning of the next block.
-          if (scratch->empty()) {
-            in_fragmented_record = false;
-          } else {
-            ReportCorruption(scratch->size(), "partial record without end(2)");
+          if (!scratch->empty()) {
+            PDLOG(DEBUG, "partial record without end(2)");
           }
         }
         prospective_record_offset = physical_record_offset;
@@ -164,8 +160,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kMiddleType:
         if (!in_fragmented_record) {
-          ReportCorruption(fragment.size(),
-                           "missing start of fragmented record(1)");
+          PDLOG(DEBUG, "missing start of fragmented record(1). fragment size %u", fragment.size());
         } else {
           scratch->append(fragment.data(), fragment.size());
         }
@@ -173,8 +168,7 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kLastType:
         if (!in_fragmented_record) {
-          ReportCorruption(fragment.size(),
-                           "missing start of fragmented record(2)");
+          PDLOG(DEBUG, "missing start of fragmented record(2). fragment size %u", fragment.size());
         } else {
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
@@ -198,21 +192,22 @@ Status Reader::ReadRecord(Slice* record, std::string* scratch) {
 
       case kBadRecord:
         if (in_fragmented_record) {
-          ReportCorruption(scratch->size(), "error in middle of record");
+          PDLOG(DEBUG, "error in middle of record");
           in_fragmented_record = false;
           scratch->clear();
         }
-        break;
+        return Status::InvalidRecord(Slice("kBadRecord"));
 
       default: {
         char buf[40];
         snprintf(buf, sizeof(buf), "unknown record type %u", record_type);
+        PDLOG(DEBUG, "%s", buf);
         ReportCorruption(
             (fragment.size() + (in_fragmented_record ? scratch->size() : 0)),
             buf);
         in_fragmented_record = false;
         scratch->clear();
-        break;
+        return Status::InvalidRecord(Slice(buf, strlen(buf)));
       }
     }
   }
@@ -245,6 +240,14 @@ void Reader::GoBackToLastBlock() {
         block_start_location = last_end_of_buffer_offset_ - offset_in_block;
     }
     PDLOG(DEBUG, "go back block from[%lu] to [%lu]", end_of_buffer_offset_, block_start_location);
+    end_of_buffer_offset_ = block_start_location;
+    buffer_.clear();
+    file_->Seek(block_start_location);
+}
+
+void Reader::GoBackToStart() {
+    uint64_t block_start_location = 0;
+    PDLOG(WARNING, "go back block to start");
     end_of_buffer_offset_ = block_start_location;
     buffer_.clear();
     file_->Seek(block_start_location);
@@ -302,7 +305,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     // Get Eof flag
     if (type == kEofType && length == 0) {
       buffer_.clear();
-      PDLOG(WARNING, "end of file");
+      PDLOG(INFO, "end of file");
       return kEof;
     }
 
@@ -351,6 +354,13 @@ void LogReader::GoBackToLastBlock() {
     reader_->GoBackToLastBlock();
 }
 
+void LogReader::GoBackToStart() {
+    if (sf_ == NULL || reader_ == NULL) {
+        return;
+    }
+    reader_->GoBackToStart();
+}
+
 int LogReader::GetLogIndex() {
     return log_part_index_;
 }
@@ -374,7 +384,7 @@ uint64_t LogReader::GetLastRecordEndOffset() {
     }
     ::rtidb::base::Status status = reader_->ReadRecord(record, buffer);
     if (status.IsEof()) {
-        PDLOG(WARNING, "reach the end of file. index %d", log_part_index_);
+        PDLOG(INFO, "reach the end of file. index %d", log_part_index_);
         if (RollRLogFile() < 0) {
             // reache the latest log part
             return status;

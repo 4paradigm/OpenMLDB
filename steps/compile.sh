@@ -14,6 +14,6 @@ sh steps/gen_code.sh
 
 mkdir -p $WORK_DIR/build 
 cd $WORK_DIR/build && cmake .. && make -j8
+code=$?
 cd $WORK_DIR
-
-
+exit $code

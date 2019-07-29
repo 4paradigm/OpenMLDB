@@ -339,21 +339,27 @@ bool TabletClient::LoadTable(const std::string& name,
                                uint32_t tid, uint32_t pid, uint64_t ttl,
                                bool leader, const std::vector<std::string>& endpoints,
                                uint32_t seg_cnt, std::shared_ptr<TaskInfo> task_info) {
-    ::rtidb::api::LoadTableRequest request;
-    ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name(name);
-    table_meta->set_tid(tid);
-    table_meta->set_pid(pid);
-    table_meta->set_ttl(ttl);
-    table_meta->set_seg_cnt(seg_cnt);
+    ::rtidb::api::TableMeta table_meta;
+    table_meta.set_name(name);
+    table_meta.set_tid(tid);
+    table_meta.set_pid(pid);
+    table_meta.set_ttl(ttl);
+    table_meta.set_seg_cnt(seg_cnt);
     if (leader) {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
-    }else {
-        table_meta->set_mode(::rtidb::api::TableMode::kTableFollower);
+        table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    } else {
+        table_meta.set_mode(::rtidb::api::TableMode::kTableFollower);
     }
     for (size_t i = 0; i < endpoints.size(); i++) {
-        table_meta->add_replicas(endpoints[i]);
+        table_meta.add_replicas(endpoints[i]);
     }
+    return LoadTable(table_meta, task_info);
+}
+
+bool TabletClient::LoadTable(const ::rtidb::api::TableMeta& table_meta, std::shared_ptr<TaskInfo> task_info) {
+    ::rtidb::api::LoadTableRequest request;
+    ::rtidb::api::TableMeta* cur_table_meta = request.mutable_table_meta();
+    cur_table_meta->CopyFrom(table_meta);
     if (task_info) {
         request.mutable_task_info()->CopyFrom(*task_info);
     }
