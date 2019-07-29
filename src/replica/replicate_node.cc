@@ -17,6 +17,7 @@ DECLARE_int32(binlog_match_logoffset_interval);
 DECLARE_int32(request_max_retry);
 DECLARE_int32(request_timeout_ms);
 DECLARE_string(zk_cluster);
+DECLARE_uint32(go_back_max_try_cnt);
 
 namespace rtidb {
 namespace replica {
@@ -45,7 +46,7 @@ ReplicateNode::ReplicateNode(const std::string& point,
     endpoint_(point), last_sync_offset_(0), log_matched_(false),
     tid_(tid), pid_(pid), term_(term), 
     rpc_client_(point), worker_(), leader_log_offset_(leader_log_offset),
-    is_running_(false), mu_(mu), cv_(cv){
+    is_running_(false), mu_(mu), cv_(cv), go_back_cnt_(0) {
 }
 
 int ReplicateNode::Init() {
@@ -191,7 +192,8 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
             if (status.ok()) {
                 ::rtidb::api::LogEntry* entry = request.add_entries();
                 if (!entry->ParseFromString(record.ToString())) {
-                    PDLOG(WARNING, "bad protobuf format %s size %ld", ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
+                    PDLOG(WARNING, "bad protobuf format %s size %ld. tid %u pid %u", 
+                            ::rtidb::base::DebugString(record.ToString()).c_str(), record.ToString().size(), tid_, pid_);
                     request.mutable_entries()->RemoveLast();
                     break;
                 }
@@ -206,8 +208,15 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                     PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u", 
                                     sync_log_offset + 1, entry->log_index(), tid_, pid_);
                     request.mutable_entries()->RemoveLast();
+                    if (go_back_cnt_ > FLAGS_go_back_max_try_cnt) {
+                        log_reader_.GoBackToStart();
+                        go_back_cnt_ = 0;
+                        PDLOG(WARNING, "go back to start. tid %u pid %u endpoint %s", tid_, pid_, endpoint_.c_str());
+                    } else {
+                        log_reader_.GoBackToLastBlock();
+                        go_back_cnt_++;
+                    }
                     need_wait = true;
-                    log_reader_.GoBackToLastBlock();
                     break;
                 }
                 sync_log_offset = entry->log_index();
@@ -215,12 +224,26 @@ int ReplicateNode::SyncData(uint64_t log_offset) {
                 PDLOG(DEBUG, "got a coffee time for[%s]", endpoint_.c_str());
                 need_wait = true;
                 break;
+            } else if (status.IsInvalidRecord()) {
+                PDLOG(DEBUG, "fail to get record. %s. tid %u pid %u", status.ToString().c_str(), tid_, pid_);
+                need_wait = true;
+                if (go_back_cnt_ > FLAGS_go_back_max_try_cnt) {
+                    log_reader_.GoBackToStart();
+                    go_back_cnt_ = 0;
+                    PDLOG(WARNING, "go back to start. tid %u pid %u endpoint %s", tid_, pid_, endpoint_.c_str());
+                } else {
+                    log_reader_.GoBackToLastBlock();
+                    go_back_cnt_++;
+                }
+                break;
             } else {
-                PDLOG(WARNING, "fail to get record %s", status.ToString().c_str());
+                PDLOG(WARNING, "fail to get record: %s. tid %u pid %u", 
+                                status.ToString().c_str(), tid_, pid_);
                 need_wait = true;
                 break;
             }
             i++;
+            go_back_cnt_ = 0;
         }
     }    
     if (request.entries_size() > 0) {

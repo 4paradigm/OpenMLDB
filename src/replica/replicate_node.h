@@ -77,6 +77,7 @@ private:
     std::atomic<bool> is_running_;
     bthread::Mutex* mu_;
     bthread::ConditionVariable* cv_;
+    uint32_t go_back_cnt_;
 };
 
 }
