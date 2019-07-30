@@ -167,7 +167,7 @@ int MemTable::InitColumnDesc() {
     return 0;
 }
 
-int MemTable::Init() {
+bool MemTable::Init() {
     key_entry_max_height_ = FLAGS_key_entry_max_height;
     ttl_offset_ = FLAGS_gc_safe_offset * 60 * 1000;
     if (table_meta_.seg_cnt() > 0) {
@@ -178,7 +178,7 @@ int MemTable::Init() {
     }
     if (InitColumnDesc() < 0) {
         PDLOG(WARNING, "init column desc failed");
-        return -1;
+        return false;
     }
     if (table_meta_.has_ttl()) {
         ttl_ = table_meta_.ttl() * 60 * 1000;
@@ -226,7 +226,7 @@ int MemTable::Init() {
     }
     PDLOG(INFO, "init table name %s, id %d, pid %d, seg_cnt %d , ttl %d", name_.c_str(),
                 id_, pid_, seg_cnt_, ttl_ / (60 * 1000));
-    return 0;
+    return true;
 }
 
 void MemTable::SetCompressType(::rtidb::api::CompressType compress_type) {

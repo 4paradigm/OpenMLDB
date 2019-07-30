@@ -17,10 +17,13 @@ TABLET3=127.0.0.1:9522
 test -d tablet0-binlogs && rm -rf tablet0-binlogs
 test -d recycle_bin0 && rm -rf recycle_bin0
 ../build/bin/rtidb --db_root_path=tablet0-binlogs \
+                   --hdd_root_path=tablet0-binlogs \
                    --recycle_bin_root_path=recycle_bin0 \
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
+                   --gc_interval=1\
+                   --make_snapshot_threshold_offset=1\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet0.log 2>&1 &
 test -d tablet1-binlogs && rm -rf tablet1-binlogs
@@ -29,10 +32,13 @@ test -d recycle_bin1 && rm -rf recycle_bin1
 
 # start tablet1
 ../build/bin/rtidb --db_root_path=tablet1-binlogs \
+                   --hdd_root_path=tablet1-binlogs \
                    --recycle_bin_root_path=recycle_bin1 \
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
                    --binlog_notify_on_put=true\
+                   --gc_interval=1\
+                   --make_snapshot_threshold_offset=1\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet1.log 2>&1 &
 test -d tablet2-binlogs && rm -rf tablet2-binlogs
@@ -41,10 +47,13 @@ test -d recycle_bin2 && rm -rf recycle_bin2
 
 # start tablet2
 ../build/bin/rtidb --db_root_path=tablet2-binlogs \
+                   --hdd_root_path=tablet2-binlogs \
                    --recycle_bin_root_path=recycle_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
+                   --gc_interval=1\
+                   --make_snapshot_threshold_offset=1\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
 

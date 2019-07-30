@@ -39,7 +39,7 @@ public:
         ttl_(ttl), new_ttl_(ttl), ttl_offset_(ttl_offset), record_cnt_(0), is_leader_(is_leader),
         mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {}
     virtual ~Table() {}
-	virtual int Init() = 0;
+	virtual bool Init() = 0;
 
     virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;
 

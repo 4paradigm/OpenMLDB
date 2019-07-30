@@ -3106,7 +3106,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     }
     Table* table_ptr = new MemTable(*table_meta);
     std::shared_ptr<Table> table(table_ptr);
-    if (table->Init() < 0) {
+    if (!table->Init()) {
         PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
         msg.assign("fail to init table");
         return -1;

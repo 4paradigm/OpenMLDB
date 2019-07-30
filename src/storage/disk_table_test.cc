@@ -64,7 +64,7 @@ TEST_F(DiskTableTest, Put) {
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("yjtable1", 1, 1, mapping, 10, 
             ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -99,7 +99,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     mapping.insert(std::make_pair("idx2", 2));
     DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
             ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     ASSERT_EQ(3, table->GetIdxCnt());
 //    ASSERT_EQ(0, table->GetRecordIdxCnt());
 //    ASSERT_EQ(0, table->GetRecordCnt());
@@ -222,7 +222,7 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx2", 2));
     DiskTable* table = new DiskTable("yjtable2", 1, 2, mapping, 10,
             ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -258,7 +258,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 0,
             ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -347,7 +347,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
             ::rtidb::api::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -418,7 +418,7 @@ TEST_F(DiskTableTest, Load) {
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
             ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -471,7 +471,7 @@ TEST_F(DiskTableTest, CompactFilter) {
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 1, mapping, 10, 
             ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -522,7 +522,7 @@ TEST_F(DiskTableTest, GcHead) {
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 3,
             ::rtidb::api::TTLType::kLatestTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
         uint64_t ts = 9537;
@@ -575,7 +575,7 @@ TEST_F(DiskTableTest, GcTTL) {
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* table = new DiskTable("t1", 1, 3, mapping, 10,
             ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
-    ASSERT_EQ(table->Init(), 0);
+    ASSERT_TRUE(table->Init());
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);

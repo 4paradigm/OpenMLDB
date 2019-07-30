@@ -74,7 +74,7 @@ public:
 
     int InitColumnDesc();
 
-    virtual int Init() override;
+    virtual bool Init() override;
 
     // Put a record
     virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) override;

@@ -126,7 +126,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     return true;
 }
 
-int DiskTable::Init() {
+bool DiskTable::Init() {
     if (mapping_.empty()) {
         for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
             mapping_.insert(std::make_pair(table_meta_.dimensions(i),
@@ -145,7 +145,7 @@ int DiskTable::Init() {
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!::rtidb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
-        return -1;
+        return false;
     }
     options_.create_if_missing = true;
     options_.error_if_exists = true;
@@ -153,9 +153,9 @@ int DiskTable::Init() {
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
-        return -1;
+        return false;
     } 
-    return 0;
+    return true;
 }
 
 bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint32_t size) {

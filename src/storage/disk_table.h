@@ -209,7 +209,7 @@ public:
 
     bool InitColumnFamilyDescriptor();
 
-    virtual int Init() override;
+    virtual bool Init() override;
 
     virtual bool LoadTable() override;
 
@@ -234,10 +234,6 @@ public:
     bool Get(const std::string& pk, uint64_t ts, std::string& value);
 
     bool Delete(const std::string& pk, uint32_t idx) override;
-
-    inline void SetSchema(const std::string& schema) {
-        schema_ = schema;
-    }
 
     virtual uint64_t GetExpireTime(uint64_t ttl) override;
 
@@ -288,7 +284,6 @@ private:
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
     std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;
-
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
 };
