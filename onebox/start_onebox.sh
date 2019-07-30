@@ -22,7 +22,6 @@ test -d recycle_bin0 && rm -rf recycle_bin0
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
-                   --make_snapshot_threshold_offset=1\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet0.log 2>&1 &
 test -d tablet1-binlogs && rm -rf tablet1-binlogs
@@ -36,7 +35,6 @@ test -d recycle_bin1 && rm -rf recycle_bin1
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
                    --binlog_notify_on_put=true\
-                   --make_snapshot_threshold_offset=1\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet1.log 2>&1 &
 test -d tablet2-binlogs && rm -rf tablet2-binlogs
@@ -50,7 +48,6 @@ test -d recycle_bin2 && rm -rf recycle_bin2
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
-                   --make_snapshot_threshold_offset=1\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
 
