@@ -7,7 +7,7 @@
 
 #include "tablet/tablet_impl.h"
 #include "proto/tablet.pb.h"
-#include "storage/table.h"
+#include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "base/kv_iterator.h"
 #include "gtest/gtest.h"
@@ -89,7 +89,7 @@ inline std::string GenRand() {
     column_key = table_meta.add_column_key();
     column_key->set_index_name("mcc");
     column_key->add_ts_name("ts1");
-    ::rtidb::storage::Table* table = new ::rtidb::storage::Table(table_meta);
+    ::rtidb::storage::Table* table = new ::rtidb::storage::MemTable(table_meta);
     table->Init();
 
     for (int i = 0; i < 1000; i++) {
@@ -119,7 +119,7 @@ public:
     ~TabletFuncTest() {}
 };
 
-void RunGetTimeIndexAssert(::rtidb::storage::MemTableIterator* it, uint64_t base_ts, uint64_t expired_ts) {
+void RunGetTimeIndexAssert(::rtidb::storage::TableIterator* it, uint64_t base_ts, uint64_t expired_ts) {
     ::rtidb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
@@ -185,7 +185,7 @@ void RunGetTimeIndexAssert(::rtidb::storage::MemTableIterator* it, uint64_t base
 }
 
 
-void RunGetLatestIndexAssert(::rtidb::storage::MemTableIterator* it) {
+void RunGetLatestIndexAssert(::rtidb::storage::TableIterator* it) {
     ::rtidb::tablet::TabletImpl tablet_impl;
     std::string value;
     uint64_t ts;
@@ -240,21 +240,21 @@ void RunGetLatestIndexAssert(::rtidb::storage::MemTableIterator* it) {
 TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::MemTableIterator* it = table->NewIterator("card0", ticket);
+    ::rtidb::storage::TableIterator* it = table->NewIterator("card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 0, "card0", ticket);
+    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 0, "card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
 TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kLatestTime, 10, 1000);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 1, "card0", ticket);
+    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 1, "card0", ticket);
     RunGetLatestIndexAssert(it);
 }
 
@@ -262,7 +262,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::MemTableIterator* it = table->NewIterator("card0", ticket);
+    ::rtidb::storage::TableIterator* it = table->NewIterator("card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 
@@ -270,7 +270,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 0, "card0", ticket);
+    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 0, "card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 
@@ -278,7 +278,7 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     uint64_t base_ts = ::baidu::common::timer::get_micros();
     ::rtidb::storage::Table* table = CreateBaseTable(::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::MemTableIterator* it = table->NewIterator(0, 1, "card0", ticket);
+    ::rtidb::storage::TableIterator* it = table->NewIterator(0, 1, "card0", ticket);
     RunGetTimeIndexAssert(it, base_ts, base_ts - 100);
 }
 

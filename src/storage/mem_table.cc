@@ -5,7 +5,7 @@
 // Date 2017-03-31
 //
 //
-#include "storage/table.h"
+#include "storage/mem_table.h"
 
 #include "base/hash.h"
 #include "base/slice.h"
@@ -32,36 +32,39 @@ namespace storage {
 
 const static uint32_t SEED = 0xe17a1465;
 
-Table::Table(const std::string& name,
+MemTable::MemTable(const std::string& name,
         uint32_t id,
         uint32_t pid,
         uint32_t seg_cnt,
         const std::map<std::string, uint32_t>& mapping,
-        uint64_t ttl):name_(name), id_(id),
-    pid_(pid), seg_cnt_(seg_cnt),
+        uint64_t ttl): Table(::rtidb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress), seg_cnt_(seg_cnt),
     segments_(NULL), 
-    enable_gc_(false), ttl_(ttl * 60 * 1000),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
-    table_status_(kUndefined), schema_(),
-    mapping_(mapping), segment_released_(false), record_byte_size_(0), 
-    ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-    compress_type_(::rtidb::api::CompressType::kNoCompress)
+    enable_gc_(false), 
+    record_cnt_(0), time_offset_(0),
+    segment_released_(false), record_byte_size_(0)
 {
-    new_ttl_.store(ttl_.load());
 }
 
-Table::Table(const ::rtidb::api::TableMeta& table_meta) : name_(table_meta.name()), id_(table_meta.tid()), 
-    pid_(table_meta.pid()), seg_cnt_(8), 
-    segments_(NULL), 
-    enable_gc_(false),
-    ttl_offset_(60 * 1000), record_cnt_(0), is_leader_(true), time_offset_(0),
-    segment_released_(false), record_byte_size_(0), 
-    ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
-    compress_type_(::rtidb::api::CompressType::kNoCompress) {
+MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) {
+    name_ = table_meta.name();
+    id_ = table_meta.tid();
+    pid_ = table_meta.pid();
+    seg_cnt_ = 8;
+    segments_ = NULL; 
+    enable_gc_ = false;
+    ttl_offset_ = 60 * 1000;
+    record_cnt_ = 0;
+    is_leader_ = true;
+    time_offset_ = 0;
+    segment_released_ = false;
+    record_byte_size_ = 0; 
+    ttl_type_ = ::rtidb::api::TTLType::kAbsoluteTime;
+    compress_type_ = ::rtidb::api::CompressType::kNoCompress;
     table_meta_.CopyFrom(table_meta);
 }
 
-Table::~Table() {
+MemTable::~MemTable() {
     if (segments_ == NULL) {
         return;
     }
@@ -75,7 +78,7 @@ Table::~Table() {
     delete[] segments_;
 }
 
-int Table::InitColumnDesc() {
+int MemTable::InitColumnDesc() {
     if (table_meta_.column_desc_size() > 0) {
         uint32_t key_idx = 0;
         uint32_t ts_idx = 0;
@@ -163,7 +166,7 @@ int Table::InitColumnDesc() {
     return 0;
 }
 
-int Table::Init() {
+int MemTable::Init() {
     key_entry_max_height_ = FLAGS_key_entry_max_height;
     ttl_offset_ = FLAGS_gc_safe_offset * 60 * 1000;
     if (table_meta_.seg_cnt() > 0) {
@@ -225,15 +228,15 @@ int Table::Init() {
     return 0;
 }
 
-void Table::SetCompressType(::rtidb::api::CompressType compress_type) {
+void MemTable::SetCompressType(::rtidb::api::CompressType compress_type) {
     compress_type_ = compress_type;
 }
 
-::rtidb::api::CompressType Table::GetCompressType() {
+::rtidb::api::CompressType MemTable::GetCompressType() {
     return compress_type_;
 }
 
-bool Table::Put(const std::string& pk, 
+bool MemTable::Put(const std::string& pk, 
                 uint64_t time,
                 const char* data, 
                 uint32_t size) {
@@ -250,7 +253,7 @@ bool Table::Put(const std::string& pk,
 }
 
 // Put a multi dimension record
-bool Table::Put(uint64_t time, 
+bool MemTable::Put(uint64_t time, 
                 const std::string& value,
                 const Dimensions& dimensions) {
     DataBlock* block = new DataBlock(dimensions.size(), 
@@ -276,7 +279,7 @@ bool Table::Put(uint64_t time,
     return true;
 }
 
-bool Table::Put(const Dimensions& dimensions,
+bool MemTable::Put(const Dimensions& dimensions,
                 const TSDimensions& ts_dimemsions,
                 const std::string& value) {
     if (dimensions.size() == 0 || ts_dimemsions.size() == 0) {
@@ -322,7 +325,7 @@ bool Table::Put(const Dimensions& dimensions,
     return true;
 }
 
-bool Table::Put(const Slice& pk,
+bool MemTable::Put(const Slice& pk,
                 uint64_t time, 
                 DataBlock* row,
                 uint32_t idx) {
@@ -338,7 +341,7 @@ bool Table::Put(const Slice& pk,
     return true;
 }
 
-bool Table::Put(const ::rtidb::api::LogEntry& entry) {
+bool MemTable::Put(const ::rtidb::api::LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
 		return entry.ts_dimensions_size() > 0 ?
 			Put(entry.dimensions(), entry.ts_dimensions(), entry.value()) :
@@ -348,7 +351,7 @@ bool Table::Put(const ::rtidb::api::LogEntry& entry) {
 	}
 }
 
-bool Table::Delete(const std::string& pk, uint32_t idx) {
+bool MemTable::Delete(const std::string& pk, uint32_t idx) {
     if (idx >= idx_cnt_) {
         return false;
     }
@@ -361,7 +364,7 @@ bool Table::Delete(const std::string& pk, uint32_t idx) {
     return segment->Delete(spk);
 }
 
-uint64_t Table::Release() {
+uint64_t MemTable::Release() {
     if (segment_released_) {
         return 0;
     }
@@ -380,7 +383,7 @@ uint64_t Table::Release() {
     return total_cnt;
 }
 
-uint64_t Table::SchedGc() {
+void MemTable::SchedGc() {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
             id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
@@ -461,33 +464,9 @@ uint64_t Table::SchedGc() {
             ttl_vec_[i]->store(new_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
         }
     }
-    return gc_record_cnt;
 }
 
-uint64_t Table::GetTTL() {
-    return GetTTL(0);
-}
-
-uint64_t Table::GetTTL(uint32_t index) {
-    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
-    auto pos = column_key_map_.find(index);
-    if (pos != column_key_map_.end() && !pos->second.empty()) {
-        if (pos->second.front() < ttl_vec_.size()) {
-            ttl = ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed);
-        }
-    }
-    return ttl / (60 * 1000);
-}
-
-uint64_t Table::GetTTL(uint32_t index, uint32_t ts_index) {
-    uint64_t ttl = ttl_.load(std::memory_order_relaxed);
-    if (ts_index < ttl_vec_.size()) {
-        ttl = ttl_vec_[ts_index]->load(std::memory_order_relaxed);
-    }
-    return ttl / (60 * 1000);
-}
-
-uint64_t Table::GetExpireTime(uint64_t ttl) {
+uint64_t MemTable::GetExpireTime(uint64_t ttl) {
     if (!enable_gc_.load(std::memory_order_relaxed) || ttl == 0
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         return 0;
@@ -496,7 +475,7 @@ uint64_t Table::GetExpireTime(uint64_t ttl) {
     return cur_time + time_offset_.load(std::memory_order_relaxed) - ttl * 60 * 1000;
 }
 
-bool Table::IsExpire(const LogEntry& entry) {
+bool MemTable::IsExpire(const LogEntry& entry) {
     if (!enable_gc_.load(std::memory_order_relaxed)) { 
         return false;
     }
@@ -515,7 +494,7 @@ bool Table::IsExpire(const LogEntry& entry) {
                             continue;
                         }
                         ::rtidb::storage::Ticket ticket;
-                        ::rtidb::storage::MemTableIterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
+                        ::rtidb::storage::TableIterator* it = NewIterator(iter->idx(), ts_idx, iter->key(), ticket);
                         it->SeekToLast();
                         if (it->Valid()) {
                             if (inner_pos->second >= it->GetKey()) {
@@ -527,7 +506,7 @@ bool Table::IsExpire(const LogEntry& entry) {
                     }    
                 } else {
                     uint64_t ts = 0;
-                    ::rtidb::storage::MemTableIterator* it = NULL;
+                    ::rtidb::storage::TableIterator* it = NULL;
                     ::rtidb::storage::Ticket ticket;
                     if (ts_dimemsions_map.empty()) {
                         ts = entry.ts();
@@ -548,7 +527,7 @@ bool Table::IsExpire(const LogEntry& entry) {
             }
         } else {
             ::rtidb::storage::Ticket ticket;
-            ::rtidb::storage::MemTableIterator* it = NewIterator(entry.pk(), ticket);
+            ::rtidb::storage::TableIterator* it = NewIterator(entry.pk(), ticket);
             it->SeekToLast();
             if (it->Valid()) {
                 if (entry.ts() >= it->GetKey()) {
@@ -574,7 +553,7 @@ bool Table::IsExpire(const LogEntry& entry) {
     return true;
 }
 
-int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
+int MemTable::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     if (index >= idx_cnt_) {
         return -1;
     }
@@ -591,7 +570,7 @@ int Table::GetCount(uint32_t index, const std::string& pk, uint64_t& count) {
     return segment->GetCount(spk, count);
 }
 
-int Table::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count) {
+int MemTable::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count) {
     if (index >= idx_cnt_) {
         return -1;
     }
@@ -604,11 +583,11 @@ int Table::GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint
     return segment->GetCount(spk, ts_idx, count);
 }
 
-MemTableIterator* Table::NewIterator(const std::string& pk, Ticket& ticket) {
+TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
     return NewIterator(0, pk, ticket); 
 }
 
-MemTableIterator* Table::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
+TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
@@ -626,7 +605,7 @@ MemTableIterator* Table::NewIterator(uint32_t index, const std::string& pk, Tick
     return segment->NewIterator(spk, ticket);
 }
 
-MemTableIterator* Table::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+TableIterator* MemTable::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
@@ -640,7 +619,7 @@ MemTableIterator* Table::NewIterator(uint32_t index, uint32_t ts_idx, const std:
     return segment->NewIterator(spk, ts_idx, ticket);
 }
 
-uint64_t Table::GetRecordIdxByteSize() {
+uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -650,7 +629,7 @@ uint64_t Table::GetRecordIdxByteSize() {
     return record_idx_byte_size;
 }
 
-uint64_t Table::GetRecordIdxCnt() {
+uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -660,7 +639,7 @@ uint64_t Table::GetRecordIdxCnt() {
     return record_idx_cnt;
 }
 
-uint64_t Table::GetRecordPkCnt() {
+uint64_t MemTable::GetRecordPkCnt() {
     uint64_t record_pk_cnt = 0;
     for (uint32_t i = 0; i < idx_cnt_; i++) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -670,7 +649,7 @@ uint64_t Table::GetRecordPkCnt() {
     return record_pk_cnt;
 }
 
-bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
+bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (stat == NULL) {
         return false;
     }
@@ -686,7 +665,7 @@ bool Table::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     return true;
 }
 
-MemTableTraverseIterator* Table::NewTraverseIterator(uint32_t index) {
+TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     auto pos = column_key_map_.find(index);
     if (pos != column_key_map_.end() && !pos->second.empty()) {
         return NewTraverseIterator(index, pos->second.front());
@@ -695,7 +674,7 @@ MemTableTraverseIterator* Table::NewTraverseIterator(uint32_t index) {
     }
 }
 
-MemTableTraverseIterator* Table::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
+TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
     uint64_t expire_value = 0;
     if (!enable_gc_.load(std::memory_order_relaxed)) {
         expire_value = 0;

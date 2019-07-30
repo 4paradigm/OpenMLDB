@@ -12,7 +12,7 @@
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "storage/snapshot.h"
-#include "storage/table.h"
+#include "storage/mem_table.h"
 #include "storage/disk_table.h"
 #include "thread_pool.h"
 #include "base/set.h"
@@ -26,6 +26,7 @@ using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
+using ::rtidb::storage::MemTable;
 using ::rtidb::storage::DiskTable;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::replica::LogReplicator;
@@ -36,7 +37,6 @@ namespace rtidb {
 namespace tablet {
 
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
-typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<DiskTable> > > DiskTables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
@@ -250,11 +250,11 @@ public:
         server_ = server;
     }
 
-    void GetFromDiskTable(std::shared_ptr<DiskTable> disk_table,
+    void GetFromDiskTable(std::shared_ptr<Table> disk_table,
             const ::rtidb::api::GetRequest* request, 
             ::rtidb::api::GetResponse* response);
 
-    void ScanFromDiskTable(std::shared_ptr<DiskTable> disk_table,
+    void ScanFromDiskTable(std::shared_ptr<Table> disk_table,
             const ::rtidb::api::ScanRequest* request, 
             ::rtidb::api::ScanResponse* response);
     // scan the latest index
@@ -305,8 +305,8 @@ private:
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
     // Get table by table id , and Need external synchronization  
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
-    std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
-    std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
+    //std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
+    //std::shared_ptr<DiskTable> GetDiskTableUnLock(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid, uint32_t pid);
@@ -374,7 +374,6 @@ private:
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
-    DiskTables disk_tables_;
 };
 
 

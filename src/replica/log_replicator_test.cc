@@ -17,15 +17,16 @@
 #include "logging.h"
 #include "thread_pool.h"
 #include <brpc/server.h>
-#include "storage/table.h"
+#include "storage/mem_table.h"
 #include "storage/segment.h"
 #include "storage/ticket.h"
 #include "timer.h"
 
 using ::baidu::common::ThreadPool;
 using ::rtidb::storage::Table;
+using ::rtidb::storage::MemTable;
 using ::rtidb::storage::Ticket;
-using ::rtidb::storage::MemTableIterator;
+using ::rtidb::storage::TableIterator;
 using ::rtidb::storage::DataBlock;
 using ::google::protobuf::RpcController;
 using ::google::protobuf::Closure;
@@ -43,7 +44,7 @@ public:
     MockTabletImpl(const ReplicatorRole& role,
                    const std::string& path,
                    const std::vector<std::string>& endpoints,
-                   std::shared_ptr<Table> table): role_(role),
+                   std::shared_ptr<MemTable> table): role_(role),
     path_(path), endpoints_(endpoints), 
     replicator_(path_, endpoints_, role_, table) {
     }
@@ -120,7 +121,7 @@ TEST_F(LogReplicatorTest,  Init) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -132,7 +133,7 @@ TEST_F(LogReplicatorTest,  BenchMark) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table);
     bool ok = replicator.Init();
@@ -152,7 +153,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:17527";
@@ -221,7 +222,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     leader.AddReplicateNode(vec);
     sleep(2);
 
-    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:17528";
@@ -245,7 +246,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     {
         Ticket ticket;
         // check 18527
-        MemTableIterator* it = t8->NewIterator(0, "card0", ticket);
+        TableIterator* it = t8->NewIterator(0, "card0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         ::rtidb::base::Slice value = it->GetValue();
@@ -266,7 +267,7 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
     {
         Ticket ticket;
         // check 18527
-        MemTableIterator* it = t8->NewIterator(1, "merchant0", ticket);
+        TableIterator* it = t8->NewIterator(1, "merchant0", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         ::rtidb::base::Slice value = it->GetValue();
@@ -287,15 +288,13 @@ TEST_F(LogReplicatorTest,   LeaderAndFollowerMulti) {
 
 }
 
-
-
 TEST_F(LogReplicatorTest,  LeaderAndFollower) {
 	brpc::ServerOptions options;
 	brpc::Server server0;
 	brpc::Server server1;
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx", 0));
-    std::shared_ptr<Table> t7 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t7 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     t7->Init();
     {
         std::string follower_addr = "127.0.0.1:18527";
@@ -340,7 +339,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     leader.AddReplicateNode(vec);
     sleep(2);
 
-    std::shared_ptr<Table> t8 = std::make_shared<Table>("test", 1, 1, 8, mapping, 0);
+    std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>("test", 1, 1, 8, mapping, 0);
     t8->Init();
     {
         std::string follower_addr = "127.0.0.1:18528";
@@ -364,7 +363,7 @@ TEST_F(LogReplicatorTest,  LeaderAndFollower) {
     {
         Ticket ticket;
         // check 18527
-        MemTableIterator* it = t8->NewIterator("test_pk", ticket);
+        TableIterator* it = t8->NewIterator("test_pk", ticket);
         it->Seek(9527);
         ASSERT_TRUE(it->Valid());
         ::rtidb::base::Slice value = it->GetValue();

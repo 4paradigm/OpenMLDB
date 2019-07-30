@@ -5,7 +5,7 @@
 // Date 2017-03-31
 //
 
-#include "storage/table.h"
+#include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "gtest/gtest.h"
 #include "timer.h"
@@ -24,12 +24,12 @@ public:
 TEST_F(TableTest, Put) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
     ASSERT_EQ(1, table->GetRecordCnt());
     Ticket ticket;
-    MemTableIterator* it = table->NewIterator("test", ticket);
+    TableIterator* it = table->NewIterator("test", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9537, it->GetKey());
@@ -46,7 +46,7 @@ TEST_F(TableTest, MultiDimissionPut0) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     ASSERT_EQ(0, table->GetRecordIdxCnt());
@@ -74,7 +74,7 @@ TEST_F(TableTest, MultiDimissionPut1) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -90,7 +90,7 @@ TEST_F(TableTest, MultiDimissionPut1) {
 TEST_F(TableTest, Release) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->Put("test2", 9537, "test", 4);
@@ -103,7 +103,7 @@ TEST_F(TableTest, IsExpired) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     // table ttl is 1
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1);
     table->Init();
     uint64_t now_time = ::baidu::common::timer::get_micros() / 1000;
     ::rtidb::api::LogEntry entry;
@@ -121,14 +121,14 @@ TEST_F(TableTest, IsExpired) {
 TEST_F(TableTest, Iterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
     table->Put("pk1", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
     Ticket ticket;
-    MemTableIterator* it = table->NewIterator("pk", ticket);
+    TableIterator* it = table->NewIterator("pk", ticket);
 
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
@@ -146,14 +146,14 @@ TEST_F(TableTest, Iterator) {
 TEST_F(TableTest, Iterator_GetSize) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 10);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10);
     table->Init();
 
     table->Put("pk", 9527, "test", 4);
     table->Put("pk", 9527, "test", 4);
     table->Put("pk", 9528, "test0", 5);
     Ticket ticket;
-    MemTableIterator* it = table->NewIterator("pk", ticket);
+    TableIterator* it = table->NewIterator("pk", ticket);
     int size = 0;
     it->SeekToFirst();
     while (it->Valid()) {
@@ -179,7 +179,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     mapping.insert(std::make_pair("idx0", 0));
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
     ASSERT_EQ(3, table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
@@ -192,8 +192,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     ASSERT_TRUE(table->Put(d3, 9527, db, 2));
     table->RecordCntIncr(1);
     ASSERT_EQ(3, table->GetRecordIdxCnt());
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
+    table->SchedGc();
     ASSERT_EQ(0, table->GetRecordCnt());
     ASSERT_EQ(0, table->GetRecordIdxCnt());
 }
@@ -201,7 +200,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
 TEST_F(TableTest, SchedGcHead) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
     table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
     table->Init();
     table->Put("test", 2, "test1", 5);
@@ -211,8 +210,7 @@ TEST_F(TableTest, SchedGcHead) {
     ASSERT_EQ(2, table->GetRecordCnt());
     ASSERT_EQ(2, table->GetRecordIdxCnt());
     ASSERT_EQ(1, table->GetRecordPkCnt());
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
+    table->SchedGc();
     ASSERT_EQ(1, table->GetRecordCnt());
     ASSERT_EQ(1, table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
@@ -223,7 +221,7 @@ TEST_F(TableTest, SchedGcHead1) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     uint64_t keep_cnt = 500;
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, keep_cnt);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, keep_cnt);
     table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
     table->Init();
 	uint64_t ts = 0;
@@ -236,7 +234,7 @@ TEST_F(TableTest, SchedGcHead1) {
         }
         table->SchedGc();
         Ticket ticket;
-        MemTableIterator* it = table->NewIterator("test", ticket);
+        TableIterator* it = table->NewIterator("test", ticket);
 
         it->Seek(ts + 1);
         ASSERT_TRUE(it->Valid());
@@ -260,7 +258,7 @@ TEST_F(TableTest, SchedGcHead1) {
 TEST_F(TableTest, SchedGc) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
 
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -272,15 +270,14 @@ TEST_F(TableTest, SchedGc) {
     ASSERT_EQ(2, table->GetRecordIdxCnt());
     ASSERT_EQ(1, table->GetRecordPkCnt());
 
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
+    table->SchedGc();
     ASSERT_EQ(1, table->GetRecordCnt());
     ASSERT_EQ(1, table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
 
     Ticket ticket;
-    MemTableIterator* it = table->NewIterator("test", ticket);
+    TableIterator* it = table->NewIterator("test", ticket);
     it->Seek(now);
     ASSERT_TRUE(it->Valid());
     std::string value_str(it->GetValue().data(), it->GetValue().size());
@@ -293,7 +290,7 @@ TEST_F(TableTest, SchedGc) {
 TEST_F(TableTest, OffSet) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->SetTimeOffset(-60 * 4);
@@ -301,19 +298,16 @@ TEST_F(TableTest, OffSet) {
     table->Put("test", now - 3 * 60 * 1000, "test", 4);
     table->Put("test", now, "tes2", 4);
     table->Put("test", now + 3 * 60 * 1000, "tes2", 4);
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
+    table->SchedGc();
 
     table->SetTimeOffset(0);
     table->SetExpire(false);
-    count = table->SchedGc();
-    ASSERT_EQ(0, count);
+    table->SchedGc();
     table->SetExpire(true);
-    count = table->SchedGc();
-    ASSERT_EQ(1, count);
+    table->SchedGc();
     {
         Ticket ticket;
-        MemTableIterator* it = table->NewIterator("test", ticket);
+        TableIterator* it = table->NewIterator("test", ticket);
         it->Seek(now);
         ASSERT_TRUE(it->Valid());
         std::string value_str(it->GetValue().data(), it->GetValue().size());
@@ -326,8 +320,7 @@ TEST_F(TableTest, OffSet) {
     ASSERT_EQ(table->GetRecordCnt(), 2);
     ASSERT_EQ(table->GetRecordIdxCnt(), 2);
     table->SetTimeOffset(120);
-    count = table->SchedGc();
-    ASSERT_EQ(1, count);
+    table->SchedGc();
     ASSERT_EQ(table->GetRecordCnt(), 1);
     ASSERT_EQ(table->GetRecordIdxCnt(), 1);
     delete table;
@@ -336,7 +329,7 @@ TEST_F(TableTest, OffSet) {
 TEST_F(TableTest, TableDataCnt) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8 , mapping, 1);
     table->Init();
     ASSERT_EQ(table->GetRecordCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -344,8 +337,7 @@ TEST_F(TableTest, TableDataCnt) {
     table->Put("test", now, "tes2", 4);
     ASSERT_EQ(table->GetRecordCnt(), 2);
     ASSERT_EQ(table->GetRecordIdxCnt(), 2);
-    uint64_t count = table->SchedGc();
-    ASSERT_EQ(1, count);
+    table->SchedGc();
     ASSERT_EQ(table->GetRecordCnt(), 1);
     ASSERT_EQ(table->GetRecordIdxCnt(), 1);
     delete table;
@@ -354,7 +346,7 @@ TEST_F(TableTest, TableDataCnt) {
 TEST_F(TableTest, TableUnref) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1 ,8 , mapping, 1);
+    MemTable* table = new MemTable("tx_log", 1, 1 ,8 , mapping, 1);
     table->Init();
     table->Put("test", 9527, "test", 4);
     delete table;
@@ -363,7 +355,7 @@ TEST_F(TableTest, TableUnref) {
 TEST_F(TableTest, TableIterator) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0);
     table->Init();
 
     table->Put("pk", 9527, "test1", 5);
@@ -407,7 +399,7 @@ TEST_F(TableTest, TableIterator) {
     delete it;
     delete table;
 
-    Table* table1 = new Table("tx_log", 1, 1, 8, mapping, 2);
+    MemTable* table1 = new MemTable("tx_log", 1, 1, 8, mapping, 2);
     table1->Init();
     table1->SetTTLType(::rtidb::api::TTLType::kLatestTime);
 
@@ -436,7 +428,7 @@ TEST_F(TableTest, TableIterator) {
 TEST_F(TableTest, TableIteratorNoPk) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0);
     table->Init();
 
     table->Put("pk10", 9527, "test10", 5);
@@ -481,7 +473,7 @@ TEST_F(TableTest, TableIteratorNoPk) {
 TEST_F(TableTest, TableIteratorCount) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    Table* table = new Table("tx_log", 1, 1, 8, mapping, 0);
+    MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 0);
     table->Init();
     for (int i = 0; i < 100000; i = i + 2) {
         std::string key = "pk" + std::to_string(i);
@@ -559,7 +551,7 @@ TEST_F(TableTest, TableIteratorTS) {
     column_key->set_index_name("mcc");
     column_key->add_ts_name("ts1");
 
-    Table table(table_meta);
+    MemTable table(table_meta);
     table.Init();
 
     for (int i = 0; i < 1000; i++) {
@@ -600,7 +592,7 @@ TEST_F(TableTest, TableIteratorTS) {
     delete it;
     
     Ticket ticket;
-    MemTableIterator* iter = table.NewIterator(0, 0, "card5", ticket);
+    TableIterator* iter = table.NewIterator(0, 0, "card5", ticket);
     iter->SeekToFirst();
     count = 0;
     while(iter->Valid()) {
@@ -669,7 +661,7 @@ TEST_F(TableTest, UpdateTTL) {
     column_key->set_index_name("mcc");
     column_key->add_ts_name("ts1");
 
-    Table table(table_meta);
+    MemTable table(table_meta);
     table.Init();
     ASSERT_EQ(10, table.GetTTL(0, 0));
     ASSERT_EQ(5, table.GetTTL(0, 1));
