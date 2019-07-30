@@ -479,8 +479,6 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('Create table ok', 'latest:10', '8', '3', ''),
         ('Create table ok', '144000', '8', '3', 'k1:string:index k2:double k3:int32:index'),
         ('partition_num should be large than zero', '144000', '0', '3', ''),
-        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:float:index'),
-        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:double:index'),
     )
     @ddt.unpack
     def test_create_cmd(self, exp_msg, ttl, partition_num, replica_num, schema):
@@ -503,6 +501,21 @@ class TestCreateTableByNsClient(TestCaseBase):
             self.assertEqual(schema[1], ['1', 'k2', 'double', 'no'])
             self.assertEqual(schema[2], ['2', 'k3', 'int32', 'yes'])
         self.ns_drop(self.ns_leader, tname)
+
+    @ddt.data(
+        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:float:index'),
+        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:double:index'),
+    )
+    @ddt.unpack
+    def test_create_cmd_index_float_or_double(self, exp_msg, ttl, partition_num, replica_num, schema):
+        """
+        不用文件, 直接在命令行指定建表信息
+        :return:
+        """
+        tname = 'tname{}'.format(time.time())
+        rs = self.ns_create_cmd(self.ns_leader, tname, ttl, partition_num, replica_num, schema)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
 
     @ddt.data(
         ('Fail to create table. key_entry_max_height must be greater than 0', '0'),
