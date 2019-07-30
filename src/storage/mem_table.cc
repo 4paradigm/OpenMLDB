@@ -47,6 +47,7 @@ MemTable::MemTable(const std::string& name,
 }
 
 MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) {
+    storage_mode_ = table_meta.storage_mode();
     name_ = table_meta.name();
     id_ = table_meta.tid();
     pid_ = table_meta.pid();

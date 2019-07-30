@@ -202,6 +202,8 @@ public:
                 ::rtidb::common::StorageMode storage_mode);
 
     DiskTable(const ::rtidb::api::TableMeta& table_meta);
+    DiskTable(const DiskTable&) = delete;
+    DiskTable& operator=(const DiskTable&) = delete;
 
     virtual ~DiskTable();
 

@@ -35,12 +35,12 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
 }
 
 DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta) {
+    storage_mode_ = table_meta.storage_mode();
     name_ = table_meta.name();
     id_ = table_meta.tid();
     pid_ = table_meta.pid();
     ttl_ = table_meta.ttl();
     ttl_type_ = table_meta.ttl_type();
-    storage_mode_ = table_meta.storage_mode();
     schema_ = table_meta.schema();
     compress_type_ = table_meta.compress_type();
     table_meta_.CopyFrom(table_meta);
@@ -127,19 +127,19 @@ bool DiskTable::InitColumnFamilyDescriptor() {
 }
 
 int DiskTable::Init() {
-	if (mapping_.empty()) {
-		for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
-			mapping_.insert(std::make_pair(table_meta_.dimensions(i),
-						   (uint32_t)i));
-			PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta_.dimensions(i).c_str(),
-					i, table_meta_.name().c_str(), table_meta_.tid(), table_meta_.pid());
-		}
-		// add default dimension
-		if (mapping_.empty()) {
-			mapping_.insert(std::make_pair("idx0", 0));
-			PDLOG(INFO, "no index specified with default");
-		}
-	}
+    if (mapping_.empty()) {
+        for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
+            mapping_.insert(std::make_pair(table_meta_.dimensions(i),
+                           (uint32_t)i));
+            PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta_.dimensions(i).c_str(),
+                    i, table_meta_.name().c_str(), table_meta_.tid(), table_meta_.pid());
+        }
+        // add default dimension
+        if (mapping_.empty()) {
+            mapping_.insert(std::make_pair("idx0", 0));
+            PDLOG(INFO, "no index specified with default");
+        }
+    }
     InitColumnFamilyDescriptor();
     std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";

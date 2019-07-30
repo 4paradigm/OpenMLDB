@@ -69,6 +69,8 @@ public:
 
     MemTable(const ::rtidb::api::TableMeta& table_meta);
     virtual ~MemTable();
+    MemTable(const MemTable&) = delete;
+    MemTable& operator=(const MemTable&) = delete;
 
     int InitColumnDesc();
 
