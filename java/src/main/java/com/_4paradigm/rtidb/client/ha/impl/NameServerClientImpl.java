@@ -115,7 +115,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 options.setMaxTryTimes(config.getMaxRetryCnt());
                 options.setTimerBucketSize(config.getTimerBucketSize());
                 bs = new RpcBaseClient(options);
-            }else {
+            } else {
                 bs = new RpcBaseClient();
             }
 
@@ -137,10 +137,10 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         while (!localZk.getState().isConnected() && tryCnt > 0) {
             try {
                 Thread.sleep(1000);
-            }catch(InterruptedException e) {
+            } catch (InterruptedException e) {
                 logger.error("interrupted", e);
             }
-            tryCnt --;
+            tryCnt--;
         }
         if (!localZk.getState().isConnected()) {
             try {
@@ -155,7 +155,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             try {
                 old.close();
                 logger.info("close old zookeeper client ok");
-            }catch(Exception e) {
+            } catch (Exception e) {
                 logger.error("fail to close old zookeeper client", e);
             }
         }
@@ -211,15 +211,16 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             }
         }, 1, TimeUnit.MINUTES);
     }
-    
+
     @Override
     public boolean createTable(TableInfo tableInfo) {
         CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
+        } else if (response != null ) {
+            logger.warn("fail to create table for error {}", response.getMsg());
         }
-        logger.warn("fail to create table for error {}", response.getMsg());
         return false;
     }
 
@@ -229,8 +230,9 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         GeneralResponse response = ns.dropTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
+        } else if (response != null) {
+            logger.warn("fail to drop table for error {}", response.getMsg());
         }
-        logger.warn("fail to drop table for error {}", response.getMsg());
         return false;
     }
 
@@ -245,13 +247,13 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         ShowTableResponse response = ns.showTable(request);
         return response.getTableInfoList();
     }
-    
+
     @Override
     public void process(WatchedEvent event) {
-        
-        
+
+
     }
-    
+
     public void close() {
         isClose.set(true);
         try {
@@ -259,14 +261,14 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 zookeeper.close();
             }
 
-        }catch(Exception e) {
+        } catch (Exception e) {
             logger.error("fail to close zookeeper", e);
         }
         try {
             if (bs != null) {
                 bs.stop();
             }
-        }catch (Exception e) {
+        } catch (Exception e) {
             logger.error("fail to close bs client", e);
         }
         try {
@@ -310,15 +312,15 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         return tablets;
     }
 
-    public Map<String,String> showNs() throws Exception {
-        List<String> node = zookeeper.getChildren(leaderPath,false);
-        Map<String,String> nsEndpoint = new HashMap<>();
+    public Map<String, String> showNs() throws Exception {
+        List<String> node = zookeeper.getChildren(leaderPath, false);
+        Map<String, String> nsEndpoint = new HashMap<>();
         int i = 0;
         if (node.isEmpty()) {
             return nsEndpoint;
         }
         Collections.sort(node);
-        for (String e: node) {
+        for (String e : node) {
             byte[] bytes = zookeeper.getData(leaderPath + "/" + e, false, null);
             String endpoint = new String(bytes);
             if (!nsEndpoint.containsKey(endpoint)) {

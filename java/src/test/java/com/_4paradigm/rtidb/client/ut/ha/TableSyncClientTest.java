@@ -663,4 +663,19 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.fail();
         }
     }
+
+    @Test
+    public void testSchemaPutByKvWay() {
+
+        String name = createSchemaTable();
+        try {
+            tableSyncClient.put(name, "11", 1535371622000l, "11");
+            Assert.assertTrue(false);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(true);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
 }

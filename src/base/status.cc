@@ -57,6 +57,9 @@ std::string Status::ToString() const {
             case kInvalidArgument:
                 type = "Invalid argument: ";
                 break;
+            case kInvalidRecord:
+                type = "Invalid Record: ";
+                break;
             case kIOError:
                 type = "IO error: ";
                 break;
