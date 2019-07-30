@@ -1661,19 +1661,19 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
                 printf("duplicate index_name %s\n", table_info.column_key(idx).index_name().c_str());
                 return -1;
             }
-            auto iter = name_map.find(table_info.column_key(idx).index_name());
-            if (iter == name_map.end()) {
-                printf("column key index name :%s is not member of columns\n", table_info.column_key(idx).index_name().c_str());
-                return -1;
-            }
-            if ((iter->second == "float") || (iter->second == "float")) {
-			    printf("float or double column can not be index\n");
-			    return -1;
-            }
             index_set.insert(table_info.column_key(idx).index_name());
             std::string cur_key;
             if (table_info.column_key(idx).col_name_size() > 0) {
                 for (const auto& name : table_info.column_key(idx).col_name()) {
+                    auto iter = name_map.find(name);
+                    if (iter == name_map.end()) {
+                        printf("column :%s is not member of columns\n", name.c_str());
+                        return -1;
+                    }
+                    if ((iter->second == "float") || (iter->second == "double")) {
+                        printf("float or double column can not be index\n");
+                        return -1;
+                    }
                     if (cur_key.empty()) {
                         cur_key = name;
                     } else {

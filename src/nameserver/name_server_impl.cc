@@ -1161,22 +1161,37 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
-int NameServerImpl::CheckTableMeta(TableInfo& table_info) {
+int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
     if (table_info.column_desc_v1_size() > 0) {
-        std::map<std::string, std::string> index_map;
+        std::map<std::string, std::string> column_map;
         for (const auto& column_desc : table_info.column_desc_v1()) {
            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
                PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
                return -1;
            }
-           index_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
+           column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
         }
         if (table_info.column_key_size() > 0) {
-            for (const auto& column_key : table_info.column_key()) {
-                auto iter = index_map.find(column_key.index_name());
-                if ((iter != index_map.end() && ((iter->second == "float") || (iter->second == "double")))) {
-                    PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_key.index_name().c_str());
-                    return -1;
+            for (const auto &column_key : table_info.column_key()) {
+                bool has_iter = false;
+                for (const auto &column_name : column_key.col_name()) {
+                    has_iter = true;
+                    auto iter = column_map.find(column_name);
+                    if ((iter != column_map.end() && ((iter->second == "float") || (iter->second == "double")))) {
+                        PDLOG(WARNING, "float or double type column can not be index, column is: %s",
+                              column_key.index_name().c_str());
+                        return -1;
+                    }
+                }
+                if (!has_iter) {
+                    auto iter = column_map.find(column_key.index_name());
+                    if (iter == column_map.end()) {
+                        PDLOG(WARNING, "index must member of columns when column key col name is empty");
+                    } else {
+                        if ((iter->second == "float" || iter->second == "double")) {
+                            PDLOG(WARNING, "float or double column can not be index");
+                        }
+                    }
                 }
             }
         }
