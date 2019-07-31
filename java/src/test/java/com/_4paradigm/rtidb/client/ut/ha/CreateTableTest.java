@@ -203,7 +203,7 @@ public class CreateTableTest extends TestCaseBase {
                 .addTsName("ts1").addTsName("ts1").build();
         TableInfo table6 = TableInfo.newBuilder().setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
-                .addColumnKey(colKey4)
+                .addColumnKey(colKey6)
                 .build();
         Assert.assertFalse(nsc.createTable(table6));
 
@@ -211,7 +211,7 @@ public class CreateTableTest extends TestCaseBase {
                 .addTsName("ts1").addTsName("ts1").build();
         TableInfo table7 = TableInfo.newBuilder().setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
-                .addColumnKey(colKey4)
+                .addColumnKey(colKey7)
                 .build();
         Assert.assertFalse(nsc.createTable(table7));
 
@@ -219,9 +219,9 @@ public class CreateTableTest extends TestCaseBase {
                 .addTsName("ts1").addTsName("ts1").build();
         TableInfo table8 = TableInfo.newBuilder().setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
-                .addColumnKey(colKey4)
+                .addColumnKey(colKey8)
                 .build();
-        Assert.assertFalse(nsc.createTable(table7));
+        Assert.assertFalse(nsc.createTable(table8));
     }
 
     @Test
