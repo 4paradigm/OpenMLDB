@@ -34,16 +34,15 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
     db_ = nullptr;
 }
 
-DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta) {
-    storage_mode_ = table_meta.storage_mode();
-    name_ = table_meta.name();
-    id_ = table_meta.tid();
-    pid_ = table_meta.pid();
-    ttl_ = table_meta.ttl();
-    ttl_type_ = table_meta.ttl_type();
-    schema_ = table_meta.schema();
-    compress_type_ = table_meta.compress_type();
+DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta) :
+        Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
+                0, true, 0, std::map<std::string, uint32_t>(), 
+                ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress) {
     table_meta_.CopyFrom(table_meta);
+    if (!options_template_initialized) {
+        initOptionTemplate();
+    }
+    db_ = nullptr;
 }
 
 DiskTable::~DiskTable() {
@@ -140,6 +139,18 @@ bool DiskTable::Init() {
             PDLOG(INFO, "no index specified with default");
         }
     }
+    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = false;
+    }
+    if (table_meta_.has_ttl()) {
+        ttl_ = table_meta_.ttl() * 60 * 1000;
+        new_ttl_.store(ttl_.load());
+    }
+    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
+    if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
+    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
+    idx_cnt_ = mapping_.size();
+
     InitColumnFamilyDescriptor();
     std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";

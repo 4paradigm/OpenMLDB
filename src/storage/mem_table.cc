@@ -46,22 +46,16 @@ MemTable::MemTable(const std::string& name,
 {
 }
 
-MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) {
-    storage_mode_ = table_meta.storage_mode();
-    name_ = table_meta.name();
-    id_ = table_meta.tid();
-    pid_ = table_meta.pid();
+MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
+        Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
+                0, true, 60 * 1000, std::map<std::string, uint32_t>(),
+                ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress) {
     seg_cnt_ = 8;
     segments_ = NULL; 
     enable_gc_ = false;
-    ttl_offset_ = 60 * 1000;
-    record_cnt_ = 0;
-    is_leader_ = true;
     time_offset_ = 0;
     segment_released_ = false;
     record_byte_size_ = 0; 
-    ttl_type_ = ::rtidb::api::TTLType::kAbsoluteTime;
-    compress_type_ = ::rtidb::api::CompressType::kNoCompress;
     table_meta_.CopyFrom(table_meta);
 }
 
@@ -344,12 +338,12 @@ bool MemTable::Put(const Slice& pk,
 
 bool MemTable::Put(const ::rtidb::api::LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
-		return entry.ts_dimensions_size() > 0 ?
-			Put(entry.dimensions(), entry.ts_dimensions(), entry.value()) :
-			Put(entry.ts(), entry.value(), entry.dimensions());
-	} else {
-		return Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
-	}
+        return entry.ts_dimensions_size() > 0 ?
+            Put(entry.dimensions(), entry.ts_dimensions(), entry.value()) :
+            Put(entry.ts(), entry.value(), entry.dimensions());
+    } else {
+        return Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
+    }
 }
 
 bool MemTable::Delete(const std::string& pk, uint32_t idx) {
