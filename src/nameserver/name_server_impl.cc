@@ -1187,10 +1187,11 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
                     auto iter = column_map.find(column_key.index_name());
                     if (iter == column_map.end()) {
                         PDLOG(WARNING, "index must member of columns when column key col name is empty");
-                    } else {
-                        if ((iter->second == "float" || iter->second == "double")) {
-                            PDLOG(WARNING, "float or double column can not be index");
-                        }
+                        return -1;
+                    }
+                    if ((iter->second == "float") || (iter->second == "double")) {
+                        PDLOG(WARNING, "float or double column can not be index");
+                        return -1;
                     }
                 }
             }
