@@ -10,9 +10,12 @@ import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import com._4paradigm.rtidb.common.Common.ColumnKey;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.ns.NS;
+import com.google.protobuf.TextFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -81,7 +84,7 @@ public class InitClient {
             }
         }
         NS.TableInfo table = builder.build();
-        logger.debug("table info is:" + table);
+        logger.info("table info is:" + table);
         // 可以通过返回值判断是否创建成功
         boolean ok = nsc.createTable(table);
         if (ok) {
@@ -133,44 +136,73 @@ public class InitClient {
         }
     }
 
+//    public static List<ColumnKey> getColumnKey(String columnKeyConfPath) {
+//        List<ColumnKey> result = new ArrayList<>();
+//        List<String> lines = null;
+//        try {
+//            lines = Files.readAllLines(Paths.get(columnKeyConfPath));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            logger.warn("file " + Paths.get(columnKeyConfPath) + " did not exist!");
+//            System.exit(0);
+//        }
+//        if (lines == null) {
+//            return result;
+//        }
+//        ColumnKey.Builder builder = Common.ColumnKey.newBuilder();
+//        for (int i = 0; i < lines.size(); i++) {
+//            if (lines.get(i) == null || lines.get(i).trim().equals("")) continue;
+//            String cur = lines.get(i);
+//            if (cur.contains("column_key")) {
+//                continue;
+//            } else if (cur.contains("}")) {
+//                result.add(builder.build());
+//                builder.clear();
+//            } else {
+//                String[] strs = cur.split(":");
+//                String str1 = strs[0].trim();
+//                String str2 = strs[1].trim();
+//                if (str1.equals("index_name")) {
+//                    builder.setIndexName(str2);
+//                } else if (str1.equals("col_name")) {
+//                    builder.addColName(str2);
+//                    while (lines.get(i + 1).split(":")[0].trim().equals("col_name") && i < lines.size()) {
+//                        builder.addColName(lines.get(i + 1).split(":")[1].trim());
+//                        i++;
+//                    }
+//                } else if (str1.equals("ts_name")) {
+//                    builder.addTsName(str2);
+//                    while (lines.get(i + 1).split(":")[0].trim().equals("ts_name") && i < lines.size()) {
+//                        builder.addTsName(lines.get(i + 1).split(":")[1].trim());
+//                        i++;
+//                    }
+//                }
+//            }
+//        }
+//        return result;
+//    }
+
     public static List<ColumnKey> getColumnKey(String columnKeyConfPath) {
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder();
         List<ColumnKey> result = new ArrayList<>();
-        List<String> lines = null;
+        File file = new File(columnKeyConfPath);
+        FileReader fileReader = null;
         try {
-            lines = Files.readAllLines(Paths.get(columnKeyConfPath));
+            fileReader = new FileReader(file);
+            TextFormat.merge(fileReader, builder);
+            NS.TableInfo tableInfo = builder.build();
+            result = tableInfo.getColumnKeyList();
+            return result;
         } catch (IOException e) {
             e.printStackTrace();
-        }
-        if (lines == null) {
-            return null;
-        }
-        ColumnKey.Builder builder = Common.ColumnKey.newBuilder();
-        for (int i = 0; i < lines.size(); i++) {
-            if (lines.get(i) == null || lines.get(i).trim().equals("")) continue;
-            String cur = lines.get(i);
-            if (cur.contains("column_key")) {
-                continue;
-            } else if (cur.contains("}")) {
-                result.add(builder.build());
-                builder.clear();
-            } else {
-                String[] strs = cur.split(":");
-                String str1 = strs[0].trim();
-                String str2 = strs[1].trim();
-                if (str1.equals("index_name")) {
-                    builder.setIndexName(str2);
-                } else if (str1.equals("col_name")) {
-                    builder.addColName(str2);
-                    while (lines.get(i + 1).split(":")[0].trim().equals("col_name") && i < lines.size()) {
-                        builder.addColName(lines.get(i + 1).split(":")[1].trim());
-                        i++;
-                    }
-                } else if (str1.equals("ts_name")) {
-                    builder.addTsName(str2);
-                    while (lines.get(i + 1).split(":")[0].trim().equals("ts_name") && i < lines.size()) {
-                        builder.addTsName(lines.get(i + 1).split(":")[1].trim());
-                        i++;
-                    }
+            logger.warn("file " + Paths.get(columnKeyConfPath) + " did not exist!");
+            System.exit(0);
+        } finally {
+            if (fileReader != null) {
+                try {
+                    fileReader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
         }
@@ -198,7 +230,7 @@ public class InitClient {
             columnDescV1List = clusterClient[0].getHandler(tableName).getTableInfo().getColumnDescV1List();
         } catch (Exception e) {
             logger.warn(e.toString());
-            logger.warn("table "+tableName +" did not exist");
+            logger.warn("table " + tableName + " did not exist");
             return null;
         }
         return columnDescV1List;
