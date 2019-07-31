@@ -53,6 +53,7 @@ MemTable::MemTable(const ::rtidb::api::TableMeta& table_meta) :
     seg_cnt_ = 8;
     segments_ = NULL; 
     enable_gc_ = false;
+    record_cnt_ = 0;
     time_offset_ = 0;
     segment_released_ = false;
     record_byte_size_ = 0; 

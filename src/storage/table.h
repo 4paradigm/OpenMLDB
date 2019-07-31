@@ -36,7 +36,7 @@ public:
             const std::map<std::string, uint32_t>& mapping, 
             ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
         storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
-        ttl_(ttl), new_ttl_(ttl), ttl_offset_(ttl_offset), record_cnt_(0), is_leader_(is_leader),
+        ttl_(ttl), new_ttl_(ttl), ttl_offset_(ttl_offset), is_leader_(is_leader),
         mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {}
     virtual ~Table() {}
 	virtual bool Init() = 0;
@@ -181,7 +181,6 @@ protected:
 	std::atomic<uint64_t> ttl_;
     std::atomic<uint64_t> new_ttl_;
     uint64_t ttl_offset_;
-    std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
     std::string schema_;
