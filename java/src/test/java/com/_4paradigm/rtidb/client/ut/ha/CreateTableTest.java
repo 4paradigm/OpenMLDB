@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.UUID;
 
 public class CreateTableTest extends TestCaseBase {
 
@@ -66,29 +67,56 @@ public class CreateTableTest extends TestCaseBase {
 
     @Test
     public void testTsColIndex() {
-        String name = String.valueOf(id.incrementAndGet());
-        nsc.dropTable(name);
-        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").setAddTsIdx(true).build();
-        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
-        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
-        ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setAddTsIdx(true).setIsTsCol(true).build();
-        TableInfo table = TableInfo.newBuilder()
-                .setName(name).setTtl(0)
-                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
-                .build();
-        boolean ok = nsc.createTable(table);
-        Assert.assertFalse(ok);
+        {
+            String name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").setAddTsIdx(true).build();
+            ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+            ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+            ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setAddTsIdx(true).setIsTsCol(true).build();
+            TableInfo table = TableInfo.newBuilder()
+                    .setName(name).setTtl(0)
+                    .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                    .build();
+            boolean ok = nsc.createTable(table);
+            Assert.assertFalse(ok);
 
-        ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
-        ColumnKey key1 = ColumnKey.newBuilder().setIndexName("card").addColName("ts").build();
-        table = TableInfo.newBuilder()
-                .setName(name).setTtl(0)
-                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col4)
-                .addColumnKey(key1)
-                .build();
-        ok = nsc.createTable(table);
-        Assert.assertFalse(ok);
+            ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+            ColumnKey key1 = ColumnKey.newBuilder().setIndexName("card").addColName("ts").build();
+            table = TableInfo.newBuilder()
+                    .setName(name).setTtl(0)
+                    .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col4)
+                    .addColumnKey(key1)
+                    .build();
+            ok = nsc.createTable(table);
+            Assert.assertFalse(ok);
+        }
+        {
+            String name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").setAddTsIdx(true).build();
+            ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+            ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").setAddTsIdx(true).build();
+            ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setAddTsIdx(true).setIsTsCol(true).build();
+            TableInfo table = TableInfo.newBuilder()
+                    .setName(name).setTtl(0)
+                    .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                    .build();
+            boolean ok = nsc.createTable(table);
+            Assert.assertFalse(ok);
+
+            ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+            ColumnKey key1 = ColumnKey.newBuilder().setIndexName("card").addColName("ts").build();
+            table = TableInfo.newBuilder()
+                    .setName(name).setTtl(0)
+                    .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col4)
+                    .addColumnKey(key1)
+                    .build();
+            ok = nsc.createTable(table);
+            Assert.assertFalse(ok);
+        }
     }
+
 
     @Test
     public void testColumnKey() {
@@ -169,7 +197,31 @@ public class CreateTableTest extends TestCaseBase {
                 .addColumnKey(colKey5_1).addColumnKey(colKey5_2)
                 .build();
         Assert.assertTrue(nsc.createTable(table5));
+
         nsc.dropTable(name);
+        ColumnKey colKey6 = ColumnKey.newBuilder().setIndexName("combined_key").addColName("card").addColName("amt")
+                .addTsName("ts1").addTsName("ts1").build();
+        TableInfo table6 = TableInfo.newBuilder().setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .addColumnKey(colKey4)
+                .build();
+        Assert.assertFalse(nsc.createTable(table6));
+
+        ColumnKey colKey7 = ColumnKey.newBuilder().setIndexName("amt")
+                .addTsName("ts1").addTsName("ts1").build();
+        TableInfo table7 = TableInfo.newBuilder().setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .addColumnKey(colKey4)
+                .build();
+        Assert.assertFalse(nsc.createTable(table7));
+
+        ColumnKey colKey8 = ColumnKey.newBuilder().setIndexName(UUID.randomUUID().toString().replaceAll("-", ""))
+                .addTsName("ts1").addTsName("ts1").build();
+        TableInfo table8 = TableInfo.newBuilder().setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .addColumnKey(colKey4)
+                .build();
+        Assert.assertFalse(nsc.createTable(table7));
     }
 
     @Test
