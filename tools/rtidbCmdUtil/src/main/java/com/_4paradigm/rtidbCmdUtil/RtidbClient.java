@@ -605,7 +605,7 @@ public class RtidbClient {
             } else if (args.length == 6) {
                 it = tableSyncClient.scan(args[1], args[2], start_time, end_time, limit);
             } else {
-                System.out.println("scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]");
+                System.out.println("scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name key1|key2.. col_name start_time end_time tsName [limit]");
                 return;
             }
             int count = 1;
@@ -677,7 +677,7 @@ public class RtidbClient {
                 if (args.length > 6) {
                     it = tableSyncClient.scan(args[1], args[2], args[3], start_time, end_time, args[6], limit);
                 } else {
-                    System.out.println("scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]");
+                    System.out.println("scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name key1|key2.. col_name start_time end_time tsName [limit]");
                     return;
                 }
                 while (it != null && it.valid()) {
@@ -712,7 +712,7 @@ public class RtidbClient {
                 if (args.length > 5) {
                     it = tableSyncClient.scan(args[1], args[2], args[3], start_time, end_time, limit);
                 } else {
-                    System.out.println("scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]");
+                    System.out.println("scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name key1|key2.. col_name start_time end_time tsName [limit]");
                     return;
                 }
                 while (it != null && it.valid()) {

@@ -25,7 +25,7 @@ public class Main {
         while (scanner.hasNext()) {
             String input = scanner.nextLine();
             String[] arr = input.split("\\s+");
-            if (arr[0].equals("create")) {
+            if (arr[0].trim().equals("create")) {
                 if (arr.length == 2) {
                     if (new File(arr[1]).exists()) {
                         rtidbClient.createSchemaTableFromFile(arr[1]);
@@ -40,7 +40,7 @@ public class Main {
                 } else {
                     rtidbClient.createSchemaTable(arr);
                 }
-            } else if (arr[0].equals("put")) {
+            } else if (arr[0].trim().equals("put")) {
                 if (arr.length < 3) {
                     System.out.println("put format error. eg: put table_name pk ts value | put table_name [ts] field1 field2 ...");
                 } else if ((rtidbClient.getSchema(arr[1]) == null || rtidbClient.getSchema(arr[1]).size() == 0) && arr.length == 5) {
@@ -48,7 +48,7 @@ public class Main {
                 } else {
                     rtidbClient.putSchema(arr);
                 }
-            } else if (arr[0].equals("get")) {
+            } else if (arr[0].trim().equals("get")) {
                 if (arr.length < 4) {
                     System.out.println("get format error. eg: get table_name key ts | get table_name key idx_name ts |  get table_name key1|key2... idxname time tsName");
                 } else if ((rtidbClient.getSchema(arr[1]) == null || rtidbClient.getSchema(arr[1]).size() == 0) && arr.length == 4) {
@@ -56,7 +56,7 @@ public class Main {
                 } else {
                     rtidbClient.getSchemaData(arr);
                 }
-            } else if (arr[0].equals("showschema")) {
+            } else if (arr[0].trim().equals("showschema")) {
                 if (arr.length != 2) {
                     System.out.println("showschema format error. eg: showschema tablename");
                 } else{
@@ -75,7 +75,7 @@ public class Main {
                         System.out.println(columnkey);
                     }
                 }
-            } else if (arr[0].equals("preview")) {
+            } else if (arr[0].trim().equals("preview")) {
                 if (arr.length != 2) {
                     System.out.println("preview format error. eg: preview table_name");
                 } else if ((rtidbClient.getSchema(arr[1]) == null || rtidbClient.getSchema(arr[1]).size() == 0)) {
@@ -83,7 +83,7 @@ public class Main {
                 } else {
                     rtidbClient.previewSchema(arr[1]);
                 }
-            } else if (arr[0].equals("scan")) {
+            } else if (arr[0].trim().equals("scan")) {
                 if (arr.length < 5) {
                     System.out.println("scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name key1|key2.. col_name start_time end_time tsName [limit]");
                 } else if ((rtidbClient.getSchema(arr[1]) == null || rtidbClient.getSchema(arr[1]).size() == 0)) {
@@ -91,7 +91,7 @@ public class Main {
                 } else {
                     rtidbClient.scanSchema(arr);
                 }
-            } else if (arr[0].equals("exit") || arr[0].equals("quit")) {
+            } else if (arr[0].trim().equals("exit") || arr[0].equals("quit")) {
                 System.out.println("bye");
                 System.exit(0);
             } else
