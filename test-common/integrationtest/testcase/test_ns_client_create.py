@@ -358,8 +358,8 @@ class TestCreateTableByNsClient(TestCaseBase):
 
         ('Create table ok',
         ('column_desc', '"k1"', '"string"', 'true'),
-        ('column_desc', '"k2"', '"float"', 'true'),
-        ('column_desc', '"k3"', '"double"', 'true'),
+        ('column_desc', '"k2"', '"float"', 'false'),
+        ('column_desc', '"k3"', '"double"', 'false'),
         ('column_desc', '"k4"', '"int32"', 'true'),
         ('column_desc', '"k5"', '"uint32"', 'true'),
         ('column_desc', '"k6"', '"int64"', 'true'),
