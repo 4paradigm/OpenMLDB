@@ -36,7 +36,7 @@ public class ParseOrcUtil {
     private static final String INDEX = Constant.INDEX;
     private static final String TIMESTAMP = Constant.TIMESTAMP;
     private boolean hasTs = false;
-    private boolean schemaTsCol = false;
+    private boolean schemaTsCol;
     private long timestamp = -1;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
     private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
@@ -56,6 +56,7 @@ public class ParseOrcUtil {
         this.path = path;
         this.tableName = tableName;
         this.schema = schema;
+        this.schemaTsCol = InitClient.hasTsCol(tableName);
     }
 
     public HashMap<String, Object> read(StructObjectInspector inspector, Object row) {
@@ -154,12 +155,6 @@ public class ParseOrcUtil {
 
     public void put() {
         try {
-            List<ColumnDesc> schemaOfRtidb = InitClient.getSchemaOfRtidb(tableName);
-            for (ColumnDesc columnDesc : schemaOfRtidb) {
-                if (columnDesc.getIsTsCol()) {
-                    schemaTsCol = true;
-                }
-            }
             Configuration conf = new Configuration();
             conf.set("mapreduce.framework.name", "local");
             conf.set("fs.defaultFS", "file:///");

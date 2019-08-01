@@ -2,6 +2,7 @@ package com._4paradigm.dataimporter.initialization;
 
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
@@ -17,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -234,6 +234,14 @@ public class InitClient {
             return null;
         }
         return columnDescV1List;
+    }
+
+    public static boolean hasTsCol(String tableName){
+        TableHandler handler = clusterClient[0].getHandler(tableName);
+        if (handler != null && handler.hasTsCol() == true) {
+            return true;
+        }
+        return false;
     }
 
     public static boolean dropTable(String tableName) {

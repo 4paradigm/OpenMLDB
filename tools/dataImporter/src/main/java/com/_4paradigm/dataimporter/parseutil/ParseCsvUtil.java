@@ -28,7 +28,7 @@ public class ParseCsvUtil {
     private static final String INDEX = Constant.INDEX;
     private static final String TIMESTAMP = Constant.TIMESTAMP;
     private boolean hasTs = false;
-    private boolean schemaTsCol = false;
+    private boolean schemaTsCol;
     private long timestamp = -1;
     private boolean hasHeader = Constant.HAS_HEADER;
 
@@ -36,6 +36,7 @@ public class ParseCsvUtil {
         this.filePath = filePath;
         this.tableName = tableName;
         this.scheamInfo = scheamInfo;
+        this.schemaTsCol = InitClient.hasTsCol(tableName);
     }
 
     private HashMap<String, Object> read(CsvReader reader) {
@@ -111,12 +112,6 @@ public class ParseCsvUtil {
         AtomicLong id = new AtomicLong(1);
         CsvReader reader = null;
         try {
-            List<ColumnDesc> schemaOfRtidb = InitClient.getSchemaOfRtidb(tableName);
-            for (ColumnDesc columnDesc : schemaOfRtidb) {
-                if (columnDesc.getIsTsCol()) {
-                    schemaTsCol = true;
-                }
-            }
             reader = new CsvReader(filePath, Constant.CSV_SEPARATOR.toCharArray()[0], Charset.forName(Constant.CSV_ENCODINGFORMAT));
             if (hasHeader) {
                 reader.readHeaders();

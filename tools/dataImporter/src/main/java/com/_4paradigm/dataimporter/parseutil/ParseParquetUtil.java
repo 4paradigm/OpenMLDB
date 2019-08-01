@@ -44,7 +44,7 @@ public class ParseParquetUtil {
     private static final String INDEX = Constant.INDEX;
     private static final String TIMESTAMP = Constant.TIMESTAMP;
     private boolean hasTs = false;
-    private boolean schemaTsCol = false;
+    private boolean schemaTsCol;
     private long timestamp = -1;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
     private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
@@ -67,6 +67,7 @@ public class ParseParquetUtil {
         this.filePath = filePath;
         this.tableName = tableName;
         this.schema = schema;
+        this.schemaTsCol = InitClient.hasTsCol(tableName);
     }
 
     private HashMap<String, Object> read(SimpleGroup group) {
@@ -136,12 +137,6 @@ public class ParseParquetUtil {
         int clientIndex = 0;
         ParquetReader.Builder<Group> builder = ParquetReader.builder(new GroupReadSupport(), new Path(filePath));
         try {
-            List<ColumnDesc> schemaOfRtidb = InitClient.getSchemaOfRtidb(tableName);
-            for (ColumnDesc columnDesc : schemaOfRtidb) {
-                if (columnDesc.getIsTsCol()) {
-                    schemaTsCol = true;
-                }
-            }
             ParquetReader<Group> reader = builder.build();
             while ((group = (SimpleGroup) reader.read()) != null) {
                 HashMap<String, Object> map = read(group);
