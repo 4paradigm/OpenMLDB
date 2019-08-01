@@ -1119,11 +1119,6 @@ void TabletImpl::Scan(RpcController* controller,
         response->set_msg("table is loading");
         return;
     }
-    if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
-        response->set_code(112);
-        response->set_msg("table ttl type is kLatestTime, cannot scan");
-        return;
-    }
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
