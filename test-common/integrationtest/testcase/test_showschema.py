@@ -14,7 +14,7 @@ class TestShowSchema(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
-                          card='string:index', merchant='string:index', amt='double:index')
+                          card='string:index', merchant='string:index', amt='double')
         self.assertIn('Create table ok', rs1)
         (schema, column_key) = self.showschema(self.leader, self.tid, self.pid)
         self.assertEqual(len(schema), 3)
