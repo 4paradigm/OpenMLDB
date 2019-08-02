@@ -156,9 +156,7 @@ public class TableHandler {
 
     public enum ReadStrategy {
         kReadLeader,
-        kReadLeaderOnly,
         kReadFollower,
-        kReadFollowerOnly,
         kReadLocal,
         KReadRandom
     }

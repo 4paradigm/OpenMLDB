@@ -52,18 +52,6 @@ public class PartitionHandler {
         switch (strategy) {
             case kReadLeader:
                 logger.debug("choose leader partition for reading");
-                if (leader != null) {
-                    return leader;
-                } else if (followers.size() > 0) {
-                    logger.warn("leader is unavailable. rand choose follower partition for reading");
-                    int index = rand.nextInt(1000) % followers.size();
-                    return followers.get(index);
-                } else {
-                    logger.error("no available client for reading");
-                    return null;
-                }
-            case kReadLeaderOnly:
-                logger.debug("choose leader partition for reading");
                 return leader;
             case kReadFollower:
                 if (followers.size() > 0) {
@@ -73,16 +61,6 @@ public class PartitionHandler {
                 } else {
                     logger.debug("choose leader partition for reading");
                     return leader;
-                }
-            case kReadFollowerOnly:
-                logger.debug("choose follower partition for reading");
-                if (followers.size() > 0) {
-                    logger.debug("rand choose follower partition for reading");
-                    int index = rand.nextInt(1000) % followers.size();
-                    return followers.get(index);
-                } else {
-                    logger.error("no available follower for reading");
-                    return null;
                 }
             case kReadLocal:
                 if (fastTablet != null) {
