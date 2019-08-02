@@ -77,10 +77,9 @@ public class PartitionHandler {
                 if (followers.size() == 0) {
                     logger.debug("choose leader partition for reading");
                     return leader;
-                }  else if (followers.size() > 0) {
-                    int sum = followers.size() + 1;
-                    int index = rand.nextInt(sum);
-                    if (index == sum - 1) {
+                } else {
+                    int index = rand.nextInt(followers.size() + 1);
+                    if (index == followers.size()) {
                         logger.debug("choose leader partition for reading");
                         return leader;
                     } else {
