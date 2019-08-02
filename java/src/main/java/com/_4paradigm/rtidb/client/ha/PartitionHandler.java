@@ -18,7 +18,6 @@ public class PartitionHandler {
     private List<TabletServer> followers = new ArrayList<TabletServer>();
     // the fast server for tablet read
     private TabletServer fastTablet = null;
-    private List<TabletServer> tabletServerList = new ArrayList<TabletServer>();
 
     public TabletServer getLeader() {
         return leader;
@@ -74,22 +73,20 @@ public class PartitionHandler {
                     return leader;
                 }
             case KReadRandom:
-                tabletServerList.clear();
                 logger.debug("rand choose partition for reading");
-                if (leader != null) {
-                    tabletServerList.add(leader);
-                }
-                if (followers.size() > 0) {
-                    for (int i = 0; i < followers.size(); i++) {
-                        tabletServerList.add(followers.get(i));
+                if (followers.size() == 0) {
+                    logger.debug("choose leader partition for reading");
+                    return leader;
+                }  else if (followers.size() > 0) {
+                    int sum = followers.size() + 1;
+                    int index = rand.nextInt(sum);
+                    if (index == sum - 1) {
+                        logger.debug("choose leader partition for reading");
+                        return leader;
+                    } else {
+                        logger.debug("choose follower partition for reading");
+                        return followers.get(index);
                     }
-                }
-                if (tabletServerList.size() > 0) {
-                    int index = rand.nextInt(tabletServerList.size());
-                    return tabletServerList.get(index);
-                } else {
-                    logger.error("no available partition for reading");
-                    return null;
                 }
             default:
                 return leader;
