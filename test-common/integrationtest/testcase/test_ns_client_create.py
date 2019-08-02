@@ -69,7 +69,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertIn(exp_msg, rs)
 
         d = {'k1': ('string:index', 'testvalue0'),
-             'k2': ('double:index', 1.111),
+             'k2': ('double', 1.111),
              'k3': ('int32:index', -20)}
         self.multidimension_vk = collections.OrderedDict(sorted(d.items(), key = lambda t:t[0]))
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
@@ -341,7 +341,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('Create table ok',
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"string"', 'true'),
-        ('column_desc', '"k3"', '"double"', 'true')),
+        ('column_desc', '"k3"', '"double"', 'false')),
 
         ('check column_desc name failed. name is card',
         ('column_desc', '"card"', '"string"', 'true'),
