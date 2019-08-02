@@ -155,8 +155,12 @@ public class TableHandler {
     }
 
     public enum ReadStrategy {
+        kReadLeader,
+        kReadLeaderOnly,
+        kReadFollower,
+        kReadFollowerOnly,
         kReadLocal,
-        kReadLeader
+        KReadRandom
     }
 
     public boolean hasTsCol() {
