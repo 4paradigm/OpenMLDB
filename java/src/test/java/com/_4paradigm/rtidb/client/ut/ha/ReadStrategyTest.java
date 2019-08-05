@@ -27,13 +27,13 @@ public class ReadStrategyTest {
 
     //three replica
     @Test
-    public void readLeaderForThreeTest() {
+    public void testReadLeaderForThree() {
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLeader);
         Assert.assertTrue(tabletServer == leader);
     }
 
     @Test
-    public void readFollowerForThreeTest() {
+    public void testReadFollowerForThreeTest() {
         //followers.size()>0
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadFollower);
         Assert.assertTrue(tabletServer == follower1 || tabletServer == follower2);
@@ -55,7 +55,7 @@ public class ReadStrategyTest {
     }
 
     @Test
-    public void readLocalForThreeTest() {
+    public void testReadLocalForThreeTest() {
         //fastTablet != null
         partitionHandler.setFastTablet(follower1);
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLocal);
@@ -73,7 +73,7 @@ public class ReadStrategyTest {
     }
 
     @Test
-    public void readRandomForThreeTest() {
+    public void testReadRandomForThreeTest() {
         //followers.size() == 0
         partitionHandler.setFollowers(new ArrayList<TabletServer>());
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
@@ -94,14 +94,14 @@ public class ReadStrategyTest {
 
     //two replica
     @Test
-    public void readLeaderForTwoTest() {
+    public void testReadLeaderForTwoTest() {
         partitionHandler.getFollowers().remove(follower1);
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLeader);
         Assert.assertTrue(tabletServer == leader);
     }
 
     @Test
-    public void readFollowerForTwoTest() {
+    public void testReadFollowerForTwoTest() {
         //followers.size()>0
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadFollower);
         Assert.assertTrue(tabletServer == follower2);
@@ -114,7 +114,7 @@ public class ReadStrategyTest {
     }
 
     @Test
-    public void readRandomForTwoTest() {
+    public void testReadRandomForTwoTest() {
         //followers.size() == 0
         partitionHandler.setFollowers(new ArrayList<TabletServer>());
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
@@ -132,7 +132,7 @@ public class ReadStrategyTest {
     }
 
     @Test
-    public void readLocalForTwoTest() {
+    public void testReadLocalForTwoTest() {
         //fastTablet != null
         partitionHandler.setFastTablet(follower1);
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLocal);
@@ -151,26 +151,26 @@ public class ReadStrategyTest {
 
     //one replica
     @Test
-    public void readLeaderForOneTest() {
+    public void testReadLeaderForOneTest() {
         partitionHandler.getFollowers().remove(follower2);
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLeader);
         Assert.assertTrue(tabletServer == leader);
     }
 
     @Test
-    public void readFollowerForOneTest() {
+    public void testReadFollowerForOneTest() {
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadFollower);
         Assert.assertTrue(tabletServer == leader);
     }
 
     @Test
-    public void readRandomForOneTest() {
+    public void testReadRandomForOneTest() {
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.KReadRandom);
         Assert.assertTrue(tabletServer == leader);
     }
 
     @Test
-    public void readLocalForOneTest() {
+    public void testReadLocalForOneTest() {
         TabletServer tabletServer = partitionHandler.getReadHandler(TableHandler.ReadStrategy.kReadLocal);
         Assert.assertTrue(tabletServer == leader);
     }
