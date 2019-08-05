@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Main {
+
     private static Logger logger = LoggerFactory.getLogger(Main.class);
     private static String zkEndpoints;  // 配置zk地址, 和集群启动配置中的zk_cluster保持一致
     private static String zkRootPath;   // 配置集群的zk根路径, 和集群启动配置中的zk_root_path保持一致
