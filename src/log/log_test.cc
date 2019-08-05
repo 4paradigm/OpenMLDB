@@ -270,34 +270,41 @@ TEST_F(LogWRTest, TestWait) {
     ASSERT_TRUE(status.ok());
     ASSERT_EQ(1024 * 5, value.size());
 }
-/*TEST_F(LogWRTest, ReadAllLogs) {
-    std::string log_dir = "/tmp/";
+
+TEST_F(LogWRTest, TestGoBack) {
+    std::string log_dir = "/tmp/" + GenRand() + "/";
     ::rtidb::base::MkdirRecur(log_dir);
-    std::string fname = "00000000.log";
+    std::string fname = "test.log";
     std::string full_path = log_dir + "/" + fname;
+    FILE* fd_w = fopen(full_path.c_str(), "ab+");
+    ASSERT_TRUE(fd_w != NULL);
+    WritableFile* wf = NewWritableFile(fname, fd_w);
+    Writer writer(wf);
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
     Reader reader(rf, NULL, true, 0);
+    Status status = writer.AddRecord("hello");
+    ASSERT_TRUE(status.ok());
+    std::string scratch;
+    Slice value;
+    status = reader.ReadRecord(&value, &scratch);
+    ASSERT_TRUE(status.ok());
+    ASSERT_EQ("hello", value.ToString());
+    uint64_t last_record_offset = reader.LastRecordOffset();
+    std::cout << "last record offset " << last_record_offset << std::endl;
+    status = writer.AddRecord("hello1");
+    ASSERT_TRUE(status.ok());
     Slice value2;
-    std::string scratch2;
-    while (true) {
-        Status status = reader.ReadRecord(&value2, &scratch2);
-        if (status.ok()) {
-            ::rtidb::api::LogEntry entry2;
-            bool ok = entry2.ParseFromString(value2.ToString());
-            if (ok) {
-                std::cout << entry2.log_index() << std::endl;
-            }
-        }
-        if (status.IsEof()) {
-            return;
-        }
-    }
-    
-}*/
-
-
+    status = reader.ReadRecord(&value2, &scratch);
+    ASSERT_TRUE(status.ok());
+    ASSERT_EQ("hello1", value2.ToString());
+    reader.GoBackToStart();
+    Slice value3;
+    status = reader.ReadRecord(&value3, &scratch);
+    ASSERT_TRUE(status.ok());
+    ASSERT_EQ("hello", value3.ToString());
+}
 
 
 }
