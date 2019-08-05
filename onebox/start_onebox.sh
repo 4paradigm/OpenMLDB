@@ -17,7 +17,10 @@ TABLET3=127.0.0.1:9522
 test -d tablet0-binlogs && rm -rf tablet0-binlogs
 test -d recycle_bin0 && rm -rf recycle_bin0
 ../build/bin/rtidb --db_root_path=tablet0-binlogs \
+                   --hdd_root_path=tablet0-binlogs \
+                   --ssd_root_path=tablet0-binlogs \
                    --recycle_bin_root_path=recycle_bin0 \
+                   --recycle_ssd_bin_root_path=recycle_bin0 \
                    --endpoint=${TABLET1} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\
@@ -29,7 +32,10 @@ test -d recycle_bin1 && rm -rf recycle_bin1
 
 # start tablet1
 ../build/bin/rtidb --db_root_path=tablet1-binlogs \
+                   --hdd_root_path=tablet1-binlogs \
+                   --ssd_root_path=tablet1-binlogs \
                    --recycle_bin_root_path=recycle_bin1 \
+                   --recycle_ssd_bin_root_path=recycle_bin1 \
                    --endpoint=${TABLET2} --role=tablet \
                    --zk_cluster=${ZK_CLUSTER}\
                    --binlog_notify_on_put=true\
@@ -41,7 +47,10 @@ test -d recycle_bin2 && rm -rf recycle_bin2
 
 # start tablet2
 ../build/bin/rtidb --db_root_path=tablet2-binlogs \
+                   --hdd_root_path=tablet2-binlogs \
+                   --ssd_root_path=tablet2-binlogs \
                    --recycle_bin_root_path=recycle_bin2 \
+                   --recycle_ssd_bin_root_path=recycle_bin2 \
                    --endpoint=${TABLET3} --role=tablet \
                    --binlog_notify_on_put=true\
                    --zk_cluster=${ZK_CLUSTER}\

@@ -66,17 +66,16 @@ TEST_F(SegmentTest, PutAndScan) {
    segment.Put(pk, 9529, value.c_str(), value.size());
    ASSERT_EQ(1, segment.GetPkCnt());
    Ticket ticket;
-   Iterator* it = segment.NewIterator("test1", ticket);
-   ASSERT_EQ(4, it->GetSize());
+   MemTableIterator* it = segment.NewIterator("test1", ticket);
    it->Seek(9530);
    ASSERT_TRUE(it->Valid());
    ASSERT_EQ(9529, it->GetKey());
-   DataBlock* val = it->GetValue();
-   std::string result(val->data, val->size);
+   ::rtidb::base::Slice val = it->GetValue();
+   std::string result(val.data(), val.size());
    ASSERT_EQ("test0", result);
    it->Next();
    val = it->GetValue();
-   std::string result2(val->data, val->size);
+   std::string result2(val.data(), val.size());
    ASSERT_EQ("test0", result2);
    it->Next();
    ASSERT_TRUE(it->Valid());
@@ -92,12 +91,18 @@ TEST_F(SegmentTest, Delete) {
    segment.Put(pk, 9529, value.c_str(), value.size());
    ASSERT_EQ(1, segment.GetPkCnt());
    Ticket ticket;
-   Iterator* it = segment.NewIterator("test1", ticket);
-   ASSERT_EQ(4, it->GetSize());
+   MemTableIterator* it = segment.NewIterator("test1", ticket);
+   int size = 0;
+   it->SeekToFirst();
+   while (it->Valid()) {
+        it->Next();
+        size++;
+   }
+   ASSERT_EQ(4, size);
    delete it;
    ASSERT_TRUE(segment.Delete(pk));
    it = segment.NewIterator("test1", ticket);
-   ASSERT_EQ(0, it->GetSize());
+   ASSERT_FALSE(it->Valid());
    delete it;
    uint64_t gc_idx_cnt = 0;
    uint64_t gc_record_cnt = 0;
@@ -173,16 +178,22 @@ TEST_F(SegmentTest, Iterator) {
    segment.Put(pk, 9769, "test2", 5);
    ASSERT_EQ(1, segment.GetPkCnt());
    Ticket ticket;
-   Iterator* it = segment.NewIterator("test1", ticket);
-   ASSERT_EQ(4, it->GetSize());
+   MemTableIterator* it = segment.NewIterator("test1", ticket);
+   it->SeekToFirst();
+   int size = 0;
+   while (it->Valid()) {
+       it->Next();
+       size++;
+   }
+   ASSERT_EQ(4, size);
    it->Seek(9769);
    ASSERT_EQ(9769, it->GetKey());
-   DataBlock* value = it->GetValue();
-   std::string result(value->data, value->size);
+   ::rtidb::base::Slice value = it->GetValue();
+   std::string result(value.data(), value.size());
    ASSERT_EQ("test2", result);
    it->Next();
    value = it->GetValue();
-   std::string result2(value->data, value->size);
+   std::string result2(value.data(), value.size());
    ASSERT_EQ("test1", result2);
    it->Next();
    ASSERT_TRUE(it->Valid());
@@ -201,12 +212,12 @@ TEST_F(SegmentTest, TestGc4Head) {
     ASSERT_EQ(1, gc_record_cnt);
     ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
     Ticket ticket;
-    Iterator* it = segment.NewIterator(pk, ticket);
+    MemTableIterator* it = segment.NewIterator(pk, ticket);
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9769, it->GetKey());
-    DataBlock* value = it->GetValue();
-    std::string result(value->data, value->size);
+    ::rtidb::base::Slice value = it->GetValue();
+    std::string result(value.data(), value.size());
     ASSERT_EQ("test2", result);
     it->Next();
     ASSERT_FALSE(it->Valid());

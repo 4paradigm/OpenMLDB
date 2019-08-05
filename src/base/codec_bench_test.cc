@@ -26,11 +26,11 @@ public:
 };
 
 void RunHasTs(::rtidb::storage::DataBlock* db) {
-    std::vector<std::pair<uint64_t, ::rtidb::storage::DataBlock*> > datas;
+    std::vector<std::pair<uint64_t, ::rtidb::base::Slice> > datas;
     datas.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(std::make_pair(1000 ,db));
+        datas.push_back(std::make_pair(1000, ::rtidb::base::Slice(db->data, db->size)));
         total_block_size += db->size;
     }
     std::string pairs;
@@ -38,11 +38,11 @@ void RunHasTs(::rtidb::storage::DataBlock* db) {
 }
 
 void RunNoneTs(::rtidb::storage::DataBlock* db) {
-    std::vector<::rtidb::storage::DataBlock* > datas;
+    std::vector<::rtidb::base::Slice> datas;
     datas.reserve(1000);
     uint32_t total_block_size = 0;
     for (uint32_t i = 0; i < 1000; i++) {
-        datas.push_back(db);
+        datas.push_back(::rtidb::base::Slice(db->data, db->size));
         total_block_size += db->size;
     }
     std::string pairs;

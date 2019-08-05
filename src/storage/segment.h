@@ -17,6 +17,7 @@
 #include <atomic>
 #include <memory>
 #include "storage/ticket.h"
+#include "storage/iterator.h"
 #include "proto/tablet.pb.h"
 
 namespace rtidb {
@@ -61,18 +62,17 @@ struct TimeComparator {
 const static TimeComparator tcmp;
 typedef ::rtidb::base::Skiplist<uint64_t, DataBlock* , TimeComparator> TimeEntries;
 
-class Iterator {
+class MemTableIterator : public TableIterator {
 public:
-    Iterator(TimeEntries::Iterator* it);
-    ~Iterator();
-    void Seek(const uint64_t& time);
-    bool Valid() const;
-    void Next();
-    DataBlock* GetValue() const;
-    uint64_t GetKey() const;
-    void SeekToFirst();
-    void SeekToLast();
-    uint32_t GetSize();
+    MemTableIterator(TimeEntries::Iterator* it);
+    ~MemTableIterator();
+    virtual void Seek(const uint64_t time) override;
+    virtual bool Valid() override;
+    virtual void Next() override;
+    virtual rtidb::base::Slice GetValue() const override;
+    virtual uint64_t GetKey() const override;
+    virtual void SeekToFirst() override;
+    virtual void SeekToLast() override;
 private:
     TimeEntries::Iterator* it_;
 };
@@ -162,8 +162,8 @@ public:
     void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
     void Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t& gc_idx_cnt, 
             uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);
-    Iterator* NewIterator(const Slice& key, Ticket& ticket);
-    Iterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket);
+    MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);
+    MemTableIterator* NewIterator(const Slice& key, uint32_t idx, Ticket& ticket);
 
     inline uint64_t GetIdxCnt() {
         return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed) : 

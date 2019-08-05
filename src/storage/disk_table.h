@@ -21,6 +21,7 @@
 #include "base/slice.h"
 #include "base/endianconv.h"
 #include "storage/iterator.h"
+#include "storage/table.h"
 #include <boost/lexical_cast.hpp>
 #include "timer.h"
 
@@ -189,7 +190,7 @@ private:
     uint64_t ts_;
 };
 
-class DiskTable {
+class DiskTable : public Table {
 
 public:
     DiskTable(const std::string& name,
@@ -200,66 +201,45 @@ public:
                 ::rtidb::api::TTLType ttl_type,
                 ::rtidb::common::StorageMode storage_mode);
 
+    DiskTable(const ::rtidb::api::TableMeta& table_meta);
+    DiskTable(const DiskTable&) = delete;
+    DiskTable& operator=(const DiskTable&) = delete;
+
     virtual ~DiskTable();
 
     bool InitColumnFamilyDescriptor();
 
-    bool Init();
+    virtual bool Init() override;
 
-    bool LoadTable();
+    virtual bool LoadTable() override;
 
     static void initOptionTemplate();
 
-    bool Put(const std::string& pk,
+    virtual bool Put(const std::string& pk,
              uint64_t time,
              const char* data,
-             uint32_t size);
+             uint32_t size) override;
 
-    bool Put(uint64_t time,
+    virtual bool Put(uint64_t time,
              const std::string& value,
-             const Dimensions& dimensions);
+             const Dimensions& dimensions) override;
+
+    virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
+            const std::string& value) override;
+
+    virtual bool Put(const ::rtidb::api::LogEntry& entry) override;
 
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value);
 
     bool Get(const std::string& pk, uint64_t ts, std::string& value);
 
-    bool Delete(const std::string& pk, uint32_t idx);
+    bool Delete(const std::string& pk, uint32_t idx) override;
 
-    inline void SetSchema(const std::string& schema) {
-        schema_ = schema;
-    }
-
-    inline const std::string& GetSchema() {
-        return schema_;
-    }
-
-    inline uint32_t GetIdxCnt() const {
-        return idx_cnt_;
-    }
-
-    inline std::string GetName() const {
-        return name_;
-    }
-
-    inline bool IsLeader() const {
-        return is_leader_;
-    }
-
-    void SetLeader(bool is_leader) {
-        is_leader_ = is_leader;
-    }
-
-    inline ::rtidb::api::TTLType& GetTTLType() {
-        return ttl_type_;
-    }
-
-    uint64_t GetTTL() const {
-        return ttl_.load(std::memory_order_relaxed) / (60 * 1000);
-    }
+    virtual uint64_t GetExpireTime(uint64_t ttl) override;
 
     uint64_t GetExpireTime();
 
-    inline uint64_t GetRecordCnt() const {
+    virtual uint64_t GetRecordCnt() const override {
         uint64_t count = 0;
         if (cf_hs_.size() == 1)
             db_->GetIntProperty(cf_hs_[0], "rocksdb.estimate-num-keys", &count);
@@ -277,19 +257,21 @@ public:
         return mapping_;
     }
 
-    inline ::rtidb::common::StorageMode GetStorageMode() {
-        return storage_mode_;
-    }
+    virtual TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
 
-    DiskTableIterator* NewIterator(const std::string& pk);
+    virtual TableIterator* NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) override;
 
-    DiskTableIterator* NewIterator(uint32_t idx, const std::string& pk);
+    virtual TableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) override;
 
-    DiskTableTraverseIterator* NewTraverseIterator(uint32_t idx);
+    virtual TableIterator* NewTraverseIterator(uint32_t idx) override;
 
-    void SchedGc();
+    virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) override;
+
+    virtual void SchedGc() override;
     void GcHead();
     void GcTTL();
+
+    virtual bool IsExpire(const ::rtidb::api::LogEntry& entry) override;
 
     void CompactDB() {
         for (rocksdb::ColumnFamilyHandle* cf : cf_hs_) {
@@ -302,18 +284,7 @@ private:
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
     std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;
-
-    std::string const name_;
-    uint32_t const id_;
-    uint32_t const pid_;
-    uint32_t const idx_cnt_;
-    std::string schema_;
-    std::map<std::string, uint32_t> mapping_;
-    std::atomic<uint64_t> ttl_;
-    ::rtidb::api::TTLType ttl_type_;
-    ::rtidb::common::StorageMode storage_mode_;
     KeyTSComparator cmp_;
-    bool is_leader_;
     std::atomic<uint64_t> offset_;
 };
 

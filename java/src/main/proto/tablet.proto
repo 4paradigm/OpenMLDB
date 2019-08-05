@@ -292,7 +292,7 @@ message TableMeta {
     optional uint32 key_entry_max_height = 14;
     repeated rtidb.common.ColumnDesc column_desc = 15;
     repeated rtidb.common.ColumnKey column_key = 16;
-    optional rtidb.common.StorageMode storage_mode = 17;
+    optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
 }
 
 message CreateTableRequest {
