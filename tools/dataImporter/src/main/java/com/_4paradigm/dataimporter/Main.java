@@ -34,7 +34,7 @@ public class Main {
     private static void putFile(File file) {
         if (!table_exists) {
             if (!createTable(file)) {
-                logger.warn("creating table failed");
+                logger.error("creating table failed");
                 return;
             }
             table_exists = true;
@@ -45,7 +45,7 @@ public class Main {
     private static void putDirectory(File rootFile) {
         File[] files = rootFile.listFiles();
         if (files == null) {
-            logger.warn("there is no file in the directory " + rootFile);
+            logger.error("there is no file in the directory " + rootFile);
             return;
         }
         List<java.nio.file.Path> filePaths = new ArrayList<>();
@@ -56,7 +56,7 @@ public class Main {
                     || file.toPath().toString().contains("orc")) {
                 if (!table_exists) {
                     if (!createTable(file)) {
-                        logger.warn("creating table failed");
+                        logger.error("creating table failed");
                         return;
                     }
                     table_exists = true;
@@ -75,27 +75,27 @@ public class Main {
         if (filePath.contains("parquet")) {
             MessageType schema = ParseParquetUtil.getSchema(new Path(filePath));
             if (schema == null) {
-                logger.warn("the schema is null");
+                logger.error("the schema is null");
                 return false;
             }
             schemaList = ParseParquetUtil.getSchemaOfRtidb(schema);
         } else if (filePath.contains("orc")) {
             TypeDescription schema = ParseOrcUtil.getSchema(filePath);
             if (schema == null) {
-                logger.warn("the schema is null");
+                logger.error("the schema is null");
                 return false;
             }
             schemaList = ParseOrcUtil.getSchemaOfRtidb(schema);
         } else if (filePath.contains("csv")) {
             List<String[]> schema = ParseCsvUtil.getSchema(InitProperties.getProperties().getProperty("csv.schemaPath"));
             if (schema == null) {
-                logger.warn("the schema is null");
+                logger.error("the schema is null");
                 return false;
             }
             schemaList = ParseCsvUtil.getSchemaOfRtidb(schema);
         }
         if (schemaList == null) {
-            logger.warn("the schemaList is null");
+            logger.error("the schemaList is null");
             return false;
         }
         return InitClient.createSchemaTable(Constant.TABLENAME, schemaList);
@@ -105,7 +105,7 @@ public class Main {
         if (filePath.contains("parquet")) {
             MessageType schema = ParseParquetUtil.getSchema(new Path(filePath));
             if (schema == null) {
-                logger.warn("the schema is null");
+                logger.error("the schema is null");
                 return;
             }
             ParseParquetUtil parseParquetUtil = new ParseParquetUtil(filePath, TABLENAME, schema);
@@ -115,7 +115,7 @@ public class Main {
         if (filePath.contains("orc")) {
             TypeDescription schema = ParseOrcUtil.getSchema(filePath);
             if (schema == null) {
-                logger.warn("the schema is null");
+                logger.error("the schema is null");
                 return;
             }
             ParseOrcUtil parseOrcUtil = new ParseOrcUtil(filePath, TABLENAME, schema);
@@ -125,7 +125,7 @@ public class Main {
         if (filePath.contains("csv")) {
             List<String[]> schema = ParseCsvUtil.getSchema(InitProperties.getProperties().getProperty("csv.schemaPath"));
             if (schema == null) {
-                logger.warn("the schema is null");
+                logger.error("the schema is null");
                 return;
             }
             ParseCsvUtil parseCsvUtil = new ParseCsvUtil(filePath, TABLENAME, schema);
@@ -150,7 +150,7 @@ public class Main {
     public static void main(String[] args) {
         File rootFile = new File(FILEPATH);
         if (!rootFile.exists()) {
-            logger.warn("the rootFile does not exist");
+            logger.error("the rootFile does not exist");
             return;
         }
         if (rootFile.isDirectory()) {

@@ -53,11 +53,11 @@ public class PutTask implements Runnable {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                logger.error(e.getMessage());
+                logger.warn(e.getMessage());
             }
         }
         if (limit < 0) {
-            logger.warn("the failed row inserted is : " + map);
+            logger.info("the failed row inserted is : " + map);
             failedCount.getAndIncrement();
         } else {
             long temp = successfulCount.incrementAndGet();

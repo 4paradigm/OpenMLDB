@@ -77,7 +77,7 @@ public class InitClient {
         }
         if (COLUMN_KEY_PATH != null && !COLUMN_KEY_PATH.trim().equals("")) {
             List<ColumnKey> columnKeyList = getColumnKey(COLUMN_KEY_PATH);
-            if (columnKeyList != null && columnKeyList.size() != 0) {
+            if (columnKeyList != null) {
                 for (ColumnKey columnKey : columnKeyList) {
                     builder.addColumnKey(columnKey);
                 }
@@ -90,7 +90,7 @@ public class InitClient {
         if (ok) {
             logger.info("the RrtidbSchemaTable is created ：" + ok);
         } else {
-            logger.error("the RrtidbSchemaTable is created ：" + ok);
+            logger.warn("the RrtidbSchemaTable is created ：" + ok);
         }
         for (int i = 0; i < MAX_THREAD_NUM; i++) {
             clusterClient[i].refreshRouteTable();
@@ -136,51 +136,6 @@ public class InitClient {
         }
     }
 
-//    public static List<ColumnKey> getColumnKey(String columnKeyConfPath) {
-//        List<ColumnKey> result = new ArrayList<>();
-//        List<String> lines = null;
-//        try {
-//            lines = Files.readAllLines(Paths.get(columnKeyConfPath));
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            logger.warn("file " + Paths.get(columnKeyConfPath) + " did not exist!");
-//            System.exit(0);
-//        }
-//        if (lines == null) {
-//            return result;
-//        }
-//        ColumnKey.Builder builder = Common.ColumnKey.newBuilder();
-//        for (int i = 0; i < lines.size(); i++) {
-//            if (lines.get(i) == null || lines.get(i).trim().equals("")) continue;
-//            String cur = lines.get(i);
-//            if (cur.contains("column_key")) {
-//                continue;
-//            } else if (cur.contains("}")) {
-//                result.add(builder.build());
-//                builder.clear();
-//            } else {
-//                String[] strs = cur.split(":");
-//                String str1 = strs[0].trim();
-//                String str2 = strs[1].trim();
-//                if (str1.equals("index_name")) {
-//                    builder.setIndexName(str2);
-//                } else if (str1.equals("col_name")) {
-//                    builder.addColName(str2);
-//                    while (lines.get(i + 1).split(":")[0].trim().equals("col_name") && i < lines.size()) {
-//                        builder.addColName(lines.get(i + 1).split(":")[1].trim());
-//                        i++;
-//                    }
-//                } else if (str1.equals("ts_name")) {
-//                    builder.addTsName(str2);
-//                    while (lines.get(i + 1).split(":")[0].trim().equals("ts_name") && i < lines.size()) {
-//                        builder.addTsName(lines.get(i + 1).split(":")[1].trim());
-//                        i++;
-//                    }
-//                }
-//            }
-//        }
-//        return result;
-//    }
 
     public static List<ColumnKey> getColumnKey(String columnKeyConfPath) {
         NS.TableInfo.Builder builder = NS.TableInfo.newBuilder();
@@ -192,10 +147,9 @@ public class InitClient {
             TextFormat.merge(fileReader, builder);
             NS.TableInfo tableInfo = builder.build();
             result = tableInfo.getColumnKeyList();
-            return result;
         } catch (IOException e) {
             e.printStackTrace();
-            logger.warn("file " + Paths.get(columnKeyConfPath) + " did not exist!");
+            logger.error("file " + Paths.get(columnKeyConfPath) + " did not exist!");
             System.exit(0);
         } finally {
             if (fileReader != null) {
@@ -209,9 +163,9 @@ public class InitClient {
         return result;
     }
 
-    public static boolean contains(String delim, String string, String target) {
-        if (string != null && !string.trim().equals("")) {
-            for (String s : string.split(delim)) {
+    public static boolean contains(String delim, String origin, String target) {
+        if (origin != null && !origin.trim().equals("")) {
+            for (String s : origin.split(delim)) {
                 if (s.trim().equals(target)) {
                     return true;
                 }
@@ -222,21 +176,20 @@ public class InitClient {
 
     public static List<ColumnDesc> getSchemaOfRtidb(String tableName) {
         if (tableName == null || tableName.isEmpty()) {
-            logger.warn("filePath is null or empty ");
+            logger.error("filePath is null or empty ");
             return null;
         }
-        List<ColumnDesc> columnDescV1List;
+        List<ColumnDesc> columnDescV1List = new ArrayList<>();
         try {
             columnDescV1List = clusterClient[0].getHandler(tableName).getTableInfo().getColumnDescV1List();
         } catch (Exception e) {
-            logger.warn(e.toString());
-            logger.warn("table " + tableName + " did not exist");
-            return null;
+            logger.error(e.toString());
+            logger.error("table " + tableName + " did not exist");
         }
         return columnDescV1List;
     }
 
-    public static boolean hasTsCol(String tableName){
+    public static boolean hasTsCol(String tableName) {
         TableHandler handler = clusterClient[0].getHandler(tableName);
         if (handler != null && handler.hasTsCol() == true) {
             return true;
