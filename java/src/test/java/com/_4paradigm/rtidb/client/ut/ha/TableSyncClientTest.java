@@ -14,6 +14,7 @@ import com._4paradigm.rtidb.client.base.Config;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
@@ -677,5 +678,38 @@ public class TableSyncClientTest extends TestCaseBase {
         } finally {
             nsc.dropTable(name);
         }
+    }
+
+    @Test
+    public void testTraverSeEmptyKvTest() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        TableInfo tableinfo = TableInfo.newBuilder().setName(name).setSegCnt(8).setReplicaNum(1).setTtl(0).build();
+        boolean ok = nsc.createTable(tableinfo);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        try {
+            long basets = 1564992840;
+            String[] value = {"test", "", "test1", ""};
+            for (int i = 0; i < value.length; i++) {
+                ok = tableSyncClient.put(name, "key1", basets + i, value[i]);
+                Assert.assertTrue(ok);
+            }
+
+            KvIterator it = tableSyncClient.traverse(name);
+
+            for (int i = 0; i > value.length; i++) {
+                byte[] buffer = new byte[it.getValue().remaining()];
+                it.getValue().get(buffer);
+                String v = new String(buffer);
+                Assert.assertEquals(value[i], v);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+            nsc.dropTable(name);
+        }
+
     }
 }
