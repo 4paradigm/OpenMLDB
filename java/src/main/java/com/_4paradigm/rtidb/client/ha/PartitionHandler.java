@@ -18,49 +18,79 @@ public class PartitionHandler {
     private List<TabletServer> followers = new ArrayList<TabletServer>();
     // the fast server for tablet read
     private TabletServer fastTablet = null;
+
     public TabletServer getLeader() {
         return leader;
     }
+
     public void setLeader(TabletServer leader) {
         this.leader = leader;
     }
+
     public List<TabletServer> getFollowers() {
         return followers;
     }
+
     public void setFollowers(List<TabletServer> followers) {
         this.followers = followers;
     }
+
     public TabletServer getFastTablet() {
         return fastTablet;
     }
+
     public void setFastTablet(TabletServer fastTablet) {
         this.fastTablet = fastTablet;
     }
-    
+
     public TabletServer getReadHandler(ReadStrategy strategy) {
         // single node tablet
         if (followers.size() <= 0 || strategy == null) {
             return leader;
         }
-        switch(strategy) {
-        case kReadLeader:
-            logger.debug("choose leader partition for reading");
-            return leader;
-        case kReadLocal:
-            if (fastTablet != null) {
-                logger.debug("choose fast partition for reading");
-                return fastTablet;
-            }else if(followers.size() > 0) {
-                logger.debug("rand choose follower partition for reading");
-                int index = (int) ((rand.nextFloat() * 1000) % followers.size());
-                return followers.get(index);
-            }else {
+        switch (strategy) {
+            case kReadLeader:
+                logger.debug("choose leader partition for reading");
                 return leader;
-            }
-        default:
-            return leader;
+            case kReadFollower:
+                if (followers.size() > 0) {
+                    logger.debug("rand choose follower partition for reading");
+                    int index = rand.nextInt(followers.size());
+                    return followers.get(index);
+                } else {
+                    logger.debug("choose leader partition for reading");
+                    return leader;
+                }
+            case kReadLocal:
+                if (fastTablet != null) {
+                    logger.debug("choose fast partition for reading");
+                    return fastTablet;
+                } else if (followers.size() > 0) {
+                    logger.debug("rand choose follower partition for reading");
+                    int index = rand.nextInt(followers.size());
+                    return followers.get(index);
+                } else {
+                    return leader;
+                }
+            case KReadRandom:
+                logger.debug("rand choose partition for reading");
+                if (followers.size() == 0) {
+                    logger.debug("choose leader partition for reading");
+                    return leader;
+                } else {
+                    int index = rand.nextInt(followers.size() + 1);
+                    if (index == followers.size()) {
+                        logger.debug("choose leader partition for reading");
+                        return leader;
+                    } else {
+                        logger.debug("choose follower partition for reading");
+                        return followers.get(index);
+                    }
+                }
+            default:
+                return leader;
         }
     }
-    
-    
+
+
 }

@@ -88,17 +88,19 @@ class NsCluster(object):
     def get_ns_leader(self):
         cmd = "{}/rtidb --zk_cluster={} --zk_root_path={} --role={} --interactive=false --cmd={}".format(self.test_path, 
                         self.zk_endpoint, "/onebox", "ns_client", "'showns'")
-        result = exe_shell(cmd)
-        rs_tb = result.split('\n')
-        for line in rs_tb:
-            if '-----------------------' in line or 'ns leader' in line:
-                continue
-            if 'leader' in line:
-                ns_leader = line.strip().split(" ")[0].strip()
-                self.ns_leader = ns_leader
-                exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
-                exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
-                return ns_leader
+        for i in xrange(5):
+            result = exe_shell(cmd)
+            rs_tb = result.split('\n')
+            for line in rs_tb:
+                if '-----------------------' in line or 'ns leader' in line:
+                    continue
+                if 'leader' in line:
+                    ns_leader = line.strip().split(" ")[0].strip()
+                    self.ns_leader = ns_leader
+                    exe_shell('echo "{}" > {}/ns_leader'.format(ns_leader, self.test_path))
+                    exe_shell('echo "{}" >> {}/ns_leader'.format(self.ns_edp_path[ns_leader], self.test_path))
+                    return ns_leader
+            time.sleep(2)
 
     """def get_ns_leader(self):
         locks = exe_shell("echo \"ls /onebox/leader\"|sh {}/bin/zkCli.sh -server {}"
