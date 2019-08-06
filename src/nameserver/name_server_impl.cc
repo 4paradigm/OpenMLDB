@@ -1161,6 +1161,53 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller,
                  op_data->op_info_.op_id(), request->name().c_str(), request->pid());
 }
 
+int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
+    if (table_info.column_desc_v1_size() > 0) {
+        std::map<std::string, std::string> column_map;
+        for (const auto& column_desc : table_info.column_desc_v1()) {
+           if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
+               PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
+               return -1;
+           }
+           column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
+        }
+        if (table_info.column_key_size() > 0) {
+            for (const auto &column_key : table_info.column_key()) {
+                bool has_iter = false;
+                for (const auto &column_name : column_key.col_name()) {
+                    has_iter = true;
+                    auto iter = column_map.find(column_name);
+                    if ((iter != column_map.end() && ((iter->second == "float") || (iter->second == "double")))) {
+                        PDLOG(WARNING, "float or double type column can not be index, column is: %s",
+                              column_key.index_name().c_str());
+                        return -1;
+                    }
+                }
+                if (!has_iter) {
+                    auto iter = column_map.find(column_key.index_name());
+                    if (iter == column_map.end()) {
+                        PDLOG(WARNING, "index must member of columns when column key col name is empty");
+                        return -1;
+                    }
+                    if ((iter->second == "float") || (iter->second == "double")) {
+                        PDLOG(WARNING, "float or double column can not be index");
+                        return -1;
+                    }
+                }
+            }
+        }
+    } else if (table_info.column_desc_size() > 0) {
+        for (const auto& column_desc : table_info.column_desc()) {
+            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
+                PDLOG(WARNING, "float or double type column can not be index, column is: %s", column_desc.name().c_str());
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
 int NameServerImpl::FillColumnKey(TableInfo& table_info) {
     if (table_info.column_key_size() > 0 || table_info.column_desc_v1_size() == 0) {
         return 0;
@@ -1979,6 +2026,11 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(request->table_info().New());
     table_info->CopyFrom(request->table_info());
+    if (CheckTableMeta(*table_info) < 0) {
+        response->set_code(307);
+        response->set_msg("check TableMeta failed, index column type can not float or double");
+        return;
+    }
     if (FillColumnKey(*table_info) < 0) {
         response->set_code(307);
         response->set_msg("fill column key failed");

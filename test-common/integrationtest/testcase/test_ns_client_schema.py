@@ -82,7 +82,7 @@ class TestSchema(TestCaseBase):
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
-                    {"name": "amt", "type": "double", "add_ts_idx": "true"},
+                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
                     {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true"},
                     {"name": "ts2", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 100},
                     ],

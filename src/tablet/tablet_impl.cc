@@ -804,11 +804,11 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
         msg = "ttl is greater than conf value. max ttl is " + std::to_string(max_ttl);
         return -1;
     }
-    std::set<std::string> column_set;
+    std::map<std::string, std::string> column_map;
     std::set<std::string> ts_set;
     if (table_meta->column_desc_size() > 0) {
         for (const auto& column_desc : table_meta->column_desc()) {
-            if (column_set.find(column_desc.name()) != column_set.end()) {
+            if (column_map.find(column_desc.name()) != column_map.end()) {
                 msg = "has repeated column name " + column_desc.name();
                 return -1;
             }
@@ -833,7 +833,11 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                 }
                 ts_set.insert(column_desc.name());
             }
-            column_set.insert(column_desc.name());
+            if (column_desc.add_ts_idx() && ((column_desc.type() == "float") || (column_desc.type() == "double"))) {
+                msg = "float or double column can not be index";
+                return -1;
+            }
+            column_map.insert(std::make_pair(column_desc.name(), column_desc.type()));
         }
     }
     std::set<std::string> index_set;
@@ -844,14 +848,33 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
                 return -1;
             }
             index_set.insert(column_key.index_name());
+            bool has_col = false;
             for (const auto& column_name : column_key.col_name()) {
-                if (column_set.find(column_name) == column_set.end()) {
+                has_col = true;
+                auto iter = column_map.find(column_name);
+                if (iter == column_map.end()) {
                     msg = "not found column name " + column_name;
+                    return -1;
+                }
+                if ((iter->second == "float") || (iter->second == "double")) {
+                    msg = "float or double column can not be index" + column_name;
                     return -1;
                 }
                 if (ts_set.find(column_name) != ts_set.end()) {
                     msg = "column name in column key can not set ts col. column name " + column_name;
                     return -1;
+                }
+            }
+            if (!has_col) {
+                auto iter = column_map.find(column_key.index_name());
+                if (iter == column_map.end()) {
+                    msg = "index must member of columns when column key col name is empty";
+                    return -1;
+                } else {
+                    if ((iter->second == "float") || (iter->second == "double")) {
+                        msg = "indxe name column type can not float or column";
+                        return -1;
+                    }
                 }
             }
             std::set<std::string> ts_name_set;

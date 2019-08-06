@@ -102,6 +102,7 @@ public class NameServerTest extends TestCaseBase {
     public void testAllFlow() {
         Random rand = new Random(System.currentTimeMillis());
         String tname = rand.nextInt() + "tname";
+        nsc.dropTable(tname);
         PartitionMeta pm = PartitionMeta.newBuilder().setEndpoint(nodes[0]).setIsLeader(true).build();
         TablePartition tp = TablePartition.newBuilder().addPartitionMeta(pm).setPid(0).build();
         TableInfo tableInfo = TableInfo.newBuilder().setName(tname).setSegCnt(8).addTablePartition(tp).build();
