@@ -3163,13 +3163,14 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     if (!FLAGS_zk_cluster.empty() && table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
         replicator->SetLeaderTerm(table_meta->term());
     }
-    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(table_meta->tid(), table_meta->pid(), replicator->GetLogPart());
-    ok = snapshot->Init();
-    if (!ok) {
+    ::rtidb::storage::MemTableSnapshot* snapshot_ptr = 
+        new ::rtidb::storage::MemTableSnapshot(table_meta->tid(), table_meta->pid(), replicator->GetLogPart());
+    if (!snapshot_ptr->Init()) {
         PDLOG(WARNING, "fail to init snapshot for tid %u, pid %u", table_meta->tid(), table_meta->pid());
         msg.assign("fail to init snapshot");
         return -1;
     }
+    std::shared_ptr<Snapshot> snapshot(snapshot_ptr);
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));

@@ -8,8 +8,8 @@
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "base/file_util.h"
-#include "storage/snapshot.h"
 #include "storage/mem_table.h"
+#include "storage/mem_table_snapshot.h"
 #include "storage/ticket.h"
 #include "proto/tablet.pb.h"
 #include "log/log_writer.h"
@@ -38,11 +38,11 @@ namespace storage {
 
 const static ::rtidb::base::DefaultComparator scmp;
 
-class SnapshotTest : public ::testing::Test {
+class MemTableSnapshotTest : public ::testing::Test {
 
 public:
-    SnapshotTest(){}
-    ~SnapshotTest() {}
+    MemTableSnapshotTest(){}
+    ~MemTableSnapshotTest() {}
 };
 
 inline uint32_t GenRand() {
@@ -83,7 +83,7 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
     return true;
 }
 
-TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
+TEST_F(MemTableSnapshotTest, Recover_binlog_and_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/4_3/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/4_3/binlog/";
     LogParts* log_part = new LogParts(12, 4, scmp);
@@ -106,7 +106,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
-    Snapshot snapshot(4, 3, log_part);
+    MemTableSnapshot snapshot(4, 3, log_part);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -200,7 +200,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     delete it;
 }
 
-TEST_F(SnapshotTest, Recover_only_binlog_multi) {
+TEST_F(MemTableSnapshotTest, Recover_only_binlog_multi) {
     std::string snapshot_dir = FLAGS_db_root_path + "/4_4/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/4_4/binlog/";
     LogParts* log_part = new LogParts(12, 4, scmp);
@@ -233,7 +233,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     mapping.insert(std::make_pair("merchant", 1));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(4, 4, log_part);
+    MemTableSnapshot snapshot(4, 4, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
@@ -274,7 +274,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
 }
 
 
-TEST_F(SnapshotTest, Recover_only_binlog) {
+TEST_F(MemTableSnapshotTest, Recover_only_binlog) {
     std::string snapshot_dir = FLAGS_db_root_path + "/3_3/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/3_3/binlog/";
     LogParts* log_part = new LogParts(12, 4, scmp);
@@ -302,7 +302,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(3, 3, log_part);
+    MemTableSnapshot snapshot(3, 3, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
@@ -323,7 +323,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
 
 }
 
-TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
+TEST_F(MemTableSnapshotTest, Recover_only_snapshot_multi) {
     std::string snapshot_dir = FLAGS_db_root_path + "/3_2/snapshot";
 
     ::rtidb::base::MkdirRecur(snapshot_dir);
@@ -406,7 +406,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(3, 2, log_part);
+    MemTableSnapshot snapshot(3, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
     int ret = snapshot.RecordOffset("20170609.sdb", 3, 2, 5);
     ASSERT_EQ(0, ret);
@@ -451,7 +451,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
 }
 
 
-TEST_F(SnapshotTest, Recover_only_snapshot) {
+TEST_F(MemTableSnapshotTest, Recover_only_snapshot) {
     std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
 
     ::rtidb::base::MkdirRecur(snapshot_dir);
@@ -518,7 +518,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(2, 2, log_part);
+    MemTableSnapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
     int ret = snapshot.RecordOffset("20170609.sdb", 2, 2, 5);
     ASSERT_EQ(0, ret);
@@ -541,9 +541,9 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     ASSERT_FALSE(it->Valid());
 }
 
-TEST_F(SnapshotTest, MakeSnapshot) {
+TEST_F(MemTableSnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(1, 2, log_part);
+    MemTableSnapshot snapshot(1, 2, log_part);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -686,9 +686,9 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     ASSERT_EQ(7, manifest.term());
 }
 
-TEST_F(SnapshotTest, MakeSnapshotLatest) {
+TEST_F(MemTableSnapshotTest, MakeSnapshotLatest) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(5, 1, log_part);
+    MemTableSnapshot snapshot(5, 1, log_part);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -797,9 +797,9 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     ASSERT_EQ(7, manifest.term());
 }
 
-TEST_F(SnapshotTest, RecordOffset) {
+TEST_F(MemTableSnapshotTest, RecordOffset) {
 	std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
-    Snapshot snapshot(1, 1, NULL);
+    MemTableSnapshot snapshot(1, 1, NULL);
     snapshot.Init();
     uint64_t offset = 1122;
     uint64_t key_count = 3000;
@@ -826,7 +826,7 @@ TEST_F(SnapshotTest, RecordOffset) {
     ASSERT_EQ(term, manifest.term());
 }
 
-TEST_F(SnapshotTest, Recover_empty_binlog) {
+TEST_F(MemTableSnapshotTest, Recover_empty_binlog) {
     uint32_t tid = GenRand();
     std::string snapshot_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/snapshot/";
     std::string binlog_dir = FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog/";
@@ -897,7 +897,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(tid, 0, log_part);
+    MemTableSnapshot snapshot(tid, 0, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(30, offset);
@@ -944,7 +944,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     ASSERT_EQ(30, manifest.count());
 }
 
-TEST_F(SnapshotTest, Recover_snapshot_ts) {
+TEST_F(MemTableSnapshotTest, Recover_snapshot_ts) {
     std::string snapshot_dir = FLAGS_db_root_path + "/2_2/snapshot";
     ::rtidb::base::MkdirRecur(snapshot_dir);
     {
@@ -1014,7 +1014,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(table_meta);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(2, 2, log_part);
+    MemTableSnapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
     int ret = snapshot.RecordOffset("20190614.sdb", 1, 1, 5);
     ASSERT_EQ(0, ret);

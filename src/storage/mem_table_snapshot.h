@@ -4,10 +4,7 @@
 // Author vagrant
 // Date 2017-07-24
 //
-
-
-#ifndef RTIDB_SNAPSHOT_H
-#define RTIDB_SNAPSHOT_H
+#pragma once
 
 #include <vector>
 #include <atomic>
@@ -16,7 +13,7 @@
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
 #include "base/count_down_latch.h"
-#include "storage/table.h"
+#include "storage/snapshot.h"
 #include "log/log_writer.h"
 #include "log/sequential_file.h"
 
@@ -33,25 +30,21 @@ using ::rtidb::log::WriteHandle;
 typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultComparator> LogParts;
 
 // table snapshot
-class Snapshot {
+class MemTableSnapshot : public Snapshot {
 
 public:
-    Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part);
+    MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part);
 
-    ~Snapshot();
+    virtual ~MemTableSnapshot() = default;
 
     bool Init();
 
-    bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset);
+    virtual bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) override;
 
     void RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table);
     bool RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, uint64_t& latest_offset);
 
-    inline uint64_t GetOffset() {
-        return offset_;
-    }
-
-    int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset);
+    virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) override;
 
     int TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
                 uint64_t& count, uint64_t& expired_key_num, uint64_t& deleted_key_num);
@@ -75,16 +68,10 @@ private:
 private:
     uint32_t tid_;
     uint32_t pid_;
-    uint64_t offset_;
-    std::atomic<bool> making_snapshot_;
     LogParts* log_part_;
-    // the snapshot path
-    std::string snapshot_path_;
     std::string log_path_;
     std::map<std::string, uint64_t> deleted_keys_;
 };
 
 }
 }
-
-#endif /* !RTIDB_SNAPSHOT_H */

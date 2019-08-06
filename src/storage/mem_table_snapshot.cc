@@ -5,7 +5,7 @@
 // Date 2017-07-24
 //
 //
-#include "storage/snapshot.h"
+#include "storage/mem_table_snapshot.h"
 
 #include "base/file_util.h"
 #include "base/strings.h"
@@ -38,15 +38,10 @@ const std::string SNAPSHOT_SUBFIX=".sdb";
 const std::string MANIFEST = "MANIFEST";
 const uint32_t KEY_NUM_DISPLAY = 1000000;
 
-Snapshot::Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pid_(pid),
-     log_part_(log_part) {
-    offset_ = 0;
-}
+MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pid_(pid),
+     log_part_(log_part) {}
 
-Snapshot::~Snapshot() {
-}
-
-bool Snapshot::Init() {
+bool MemTableSnapshot::Init() {
     snapshot_path_ = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
     log_path_ = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/binlog/";
     if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
@@ -57,11 +52,10 @@ bool Snapshot::Init() {
         PDLOG(WARNING, "fail to create db meta path %s", log_path_.c_str());
         return false;
     }
-    making_snapshot_.store(false, std::memory_order_release);
     return true;
 }
 
-bool Snapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
+bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
     int ret = GetSnapshotRecord(manifest);
@@ -76,7 +70,7 @@ bool Snapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     return RecoverFromBinlog(table, manifest.offset(), latest_offset);
 }
 
-bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
+bool MemTableSnapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
                                  uint64_t& latest_offset) {
     PDLOG(INFO, "start recover table tid %u, pid %u from binlog with start offset %lu",
             table->GetId(), table->GetPid(), offset);
@@ -185,7 +179,7 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
     return true;
 }
 
-void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table) {
+void MemTableSnapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table) {
     std::string full_path = snapshot_path_ + "/" + snapshot_name;
     std::atomic<uint64_t> g_succ_cnt(0);
     std::atomic<uint64_t> g_failed_cnt(0);
@@ -200,7 +194,7 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 }
 
 
-void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
+void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
     do {
@@ -260,7 +254,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     }while(false);
 }
 
-int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
+int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
             uint64_t& count, uint64_t& expired_key_num, uint64_t& deleted_key_num) {
     std::string full_path = snapshot_path_ + manifest.name();
     FILE* fd = fopen(full_path.c_str(), "rb");
@@ -355,7 +349,7 @@ int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Mani
     return 0;
 }
 
-uint64_t Snapshot::CollectDeletedKey() {
+uint64_t MemTableSnapshot::CollectDeletedKey() {
     deleted_keys_.clear();
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset_);
@@ -416,7 +410,7 @@ uint64_t Snapshot::CollectDeletedKey() {
     return cur_offset;
 }
 
-int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
+int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     if (making_snapshot_.load(std::memory_order_acquire)) {
         PDLOG(INFO, "snapshot is doing now!");
         return 0;
@@ -596,7 +590,7 @@ int Snapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     return ret;
 }
 
-int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
+int MemTableSnapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     std::string full_path = snapshot_path_ + MANIFEST;
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
@@ -613,7 +607,7 @@ int Snapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
     return 0;
 }
 
-int Snapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
+int MemTableSnapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
     PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
                 offset, snapshot_name.c_str(), key_count);
     std::string full_path = snapshot_path_ + MANIFEST;
