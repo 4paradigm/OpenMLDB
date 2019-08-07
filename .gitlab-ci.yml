@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.5
+image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.6
 stages:
     - build
     - ut

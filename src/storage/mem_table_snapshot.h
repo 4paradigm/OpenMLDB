@@ -12,7 +12,6 @@
 #include <map>
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
-#include "base/count_down_latch.h"
 #include "storage/snapshot.h"
 #include "log/log_writer.h"
 #include "log/sequential_file.h"
@@ -37,7 +36,7 @@ public:
 
     virtual ~MemTableSnapshot() = default;
 
-    bool Init();
+    virtual bool Init() override;
 
     virtual bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) override;
 
@@ -48,12 +47,6 @@ public:
 
     int TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
                 uint64_t& count, uint64_t& expired_key_num, uint64_t& deleted_key_num);
-
-    // Read manifest from local storage return 0 if ok , 1 if manifest does not exist,
-    // or -1 if some error ocurrs 
-    int GetSnapshotRecord(::rtidb::api::Manifest& manifest);
-
-    int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
 
 private:
 
@@ -66,8 +59,6 @@ private:
    uint64_t CollectDeletedKey();                           
 
 private:
-    uint32_t tid_;
-    uint32_t pid_;
     LogParts* log_part_;
     std::string log_path_;
     std::map<std::string, uint64_t> deleted_keys_;

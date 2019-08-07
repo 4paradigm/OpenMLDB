@@ -19,7 +19,6 @@
 #include "timer.h"
 #include "thread_pool.h"
 #include <unistd.h>
-#include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 using ::baidu::common::DEBUG;
@@ -35,10 +34,9 @@ namespace rtidb {
 namespace storage {
 
 const std::string SNAPSHOT_SUBFIX=".sdb";
-const std::string MANIFEST = "MANIFEST";
 const uint32_t KEY_NUM_DISPLAY = 1000000;
 
-MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pid_(pid),
+MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part): Snapshot(tid, pid),
      log_part_(log_part) {}
 
 bool MemTableSnapshot::Init() {
@@ -58,7 +56,7 @@ bool MemTableSnapshot::Init() {
 bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
-    int ret = GetSnapshotRecord(manifest);
+    int ret = GetManifest(manifest);
     if (ret == -1) {
         return false;
     }
@@ -436,7 +434,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     uint64_t expired_key_num = 0;
     uint64_t deleted_key_num = 0;
     uint64_t last_term = 0;
-    int result = GetSnapshotRecord(manifest);
+    int result = GetManifest(manifest);
     if (result == 0) {
         // filter old snapshot
         if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num, deleted_key_num) < 0) {
@@ -562,7 +560,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
         ret = -1;
     } else {
         if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
-            if (RecordOffset(snapshot_name, write_count, cur_offset, last_term) == 0) {
+            if (GenManifest(snapshot_name, write_count, cur_offset, last_term) == 0) {
                 // delete old snapshot
                 if (manifest.has_name() && manifest.name() != snapshot_name) {
                     PDLOG(DEBUG, "old snapshot[%s] has deleted", manifest.name().c_str());
@@ -575,7 +573,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
                 offset_ = cur_offset;
                 out_offset = cur_offset;
             } else {
-                PDLOG(WARNING, "RecordOffset failed. delete snapshot file[%s]", full_path.c_str());
+                PDLOG(WARNING, "GenManifest failed. delete snapshot file[%s]", full_path.c_str());
                 unlink(full_path.c_str());
                 ret = -1;
             }
@@ -588,59 +586,6 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     deleted_keys_.clear();
     making_snapshot_.store(false, std::memory_order_release);
     return ret;
-}
-
-int MemTableSnapshot::GetSnapshotRecord(::rtidb::api::Manifest& manifest) {
-    std::string full_path = snapshot_path_ + MANIFEST;
-    int fd = open(full_path.c_str(), O_RDONLY);
-    if (fd < 0) {
-        PDLOG(INFO, "[%s] is not exist", MANIFEST.c_str());
-        return 1;
-    } else {
-        google::protobuf::io::FileInputStream fileInput(fd);
-        fileInput.SetCloseOnDelete(true);
-        if (!google::protobuf::TextFormat::Parse(&fileInput, &manifest)) {
-            PDLOG(WARNING, "parse manifest failed");
-            return -1;
-        }
-    }
-    return 0;
-}
-
-int MemTableSnapshot::RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
-    PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
-                offset, snapshot_name.c_str(), key_count);
-    std::string full_path = snapshot_path_ + MANIFEST;
-    std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
-    ::rtidb::api::Manifest manifest;
-    std::string manifest_info;
-    manifest.set_offset(offset);
-    manifest.set_name(snapshot_name);
-    manifest.set_count(key_count);
-    manifest.set_term(term);
-    manifest_info.clear();
-    google::protobuf::TextFormat::PrintToString(manifest, &manifest_info);
-    FILE* fd_write = fopen(tmp_file.c_str(), "w");
-    if (fd_write == NULL) {
-        PDLOG(WARNING, "fail to open file %s", tmp_file.c_str());
-        return -1;
-    }
-    bool io_error = false;
-    if (fputs(manifest_info.c_str(), fd_write) == EOF) {
-        PDLOG(WARNING, "write error. path[%s]", tmp_file.c_str());
-        io_error = true;
-    }
-    if (!io_error && ((fflush(fd_write) == EOF) || fsync(fileno(fd_write)) == -1)) {
-        PDLOG(WARNING, "flush error. path[%s]", tmp_file.c_str());
-        io_error = true;
-    }
-    fclose(fd_write);
-    if (!io_error && rename(tmp_file.c_str(), full_path.c_str()) == 0) {
-        PDLOG(DEBUG, "%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
-        return 0;
-    }
-    unlink(tmp_file.c_str());
-    return -1;
 }
 
 }

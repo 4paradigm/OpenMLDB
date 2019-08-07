@@ -386,6 +386,22 @@ bool DiskTable::IsExpire(const ::rtidb::api::LogEntry& entry) {
     return false;
 }
 
+int DiskTable::CreateCheckPoint(const std::string& checkpoint_dir) {
+    rocksdb::Checkpoint* checkpoint = NULL;
+    rocksdb::Status s = rocksdb::Checkpoint::Create(db_, &checkpoint);
+    if (!s.ok()) {
+        PDLOG(WARNING, "Create failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return -1;
+    }
+    s = checkpoint->CreateCheckpoint(checkpoint_dir);
+    delete checkpoint;
+    if (!s.ok()) {
+        PDLOG(WARNING, "CreateCheckpoint failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return -1;
+    }
+    return 0;
+}
+
 TableIterator* DiskTable::NewIterator(const std::string &pk, Ticket& ticket) {
     return DiskTable::NewIterator(0, pk, ticket);
 }

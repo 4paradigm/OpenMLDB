@@ -408,7 +408,7 @@ TEST_F(MemTableSnapshotTest, Recover_only_snapshot_multi) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(3, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20170609.sdb", 3, 2, 5);
+    int ret = snapshot.GenManifest("20170609.sdb", 3, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -520,7 +520,7 @@ TEST_F(MemTableSnapshotTest, Recover_only_snapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20170609.sdb", 2, 2, 5);
+    int ret = snapshot.GenManifest("20170609.sdb", 2, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -805,7 +805,7 @@ TEST_F(MemTableSnapshotTest, RecordOffset) {
     uint64_t key_count = 3000;
     uint64_t term = 0;
     std::string snapshot_name = ::rtidb::base::GetNowTime() + ".sdb";
-    int ret = snapshot.RecordOffset(snapshot_name, key_count, offset, term);
+    int ret = snapshot.GenManifest(snapshot_name, key_count, offset, term);
     ASSERT_EQ(0, ret);
 	std::string value;
 	::rtidb::api::Manifest manifest;
@@ -818,7 +818,7 @@ TEST_F(MemTableSnapshotTest, RecordOffset) {
     uint64_t key_count1 = 3001;
 	offset = 1124;
     term = 10;
-    ret = snapshot.RecordOffset(snapshot_name1, key_count1, offset, term);
+    ret = snapshot.GenManifest(snapshot_name1, key_count1, offset, term);
     ASSERT_EQ(0, ret);
 	GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
@@ -1016,7 +1016,7 @@ TEST_F(MemTableSnapshotTest, Recover_snapshot_ts) {
     LogParts* log_part = new LogParts(12, 4, scmp);
     MemTableSnapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20190614.sdb", 1, 1, 5);
+    int ret = snapshot.GenManifest("20190614.sdb", 1, 1, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));

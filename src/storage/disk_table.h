@@ -18,6 +18,7 @@
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/compaction_filter.h>
+#include <rocksdb/utilities/checkpoint.h>
 #include "base/slice.h"
 #include "base/endianconv.h"
 #include "storage/iterator.h"
@@ -278,6 +279,8 @@ public:
             db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
         }
     }
+    
+    int CreateCheckPoint(const std::string& checkpoint_dir);
 
 private:
     rocksdb::DB* db_;
