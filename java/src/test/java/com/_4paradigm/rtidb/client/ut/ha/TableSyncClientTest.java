@@ -5,22 +5,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com._4paradigm.rtidb.client.GetFuture;
-import com._4paradigm.rtidb.client.PutFuture;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
-import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.base.Config;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
@@ -691,19 +684,31 @@ public class TableSyncClientTest extends TestCaseBase {
         try {
             long basets = 1564992840;
             String[] value = {"test", "", "test1", ""};
+
             for (int i = 0; i < value.length; i++) {
                 ok = tableSyncClient.put(name, "key1", basets + i, value[i]);
                 Assert.assertTrue(ok);
+                Assert.assertEquals(i + 1, tableSyncClient.count(name, "key1"));
             }
 
             KvIterator it = tableSyncClient.traverse(name);
-
-            for (int i = 0; i > value.length; i++) {
+            Assert.assertTrue(it.valid());
+            for (int i = value.length -1; i > 0; i--) {
                 byte[] buffer = new byte[it.getValue().remaining()];
                 it.getValue().get(buffer);
                 String v = new String(buffer);
                 Assert.assertEquals(value[i], v);
+                Assert.assertEquals(it.getKey(), basets + i);
+                Assert.assertEquals(it.getPK(), "key1");
+                it.next();
+                Assert.assertTrue(it.valid());
             }
+            it = tableSyncClient.traverse(name);
+            for (int i = 0; i < value.length; i++) {
+                Assert.assertTrue(it.valid());
+                it.next();
+            }
+            Assert.assertFalse(it.valid());
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
