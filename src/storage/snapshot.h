@@ -23,7 +23,7 @@ public:
     virtual bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) = 0;
     uint64_t GetOffset() { return offset_; }
     int GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
-    int GetManifest(::rtidb::api::Manifest& manifest);
+    int GetLocalManifest(::rtidb::api::Manifest& manifest);
 
 protected:
     uint32_t tid_;

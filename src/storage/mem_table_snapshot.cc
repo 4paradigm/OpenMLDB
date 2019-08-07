@@ -56,7 +56,7 @@ bool MemTableSnapshot::Init() {
 bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
-    int ret = GetManifest(manifest);
+    int ret = GetLocalManifest(manifest);
     if (ret == -1) {
         return false;
     }
@@ -434,7 +434,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     uint64_t expired_key_num = 0;
     uint64_t deleted_key_num = 0;
     uint64_t last_term = 0;
-    int result = GetManifest(manifest);
+    int result = GetLocalManifest(manifest);
     if (result == 0) {
         // filter old snapshot
         if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num, deleted_key_num) < 0) {
