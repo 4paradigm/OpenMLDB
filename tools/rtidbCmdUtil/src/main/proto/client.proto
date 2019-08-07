@@ -1,0 +1,22 @@
+import "common.proto";
+package rtidb.client;
+
+message TablePartition {
+    required string endpoint = 1;
+    required string pid_group = 2;
+    required bool is_leader = 3;
+}
+
+message TableInfo {
+    required string name = 1;
+    required uint64 ttl = 2;
+    optional uint32 seg_cnt = 3 [default = 8];
+    repeated TablePartition table_partition = 4;
+    repeated rtidb.common.ColumnDesc column_desc = 5;
+    optional string ttl_type = 6 [default = "kAbsoluteTime"];
+    optional uint32 partition_num = 7;
+    optional uint32 replica_num = 8; // contain the leader
+    optional string compress_type = 9 [default = "kNoCompress"];
+    optional uint32 key_entry_max_height = 10;
+    repeated rtidb.common.ColumnKey column_key = 11;
+}
