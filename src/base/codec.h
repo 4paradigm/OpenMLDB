@@ -44,15 +44,19 @@ static inline void Encode(uint64_t time, const DataBlock* data, char* buffer, ui
     return Encode(time, data->data, data->size, buffer, offset);
 }
 
-static inline void Encode(const DataBlock* data, char* buffer, uint32_t offset) {
+static inline void Encode(const char* data, const size_t size, char* buffer, uint32_t offset) {
     buffer += offset;
-    memcpy(buffer, static_cast<const void*>(&data->size), 4);
+    memcpy(buffer, static_cast<const void*>(&size), 4);
     memrev32ifbe(buffer);
     buffer += 4;
-    memcpy(buffer, static_cast<const void*>(data->data), data->size);
+    memcpy(buffer, static_cast<const void*>(data), size);
 }
 
-static inline int32_t EncodeRows(const std::vector<DataBlock*>& rows,
+static inline void Encode(const DataBlock* data, char* buffer, uint32_t offset) {
+    return Encode(data->data, data->size, buffer, offset);
+}
+
+static inline int32_t EncodeRows(const std::vector<::rtidb::base::Slice>& rows,
                                  uint32_t total_block_size, std::string* body) {
     if (body == NULL) {
         PDLOG(WARNING, "invalid output body");
@@ -65,16 +69,14 @@ static inline int32_t EncodeRows(const std::vector<DataBlock*>& rows,
     }
     uint32_t offset = 0;
     char* rbuffer = reinterpret_cast<char*>(& ((*body)[0]));
-    std::vector<DataBlock*>::const_iterator lit = rows.begin();
-    for (; lit != rows.end(); ++lit) {
-        const DataBlock* db = *lit;
-        ::rtidb::base::Encode(db, rbuffer, offset);
-        offset += (4 + db->size);
+    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
+        ::rtidb::base::Encode(lit->data(), lit->size(), rbuffer, offset);
+        offset += (4 + lit->size());
     }
     return total_size;
 }
 
-static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, DataBlock*>>& rows,
+static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, ::rtidb::base::Slice>>& rows,
                                  uint32_t total_block_size, std::string* pairs) {
 
     if (pairs == NULL) {
@@ -89,11 +91,10 @@ static inline int32_t EncodeRows(const std::vector<std::pair<uint64_t, DataBlock
 
     char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
     uint32_t offset = 0;
-    std::vector<std::pair<uint64_t, DataBlock*> >::const_iterator lit = rows.begin();
-    for (; lit != rows.end(); ++lit) {
-        const std::pair<uint64_t, DataBlock*>& pair = *lit;
-        ::rtidb::base::Encode(pair.first, pair.second, rbuffer, offset);
-        offset += (4 + 8 + pair.second->size);
+    for (auto lit = rows.begin(); lit != rows.end(); ++lit) {
+        const std::pair<uint64_t, ::rtidb::base::Slice>& pair = *lit;
+        ::rtidb::base::Encode(pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
+        offset += (4 + 8 + pair.second.size());
     }
     return total_size;
 }

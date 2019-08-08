@@ -69,7 +69,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertIn(exp_msg, rs)
 
         d = {'k1': ('string:index', 'testvalue0'),
-             'k2': ('double:index', 1.111),
+             'k2': ('double', 1.111),
              'k3': ('int32:index', -20)}
         self.multidimension_vk = collections.OrderedDict(sorted(d.items(), key = lambda t:t[0]))
         self.multidimension_scan_vk = {'k1': 'testvalue0'}
@@ -341,7 +341,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('Create table ok',
         ('column_desc', '"k1"', '"string"', 'true'),
         ('column_desc', '"k2"', '"string"', 'true'),
-        ('column_desc', '"k3"', '"double"', 'true')),
+        ('column_desc', '"k3"', '"double"', 'false')),
 
         ('check column_desc name failed. name is card',
         ('column_desc', '"card"', '"string"', 'true'),
@@ -358,8 +358,8 @@ class TestCreateTableByNsClient(TestCaseBase):
 
         ('Create table ok',
         ('column_desc', '"k1"', '"string"', 'true'),
-        ('column_desc', '"k2"', '"float"', 'true'),
-        ('column_desc', '"k3"', '"double"', 'true'),
+        ('column_desc', '"k2"', '"float"', 'false'),
+        ('column_desc', '"k3"', '"double"', 'false'),
         ('column_desc', '"k4"', '"int32"', 'true'),
         ('column_desc', '"k5"', '"uint32"', 'true'),
         ('column_desc', '"k6"', '"int64"', 'true'),
@@ -501,6 +501,21 @@ class TestCreateTableByNsClient(TestCaseBase):
             self.assertEqual(schema[1], ['1', 'k2', 'double', 'no'])
             self.assertEqual(schema[2], ['2', 'k3', 'int32', 'yes'])
         self.ns_drop(self.ns_leader, tname)
+
+    @ddt.data(
+        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:float:index'),
+        ('float or double column can not be index', '0', '8', '1', 'card:string:index mcc:string:index money:double:index'),
+    )
+    @ddt.unpack
+    def test_create_cmd_index_float_or_double(self, exp_msg, ttl, partition_num, replica_num, schema):
+        """
+        不用文件, 直接在命令行指定建表信息
+        :return:
+        """
+        tname = 'tname{}'.format(time.time())
+        rs = self.ns_create_cmd(self.ns_leader, tname, ttl, partition_num, replica_num, schema)
+        infoLogger.info(rs)
+        self.assertIn(exp_msg, rs)
 
     @ddt.data(
         ('Fail to create table. key_entry_max_height must be greater than 0', '0'),

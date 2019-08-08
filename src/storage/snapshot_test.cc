@@ -9,7 +9,7 @@
 #include "logging.h"
 #include "base/file_util.h"
 #include "storage/snapshot.h"
-#include "storage/table.h"
+#include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "proto/tablet.pb.h"
 #include "log/log_writer.h"
@@ -110,7 +110,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 3, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0);
     table->Init();
     uint64_t offset_value;
     int ret = snapshot.MakeSnapshot(table, offset_value);
@@ -162,16 +162,16 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(31, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("key", ticket);
+    TableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(0, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -180,12 +180,12 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     it->Seek(11);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(11, it->GetKey());
-    std::string value4_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value4_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value11", value4_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(10, it->GetKey());
-    std::string value5_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value5_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value10", value5_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -231,7 +231,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 4, 4, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0);
     table->Init();
     Snapshot snapshot(4, 4, log_part);
     snapshot.Init();
@@ -240,16 +240,16 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
 
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(0, "card0", ticket);
+        TableIterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value1", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(0, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value0", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -257,16 +257,16 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
 
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        TableIterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(1, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value1", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(0, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value0", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -300,23 +300,23 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     wh->Sync();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 3, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0);
     table->Init();
     Snapshot snapshot(3, 3, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("key", ticket);
+    TableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(0, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -403,7 +403,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("card", 0));
     mapping.insert(std::make_pair("merchant", 1));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 3, 2, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(3, 2, log_part);
@@ -415,32 +415,32 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     ASSERT_EQ(2, offset);
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(0, "card0", ticket);
+        TableIterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test2", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9527, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test1", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
     }
     {
         Ticket ticket;
-        Iterator* it = table->NewIterator(1, "merchant0", ticket);
+        TableIterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9528, it->GetKey());
-        std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test2", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
         ASSERT_EQ(9527, it->GetKey());
-        std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+        std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test1", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -515,7 +515,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
 
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", 2, 2, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(2, 2, log_part);
@@ -526,16 +526,16 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(2, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("test0", ticket);
+    TableIterator* it = table->NewIterator("test0", ticket);
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9528, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test2", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9527, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test1", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -547,7 +547,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("tx_log", 1, 1, 8, mapping, 2);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 1, 1, 8, mapping, 2);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
@@ -692,7 +692,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("tx_log", 5, 1, 8, mapping, 4);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("tx_log", 5, 1, 8, mapping, 4);
     table->Init();
     table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
     uint64_t offset = 0;
@@ -895,23 +895,23 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
 
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
-    std::shared_ptr<Table> table = std::make_shared<Table>("test", tid, 0, 8, mapping, 0);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0);
     table->Init();
     Snapshot snapshot(tid, 0, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(30, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator("key_new", ticket);
+    TableIterator* it = table->NewIterator("key_new", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(0, it->GetKey());
-    std::string value3_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new0", value3_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -920,7 +920,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1, it->GetKey());
-    std::string value4_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value4_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_xxx1", value4_str);
 
     // check snapshot
@@ -1011,7 +1011,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
 	column_key2->set_index_name("mcc");
 	column_key2->add_ts_name("ts1");
 	table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
-    std::shared_ptr<Table> table = std::make_shared<Table>(table_meta);
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(table_meta);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
     Snapshot snapshot(2, 2, log_part);
@@ -1022,11 +1022,11 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(1, offset);
     Ticket ticket;
-    Iterator* it = table->NewIterator(0, 0, "card0", ticket);
+    TableIterator* it = table->NewIterator(0, 0, "card0", ticket);
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1122, it->GetKey());
-    std::string value2_str(it->GetValue()->data, it->GetValue()->size);
+    std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -1035,7 +1035,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Seek(2233);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(2233, it->GetKey());
-    value2_str.assign(it->GetValue()->data, it->GetValue()->size);
+    value2_str.assign(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
@@ -1044,7 +1044,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(1122, it->GetKey());
-    value2_str.assign(it->GetValue()->data, it->GetValue()->size);
+    value2_str.assign(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());

@@ -21,9 +21,10 @@ public:
     virtual bool Valid() = 0;
     virtual void Next() = 0;
     virtual rtidb::base::Slice GetValue() const = 0;
-    virtual std::string GetPK() const = 0;
+    virtual std::string GetPK() const { return std::string();}
     virtual uint64_t GetKey() const = 0;
     virtual void SeekToFirst() = 0;
+    virtual void SeekToLast() {};
     virtual void Seek(const std::string& pk, uint64_t time) {}
     virtual void Seek(uint64_t time) {}
 };

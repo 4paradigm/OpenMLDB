@@ -537,90 +537,83 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
 }
 
 // Iterator
-Iterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
+MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     if (entries_ == NULL || ts_cnt_ > 1) {
-        return new Iterator(NULL);
+        return new MemTableIterator(NULL);
     }
     void* entry = NULL;
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return new Iterator(NULL);
+        return new MemTableIterator(NULL);
     }
     ticket.Push((KeyEntry*)entry);
-    return new Iterator(((KeyEntry*)entry)->entries.NewIterator());
+    return new MemTableIterator(((KeyEntry*)entry)->entries.NewIterator());
 }
 
-Iterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
+MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
     if (ts_cnt_ == 1) {
         return NewIterator(key, ticket);
     }
     auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
-        return new Iterator(NULL);
+        return new MemTableIterator(NULL);
     }
     void* entry_arr = NULL;
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
-        return new Iterator(NULL);
+        return new MemTableIterator(NULL);
     }
     ticket.Push(((KeyEntry**)entry_arr)[idx]);
-    return new Iterator(((KeyEntry**)entry_arr)[idx]->entries.NewIterator());
+    return new MemTableIterator(((KeyEntry**)entry_arr)[idx]->entries.NewIterator());
 }
 
-Iterator::Iterator(TimeEntries::Iterator* it): it_(it) {}
+MemTableIterator::MemTableIterator(TimeEntries::Iterator* it): it_(it) {}
 
-Iterator::~Iterator() {
+MemTableIterator::~MemTableIterator() {
     if (it_ != NULL) {
         delete it_;
     }
 }
 
-void Iterator::Seek(const uint64_t& time) {
+void MemTableIterator::Seek(const uint64_t time) {
     if (it_ == NULL) {
         return;
     }
     it_->Seek(time);
 }
 
-bool Iterator::Valid() const {
+bool MemTableIterator::Valid() {
     if (it_ == NULL) {
         return false;
     }
     return it_->Valid();
 }
 
-void Iterator::Next() {
+void MemTableIterator::Next() {
     if (it_ == NULL) {
         return;
     }
     it_->Next();
 }
 
-DataBlock* Iterator::GetValue() const {
-    return it_->GetValue();
+::rtidb::base::Slice MemTableIterator::GetValue() const {
+    return ::rtidb::base::Slice(it_->GetValue()->data, it_->GetValue()->size);
 }
 
-uint64_t Iterator::GetKey() const {
+uint64_t MemTableIterator::GetKey() const {
     return it_->GetKey();
 }
 
-void Iterator::SeekToFirst() {
+void MemTableIterator::SeekToFirst() {
     if (it_ == NULL) {
         return;
     }
     it_->SeekToFirst();
 }
 
-void Iterator::SeekToLast() {
+void MemTableIterator::SeekToLast() {
     if (it_ == NULL) {
         return;
     }
     it_->SeekToLast();
-}
-
-uint32_t Iterator::GetSize() {
-    if (it_ == NULL) {
-        return 0; 
-    }
-    return it_->GetSize();
 }
 
 }

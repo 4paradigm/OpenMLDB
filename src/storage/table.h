@@ -1,33 +1,23 @@
 //
 // table.h
 // Copyright (C) 2017 4paradigm.com
-// Author wangtaize 
-// Date 2017-03-31 
-// 
+// Author denglong
+// Date 2019-07-24
+//
 
+#pragma once
 
-#ifndef RTIDB_STORAGE_TABLE_H
-#define RTIDB_STORAGE_TABLE_H
-
-#include <vector>
-#include <map>
-#include "storage/segment.h"
-#include "storage/ticket.h"
-#include "storage/iterator.h"
 #include <atomic>
 #include <memory>
 #include "proto/tablet.pb.h"
-
-using ::rtidb::base::Slice;
-using ::rtidb::api::LogEntry;
+#include "storage/iterator.h"
+#include "storage/ticket.h"
 
 namespace rtidb {
 namespace storage {
 
-enum TableGcType {
-    kTTL,
-    kCountLimit
-};
+typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
+typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension> TSDimensions;
 
 enum TableStat {
     kUndefined = 0,
@@ -37,124 +27,60 @@ enum TableStat {
     kSnapshotPaused
 };
 
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
-
-class MemTableTraverseIterator : public TableIterator {
-public:
-	MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::rtidb::api::TTLType ttl_type, uint64_t expire_value, uint32_t ts_index);
-	~MemTableTraverseIterator();
-	virtual bool Valid() override;
-	virtual void Next() override;
-	virtual void Seek(const std::string& key, uint64_t time) override;
-	virtual rtidb::base::Slice GetValue() const override;
-	virtual std::string GetPK() const override;
-	virtual uint64_t GetKey() const override;
-	virtual void SeekToFirst() override;
-
-private:
-    void NextPK();
-    bool IsExpired();
-
-private:
-    Segment** segments_;
-    uint32_t const seg_cnt_;
-    uint32_t seg_idx_;
-    KeyEntries::Iterator* pk_it_;
-    TimeEntries::Iterator* it_;
-    ::rtidb::api::TTLType ttl_type_;
-    uint32_t record_idx_;
-    uint32_t ts_idx_;
-    uint64_t expire_value_;
-    Ticket ticket_;
-};
-
 class Table {
 
 public:
+    Table() {}
+    Table(::rtidb::common::StorageMode storage_mode, const std::string& name, uint32_t id, uint32_t pid, 
+            uint64_t ttl, bool is_leader, uint64_t ttl_offset,
+            const std::map<std::string, uint32_t>& mapping, 
+            ::rtidb::api::TTLType ttl_type, ::rtidb::api::CompressType compress_type) :
+        storage_mode_(storage_mode), name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()),
+        ttl_(ttl), new_ttl_(ttl), ttl_offset_(ttl_offset), is_leader_(is_leader),
+        mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {}
+    virtual ~Table() {}
+	virtual bool Init() = 0;
 
-    // Create a logic table with table name , table id, table partition id 
-    // and segment count
-    Table(const std::string& name,
-          uint32_t id,
-          uint32_t pid,
-          uint32_t seg_cnt,
-          const std::map<std::string, uint32_t>& mapping,
-          uint64_t ttl);
+    virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;
 
-    Table(const ::rtidb::api::TableMeta& table_meta);
-    ~Table();
+	virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) = 0;
 
-    int InitColumnDesc();
-    int Init();
+    virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions,
+             const std::string& value) = 0;
 
-    // Put a record
-    bool Put(const std::string& pk,
-             uint64_t time,
-             const char* data,
-             uint32_t size);
+    virtual bool Put(const ::rtidb::api::LogEntry& entry) = 0;
 
-    // Put a multi dimension record
-    bool Put(uint64_t time, 
-             const std::string& value,
-             const Dimensions& dimensions);
+    virtual bool Delete(const std::string& pk, uint32_t idx) = 0;
 
-    // Note the method should incr record_cnt_ manually
-    bool Put(const Slice& pk, uint64_t time, DataBlock* row, uint32_t idx);
+	virtual TableIterator* NewIterator(const std::string& pk, Ticket& ticket) = 0;
 
-    bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
-             const std::string& value);
+    virtual TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) = 0;
 
-    bool Put(const ::rtidb::api::LogEntry& entry);
+    virtual TableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) = 0;
 
-    bool Delete(const std::string& pk, uint32_t idx);
+    virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
+    virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) = 0;
 
-    // use the first demission
-    Iterator* NewIterator(const std::string& pk, Ticket& ticket);
+    virtual bool LoadTable() { return true; }
 
-    Iterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket);
+    virtual void SchedGc() = 0;
 
-    Iterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
+    virtual uint64_t GetRecordCnt() const = 0;
 
-    MemTableTraverseIterator* NewTraverseIterator(uint32_t index);
-    MemTableTraverseIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx);
-    // release all memory allocated
-    uint64_t Release();
+    virtual bool IsExpire(const ::rtidb::api::LogEntry& entry) = 0;
 
-    uint64_t SchedGc();
+    virtual uint64_t GetExpireTime(uint64_t ttl) = 0;
 
-    uint64_t GetTTL();
-    uint64_t GetTTL(uint32_t index);
-    uint64_t GetTTL(uint32_t index, uint32_t ts_index);
-
-    int GetCount(uint32_t index, const std::string& pk, uint64_t& count);
-    int GetCount(uint32_t index, uint32_t ts_idx, const std::string& pk, uint64_t& count);
-
-    uint64_t GetRecordIdxCnt();
-    bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size);
-    uint64_t GetRecordIdxByteSize();
-    uint64_t GetRecordPkCnt();
-
-    void SetCompressType(::rtidb::api::CompressType compress_type);
-    ::rtidb::api::CompressType GetCompressType();
-
-    inline uint64_t GetRecordByteSize() const {
-        return record_byte_size_.load(std::memory_order_relaxed);    
+    inline ::rtidb::common::StorageMode GetStorageMode() const {
+        return storage_mode_;
     }
 
-    inline uint64_t GetRecordCnt() const {
-        return record_cnt_.load(std::memory_order_relaxed);
-    }
-
-    inline std::string GetName() const {
+	inline std::string GetName() const {
         return name_;
     }
 
     inline uint32_t GetId() const {
         return id_;
-    }
-
-    inline uint32_t GetSegCnt() const {
-        return seg_cnt_;
     }
 
     inline uint32_t GetIdxCnt() const {
@@ -172,8 +98,8 @@ public:
     void SetLeader(bool is_leader) {
         is_leader_ = is_leader;
     }
-
-    inline uint32_t GetTableStat() {
+	
+	inline uint32_t GetTableStat() {
         return table_status_.load(std::memory_order_relaxed);
     }
 
@@ -185,31 +111,15 @@ public:
         return schema_;
     }
 
+    inline const ::rtidb::api::CompressType GetCompressType() {
+        return compress_type_;
+    }
+
     const ::rtidb::api::TableMeta& GetTableMeta() const {
         return table_meta_;
     }
 
-    inline void SetExpire(bool is_expire) {
-        enable_gc_.store(is_expire, std::memory_order_relaxed);
-    }
-
-    uint64_t GetExpireTime(uint64_t ttl);
-
-    bool IsExpire(const LogEntry& entry);
-
-    inline bool GetExpireStatus() {
-        return enable_gc_.load(std::memory_order_relaxed);
-    }
-
-    inline void SetTimeOffset(int64_t offset) {
-        time_offset_.store(offset * 1000, std::memory_order_relaxed); // convert to millisecond
-    }
-
-    inline int64_t GetTimeOffset() {
-       return  time_offset_.load(std::memory_order_relaxed) / 1000;
-    }
-
-    inline std::map<std::string, uint32_t>& GetMapping() {
+	inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }
 
@@ -219,22 +129,37 @@ public:
 
     inline std::map<uint32_t, std::vector<uint32_t>>& GetColumnMap() {
         return column_key_map_;
-    }   
-
-    inline void RecordCntIncr() {
-        record_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
 
-    inline void RecordCntIncr(uint32_t cnt) {
-        record_cnt_.fetch_add(cnt, std::memory_order_relaxed);
-    }
-
-    inline void SetTTLType(const ::rtidb::api::TTLType& type) {
+	inline void SetTTLType(const ::rtidb::api::TTLType& type) {
         ttl_type_ = type;
     }
 
     inline ::rtidb::api::TTLType& GetTTLType() {
         return ttl_type_;
+    }
+
+    uint64_t GetTTL() {
+        return GetTTL(0);
+    }
+
+    uint64_t GetTTL(uint32_t index) {
+        uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+        auto pos = column_key_map_.find(index);
+        if (pos != column_key_map_.end() && !pos->second.empty()) {
+            if (pos->second.front() < ttl_vec_.size()) {
+                ttl = ttl_vec_[pos->second.front()]->load(std::memory_order_relaxed);
+            }
+        }
+        return ttl / (60 * 1000);
+    }
+
+    uint64_t GetTTL(uint32_t index, uint32_t ts_index) {
+        uint64_t ttl = ttl_.load(std::memory_order_relaxed);
+        if (ts_index < ttl_vec_.size()) {
+            ttl = ttl_vec_[ts_index]->load(std::memory_order_relaxed);
+        }
+        return ttl / (60 * 1000);
     }
 
     inline void SetTTL(uint64_t ttl) {
@@ -247,24 +172,16 @@ public:
         }
     }
 
-    inline uint32_t GetKeyEntryHeight() {
-        return key_entry_max_height_;
-    }
-
-private:
-    std::string const name_;
-    uint32_t const id_;
-    uint32_t const pid_;
-    uint32_t seg_cnt_;
+protected:
+    ::rtidb::common::StorageMode storage_mode_;
+	std::string name_;
+    uint32_t id_;
+    uint32_t pid_;
     uint32_t idx_cnt_;
-    Segment*** segments_;
-    std::atomic<bool> enable_gc_;
-    std::atomic<uint64_t> ttl_;
+	std::atomic<uint64_t> ttl_;
     std::atomic<uint64_t> new_ttl_;
     uint64_t ttl_offset_;
-    std::atomic<uint64_t> record_cnt_;
     bool is_leader_;
-    std::atomic<int64_t> time_offset_;
     std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
@@ -272,15 +189,10 @@ private:
     std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_ttl_vec_;
-    bool segment_released_;
-    std::atomic<uint64_t> record_byte_size_;
-    ::rtidb::api::TTLType ttl_type_;
+	::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
-    uint32_t key_entry_max_height_;
     ::rtidb::api::TableMeta table_meta_;
 };
 
 }
 }
-
-#endif /* !TABLE_H */

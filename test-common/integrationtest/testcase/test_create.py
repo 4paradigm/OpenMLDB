@@ -36,11 +36,11 @@ class TestCreateTable(TestCaseBase):
         :return:
         """
         rs1 = self.create(self.leader, 't', self.tid, self.pid, 144000, 2, 'true',
-                          card='string:index', merchant='string:index', amt='double:index')
+                          card='string:index', merchant='string:index', amt='double')
         self.assertIn('Create table ok' ,rs1)
         (schema, column_key) = self.showschema(self.leader, self.tid, self.pid)
         self.assertEqual(schema[0], ['0', 'merchant', 'string', 'yes'])
-        self.assertEqual(schema[1], ['1', 'amt', 'double', 'yes'])
+        self.assertEqual(schema[1], ['1', 'amt', 'double', 'no'])
         self.assertEqual(schema[2], ['2', 'card', 'string', 'yes'])
 
 

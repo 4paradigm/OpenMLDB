@@ -25,13 +25,24 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      const std::map<std::string, uint32_t> &mapping, 
                      uint64_t ttl, ::rtidb::api::TTLType ttl_type,
                      ::rtidb::common::StorageMode storage_mode) :
-        name_(name), id_(id), pid_(pid), idx_cnt_(mapping.size()), schema_(), mapping_(mapping),
-        ttl_(ttl * 60 * 1000), ttl_type_(ttl_type), storage_mode_(storage_mode), offset_(0) {
+        Table(storage_mode, name, id, pid, ttl * 60 * 1000, true, 0, mapping, ttl_type, 
+                ::rtidb::api::CompressType::kNoCompress),
+        offset_(0) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
     db_ = nullptr;
-    is_leader_ = true;
+}
+
+DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta) :
+        Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
+                0, true, 0, std::map<std::string, uint32_t>(), 
+                ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress) {
+    table_meta_.CopyFrom(table_meta);
+    if (!options_template_initialized) {
+        initOptionTemplate();
+    }
+    db_ = nullptr;
 }
 
 DiskTable::~DiskTable() {
@@ -115,6 +126,31 @@ bool DiskTable::InitColumnFamilyDescriptor() {
 }
 
 bool DiskTable::Init() {
+    if (mapping_.empty()) {
+        for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
+            mapping_.insert(std::make_pair(table_meta_.dimensions(i),
+                           (uint32_t)i));
+            PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta_.dimensions(i).c_str(),
+                    i, table_meta_.name().c_str(), table_meta_.tid(), table_meta_.pid());
+        }
+        // add default dimension
+        if (mapping_.empty()) {
+            mapping_.insert(std::make_pair("idx0", 0));
+            PDLOG(INFO, "no index specified with default");
+        }
+    }
+    if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
+        is_leader_ = false;
+    }
+    if (table_meta_.has_ttl()) {
+        ttl_ = table_meta_.ttl() * 60 * 1000;
+        new_ttl_.store(ttl_.load());
+    }
+    if (table_meta_.has_schema()) schema_ = table_meta_.schema();
+    if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
+    if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
+    idx_cnt_ = mapping_.size();
+
     InitColumnFamilyDescriptor();
     std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
@@ -167,6 +203,16 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
         PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
         return false;
     }
+}
+
+bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) {
+    // TODO
+    return true;
+}
+
+bool DiskTable::Put(const ::rtidb::api::LogEntry& entry) {
+    // TODO
+    return true;
 }
 
 bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
@@ -317,6 +363,14 @@ void DiskTable::GcHead() {
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
 }
 
+uint64_t DiskTable::GetExpireTime(uint64_t ttl) {
+    if (ttl == 0 || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        return 0;
+    }
+    uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+    return cur_time - ttl * 60 * 1000;
+}
+
 uint64_t DiskTable::GetExpireTime() {
     if (ttl_.load(std::memory_order_relaxed) == 0
             || ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
@@ -326,11 +380,17 @@ uint64_t DiskTable::GetExpireTime() {
     return cur_time - ttl_.load(std::memory_order_relaxed);
 }
 
-DiskTableIterator* DiskTable::NewIterator(const std::string &pk) {
-    return DiskTable::NewIterator(0, pk);
+
+bool DiskTable::IsExpire(const ::rtidb::api::LogEntry& entry) {
+    // TODO
+    return false;
 }
 
-DiskTableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk) {
+TableIterator* DiskTable::NewIterator(const std::string &pk, Ticket& ticket) {
+    return DiskTable::NewIterator(0, pk, ticket);
+}
+
+TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) {
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
@@ -340,7 +400,12 @@ DiskTableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk) {
     return new DiskTableIterator(db_, it, snapshot, pk);
 }
 
-DiskTableTraverseIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
+TableIterator* DiskTable::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+    // TODO
+    return NULL;
+}
+
+TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
@@ -357,6 +422,11 @@ DiskTableTraverseIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
         expire_value = cur_time - ttl_.load(std::memory_order_relaxed);
     }
     return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_, expire_value);
+}
+
+TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
+    // TODO
+    return NULL;
 }
 
 DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, 

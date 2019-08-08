@@ -41,6 +41,7 @@ public class TableSchemaAsyncClientHandleNullTest extends TestCaseBase {
 
     private int createTable() {
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
         ColumnDesc desc1 = new ColumnDesc();
         desc1.setAddTsIndex(true);

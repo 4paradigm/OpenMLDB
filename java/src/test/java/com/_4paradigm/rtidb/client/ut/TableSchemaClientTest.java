@@ -57,6 +57,52 @@ public class TableSchemaClientTest extends TestCaseBase {
     }
 
     @Test
+    public void testCreateTableIndexTypeFloatOrDouble() {
+        {
+            int tid = id.incrementAndGet();
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            ColumnDesc desc1 = new ColumnDesc();
+            desc1.setAddTsIndex(true);
+            desc1.setName("card1");
+            desc1.setType(ColumnType.kString);
+            schema.add(desc1);
+            ColumnDesc desc2 = new ColumnDesc();
+            desc2.setAddTsIndex(true);
+            desc2.setName("card2");
+            desc2.setType(ColumnType.kString);
+            schema.add(desc2);
+            ColumnDesc desc3 = new ColumnDesc();
+            desc3.setAddTsIndex(true);
+            desc3.setName("memory");
+            desc3.setType(ColumnType.kFloat);
+            schema.add(desc3);
+            boolean ok = tabletClient.createTable("", tid, 0, 0, 8, schema);
+            Assert.assertFalse(ok);
+        }
+        {
+            int tid = id.incrementAndGet();
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            ColumnDesc desc1 = new ColumnDesc();
+            desc1.setAddTsIndex(true);
+            desc1.setName("card1");
+            desc1.setType(ColumnType.kString);
+            schema.add(desc1);
+            ColumnDesc desc2 = new ColumnDesc();
+            desc2.setAddTsIndex(true);
+            desc2.setName("card2");
+            desc2.setType(ColumnType.kString);
+            schema.add(desc2);
+            ColumnDesc desc3 = new ColumnDesc();
+            desc3.setAddTsIndex(true);
+            desc3.setName("memory");
+            desc3.setType(ColumnType.kDouble);
+            schema.add(desc3);
+            boolean ok = tabletClient.createTable("", tid, 0, 0, 8, schema);
+            Assert.assertFalse(ok);
+        }
+    }
+
+    @Test
     public void testLatestTtlCreate() {
         int tid = id.incrementAndGet();
         List<ColumnDesc> schema = new ArrayList<ColumnDesc>();

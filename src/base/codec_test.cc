@@ -22,7 +22,7 @@ public:
 };
 
 TEST_F(CodecTest, EncodeRows_empty) {
-    std::vector<std::pair<uint64_t, ::rtidb::storage::DataBlock*>> data;
+    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     std::string pairs;
     int32_t size = ::rtidb::base::EncodeRows(data, 0, &pairs);
     ASSERT_EQ(size, 0);
@@ -30,20 +30,20 @@ TEST_F(CodecTest, EncodeRows_empty) {
 
 
 TEST_F(CodecTest, EncodeRows_invalid) {
-    std::vector<std::pair<uint64_t, ::rtidb::storage::DataBlock*>> data;
+    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     int32_t size = ::rtidb::base::EncodeRows(data, 0, NULL);
     ASSERT_EQ(size, -1);
 }
 
 TEST_F(CodecTest, EncodeRows) {
-    std::vector<std::pair<uint64_t, ::rtidb::storage::DataBlock*>> data;
+    std::vector<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
     uint32_t total_block_size = test1.length() + test2.length() + empty.length();
-    data.push_back(std::make_pair(1, new ::rtidb::storage::DataBlock(1, test1.c_str(), test1.length())));
-    data.push_back(std::make_pair(2, new ::rtidb::storage::DataBlock(1, test2.c_str(), test2.length())));
-    data.push_back(std::make_pair(3, new ::rtidb::storage::DataBlock(1, empty.c_str(), empty.length())));
+    data.push_back(std::make_pair(1, ::rtidb::base::Slice(test1.c_str(), test1.length())));
+    data.push_back(std::make_pair(2, ::rtidb::base::Slice(test2.c_str(), test2.length())));
+    data.push_back(std::make_pair(3, ::rtidb::base::Slice(empty.c_str(), empty.length())));
     std::string pairs;
     int32_t size = ::rtidb::base::EncodeRows(data, total_block_size, &pairs);
     ASSERT_EQ(size, 3 * 12 + 6 + 6);
