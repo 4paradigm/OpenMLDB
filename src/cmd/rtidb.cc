@@ -1158,31 +1158,78 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "count format error" << std::endl;
         return;
     }
-    bool filter_expired_data = false;
+    std::string table_name;
+    std::string key;
     std::string idx_name;
+    std::string ts_name;
+    bool filter_expired_data = false;
     uint64_t value = 0;
-    if (parts.size() == 4) {
-        if (parts[3] == "true") {
-            filter_expired_data = true;
-        } else if (parts[3] == "false") {
-            filter_expired_data = false;
-        } else {
-            idx_name = parts[3];
+    std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
+    bool has_ts_col = false;
+    if (temp_vec[0] == "table_name") {
+        has_ts_col = true; 
+        if (parts.size() == 5 || parts.size() == 6) {
+            table_name = temp_vec[1];
+            ::rtidb::base::SplitString(parts[2],"=", &temp_vec);
+            if (temp_vec[0] == "key") {
+                key = temp_vec[1];
+            }
+            ::rtidb::base::SplitString(parts[3],"=", &temp_vec);
+            if (temp_vec[0] == "index_name") {
+                idx_name = temp_vec[1];
+            }
+            ::rtidb::base::SplitString(parts[4],"=", &temp_vec);
+            if (temp_vec[0] == "ts_name") {
+                ts_name = temp_vec[1];
+            }    
+        } 
+        if (parts.size() == 6) {
+            ::rtidb::base::SplitString(parts[5],"=", &temp_vec);
+            if (temp_vec[0] == "filter_expired_data") {
+                if (temp_vec[1] == "true") {
+                    filter_expired_data = true;
+                } else if (temp_vec[1] == "false") {
+                    filter_expired_data = false;
+                } else {
+                    printf("filter_expired_data parameter should be true or false\n");
+                    return;
+                }   
+            } 
         }
-    } else if (parts.size() > 4) {
-        idx_name =  parts[3];
-        if (parts[4] == "true") {
-            filter_expired_data = true;
-        } else if (parts[4] == "false") {
-            filter_expired_data = false;
-        } else {
-            printf("filter_expired_data parameter should be true or false\n");
+        if (parts.size() != 5 && parts.size() != 6) {
+            std::cout << "count format error" << std::endl;
+            return;
+        }
+    } else {
+        table_name = parts[1];
+        key = parts[2];
+        if (parts.size() == 4) {
+            if (parts[3] == "true") {
+                filter_expired_data = true;
+            } else if (parts[3] == "false") {
+                filter_expired_data = false;
+            } else {
+                idx_name = parts[3];
+            }
+        } else if (parts.size() == 5) {
+            idx_name =  parts[3];
+            if (parts[4] == "true") {
+                filter_expired_data = true;
+            } else if (parts[4] == "false") {
+                filter_expired_data = false;
+            } else {
+                printf("filter_expired_data parameter should be true or false\n");
+                return;
+            }
+        } else if (parts.size() != 3){
+            std::cout << "count format error" << std::endl;
             return;
         }
     }
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
-    bool ret = client->ShowTable(parts[1], tables, msg);
+    bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
         std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
@@ -1192,14 +1239,18 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         return;
     }
     uint32_t tid = tables[0].tid();
-    std::string key = parts[2];
     uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
     if (!tablet_client) {
         std::cout << "failed to count. cannot not found tablet client, pid is " << pid << std::endl;
         return;
     }
-    bool ok = tablet_client->Count(tid, pid, key, idx_name, filter_expired_data, value, msg);
+    bool ok = false;
+    if (has_ts_col) {
+        ok = tablet_client->Count(tid, pid, key, idx_name, ts_name, filter_expired_data, value, msg); 
+    } else {
+        ok = tablet_client->Count(tid, pid, key, idx_name, filter_expired_data, value, msg);
+    }
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
