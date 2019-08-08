@@ -12,6 +12,7 @@
 #include "logging.h"
 #include <limits.h>
 #include <stdlib.h>
+#include <boost/algorithm/string/predicate.hpp>
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -41,6 +42,9 @@ bool DiskTableSnapshot::Init() {
         return false;
     }
     snapshot_path_.assign(abs_path_buff);
+    if (!boost::ends_with(snapshot_path_, "/")) {
+        snapshot_path_.append("/");
+    }
     return true;
 }
 
@@ -53,6 +57,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
     std::string now_time = ::rtidb::base::GetNowTime();
     std::string snapshot_dir = snapshot_path_ + now_time.substr(0, now_time.length() - 2);
     if (::rtidb::base::IsExists(snapshot_dir)) {
+        PDLOG(WARNING, "checkpoint dir[%s] is exist", snapshot_dir.c_str());
         making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
@@ -75,6 +80,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
                 PDLOG(WARNING, "delete checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
             }
         }
+        offset_ = cur_offset;
     } else {
         PDLOG(WARNING, "GenManifest failed. delete checkpoint[%s]", snapshot_dir.c_str());
         ret = -1;

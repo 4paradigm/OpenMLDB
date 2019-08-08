@@ -753,10 +753,6 @@ void TabletImpl::Put(RpcController* controller,
         return;
     }
     response->set_code(0);
-    if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-        done->Run();
-        return;
-    }
     std::shared_ptr<LogReplicator> replicator;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
@@ -1876,12 +1872,12 @@ void TabletImpl::GetTableStatus(RpcController* controller,
             if (::rtidb::api::TableState_IsValid(table->GetTableStat())) {
                 status->set_state(::rtidb::api::TableState(table->GetTableStat()));
             }
+            std::shared_ptr<LogReplicator> replicator = GetReplicatorUnLock(table->GetId(), table->GetPid());
+            if (replicator) {
+                status->set_offset(replicator->GetOffset());
+            }
             status->set_record_cnt(table->GetRecordCnt());
-            if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-                if (DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get())) {
-                    status->set_offset(disk_table->GetOffset());
-                }
-            } else {
+            if (table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
                 if (MemTable* mem_table = dynamic_cast<MemTable*>(table.get())) {
                     status->set_time_offset(mem_table->GetTimeOffset());
                     status->set_is_expire(mem_table->GetExpireStatus());
@@ -1905,10 +1901,6 @@ void TabletImpl::GetTableStatus(RpcController* controller,
                         delete stats;
                     }
                     status->set_idx_cnt(record_idx_cnt);
-                    std::shared_ptr<LogReplicator> replicator = GetReplicatorUnLock(table->GetId(), table->GetPid());
-                    if (replicator) {
-                        status->set_offset(replicator->GetOffset());
-                    }
                 }
             }
             if (request->has_need_schema() && request->need_schema()) {
@@ -2011,7 +2003,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, std::shared_pt
     int ret = 0;
     if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset) {
         PDLOG(INFO, "offset can't reach the threshold. tid[%u] pid[%u] cur_offset[%lu], snapshot_offset[%lu]", tid, pid, cur_offset, snapshot_offset);
-    }else {
+    } else {
 		uint64_t offset = 0;
 		ret = snapshot->MakeSnapshot(table, offset);
 		if (ret == 0) {
@@ -2772,6 +2764,19 @@ void TabletImpl::CreateTable(RpcController* controller,
         PDLOG(WARNING, "check table_meta failed. tid[%u] pid[%u], err_msg[%s]", tid, pid, msg.c_str());
         return;
     }
+    std::shared_ptr<Table> table = GetTable(tid, pid);
+    std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+    if (table || snapshot) {
+        if (table) {
+            PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+        }
+        if (snapshot) {
+            PDLOG(WARNING, "snapshot with tid[%u] and pid[%u] exists", tid, pid);
+        }
+        response->set_code(101);
+        response->set_msg("table already exists");
+        return;
+    }       
     ::rtidb::api::TTLType type = table_meta->ttl_type();
     uint64_t ttl = table_meta->ttl();
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
@@ -2779,13 +2784,6 @@ void TabletImpl::CreateTable(RpcController* controller,
     std::string name = table_meta->name();
     if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::lock_guard<std::mutex> lock(mu_);
-        std::shared_ptr<Table> disk_table = GetTableUnLock(tid, pid);
-        if (disk_table) {
-            PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-            response->set_code(101);
-            response->set_msg("table already exists");
-            return;
-        }
         std::string db_root_path = table_meta->storage_mode() == 
                     ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     	std::string table_db_path = db_root_path + "/" + std::to_string(tid) +
@@ -2802,42 +2800,16 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_msg(msg.c_str());
             return;
         }
-        if (table_meta->ttl() > 0) {
-            gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
-        }
-        response->set_code(0);
-        response->set_msg("ok");
-        PDLOG(INFO, "create table ok. tid[%u] pid[%u] storage mode[%s]", 
-                    tid, pid, ::rtidb::common::StorageMode_Name(table_meta->storage_mode()).c_str());
-        return;
-    }
-    uint32_t seg_cnt = 8;
-    if (table_meta->seg_cnt() > 0) {
-        seg_cnt = table_meta->seg_cnt();
-    }
-    {
+    } else {
         std::lock_guard<std::mutex> lock(mu_);
-        std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
-        std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
-        if (table || snapshot) {
-            if (table) {
-                PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
-            }
-            if (snapshot) {
-                PDLOG(WARNING, "snapshot with tid[%u] and pid[%u] exists", tid, pid);
-            }
-            response->set_code(101);
-            response->set_msg("table already exists");
-            return;
-        }       
-    	std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(tid) +
+        std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(tid) +
                         "_" + std::to_string(pid);
-		if (WriteTableMeta(table_db_path, table_meta) < 0) {
-        	PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
+        if (WriteTableMeta(table_db_path, table_meta) < 0) {
+            PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
             response->set_code(127);
             response->set_msg("write data failed");
             return;
-		}
+        }
         std::string msg;
         if (CreateTableInternal(table_meta, msg) < 0) {
             response->set_code(131);
@@ -2847,7 +2819,7 @@ void TabletImpl::CreateTable(RpcController* controller,
     }
     response->set_code(0);
     response->set_msg("ok");
-    std::shared_ptr<Table> table = GetTable(tid, pid);        
+    table = GetTable(tid, pid);        
     if (!table) {
         PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
         return; 
@@ -2861,8 +2833,8 @@ void TabletImpl::CreateTable(RpcController* controller,
     replicator->StartSyncing();
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
     task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
-    PDLOG(INFO, "create table with id %u pid %u name %s seg_cnt %d ttl %llu type %s", tid, 
-            pid, name.c_str(), seg_cnt, ttl, ::rtidb::api::TTLType_Name(type).c_str());
+    PDLOG(INFO, "create table with id %u pid %u name %s ttl %llu type %s", 
+                tid, pid, name.c_str(), ttl, ::rtidb::api::TTLType_Name(type).c_str());
     gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
 }
 
@@ -3197,9 +3169,39 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
         msg.assign("fail to init snapshot");
         return -1;
     }
+    std::string table_db_path = table_meta->storage_mode() == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
+    table_db_path += "/" + std::to_string(table_meta->tid()) + "_" + std::to_string(table_meta->pid());
+    std::shared_ptr<LogReplicator> replicator;
+    if (table->IsLeader()) {
+        replicator = std::make_shared<LogReplicator>(table_db_path, 
+                                                     std::vector<std::string>(),
+                                                     ReplicatorRole::kLeaderNode, 
+                                                     table);
+    } else {
+        replicator = std::make_shared<LogReplicator>(table_db_path, 
+                                                     std::vector<std::string>(), 
+                                                     ReplicatorRole::kFollowerNode,
+                                                     table);
+    }
+    if (!replicator) {
+        PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u", table_meta->tid(), table_meta->pid());
+        msg.assign("fail create replicator for table");
+        return -1;
+    }
+    bool ok = replicator->Init();
+    if (!ok) {
+        PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u", table_meta->tid(), table_meta->pid());
+        // clean memory
+        msg.assign("fail init replicator for table");
+        return -1;
+    }
+    if (!FLAGS_zk_cluster.empty() && table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
+        replicator->SetLeaderTerm(table_meta->term());
+    }
     std::shared_ptr<Snapshot> snapshot(snapshot_ptr);
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
+    replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
     return 0;
 }
 

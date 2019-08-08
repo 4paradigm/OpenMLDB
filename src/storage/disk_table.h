@@ -284,6 +284,7 @@ public:
 
 private:
     rocksdb::DB* db_;
+    rocksdb::WriteOptions write_opts_;
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
     std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;
