@@ -268,6 +268,14 @@ public:
                             std::string* pairs,
                             uint32_t* count);
 
+    int32_t CountLatestIndex(uint64_t ttl, 
+                            ::rtidb::storage::Iterator* it,
+                            uint64_t st,
+                            const ::rtidb::api::GetType& st_type,
+                            uint64_t et,
+                            const ::rtidb::api::GetType& et_type,
+                            uint32_t* count);
+
     // get one value from latest index
     int32_t GetLatestIndex(uint64_t ttl,
                            ::rtidb::storage::Iterator* it,
@@ -297,6 +305,15 @@ public:
                           uint64_t et,
                           const rtidb::api::GetType& et_type,
                           std::string* pairs,
+                          uint32_t* count,
+                          bool remove_duplicated_record);
+
+    int32_t CountTimeIndex(uint64_t expire_ts, 
+                          ::rtidb::storage::Iterator* it,
+                          uint64_t st,
+                          const rtidb::api::GetType& st_type,
+                          uint64_t et,
+                          const rtidb::api::GetType& et_type,
                           uint32_t* count,
                           bool remove_duplicated_record);
 

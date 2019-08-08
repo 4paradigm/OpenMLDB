@@ -374,10 +374,14 @@ public class TabletSchemaClientTest  extends TestCaseBase {
             Assert.assertTrue(false);
         }
         try {
-            tableClient.scan(tid, 0, "9527", "card", 12l, 0l);
-            Assert.assertTrue(false);
+            KvIterator it = tableClient.scan(tid, 0, "9527", "card", 12l, 0l);
+            Assert.assertTrue(it.valid());
+            Object[] row = it.getDecodedValue();
+            Assert.assertEquals(1, it.getCount());
+            Assert.assertTrue((Double)row[2] > 2.0 );
         }catch(TabletException e) {
-            Assert.assertTrue(true);
+            e.printStackTrace();
+            Assert.assertTrue(false);
         }
 
 
@@ -523,7 +527,8 @@ public class TabletSchemaClientTest  extends TestCaseBase {
         Assert.assertEquals(4.0d, row[2]);
         tabletClient.dropTable(tid, 0);
     }
-    
+
+    @Test
     public void testUtf8() throws TimeoutException, TabletException {
         int tid = id.incrementAndGet();
         List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
