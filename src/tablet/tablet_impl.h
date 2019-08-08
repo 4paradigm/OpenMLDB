@@ -269,7 +269,7 @@ public:
                             uint32_t* count);
 
     int32_t CountLatestIndex(uint64_t ttl, 
-                            ::rtidb::storage::Iterator* it,
+                            ::rtidb::storage::TableIterator* it,
                             uint64_t st,
                             const ::rtidb::api::GetType& st_type,
                             uint64_t et,
@@ -309,7 +309,7 @@ public:
                           bool remove_duplicated_record);
 
     int32_t CountTimeIndex(uint64_t expire_ts, 
-                          ::rtidb::storage::Iterator* it,
+                          ::rtidb::storage::TableIterator* it,
                           uint64_t st,
                           const rtidb::api::GetType& st_type,
                           uint64_t et,

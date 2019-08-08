@@ -902,7 +902,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta, std::str
 }
 
 int32_t TabletImpl::CountTimeIndex(uint64_t expire_ts, 
-                          ::rtidb::storage::Iterator* it,
+                          ::rtidb::storage::TableIterator* it,
                           uint64_t st,
                           const rtidb::api::GetType& st_type,
                           uint64_t et,
@@ -1082,7 +1082,7 @@ int32_t TabletImpl::ScanTimeIndex(uint64_t expire_ts,
 }
 
 int32_t TabletImpl::CountLatestIndex(uint64_t ttl, 
-                            ::rtidb::storage::Iterator* it,
+                            ::rtidb::storage::TableIterator* it,
                             uint64_t st,
                             const ::rtidb::api::GetType& st_type,
                             uint64_t et,
