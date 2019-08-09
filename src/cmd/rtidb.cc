@@ -983,12 +983,62 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::rtidb::client::NsCl
 
 void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 4) {
-        std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts" << std::endl;
+        std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts | get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
         return;
+    }
+    std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
+    std::map<std::string, std::string> parameter_map;
+    bool has_ts_col = false;
+    if (temp_vec.size() == 2 && temp_vec[0] == "table_name") {
+        has_ts_col = true;
+        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        for (uint32_t i = 2; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                std::cout << "get format error. eg: get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
+                return;
+            }
+            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        }
+    }
+    std::string table_name;
+    std::string key;
+    std::string index_name;
+    uint64_t timestamp = 0;
+    std::string ts_name;
+    auto it = parameter_map.begin();
+    if (has_ts_col) {
+        it = parameter_map.find("table_name");
+        if (it != parameter_map.end()) {
+            table_name = it->second;
+        }
+        it = parameter_map.find("key");
+        if (it != parameter_map.end()) {
+            key = it->second;
+        }
+        it = parameter_map.find("index_name");
+        if (it != parameter_map.end()) {
+            index_name = it->second;
+        }
+        it = parameter_map.find("ts");
+        if (it != parameter_map.end()) {
+            timestamp = boost::lexical_cast<uint64_t>(it->second);
+        }
+        it = parameter_map.find("ts_name");
+        if (it != parameter_map.end()) {
+            ts_name = it->second;
+        }
     }
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
-    bool ret = client->ShowTable(parts[1], tables, msg);
+    bool ret = false;
+    if (has_ts_col) {
+        ret = client->ShowTable(table_name, tables, msg);
+    } else {
+        ret = client->ShowTable(parts[1], tables, msg);
+        key = parts[2];
+    }
     if (!ret) {
         std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
@@ -998,7 +1048,6 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         return;
     }
     uint32_t tid = tables[0].tid();
-    std::string key = parts[2];
     uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
     if (!tablet_client) {
@@ -1047,7 +1096,13 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         uint64_t ts = 0;
         try {
             std::string msg;
-            if (parts.size() > 4) {
+            if (parts.size() == 6) {
+                if (!tablet_client->Get(tid, pid, key, 
+                               timestamp, index_name, ts_name, value, ts, msg)) {
+                   std::cout << "Fail to get value! error msg: " << msg << std::endl;
+                   return;
+                }
+            } else if (parts.size() == 5) {
                 if (!tablet_client->Get(tid, pid, key, 
                                 boost::lexical_cast<uint64_t>(parts[4]),
                                 parts[3], value, ts, msg)) {

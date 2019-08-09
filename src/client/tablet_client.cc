@@ -923,6 +923,36 @@ bool TabletClient::Get(uint32_t tid,
     return true;
 }
 
+bool TabletClient::Get(uint32_t tid, 
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t time,
+             const std::string& idx_name,
+             const std::string& ts_name,
+             std::string& value,
+             uint64_t& ts,
+             std::string& msg) {
+    ::rtidb::api::GetRequest request;
+    ::rtidb::api::GetResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    request.set_ts(time);
+    request.set_idx_name(idx_name);
+    request.set_ts_name(ts_name);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (response.has_msg()) {
+        msg = response.msg();
+    }
+    if (!ok || response.code()  != 0) {
+        return false;
+    }
+    ts = response.ts();
+    value.assign(response.value());
+    return true;
+}
+
 bool TabletClient::Delete(uint32_t tid, uint32_t pid,
              const std::string& pk, const std::string& idx_name,
              std::string& msg) {
