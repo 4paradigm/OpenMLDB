@@ -62,6 +62,8 @@ public:
 
     int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
 
+    void Put(const std::string& path, std::shared_ptr<Table>& table, std::shared_ptr<::rtidb::base::Slice> record, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
+
 private:
 
     // load single snapshot to table
