@@ -232,7 +232,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time() - consumed;
                 PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
-                        path.c_str(), tid_, pid_, succ_cnt.load(std::memory_order_relaxed), failed_cnt.load(std::memory_order_relaxed), consumed);
+                        path.c_str(), tid_, pid_, succ_cnt, failed_cnt, consumed);
                 break;
             }
             if (!status.ok()) {
