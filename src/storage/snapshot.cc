@@ -264,7 +264,7 @@ void Snapshot::Put(const std::string& path, std::shared_ptr<Table>& table, const
     bool ok = entry.ParseFromString(record.ToString());
     if (!ok) {
        PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-              ::rtidb::base::DebugString(record.get()->ToString()).c_str());
+              ::rtidb::base::DebugString(record.ToString()).c_str());
         failed_cnt->fetch_add(1, std::memory_order_relaxed);
         delete record.data();
         return;
