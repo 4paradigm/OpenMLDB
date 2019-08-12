@@ -244,8 +244,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             }
             char* pk = new char[record.size()];
             memcpy(pk, record.data(), record.size());
-            Slice* skey = new ::rtidb::base::Slice(pk, record.size());
-            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, std::make_shared<::rtidb::base::Slice>(*skey), &succ_cnt, &failed_cnt));
+            Slice skey = ::rtidb::base::Slice(pk, record.size());
+            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, skey, &succ_cnt, &failed_cnt));
         }
         // will close the fd atomic
         delete seq_file;
@@ -259,13 +259,14 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     load_pool_.Stop(true);
 }
 
-void Snapshot::Put(const std::string& path, std::shared_ptr<Table>& table, std::shared_ptr<::rtidb::base::Slice> record, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
+void Snapshot::Put(const std::string& path, std::shared_ptr<Table>& table, const ::rtidb::base::Slice& record, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::rtidb::api::LogEntry entry;
-    bool ok = entry.ParseFromString(record.get()->ToString());
+    bool ok = entry.ParseFromString(record.ToString());
     if (!ok) {
        PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
               ::rtidb::base::DebugString(record.get()->ToString()).c_str());
         failed_cnt->fetch_add(1, std::memory_order_relaxed);
+        delete record.data();
         return;
     }
     succ_cnt->fetch_add(1, std::memory_order_relaxed);
@@ -274,6 +275,7 @@ void Snapshot::Put(const std::string& path, std::shared_ptr<Table>& table, std::
               succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
     }
     table->Put(entry);
+    delete record.data();
 
 }
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
