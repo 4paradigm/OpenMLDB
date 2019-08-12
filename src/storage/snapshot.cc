@@ -209,10 +209,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
     ThreadPool load_pool_;
-    std::atomic<uint64_t> succ_cnt;
-    std::atomic<uint64_t> failed_cnt;
-    succ_cnt.store(0, std::memory_order_relaxed);
-    failed_cnt.store(0, std::memory_order_relaxed);
+    uint64_t succ_cnt = 0;
+    uint64_t failed_cnt = 0;
     do {
         if (table == NULL) {
             PDLOG(WARNING, "table input is NULL");
@@ -242,10 +240,21 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 failed_cnt++;
                 continue;
             }
-            char* pk = new char[record.size()];
-            memcpy(pk, record.data(), record.size());
-            Slice skey = ::rtidb::base::Slice(pk, record.size());
-            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, skey, &succ_cnt, &failed_cnt));
+            ::rtidb::api::LogEntry entry;
+            bool ok = entry.ParseFromString(record.ToString());
+            if (!ok) {
+                failed_cnt++;
+                continue;
+            }
+            succ_cnt++;
+            if (succ_cnt % 100000 == 0) {
+                PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
+                      succ_cnt, failed_cnt);
+            }
+            table->Put(entry);
+
+
+            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, table, entry));
         }
         // will close the fd atomic
         delete seq_file;
@@ -259,24 +268,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     load_pool_.Stop(true);
 }
 
-void Snapshot::Put(const std::string& path, std::shared_ptr<Table>& table, const ::rtidb::base::Slice& record, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
-    ::rtidb::api::LogEntry entry;
-    bool ok = entry.ParseFromString(record.ToString());
-    if (!ok) {
-       PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-              ::rtidb::base::DebugString(record.ToString()).c_str());
-        failed_cnt->fetch_add(1, std::memory_order_relaxed);
-        delete record.data();
-        return;
-    }
-    succ_cnt->fetch_add(1, std::memory_order_relaxed);
-    if (succ_cnt->load(std::memory_order_relaxed) % 100000 == 0) {
-        PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
-              succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
-    }
+void Snapshot::Put(const std::string& path, std::shared_ptr<Table>& table, const ::rtidb::api::LogEntry& entry) {
     table->Put(entry);
-    delete record.data();
-
 }
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
             uint64_t& count, uint64_t& expired_key_num, uint64_t& deleted_key_num) {
