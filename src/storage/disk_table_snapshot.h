@@ -22,9 +22,11 @@ public:
     virtual bool Init() override;
     virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) override;
     virtual bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) override;
+    void SetTerm(uint64_t term) { term_ = term; }
 
 private:
     ::rtidb::common::StorageMode storage_mode_;
+    uint64_t term_;
 
 };
 

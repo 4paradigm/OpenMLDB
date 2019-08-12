@@ -26,7 +26,7 @@ namespace storage {
 
 DiskTableSnapshot::DiskTableSnapshot(uint32_t tid, uint32_t pid, 
         ::rtidb::common::StorageMode storage_mode) : Snapshot(tid, pid), 
-        storage_mode_(storage_mode) {
+        storage_mode_(storage_mode), term_(0) {
 }
 
 bool DiskTableSnapshot::Init() {
@@ -72,8 +72,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
     ::rtidb::api::Manifest manifest;
     GetLocalManifest(manifest);
     int ret = 0;
-    uint64_t last_term = 0;
-    if (GenManifest(snapshot_dir, record_count, cur_offset, last_term) == 0) {
+    if (GenManifest(snapshot_dir, record_count, cur_offset, term_) == 0) {
         if (manifest.has_name() && manifest.name() != snapshot_dir) {
             PDLOG(DEBUG, "delete old checkpoint[%s]", manifest.name().c_str());
             if (!::rtidb::base::RemoveDir(manifest.name())) {
