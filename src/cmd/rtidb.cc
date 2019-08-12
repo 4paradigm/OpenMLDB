@@ -990,7 +990,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
     std::map<std::string, std::string> parameter_map;
     bool has_ts_col = false;
-    if (temp_vec.size() == 2 && temp_vec[0] == "table_name") {
+    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
         has_ts_col = true;
         parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         for (uint32_t i = 2; i < parts.size(); i++) {
@@ -1007,27 +1007,42 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     std::string index_name;
     uint64_t timestamp = 0;
     std::string ts_name;
-    auto it = parameter_map.begin();
+    auto iter = parameter_map.begin();
     if (has_ts_col) {
-        it = parameter_map.find("table_name");
-        if (it != parameter_map.end()) {
-            table_name = it->second;
+		iter = parameter_map.find("table_name");
+        if (iter != parameter_map.end()) {
+            table_name = iter->second;
+        } else {
+            std::cout<<"get format error: table_name does not exist!"<<std::endl;
+            return;
         }
-        it = parameter_map.find("key");
-        if (it != parameter_map.end()) {
-            key = it->second;
+        iter = parameter_map.find("key");
+        if (iter != parameter_map.end()) {
+            key = iter->second;
+        } else {
+            std::cout<<"get format error: key does not exist!"<<std::endl;
+            return;
+        }   
+        iter = parameter_map.find("index_name");
+        if (iter != parameter_map.end()) {
+            index_name = iter->second;
+        } else {
+            std::cout<<"get format error: index_name does not exist!"<<std::endl;
+            return;
         }
-        it = parameter_map.find("index_name");
-        if (it != parameter_map.end()) {
-            index_name = it->second;
+        iter = parameter_map.find("ts");
+        if (iter != parameter_map.end()) {
+            timestamp = boost::lexical_cast<uint64_t>(iter->second);
+        } else {
+            std::cout<<"get format error: ts does not exist!"<<std::endl;
+            return;
         }
-        it = parameter_map.find("ts");
-        if (it != parameter_map.end()) {
-            timestamp = boost::lexical_cast<uint64_t>(it->second);
-        }
-        it = parameter_map.find("ts_name");
-        if (it != parameter_map.end()) {
-            ts_name = it->second;
+        iter = parameter_map.find("ts_name");
+        if (iter != parameter_map.end()) {
+            ts_name = iter->second;
+        } else {
+            std::cout<<"get format error: ts_name does not exist!"<<std::endl;
+            return;
         }
     }
     std::vector<::rtidb::nameserver::TableInfo> tables;
@@ -1137,12 +1152,91 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
 
 void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 5) {
-        std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit]" << std::endl;
+        std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"  << std::endl;
         return;
-    }    
+    }
+    std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
+    std::map<std::string, std::string> parameter_map;
+    bool has_ts_col = false;
+    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
+        has_ts_col = true;
+        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        for (uint32_t i = 2; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
+                return;
+            }
+            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        }
+    }
+    std::string table_name;
+    std::string key;
+    std::string index_name;
+    uint64_t st = 0;
+    uint64_t et = 0;
+    std::string ts_name;
+    uint32_t limit = 0;
+    auto iter = parameter_map.begin();
+    if (has_ts_col) {
+        iter = parameter_map.find("table_name");
+        if (iter != parameter_map.end()) {
+            table_name = iter->second;
+        } else {
+            std::cout<<"scan format error: table_name does not exist!"<<std::endl;
+            return;
+        }
+        iter = parameter_map.find("key");
+        if (iter != parameter_map.end()) {
+            key = iter->second;
+        } else {
+            std::cout<<"scan format error: key does not exist!"<<std::endl;
+            return;
+        }   
+        iter = parameter_map.find("index_name");
+        if (iter != parameter_map.end()) {
+            index_name = iter->second;
+        } else {
+            std::cout<<"scan format error: index_name does not exist!"<<std::endl;
+            return;
+        }
+        iter = parameter_map.find("st");
+        if (iter != parameter_map.end()) {
+            st = boost::lexical_cast<uint64_t>(iter->second);
+        } else {
+            std::cout<<"scan format error: st does not exist!"<<std::endl;
+            return;
+        }
+        iter = parameter_map.find("et");
+        if (iter != parameter_map.end()) {
+            et = boost::lexical_cast<uint64_t>(iter->second);
+        } else {
+            std::cout<<"scan format error: et does not exist!"<<std::endl;
+            return;
+        }
+        iter = parameter_map.find("ts_name");
+        if (iter != parameter_map.end()) {
+            ts_name = iter->second;
+        } else {
+            std::cout<<"scan format error: ts_name does not exist!"<<std::endl;
+            return;
+        }
+        iter = parameter_map.find("limit");
+        if (iter != parameter_map.end()) {
+            limit = boost::lexical_cast<uint32_t>(iter->second);
+        }
+    }
+
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
-    bool ret = client->ShowTable(parts[1], tables, msg);
+    bool ret = false;
+    if (has_ts_col) {
+        ret = client->ShowTable(table_name, tables, msg);
+    } else {
+        ret = client->ShowTable(parts[1], tables, msg);
+        key = parts[2];
+    }
     if (!ret) {
         std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
@@ -1152,14 +1246,12 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         return;
     }
     uint32_t tid = tables[0].tid();
-    std::string key = parts[2];
     uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client = GetTabletClient(tables[0], pid, msg);
     if (!tablet_client) {
         std::cout << "failed to scan. error msg: " << msg << std::endl;
         return;
     }
-    uint32_t limit = 0;
     if (tables[0].column_desc_size() == 0 && tables[0].column_desc_v1_size() == 0) {
         try {
             if (parts.size() > 5) {
@@ -1187,21 +1279,26 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             return;
         }
         try {
-            if (parts.size() > 6) {
-                limit = boost::lexical_cast<uint32_t>(parts[6]);
-            }
+            ::rtidb::base::KvIterator* it = NULL;
             std::string msg;
-            ::rtidb::base::KvIterator* it = tablet_client->Scan(tid, pid, key,  
-                    boost::lexical_cast<uint64_t>(parts[4]), 
-                    boost::lexical_cast<uint64_t>(parts[5]),
-                    parts[3], limit, msg);
+            if (has_ts_col) {
+                it = tablet_client->Scan(tid, pid, key,  
+                    st, et, index_name, ts_name, limit, msg);    
+            } else {
+                if (parts.size() > 6) {
+                    limit = boost::lexical_cast<uint32_t>(parts[6]);
+                }
+                it = tablet_client->Scan(tid, pid, key,  
+                        boost::lexical_cast<uint64_t>(parts[4]), 
+                        boost::lexical_cast<uint64_t>(parts[5]),
+                        parts[3], limit, msg); 
+            }
             if (it == NULL) {
                 std::cout << "Fail to scan table. error msg: " << msg << std::endl;
             } else {
                 ::rtidb::base::ShowTableRows(columns, it, tables[0].compress_type());
                 delete it;
             }
-
         } catch (std::exception const& e) {
             printf("Invalid args. st and et should be unsigned int\n");
         }
