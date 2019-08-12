@@ -3561,43 +3561,117 @@ void HandleClientGetFollower(const std::vector<std::string>& parts, ::rtidb::cli
 
 void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 4) {
-        std::cout << "count format error" << std::endl;
+        std::cout << "count format error! eg. count tid pid key [col_name] [filter_expired_data] | count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
-    bool filter_expired_data = false;
-    std::string idx_name;
-    uint64_t value = 0;
-    if (parts.size() == 5) {
-        if (parts[4] == "true") {
-            filter_expired_data = true;
-        } else if (parts[4] == "false") {
-            filter_expired_data = false;
-        } else {
-            idx_name = parts[4];
-        }
-    } else if (parts.size() > 5) {
-        idx_name =  parts[4];
-        if (parts[5] == "true") {
-            filter_expired_data = true;
-        } else if (parts[5] == "false") {
-            filter_expired_data = false;
-        } else {
-            printf("filter_expired_data parameter should be true or false\n");
-            return;
+	std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
+    std::map<std::string, std::string> parameter_map;
+    bool has_ts_col = false;
+    if (temp_vec.size() == 2 && temp_vec[0] == "tid" && !temp_vec[1].empty()) {
+        has_ts_col = true;
+        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        for (uint32_t i = 2; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
+                return;
+            }
+            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         }
     }
     uint32_t tid = 0;
     uint32_t pid = 0;
+	bool filter_expired_data = false;
+	std::string key;
+    std::string index_name;
+	std::string ts_name;
+    uint64_t value = 0;
+	auto iter = parameter_map.begin();
     try {
-        tid = boost::lexical_cast<uint32_t>(parts[1]);
-        pid = boost::lexical_cast<uint32_t>(parts[2]);
+		if (has_ts_col) {
+        	iter = parameter_map.find("tid");
+        	if (iter != parameter_map.end()) {
+        		tid = boost::lexical_cast<uint32_t>(iter->second);
+        	} else {
+            	std::cout<<"count format error: tid does not exist!"<<std::endl;
+            	return;
+        	}
+			iter = parameter_map.find("pid");
+        	if (iter != parameter_map.end()) {
+        		pid = boost::lexical_cast<uint32_t>(iter->second);
+        	} else {
+            	std::cout<<"count format error: pid does not exist!"<<std::endl;
+            	return;
+        	}
+        	iter = parameter_map.find("key");
+        	if (iter != parameter_map.end()) {
+            	key = iter->second;
+        	} else {
+            	std::cout<<"count format error: key does not exist!"<<std::endl;
+            	return;
+        	}	   
+        	iter = parameter_map.find("index_name");
+        		if (iter != parameter_map.end()) {
+            	index_name = iter->second;
+        	} else {
+            	std::cout<<"count format error: index_name does not exist!"<<std::endl;
+            	return;
+        	}
+        	iter = parameter_map.find("ts_name");
+        	if (iter != parameter_map.end()) {
+            	ts_name = iter->second;
+        	} else {
+            	std::cout<<"count format error: ts_name does not exist!"<<std::endl;
+            	return;
+        	}
+        	iter = parameter_map.find("filter_expired_data");
+        	if (iter != parameter_map.end()) {
+				std::string temp_str = iter->second;
+				if (temp_str == "true") {
+            		filter_expired_data = true;
+        		} else if (temp_str == "false") {
+            		filter_expired_data = false;
+        		} else {
+            		printf("filter_expired_data parameter should be true or false\n");
+            		return;
+        		}
+        	}
+    	} else {
+			tid = boost::lexical_cast<uint32_t>(parts[1]);
+			pid = boost::lexical_cast<uint32_t>(parts[2]);
+			if (parts.size() == 5) {
+        		if (parts[4] == "true") {
+            		filter_expired_data = true;
+        		} else if (parts[4] == "false") {
+            		filter_expired_data = false;
+        		} else {
+            		index_name = parts[4];
+        		}
+    		} else if (parts.size() > 5) {
+        		index_name =  parts[4];
+        		if (parts[5] == "true") {
+            		filter_expired_data = true;
+        		} else if (parts[5] == "false") {
+            		filter_expired_data = false;
+        		} else {
+            		printf("filter_expired_data parameter should be true or false\n");
+            		return;
+        		}
+    		}
+		}
     } catch (std::exception const& e) {
         std::cout << "Invalid args. tid and pid should be uint32" << std::endl;
         return;
     }
     std::string msg;
-    std::string key = parts[3];
-    bool ok = client->Count(tid, pid, key, idx_name, filter_expired_data, value, msg);
+	bool ok;
+	if (has_ts_col) {
+		ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
+	} else {
+		key = parts[3];
+    	ok = client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
+	}
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
