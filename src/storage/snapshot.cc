@@ -251,8 +251,6 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
                       succ_cnt, failed_cnt);
             }
-            table->Put(entry);
-
 
             load_pool_.AddTask(boost::bind(&Snapshot::Put, this, table, entry));
         }
