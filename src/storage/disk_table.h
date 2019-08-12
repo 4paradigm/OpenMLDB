@@ -210,9 +210,11 @@ public:
 
     bool InitColumnFamilyDescriptor();
 
+    bool InitTableProperty();
+
     virtual bool Init() override;
 
-    virtual bool LoadTable() override;
+    bool LoadTable();
 
     static void initOptionTemplate();
 

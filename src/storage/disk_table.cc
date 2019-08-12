@@ -126,10 +126,13 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
+    options_.create_if_missing = true;
+    options_.error_if_exists = true;
+    options_.create_missing_column_families = true;
     return true;
 }
 
-bool DiskTable::Init() {
+bool DiskTable::InitTableProperty() {
     if (mapping_.empty()) {
         for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
             mapping_.insert(std::make_pair(table_meta_.dimensions(i),
@@ -154,7 +157,13 @@ bool DiskTable::Init() {
     if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
     idx_cnt_ = mapping_.size();
+    return true;
+}
 
+bool DiskTable::Init() {
+    if (!InitTableProperty()) {
+        return false;
+    }
     InitColumnFamilyDescriptor();
     std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
@@ -162,14 +171,12 @@ bool DiskTable::Init() {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return false;
     }
-    options_.create_if_missing = true;
-    options_.error_if_exists = true;
-    options_.create_missing_column_families = true;
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
         return false;
     } 
+    PDLOG(DEBUG, "Open DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     return true;
 }
 
@@ -247,19 +254,23 @@ bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) {
 }
 
 bool DiskTable::LoadTable() {
+    if (!InitTableProperty()) {
+        return false;
+    }
     InitColumnFamilyDescriptor();
-    options_.create_if_missing = false;
-    options_.error_if_exists = false;
-    options_.create_missing_column_families = false;
     std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!rtidb::base::IsExists(path)) {
         return false;
     }
+    options_.create_if_missing = false;
+    options_.error_if_exists = false;
+    options_.create_missing_column_families = false;
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     if (!s.ok()) {
         PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return false;
     }    
     return true;
 }

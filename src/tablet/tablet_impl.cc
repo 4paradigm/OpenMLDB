@@ -3158,10 +3158,10 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
 }
 
 int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg) {
-    Table* table_ptr = new DiskTable(*table_meta);
-    std::shared_ptr<Table> table(table_ptr);
+    DiskTable* table_ptr = new DiskTable(*table_meta);
+    std::shared_ptr<Table> table((Table*)table_ptr);
     if (is_load) {
-        if (!table->LoadTable()) {
+        if (!table_ptr->LoadTable()) {
             return -1;
         }
     } else {
