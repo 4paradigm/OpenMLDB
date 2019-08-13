@@ -233,8 +233,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
         succ_cnt = 0;
         failed_cnt = 0;
         while (true) {
-            ::rtidb::base::Slice* record = new ::rtidb::base::Slice();
-            ::rtidb::base::Status status = reader.ReadRecord(record, &buffer);
+            ::rtidb::base::Slice record = new ::rtidb::base::Slice();
+            ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time() - consumed;
                 PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
@@ -250,11 +250,13 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 failed_cnt++;
                 continue;
             }
-            recordPtr.push_back(record);
+            char* pk = new char[record.size()];
+            memcpy(pk, record.data(), record.size());
+            Slice skey = ::rtidb::base::Slice(pk, record.size());
+            recordPtr.push_back(&skey);
             if (recordPtr.size() >= 100) {
                 load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
-                recordPtr.resize(0);
-                recordPtr.reserve(100);
+                recordPtr.clear();
             }
         }
         // will close the fd atomic
