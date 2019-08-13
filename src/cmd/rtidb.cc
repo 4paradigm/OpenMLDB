@@ -1008,43 +1008,48 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     uint64_t timestamp = 0;
     std::string ts_name;
     auto iter = parameter_map.begin();
-    if (has_ts_col) {
-		iter = parameter_map.find("table_name");
-        if (iter != parameter_map.end()) {
-            table_name = iter->second;
-        } else {
-            std::cout<<"get format error: table_name does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("key");
-        if (iter != parameter_map.end()) {
-            key = iter->second;
-        } else {
-            std::cout<<"get format error: key does not exist!"<<std::endl;
-            return;
-        }   
-        iter = parameter_map.find("index_name");
-        if (iter != parameter_map.end()) {
-            index_name = iter->second;
-        } else {
-            std::cout<<"get format error: index_name does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("ts");
-        if (iter != parameter_map.end()) {
-            timestamp = boost::lexical_cast<uint64_t>(iter->second);
-        } else {
-            std::cout<<"get format error: ts does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("ts_name");
-        if (iter != parameter_map.end()) {
-            ts_name = iter->second;
-        } else {
-            std::cout<<"get format error: ts_name does not exist!"<<std::endl;
-            return;
-        }
-    }
+	try {
+		if (has_ts_col) {
+			iter = parameter_map.find("table_name");
+			if (iter != parameter_map.end()) {
+				table_name = iter->second;
+			} else {
+				std::cout<<"get format error: table_name does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("key");
+			if (iter != parameter_map.end()) {
+				key = iter->second;
+			} else {
+				std::cout<<"get format error: key does not exist!"<<std::endl;
+				return;
+			}   
+			iter = parameter_map.find("index_name");
+			if (iter != parameter_map.end()) {
+				index_name = iter->second;
+			} else {
+				std::cout<<"get format error: index_name does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("ts");
+			if (iter != parameter_map.end()) {
+				timestamp = boost::lexical_cast<uint64_t>(iter->second);
+			} else {
+				std::cout<<"get format error: ts does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("ts_name");
+			if (iter != parameter_map.end()) {
+				ts_name = iter->second;
+			} else {
+				std::cout<<"get format error: ts_name does not exist!"<<std::endl;
+				return;
+			}
+		}
+	} catch (std::exception const& e) {
+		printf("Invalid args. ts should be unsigned int\n");
+		return;
+	} 
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = false;
@@ -1179,54 +1184,59 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
     std::string ts_name;
     uint32_t limit = 0;
     auto iter = parameter_map.begin();
-    if (has_ts_col) {
-        iter = parameter_map.find("table_name");
-        if (iter != parameter_map.end()) {
-            table_name = iter->second;
-        } else {
-            std::cout<<"scan format error: table_name does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("key");
-        if (iter != parameter_map.end()) {
-            key = iter->second;
-        } else {
-            std::cout<<"scan format error: key does not exist!"<<std::endl;
-            return;
-        }   
-        iter = parameter_map.find("index_name");
-        if (iter != parameter_map.end()) {
-            index_name = iter->second;
-        } else {
-            std::cout<<"scan format error: index_name does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("st");
-        if (iter != parameter_map.end()) {
-            st = boost::lexical_cast<uint64_t>(iter->second);
-        } else {
-            std::cout<<"scan format error: st does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("et");
-        if (iter != parameter_map.end()) {
-            et = boost::lexical_cast<uint64_t>(iter->second);
-        } else {
-            std::cout<<"scan format error: et does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("ts_name");
-        if (iter != parameter_map.end()) {
-            ts_name = iter->second;
-        } else {
-            std::cout<<"scan format error: ts_name does not exist!"<<std::endl;
-            return;
-        }
-        iter = parameter_map.find("limit");
-        if (iter != parameter_map.end()) {
-            limit = boost::lexical_cast<uint32_t>(iter->second);
-        }
-    }
+	try{
+		if (has_ts_col) {
+			iter = parameter_map.find("table_name");
+			if (iter != parameter_map.end()) {
+				table_name = iter->second;
+			} else {
+				std::cout<<"scan format error: table_name does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("key");
+			if (iter != parameter_map.end()) {
+				key = iter->second;
+			} else {
+				std::cout<<"scan format error: key does not exist!"<<std::endl;
+				return;
+			}   
+			iter = parameter_map.find("index_name");
+			if (iter != parameter_map.end()) {
+				index_name = iter->second;
+			} else {
+				std::cout<<"scan format error: index_name does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("st");
+			if (iter != parameter_map.end()) {
+				st = boost::lexical_cast<uint64_t>(iter->second);
+			} else {
+				std::cout<<"scan format error: st does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("et");
+			if (iter != parameter_map.end()) {
+				et = boost::lexical_cast<uint64_t>(iter->second);
+			} else {
+				std::cout<<"scan format error: et does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("ts_name");
+			if (iter != parameter_map.end()) {
+				ts_name = iter->second;
+			} else {
+				std::cout<<"scan format error: ts_name does not exist!"<<std::endl;
+				return;
+			}
+			iter = parameter_map.find("limit");
+			if (iter != parameter_map.end()) {
+				limit = boost::lexical_cast<uint32_t>(iter->second);
+			}
+		}
+	} catch (std::exception const& e) {
+		printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
+		return;
+	} 
 
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
@@ -1269,7 +1279,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
                 delete it;
             }
         } catch (std::exception const& e) {
-            printf("Invalid args. st and et should be unsigned int\n");
+			printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
             return;
         } 
     } else {
@@ -1300,89 +1310,109 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
                 delete it;
             }
         } catch (std::exception const& e) {
-            printf("Invalid args. st and et should be unsigned int\n");
+			printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
         }
     }
 }
 
 void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
-        std::cout << "count format error" << std::endl;
+        std::cout << "count format error | count table_name key [col_name] [filter_expired_data] | count table_name=xxx key=xxx index_name=xxx ts_name [filter_expired_data]" << std::endl;
         return;
+    }
+	std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
+    std::map<std::string, std::string> parameter_map;
+    bool has_ts_col = false;
+    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
+        has_ts_col = true;
+        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        for (uint32_t i = 2; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
+                return;
+            }
+            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        }
     }
     std::string table_name;
     std::string key;
-    std::string idx_name;
+    std::string index_name;
     std::string ts_name;
     bool filter_expired_data = false;
-    uint64_t value = 0;
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
-    bool has_ts_col = false;
-    if (temp_vec[0] == "table_name") {
-        has_ts_col = true; 
-        if (parts.size() == 5 || parts.size() == 6) {
-            table_name = temp_vec[1];
-            ::rtidb::base::SplitString(parts[2],"=", &temp_vec);
-            if (temp_vec[0] == "key") {
-                key = temp_vec[1];
-            }
-            ::rtidb::base::SplitString(parts[3],"=", &temp_vec);
-            if (temp_vec[0] == "index_name") {
-                idx_name = temp_vec[1];
-            }
-            ::rtidb::base::SplitString(parts[4],"=", &temp_vec);
-            if (temp_vec[0] == "ts_name") {
-                ts_name = temp_vec[1];
-            }    
-        } 
-        if (parts.size() == 6) {
-            ::rtidb::base::SplitString(parts[5],"=", &temp_vec);
-            if (temp_vec[0] == "filter_expired_data") {
-                if (temp_vec[1] == "true") {
-                    filter_expired_data = true;
-                } else if (temp_vec[1] == "false") {
-                    filter_expired_data = false;
-                } else {
-                    printf("filter_expired_data parameter should be true or false\n");
-                    return;
-                }   
-            } 
-        }
-        if (parts.size() != 5 && parts.size() != 6) {
-            std::cout << "count format error" << std::endl;
-            return;
-        }
-    } else {
-        table_name = parts[1];
-        key = parts[2];
-        if (parts.size() == 4) {
-            if (parts[3] == "true") {
-                filter_expired_data = true;
-            } else if (parts[3] == "false") {
-                filter_expired_data = false;
-            } else {
-                idx_name = parts[3];
-            }
-        } else if (parts.size() == 5) {
-            idx_name =  parts[3];
-            if (parts[4] == "true") {
-                filter_expired_data = true;
-            } else if (parts[4] == "false") {
-                filter_expired_data = false;
-            } else {
-                printf("filter_expired_data parameter should be true or false\n");
-                return;
-            }
-        } else if (parts.size() != 3){
-            std::cout << "count format error" << std::endl;
-            return;
-        }
-    }
-    std::vector<::rtidb::nameserver::TableInfo> tables;
-    std::string msg;
-    bool ret = client->ShowTable(table_name, tables, msg);
-    if (!ret) {
+	auto iter = parameter_map.begin();
+	if (has_ts_col) {
+		iter = parameter_map.find("table_name");
+		if (iter != parameter_map.end()) {
+			table_name = iter->second;
+		} else {
+			std::cout<<"count format error: table_name does not exist!"<<std::endl;
+			return;
+		}
+		iter = parameter_map.find("key");
+		if (iter != parameter_map.end()) {
+			key = iter->second;
+		} else {
+			std::cout<<"count format error: key does not exist!"<<std::endl;
+			return;
+		}	   
+		iter = parameter_map.find("index_name");
+		if (iter != parameter_map.end()) {
+			index_name = iter->second;
+		} else {
+			std::cout<<"count format error: index_name does not exist!"<<std::endl;
+			return;
+		}
+		iter = parameter_map.find("ts_name");
+		if (iter != parameter_map.end()) {
+			ts_name = iter->second;
+		} else {
+			std::cout<<"count format error: ts_name does not exist!"<<std::endl;
+			return;
+		}
+		iter = parameter_map.find("filter_expired_data");
+		if (iter != parameter_map.end()) {
+			std::string temp_str = iter->second;
+			if (temp_str == "true") {
+				filter_expired_data = true;
+			} else if (temp_str == "false") {
+				filter_expired_data = false;
+			} else {
+				printf("filter_expired_data parameter should be true or false\n");
+				return;
+			}
+		}
+	} else {
+		table_name = parts[1];
+		key = parts[2];
+		if (parts.size() == 4) {
+			if (parts[3] == "true") {
+				filter_expired_data = true;
+			} else if (parts[3] == "false") {
+				filter_expired_data = false;
+			} else {
+				index_name = parts[3];
+			}
+		} else if (parts.size() == 5) {
+			index_name =  parts[3];
+			if (parts[4] == "true") {
+				filter_expired_data = true;
+			} else if (parts[4] == "false") {
+				filter_expired_data = false;
+			} else {
+				printf("filter_expired_data parameter should be true or false\n");
+				return;
+			}
+		} else if (parts.size() != 3){
+			std::cout << "count format error" << std::endl;
+			return;
+		}
+	}
+	std::vector<::rtidb::nameserver::TableInfo> tables;
+	std::string msg;
+	bool ret = client->ShowTable(table_name, tables, msg);
+	if (!ret) {
         std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
@@ -1397,11 +1427,12 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "failed to count. cannot not found tablet client, pid is " << pid << std::endl;
         return;
     }
+    uint64_t value = 0;
     bool ok = false;
     if (has_ts_col) {
-        ok = tablet_client->Count(tid, pid, key, idx_name, ts_name, filter_expired_data, value, msg); 
+        ok = tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg); 
     } else {
-        ok = tablet_client->Count(tid, pid, key, idx_name, filter_expired_data, value, msg);
+        ok = tablet_client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
     }
     if (ok) {
         std::cout << "count: " << value << std::endl;
