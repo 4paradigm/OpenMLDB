@@ -3726,61 +3726,128 @@ uint32_t GetDimensionIndex(const std::vector<::rtidb::base::ColumnDesc>& columns
 
 void HandleClientSGet(const std::vector<std::string>& parts, 
                       ::rtidb::client::TabletClient* client){
-    try {
-        if (parts.size() < 5) {
-            std::cout << "Bad sget format, eg sget tid pid key [time]" << std::endl;
-            return;
+	if (parts.size() < 5) {
+		std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
+		return;
+	}
+	std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
+    std::map<std::string, std::string> parameter_map;
+    bool has_ts_col = false;
+    if (temp_vec.size() == 2 && temp_vec[0] == "tid" && !temp_vec[1].empty()) {
+        has_ts_col = true;
+        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        for (uint32_t i = 2; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                std::cout << "sget format erro! eg. sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
+                return;
+            }
+            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         }
-        uint64_t time = 0;
-        if (parts.size() > 5) {
-            time = boost::lexical_cast<uint64_t>(parts[5]);
-        }
-        ::rtidb::api::TableMeta table_meta;
-        bool ok = client->GetTableSchema(boost::lexical_cast<uint32_t>(parts[1]),
-                                         boost::lexical_cast<uint32_t>(parts[2]), 
-                                         table_meta);
-        if(!ok) {
-            std::cout << "No schema for table ,please use command get" << std::endl;
-            return;
-        }
-        std::string schema = table_meta.schema();
-        std::vector<::rtidb::base::ColumnDesc> raw;
-        ::rtidb::base::SchemaCodec codec;
-        codec.Decode(schema, raw);
-        ::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
-        std::vector<std::string> row;
-        row.push_back("#");
-        row.push_back("ts");
-        for (uint32_t i = 0; i < raw.size(); i++) {
-            row.push_back(raw[i].name);
-        }
-        tp.AddRow(row);
-
-        std::string value;
-        uint64_t ts = 0;
-        std::string msg;
-        ok = client->Get(boost::lexical_cast<uint32_t>(parts[1]),
-                              boost::lexical_cast<uint32_t>(parts[2]),
-                              parts[3],
-                              time,
-                              parts[4],
-                              value,
-                              ts,
-                              msg); 
-        if (!ok) {
-            std::cout << "Fail to sget value! error msg: " << msg << std::endl;
-            return;
-        }
-        row.clear();
-        row.push_back("1");
-        row.push_back(std::to_string(ts));
-        ::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
-        tp.AddRow(row);
-        tp.Print(true);
-    } catch (std::exception const& e) {
-        std::cout << "Invalid args" << std::endl;
     }
-    
+	uint32_t tid = 0;
+    uint32_t pid = 0;
+	std::string key;
+    std::string index_name;
+	uint64_t timestamp = 0;
+	std::string ts_name;
+	auto iter = parameter_map.begin();
+    try {
+		if (has_ts_col) {
+        	iter = parameter_map.find("tid");
+        	if (iter != parameter_map.end()) {
+        		tid = boost::lexical_cast<uint32_t>(iter->second);
+        	} else {
+            	std::cout<<"sget format error: tid does not exist!"<<std::endl;
+            	return;
+        	}
+			iter = parameter_map.find("pid");
+        	if (iter != parameter_map.end()) {
+        		pid = boost::lexical_cast<uint32_t>(iter->second);
+        	} else {
+            	std::cout<<"sget format error: pid does not exist!"<<std::endl;
+            	return;
+        	}
+        	iter = parameter_map.find("key");
+        	if (iter != parameter_map.end()) {
+            	key = iter->second;
+        	} else {
+            	std::cout<<"sget format error: key does not exist!"<<std::endl;
+            	return;
+        	}	   
+        	iter = parameter_map.find("index_name");
+        		if (iter != parameter_map.end()) {
+            	index_name = iter->second;
+        	} else {
+            	std::cout<<"sget format error: index_name does not exist!"<<std::endl;
+            	return;
+        	}
+        	iter = parameter_map.find("ts");
+        	if (iter != parameter_map.end()) {
+            	timestamp = boost::lexical_cast<uint64_t>(iter->second);
+        	} else {
+            	std::cout<<"sget format error: ts does not exist!"<<std::endl;
+            	return;
+        	}
+			iter = parameter_map.find("ts_name");
+        	if (iter != parameter_map.end()) {
+            	ts_name = iter->second;
+        	} else {
+            	std::cout<<"sget format error: ts_name does not exist!"<<std::endl;
+            	return;
+        	}
+    	} else {
+        	tid = boost::lexical_cast<uint32_t>(parts[1]);
+        	pid = boost::lexical_cast<uint32_t>(parts[2]);
+			key = parts[3];
+			index_name = parts[4];
+			if (parts.size() > 5) {
+				timestamp = boost::lexical_cast<uint64_t>(parts[5]);
+			}
+		}
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args. tid pid should be uint32_t, ts should be uint64_t, " << std::endl;
+        return;
+    }
+	::rtidb::api::TableMeta table_meta;
+	bool ok = client->GetTableSchema(tid, pid, table_meta);
+	if(!ok) {
+		std::cout << "No schema for table ,please use command get" << std::endl;
+		return;
+	}
+	std::string schema = table_meta.schema();
+	std::vector<::rtidb::base::ColumnDesc> raw;
+	::rtidb::base::SchemaCodec codec;
+	codec.Decode(schema, raw);
+	::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
+	std::vector<std::string> row;
+	row.push_back("#");
+	row.push_back("ts");
+	for (uint32_t i = 0; i < raw.size(); i++) {
+		row.push_back(raw[i].name);
+	}
+	tp.AddRow(row);
+
+	std::string value;
+	uint64_t ts = 0;
+	std::string msg;
+	if (has_ts_col) {
+		ok = client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg);
+	} else {
+		ok = client->Get(tid, pid, key, timestamp, index_name, value, ts, msg);
+	}
+	if (!ok) {
+		std::cout << "Fail to sget value! error msg: " << msg << std::endl;
+		return;
+	}
+	row.clear();
+	row.push_back("1");
+	row.push_back(std::to_string(ts));
+	::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
+	tp.AddRow(row);
+	tp.Print(true);
+
 }
 
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
@@ -3880,7 +3947,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
 			et = boost::lexical_cast<uint64_t>(parts[6]);	
 		}
     } catch (std::exception const& e) {
-        std::cout << "Invalid args. tid pid should be uint32_t, tid and pid should be uint32, limit should be uint32" << std::endl;
+        std::cout << "Invalid args. tid pid should be uint32_t, st and et should be uint64_t, limit should be uint32" << std::endl;
         return;
     }
 	std::string msg;
