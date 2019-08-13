@@ -2486,15 +2486,27 @@ void HandleClientGet(const std::vector<std::string>& parts, ::rtidb::client::Tab
                               value,
                               ts,
                               msg);
-        if (ok) {
+		::rtidb::api::TableStatus table_status;
+		if (!client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status)) {
+			std::cout << "Fail to get table status" << std::endl;
+			return;
+		}
+		::rtidb::nameserver::CompressType compress_type = ::rtidb::nameserver::kNoCompress;
+		if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
+			compress_type = ::rtidb::nameserver::kSnappy;
+		}
+		if (compress_type == ::rtidb::nameserver::kSnappy) {
+			std::string uncompressed;
+			::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+			value = uncompressed;
+		}
+		if (ok) {
             std::cout << "value :" << value << std::endl;
         }else {
             std::cout << "Get failed! error msg: " << msg << std::endl; 
         }
-
-    
     } catch(std::exception const& e) {
-        std::cout << "Invalid args tid and pid should be uint32_t" << std::endl;
+        std::cout << "Invalid args tid and pid should be uint32_t, ts should be uint64_t" << std::endl;
     }
 
 }
@@ -3816,19 +3828,6 @@ void HandleClientSGet(const std::vector<std::string>& parts,
 		std::cout << "No schema for table ,please use command get" << std::endl;
 		return;
 	}
-	std::string schema = table_meta.schema();
-	std::vector<::rtidb::base::ColumnDesc> raw;
-	::rtidb::base::SchemaCodec codec;
-	codec.Decode(schema, raw);
-	::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
-	std::vector<std::string> row;
-	row.push_back("#");
-	row.push_back("ts");
-	for (uint32_t i = 0; i < raw.size(); i++) {
-		row.push_back(raw[i].name);
-	}
-	tp.AddRow(row);
-
 	std::string value;
 	uint64_t ts = 0;
 	std::string msg;
@@ -3841,13 +3840,38 @@ void HandleClientSGet(const std::vector<std::string>& parts,
 		std::cout << "Fail to sget value! error msg: " << msg << std::endl;
 		return;
 	}
+	::rtidb::api::TableStatus table_status;
+	if (!client->GetTableStatus(tid, pid, table_status)) {
+		std::cout << "Fail to get table status" << std::endl;
+		return;
+	}
+	::rtidb::nameserver::CompressType compress_type = ::rtidb::nameserver::kNoCompress;
+	if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
+		compress_type = ::rtidb::nameserver::kSnappy;
+	}
+	if (compress_type == ::rtidb::nameserver::kSnappy) {
+		std::string uncompressed;
+		::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+		value = uncompressed;
+	}
+	std::string schema = table_meta.schema();
+	std::vector<::rtidb::base::ColumnDesc> raw;
+	::rtidb::base::SchemaCodec codec;
+	codec.Decode(schema, raw);
+	::baidu::common::TPrinter tp(raw.size() + 2, FLAGS_max_col_display_length);
+	std::vector<std::string> row;
+	row.push_back("#");
+	row.push_back("ts");
+	for (uint32_t i = 0; i < raw.size(); i++) {
+		row.push_back(raw[i].name);
+	}
+	tp.AddRow(row);
 	row.clear();
 	row.push_back("1");
 	row.push_back(std::to_string(ts));
 	::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
 	tp.AddRow(row);
 	tp.Print(true);
-
 }
 
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
@@ -3950,6 +3974,12 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "Invalid args. tid pid should be uint32_t, st and et should be uint64_t, limit should be uint32" << std::endl;
         return;
     }
+	::rtidb::api::TableMeta table_meta;
+	bool ok = client->GetTableSchema(tid, pid, table_meta);
+	if(!ok) {
+		std::cout << "No schema for table, please use command scan" << std::endl;
+		return;
+	}
 	std::string msg;
 	::rtidb::base::KvIterator* it = NULL;
 	if (has_ts_col) {
@@ -3960,18 +3990,12 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
 	if (it == NULL) {
 		std::cout << "Fail to scan table. error msg: " << msg << std::endl;
 	} else {
-		::rtidb::api::TableMeta table_meta;
-		bool ok = client->GetTableSchema(tid, pid, table_meta);
-		if(!ok) {
-			std::cout << "No schema for table, please use command scan" << std::endl;
-			return;
-		}
-		std::string schema = table_meta.schema();
 		::rtidb::api::TableStatus table_status;
 		if (!client->GetTableStatus(tid, pid, table_status)) {
 			std::cout << "Fail to get table status" << std::endl;
 			return;
 		}
+		std::string schema = table_meta.schema();
 		std::vector<::rtidb::base::ColumnDesc> raw;
 		::rtidb::base::SchemaCodec codec;
 		codec.Decode(schema, raw);
