@@ -279,6 +279,7 @@ void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector
         bool ok = entry.ParseFromString((*it)->ToString());
         if (!ok) {
             failed_cnt->fetch_add(1, std::memory_order_relaxed);
+            delete (*it)->data();
             continue;
         }
         succ_cnt->fetch_add(1, std::memory_order_relaxed);
@@ -287,6 +288,7 @@ void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector
                   succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
         }
         table->Put(entry);
+        delete (*it)->data();
     }
 }
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
