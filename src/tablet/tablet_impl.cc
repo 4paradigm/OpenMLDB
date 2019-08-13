@@ -1099,7 +1099,6 @@ int32_t TabletImpl::CountLatestIndex(uint64_t ttl,
     it->SeekToFirst();
     if (st > 0) {
         while (it->Valid() && (it_count < ttl || ttl == 0)) {
-            it_count++;
             bool jump_out = false;
             switch (st_type) {
                 case ::rtidb::api::GetType::kSubKeyEq:
@@ -1120,6 +1119,7 @@ int32_t TabletImpl::CountLatestIndex(uint64_t ttl,
                     return -2;
             }
             if (!jump_out) {
+                it_count++;
                 it->Next();
             }else {
                 break;
@@ -1128,7 +1128,6 @@ int32_t TabletImpl::CountLatestIndex(uint64_t ttl,
     }
     uint32_t internal_cnt = 0;
     while (it->Valid() && (it_count < ttl || ttl == 0)) {
-        it_count++;
         bool jump_out = false;
         switch(et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
@@ -1151,6 +1150,7 @@ int32_t TabletImpl::CountLatestIndex(uint64_t ttl,
                 return -2;
         }
         if (jump_out) break;
+        it_count++;
         it->Next();
         internal_cnt++;
     }
@@ -1173,13 +1173,16 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
         PDLOG(WARNING, "invalid args");
         return -1;
     }
+    //PDLOG(DEBUG, "scan latest index ttl %lu, limit %u, st %lu, et %lu , st type %s, et type %s",
+    //        ttl, limit, st, et, ::rtidb::api::GetType_Name(st_type).c_str(),
+    //        ::rtidb::api::GetType_Name(et_type).c_str());
     uint32_t it_count = 0;
     // go to start point
     it->SeekToFirst();
     if (st > 0) {
         while (it->Valid() && (it_count < ttl || ttl == 0)) {
-            it_count++;
             bool jump_out = false;
+            PDLOG(DEBUG, "it key %lu", it->GetKey());
             switch (st_type) {
                 case ::rtidb::api::GetType::kSubKeyEq:
                 case ::rtidb::api::GetType::kSubKeyLe:
@@ -1199,6 +1202,7 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
                     return -2;
             }
             if (!jump_out) {
+                it_count++;
                 it->Next();
             }else {
                 break;
@@ -1210,6 +1214,7 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
     uint32_t total_block_size = 0;
     while (it->Valid() && (it_count < ttl || ttl == 0)) {
         it_count++;
+        PDLOG(DEBUG, "it key %lu", it->GetKey());
         if (limit > 0 && tmp.size() >= limit) break;
         bool jump_out = false;
         switch(et_type) {

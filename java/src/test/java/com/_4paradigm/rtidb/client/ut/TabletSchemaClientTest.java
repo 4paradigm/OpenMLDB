@@ -33,7 +33,7 @@ public class TabletSchemaClientTest  extends TestCaseBase {
 
     @BeforeClass
     public  void setUp() {
-        super.setUp();
+        super.setUpSingle();
         tabletClient = super.tabletClient;
         tableClient = super.tableSingleNodeSyncClient;
     }
@@ -367,14 +367,10 @@ public class TabletSchemaClientTest  extends TestCaseBase {
         String str128 = new String(new byte[128]);
         Assert.assertTrue(tableClient.put(tid, 0, 10, new Object[] { "9527", str128, 2.0 }));
         Assert.assertTrue(tableClient.put(tid, 0, 11, new Object[] { "9527", str128, 3.0 }));
-        // wait two minutes
         try {
-            Thread.sleep(1000 * 120);
-        } catch (Exception e) {
-            Assert.assertTrue(false);
-        }
-        try {
-            KvIterator it = tableClient.scan(tid, 0, "9527", "card", 12l, 0l);
+            int count = tableClient.count(tid, 0, "9527", "card", true);
+            Assert.assertEquals(count, 1);
+            KvIterator it = tableClient.scan(tid, 0, "9527", "card", 13l, 1l);
             Assert.assertTrue(it.valid());
             Object[] row = it.getDecodedValue();
             Assert.assertEquals(1, it.getCount());
