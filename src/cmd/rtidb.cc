@@ -3295,7 +3295,7 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::rtidb::client:
 // the input format like scan tid pid pk st et
 void HandleClientScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 6) {
-        std::cout << "Bad scan format" << std::endl;
+        std::cout << "Bad scan format! eg. scan tid pid pk start_time end_time [limit]" << std::endl;
         return;
     }
     try {
@@ -3785,60 +3785,144 @@ void HandleClientSGet(const std::vector<std::string>& parts,
 
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
     if (parts.size() < 7) {
-        std::cout << "Bad scan format" << std::endl;
+        std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
-    try {
-        uint32_t limit = 0;
-        if (parts.size() > 7) {
-            limit = boost::lexical_cast<uint32_t>(parts[7]);
-        }
-        uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
-        uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
-        std::string msg;
-        ::rtidb::base::KvIterator* it = client->Scan(tid, pid,  
-                parts[3], 
-                boost::lexical_cast<uint64_t>(parts[5]), 
-                boost::lexical_cast<uint64_t>(parts[6]),
-                parts[4],
-                limit, msg);
-        if (it == NULL) {
-            std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-        } else {
-            ::rtidb::api::TableMeta table_meta;
-            bool ok = client->GetTableSchema(tid, pid, table_meta);
-            if(!ok) {
-                std::cout << "No schema for table, please use command scan" << std::endl;
+	std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
+    std::map<std::string, std::string> parameter_map;
+    bool has_ts_col = false;
+    if (temp_vec.size() == 2 && temp_vec[0] == "tid" && !temp_vec[1].empty()) {
+        has_ts_col = true;
+        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        for (uint32_t i = 2; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                std::cout << "scan format erro! eg. sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
                 return;
             }
-            std::string schema = table_meta.schema();
-            ::rtidb::api::TableStatus table_status;
-            if (!client->GetTableStatus(tid, pid, table_status)) {
-                std::cout << "Fail to get table status" << std::endl;
-                return;
-            }
-            std::vector<::rtidb::base::ColumnDesc> raw;
-            ::rtidb::base::SchemaCodec codec;
-            codec.Decode(schema, raw);
-            ::rtidb::nameserver::CompressType compress_type = ::rtidb::nameserver::kNoCompress;
-            if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
-                compress_type = ::rtidb::nameserver::kSnappy;
-            }
-            ::rtidb::base::ShowTableRows(raw, it, compress_type);
-            delete it;
+            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         }
-
-    } catch (std::exception const& e) {
-        std::cout<< "Invalid args, tid pid should be uint32_t, st and et should be uint64_t" << std::endl;
     }
+	uint32_t tid = 0;
+    uint32_t pid = 0;
+	std::string key;
+    std::string index_name;
+	uint64_t st = 0;
+	uint64_t et = 0;
+	std::string ts_name;
+	uint32_t limit = 0;
+	auto iter = parameter_map.begin();
+    try {
+		if (has_ts_col) {
+        	iter = parameter_map.find("tid");
+        	if (iter != parameter_map.end()) {
+        		tid = boost::lexical_cast<uint32_t>(iter->second);
+        	} else {
+            	std::cout<<"sscan format error: tid does not exist!"<<std::endl;
+            	return;
+        	}
+			iter = parameter_map.find("pid");
+        	if (iter != parameter_map.end()) {
+        		pid = boost::lexical_cast<uint32_t>(iter->second);
+        	} else {
+            	std::cout<<"sscan format error: pid does not exist!"<<std::endl;
+            	return;
+        	}
+        	iter = parameter_map.find("key");
+        	if (iter != parameter_map.end()) {
+            	key = iter->second;
+        	} else {
+            	std::cout<<"sscan format error: key does not exist!"<<std::endl;
+            	return;
+        	}	   
+        	iter = parameter_map.find("index_name");
+        		if (iter != parameter_map.end()) {
+            	index_name = iter->second;
+        	} else {
+            	std::cout<<"sscan format error: index_name does not exist!"<<std::endl;
+            	return;
+        	}
+        	iter = parameter_map.find("st");
+        	if (iter != parameter_map.end()) {
+            	st = boost::lexical_cast<uint64_t>(iter->second);
+        	} else {
+            	std::cout<<"sscan format error: st does not exist!"<<std::endl;
+            	return;
+        	}
+			iter = parameter_map.find("et");
+        	if (iter != parameter_map.end()) {
+            	et = boost::lexical_cast<uint64_t>(iter->second);
+        	} else {
+            	std::cout<<"sscan format error: et does not exist!"<<std::endl;
+            	return;
+        	}
+			iter = parameter_map.find("ts_name");
+        	if (iter != parameter_map.end()) {
+            	ts_name = iter->second;
+        	} else {
+            	std::cout<<"sscan format error: ts_name does not exist!"<<std::endl;
+            	return;
+        	}
+			iter = parameter_map.find("limit");
+        	if (iter != parameter_map.end()) {
+            	limit = boost::lexical_cast<uint32_t>(iter->second);
+        	}
+    	} else {
+        	if (parts.size() > 7) {
+            	limit = boost::lexical_cast<uint32_t>(parts[7]);
+        	}
+        	tid = boost::lexical_cast<uint32_t>(parts[1]);
+        	pid = boost::lexical_cast<uint32_t>(parts[2]);
+			key = parts[3];
+			index_name = parts[4];
+			st = boost::lexical_cast<uint64_t>(parts[5]);	
+			et = boost::lexical_cast<uint64_t>(parts[6]);	
+		}
+    } catch (std::exception const& e) {
+        std::cout << "Invalid args. tid pid should be uint32_t, tid and pid should be uint32, limit should be uint32" << std::endl;
+        return;
+    }
+	std::string msg;
+	::rtidb::base::KvIterator* it = NULL;
+	if (has_ts_col) {
+		it = client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, msg); 
+	} else {
+		it = client->Scan(tid, pid, key, st, et, index_name, limit, msg); 
+	}
+	if (it == NULL) {
+		std::cout << "Fail to scan table. error msg: " << msg << std::endl;
+	} else {
+		::rtidb::api::TableMeta table_meta;
+		bool ok = client->GetTableSchema(tid, pid, table_meta);
+		if(!ok) {
+			std::cout << "No schema for table, please use command scan" << std::endl;
+			return;
+		}
+		std::string schema = table_meta.schema();
+		::rtidb::api::TableStatus table_status;
+		if (!client->GetTableStatus(tid, pid, table_status)) {
+			std::cout << "Fail to get table status" << std::endl;
+			return;
+		}
+		std::vector<::rtidb::base::ColumnDesc> raw;
+		::rtidb::base::SchemaCodec codec;
+		codec.Decode(schema, raw);
+		::rtidb::nameserver::CompressType compress_type = ::rtidb::nameserver::kNoCompress;
+		if (table_status.compress_type() == ::rtidb::api::CompressType::kSnappy) {
+			compress_type = ::rtidb::nameserver::kSnappy;
+		}
+		::rtidb::base::ShowTableRows(raw, it, compress_type);
+		delete it;
+	}
 }
 
 void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 5) {
-        std::cout << "Bad put format, eg put tid pid time value" << std::endl;
-        return;
-    }
-    try {
+	if (parts.size() < 5) {
+		std::cout << "Bad put format, eg put tid pid time value" << std::endl;
+		return;
+	}
+	try {
         uint32_t tid = boost::lexical_cast<uint32_t>(parts[1]);
         uint32_t pid = boost::lexical_cast<uint32_t>(parts[2]);
         ::rtidb::api::TableMeta table_meta;
