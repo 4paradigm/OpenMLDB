@@ -54,37 +54,61 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
         return 0;
     }
     making_snapshot_.store(true, std::memory_order_release);
-    std::string now_time = ::rtidb::base::GetNowTime();
-    std::string snapshot_dir = snapshot_path_ + now_time.substr(0, now_time.length() - 2);
-    if (::rtidb::base::IsExists(snapshot_dir)) {
-        PDLOG(WARNING, "checkpoint dir[%s] is exist", snapshot_dir.c_str());
-        making_snapshot_.store(false, std::memory_order_release);
-        return -1;
-    }
-    DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
-    if (disk_table == NULL) {
-        making_snapshot_.store(false, std::memory_order_release);
-        return -1;
-    }
-    uint64_t record_count = disk_table->GetRecordCnt();
-    uint64_t cur_offset = disk_table->GetOffset();
-    disk_table->CreateCheckPoint(snapshot_dir);
-    ::rtidb::api::Manifest manifest;
-    GetLocalManifest(manifest);
     int ret = 0;
-    if (GenManifest(snapshot_dir, record_count, cur_offset, term_) == 0) {
-        if (manifest.has_name() && manifest.name() != snapshot_dir) {
-            PDLOG(DEBUG, "delete old checkpoint[%s]", manifest.name().c_str());
-            if (!::rtidb::base::RemoveDir(manifest.name())) {
-                PDLOG(WARNING, "delete checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
+    do {
+        std::string now_time = ::rtidb::base::GetNowTime();
+        std::string snapshot_dir = snapshot_path_ + now_time.substr(0, now_time.length() - 2);
+        std::string snapshot_dir_tmp = snapshot_dir + ".tmp";
+        if (::rtidb::base::IsExists(snapshot_dir_tmp)) {
+            PDLOG(WARNING, "checkpoint dir[%s] is exist", snapshot_dir_tmp.c_str());
+            if (!::rtidb::base::RemoveDir(snapshot_dir_tmp)) {
+                PDLOG(WARNING, "delete checkpoint failed. checkpoint dir[%s]", snapshot_dir_tmp.c_str());
+                break;
             }
         }
-        offset_ = cur_offset;
-        out_offset = cur_offset;
-    } else {
-        PDLOG(WARNING, "GenManifest failed. delete checkpoint[%s]", snapshot_dir.c_str());
-        ret = -1;
-    }
+        DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
+        if (disk_table == NULL) {
+            break;
+        }
+        uint64_t record_count = disk_table->GetRecordCnt();
+        uint64_t cur_offset = disk_table->GetOffset();
+        if (disk_table->CreateCheckPoint(snapshot_dir_tmp) < 0) {
+            PDLOG(WARNING, "create checkpoint failed. checkpoint dir[%s]", snapshot_dir_tmp.c_str());
+            break;
+        }
+        if (::rtidb::base::IsExists(snapshot_dir)) {
+            std::string snapshot_dir_bak = snapshot_dir + ".bak";
+            if (::rtidb::base::IsExists(snapshot_dir_bak)) {
+                if (!::rtidb::base::RemoveDir(snapshot_dir_bak)) {
+                    PDLOG(WARNING, "delete checkpoint bak failed. checkpoint bak dir[%s]", snapshot_dir_bak.c_str());
+                    break;
+                }
+            }
+            if (::rtidb::base::Rename(snapshot_dir, snapshot_dir_bak) < 0) {
+                PDLOG(WARNING, "rename checkpoint failed. checkpoint bak dir[%s]", snapshot_dir_bak.c_str());
+                break;
+            }
+        }
+        if (::rtidb::base::Rename(snapshot_dir_tmp, snapshot_dir) < 0) {
+            PDLOG(WARNING, "rename checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
+            break;
+        }
+        ::rtidb::api::Manifest manifest;
+        GetLocalManifest(manifest);
+        if (GenManifest(snapshot_dir, record_count, cur_offset, term_) == 0) {
+            if (manifest.has_name() && manifest.name() != snapshot_dir) {
+                PDLOG(DEBUG, "delete old checkpoint[%s]", manifest.name().c_str());
+                if (!::rtidb::base::RemoveDir(manifest.name())) {
+                    PDLOG(WARNING, "delete checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
+                }
+            }
+            offset_ = cur_offset;
+            out_offset = cur_offset;
+            ret = 0;
+        } else {
+            PDLOG(WARNING, "GenManifest failed. delete checkpoint[%s]", snapshot_dir.c_str());
+        }
+    } while (false);
     making_snapshot_.store(false, std::memory_order_release);
     return ret;
 }

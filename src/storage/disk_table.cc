@@ -126,9 +126,6 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
     }
-    options_.create_if_missing = true;
-    options_.error_if_exists = true;
-    options_.create_missing_column_families = true;
     return true;
 }
 
@@ -171,6 +168,9 @@ bool DiskTable::Init() {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return false;
     }
+    options_.create_if_missing = true;
+    options_.error_if_exists = true;
+    options_.create_missing_column_families = true;
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     if (!s.ok()) {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
