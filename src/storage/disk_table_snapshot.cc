@@ -32,6 +32,10 @@ DiskTableSnapshot::DiskTableSnapshot(uint32_t tid, uint32_t pid,
 bool DiskTableSnapshot::Init() {
     std::string db_root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ?  FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     snapshot_path_ = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
+    if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
+        PDLOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
+        return false;
+    }
     char abs_path_buff[PATH_MAX];
     if (realpath(snapshot_path_.c_str(), abs_path_buff) == NULL) {
         PDLOG(WARNING, "fail to get realpath. source path %s", snapshot_path_.c_str());
@@ -40,10 +44,6 @@ bool DiskTableSnapshot::Init() {
     snapshot_path_.assign(abs_path_buff);
     if (!boost::ends_with(snapshot_path_, "/")) {
         snapshot_path_.append("/");
-    }
-    if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
-        PDLOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
-        return false;
     }
     return true;
 }
@@ -80,6 +80,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
             }
         }
         offset_ = cur_offset;
+        out_offset = cur_offset;
     } else {
         PDLOG(WARNING, "GenManifest failed. delete checkpoint[%s]", snapshot_dir.c_str());
         ret = -1;
