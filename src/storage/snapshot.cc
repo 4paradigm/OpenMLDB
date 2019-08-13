@@ -35,6 +35,8 @@ DECLARE_string(db_root_path);
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
 DECLARE_uint32(make_snapshot_max_deleted_keys);
+DECLARE_uint32(load_table_batch);
+DECLARE_uint32(load_table_thread);
 
 namespace rtidb {
 namespace storage {
@@ -208,7 +210,7 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
-    ThreadPool load_pool_;
+    ThreadPool load_pool_(FLAGS_load_table_thread);
 
     do {
         if (table == NULL) {
@@ -226,14 +228,14 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
         // second
         uint64_t consumed = ::baidu::common::timer::now_time();
         std::vector<::rtidb::base::Slice*> recordPtr;
-        recordPtr.reserve(100);
+        recordPtr.reserve(FLAGS_load_table_batch);
 
         std::atomic<uint64_t> succ_cnt;
         std::atomic<uint64_t > failed_cnt;
         succ_cnt = 0;
         failed_cnt = 0;
         while (true) {
-            ::rtidb::base::Slice record = new ::rtidb::base::Slice();
+            ::rtidb::base::Slice record;
             ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time() - consumed;
@@ -252,9 +254,9 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             }
             char* pk = new char[record.size()];
             memcpy(pk, record.data(), record.size());
-            Slice skey = ::rtidb::base::Slice(pk, record.size());
-            recordPtr.push_back(&skey);
-            if (recordPtr.size() >= 100) {
+            Slice tempSlice = ::rtidb::base::Slice(pk, record.size());
+            recordPtr.push_back(&tempSlice);
+            if (recordPtr.size() >= FLAGS_load_table_batch) {
                 load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
                 recordPtr.clear();
             }

@@ -93,3 +93,7 @@ DEFINE_uint32(latest_default_skiplist_height, 1, "the default height of skiplist
 DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skiplist for absolute table");
 DEFINE_bool(enable_show_tp, false, "enable show tp");
 DEFINE_uint32(max_col_display_length, 256, "config the max length of column display");
+
+// load table resouce control
+DEFINE_uint32(load_table_batch, 100, "set laod table batch size");
+DEFINE_uint32(load_table_thread, 5, "set load tabale thread pool size");
