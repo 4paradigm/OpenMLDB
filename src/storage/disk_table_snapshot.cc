@@ -50,7 +50,7 @@ bool DiskTableSnapshot::Init() {
 
 int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) {
     if (making_snapshot_.load(std::memory_order_acquire)) {
-        PDLOG(INFO, "snapshot is doing now!");
+        PDLOG(INFO, "snapshot is doing now! tid %u pid %u", tid_, pid_);
         return 0;
     }
     making_snapshot_.store(true, std::memory_order_release);
@@ -107,6 +107,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
             ret = 0;
         } else {
             PDLOG(WARNING, "GenManifest failed. delete checkpoint[%s]", snapshot_dir.c_str());
+            ::rtidb::base::RemoveDir(snapshot_dir);
         }
     } while (false);
     making_snapshot_.store(false, std::memory_order_release);
