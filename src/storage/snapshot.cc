@@ -230,10 +230,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
         std::vector<::rtidb::base::Slice> recordPtr;
         recordPtr.reserve(FLAGS_load_table_batch);
 
-        std::atomic<uint64_t> succ_cnt;
-        std::atomic<uint64_t > failed_cnt;
-        succ_cnt = 0;
-        failed_cnt = 0;
+        std::atomic<uint64_t> succ_cnt, failed_cnt;
+        succ_cnt = failed_cnt = 0;
         while (true) {
             buffer.clear();
             ::rtidb::base::Slice record;
@@ -242,15 +240,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 consumed = ::baidu::common::timer::now_time() - consumed;
                 PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                       path.c_str(), tid_, pid_, succ_cnt.load(std::memory_order_relaxed), failed_cnt.load(std::memory_order_relaxed), consumed);
-                if (recordPtr.size() > 0) {
-                    load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
-                }
                 break;
             }
 
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
-                failed_cnt++;
+                failed_cnt.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
             char* pk = new char[record.size()];
@@ -261,6 +256,9 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
                 recordPtr.clear();
             }
+        }
+        if (recordPtr.size() > 0) {
+            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
         }
         // will close the fd atomic
         delete seq_file;
