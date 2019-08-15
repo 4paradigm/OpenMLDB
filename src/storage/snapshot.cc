@@ -278,7 +278,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     load_pool_.Stop(true);
 }
 
-void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::base::RingQueue<std::vector<::rtidb::base::Slice>*>* rq, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
+void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::base::ringqueue<std::vector<::rtidb::base::Slice>*>* rq, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::rtidb::api::LogEntry entry;
     while (1) {
         auto recordPtr = rq->get();
