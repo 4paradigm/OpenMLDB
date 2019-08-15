@@ -23,6 +23,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "thread_pool.h"
 #include "boost/bind.hpp"
+#include "base/RingQueue.h"
 
 
 using ::baidu::common::DEBUG;
@@ -211,6 +212,13 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
     ThreadPool load_pool_(FLAGS_load_table_thread);
+    std::atomic<uint64_t> succ_cnt, failed_cnt;
+    succ_cnt = failed_cnt = 0;
+    ::rtidb::base::RingQueue<std::vector<::rtidb::base::Slice> *> rq(100);
+    for (auto i = FLAGS_load_table_thread; i > 0; i--) {
+        load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, &rq, &succ_cnt, &failed_cnt));
+    }
+
 
     do {
         if (table == NULL) {
@@ -230,8 +238,6 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
         std::vector<::rtidb::base::Slice> recordPtr;
         recordPtr.reserve(FLAGS_load_table_batch);
 
-        std::atomic<uint64_t> succ_cnt, failed_cnt;
-        succ_cnt = failed_cnt = 0;
         while (true) {
             buffer.clear();
             ::rtidb::base::Slice record;
@@ -253,12 +259,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             Slice tempSlice = ::rtidb::base::Slice(pk, record.size());
             recordPtr.push_back(tempSlice);
             if (recordPtr.size() >= FLAGS_load_table_batch) {
-                load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
+                rq.put(&recordPtr);
                 recordPtr.clear();
             }
         }
         if (recordPtr.size() > 0) {
-            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
+            rq.put(&recordPtr);
         }
         // will close the fd atomic
         delete seq_file;
@@ -272,22 +278,25 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     load_pool_.Stop(true);
 }
 
-void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector<::rtidb::base::Slice> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
+void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::base::RingQueue<std::vector<::rtidb::base::Slice>*>* rq, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::rtidb::api::LogEntry entry;
-    for (auto it = recordPtr.begin(); it != recordPtr.cend(); it++) {
-        bool ok = entry.ParseFromString((*it).ToString());
-        if (!ok) {
-            failed_cnt->fetch_add(1, std::memory_order_relaxed);
+    while (1) {
+        auto recordPtr = rq->get();
+        for (auto it = recordPtr->begin(); it != recordPtr->cend(); it++) {
+            bool ok = entry.ParseFromString((*it).ToString());
+            if (!ok) {
+                failed_cnt->fetch_add(1, std::memory_order_relaxed);
+                delete[] (*it).data();
+                continue;
+            }
+            succ_cnt->fetch_add(1, std::memory_order_relaxed);
+            if (succ_cnt->load(std::memory_order_relaxed) % 100000 == 0) {
+                PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
+                      succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
+            }
+            table->Put(entry);
             delete[] (*it).data();
-            continue;
         }
-        succ_cnt->fetch_add(1, std::memory_order_relaxed);
-        if (succ_cnt->load(std::memory_order_relaxed) % 100000 == 0) {
-            PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
-                  succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
-        }
-        table->Put(entry);
-        delete[] (*it).data();
     }
 }
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 

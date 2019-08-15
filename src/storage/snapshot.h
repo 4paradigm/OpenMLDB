@@ -13,6 +13,7 @@
 #include <atomic>
 #include <memory>
 #include <map>
+#include <base/RingQueue.h>
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
 #include "base/count_down_latch.h"
@@ -62,7 +63,7 @@ public:
 
     int RecordOffset(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
 
-    void Put(std::string& path, std::shared_ptr<Table>& table, std::vector<::rtidb::base::Slice> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
+    void Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::base::RingQueue<std::vector<::rtidb::base::Slice>*>* rq, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
 
 private:
 

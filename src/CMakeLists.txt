@@ -18,7 +18,7 @@ add_library(log STATIC log/crc32c.cc
                        log/log_writer.cc 
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
-add_library(base STATIC base/status.cc)
+add_library(base STATIC base/status.cc base/RingQueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 
 add_library(replica STATIC replica/replicate_node.cc
