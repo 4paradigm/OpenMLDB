@@ -89,16 +89,14 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
             table->GetId(), table->GetPid(), offset);
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
     log_reader.SetOffset(offset);
+    ::rtidb::api::LogEntry entry;
+    uint64_t cur_offset = offset;
     std::string buffer;
-    std::atomic<uint64_t> succ_cnt, failed_cnt, cur_offset;
-    succ_cnt = failed_cnt = 0;
-    cur_offset = offset;
+    uint64_t succ_cnt = 0;
+    uint64_t failed_cnt = 0;
     uint64_t consumed = ::baidu::common::timer::now_time();
     int last_log_index = log_reader.GetLogIndex();
     bool reach_end_log = true;
-    ThreadPool load_pool_(1);
-    std::vector<::rtidb::base::Slice> recordPtr;
-
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -109,12 +107,12 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
             if (end_log_index >= 0 && end_log_index > cur_log_index) {
                 log_reader.RollRLogFile();
                 PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
-                                tid_, pid_, cur_log_index, end_log_index, cur_offset.load(std::memory_order_relaxed));
+                                tid_, pid_, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
             consumed = ::baidu::common::timer::now_time() - consumed;
             PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
-                       tid_, pid_, succ_cnt.load(std::memory_order_relaxed), failed_cnt.load(std::memory_order_relaxed), consumed);
+                       tid_, pid_, succ_cnt, failed_cnt, consumed);
             reach_end_log = false;
             break;
         }
@@ -127,25 +125,47 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
         }
 
         if (!status.ok()) {
-            failed_cnt.fetch_add(1, std::memory_order_relaxed);
+            failed_cnt++;
             continue;
         }
-        char* pk = new char[record.size()];
-        memcpy(pk, record.data(), record.size());
-        Slice tempSlice = ::rtidb::base::Slice(pk, record.size());
-        recordPtr.push_back(tempSlice);
+        bool ok = entry.ParseFromString(record.ToString());
+        if (!ok) {
+            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
+                        ::rtidb::base::DebugString(record.ToString()).c_str());
+            failed_cnt++;
+            continue;
+        }
 
-        if (recordPtr.size() >= FLAGS_load_table_batch) {
-            load_pool_.AddTask(boost::bind(&Snapshot::BinLogPut, this, table, recordPtr, &succ_cnt, &failed_cnt, &cur_offset));
-            recordPtr.clear();
+        if (cur_offset >= entry.log_index()) {
+            PDLOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
+            continue;
+        }
+
+        if (cur_offset + 1 != entry.log_index()) {
+            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
+                  cur_offset, entry.log_index(), tid_, pid_);
+        }
+        
+        if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
+            if (entry.dimensions_size() == 0) {
+                PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid_, pid_, entry.log_index());
+            } else {
+                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+            }
+        } else {
+            table->Put(entry);
+        }
+        cur_offset = entry.log_index();
+        succ_cnt++;
+        if (succ_cnt % 100000 == 0) {
+            PDLOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
+                    succ_cnt, failed_cnt, tid_, pid_);
+        }
+        if (succ_cnt % FLAGS_gc_on_table_recover_count == 0) {
+            table->SchedGc();
         }
     }
-    if (recordPtr.size() > 0) {
-        load_pool_.AddTask(boost::bind(&Snapshot::BinLogPut, this, table, recordPtr, &succ_cnt, &failed_cnt, &cur_offset));
-        recordPtr.clear();
-    }
-    load_pool_.Stop(true);
-    latest_offset = cur_offset.load(std::memory_order_relaxed);
+    latest_offset = cur_offset;
     if (!reach_end_log) {
         int log_index = log_reader.GetLogIndex();
         if (log_index < 0) {
@@ -172,50 +192,8 @@ bool Snapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
     return true;
 }
 
-void Snapshot::BinLogPut(std::shared_ptr<Table>& table, std::vector<::rtidb::base::Slice> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt, std::atomic<uint64_t>* cur_offset) {
-    ::rtidb::api::LogEntry entry;
-    for (auto it = recordPtr.cbegin(); it != recordPtr.cend(); delete [] (*it).data(), it++) {
-        bool ok = entry.ParseFromString((*it).ToString());
-        if (!ok) {
-            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-                  ::rtidb::base::DebugString((*it).ToString()).c_str());
-            failed_cnt->fetch_add(1, std::memory_order_relaxed);
-            continue;
-        }
-
-        if (cur_offset->load(std::memory_order_relaxed) >= entry.log_index()) {
-            PDLOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
-            continue;
-        }
-
-        if (cur_offset->load(std::memory_order_relaxed) + 1 != entry.log_index()) {
-            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
-                  cur_offset->load(std::memory_order_relaxed), entry.log_index(), tid_, pid_);
-        }
-
-        if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
-            if (entry.dimensions_size() == 0) {
-                PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid_, pid_, entry.log_index());
-            } else {
-                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
-            }
-        } else {
-            table->Put(entry);
-        }
-        *cur_offset = entry.log_index();
-        succ_cnt->fetch_add(1, std::memory_order_relaxed);
-        if (succ_cnt->load(std::memory_order_relaxed) % 100000 == 0) {
-            PDLOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
-                  succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed), tid_, pid_);
-        }
-        if (succ_cnt->load(std::memory_order_relaxed) % FLAGS_gc_on_table_recover_count == 0) {
-            table->SchedGc();
-        }
-    }
-}
-
-    void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table) {
-        std::string full_path = snapshot_path_ + "/" + snapshot_name;
+void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table) {
+    std::string full_path = snapshot_path_ + "/" + snapshot_name;
     std::atomic<uint64_t> g_succ_cnt(0);
     std::atomic<uint64_t> g_failed_cnt(0);
     RecoverSingleSnapshot(full_path, table, &g_succ_cnt, &g_failed_cnt);

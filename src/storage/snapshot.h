@@ -64,8 +64,6 @@ public:
 
     void Put(std::string& path, std::shared_ptr<Table>& table, std::vector<::rtidb::base::Slice> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
 
-    void BinLogPut(std::shared_ptr<Table>& table, std::vector<::rtidb::base::Slice> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt, std::atomic<uint64_t>* cur_offset);
-
 private:
 
     // load single snapshot to table
