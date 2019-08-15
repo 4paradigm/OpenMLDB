@@ -14,6 +14,7 @@
 #include "storage/snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"
+#include "tablet/file_reciver.h"
 #include "thread_pool.h"
 #include "base/set.h"
 #include "zk/zk_client.h"
@@ -39,26 +40,6 @@ namespace tablet {
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
-
-class FileReceiver {
-public:
-    FileReceiver(const std::string& file_name, uint32_t tid, uint32_t pid);
-    ~FileReceiver();
-    FileReceiver(const FileReceiver&) = delete;
-    FileReceiver& operator = (const FileReceiver&) = delete;
-    int Init();
-    int WriteData(const std::string& data, uint64_t block_id);
-    void SaveFile();
-    uint64_t GetBlockId();
-
-private:
-    std::string file_name_;
-    uint32_t tid_;
-    uint32_t pid_;
-    uint64_t size_;
-    uint64_t block_id_;
-    FILE* file_;
-};
 
 class TabletImpl : public ::rtidb::api::TabletServer {
 

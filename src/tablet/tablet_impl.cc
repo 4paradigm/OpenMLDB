@@ -75,70 +75,6 @@ DECLARE_uint32(latest_ttl_max);
 namespace rtidb {
 namespace tablet {
 const static std::string SERVER_CONCURRENCY_KEY = "server";
-FileReceiver::FileReceiver(const std::string& file_name, uint32_t tid, uint32_t pid):
-        file_name_(file_name), tid_(tid), pid_(pid), size_(0), block_id_(0), file_(NULL) {}
-
-FileReceiver::~FileReceiver() {
-    if (file_) fclose(file_);
-}
-
-int FileReceiver::Init() {
-    if (file_) {
-        fclose(file_);
-        file_ = NULL;
-    }
-    block_id_ = 0;
-    std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
-    if (file_name_ != "table_meta.txt") {
-        tmp_file_path += "snapshot/";
-    }
-    if (!::rtidb::base::MkdirRecur(tmp_file_path)) {
-        PDLOG(WARNING, "mkdir failed! path[%s]", tmp_file_path.c_str());
-        return -1;
-    }
-    std::string full_path = tmp_file_path + file_name_ + ".tmp";
-    FILE* file = fopen(full_path.c_str(), "wb");
-    if (file == NULL) {
-        PDLOG(WARNING, "fail to open file %s", full_path.c_str());
-        return -1;
-    }
-    file_ = file;
-    return 0;
-}
-
-uint64_t FileReceiver::GetBlockId() {
-	return block_id_;
-}
-
-int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
-    if (file_ == NULL) {
-        PDLOG(WARNING, "file is NULL");
-		return -1;
-    }
-	size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
-	if (r < data.size()) {
-		PDLOG(WARNING, "write error. tid[%u] pid[%u]", tid_, pid_);
-		return -1;
-	}
-	size_ += r;
-	block_id_ = block_id;
-    return 0;
-}
-
-void FileReceiver::SaveFile() {
-    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
-    if (file_name_ != "table_meta.txt") {
-        full_path += "snapshot/";
-    }
-    full_path += file_name_;
-    std::string tmp_file_path = full_path + ".tmp";
-    if (::rtidb::base::IsExists(full_path)) {
-        std::string backup_file = full_path + "." + ::rtidb::base::GetNowTime();
-        rename(full_path.c_str(), backup_file.c_str());
-    }
-    rename(tmp_file_path.c_str(), full_path.c_str());
-    PDLOG(INFO, "file %s received. size %lu tid %u pid %u", file_name_.c_str(), size_, tid_, pid_);
-}
 
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
@@ -2121,6 +2057,10 @@ void TabletImpl::SendData(RpcController* controller,
     uint32_t pid = request->pid(); 
 	std::string combine_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + request->file_name();
 	std::shared_ptr<FileReceiver> receiver;
+    std::string path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    if (request->file_name() != "table_meta.txt") {
+        path += "snapshot/";
+    }
 	{
     	std::lock_guard<std::mutex> lock(mu_);
 		auto iter = file_receiver_map_.find(combine_key);
@@ -2133,7 +2073,7 @@ void TabletImpl::SendData(RpcController* controller,
                 return;
             }
 		    if (iter == file_receiver_map_.end()) {
-				file_receiver_map_.insert(std::make_pair(combine_key, std::make_shared<FileReceiver>(request->file_name(), tid, pid)));
+				file_receiver_map_.insert(std::make_pair(combine_key, std::make_shared<FileReceiver>(request->file_name(), path)));
                 iter = file_receiver_map_.find(combine_key);
             }
             if (iter->second->Init() < 0) {
@@ -2301,7 +2241,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
     std::string sync_snapshot_key = endpoint + "_" + 
                     std::to_string(tid) + "_" + std::to_string(pid);
 	sync_snapshot_set_.erase(sync_snapshot_key);
-}            
+}
 
 int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid,
             const std::string& file_name) {
