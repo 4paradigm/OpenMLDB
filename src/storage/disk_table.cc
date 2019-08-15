@@ -13,6 +13,7 @@ using ::baidu::common::DEBUG;
 
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
+DECLARE_bool(disable_wal);
 
 namespace rtidb {
 namespace storage {
@@ -27,21 +28,24 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      ::rtidb::common::StorageMode storage_mode) :
         Table(storage_mode, name, id, pid, ttl * 60 * 1000, true, 0, mapping, ttl_type, 
                 ::rtidb::api::CompressType::kNoCompress),
-        offset_(0) {
+        write_opts_(), offset_(0) {
     if (!options_template_initialized) {
         initOptionTemplate();
     }
+    write_opts_.disableWAL = FLAGS_disable_wal;
     db_ = nullptr;
 }
 
 DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta) :
         Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
                 0, true, 0, std::map<std::string, uint32_t>(), 
-                ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress) {
+                ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress),
+        write_opts_(), offset_(0) {
     table_meta_.CopyFrom(table_meta);
     if (!options_template_initialized) {
         initOptionTemplate();
     }
+    write_opts_.disableWAL = FLAGS_disable_wal;
     db_ = nullptr;
 }
 
@@ -125,7 +129,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     return true;
 }
 
-bool DiskTable::Init() {
+bool DiskTable::InitTableProperty() {
     if (mapping_.empty()) {
         for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
             mapping_.insert(std::make_pair(table_meta_.dimensions(i),
@@ -150,7 +154,13 @@ bool DiskTable::Init() {
     if (table_meta_.has_ttl_type()) ttl_type_ = table_meta_.ttl_type();
     if (table_meta_.has_compress_type()) compress_type_ = table_meta_.compress_type();
     idx_cnt_ = mapping_.size();
+    return true;
+}
 
+bool DiskTable::Init() {
+    if (!InitTableProperty()) {
+        return false;
+    }
     InitColumnFamilyDescriptor();
     std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
@@ -166,13 +176,14 @@ bool DiskTable::Init() {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
         return false;
     } 
+    PDLOG(DEBUG, "Open DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     return true;
 }
 
 bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint32_t size) {
     rocksdb::Status s;
     rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(pk, time));
-    s = db_->Put(rocksdb::WriteOptions(), cf_hs_[1], spk, rocksdb::Slice(data, size));
+    s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -195,7 +206,7 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
         rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(it->key(), time));
         batch.Put(cf_hs_[it->idx() + 1], spk, value);
     }
-    s = db_->Write(rocksdb::WriteOptions(), &batch);
+    s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -216,7 +227,7 @@ bool DiskTable::Put(const ::rtidb::api::LogEntry& entry) {
 }
 
 bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
-    rocksdb::Status s = db_->DeleteRange(rocksdb::WriteOptions(), cf_hs_[idx + 1], 
+    rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
                 rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX)), rocksdb::Slice(CombineKeyTs(pk, 0)));
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
@@ -243,19 +254,23 @@ bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) {
 }
 
 bool DiskTable::LoadTable() {
+    if (!InitTableProperty()) {
+        return false;
+    }
     InitColumnFamilyDescriptor();
-    options_.create_if_missing = false;
-    options_.error_if_exists = false;
-    options_.create_missing_column_families = false;
     std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
     std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!rtidb::base::IsExists(path)) {
         return false;
     }
+    options_.create_if_missing = false;
+    options_.error_if_exists = false;
+    options_.create_missing_column_families = false;
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
     PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
     if (!s.ok()) {
         PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return false;
     }    
     return true;
 }
@@ -280,7 +295,6 @@ void DiskTable::GcTTL() {
     }
     for (auto cf_hs : cf_hs_) {
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-        rocksdb::WriteOptions wo = rocksdb::WriteOptions();
         const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
         ro.snapshot = snapshot;
         //ro.prefix_same_as_start = true;
@@ -297,7 +311,7 @@ void DiskTable::GcTTL() {
                     it->Next();
                     continue;
                 } else {
-                    rocksdb::Status s = db_->DeleteRange(wo, cf_hs, 
+                    rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs, 
                             rocksdb::Slice(CombineKeyTs(cur_pk, ts)), rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
                     if (!s.ok()) {
                         PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -324,7 +338,6 @@ void DiskTable::GcHead() {
     }
     for (auto cf_hs : cf_hs_) {
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-        rocksdb::WriteOptions wo = rocksdb::WriteOptions();
         const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
         ro.snapshot = snapshot;
         //ro.prefix_same_as_start = true;
@@ -343,7 +356,7 @@ void DiskTable::GcHead() {
                     count++;
                     continue;
                 } else {
-                    rocksdb::Status s = db_->DeleteRange(wo, cf_hs, 
+                    rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs, 
                             rocksdb::Slice(CombineKeyTs(cur_pk, ts)), rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
                     if (!s.ok()) {
                         PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
@@ -384,6 +397,22 @@ uint64_t DiskTable::GetExpireTime() {
 bool DiskTable::IsExpire(const ::rtidb::api::LogEntry& entry) {
     // TODO
     return false;
+}
+
+int DiskTable::CreateCheckPoint(const std::string& checkpoint_dir) {
+    rocksdb::Checkpoint* checkpoint = NULL;
+    rocksdb::Status s = rocksdb::Checkpoint::Create(db_, &checkpoint);
+    if (!s.ok()) {
+        PDLOG(WARNING, "Create failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return -1;
+    }
+    s = checkpoint->CreateCheckpoint(checkpoint_dir);
+    delete checkpoint;
+    if (!s.ok()) {
+        PDLOG(WARNING, "CreateCheckpoint failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return -1;
+    }
+    return 0;
 }
 
 TableIterator* DiskTable::NewIterator(const std::string &pk, Ticket& ticket) {

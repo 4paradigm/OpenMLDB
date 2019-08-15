@@ -61,8 +61,6 @@ public:
     virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
     virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) = 0;
 
-    virtual bool LoadTable() { return true; }
-
     virtual void SchedGc() = 0;
 
     virtual uint64_t GetRecordCnt() const = 0;
