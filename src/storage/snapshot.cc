@@ -23,7 +23,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "thread_pool.h"
 #include "boost/bind.hpp"
-#include "base/RingQueue.h"
+#include "base/ringqueue.h"
 
 
 using ::baidu::common::DEBUG;

@@ -13,7 +13,7 @@
 #include <atomic>
 #include <memory>
 #include <map>
-#include <base/RingQueue.h>
+#include <base/ringqueue.h>
 #include "log/log_reader.h"
 #include "proto/tablet.pb.h"
 #include "base/count_down_latch.h"
