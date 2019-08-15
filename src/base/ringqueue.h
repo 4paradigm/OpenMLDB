@@ -6,24 +6,22 @@
 #include <bthread/mutex.h>
 #include <condition_variable>
 
-#ifndef RTIDB_RINGQUEUE_H
-#define RTIDB_RINGQUEUE_H
-
-#endif //RTIDB_RINGQUEUE_H
+#ifndef BASE_RINGQUEUE_H
+#define BASE_RINGQUEUE_H
 
 namespace rtidb {
 namespace base {
     template<class T>
-    class RingQueue {
+    class ringqueue {
     public:
-        RingQueue(int32_t size = 100):
+        ringqueue(int32_t size = 100):
         max_size_(size),
         buf_(new T[size]),
-        full_(false),
         head_(0),
-        tail_(0) {};
+        tail_(0),
+        full_(false) {};
 
-        ~RingQueue() {
+        ~ringqueue() {
           delete[] buf_;
         };
         bool full() const { return full_; }
@@ -80,3 +78,5 @@ namespace base {
     };
 }
 }
+
+#endif //RTIDB_RINGQUEUE_H

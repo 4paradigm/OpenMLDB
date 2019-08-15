@@ -214,7 +214,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     ThreadPool load_pool_(FLAGS_load_table_thread);
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
-    ::rtidb::base::RingQueue<std::vector<::rtidb::base::Slice> *> rq(100);
+    ::rtidb::base::ringqueue<std::vector<::rtidb::base::Slice> *> rq(100);
     for (auto i = FLAGS_load_table_thread; i > 0; i--) {
         load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, &rq, &succ_cnt, &failed_cnt));
     }
