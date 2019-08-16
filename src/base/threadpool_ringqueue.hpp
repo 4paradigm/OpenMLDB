@@ -56,6 +56,9 @@ class ThreadPool_RingQueue {
     void AddTask(const Task& task) {
         std::unique_lock<std::mutex> lock(mutex_);
         if (stop_) return;
+        if (queue_.full()) {
+            queue_cv_.wait(lock);
+        }
         queue_.put(task);
         ++pending_num_;
         work_cv_.notify_one();
@@ -78,6 +81,7 @@ class ThreadPool_RingQueue {
                 if (!queue_.empty()) {
                     task = queue_.pop();
                 }
+                queue_cv_.notify_one();
                 --pending_num_;
                 lock.unlock();
                 task();
@@ -89,7 +93,7 @@ class ThreadPool_RingQueue {
     ::rtidb::base::RingQueue<Task> queue_;
     volatile int pending_num_;
     std::vector<pthread_t> tids_;
-    std::condition_variable work_cv_;
+    std::condition_variable work_cv_, queue_cv_;
     std::mutex mutex_;
 };
 }

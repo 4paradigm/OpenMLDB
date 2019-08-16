@@ -12,7 +12,7 @@
 namespace rtidb {
 namespace base {
 
-    template<class T>
+template<class T>
 class RingQueue {
 public:
     RingQueue(int32_t size = 100):
