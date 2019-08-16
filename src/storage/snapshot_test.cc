@@ -106,7 +106,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
-    Snapshot snapshot(4, 3, log_part);
+    Snapshot snapshot(4, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -233,7 +233,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     mapping.insert(std::make_pair("merchant", 1));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(4, 4, log_part);
+    Snapshot snapshot(4, 4, log_part, FLAGS_db_root_path);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
@@ -302,7 +302,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(3, 3, log_part);
+    Snapshot snapshot(3, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
@@ -406,7 +406,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(3, 2, log_part);
+    Snapshot snapshot(3, 2, log_part, FLAGS_db_root_path);
     ASSERT_TRUE(snapshot.Init());
     int ret = snapshot.RecordOffset("20170609.sdb", 3, 2, 5);
     ASSERT_EQ(0, ret);
@@ -518,7 +518,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(2, 2, log_part);
+    Snapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
     ASSERT_TRUE(snapshot.Init());
     int ret = snapshot.RecordOffset("20170609.sdb", 2, 2, 5);
     ASSERT_EQ(0, ret);
@@ -543,7 +543,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
 
 TEST_F(SnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(1, 2, log_part);
+    Snapshot snapshot(1, 2, log_part, FLAGS_db_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -688,7 +688,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 
 TEST_F(SnapshotTest, MakeSnapshotLatest) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(5, 1, log_part);
+    Snapshot snapshot(5, 1, log_part, FLAGS_db_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -799,7 +799,7 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
 
 TEST_F(SnapshotTest, RecordOffset) {
 	std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
-    Snapshot snapshot(1, 1, NULL);
+    Snapshot snapshot(1, 1, NULL, FLAGS_db_root_path);
     snapshot.Init();
     uint64_t offset = 1122;
     uint64_t key_count = 3000;
@@ -897,7 +897,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(tid, 0, log_part);
+    Snapshot snapshot(tid, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(30, offset);
@@ -1014,7 +1014,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(table_meta);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(2, 2, log_part);
+    Snapshot snapshot(2, 2, log_part, FLAGS_db_root_path);
     ASSERT_TRUE(snapshot.Init());
     int ret = snapshot.RecordOffset("20190614.sdb", 1, 1, 5);
     ASSERT_EQ(0, ret);

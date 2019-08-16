@@ -26,7 +26,6 @@ using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 
-DECLARE_string(db_root_path);
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
 DECLARE_uint32(make_snapshot_max_deleted_keys);
@@ -38,8 +37,9 @@ const std::string SNAPSHOT_SUBFIX=".sdb";
 const std::string MANIFEST = "MANIFEST";
 const uint32_t KEY_NUM_DISPLAY = 1000000;
 
-Snapshot::Snapshot(uint32_t tid, uint32_t pid, LogParts* log_part):tid_(tid), pid_(pid),
-     log_part_(log_part) {
+Snapshot::Snapshot(uint32_t tid, uint32_t pid,
+        LogParts* log_part, const std::string& db_root_path):tid_(tid), pid_(pid),
+     log_part_(log_part), db_root_path_(db_root_path) {
     offset_ = 0;
 }
 
@@ -47,8 +47,8 @@ Snapshot::~Snapshot() {
 }
 
 bool Snapshot::Init() {
-    snapshot_path_ = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
-    log_path_ = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/binlog/";
+    snapshot_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
+    log_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/binlog/";
     if (!::rtidb::base::MkdirRecur(snapshot_path_)) {
         PDLOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
         return false;

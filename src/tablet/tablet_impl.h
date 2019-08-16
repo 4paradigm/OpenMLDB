@@ -42,7 +42,9 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snap
 
 class FileReceiver {
 public:
-    FileReceiver(const std::string& file_name, uint32_t tid, uint32_t pid);
+    FileReceiver(const std::string& file_name,
+                 const std::string& db_root_path,
+                 uint32_t tid, uint32_t pid);
     ~FileReceiver();
     FileReceiver(const FileReceiver&) = delete;
     FileReceiver& operator = (const FileReceiver&) = delete;
@@ -58,6 +60,7 @@ private:
     uint64_t size_;
     uint64_t block_id_;
     FILE* file_;
+    std::string db_root_path_;
 };
 
 class TabletImpl : public ::rtidb::api::TabletServer {
@@ -375,6 +378,11 @@ private:
     bool CheckGetDone(::rtidb::api::GetType type, 
                       uint64_t ts, uint64_t target_ts); 
 
+    void ChooseDBRootPath(uint32_t tid, 
+            uint32_t pid, std::string& path);
+
+    void ChooseRecycleBinRootPath(uint32_t tid, 
+            uint32_t pid, std::string& path);
 
 private:
     Tables tables_;
@@ -391,8 +399,9 @@ private:
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
+    std::vector<std::string> db_root_paths_;
+    std::vector<std::string> recycle_bin_root_paths_;
 };
-
 
 }
 }

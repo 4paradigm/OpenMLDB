@@ -74,9 +74,13 @@ DECLARE_uint32(latest_ttl_max);
 
 namespace rtidb {
 namespace tablet {
+
 const static std::string SERVER_CONCURRENCY_KEY = "server";
-FileReceiver::FileReceiver(const std::string& file_name, uint32_t tid, uint32_t pid):
-        file_name_(file_name), tid_(tid), pid_(pid), size_(0), block_id_(0), file_(NULL) {}
+FileReceiver::FileReceiver(const std::string& file_name, 
+        const std::string& db_root_path,
+        uint32_t tid, uint32_t pid):
+        file_name_(file_name), tid_(tid), pid_(pid), size_(0), block_id_(0), file_(NULL),
+        db_root_path_(db_root_path){}
 
 FileReceiver::~FileReceiver() {
     if (file_) fclose(file_);
@@ -88,7 +92,7 @@ int FileReceiver::Init() {
         file_ = NULL;
     }
     block_id_ = 0;
-    std::string tmp_file_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
+    std::string tmp_file_path = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
     if (file_name_ != "table_meta.txt") {
         tmp_file_path += "snapshot/";
     }
@@ -126,7 +130,7 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
 }
 
 void FileReceiver::SaveFile() {
-    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
+    std::string full_path = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/";
     if (file_name_ != "table_meta.txt") {
         full_path += "snapshot/";
     }
@@ -143,7 +147,8 @@ void FileReceiver::SaveFile() {
 TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
-    io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL){}
+    io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL),
+    db_root_paths_(), recycle_bin_root_paths_(){}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -155,6 +160,16 @@ TabletImpl::~TabletImpl() {
 
 bool TabletImpl::Init() {
     std::lock_guard<std::mutex> lock(mu_);
+    ::rtidb::base::SplitString(FLAGS_db_root_path, ",", &db_root_paths_);
+    if (db_root_paths_.size() == 0) {
+        PDLOG(WARNING, "fail to find db root path, original conf is %s", FLAGS_db_root_path.c_str());
+        return false;
+    }
+    ::rtidb::base::SplitString(FLAGS_recycle_bin_root_path, ",", &recycle_bin_root_paths_);
+    if (recycle_bin_root_paths_.size() == 0) {
+        PDLOG(WARNING, "fail to find recycle_bin_root_path, original conf is %s", FLAGS_recycle_bin_root_path.c_str());
+        return false;
+    }
     if (!FLAGS_zk_cluster.empty()) {
         zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
                 FLAGS_endpoint, FLAGS_zk_root_path);
@@ -2305,6 +2320,8 @@ void TabletImpl::SendData(RpcController* controller,
     brpc::Controller *cntl = static_cast<brpc::Controller*>(controller);
     uint32_t tid = request->tid(); 
     uint32_t pid = request->pid(); 
+    std::string db_root_path;
+    ChooseDBRootPath(tid, pid, db_root_path);
 	std::string combine_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + request->file_name();
 	std::shared_ptr<FileReceiver> receiver;
 	{
@@ -2319,7 +2336,7 @@ void TabletImpl::SendData(RpcController* controller,
                 return;
             }
 		    if (iter == file_receiver_map_.end()) {
-				file_receiver_map_.insert(std::make_pair(combine_key, std::make_shared<FileReceiver>(request->file_name(), tid, pid)));
+				file_receiver_map_.insert(std::make_pair(combine_key, std::make_shared<FileReceiver>(request->file_name(), db_root_path, tid, pid)));
                 iter = file_receiver_map_.find(combine_key);
             }
             if (iter->second->Init() < 0) {
@@ -2444,7 +2461,9 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 			PDLOG(WARNING, "send table_meta.txt failed. tid[%u] pid[%u]", tid, pid);
 			break;
 		}
-    	std::string manifest_file = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + 
+        std::string db_root_path;
+        ChooseDBRootPath(tid, pid, db_root_path);
+    	std::string manifest_file = db_root_path + "/" + std::to_string(tid) + "_" + 
 									std::to_string(pid) + "/snapshot/MANIFEST";
         std::string snapshot_file;
         {
@@ -2491,7 +2510,9 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
 
 int TabletImpl::SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid,
             const std::string& file_name) {
-    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    std::string db_root_path;
+    ChooseDBRootPath(tid, pid, db_root_path);
+    std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (file_name != "table_meta.txt") {
         full_path += "snapshot/";
     }
@@ -2756,7 +2777,8 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
-        std::string root_path = FLAGS_db_root_path;
+        std::string root_path;
+        ChooseDBRootPath(tid, pid, root_path);
         if (table_meta.storage_mode() == ::rtidb::common::kHDD) {
             root_path = FLAGS_hdd_root_path;
         } else if (table_meta.storage_mode() == ::rtidb::common::kSSD) {
@@ -2919,15 +2941,14 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
         }
-        root_path = FLAGS_db_root_path;
+        ChooseDBRootPath(tid, pid, root_path);
     }
     std::string source_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
-
     if (!::rtidb::base::IsExists(source_path)) {
         if (task_ptr) {
             std::lock_guard<std::mutex> lock(mu_);
             task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-        }        
+        } 
         PDLOG(INFO, "drop table ok. tid[%u] pid[%u]", tid, pid);
         return 0;
     }
@@ -3015,8 +3036,10 @@ void TabletImpl::CreateTable(RpcController* controller,
             response->set_code(101);
             response->set_msg("table already exists");
             return;
-        }       
-    	std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(tid) +
+        } 
+        std::string db_root_path;
+        ChooseDBRootPath(tid, pid, db_root_path);
+    	std::string table_db_path = db_root_path + "/" + std::to_string(tid) +
                         "_" + std::to_string(pid);
 		if (WriteTableMeta(table_db_path, table_meta) < 0) {
         	PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
@@ -3133,8 +3156,9 @@ void TabletImpl::GetTermPair(RpcController* controller,
 		response->set_code(0);
 		response->set_has_table(false);
 		response->set_msg("table is not exist");
-
-        std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+        std::string db_root_path;
+        ChooseDBRootPath(tid, pid, db_root_path);
+        std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
     	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
 		int fd = open(manifest_file.c_str(), O_RDONLY);
 	    response->set_msg("ok");
@@ -3189,10 +3213,15 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
 	brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string db_root_path;
+    ChooseDBRootPath(tid, pid, db_root_path);
+    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
     std::string binlog_path = db_path + "/binlog";
     if (::rtidb::base::IsExists(binlog_path)) {
-        std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + std::to_string(tid) + 
+        //TODO add clean the recycle bin logic
+        std::string recycle_bin_root_path;
+        ChooseRecycleBinRootPath(tid, pid, recycle_bin_root_path);
+        std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + 
                "_" + std::to_string(pid) + "_binlog_" + ::rtidb::base::GetNowTime();
         ::rtidb::base::Rename(binlog_path, recycle_path);
         PDLOG(INFO, "binlog has moved form %s to %s. tid %u pid %u", 
@@ -3200,7 +3229,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
     }
 	response->set_code(0);
 	response->set_msg("ok");
-}        
+} 
 
 void TabletImpl::CheckFile(RpcController* controller,
             const ::rtidb::api::CheckFileRequest* request,
@@ -3209,8 +3238,10 @@ void TabletImpl::CheckFile(RpcController* controller,
 	brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
+    std::string db_root_path;
+    ChooseDBRootPath(tid, pid, db_root_path);
     std::string file_name = request->file();
-    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (file_name != "table_meta.txt") {
         full_path += "snapshot/";
     }
@@ -3238,7 +3269,9 @@ void TabletImpl::GetManifest(RpcController* controller,
             ::rtidb::api::GetManifestResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
-	std::string db_path = FLAGS_db_root_path + "/" + std::to_string(request->tid()) + "_" + 
+    std::string db_root_path;
+    ChooseDBRootPath(request->tid(), request->pid(), db_root_path);
+	std::string db_path = db_root_path + "/" + std::to_string(request->tid()) + "_" + 
                 std::to_string(request->pid());
 	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
 	::rtidb::api::Manifest manifest;
@@ -3320,7 +3353,9 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
         msg.assign("fail to init table");
         return -1;
     }
-    std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(table_meta->tid()) +
+    std::string db_root_path;
+    ChooseDBRootPath(table_meta->tid(), table_meta->pid(), db_root_path);
+    std::string table_db_path = db_root_path + "/" + std::to_string(table_meta->tid()) +
                 "_" + std::to_string(table_meta->pid());
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
@@ -3349,7 +3384,9 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     if (!FLAGS_zk_cluster.empty() && table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
         replicator->SetLeaderTerm(table_meta->term());
     }
-    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(table_meta->tid(), table_meta->pid(), replicator->GetLogPart());
+
+    std::shared_ptr<Snapshot> snapshot = std::make_shared<Snapshot>(table_meta->tid(), table_meta->pid(), replicator->GetLogPart(),
+            db_root_path);
     ok = snapshot->Init();
     if (!ok) {
         PDLOG(WARNING, "fail to init snapshot for tid %u, pid %u", table_meta->tid(), table_meta->pid());
@@ -3682,6 +3719,30 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
         replicator->DeleteBinlog();
         task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     }
+}
+
+void TabletImpl::ChooseDBRootPath(uint32_t tid, 
+                                  uint32_t pid, 
+                                  std::string& path) {
+
+    if (db_root_paths_.size() == 1) {
+        path.assign(db_root_paths_[0]);
+        return;
+    }
+    uint64_t index = (tid << pid) % db_root_paths_.size() ;
+    path.assign(db_root_paths_[index]);
+}
+
+void TabletImpl::ChooseRecycleBinRootPath(uint32_t tid, 
+                                  uint32_t pid, 
+                                  std::string& path) {
+
+    if (recycle_bin_root_paths_.size() == 1) {
+        path.assign(recycle_bin_root_paths_[0]);
+        return;
+    }
+    uint64_t index = (tid << pid) % recycle_bin_root_paths_.size() ;
+    path.assign(recycle_bin_root_paths_[index]);
 }
 
 }
