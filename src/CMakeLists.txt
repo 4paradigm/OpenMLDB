@@ -8,7 +8,7 @@ if (TCMALLOC_ENABLE)
     endif()
 endif()
 
-add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc)
+add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
 add_library(storage STATIC storage/mem_table.cc storage/disk_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc)
 target_link_libraries(storage rocksdb z)

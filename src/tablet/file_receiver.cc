@@ -26,7 +26,7 @@ FileReceiver::~FileReceiver() {
     if (file_) fclose(file_);
 }
 
-int FileReceiver::Init() {
+bool FileReceiver::Init() {
     if (file_) {
         fclose(file_);
         file_ = NULL;
@@ -36,16 +36,16 @@ int FileReceiver::Init() {
     }
     if (!::rtidb::base::MkdirRecur(path_)) {
         PDLOG(WARNING, "mkdir failed! path[%s]", path_.c_str());
-        return -1;
+        return false;
     }
     std::string full_path = path_ + file_name_ + ".tmp";
     FILE* file = fopen(full_path.c_str(), "wb");
     if (file == NULL) {
         PDLOG(WARNING, "fail to open file %s", full_path.c_str());
-        return -1;
+        return false;
     }
     file_ = file;
-    return 0;
+    return true;
 }
 
 uint64_t FileReceiver::GetBlockId() {

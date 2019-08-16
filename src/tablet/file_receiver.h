@@ -17,7 +17,7 @@ public:
     ~FileReceiver();
     FileReceiver(const FileReceiver&) = delete;
     FileReceiver& operator = (const FileReceiver&) = delete;
-    int Init();
+    bool Init();
     int WriteData(const std::string& data, uint64_t block_id);
     void SaveFile();
     uint64_t GetBlockId();

@@ -307,11 +307,6 @@ private:
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
                         std::shared_ptr<::rtidb::api::TaskInfo> task);
 
-    int SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid, const std::string& file_name);
-
-    int DataWrite(::rtidb::api::TabletServer_Stub& stub, uint32_t tid, uint32_t pid,
-                  const std::string& file_name, char* buffer, size_t len, uint64_t block_id, uint64_t limit_time);
-
     void SchedMakeSnapshot();
 
     void CheckZkClient();
