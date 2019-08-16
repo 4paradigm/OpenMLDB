@@ -52,7 +52,7 @@ class TaskPool {
     void AddTask(const Task& task) {
         std::unique_lock<std::mutex> lock(mutex_);
         if (stop_) return;
-        if (queue_.full()) {
+        while (queue_.full()) {
             queue_cv_.wait(lock);
         }
         queue_.put(task);
