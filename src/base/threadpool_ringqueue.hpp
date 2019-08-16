@@ -15,7 +15,8 @@ class ThreadPool_RingQueue {
         ThreadPool_RingQueue(uint32_t thread_num, uint32_t qsize):
         stop_(false),
         threads_num_(thread_num),
-        queue_(qsize) {
+        queue_(qsize),
+        pending_num_(0) {
             Start();
         };
 
@@ -37,9 +38,13 @@ class ThreadPool_RingQueue {
     };
 
     bool Stop() {
+        while (pending_num_ > 0) {
+            usleep(10000);
+        }
         {
             std::unique_lock<std::mutex> lock(mutex_);
             stop_ = true;
+            work_cv_.notify_all();
         }
         for (uint32_t i = 0; i < tids_.size(); i++) {
             pthread_join(tids_[i], NULL);
@@ -52,6 +57,7 @@ class ThreadPool_RingQueue {
         std::unique_lock<std::mutex> lock(mutex_);
         if (stop_) return;
         queue_.put(task);
+        ++pending_num_;
         work_cv_.notify_one();
     };
     private:
@@ -72,6 +78,7 @@ class ThreadPool_RingQueue {
                 if (!queue_.empty()) {
                     task = queue_.pop();
                 }
+                --pending_num_;
                 lock.unlock();
                 task();
                 lock.lock();
@@ -80,6 +87,7 @@ class ThreadPool_RingQueue {
     bool stop_;
     uint32_t threads_num_;
     ::rtidb::base::RingQueue<Task> queue_;
+    volatile int pending_num_;
     std::vector<pthread_t> tids_;
     std::condition_variable work_cv_;
     std::mutex mutex_;
