@@ -93,3 +93,6 @@ DEFINE_uint32(latest_default_skiplist_height, 1, "the default height of skiplist
 DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skiplist for absolute table");
 DEFINE_bool(enable_show_tp, false, "enable show tp");
 DEFINE_uint32(max_col_display_length, 256, "config the max length of column display");
+
+// rocksdb
+DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");

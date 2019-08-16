@@ -1,4 +1,4 @@
-// file_reciver.h
+// file_receiver.h
 // Copyright (C) 2017 4paradigm.com
 // Author denglong
 // Date 2019-08-14

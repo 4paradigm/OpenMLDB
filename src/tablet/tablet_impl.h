@@ -11,10 +11,11 @@
 
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
-#include "storage/snapshot.h"
+#include "storage/mem_table_snapshot.h"
+#include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"
-#include "tablet/file_reciver.h"
+#include "tablet/file_receiver.h"
 #include "thread_pool.h"
 #include "base/set.h"
 #include "zk/zk_client.h"

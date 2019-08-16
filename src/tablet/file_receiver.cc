@@ -1,14 +1,15 @@
 
-// file_reciver.cc
+// file_receiver.cc
 // Copyright (C) 2017 4paradigm.com
 // Author denglong
 // Date 2019-08-15
 //
 
-#include "tablet/file_reciver.h"
+#include "tablet/file_receiver.h"
 #include "base/file_util.h"
 #include "base/strings.h"
 #include "logging.h"
+#include <boost/algorithm/string/predicate.hpp>
 
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
@@ -18,7 +19,8 @@ namespace rtidb {
 namespace tablet {
 
 FileReceiver::FileReceiver(const std::string& file_name, const std::string& path):
-        file_name_(file_name), path_(path), size_(0), block_id_(0), file_(NULL) {}
+        file_name_(file_name), path_(path), size_(0), block_id_(0), file_(NULL) {
+}
 
 FileReceiver::~FileReceiver() {
     if (file_) fclose(file_);
@@ -29,7 +31,9 @@ int FileReceiver::Init() {
         fclose(file_);
         file_ = NULL;
     }
-    block_id_ = 0;
+    if (!boost::ends_with(path_, "/")) {
+        path_.append("/");
+    }
     if (!::rtidb::base::MkdirRecur(path_)) {
         PDLOG(WARNING, "mkdir failed! path[%s]", path_.c_str());
         return -1;
