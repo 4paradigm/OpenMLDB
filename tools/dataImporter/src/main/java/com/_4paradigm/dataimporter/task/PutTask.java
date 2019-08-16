@@ -13,14 +13,16 @@ public class PutTask implements Runnable {
     public static AtomicLong successfulCount = new AtomicLong(0);
     public static AtomicLong failedCount = new AtomicLong(0);
     private String id;
+    private boolean hasTs;
     private long timestamp;
     private TableSyncClient tableSyncClient;
     private String tableName;
     private HashMap map;
     private final int LOG_INTERVAL = Constant.LOG_INTERVAL;
 
-    public PutTask(String id, long timestamp, TableSyncClient tableSyncClient, String tableName, HashMap map) {
+    public PutTask(String id, boolean hasTs, long timestamp, TableSyncClient tableSyncClient, String tableName, HashMap map) {
         this.id = id;
+        this.hasTs = hasTs;
         this.timestamp = timestamp;
         this.tableSyncClient = tableSyncClient;
         this.tableName = tableName;
@@ -36,16 +38,26 @@ public class PutTask implements Runnable {
         int limit = 10;//retry times
         while (limit-- > 0) {
             try {
-                if (tableSyncClient.put(tableName, timestamp, map)) {
-                    break;
+                if (!hasTs) {
+                    if (tableSyncClient.put(tableName, System.currentTimeMillis(), map)) {
+                        break;
+                    }
+                } else if (timestamp > 0) {
+                    if (tableSyncClient.put(tableName, timestamp, map)) {
+                        break;
+                    }
+                }else {
+                    if (tableSyncClient.put(tableName, map)) {
+                        break;
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                logger.error(e.getMessage());
+                logger.warn(e.getMessage());
             }
         }
         if (limit < 0) {
-            logger.warn("the failed row inserted is : " + map);
+            logger.info("the failed row inserted is : " + map);
             failedCount.getAndIncrement();
         } else {
             long temp = successfulCount.incrementAndGet();

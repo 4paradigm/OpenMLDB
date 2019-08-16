@@ -5,7 +5,7 @@ import com._4paradigm.dataimporter.initialization.InitClient;
 import com._4paradigm.dataimporter.initialization.InitThreadPool;
 import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -34,8 +34,10 @@ public class ParseOrcUtil {
     private String tableName;
     private TypeDescription schema;
     private static final String INDEX = Constant.INDEX;
-    private final int TIMESTAMP_INDEX = Integer.parseInt(StringUtils.isBlank(Constant.TIMESTAMP_INDEX) ? "-1" : Constant.TIMESTAMP_INDEX);
-    private long timestamp;
+    private static final String TIMESTAMP = Constant.TIMESTAMP;
+    private boolean hasTs = false;
+    private boolean schemaTsCol;
+    private long timestamp = -1;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
     private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
             ? null
@@ -54,6 +56,7 @@ public class ParseOrcUtil {
         this.path = path;
         this.tableName = tableName;
         this.schema = schema;
+        this.schemaTsCol = InitClient.hasTsCol(tableName);
     }
 
     public HashMap<String, Object> read(StructObjectInspector inspector, Object row) {
@@ -129,16 +132,21 @@ public class ParseOrcUtil {
                     break;
                 default:
             }
-            if (columnIndex == TIMESTAMP_INDEX) {
-                if (columnType.equals(TypeDescription.Category.STRING) || columnType.equals(TypeDescription.Category.LONG)) {
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
-                    timestamp = Long.valueOf(s);
-                } else if (columnType.equals(TypeDescription.Category.TIMESTAMP)) {
-                    s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
-                    timestamp = Timestamp.valueOf(s).getTime();
-                } else {
-                    logger.error("incorrect format for timestamp!");
-                    throw new RuntimeException("incorrect format for timestamp!");
+            if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
+                hasTs = true;
+            }
+            if (hasTs && !schemaTsCol) {
+                if (columnName.equals(TIMESTAMP.trim())) {
+                    if (columnType.equals(TypeDescription.Category.STRING) || columnType.equals(TypeDescription.Category.LONG)) {
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0" : String.valueOf(value);
+                        timestamp = Long.valueOf(s);
+                    } else if (columnType.equals(TypeDescription.Category.TIMESTAMP)) {
+                        s = StringUtils.isBlank(String.valueOf(value)) ? "0000-00-00 00:00:00" : String.valueOf(value);
+                        timestamp = Timestamp.valueOf(s).getTime();
+                    } else {
+                        logger.error("incorrect format for timestamp!");
+                        throw new RuntimeException("incorrect format for timestamp!");
+                    }
                 }
             }
         }
@@ -166,10 +174,7 @@ public class ParseOrcUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
-                if (TIMESTAMP_INDEX == -1) {
-                    timestamp = System.currentTimeMillis();
-                }
-                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), timestamp, client, tableName, map));
+                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), hasTs, timestamp, client, tableName, map));
                 clientIndex++;
 
             }
@@ -197,7 +202,7 @@ public class ParseOrcUtil {
         }
         TypeDescription result = TypeDescription.createStruct();
         for (int i = 0; i < schema.getFieldNames().size(); i++) {
-            if (INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
+            if (InitClient.contains(",", INPUT_COLUMN_INDEX, String.valueOf(i))) {
                 result.addField(schema.getFieldNames().get(i), schema.getChildren().get(i));
             }
         }
@@ -210,58 +215,62 @@ public class ParseOrcUtil {
         String columnName;
         TypeDescription.Category columnType;
         for (int i = 0; i < schema.getFieldNames().size(); i++) {
-            ColumnDesc columnDesc = new ColumnDesc();
+            ColumnDesc.Builder builder = ColumnDesc.newBuilder();
             columnName = schema.getFieldNames().get(i);
             columnType = schema.getChildren().get(i).getCategory();
-            columnDesc.setName(columnName);
-            if (INDEX.contains(columnName)) {
-                columnDesc.setAddTsIndex(true);
+            builder.setName(columnName);
+            if (InitClient.contains(";", INDEX, columnName)) {
+                builder.setAddTsIdx(true);
+            }
+            if (InitClient.contains(";", TIMESTAMP, columnName)) {
+                builder.setIsTsCol(true);
             }
             switch (columnType) {
                 case BINARY:
-                    columnDesc.setType(ColumnType.kString);
+                    builder.setType(InitClient.stringOf(ColumnType.kString));
                     break;
                 case BOOLEAN:
-                    columnDesc.setType(ColumnType.kBool);
+                    builder.setType(InitClient.stringOf(ColumnType.kBool));
                     break;
                 case BYTE:
-                    columnDesc.setType(ColumnType.kInt16);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt16));
                     break;
                 case DATE:
-                    columnDesc.setType(ColumnType.kDate);
+                    builder.setType(InitClient.stringOf(ColumnType.kDate));
                     break;
                 case DOUBLE:
-                    columnDesc.setType(ColumnType.kDouble);
+                    builder.setType(InitClient.stringOf(ColumnType.kDouble));
                     break;
                 case FLOAT:
-                    columnDesc.setType(ColumnType.kFloat);
+                    builder.setType(InitClient.stringOf(ColumnType.kFloat));
                     break;
                 case INT:
-                    columnDesc.setType(ColumnType.kInt32);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt32));
                     break;
                 case LONG:
-                    columnDesc.setType(ColumnType.kInt64);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt64));
                     break;
                 case SHORT:
-                    columnDesc.setType(ColumnType.kInt16);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt16));
                     break;
                 case STRING:
-                    columnDesc.setType(ColumnType.kString);
+                    builder.setType(InitClient.stringOf(ColumnType.kString));
                     break;
                 case TIMESTAMP:
-                    columnDesc.setType(ColumnType.kTimestamp);
+                    builder.setType(InitClient.stringOf(ColumnType.kTimestamp));
                     break;
                 case CHAR:
-                    columnDesc.setType(ColumnType.kString);
+                    builder.setType(InitClient.stringOf(ColumnType.kString));
                     break;
                 case VARCHAR:
-                    columnDesc.setType(ColumnType.kString);
+                    builder.setType(InitClient.stringOf(ColumnType.kString));
                     break;
                 case DECIMAL:
-                    columnDesc.setType(ColumnType.kDouble);
+                    builder.setType(InitClient.stringOf(ColumnType.kDouble));
                     break;
                 default:
             }
+            ColumnDesc columnDesc = builder.build();
             list.add(columnDesc);
         }
         return list;

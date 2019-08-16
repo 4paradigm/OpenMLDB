@@ -5,10 +5,9 @@ import com._4paradigm.dataimporter.initialization.InitClient;
 import com._4paradigm.dataimporter.initialization.InitThreadPool;
 import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com.csvreader.CsvReader;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,9 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Date;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ParseCsvUtil {
@@ -29,14 +26,17 @@ public class ParseCsvUtil {
     private String tableName;
     private List<String[]> scheamInfo;
     private static final String INDEX = Constant.INDEX;
-    private final int TIMESTAMP_INDEX = Integer.parseInt(StringUtils.isBlank(Constant.TIMESTAMP_INDEX) ? "-1" : Constant.TIMESTAMP_INDEX);
-    private long timestamp;
+    private static final String TIMESTAMP = Constant.TIMESTAMP;
+    private boolean hasTs = false;
+    private boolean schemaTsCol;
+    private long timestamp = -1;
     private boolean hasHeader = Constant.HAS_HEADER;
 
     public ParseCsvUtil(String filePath, String tableName, List<String[]> scheamInfo) {
         this.filePath = filePath;
         this.tableName = tableName;
         this.scheamInfo = scheamInfo;
+        this.schemaTsCol = InitClient.hasTsCol(tableName);
     }
 
     private HashMap<String, Object> read(CsvReader reader) {
@@ -86,14 +86,19 @@ public class ParseCsvUtil {
                     break;
                 default:
             }
-            if (columnIndex == TIMESTAMP_INDEX) {
-                if (columnType.equals("string") || columnType.equals("int64")) {
-                    timestamp = Long.parseLong(value);
-                } else if (columnType.equals("timestamp")) {
-                    timestamp = Timestamp.valueOf(value).getTime();
-                } else {
-                    logger.error("incorrect format for timestamp!");
-                    throw new RuntimeException("incorrect format for timestamp!");
+            if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
+                hasTs = true;
+            }
+            if (hasTs && !schemaTsCol) {
+                if (columnName.equals(TIMESTAMP.trim())) {
+                    if (columnType.equals("string") || columnType.equals("int64")) {
+                        timestamp = Long.parseLong(value);
+                    } else if (columnType.equals("timestamp")) {
+                        timestamp = Timestamp.valueOf(value).getTime();
+                    } else {
+                        logger.error("incorrect format for timestamp!");
+                        throw new RuntimeException("incorrect format for timestamp!");
+                    }
                 }
             }
             if (string.length != 3) {
@@ -119,10 +124,7 @@ public class ParseCsvUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
-                if (TIMESTAMP_INDEX == -1) {
-                    timestamp = System.currentTimeMillis();
-                }
-                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), timestamp, client, tableName, map));
+                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(id.getAndIncrement()), hasTs, timestamp, client, tableName, map));
                 clientIndex++;
             }
         } catch (IOException e) {
@@ -146,6 +148,7 @@ public class ParseCsvUtil {
         }
         List<String[]> result = new ArrayList<>();
         for (String string : lines) {
+            if (string == null || string.trim().equals("")) continue;
             String[] strs = string.split(";");
             for (int i = 0; i < strs.length; i++) {
                 strs[i] = strs[i].split("=")[1].trim();
@@ -159,44 +162,49 @@ public class ParseCsvUtil {
         List<ColumnDesc> list = new ArrayList<>();
         String columnName;
         String type;
+        ColumnDesc columnDesc;
         for (String[] string : schemaList) {
-            ColumnDesc columnDesc = new ColumnDesc();
+            ColumnDesc.Builder builder = ColumnDesc.newBuilder();
             columnName = string[0];
             type = string[1];
-            if (INDEX.contains(columnName)) {
-                columnDesc.setAddTsIndex(true);
+            builder.setName(columnName);
+            if (InitClient.contains(";", INDEX, columnName)) {
+                builder.setAddTsIdx(true);
+            }
+            if (InitClient.contains(";", TIMESTAMP, columnName)) {
+                builder.setIsTsCol(true);
             }
             switch (type) {
                 case "int16":
-                    columnDesc.setType(ColumnType.kInt16);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt16));
                     break;
                 case "int32":
-                    columnDesc.setType(ColumnType.kInt32);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt32));
                     break;
                 case "int64":
-                    columnDesc.setType(ColumnType.kInt64);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt64));
                     break;
                 case "string":
-                    columnDesc.setType(ColumnType.kString);
+                    builder.setType(InitClient.stringOf(ColumnType.kString));
                     break;
                 case "boolean":
-                    columnDesc.setType(ColumnType.kBool);
+                    builder.setType(InitClient.stringOf(ColumnType.kBool));
                     break;
                 case "float":
-                    columnDesc.setType(ColumnType.kFloat);
+                    builder.setType(InitClient.stringOf(ColumnType.kFloat));
                     break;
                 case "double":
-                    columnDesc.setType(ColumnType.kDouble);
+                    builder.setType(InitClient.stringOf(ColumnType.kDouble));
                     break;
                 case "date":
-                    columnDesc.setType(ColumnType.kDate);
+                    builder.setType(InitClient.stringOf(ColumnType.kDate));
                     break;
                 case "timestamp":
-                    columnDesc.setType(ColumnType.kTimestamp);
+                    builder.setType(InitClient.stringOf(ColumnType.kTimestamp));
                     break;
                 default:
             }
-            columnDesc.setName(columnName);
+            columnDesc = builder.build();
             list.add(columnDesc);
         }
         return list;
