@@ -251,12 +251,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             Slice tempSlice = ::rtidb::base::Slice(pk, record.size());
             recordPtr.push_back(tempSlice);
             if (recordPtr.size() >= FLAGS_load_table_batch) {
-                load_pool_.AddTask(boost::bind(&Snapshot::tPut, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
+                load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
                 recordPtr.clear();
             }
         }
         if (recordPtr.size() > 0) {
-            load_pool_.AddTask(boost::bind(&Snapshot::tPut, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
+            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
         }
         // will close the fd atomic
         delete seq_file;
