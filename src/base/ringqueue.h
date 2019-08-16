@@ -49,14 +49,16 @@ namespace base {
                 cv.wait(lock);
             }
             buf_[head_] = item;
-
+            if (empty()) {
+                cv.notify_one();
+            }
             head_ = (head_ + 1) % max_size_;
             full_ = head_ == tail_;
         }
         T get() {
             std::lock_guard<std::mutex> lock(mutex_);
             if (empty()) {
-                return T();
+                cv.wait(lock);
             }
             auto val = buf_[tail_];
             if (full_) {

@@ -64,7 +64,7 @@ target_link_libraries(table_test gtest gflags pthread storage rt common protobuf
 add_executable(disk_table_test  storage/disk_table_test.cc proto/tablet.pb.cc proto/common.pb.cc flags.cc)
 target_link_libraries(disk_table_test gtest gflags pthread storage rt common protobuf tcmalloc_minimal z)
 
-add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc proto/common.pb.cc flags.cc base/status.cc)
+add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc proto/common.pb.cc flags.cc base/status.cc base/threadpool_ringqueue.hpp)
 target_link_libraries(snapshot_test storage log tablet base common brpc rt ssl crypto dl leveldb protobuf gtest gflags pthread z snappy)
 
 add_executable(table_mem_test  storage/table_mem_test.cc)
@@ -103,6 +103,6 @@ target_link_libraries(binlog_test gtest gflags tablet zk_client zookeeper_mt sto
 add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
 target_link_libraries(nameserver_test  gtest pthread tablet nameserver gflags storage replica log common brpc ssl crypto dl leveldb protobuf z snappy rt zk_client zookeeper_mt tcmalloc_minimal)
 
-add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
+add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc base/threadpool_ringqueue.hpp)
 
 target_link_libraries(rtidb gflags common client  tablet storage replica log nameserver brpc ssl crypto dl leveldb protobuf z snappy gflags pthread rt zk_client zookeeper_mt tcmalloc_minimal)

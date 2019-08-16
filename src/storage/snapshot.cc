@@ -24,6 +24,7 @@
 #include "thread_pool.h"
 #include "boost/bind.hpp"
 #include "base/ringqueue.h"
+#include "base/threadpool_ringqueue.hpp"
 
 
 using ::baidu::common::DEBUG;
@@ -211,12 +212,11 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
-    ThreadPool load_pool_(FLAGS_load_table_thread);
+    ::rtidb::base::threadpool_ringqueue<std::vector<::rtidb::base::Slice>*> load_pool_;
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
-    ::rtidb::base::ringqueue<std::vector<::rtidb::base::Slice> *> rq(100);
     for (auto i = FLAGS_load_table_thread; i > 0; i--) {
-        load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, &rq, &succ_cnt, &failed_cnt));
+        load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, &load_pool_.rq, &succ_cnt, &failed_cnt));
     }
 
 
@@ -259,12 +259,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             Slice tempSlice = ::rtidb::base::Slice(pk, record.size());
             recordPtr.push_back(tempSlice);
             if (recordPtr.size() >= FLAGS_load_table_batch) {
-                rq.put(&recordPtr);
+                load_pool_.rq.put(&recordPtr);
                 recordPtr.clear();
             }
         }
         if (recordPtr.size() > 0) {
-            rq.put(&recordPtr);
+            load_pool_.rq.put(&recordPtr);
         }
         // will close the fd atomic
         delete seq_file;
@@ -282,6 +282,7 @@ void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::ba
     ::rtidb::api::LogEntry entry;
     while (1) {
         auto recordPtr = rq->get();
+        bool hasloop = false;
         for (auto it = recordPtr->begin(); it != recordPtr->cend(); it++) {
             bool ok = entry.ParseFromString((*it).ToString());
             if (!ok) {
@@ -296,6 +297,9 @@ void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::ba
             }
             table->Put(entry);
             delete[] (*it).data();
+        }
+        if (!hasloop) {
+            break;
         }
     }
 }
