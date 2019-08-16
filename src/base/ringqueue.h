@@ -44,7 +44,7 @@ public:
         return size;
     }
 
-    void put(T& item) {
+    void put(const T& item) {
         buf_[head_] = item;
         head_ = (head_ + 1) % max_size_;
         full_ = head_ == tail_;

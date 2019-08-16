@@ -2,24 +2,24 @@
 // Created by kongsys on 8/16/19.
 //
 
-#ifndef RTIDB_THREADPOOL_RINGQUEUE_HPP
-#define RTIDB_THREADPOOL_RINGQUEUE_HPP
+#ifndef RTIDB_TASKPOOL_HPP
+#define RTIDB_TASKPOOL_HPP
 
 #include <boost/function.hpp>
 #include "base/ringqueue.h"
 
 namespace rtidb {
 namespace base {
-class ThreadPool_RingQueue {
+class TaskPool {
     public:
-        ThreadPool_RingQueue(uint32_t thread_num, uint32_t qsize):
+        TaskPool(uint32_t thread_num, uint32_t qsize):
         stop_(false),
         threads_num_(thread_num),
         queue_(qsize) {
             Start();
         };
 
-        ~ThreadPool_RingQueue() {
+        ~TaskPool() {
             Stop();
         };
     typedef boost::function<void ()> Task;
@@ -60,26 +60,26 @@ class ThreadPool_RingQueue {
     };
     private:
         static void* ThreadWrapper(void* arg) {
-            reinterpret_cast<ThreadPool_RingQueue*>(arg)->ThreadProc();
+            reinterpret_cast<TaskPool*>(arg)->ThreadProc();
             return NULL;
         }
         void ThreadProc() {
             while (true) {
                 Task task;
-                std::unique_lock<std::mutex> lock(mutex_);
-                while (queue_.empty() && !stop_) {
-                    work_cv_.wait(lock);
+                {
+                    std::unique_lock<std::mutex> lock(mutex_);
+                    while (queue_.empty() && !stop_) {
+                        work_cv_.wait(lock);
+                    }
+                    if (stop_ && queue_.empty()) {
+                        break;
+                    }
+                    if (!queue_.empty()) {
+                        task = queue_.pop();
+                    }
+                    queue_cv_.notify_one();
                 }
-                if (stop_ && queue_.empty()) {
-                    break;
-                }
-                if (!queue_.empty()) {
-                    task = queue_.pop();
-                }
-                queue_cv_.notify_one();
-                lock.unlock();
                 task();
-                lock.lock();
             }
         }
     bool stop_;
@@ -91,4 +91,4 @@ class ThreadPool_RingQueue {
 };
 }
 }
-#endif //RTIDB_THREADPOOL_RINGQUEUE_HPP
+#endif //RTIDB_TASKPOOL_HPP

@@ -21,7 +21,7 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <boost/bind.hpp>
-#include "base/threadpool_ringqueue.hpp"
+#include "base/taskpool.hpp"
 
 
 using ::baidu::common::DEBUG;
@@ -208,7 +208,7 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
-    ::rtidb::base::ThreadPool_RingQueue load_pool_(FLAGS_load_table_thread, FLAGS_load_table_batch);
+    ::rtidb::base::TaskPool load_pool_(FLAGS_load_table_thread, FLAGS_load_table_batch);
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
 
