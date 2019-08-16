@@ -97,3 +97,4 @@ DEFINE_uint32(max_col_display_length, 256, "config the max length of column disp
 // load table resouce control
 DEFINE_uint32(load_table_batch, 100, "set laod table batch size");
 DEFINE_uint32(load_table_thread, 5, "set load tabale thread pool size");
+DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");

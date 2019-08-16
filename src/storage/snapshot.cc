@@ -34,6 +34,7 @@ DECLARE_int32(binlog_name_length);
 DECLARE_uint32(make_snapshot_max_deleted_keys);
 DECLARE_uint32(load_table_batch);
 DECLARE_uint32(load_table_thread);
+DECLARE_uint32(load_table_queue_size);
 
 namespace rtidb {
 namespace storage {
