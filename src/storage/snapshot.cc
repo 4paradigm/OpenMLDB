@@ -280,27 +280,21 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
 
 void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::base::ringqueue<std::vector<::rtidb::base::Slice>*>* rq, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::rtidb::api::LogEntry entry;
-    while (1) {
-        auto recordPtr = rq->get();
-        bool hasloop = false;
-        for (auto it = recordPtr->begin(); it != recordPtr->cend(); it++) {
-            bool ok = entry.ParseFromString((*it).ToString());
-            if (!ok) {
-                failed_cnt->fetch_add(1, std::memory_order_relaxed);
-                delete[] (*it).data();
-                continue;
-            }
-            succ_cnt->fetch_add(1, std::memory_order_relaxed);
-            if (succ_cnt->load(std::memory_order_relaxed) % 100000 == 0) {
-                PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
-                      succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
-            }
-            table->Put(entry);
+    auto recordPtr = rq->get();
+    for (auto it = recordPtr->begin(); it != recordPtr->cend(); it++) {
+        bool ok = entry.ParseFromString((*it).ToString());
+        if (!ok) {
+            failed_cnt->fetch_add(1, std::memory_order_relaxed);
             delete[] (*it).data();
+            continue;
         }
-        if (!hasloop) {
-            break;
+        succ_cnt->fetch_add(1, std::memory_order_relaxed);
+        if (succ_cnt->load(std::memory_order_relaxed) % 100000 == 0) {
+            PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
+                  succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
         }
+        table->Put(entry);
+        delete[] (*it).data();
     }
 }
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 

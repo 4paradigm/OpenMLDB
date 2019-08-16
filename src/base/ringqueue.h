@@ -56,7 +56,7 @@ namespace base {
             full_ = head_ == tail_;
         }
         T get() {
-            std::lock_guard<std::mutex> lock(mutex_);
+            std::unique_lock<std::mutex> lock(mutex_);
             if (empty()) {
                 cv.wait(lock);
             }
