@@ -17,21 +17,16 @@
 #include "gflags/gflags.h"
 #include "logging.h"
 #include "timer.h"
-#include "thread_pool.h"
 #include <unistd.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
-#include "thread_pool.h"
-#include "boost/bind.hpp"
-#include "base/ringqueue.h"
+#include <boost/bind.hpp>
 #include "base/threadpool_ringqueue.hpp"
 
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
-using ::baidu::common::ThreadPool;
-
 
 DECLARE_string(db_root_path);
 DECLARE_uint64(gc_on_table_recover_count);
@@ -212,13 +207,9 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
-    ::rtidb::base::threadpool_ringqueue<std::vector<::rtidb::base::Slice>*> load_pool_;
+    ::rtidb::base::ThreadPool_RingQueue load_pool_(FLAGS_load_table_thread, FLAGS_load_table_batch);
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
-    for (auto i = FLAGS_load_table_thread; i > 0; i--) {
-        load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, &load_pool_.rq, &succ_cnt, &failed_cnt));
-    }
-
 
     do {
         if (table == NULL) {
@@ -259,12 +250,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             Slice tempSlice = ::rtidb::base::Slice(pk, record.size());
             recordPtr.push_back(tempSlice);
             if (recordPtr.size() >= FLAGS_load_table_batch) {
-                load_pool_.rq.put(&recordPtr);
+                load_pool_.AddTask(boost::bind(&Snapshot::tPut, this, path, table, &recordPtr, &succ_cnt, &failed_cnt));
                 recordPtr.clear();
             }
         }
         if (recordPtr.size() > 0) {
-            load_pool_.rq.put(&recordPtr);
+            load_pool_.AddTask(boost::bind(&Snapshot::tPut, this, path, table, &recordPtr, &succ_cnt, &failed_cnt));
         }
         // will close the fd atomic
         delete seq_file;
@@ -275,12 +266,11 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             g_failed_cnt->fetch_add(failed_cnt, std::memory_order_relaxed);
         }
     }while(false);
-    load_pool_.Stop(true);
+    load_pool_.Stop();
 }
 
-void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, ::rtidb::base::ringqueue<std::vector<::rtidb::base::Slice>*>* rq, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
+void Snapshot::tPut(std::string& path, std::shared_ptr<Table>& table, std::vector<::rtidb::base::Slice>* recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::rtidb::api::LogEntry entry;
-    auto recordPtr = rq->get();
     for (auto it = recordPtr->begin(); it != recordPtr->cend(); it++) {
         bool ok = entry.ParseFromString((*it).ToString());
         if (!ok) {
