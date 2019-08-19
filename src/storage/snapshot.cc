@@ -227,7 +227,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
         std::string buffer;
         // second
         uint64_t consumed = ::baidu::common::timer::now_time();
-        std::vector<::rtidb::base::Slice> recordPtr;
+        std::vector<std::string*> recordPtr;
         recordPtr.reserve(FLAGS_load_table_batch);
 
         while (true) {
@@ -246,10 +246,8 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
                 failed_cnt.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
-            char* pk = new char[record.size()];
-            memcpy(pk, record.data(), record.size());
-            Slice tempSlice = ::rtidb::base::Slice(pk, record.size());
-            recordPtr.push_back(tempSlice);
+            std::string* sp = new std::string(record.data(), record.size());
+            recordPtr.push_back(sp);
             if (recordPtr.size() >= FLAGS_load_table_batch) {
                 load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
                 recordPtr.clear();
@@ -270,13 +268,13 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     load_pool_.Stop();
 }
 
-void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector<::rtidb::base::Slice> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
+void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::rtidb::api::LogEntry entry;
     for (auto it = recordPtr.cbegin(); it != recordPtr.cend(); it++) {
-        bool ok = entry.ParseFromString((*it).ToString());
+        bool ok = entry.ParseFromString((*it)->data());
         if (!ok) {
             failed_cnt->fetch_add(1, std::memory_order_relaxed);
-            delete[] (*it).data();
+            delete *it;
             continue;
         }
         succ_cnt->fetch_add(1, std::memory_order_relaxed);
@@ -285,7 +283,7 @@ void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector
                   succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
         }
         table->Put(entry);
-        delete[] (*it).data();
+        delete *it;
     }
 }
 int Snapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 
