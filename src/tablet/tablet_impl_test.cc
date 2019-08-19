@@ -182,6 +182,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
     TabletImpl tablet;
     tablet.Init();
     // create table
+    MockClosure closure;
     uint32_t id = counter++;
     {
         ::rtidb::api::CreateTableRequest request;
@@ -196,7 +197,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         tablet.CreateTable(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
-        PrepareLatestTableData(tablet);
+        PrepareLatestTableData(tablet, id, 0);
     }
 
     // scan with default type
@@ -211,7 +212,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(1, srp.count());
-        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
+        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(10, kv_it->GetKey());
         ASSERT_STREQ("10", kv_it->GetValue().ToString().c_str());
@@ -232,7 +233,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         ASSERT_EQ(2, srp.count());
-        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
+        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(10, kv_it->GetKey());
         ASSERT_STREQ("10", kv_it->GetValue().ToString().c_str());
@@ -1101,11 +1102,11 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     sr.set_st(0);
     sr.set_et(0);
     sr.set_limit(2);
-    ::rtidb::api::ScanResponse* srp = new ::rtidb::api::ScanResponse();
-    tablet.Scan(NULL, &sr, srp, &closure);
-    ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(2, srp->count());
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
+    ::rtidb::api::ScanResponse srp;
+    tablet.Scan(NULL, &sr, &srp, &closure);
+    ASSERT_EQ(0, srp.code());
+    ASSERT_EQ(2, srp.count());
+    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
     ASSERT_EQ(9539, kv_it->GetKey());
     ASSERT_STREQ("test9539", kv_it->GetValue().ToString().c_str());
     kv_it->Next();
