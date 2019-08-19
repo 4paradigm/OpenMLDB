@@ -11,7 +11,8 @@
 
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
-#include "storage/snapshot.h"
+#include "storage/mem_table_snapshot.h"
+#include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"
 #include "thread_pool.h"

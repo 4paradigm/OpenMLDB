@@ -4,14 +4,15 @@ ulimit -c unlimited
 # start_onebox.sh
 
 # first start zookeeper
+IP=127.0.0.1
 
-ZK_CLUSTER=127.0.0.1:6181
-NS1=127.0.0.1:9622
-NS2=127.0.0.1:9623
-NS3=127.0.0.1:9624
-TABLET1=127.0.0.1:9520
-TABLET2=127.0.0.1:9521
-TABLET3=127.0.0.1:9522
+ZK_CLUSTER=$IP:6181
+NS1=$IP:9622
+NS2=$IP:9623
+NS3=$IP:9624
+TABLET1=$IP:9520
+TABLET2=$IP:9521
+TABLET3=$IP:9522
 
 # start tablet0
 test -d tablet0-binlogs && rm -rf tablet0-binlogs

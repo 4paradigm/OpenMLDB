@@ -621,6 +621,79 @@ TEST_F(DiskTableTest, GcTTL) {
     RemoveData(path);
 }
 
+TEST_F(DiskTableTest, CheckPoint) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    DiskTable* table = new DiskTable("t1", 1, 1, mapping, 0, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
+    ASSERT_TRUE(table->Init());
+    for (int idx = 0; idx < 100; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = 9537;
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
+        }
+    }
+    std::string raw_key = "test35";
+    Ticket ticket;
+    TableIterator* it = table->NewIterator(raw_key, ticket);
+    it->SeekToFirst();
+    for (int k = 0; k < 10; k++) {
+        ASSERT_TRUE(it->Valid());
+        std::string pk = it->GetPK();
+        ASSERT_EQ(pk, raw_key);
+        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        std::string value1 = it->GetValue().ToString();
+        ASSERT_EQ("value", value1);
+        it->Next();
+    }
+    ASSERT_FALSE(it->Valid());
+    delete it;
+    
+    std::string snapshot_path = FLAGS_hdd_root_path + "/1_1/snapshot";
+    ASSERT_EQ(table->CreateCheckPoint(snapshot_path), 0);
+    delete table;
+
+    std::string data_path = FLAGS_hdd_root_path + "/1_1/data";
+    ::rtidb::base::RemoveDir(data_path);
+
+    ::rtidb::base::Rename(snapshot_path, data_path);
+
+    table = new DiskTable("t1", 1, 1, mapping, 0, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
+    ASSERT_TRUE(table->LoadTable());
+    raw_key = "test35";
+    it = table->NewIterator(raw_key, ticket);
+    it->SeekToFirst();
+    for (int k = 0; k < 10; k++) {
+        ASSERT_TRUE(it->Valid());
+        std::string pk = it->GetPK();
+        ASSERT_EQ(pk, raw_key);
+        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        std::string value1 = it->GetValue().ToString();
+        ASSERT_EQ("value", value1);
+        it->Next();
+    }
+    ASSERT_FALSE(it->Valid());
+    delete it;
+
+    it = table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    int count = 0;
+    while (it->Valid()) {
+        std::string pk = it->GetPK();;
+        count++;
+        it->Next();
+    }
+    ASSERT_FALSE(it->Valid());
+    ASSERT_EQ(1000, count);
+    delete it;
+    delete table;
+
+    std::string path = FLAGS_hdd_root_path + "/1_1";
+    RemoveData(path);
+}
+
 }
 }
 

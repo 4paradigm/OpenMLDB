@@ -162,6 +162,89 @@ void MultiDimensionDecode(const std::string& value,
     }
 }
 
+void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid) {
+    for (int32_t i = 0; i< 100; i++) {
+       ::rtidb::api::PutRequest prequest;
+        prequest.set_pk(boost::lexical_cast<std::string>(i%10));
+        prequest.set_time(i);
+        prequest.set_value(boost::lexical_cast<std::string>(i));
+        prequest.set_tid(tid);
+        prequest.set_pid(pid);
+        ::rtidb::api::PutResponse presponse;
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+}
+
+TEST_F(TabletImplTest, SCAN_latest_table) {
+    TabletImpl tablet;
+    tablet.Init();
+    // create table
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_ttl(5);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        PrepareLatestTableData(tablet);
+    }
+
+    // scan with default type
+    {
+        ::rtidb::api::ScanRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("0");
+        sr.set_st(10);
+        sr.set_et(0);
+        ::rtidb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(1, srp.count());
+        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
+        ASSERT_TRUE(kv_it->Valid());
+        ASSERT_EQ(10, kv_it->GetKey());
+        ASSERT_STREQ("10", kv_it->GetValue().ToString().c_str());
+        kv_it->Next();
+        ASSERT_FALSE(kv_it->Valid());
+    }
+
+    // scan with default et ge 
+    {
+        ::rtidb::api::ScanRequest sr;
+        sr.set_tid(id);
+        sr.set_pid(0);
+        sr.set_pk("0");
+        sr.set_st(10);
+        sr.set_et(0);
+        sr.set_et_type(::rtidb::api::kSubKeyGe);
+        ::rtidb::api::ScanResponse srp;
+        tablet.Scan(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(2, srp.count());
+        ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
+        ASSERT_TRUE(kv_it->Valid());
+        ASSERT_EQ(10, kv_it->GetKey());
+        ASSERT_STREQ("10", kv_it->GetValue().ToString().c_str());
+        kv_it->Next();
+        ASSERT_TRUE(kv_it->Valid());
+        ASSERT_EQ(0, kv_it->GetKey());
+        ASSERT_STREQ("0", kv_it->GetValue().ToString().c_str());
+        kv_it->Next();
+        ASSERT_FALSE(kv_it->Valid());
+    }
+}
+
 TEST_F(TabletImplTest, Get) {
     TabletImpl tablet;
     tablet.Init();
@@ -993,6 +1076,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_ttl(0);
+    table_meta->set_ttl_type(::rtidb::api::kLatestTime);
     ::rtidb::api::CreateTableResponse response;
     MockClosure closure;
     tablet.CreateTable(NULL, &request, &response,
@@ -1081,7 +1165,6 @@ TEST_F(TabletImplTest, Traverse) {
 TEST_F(TabletImplTest, Scan_with_limit) {
     TabletImpl tablet;
     uint32_t id = counter++;
-
     tablet.Init();
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -1107,7 +1190,6 @@ TEST_F(TabletImplTest, Scan_with_limit) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
-
     {
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");

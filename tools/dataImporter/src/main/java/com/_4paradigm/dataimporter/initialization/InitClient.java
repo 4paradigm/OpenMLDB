@@ -2,15 +2,24 @@ package com._4paradigm.dataimporter.initialization;
 
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.common.Common;
+import com._4paradigm.rtidb.common.Common.ColumnDesc;
+import com._4paradigm.rtidb.common.Common.ColumnKey;
 import com._4paradigm.rtidb.client.schema.ColumnType;
 import com._4paradigm.rtidb.ns.NS;
+import com.google.protobuf.TextFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 public class InitClient {
@@ -34,6 +43,8 @@ public class InitClient {
     private static TableSyncClient[] tableSyncClient = new TableSyncClient[MAX_THREAD_NUM];
     private static RTIDBClusterClient[] clusterClient = new RTIDBClusterClient[MAX_THREAD_NUM];
 
+    private static final String COLUMN_KEY_PATH = Constant.COLUMN_KEY_PATH;
+
     /**
      * 初始化客户端
      */
@@ -53,7 +64,7 @@ public class InitClient {
         }
     }
 
-    public static void createSchemaTable(String tableName, List<ColumnDesc> schemaList) {
+    public static boolean createSchemaTable(String tableName, List<ColumnDesc> schemaList) {
         NS.TableInfo.Builder builder = NS.TableInfo.newBuilder()
                 .setName(tableName)  // 设置表名
                 .setReplicaNum(REPLICA_NUM)    // 设置副本数. 此设置是可选的, 默认为3
@@ -61,23 +72,30 @@ public class InitClient {
                 .setCompressType(NS.CompressType.valueOf(COMPRESS_TYPE)) // 设置数据压缩类型. 此设置是可选的默认为不压缩
                 .setTtlType(TTL_TYPE)  // 设置ttl类型. 此设置是可选的, 默认为"kAbsoluteTime"按时间过期
                 .setTtl(TTL);      // 设置ttl. 如果ttl类型是kAbsoluteTime, 那么ttl的单位是分钟.
-        for (ColumnDesc schema : schemaList) {
-            builder.addColumnDesc(NS.ColumnDesc.newBuilder()
-                    .setType(stringOf(schema.getType()))
-                    .setName(schema.getName())
-                    .setAddTsIdx(schema.isAddTsIndex()));
+        for (ColumnDesc columnDesc : schemaList) {
+            builder.addColumnDescV1(columnDesc);
+        }
+        if (COLUMN_KEY_PATH != null && !COLUMN_KEY_PATH.trim().equals("")) {
+            List<ColumnKey> columnKeyList = getColumnKey(COLUMN_KEY_PATH);
+            if (columnKeyList != null) {
+                for (ColumnKey columnKey : columnKeyList) {
+                    builder.addColumnKey(columnKey);
+                }
+            }
         }
         NS.TableInfo table = builder.build();
+        logger.info("table info is:" + table);
         // 可以通过返回值判断是否创建成功
         boolean ok = nsc.createTable(table);
         if (ok) {
             logger.info("the RrtidbSchemaTable is created ：" + ok);
         } else {
-            logger.error("the RrtidbSchemaTable is created ：" + ok);
+            logger.warn("the RrtidbSchemaTable is created ：" + ok);
         }
         for (int i = 0; i < MAX_THREAD_NUM; i++) {
             clusterClient[i].refreshRouteTable();
         }
+        return ok;
     }
 
     /**
@@ -86,7 +104,7 @@ public class InitClient {
      * @param columnType
      * @return
      */
-    private static String stringOf(ColumnType columnType) {
+    public static String stringOf(ColumnType columnType) {
         if (ColumnType.kString.equals(columnType)) {
             return "string";
         } else if (ColumnType.kInt16.equals(columnType)) {
@@ -118,12 +136,65 @@ public class InitClient {
         }
     }
 
+
+    public static List<ColumnKey> getColumnKey(String columnKeyConfPath) {
+        NS.TableInfo.Builder builder = NS.TableInfo.newBuilder();
+        List<ColumnKey> result = new ArrayList<>();
+        File file = new File(columnKeyConfPath);
+        FileReader fileReader = null;
+        try {
+            fileReader = new FileReader(file);
+            TextFormat.merge(fileReader, builder);
+            NS.TableInfo tableInfo = builder.build();
+            result = tableInfo.getColumnKeyList();
+        } catch (IOException e) {
+            e.printStackTrace();
+            logger.error("file " + Paths.get(columnKeyConfPath) + " did not exist!");
+            System.exit(0);
+        } finally {
+            if (fileReader != null) {
+                try {
+                    fileReader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return result;
+    }
+
+    public static boolean contains(String delim, String origin, String target) {
+        if (origin != null && !origin.trim().equals("")) {
+            for (String s : origin.split(delim)) {
+                if (s.trim().equals(target)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public static List<ColumnDesc> getSchemaOfRtidb(String tableName) {
         if (tableName == null || tableName.isEmpty()) {
-            logger.warn("filePath is null or empty ");
+            logger.error("filePath is null or empty ");
             return null;
         }
-        return clusterClient[0].getHandler(tableName).getSchema();
+        List<ColumnDesc> columnDescV1List = new ArrayList<>();
+        try {
+            columnDescV1List = clusterClient[0].getHandler(tableName).getTableInfo().getColumnDescV1List();
+        } catch (Exception e) {
+            logger.error(e.toString());
+            logger.error("table " + tableName + " did not exist");
+        }
+        return columnDescV1List;
+    }
+
+    public static boolean hasTsCol(String tableName) {
+        TableHandler handler = clusterClient[0].getHandler(tableName);
+        if (handler != null && handler.hasTsCol() == true) {
+            return true;
+        }
+        return false;
     }
 
     public static boolean dropTable(String tableName) {
@@ -133,5 +204,4 @@ public class InitClient {
     public static TableSyncClient[] getTableSyncClient() {
         return tableSyncClient;
     }
-
 }
