@@ -41,6 +41,7 @@ class TaskPool {
             std::unique_lock<std::mutex> lock(mutex_);
             stop_ = true;
             work_cv_.notify_all();
+            queue_cv_.notify_all();
         }
         for (uint32_t i = 0; i < tids_.size(); i++) {
             pthread_join(tids_[i], NULL);
@@ -51,10 +52,10 @@ class TaskPool {
 
     void AddTask(const Task& task) {
         std::unique_lock<std::mutex> lock(mutex_);
-        if (stop_) return;
-        while (queue_.full()) {
+        while (queue_.full() && !stop_) {
             queue_cv_.wait(lock);
         }
+        if (stop_) return;
         queue_.put(task);
         work_cv_.notify_one();
     }
