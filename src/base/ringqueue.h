@@ -15,7 +15,7 @@ namespace base {
 template<class T>
 class RingQueue {
 public:
-    RingQueue(int32_t size = 100):
+    RingQueue(uint32_t size = 100):
     max_size_(size),
     buf_(new T[size]),
     head_(0),
@@ -29,10 +29,10 @@ public:
 
     bool empty() const { return (!full_ && (head_ == tail_)); }
 
-    int32_t capacity() const { return max_size_; };
+    uint32_t capacity() const { return max_size_; };
 
-    int32_t size() const {
-        int32_t size = max_size_;
+    uint32_t size() const {
+        uint32_t size = max_size_;
 
         if (!full_) {
             if (head_ >= tail_) {
@@ -58,10 +58,10 @@ public:
         return val;
     }
 private:
-    const int32_t max_size_;
+    const uint32_t max_size_;
     T* buf_;
-    int32_t head_;
-    int32_t tail_;
+    uint32_t head_;
+    uint32_t tail_;
     bool full_;
 };
 
