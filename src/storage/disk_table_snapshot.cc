@@ -84,12 +84,12 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
                     break;
                 }
             }
-            if (::rtidb::base::Rename(snapshot_dir, snapshot_dir_bak) < 0) {
+            if (!::rtidb::base::Rename(snapshot_dir, snapshot_dir_bak)) {
                 PDLOG(WARNING, "rename checkpoint failed. checkpoint bak dir[%s]", snapshot_dir_bak.c_str());
                 break;
             }
         }
-        if (::rtidb::base::Rename(snapshot_dir_tmp, snapshot_dir) < 0) {
+        if (!::rtidb::base::Rename(snapshot_dir_tmp, snapshot_dir)) {
             PDLOG(WARNING, "rename checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
             break;
         }
