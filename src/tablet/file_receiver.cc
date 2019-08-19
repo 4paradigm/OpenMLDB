@@ -49,25 +49,25 @@ bool FileReceiver::Init() {
 }
 
 uint64_t FileReceiver::GetBlockId() {
-	return block_id_;
+    return block_id_;
 }
 
 int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
     if (file_ == NULL) {
         PDLOG(WARNING, "file is NULL");
-		return -1;
+        return -1;
     }
     if (block_id <= block_id_) {
         PDLOG(DEBUG, "block id %lu has been received", block_id);
         return 0;
     }
-	size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
-	if (r < data.size()) {
-		PDLOG(WARNING, "write error. name %s%s", path_.c_str(), file_name_.c_str());
-		return -1;
-	}
-	size_ += r;
-	block_id_ = block_id;
+    size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
+    if (r < data.size()) {
+        PDLOG(WARNING, "write error. name %s%s", path_.c_str(), file_name_.c_str());
+        return -1;
+    }
+    size_ += r;
+    block_id_ = block_id;
     return 0;
 }
 

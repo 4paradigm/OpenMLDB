@@ -417,6 +417,7 @@ message SendDataRequest {
     required uint64 block_id = 4;
     optional uint32 block_size = 5;
     optional bool eof = 6 [default = false];
+    optional string dir_name = 7;
 }
 
 message ChangeRoleResponse {
