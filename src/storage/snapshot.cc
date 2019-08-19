@@ -33,7 +33,7 @@ DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
 DECLARE_uint32(make_snapshot_max_deleted_keys);
 DECLARE_uint32(load_table_batch);
-DECLARE_uint32(load_table_thread);
+DECLARE_uint32(load_table_thread_num);
 DECLARE_uint32(load_table_queue_size);
 
 namespace rtidb {
@@ -208,7 +208,7 @@ void Snapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t ex
 void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
-    ::rtidb::base::TaskPool load_pool_(FLAGS_load_table_thread, FLAGS_load_table_batch);
+    ::rtidb::base::TaskPool load_pool_(FLAGS_load_table_thread_num, FLAGS_load_table_batch);
     std::atomic<uint64_t> succ_cnt, failed_cnt;
     succ_cnt = failed_cnt = 0;
 
