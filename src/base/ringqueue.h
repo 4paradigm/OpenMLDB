@@ -20,14 +20,14 @@ public:
     buf_(new T[size]),
     head_(0),
     tail_(0),
-    full_(false) {};
+    full_(false) {}
 
     ~RingQueue() {
       delete[] buf_;
-    };
+    }
     bool full() const { return full_; }
 
-    bool empty() const { return (!full_ && (head_ == tail_)); };
+    bool empty() const { return (!full_ && (head_ == tail_)); }
 
     int32_t capacity() const { return max_size_; };
 

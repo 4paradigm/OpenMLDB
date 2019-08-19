@@ -17,11 +17,11 @@ class TaskPool {
         threads_num_(thread_num),
         queue_(qsize) {
             Start();
-        };
+        }
 
         ~TaskPool() {
             Stop();
-        };
+        }
     typedef boost::function<void ()> Task;
 
     bool Start() {
@@ -34,7 +34,7 @@ class TaskPool {
             tids_.push_back(tid);
         }
         return true;
-    };
+    }
 
     bool Stop() {
         {
@@ -47,7 +47,7 @@ class TaskPool {
         }
         tids_.clear();
         return true;
-    };
+    }
 
     void AddTask(const Task& task) {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -57,7 +57,7 @@ class TaskPool {
         }
         queue_.put(task);
         work_cv_.notify_one();
-    };
+    }
     private:
         static void* ThreadWrapper(void* arg) {
             reinterpret_cast<TaskPool*>(arg)->ThreadProc();
