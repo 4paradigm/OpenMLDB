@@ -39,7 +39,7 @@ TEST_F(RingQueueTest, empty) {
 TEST_F(RingQueueTest, capacity) {
     uint32_t  size = 10;
     RingQueue<uint32_t> rq(size);
-    ASSERT_TRUE(rq.capacity());
+    ASSERT_EQ(size, rq.capacity());
 }
 
 TEST_F(RingQueueTest, size) {
@@ -49,6 +49,14 @@ TEST_F(RingQueueTest, size) {
         rq.put(i);
         ASSERT_EQ(i, rq.size());
     }
+    ASSERT_TRUE(rq.full());
+    for (uint32_t i = 1; i <= size/5; i++) {
+	rq.pop();
+    }
+    for (uint32_t i = 1; i <= size/5; i++) {
+	rq.put(size + i);
+    }
+    ASSERT_EQ(size, rq.size());
 }
 
 TEST_F(RingQueueTest, pop) {
@@ -59,6 +67,7 @@ TEST_F(RingQueueTest, pop) {
         ASSERT_EQ(i, rq.pop());
     }
 }
+
 };
 }
 
