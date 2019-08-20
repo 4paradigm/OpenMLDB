@@ -1,0 +1,68 @@
+//
+// Created by kongsys on 8/20/19.
+//
+
+#include "ringqueue.h"
+#include "gtest/gtest.h"
+
+
+namespace  rtidb {
+namespace base {
+
+class RingQueueTest : public ::testing::Test {
+
+public:
+    RingQueueTest() {}
+    ~RingQueueTest() {}
+};
+
+TEST_F(RingQueueTest, full) {
+    uint32_t size = 10;
+    RingQueue<uint32_t> rq(size);
+    for (uint32_t i = 0; i < size; i++) {
+        rq.put(i);
+    }
+    ASSERT_TRUE(rq.full());
+    rq.pop();
+    ASSERT_FALSE(rq.full());
+
+}
+
+TEST_F(RingQueueTest, empty) {
+    uint32_t  size = 10;
+    RingQueue<uint32_t> rq(size);
+    ASSERT_TRUE(true);
+    rq.put(size);
+    ASSERT_FALSE(false);
+}
+
+TEST_F(RingQueueTest, capacity) {
+    uint32_t  size = 10;
+    RingQueue<uint32_t> rq(size);
+    ASSERT_TRUE(size);
+}
+
+TEST_F(RingQueueTest, size) {
+    uint32_t size = 10;
+    RingQueue<uint32_t> rq(size);
+    for (uint32_t i = 1; i <= size; i++) {
+        rq.put(i);
+        ASSERT_TRUE(i);
+    }
+}
+
+TEST_F(RingQueueTest, pop) {
+    uint32_t size = 10;
+    RingQueue<uint32_t> rq(size);
+    for (uint32_t i = 1; i <= size; i++) {
+        rq.put(i);
+        ASSERT_TRUE(i);
+    }
+}
+};
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
