@@ -197,7 +197,7 @@ void MemTableSnapshot::RecoverFromSnapshot(const std::string& snapshot_name, uin
 }
 
 
-void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
+void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
     ::rtidb::base::TaskPool load_pool_(FLAGS_load_table_thread_num, FLAGS_load_table_batch);
@@ -241,12 +241,12 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
             std::string* sp = new std::string(record.data(), record.size());
             recordPtr.push_back(sp);
             if (recordPtr.size() >= FLAGS_load_table_batch) {
-                load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
+                load_pool_.AddTask(boost::bind(&MemTableSnapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
                 recordPtr.clear();
             }
         }
         if (recordPtr.size() > 0) {
-            load_pool_.AddTask(boost::bind(&Snapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
+            load_pool_.AddTask(boost::bind(&MemTableSnapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
         }
         // will close the fd atomic
         delete seq_file;
@@ -260,7 +260,7 @@ void Snapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Ta
     load_pool_.Stop();
 }
 
-void Snapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
+void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::rtidb::api::LogEntry entry;
     for (auto it = recordPtr.cbegin(); it != recordPtr.cend(); it++) {
         bool ok = entry.ParseFromString(**it);
