@@ -269,10 +269,10 @@ void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table, std
             delete *it;
             continue;
         }
-        succ_cnt->fetch_add(1, std::memory_order_relaxed);
-        if (succ_cnt->load(std::memory_order_relaxed) % 100000 == 0) {
+        auto scount = succ_cnt->fetch_add(1, std::memory_order_relaxed);
+        if (scount % 100000 == 0) {
             PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
-                  succ_cnt->load(std::memory_order_relaxed), failed_cnt->load(std::memory_order_relaxed));
+                  scount, failed_cnt->load(std::memory_order_relaxed));
         }
         table->Put(entry);
         delete *it;
