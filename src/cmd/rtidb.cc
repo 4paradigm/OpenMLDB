@@ -456,6 +456,23 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {
     return 0;
 }
 
+bool GetParameterMap(const std::string first, const std::vector<std::string>& parts, const std::string delimiter, bool& has_ts_col, std::map<std::string, std::string>& parameter_map) {
+    std::vector<std::string> temp_vec;
+    ::rtidb::base::SplitString(parts[1], delimiter, &temp_vec);
+    if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
+        has_ts_col = true;
+        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        for (uint32_t i = 2; i < parts.size(); i++) {
+            ::rtidb::base::SplitString(parts[i], delimiter, &temp_vec);
+            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
+                return false;
+            }
+            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
+        }
+    }
+    return true;
+}
+
 std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const ::rtidb::nameserver::TableInfo& table_info,
             uint32_t pid, std::string& msg) {
     std::string endpoint;
@@ -986,21 +1003,11 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts | get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
         return;
     }
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
-    std::map<std::string, std::string> parameter_map;
     bool has_ts_col = false;
-    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
-        has_ts_col = true;
-        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
-            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
-                std::cout << "get format error. eg: get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
-                return;
-            }
-            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        }
+    std::map<std::string, std::string> parameter_map;
+    if (!GetParameterMap("table_name", parts, "=", has_ts_col, parameter_map)) {
+        std::cout << "get format error. eg: get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
+        return;
     }
     std::string table_name;
     std::string key;
@@ -1160,22 +1167,12 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"  << std::endl;
         return;
     }
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
-    std::map<std::string, std::string> parameter_map;
     bool has_ts_col = false;
-    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
-        has_ts_col = true;
-        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
-            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
-                std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
-                return;
-            }
-            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        }
-    }
+    std::map<std::string, std::string> parameter_map;
+    if (!GetParameterMap("table_name", parts, "=", has_ts_col, parameter_map)) {
+        std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
+        return;
+    }  
     std::string table_name;
     std::string key;
     std::string index_name;
@@ -1320,21 +1317,11 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "count format error | count table_name key [col_name] [filter_expired_data] | count table_name=xxx key=xxx index_name=xxx ts_name [filter_expired_data]" << std::endl;
         return;
     }
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
-    std::map<std::string, std::string> parameter_map;
     bool has_ts_col = false;
-    if (temp_vec.size() == 2 && temp_vec[0] == "table_name" && !temp_vec[1].empty()) {
-        has_ts_col = true;
-        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
-            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
-                std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
-                return;
-            }
-            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        }
+    std::map<std::string, std::string> parameter_map;
+    if (!GetParameterMap("table_name", parts, "=", has_ts_col, parameter_map)) {
+        std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
+        return;
     }
     std::string table_name;
     std::string key;
@@ -3607,21 +3594,11 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "count format error! eg. count tid pid key [col_name] [filter_expired_data] | count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
-    std::map<std::string, std::string> parameter_map;
     bool has_ts_col = false;
-    if (temp_vec.size() == 2 && temp_vec[0] == "tid" && !temp_vec[1].empty()) {
-        has_ts_col = true;
-        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
-            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
-                std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
-                return;
-            }
-            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        }
+    std::map<std::string, std::string> parameter_map;
+    if (!GetParameterMap("tid", parts, "=", has_ts_col, parameter_map)) {
+        std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
+        return;
     }
     uint32_t tid = 0;
     uint32_t pid = 0;
@@ -3773,21 +3750,11 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
         return;
     }
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
-    std::map<std::string, std::string> parameter_map;
     bool has_ts_col = false;
-    if (temp_vec.size() == 2 && temp_vec[0] == "tid" && !temp_vec[1].empty()) {
-        has_ts_col = true;
-        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
-            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
-                std::cout << "sget format erro! eg. sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
-                return;
-            }
-            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        }
+    std::map<std::string, std::string> parameter_map;
+    if (!GetParameterMap("tid", parts, "=", has_ts_col, parameter_map)) {
+        std::cout << "sget format erro! eg. sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
+        return;
     }
     uint32_t tid = 0;
     uint32_t pid = 0;
@@ -3910,21 +3877,11 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
-    std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1],"=", &temp_vec);
-    std::map<std::string, std::string> parameter_map;
     bool has_ts_col = false;
-    if (temp_vec.size() == 2 && temp_vec[0] == "tid" && !temp_vec[1].empty()) {
-        has_ts_col = true;
-        parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i],"=", &temp_vec);
-            if (temp_vec.size() < 2 || temp_vec[1].empty()) {
-                std::cout << "scan format erro! eg. sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
-                return;
-            }
-            parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
-        }
+    std::map<std::string, std::string> parameter_map;
+    if (!GetParameterMap("tid", parts, "=", has_ts_col, parameter_map)) {
+        std::cout << "scan format erro! eg. sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
+        return;
     }
     uint32_t tid = 0;
     uint32_t pid = 0;
