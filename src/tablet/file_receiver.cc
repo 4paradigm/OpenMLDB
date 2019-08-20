@@ -18,8 +18,8 @@ using ::baidu::common::DEBUG;
 namespace rtidb {
 namespace tablet {
 
-FileReceiver::FileReceiver(const std::string& file_name, const std::string& path):
-        file_name_(file_name), path_(path), size_(0), block_id_(0), file_(NULL) {
+FileReceiver::FileReceiver(const std::string& file_name, const std::string& dir_name, const std::string& path):
+        file_name_(file_name), dir_name_(dir_name), path_(path), size_(0), block_id_(0), file_(NULL) {
 }
 
 FileReceiver::~FileReceiver() {

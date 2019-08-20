@@ -62,7 +62,7 @@ int FileSender::WriteData(const std::string& file_name, const std::string& dir_n
     request.set_tid(tid_);
     request.set_pid(pid_);
     request.set_file_name(file_name);
-    if (block_id == 0 && !dir_name.empty()) {
+    if (!dir_name.empty()) {
         request.set_dir_name(dir_name);
     }
     request.set_block_id(block_id);
@@ -120,7 +120,7 @@ int FileSender::SendFile(const std::string& file_name, const std::string& dir_na
         if (SendFileInternal(file_name, dir_name, full_path, file_size) < 0) {
             continue;
         }
-        if (CheckFile(file_name, file_size) < 0) {
+        if (CheckFile(file_name, dir_name, file_size) < 0) {
             continue;
         }
         return 0;
@@ -175,12 +175,15 @@ int FileSender::SendFileInternal(const std::string& file_name, const std::string
     return ret;
 }
 
-int FileSender::CheckFile(const std::string& file_name, uint64_t file_size) {
+int FileSender::CheckFile(const std::string& file_name, const std::string& dir_name, uint64_t file_size) {
     ::rtidb::api::CheckFileRequest check_request;
     ::rtidb::api::GeneralResponse response;
     check_request.set_tid(tid_);
     check_request.set_pid(pid_);
     check_request.set_file(file_name);
+    if (!dir_name.empty()) {
+        check_request.set_dir_name(dir_name);
+    }
     check_request.set_size(file_size);
     brpc::Controller cntl;
     stub_->CheckFile(&cntl, &check_request, &response, NULL);

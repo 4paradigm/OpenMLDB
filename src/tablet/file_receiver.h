@@ -13,7 +13,7 @@ namespace tablet {
 
 class FileReceiver {
 public:
-    FileReceiver(const std::string& file_name, const std::string& path);
+    FileReceiver(const std::string& file_name, const std::string& dir_name, const std::string& path);
     ~FileReceiver();
     FileReceiver(const FileReceiver&) = delete;
     FileReceiver& operator = (const FileReceiver&) = delete;
@@ -24,6 +24,7 @@ public:
 
 private:
     std::string file_name_;
+    std::string dir_name_;
     std::string path_;
     uint64_t size_;
     uint64_t block_id_;

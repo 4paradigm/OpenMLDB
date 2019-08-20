@@ -27,7 +27,7 @@ public:
     int SendDir(const std::string& dir_name, const std::string& full_path);
     int WriteData(const std::string& file_name, const std::string& dir_name, 
             const char* buffer, size_t len, uint64_t block_id);
-    int CheckFile(const std::string& file_name, uint64_t file_size);
+    int CheckFile(const std::string& file_name, const std::string& dir_name, uint64_t file_size);
 
 private:
     uint32_t tid_;

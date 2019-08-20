@@ -2054,6 +2054,11 @@ void TabletImpl::SendData(RpcController* controller,
     if (request->file_name() != "table_meta.txt") {
         path.append("snapshot/");
     }
+    std::string dir_name;
+    if (request->has_dir_name() && request->dir_name().size() > 0) {
+        dir_name = request->dir_name();
+        path.append(request->dir_name() + "/");
+    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = file_receiver_map_.find(combine_key);
@@ -2066,7 +2071,8 @@ void TabletImpl::SendData(RpcController* controller,
                 return;
             }
             if (iter == file_receiver_map_.end()) {
-                file_receiver_map_.insert(std::make_pair(combine_key, std::make_shared<FileReceiver>(request->file_name(), path)));
+                file_receiver_map_.insert(std::make_pair(combine_key, 
+                            std::make_shared<FileReceiver>(request->file_name(), dir_name, path)));
                 iter = file_receiver_map_.find(combine_key);
             }
             if (!iter->second->Init()) {
@@ -2196,8 +2202,19 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
         PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
     }
     do {
+        std::shared_ptr<Table> table = GetTable(tid, pid);
+        if (!table) {
+            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+            break;
+        }
+        std::string db_root_path = FLAGS_db_root_path;
+        if (table->GetStorageMode() == ::rtidb::common::StorageMode::kSSD) {
+            db_root_path = FLAGS_ssd_root_path;
+        } else if (table->GetStorageMode() == ::rtidb::common::StorageMode::kHDD) {
+            db_root_path = FLAGS_hdd_root_path;
+        }
         // send table_meta file
-        std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+        std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
         std::string file_name = "table_meta.txt";
         if (sender.SendFile(file_name, full_path + file_name) < 0) {
             PDLOG(WARNING, "send table_meta.txt failed. tid[%u] pid[%u]", tid, pid);
@@ -2223,10 +2240,17 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
             }
             snapshot_file = manifest.name();
         }
-        // send snapshot file
-        if (sender.SendFile(snapshot_file, full_path + snapshot_file) < 0) {
-            PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
-            break;
+        if (table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
+            // send snapshot file
+            if (sender.SendFile(snapshot_file, full_path + snapshot_file) < 0) {
+                PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
+                break;
+            }
+        } else {
+            if (sender.SendDir(snapshot_file, full_path + snapshot_file) < 0) {
+                PDLOG(WARNING, "send snapshot failed. tid[%u] pid[%u]", tid, pid);
+                break;
+            }
         }
         // send manifest file
         file_name = "MANIFEST";
@@ -2811,6 +2835,9 @@ void TabletImpl::CheckFile(RpcController* controller,
     std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (file_name != "table_meta.txt") {
         full_path += "snapshot/";
+    }
+    if (request->has_dir_name() && request->dir_name().size() > 0) {
+        full_path.append(request->dir_name() + "/");
     }
     full_path += file_name;
     uint64_t size = 0;
