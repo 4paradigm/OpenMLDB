@@ -11,17 +11,17 @@
 namespace rtidb {
 namespace base {
 class TaskPool {
-    public:
-        TaskPool(uint32_t thread_num, uint32_t qsize):
-        stop_(false),
-        threads_num_(thread_num),
-        queue_(qsize) {
-            Start();
-        }
+public:
+    TaskPool(uint32_t thread_num, uint32_t qsize):
+    stop_(false),
+    threads_num_(thread_num),
+    queue_(qsize) {
+        Start();
+    }
 
-        ~TaskPool() {
-            Stop();
-        }
+    ~TaskPool() {
+        Stop();
+    }
     typedef boost::function<void ()> Task;
 
     bool Start() {
@@ -59,30 +59,30 @@ class TaskPool {
         queue_.put(task);
         work_cv_.notify_one();
     }
-    private:
-        static void* ThreadWrapper(void* arg) {
-            reinterpret_cast<TaskPool*>(arg)->ThreadProc();
-            return NULL;
-        }
-        void ThreadProc() {
-            while (true) {
-                Task task;
-                {
-                    std::unique_lock<std::mutex> lock(mutex_);
-                    while (queue_.empty() && !stop_) {
-                        work_cv_.wait(lock);
-                    }
-                    if (stop_ && queue_.empty()) {
-                        break;
-                    }
-                    if (!queue_.empty()) {
-                        task = queue_.pop();
-                    }
-                    queue_cv_.notify_one();
+private:
+    static void* ThreadWrapper(void* arg) {
+        reinterpret_cast<TaskPool*>(arg)->ThreadProc();
+        return NULL;
+    }
+    void ThreadProc() {
+        while (true) {
+            Task task;
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                while (queue_.empty() && !stop_) {
+                    work_cv_.wait(lock);
                 }
-                task();
+                if (stop_ && queue_.empty()) {
+                    break;
+                }
+                if (!queue_.empty()) {
+                    task = queue_.pop();
+                }
+                queue_cv_.notify_one();
             }
+            task();
         }
+    }
     bool stop_;
     uint32_t threads_num_;
     ::rtidb::base::RingQueue<Task> queue_;
