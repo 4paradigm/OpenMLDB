@@ -273,7 +273,7 @@ void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t
     while (node != NULL) {
         ::rtidb::base::Node<Slice, void*>* entry_node = node->GetValue();
         // free pk memory
-        delete entry_node->GetKey().data();
+        delete[] entry_node->GetKey().data();
         if (ts_cnt_ > 1) {
             KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();
             for (uint32_t i = 0; i < ts_cnt_; i++) {

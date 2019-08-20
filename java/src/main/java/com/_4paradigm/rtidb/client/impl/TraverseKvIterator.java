@@ -178,7 +178,7 @@ public class TraverseKvIterator implements KvIterator {
         int pk_size = slice.getInt();
         time = slice.getLong();
 
-        if (pk_size <= 0 || total_size - 8 - pk_size <= 0) {
+        if (pk_size < 0 || total_size - 8 - pk_size < 0) {
             throw new RuntimeException("bad frame data");
         }
         byte[] pk_buf = new byte[pk_size];

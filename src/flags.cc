@@ -94,6 +94,9 @@ DEFINE_uint32(absolute_default_skiplist_height, 4, "the default height of skipli
 DEFINE_bool(enable_show_tp, false, "enable show tp");
 DEFINE_uint32(max_col_display_length, 256, "config the max length of column display");
 
+// rocksdb
+DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
+
 // load table resouce control
 DEFINE_uint32(load_table_batch, 30, "set laod table batch size");
 DEFINE_uint32(load_table_thread_num, 3, "set load tabale thread pool size");
