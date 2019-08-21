@@ -8,8 +8,9 @@
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "base/file_util.h"
-#include "storage/snapshot.h"
 #include "storage/mem_table.h"
+#include "storage/mem_table_snapshot.h"
+#include "storage/disk_table_snapshot.h"
 #include "storage/ticket.h"
 #include "proto/tablet.pb.h"
 #include "log/log_writer.h"
@@ -28,6 +29,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 DECLARE_string(db_root_path);
+DECLARE_string(hdd_root_path);
 
 using ::rtidb::api::LogEntry;
 namespace rtidb {
@@ -49,19 +51,25 @@ inline uint32_t GenRand() {
     return rand() % 10000000 + 1;
 }
 
+void RemoveData(const std::string& path) {
+    ::rtidb::base::RemoveDir(path+"/data");
+    ::rtidb::base::RemoveDir(path);
+    ::rtidb::base::RemoveDir(FLAGS_hdd_root_path);
+}
+
 int GetManifest(const std::string file, ::rtidb::api::Manifest* manifest) {
     int fd = open(file.c_str(), O_RDONLY);
-	if (fd < 0) {
-		return -1;
-	}
+    if (fd < 0) {
+        return -1;
+    }
     google::protobuf::io::FileInputStream fileInput(fd);
     fileInput.SetCloseOnDelete(true);
     google::protobuf::TextFormat::Parse(&fileInput, manifest);
-	return 0;
+    return 0;
 }
 
 bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path, 
-			uint32_t& binlog_index, uint64_t offset, bool append_end = true) {
+            uint32_t& binlog_index, uint64_t offset, bool append_end = true) {
     if (*wh != NULL) {
         if (append_end) {
             (*wh)->EndLog();
@@ -106,7 +114,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
         ::rtidb::base::Status status = wh->Write(slice);
         ASSERT_TRUE(status.ok());
     }
-    Snapshot snapshot(4, 3, log_part);
+    MemTableSnapshot snapshot(4, 3, log_part);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -233,7 +241,7 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     mapping.insert(std::make_pair("merchant", 1));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 4, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(4, 4, log_part);
+    MemTableSnapshot snapshot(4, 4, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
@@ -302,7 +310,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 3, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(3, 3, log_part);
+    MemTableSnapshot snapshot(3, 3, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(10, offset);
@@ -406,9 +414,9 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 3, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(3, 2, log_part);
+    MemTableSnapshot snapshot(3, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20170609.sdb", 3, 2, 5);
+    int ret = snapshot.GenManifest("20170609.sdb", 3, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -518,9 +526,9 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 2, 2, 8, mapping, 0);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(2, 2, log_part);
+    MemTableSnapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20170609.sdb", 2, 2, 5);
+    int ret = snapshot.GenManifest("20170609.sdb", 2, 2, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -543,7 +551,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
 
 TEST_F(SnapshotTest, MakeSnapshot) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(1, 2, log_part);
+    MemTableSnapshot snapshot(1, 2, log_part);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -551,8 +559,8 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
-	std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
-	std::string snapshot_path = FLAGS_db_root_path + "/1_2/snapshot/";
+    std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
+    std::string snapshot_path = FLAGS_db_root_path + "/1_2/snapshot/";
     WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, log_path, binlog_index, offset++);
     int count = 0;
@@ -688,7 +696,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 
 TEST_F(SnapshotTest, MakeSnapshotLatest) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(5, 1, log_part);
+    MemTableSnapshot snapshot(5, 1, log_part);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
@@ -697,8 +705,8 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     table->SetTTLType(::rtidb::api::TTLType::kLatestTime);
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
-	std::string log_path = FLAGS_db_root_path + "/5_1/binlog/";
-	std::string snapshot_path = FLAGS_db_root_path + "/5_1/snapshot/";
+    std::string log_path = FLAGS_db_root_path + "/5_1/binlog/";
+    std::string snapshot_path = FLAGS_db_root_path + "/5_1/snapshot/";
     WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
     int count = 0;
@@ -798,29 +806,29 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
 }
 
 TEST_F(SnapshotTest, RecordOffset) {
-	std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
-    Snapshot snapshot(1, 1, NULL);
+    std::string snapshot_path = FLAGS_db_root_path + "/1_1/snapshot/";
+    MemTableSnapshot snapshot(1, 1, NULL);
     snapshot.Init();
     uint64_t offset = 1122;
     uint64_t key_count = 3000;
     uint64_t term = 0;
     std::string snapshot_name = ::rtidb::base::GetNowTime() + ".sdb";
-    int ret = snapshot.RecordOffset(snapshot_name, key_count, offset, term);
+    int ret = snapshot.GenManifest(snapshot_name, key_count, offset, term);
     ASSERT_EQ(0, ret);
-	std::string value;
-	::rtidb::api::Manifest manifest;
-	GetManifest(snapshot_path + "MANIFEST", &manifest);
+    std::string value;
+    ::rtidb::api::Manifest manifest;
+    GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
     ASSERT_EQ(term, manifest.term());
     sleep(1);
 
     std::string snapshot_name1 = ::rtidb::base::GetNowTime() + ".sdb";
     uint64_t key_count1 = 3001;
-	offset = 1124;
+    offset = 1124;
     term = 10;
-    ret = snapshot.RecordOffset(snapshot_name1, key_count1, offset, term);
+    ret = snapshot.GenManifest(snapshot_name1, key_count1, offset, term);
     ASSERT_EQ(0, ret);
-	GetManifest(snapshot_path + "MANIFEST", &manifest);
+    GetManifest(snapshot_path + "MANIFEST", &manifest);
     ASSERT_EQ(offset, manifest.offset());
     ASSERT_EQ(key_count1, manifest.count());
     ASSERT_EQ(term, manifest.term());
@@ -897,7 +905,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", tid, 0, 8, mapping, 0);
     table->Init();
-    Snapshot snapshot(tid, 0, log_part);
+    MemTableSnapshot snapshot(tid, 0, log_part);
     snapshot.Init();
     ASSERT_TRUE(snapshot.Recover(table, offset));
     ASSERT_EQ(30, offset);
@@ -950,7 +958,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     {
         std::string snapshot1 = "20190614.sdb";
         std::string full_path = snapshot_dir + "/" + snapshot1;
-		printf("path:%s\n", full_path.c_str());
+        printf("path:%s\n", full_path.c_str());
         FILE* fd_w = fopen(full_path.c_str(), "ab+");
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf = ::rtidb::log::NewWritableFile(snapshot1, fd_w);
@@ -980,43 +988,43 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
         ASSERT_TRUE(status.ok());
     }
     
-	::rtidb::api::TableMeta table_meta;
-	table_meta.set_name("test");
+    ::rtidb::api::TableMeta table_meta;
+    table_meta.set_name("test");
     table_meta.set_tid(2);
     table_meta.set_pid(2);
     table_meta.set_ttl(0);
     table_meta.set_seg_cnt(8);
-	::rtidb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
-	column_desc1->set_name("card");
-	column_desc1->set_type("string");
-	::rtidb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
-	column_desc2->set_name("mcc");
-	column_desc2->set_type("string");
-	::rtidb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
-	column_desc3->set_name("amt");
-	column_desc3->set_type("double");
-	::rtidb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
-	column_desc4->set_name("ts1");
-	column_desc4->set_type("int64");
-	column_desc4->set_is_ts_col(true);
-	::rtidb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
-	column_desc5->set_name("ts2");
-	column_desc5->set_type("int64");
-	column_desc5->set_is_ts_col(true);
-	::rtidb::common::ColumnKey* column_key1 = table_meta.add_column_key();
-	column_key1->set_index_name("card");
-	column_key1->add_ts_name("ts1");
-	column_key1->add_ts_name("ts2");
-	::rtidb::common::ColumnKey* column_key2 = table_meta.add_column_key();
-	column_key2->set_index_name("mcc");
-	column_key2->add_ts_name("ts1");
-	table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    ::rtidb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
+    column_desc1->set_name("card");
+    column_desc1->set_type("string");
+    ::rtidb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
+    column_desc2->set_name("mcc");
+    column_desc2->set_type("string");
+    ::rtidb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
+    column_desc3->set_name("amt");
+    column_desc3->set_type("double");
+    ::rtidb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
+    column_desc4->set_name("ts1");
+    column_desc4->set_type("int64");
+    column_desc4->set_is_ts_col(true);
+    ::rtidb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
+    column_desc5->set_name("ts2");
+    column_desc5->set_type("int64");
+    column_desc5->set_is_ts_col(true);
+    ::rtidb::common::ColumnKey* column_key1 = table_meta.add_column_key();
+    column_key1->set_index_name("card");
+    column_key1->add_ts_name("ts1");
+    column_key1->add_ts_name("ts2");
+    ::rtidb::common::ColumnKey* column_key2 = table_meta.add_column_key();
+    column_key2->set_index_name("mcc");
+    column_key2->add_ts_name("ts1");
+    table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(table_meta);
     table->Init();
     LogParts* log_part = new LogParts(12, 4, scmp);
-    Snapshot snapshot(2, 2, log_part);
+    MemTableSnapshot snapshot(2, 2, log_part);
     ASSERT_TRUE(snapshot.Init());
-    int ret = snapshot.RecordOffset("20190614.sdb", 1, 1, 5);
+    int ret = snapshot.GenManifest("20190614.sdb", 1, 1, 5);
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
@@ -1030,7 +1038,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-	delete it;
+    delete it;
     it = table->NewIterator(0, 1, "card0", ticket);
     it->Seek(2233);
     ASSERT_TRUE(it->Valid());
@@ -1039,7 +1047,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-	delete it;
+    delete it;
     it = table->NewIterator(1, 0, "mcc0", ticket);
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
@@ -1048,11 +1056,52 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     ASSERT_EQ("value0", value2_str);
     it->Next();
     ASSERT_FALSE(it->Valid());
-	delete it;
+    delete it;
     it = table->NewIterator(0, 0, "mcc0", ticket);
     it->Seek(1122);
     ASSERT_FALSE(it->Valid());
-	delete it;
+    delete it;
+}
+
+TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
+    std::string snapshot_path = FLAGS_hdd_root_path + "/1_1/snapshot/";
+    DiskTableSnapshot snapshot(1, 1, ::rtidb::common::StorageMode::kHDD);
+    snapshot.Init();
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    DiskTable* disk_table_ptr = new DiskTable("test", 1, 1, mapping, 0, 
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
+    std::shared_ptr<Table> table(disk_table_ptr);
+    table->Init();
+    
+    for (int idx = 0; idx < 1000; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        uint64_t ts = 9537;
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(table->Put(key, ts + k, "value", 5));
+        }
+    }
+    
+    snapshot.SetTerm(9);
+    uint64_t offset = 0;
+    int ret = snapshot.MakeSnapshot(table, offset);
+    ASSERT_EQ(0, ret);
+    ASSERT_EQ(10000, offset);
+
+    std::string full_path = snapshot_path + "MANIFEST";
+    ::rtidb::api::Manifest manifest;
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(10000, manifest.offset());
+    ASSERT_EQ(10000, manifest.count());
+    ASSERT_EQ(9, manifest.term());
+    
+    std::string path = FLAGS_hdd_root_path + "/1_1";
+    RemoveData(path);
 }
 
 }
@@ -1064,5 +1113,6 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::baidu::common::SetLogLevel(::baidu::common::INFO);
     FLAGS_db_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
+    FLAGS_hdd_root_path = "/tmp/" + std::to_string(::rtidb::storage::GenRand());
     return RUN_ALL_TESTS();
 }

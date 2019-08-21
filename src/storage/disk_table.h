@@ -18,6 +18,7 @@
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/compaction_filter.h>
+#include <rocksdb/utilities/checkpoint.h>
 #include "base/slice.h"
 #include "base/endianconv.h"
 #include "storage/iterator.h"
@@ -209,9 +210,11 @@ public:
 
     bool InitColumnFamilyDescriptor();
 
+    bool InitTableProperty();
+
     virtual bool Init() override;
 
-    virtual bool LoadTable() override;
+    bool LoadTable();
 
     static void initOptionTemplate();
 
@@ -278,9 +281,12 @@ public:
             db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
         }
     }
+    
+    int CreateCheckPoint(const std::string& checkpoint_dir);
 
 private:
     rocksdb::DB* db_;
+    rocksdb::WriteOptions write_opts_;
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
     std::vector<rocksdb::ColumnFamilyHandle*> cf_hs_;
     rocksdb::Options options_;

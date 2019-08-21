@@ -5,8 +5,8 @@ import com._4paradigm.dataimporter.initialization.InitClient;
 import com._4paradigm.dataimporter.initialization.InitThreadPool;
 import com._4paradigm.dataimporter.task.PutTask;
 import com._4paradigm.rtidb.client.TableSyncClient;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import org.apache.commons.lang3.StringUtils;
@@ -42,8 +42,10 @@ public class ParseParquetUtil {
     private String tableName;
     private MessageType schema;
     private static final String INDEX = Constant.INDEX;
-    private final int TIMESTAMP_INDEX = Integer.parseInt(StringUtils.isBlank(Constant.TIMESTAMP_INDEX) ? "-1" : Constant.TIMESTAMP_INDEX);
-    private long timestamp;
+    private static final String TIMESTAMP = Constant.TIMESTAMP;
+    private boolean hasTs = false;
+    private boolean schemaTsCol;
+    private long timestamp = -1;
     private static final String INPUT_COLUMN_INDEX = Strings.isBlank(Constant.INPUT_COLUMN_INDEX) ? null : Constant.INPUT_COLUMN_INDEX;
     private static int[] arr = StringUtils.isBlank(INPUT_COLUMN_INDEX)
             ? null
@@ -51,6 +53,7 @@ public class ParseParquetUtil {
     private final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
     private final long MILLIS_IN_DAY = TimeUnit.DAYS.toMillis(1);
     private final long NANOS_PER_MILLISECOND = TimeUnit.MILLISECONDS.toNanos(1);
+
     static {
         if (arr != null) {
             String[] sarr = INPUT_COLUMN_INDEX.split(",");
@@ -64,6 +67,7 @@ public class ParseParquetUtil {
         this.filePath = filePath;
         this.tableName = tableName;
         this.schema = schema;
+        this.schemaTsCol = InitClient.hasTsCol(tableName);
     }
 
     private HashMap<String, Object> read(SimpleGroup group) {
@@ -107,12 +111,20 @@ public class ParseParquetUtil {
                     break;
                 default:
             }
-            if (index == TIMESTAMP_INDEX) {
-                if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT64)) {
-                    timestamp = group.getLong(index, 0);
-                } else {
-                    logger.error("incorrect format for timestamp!");
-                    throw new RuntimeException("incorrect format for timestamp!");
+            if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
+                hasTs = true;
+            }
+            if (hasTs && !schemaTsCol) {
+                if (columnName.equals(TIMESTAMP.trim())) {
+                    if (columnType.equals(PrimitiveType.PrimitiveTypeName.INT64)) {
+                        timestamp = group.getLong(index, 0);
+                    } else if(columnType.equals(PrimitiveType.PrimitiveTypeName.INT96)) {
+                        timestamp = getTimestamp(group.getInt96(index, 0));
+                    }
+                    else {
+                        logger.error("incorrect format for timestamp!");
+                        throw new RuntimeException("incorrect format for timestamp!");
+                    }
                 }
             }
         }
@@ -132,10 +144,7 @@ public class ParseParquetUtil {
                     clientIndex = 0;
                 }
                 TableSyncClient client = InitClient.getTableSyncClient()[clientIndex];
-                if (TIMESTAMP_INDEX == -1) {
-                    timestamp = System.currentTimeMillis();
-                }
-                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(taskId.getAndIncrement()), timestamp, client, tableName, map));
+                InitThreadPool.getExecutor().submit(new PutTask(String.valueOf(taskId.getAndIncrement()), hasTs, timestamp, client, tableName, map));
                 clientIndex++;
             }
         } catch (IOException e) {
@@ -161,7 +170,7 @@ public class ParseParquetUtil {
         }
         List<Type> typeList = new ArrayList<>();
         for (int i = 0; i < schema.getFieldCount(); i++) {
-            if (INPUT_COLUMN_INDEX.contains(String.valueOf(i))) {
+            if (InitClient.contains(",", INPUT_COLUMN_INDEX, String.valueOf(i))) {
                 typeList.add(schema.getType(i));
             }
         }
@@ -171,43 +180,47 @@ public class ParseParquetUtil {
     public static List<ColumnDesc> getSchemaOfRtidb(MessageType schema) {
         List<ColumnDesc> list = new ArrayList<>();
         ColumnDesc columnDesc;
-        String fieldName;
+        String columnName;
         PrimitiveType.PrimitiveTypeName columnType;
         for (int i = 0; i < schema.getFieldCount(); i++) {
-            columnDesc = new ColumnDesc();
-            fieldName = schema.getFieldName(i);
-            if (INDEX.contains(fieldName)) {
-                columnDesc.setAddTsIndex(true);
-            }
+            ColumnDesc.Builder builder = ColumnDesc.newBuilder();
+            columnName = schema.getFieldName(i);
             columnType = schema.getType(i).asPrimitiveType().getPrimitiveTypeName();
+            builder.setName(columnName);
+            if (InitClient.contains(";", INDEX, columnName)) {
+                builder.setAddTsIdx(true);
+            }
+            if (InitClient.contains(";", TIMESTAMP, columnName)) {
+                builder.setIsTsCol(true);
+            }
             switch (columnType) {
                 case INT32:
-                    columnDesc.setType(ColumnType.kInt32);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt32));
                     break;
                 case INT64:
-                    columnDesc.setType(ColumnType.kInt64);
+                    builder.setType(InitClient.stringOf(ColumnType.kInt64));
                     break;
                 case INT96:
-                    columnDesc.setType(ColumnType.kTimestamp);
+                    builder.setType(InitClient.stringOf(ColumnType.kTimestamp));
                     break;
                 case BINARY:
-                    columnDesc.setType(ColumnType.kString);
+                    builder.setType(InitClient.stringOf(ColumnType.kString));
                     break;
                 case BOOLEAN:
-                    columnDesc.setType(ColumnType.kBool);
+                    builder.setType(InitClient.stringOf(ColumnType.kBool));
                     break;
                 case FLOAT:
-                    columnDesc.setType(ColumnType.kFloat);
+                    builder.setType(InitClient.stringOf(ColumnType.kFloat));
                     break;
                 case DOUBLE:
-                    columnDesc.setType(ColumnType.kDouble);
+                    builder.setType(InitClient.stringOf(ColumnType.kDouble));
                     break;
                 case FIXED_LEN_BYTE_ARRAY:
-                    columnDesc.setType(ColumnType.kString);
+                    builder.setType(InitClient.stringOf(ColumnType.kString));
                     break;
                 default:
             }
-            columnDesc.setName(fieldName);
+            columnDesc = builder.build();
             list.add(columnDesc);
         }
         return list;
