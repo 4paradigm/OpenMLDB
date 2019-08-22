@@ -96,3 +96,8 @@ DEFINE_uint32(max_col_display_length, 256, "config the max length of column disp
 
 // rocksdb
 DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
+
+// load table resouce control
+DEFINE_uint32(load_table_batch, 30, "set laod table batch size");
+DEFINE_uint32(load_table_thread_num, 3, "set load tabale thread pool size");
+DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");

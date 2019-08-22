@@ -18,7 +18,7 @@ add_library(log STATIC log/crc32c.cc
                        log/log_writer.cc 
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
-add_library(base STATIC base/status.cc)
+add_library(base STATIC base/status.cc base/ringqueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 
 add_library(replica STATIC replica/replicate_node.cc
@@ -54,6 +54,9 @@ target_link_libraries(schema_codec_test gtest pthread protobuf)
 
 add_executable(count_down_latch_test base/count_down_latch_test.cc)
 target_link_libraries(count_down_latch_test common gtest pthread)
+
+add_executable(ringqueue_test base/ringqueue_test.cc)
+target_link_libraries(ringqueue_test gtest pthread)
 
 add_executable(segment_test storage/segment_test.cc flags.cc proto/tablet.pb.cc proto/common.pb.cc)
 target_link_libraries(segment_test gtest gflags storage rt protobuf pthread common tcmalloc_minimal)
