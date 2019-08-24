@@ -127,7 +127,7 @@ class TestSendSnapshot(TestCaseBase):
 
     def assert_init_fail_by_log(self):
         rs = utils.exe_shell('cat {}/info.log |grep "tid\[{}\] pid\[{}\]"'
-                             '|grep "init channel failed."'.format(self.leaderpath, self.tid, self.pid))
+                             '|grep "Init FileSender failed"'.format(self.leaderpath, self.tid, self.pid))
         self.assertTrue(rs)
 
 

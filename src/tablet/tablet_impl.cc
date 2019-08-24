@@ -51,6 +51,7 @@ DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_string(recycle_bin_root_path);
 DECLARE_string(recycle_ssd_bin_root_path);
+DECLARE_string(recycle_hdd_bin_root_path);
 DECLARE_int32(make_snapshot_threshold_offset);
 
 // cluster config
@@ -2537,13 +2538,16 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
 
 int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
-    std::string root_path;
+    std::string root_path = FLAGS_db_root_path;
     std::string recycle_bin_root_path = FLAGS_recycle_bin_root_path;
     if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-        root_path = FLAGS_hdd_root_path;
         if (table->GetStorageMode() == ::rtidb::common::StorageMode::kSSD) {
             root_path = FLAGS_ssd_root_path;
             recycle_bin_root_path = FLAGS_recycle_ssd_bin_root_path;
+        } else {
+            root_path = FLAGS_hdd_root_path;
+            recycle_bin_root_path = FLAGS_recycle_hdd_bin_root_path;
+
         }
         std::lock_guard<std::mutex> lock(mu_);
         tables_[tid].erase(pid);
