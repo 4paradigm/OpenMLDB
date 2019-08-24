@@ -57,6 +57,7 @@ uint64_t Segment::Release() {
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
+        delete[] it->GetKey().data();
         if (it->GetValue() != NULL) {
             if (ts_cnt_ > 1) {
                 KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
@@ -80,7 +81,7 @@ uint64_t Segment::Release() {
     f_it->SeekToFirst();
     while (f_it->Valid()) {
         ::rtidb::base::Node<Slice, void*>* node = f_it->GetValue();
-        delete node->GetKey().data();
+        delete[] node->GetKey().data();
         if (ts_cnt_ > 1) {
             KeyEntry** entry_arr = (KeyEntry**)node->GetValue();
             for (uint32_t i = 0; i < ts_cnt_; i++) {
