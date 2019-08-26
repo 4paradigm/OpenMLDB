@@ -492,6 +492,7 @@ message CountRequest {
     optional string idx_name = 3;
     optional string key = 4;
     optional bool filter_expired_data = 5 [default = false];
+    optional bool enable_remove_duplicated_record = 7 [default=false];
     optional string ts_name = 6;
 }    
 

@@ -5,9 +5,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
+import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -249,10 +253,29 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(ok);
             ok = tableSyncClient.put(name, "test2", 9529, "value3");
             Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test3", 9530, "value1");
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, "test3", 9530, "value2");
+            Assert.assertTrue(ok);
             Assert.assertEquals(3, tableSyncClient.count(name, "test1"));
             Assert.assertEquals(3, tableSyncClient.count(name, "test1", true));
             Assert.assertEquals(1, tableSyncClient.count(name, "test2"));
             Assert.assertEquals(1, tableSyncClient.count(name, "test2", true));
+            Assert.assertEquals(2, tableSyncClient.count(name, "tset3"));
+            RTIDBClientConfig configA = client.getConfig();
+            RTIDBClientConfig configB = new RTIDBClientConfig();
+            configB.setZkEndpoints(configA.getZkEndpoints());
+            configB.setZkRootPath(configA.getZkRootPath());
+            configB.setNsEndpoint(configA.getNsEndpoint());
+            configB.setReadTimeout(configA.getReadTimeout());
+            configB.setWriteTimeout(configA.getWriteTimeout());
+            configB.setRemoveDuplicateByTime(true);
+            RTIDBClusterClient testNSc = new RTIDBClusterClient(configB);
+            testNSc.init();
+            TableSyncClient tabletSyncCLientB = new TableSyncClientImpl(testNSc);
+            Assert.assertEquals(1, tabletSyncCLientB.count(name, "test3"));
+
+
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
