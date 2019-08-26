@@ -261,7 +261,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(3, tableSyncClient.count(name, "test1", true));
             Assert.assertEquals(1, tableSyncClient.count(name, "test2"));
             Assert.assertEquals(1, tableSyncClient.count(name, "test2", true));
-            Assert.assertEquals(2, tableSyncClient.count(name, "tset3"));
+            Assert.assertEquals(2, tableSyncClient.count(name, "test3"));
             RTIDBClientConfig configA = client.getConfig();
             RTIDBClientConfig configB = new RTIDBClientConfig();
             configB.setZkEndpoints(configA.getZkEndpoints());
@@ -272,10 +272,8 @@ public class TableSyncClientTest extends TestCaseBase {
             configB.setRemoveDuplicateByTime(true);
             RTIDBClusterClient testNSc = new RTIDBClusterClient(configB);
             testNSc.init();
-            TableSyncClient tabletSyncCLientB = new TableSyncClientImpl(testNSc);
-            Assert.assertEquals(1, tabletSyncCLientB.count(name, "test3"));
-
-
+            TableSyncClient tableSyncClientB = new TableSyncClientImpl(testNSc);
+            Assert.assertEquals(1, tableSyncClientB.count(name, "test3", true));
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -300,10 +298,34 @@ public class TableSyncClientTest extends TestCaseBase {
             rowMap.put("amt", 9.2d);
             ok = tableSyncClient.put(name, 9528, rowMap);
             Assert.assertTrue(ok);
+            rowMap = new HashMap<String, Object>();
+            rowMap.put("card", "card1");
+            rowMap.put("mcc", "mcc2");
+            rowMap.put("amt", 9.25d);
+            ok = tableSyncClient.put(name, 9529, rowMap);
+            Assert.assertTrue(ok);
+            rowMap.put("card", "card1");
+            rowMap.put("mcc", "mcc2");
+            rowMap.put("amt", 9.3d);
+            ok = tableSyncClient.put(name, 9529, rowMap);
+            Assert.assertTrue(ok);
             Assert.assertEquals(2, tableSyncClient.count(name, "card0", "card"));
             Assert.assertEquals(2, tableSyncClient.count(name, "card0", "card", true));
             Assert.assertEquals(1, tableSyncClient.count(name, "mcc1", "mcc"));
             Assert.assertEquals(1, tableSyncClient.count(name, "mcc1", "mcc", true));
+            RTIDBClientConfig configA = client.getConfig();
+            RTIDBClientConfig configB = new RTIDBClientConfig();
+            configB.setZkEndpoints(configA.getZkEndpoints());
+            configB.setZkRootPath(configA.getZkRootPath());
+            configB.setNsEndpoint(configA.getNsEndpoint());
+            configB.setReadTimeout(configA.getReadTimeout());
+            configB.setWriteTimeout(configA.getWriteTimeout());
+            configB.setRemoveDuplicateByTime(true);
+            RTIDBClusterClient testNSc = new RTIDBClusterClient(configB);
+            testNSc.init();
+            TableSyncClient tableSyncClientB = new TableSyncClientImpl(testNSc);
+            Assert.assertEquals(1, tableSyncClientB.count(name, "mcc2", "mcc", true));
+            Assert.assertEquals(1, tableSyncClientB.count(name, "card1", "card", true));
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
