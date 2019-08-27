@@ -3962,12 +3962,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "Invalid args. tid pid should be uint32_t, st and et should be uint64_t, limit should be uint32" << std::endl;
         return;
     }
-    ::rtidb::api::TableMeta table_meta;
-    bool ok = client->GetTableSchema(tid, pid, table_meta);
-    if(!ok) {
-        std::cout << "No schema for table, please use command scan" << std::endl;
-        return;
-    }
+    
     std::string msg;
     ::rtidb::base::KvIterator* it = NULL;
     if (has_ts_col) {
@@ -3981,6 +3976,12 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         ::rtidb::api::TableStatus table_status;
         if (!client->GetTableStatus(tid, pid, table_status)) {
             std::cout << "Fail to get table status" << std::endl;
+            return;
+        }
+        ::rtidb::api::TableMeta table_meta;
+        bool ok = client->GetTableSchema(tid, pid, table_meta);
+        if(!ok) {
+            std::cout << "No schema for table, please use command scan" << std::endl;
             return;
         }
         std::string schema = table_meta.schema();
