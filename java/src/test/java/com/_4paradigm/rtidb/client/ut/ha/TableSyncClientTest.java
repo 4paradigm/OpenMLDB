@@ -274,6 +274,7 @@ public class TableSyncClientTest extends TestCaseBase {
             testNSc.init();
             TableSyncClient tableSyncClientB = new TableSyncClientImpl(testNSc);
             Assert.assertEquals(1, tableSyncClientB.count(name, "test3", true));
+            testNSc.close();
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -313,6 +314,8 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(2, tableSyncClient.count(name, "card0", "card", true));
             Assert.assertEquals(1, tableSyncClient.count(name, "mcc1", "mcc"));
             Assert.assertEquals(1, tableSyncClient.count(name, "mcc1", "mcc", true));
+            Assert.assertEquals(2, tableSyncClient.count(name, "mcc2", "mcc"));
+            Assert.assertEquals(2, tableSyncClient.count(name, "card1", "card"));
             RTIDBClientConfig configA = client.getConfig();
             RTIDBClientConfig configB = new RTIDBClientConfig();
             configB.setZkEndpoints(configA.getZkEndpoints());
@@ -326,6 +329,7 @@ public class TableSyncClientTest extends TestCaseBase {
             TableSyncClient tableSyncClientB = new TableSyncClientImpl(testNSc);
             Assert.assertEquals(1, tableSyncClientB.count(name, "mcc2", "mcc", true));
             Assert.assertEquals(1, tableSyncClientB.count(name, "card1", "card", true));
+            testNSc.close();
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
