@@ -456,11 +456,11 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {
     return 0;
 }
 
-bool GetParameterMap(const std::string first, const std::vector<std::string>& parts, const std::string delimiter, bool& has_ts_col, std::map<std::string, std::string>& parameter_map) {
+bool GetParameterMap(const std::string first, const std::vector<std::string>& parts, const std::string delimiter, bool& is_pair_format, std::map<std::string, std::string>& parameter_map) {
     std::vector<std::string> temp_vec;
     ::rtidb::base::SplitString(parts[1], delimiter, &temp_vec);
     if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
-        has_ts_col = true;
+        is_pair_format = true;
         parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         for (uint32_t i = 2; i < parts.size(); i++) {
             ::rtidb::base::SplitString(parts[i], delimiter, &temp_vec);
@@ -1003,9 +1003,9 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts | get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
         return;
     }
-    bool has_ts_col = false;
+    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("table_name", parts, "=", has_ts_col, parameter_map)) {
+    if (!GetParameterMap("table_name", parts, "=", is_pair_format, parameter_map)) {
         std::cout << "get format error. eg: get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
         return;
     }
@@ -1016,7 +1016,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     std::string ts_name;
     auto iter = parameter_map.begin();
     try {
-        if (has_ts_col) {
+        if (is_pair_format) {
             iter = parameter_map.find("table_name");
             if (iter != parameter_map.end()) {
                 table_name = iter->second;
@@ -1060,7 +1060,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = false;
-    if (has_ts_col) {
+    if (is_pair_format) {
         ret = client->ShowTable(table_name, tables, msg);
     } else {
         ret = client->ShowTable(parts[1], tables, msg);
@@ -1167,9 +1167,9 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"  << std::endl;
         return;
     }
-    bool has_ts_col = false;
+    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("table_name", parts, "=", has_ts_col, parameter_map)) {
+    if (!GetParameterMap("table_name", parts, "=", is_pair_format, parameter_map)) {
         std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }  
@@ -1182,7 +1182,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
     uint32_t limit = 0;
     auto iter = parameter_map.begin();
     try{
-        if (has_ts_col) {
+        if (is_pair_format) {
             iter = parameter_map.find("table_name");
             if (iter != parameter_map.end()) {
                 table_name = iter->second;
@@ -1238,7 +1238,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = false;
-    if (has_ts_col) {
+    if (is_pair_format) {
         ret = client->ShowTable(table_name, tables, msg);
     } else {
         ret = client->ShowTable(parts[1], tables, msg);
@@ -1288,7 +1288,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         try {
             ::rtidb::base::KvIterator* it = NULL;
             std::string msg;
-            if (has_ts_col) {
+            if (is_pair_format) {
                 it = tablet_client->Scan(tid, pid, key,  
                     st, et, index_name, ts_name, limit, msg);    
             } else {
@@ -1317,9 +1317,9 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "count format error | count table_name key [col_name] [filter_expired_data] | count table_name=xxx key=xxx index_name=xxx ts_name [filter_expired_data]" << std::endl;
         return;
     }
-    bool has_ts_col = false;
+    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("table_name", parts, "=", has_ts_col, parameter_map)) {
+    if (!GetParameterMap("table_name", parts, "=", is_pair_format, parameter_map)) {
         std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
@@ -1329,7 +1329,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
     std::string ts_name;
     bool filter_expired_data = false;
     auto iter = parameter_map.begin();
-    if (has_ts_col) {
+    if (is_pair_format) {
         iter = parameter_map.find("table_name");
         if (iter != parameter_map.end()) {
             table_name = iter->second;
@@ -1416,7 +1416,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
     }
     uint64_t value = 0;
     bool ok = false;
-    if (has_ts_col) {
+    if (is_pair_format) {
         ok = tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg); 
     } else {
         ok = tablet_client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
@@ -3594,9 +3594,9 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "count format error! eg. count tid pid key [col_name] [filter_expired_data] | count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
-    bool has_ts_col = false;
+    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", has_ts_col, parameter_map)) {
+    if (!GetParameterMap("tid", parts, "=", is_pair_format, parameter_map)) {
         std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
@@ -3609,7 +3609,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
     uint64_t value = 0;
     auto iter = parameter_map.begin();
     try {
-        if (has_ts_col) {
+        if (is_pair_format) {
             iter = parameter_map.find("tid");
             if (iter != parameter_map.end()) {
                 tid = boost::lexical_cast<uint32_t>(iter->second);
@@ -3686,7 +3686,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
     }
     std::string msg;
     bool ok;
-    if (has_ts_col) {
+    if (is_pair_format) {
         ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
     } else {
         key = parts[3];
@@ -3750,9 +3750,9 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
         return;
     }
-    bool has_ts_col = false;
+    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", has_ts_col, parameter_map)) {
+    if (!GetParameterMap("tid", parts, "=", is_pair_format, parameter_map)) {
         std::cout << "sget format erro! eg. sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
         return;
     }
@@ -3764,7 +3764,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     std::string ts_name;
     auto iter = parameter_map.begin();
     try {
-        if (has_ts_col) {
+        if (is_pair_format) {
             iter = parameter_map.find("tid");
             if (iter != parameter_map.end()) {
                 tid = boost::lexical_cast<uint32_t>(iter->second);
@@ -3829,7 +3829,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     std::string value;
     uint64_t ts = 0;
     std::string msg;
-    if (has_ts_col) {
+    if (is_pair_format) {
         ok = client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg);
     } else {
         ok = client->Get(tid, pid, key, timestamp, index_name, value, ts, msg);
@@ -3877,9 +3877,9 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
-    bool has_ts_col = false;
+    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", has_ts_col, parameter_map)) {
+    if (!GetParameterMap("tid", parts, "=", is_pair_format, parameter_map)) {
         std::cout << "scan format erro! eg. sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
@@ -3893,7 +3893,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
     uint32_t limit = 0;
     auto iter = parameter_map.begin();
     try {
-        if (has_ts_col) {
+        if (is_pair_format) {
             iter = parameter_map.find("tid");
             if (iter != parameter_map.end()) {
                 tid = boost::lexical_cast<uint32_t>(iter->second);
@@ -3965,7 +3965,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
     
     std::string msg;
     ::rtidb::base::KvIterator* it = NULL;
-    if (has_ts_col) {
+    if (is_pair_format) {
         it = client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, msg); 
     } else {
         it = client->Scan(tid, pid, key, st, et, index_name, limit, msg); 
@@ -3976,12 +3976,14 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         ::rtidb::api::TableStatus table_status;
         if (!client->GetTableStatus(tid, pid, table_status)) {
             std::cout << "Fail to get table status" << std::endl;
+            delete it;
             return;
         }
         ::rtidb::api::TableMeta table_meta;
         bool ok = client->GetTableSchema(tid, pid, table_meta);
         if(!ok) {
             std::cout << "No schema for table, please use command scan" << std::endl;
+            delete it;
             return;
         }
         std::string schema = table_meta.schema();
