@@ -1379,7 +1379,13 @@ void TabletImpl::Count(RpcController* controller,
     uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     uint64_t end_time = table->GetExpireTime(ttl);
     PDLOG(DEBUG, "end_time %lu", end_time);
+
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+      remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
     uint64_t scount = 0;
+    uint64_t last_time = 0;
     while (it->Valid()) {
         if (table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
             if (scount >= ttl) {
@@ -1390,6 +1396,12 @@ void TabletImpl::Count(RpcController* controller,
                 break;
             }
         }
+        if (remove_duplicated_record && last_time == it->GetKey()) {
+          PDLOG(DEBUG, "filter duplicated ts record %lu", last_time);
+          it->Next();
+          continue;
+        }
+        last_time = it->GetKey();
         scount ++;
         it->Next();
     }
@@ -1473,7 +1485,7 @@ void TabletImpl::Traverse(RpcController* controller,
             break;
         }
         PDLOG(DEBUG, "traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
-        // skip duplicate record 
+        // skip duplicate record
         if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
             PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
             it->Next();
