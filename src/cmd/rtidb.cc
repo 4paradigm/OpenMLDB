@@ -1157,7 +1157,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
 }
 
 void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
-    if (parts.size() < 7) {
+    if (parts.size() < 5) {
         std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"  << std::endl;
         return;
     }
@@ -3843,7 +3843,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
 }
 
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 5) {
+    if (parts.size() < 7) {
         std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
