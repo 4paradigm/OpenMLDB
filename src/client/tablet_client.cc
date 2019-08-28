@@ -541,8 +541,12 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_idx_name(idx_name);
-    request.set_ts_name(ts_name);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    if (!ts_name.empty()) {
+        request.set_ts_name(ts_name);
+    }
     request.set_limit(limit);
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
@@ -934,8 +938,12 @@ bool TabletClient::Get(uint32_t tid,
     request.set_pid(pid);
     request.set_key(pk);
     request.set_ts(time);
-    request.set_idx_name(idx_name);
-    request.set_ts_name(ts_name);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    if (!ts_name.empty()) {
+        request.set_ts_name(ts_name);
+    }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
             &request, &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {

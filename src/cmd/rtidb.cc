@@ -456,7 +456,7 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {
     return 0;
 }
 
-bool GetParameterMap(const std::string first, const std::vector<std::string>& parts, const std::string delimiter, bool& is_pair_format, std::map<std::string, std::string>& parameter_map) {
+bool GetParameterMap(const std::string& first, const std::vector<std::string>& parts, const std::string& delimiter, bool& is_pair_format, std::map<std::string, std::string>& parameter_map) {
     std::vector<std::string> temp_vec;
     ::rtidb::base::SplitString(parts[1], delimiter, &temp_vec);
     if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
@@ -1034,10 +1034,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
-            } else {
-                std::cout<<"get format error: index_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
             iter = parameter_map.find("ts");
             if (iter != parameter_map.end()) {
                 timestamp = boost::lexical_cast<uint64_t>(iter->second);
@@ -1048,10 +1045,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             iter = parameter_map.find("ts_name");
             if (iter != parameter_map.end()) {
                 ts_name = iter->second;
-            } else {
-                std::cout<<"get format error: ts_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
         }
     } catch (std::exception const& e) {
         printf("Invalid args. ts should be unsigned int\n");
@@ -1123,7 +1117,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         uint64_t ts = 0;
         try {
             std::string msg;
-            if (parts.size() == 6) {
+            if (is_pair_format) {
                 if (!tablet_client->Get(tid, pid, key, 
                                timestamp, index_name, ts_name, value, ts, msg)) {
                    std::cout << "Fail to get value! error msg: " << msg << std::endl;
@@ -1163,7 +1157,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
 }
 
 void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
-    if (parts.size() < 5) {
+    if (parts.size() < 7) {
         std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"  << std::endl;
         return;
     }
@@ -1200,10 +1194,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
-            } else {
-                std::cout<<"scan format error: index_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
             iter = parameter_map.find("st");
             if (iter != parameter_map.end()) {
                 st = boost::lexical_cast<uint64_t>(iter->second);
@@ -1221,10 +1212,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             iter = parameter_map.find("ts_name");
             if (iter != parameter_map.end()) {
                 ts_name = iter->second;
-            } else {
-                std::cout<<"scan format error: ts_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
             iter = parameter_map.find("limit");
             if (iter != parameter_map.end()) {
                 limit = boost::lexical_cast<uint32_t>(iter->second);
@@ -1347,17 +1335,11 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         iter = parameter_map.find("index_name");
         if (iter != parameter_map.end()) {
             index_name = iter->second;
-        } else {
-            std::cout<<"count format error: index_name does not exist!"<<std::endl;
-            return;
-        }
+        }  
         iter = parameter_map.find("ts_name");
         if (iter != parameter_map.end()) {
             ts_name = iter->second;
-        } else {
-            std::cout<<"count format error: ts_name does not exist!"<<std::endl;
-            return;
-        }
+        } 
         iter = parameter_map.find("filter_expired_data");
         if (iter != parameter_map.end()) {
             std::string temp_str = iter->second;
@@ -3634,17 +3616,11 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
-            } else {
-                std::cout<<"count format error: index_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
             iter = parameter_map.find("ts_name");
             if (iter != parameter_map.end()) {
                 ts_name = iter->second;
-            } else {
-                std::cout<<"count format error: ts_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
             iter = parameter_map.find("filter_expired_data");
             if (iter != parameter_map.end()) {
                 std::string temp_str = iter->second;
@@ -3789,10 +3765,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
-            } else {
-                std::cout<<"sget format error: index_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
             iter = parameter_map.find("ts");
             if (iter != parameter_map.end()) {
                 timestamp = boost::lexical_cast<uint64_t>(iter->second);
@@ -3803,10 +3776,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             iter = parameter_map.find("ts_name");
             if (iter != parameter_map.end()) {
                 ts_name = iter->second;
-            } else {
-                std::cout<<"sget format error: ts_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
         } else {
             tid = boost::lexical_cast<uint32_t>(parts[1]);
             pid = boost::lexical_cast<uint32_t>(parts[2]);
@@ -3873,7 +3843,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
 }
 
 void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::TabletClient* client) {
-    if (parts.size() < 7) {
+    if (parts.size() < 5) {
         std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
@@ -3918,10 +3888,7 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             iter = parameter_map.find("index_name");
             if (iter != parameter_map.end()) {
                 index_name = iter->second;
-            } else {
-                std::cout<<"sscan format error: index_name does not exist!"<<std::endl;
-                return;
-            }
+            } 
             iter = parameter_map.find("st");
             if (iter != parameter_map.end()) {
                 st = boost::lexical_cast<uint64_t>(iter->second);
@@ -3939,9 +3906,6 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
             iter = parameter_map.find("ts_name");
             if (iter != parameter_map.end()) {
                 ts_name = iter->second;
-            } else {
-                std::cout<<"sscan format error: ts_name does not exist!"<<std::endl;
-                return;
             }
             iter = parameter_map.find("limit");
             if (iter != parameter_map.end()) {
