@@ -384,7 +384,10 @@ void MemTable::SchedGc() {
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
             id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
+    uint64_t time = 0;
+    if (ttl_.load(std::memory_order_relaxed) != 0) {
+        time = cur_time + time_offset_.load(std::memory_order_relaxed) - ttl_offset_ - ttl_.load(std::memory_order_relaxed);
+    }        
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
@@ -400,9 +403,13 @@ void MemTable::SchedGc() {
                     continue;
                 }
                 if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
-                    cur_ttl_map.insert(std::make_pair(ts_idx, 
-                                cur_time + time_offset_.load(std::memory_order_relaxed) - 
-                                ttl_offset_ - ttl_vec_[ts_idx]->load(std::memory_order_relaxed)));
+                    if (ttl_vec_[ts_idx]->load(std::memory_order_relaxed) == 0) {
+                        cur_ttl_map.insert(std::make_pair(ts_idx, 0));
+                    } else {
+                        cur_ttl_map.insert(std::make_pair(ts_idx, 
+                                    cur_time + time_offset_.load(std::memory_order_relaxed) - 
+                                    ttl_offset_ - ttl_vec_[ts_idx]->load(std::memory_order_relaxed)));
+                    }
                 } else {
                     cur_ttl_map.insert(std::make_pair(ts_idx, 
                                 ttl_vec_[ts_idx]->load(std::memory_order_relaxed) / 60 / 1000));

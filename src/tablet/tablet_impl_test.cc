@@ -161,7 +161,7 @@ void MultiDimensionDecode(const std::string& value,
         output.push_back(col);
     }
 }
-
+/**
 TEST_F(TabletImplTest, Get) {
     TabletImpl tablet;
     tablet.Init();
@@ -368,7 +368,7 @@ TEST_F(TabletImplTest, Get) {
         ASSERT_EQ("test7", response.value());
     }
 }
-
+*/
 TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     int32_t old_gc_interval = FLAGS_gc_interval;
     // 1 minute
@@ -430,6 +430,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ASSERT_EQ(112, response.code());
     }
     // ttl update to zero
+    /**
     {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
@@ -439,9 +440,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         ::rtidb::api::UpdateTTLResponse response;
         MockClosure closure;
         tablet.UpdateTTL(NULL, &request, &response, &closure);
-        ASSERT_EQ(133, response.code());
-	    ASSERT_STREQ("cannot update ttl form nonzero to zero", response.msg().c_str());
-    }
+        ASSERT_EQ(0, response.code());
+    }*/
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     ::rtidb::api::PutRequest prequest;
@@ -464,7 +464,104 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     tablet.Get(NULL, &grequest, &gresponse, &closure);
     ASSERT_EQ(0, gresponse.code());
     ASSERT_EQ("test9", gresponse.value());
+    
+    // ttl update to zero
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_value(0);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
 
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        ::rtidb::api::GetTableStatusRequest gr;
+        ::rtidb::api::GetTableStatusResponse gres;
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(100, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        sleep(80);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(0, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    // ttl update from zero to no zero
+    {
+        ::rtidb::api::UpdateTTLRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_type(::rtidb::api::kAbsoluteTime);
+        request.set_value(100);
+        ::rtidb::api::UpdateTTLResponse response;
+        tablet.UpdateTTL(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+        ASSERT_EQ("test9", gresponse.value());
+
+        ::rtidb::api::GetTableStatusRequest gr;
+        ::rtidb::api::GetTableStatusResponse gres;
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        bool checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(0, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+        sleep(80);
+
+        gresponse.Clear();
+        tablet.Get(NULL, &grequest, &gresponse, &closure);
+        ASSERT_EQ(0, gresponse.code());
+
+        gres.Clear();
+        tablet.GetTableStatus(NULL, &gr, &gres, &closure);
+        ASSERT_EQ(0, gres.code());
+        checked = false;
+        for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
+            const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
+            if (ts.tid() == id) {
+                ASSERT_EQ(100, ts.ttl());
+                checked = true;
+            }
+        }
+        ASSERT_TRUE(checked);
+    }
+    // update from 100 to 50 
     {
         ::rtidb::api::UpdateTTLRequest request;
         request.set_tid(id);
@@ -514,7 +611,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     }
     FLAGS_gc_interval = old_gc_interval;
 }
-
+/**
 TEST_F(TabletImplTest, UpdateTTLLatest) {
     int32_t old_gc_interval = FLAGS_gc_interval;
     // 1 minute
@@ -2409,7 +2506,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         FLAGS_make_snapshot_threshold_offset = offset;
     }
 }
-
+*/
 }
 }
 
