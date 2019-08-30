@@ -381,8 +381,9 @@ uint64_t MemTable::Release() {
 
 void MemTable::SchedGc() {
     uint64_t consumed = ::baidu::common::timer::get_micros();
+    uint64_t ttl_for_log = ttl_.load(std::memory_order_relaxed) / 1000 / 60;
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u with type %s ttl %lu", name_.c_str(),
-            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_.load(std::memory_order_relaxed)); 
+            id_, pid_, ::rtidb::api::TTLType_Name(ttl_type_).c_str(), ttl_for_log); 
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     uint64_t time = 0;
     if (ttl_.load(std::memory_order_relaxed) != 0) {
@@ -452,18 +453,18 @@ void MemTable::SchedGc() {
     PDLOG(INFO, "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for table %s tid %u pid %u",
             gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
     if (ttl_.load(std::memory_order_relaxed) != new_ttl_.load(std::memory_order_relaxed)) {
+        uint64_t ttl_for_logger = ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        uint64_t new_ttl_for_logger = new_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
         PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u", 
-                    ttl_.load(std::memory_order_relaxed), 
-                    new_ttl_.load(std::memory_order_relaxed), 
-                    name_.c_str(), id_, pid_);
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
         ttl_.store(new_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     }
     for (uint32_t i = 0; i < ttl_vec_.size(); i++) {
         if (ttl_vec_[i]->load(std::memory_order_relaxed) != new_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            uint64_t ttl_for_logger = ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
+            uint64_t new_ttl_for_logger = new_ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
             PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
-                    ttl_vec_[i]->load(std::memory_order_relaxed),
-                    new_ttl_vec_[i]->load(std::memory_order_relaxed),
-                    name_.c_str(), id_, pid_, i);
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_, i);
             ttl_vec_[i]->store(new_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
         }
     }
