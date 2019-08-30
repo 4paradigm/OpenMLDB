@@ -456,11 +456,10 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {
     return 0;
 }
 
-bool GetParameterMap(const std::string& first, const std::vector<std::string>& parts, const std::string& delimiter, bool& is_pair_format, std::map<std::string, std::string>& parameter_map) {
+bool GetParameterMap(const std::string& first, const std::vector<std::string>& parts, const std::string& delimiter, std::map<std::string, std::string>& parameter_map) {
     std::vector<std::string> temp_vec;
     ::rtidb::base::SplitString(parts[1], delimiter, &temp_vec);
     if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
-        is_pair_format = true;
         parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         for (uint32_t i = 2; i < parts.size(); i++) {
             ::rtidb::base::SplitString(parts[i], delimiter, &temp_vec);
@@ -1003,12 +1002,12 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         std::cout << "get format error. eg: get table_name key ts | get table_name key idx_name ts | get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
         return;
     }
-    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("table_name", parts, "=", is_pair_format, parameter_map)) {
+    if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "get format error. eg: get table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx " << std::endl;
         return;
     }
+    bool is_pair_format = parameter_map.empty() ? false : true;
     std::string table_name;
     std::string key;
     std::string index_name;
@@ -1046,6 +1045,15 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             if (iter != parameter_map.end()) {
                 ts_name = iter->second;
             } 
+        } else {
+            table_name = parts[1];
+            key = parts[2];
+            if (parts.size() == 4) {
+                timestamp = boost::lexical_cast<uint64_t>(parts[3]);
+            } else if (parts.size() == 5){
+                index_name = parts[3];
+                timestamp = boost::lexical_cast<uint64_t>(parts[4]);
+            }
         }
     } catch (std::exception const& e) {
         printf("Invalid args. ts should be unsigned int\n");
@@ -1053,13 +1061,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     } 
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
-    bool ret = false;
-    if (is_pair_format) {
-        ret = client->ShowTable(table_name, tables, msg);
-    } else {
-        ret = client->ShowTable(parts[1], tables, msg);
-        key = parts[2];
-    }
+    bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
         std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
@@ -1080,11 +1082,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         uint64_t ts = 0;
         try {
             std::string msg;
-            bool ok = tablet_client->Get(tid, pid, key,
-                                  boost::lexical_cast<uint64_t>(parts[3]),
-                                  value,
-                                  ts,
-                                  msg);
+            bool ok = tablet_client->Get(tid, pid, key, timestamp, value, ts, msg);
             if (ok) {
                 if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                     std::string uncompressed;
@@ -1117,26 +1115,10 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         uint64_t ts = 0;
         try {
             std::string msg;
-            if (is_pair_format) {
-                if (!tablet_client->Get(tid, pid, key, 
-                               timestamp, index_name, ts_name, value, ts, msg)) {
-                   std::cout << "Fail to get value! error msg: " << msg << std::endl;
-                   return;
-                }
-            } else if (parts.size() == 5) {
-                if (!tablet_client->Get(tid, pid, key, 
-                                boost::lexical_cast<uint64_t>(parts[4]),
-                                parts[3], value, ts, msg)) {
-                    std::cout << "Fail to get value! error msg: " << msg << std::endl;
-                    return;
-                }
-            } else {
-                if (!tablet_client->Get(tid, pid, key,
-                                  boost::lexical_cast<uint64_t>(parts[3]),
-                                  value, ts, msg)) {
-                    std::cout << "Fail to get value! error msg: " << msg << std::endl;
-                    return;
-                }
+            if (!tablet_client->Get(tid, pid, key, 
+                        timestamp, index_name, ts_name, value, ts, msg)) {
+                std::cout << "Fail to get value! error msg: " << msg << std::endl;
+                return;
             }
         } catch (std::exception const& e) {
             printf("Invalid args. ts should be unsigned int\n");
@@ -1161,12 +1143,12 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
         std::cout << "scan format error. eg: scan table_name pk start_time end_time [limit] | scan table_name key key_name start_time end_time [limit] | scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]"  << std::endl;
         return;
     }
-    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("table_name", parts, "=", is_pair_format, parameter_map)) {
+    if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "scan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }  
+    bool is_pair_format = parameter_map.empty() ? false : true;
     std::string table_name;
     std::string key;
     std::string index_name;
@@ -1217,6 +1199,9 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             if (iter != parameter_map.end()) {
                 limit = boost::lexical_cast<uint32_t>(iter->second);
             }
+        } else {
+            table_name = parts[1];     
+            key = parts[2];
         }
     } catch (std::exception const& e) {
         printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
@@ -1225,13 +1210,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
 
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
-    bool ret = false;
-    if (is_pair_format) {
-        ret = client->ShowTable(table_name, tables, msg);
-    } else {
-        ret = client->ShowTable(parts[1], tables, msg);
-        key = parts[2];
-    }
+    bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
         std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
@@ -1273,29 +1252,23 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
             std::cout << "convert table column desc failed" << std::endl; 
             return;
         }
-        try {
-            ::rtidb::base::KvIterator* it = NULL;
-            std::string msg;
-            if (is_pair_format) {
-                it = tablet_client->Scan(tid, pid, key,  
-                    st, et, index_name, ts_name, limit, msg);    
-            } else {
-                if (parts.size() > 6) {
-                    limit = boost::lexical_cast<uint32_t>(parts[6]);
-                }
-                it = tablet_client->Scan(tid, pid, key,  
-                        boost::lexical_cast<uint64_t>(parts[4]), 
-                        boost::lexical_cast<uint64_t>(parts[5]),
-                        parts[3], limit, msg); 
+        ::rtidb::base::KvIterator* it = NULL;
+        std::string msg;
+        if (!is_pair_format) {
+            index_name = parts[3];
+            st = boost::lexical_cast<uint64_t>(parts[4]);
+            et = boost::lexical_cast<uint64_t>(parts[5]);
+            if (parts.size() > 6) {
+                limit = boost::lexical_cast<uint32_t>(parts[6]);
             }
-            if (it == NULL) {
-                std::cout << "Fail to scan table. error msg: " << msg << std::endl;
-            } else {
-                ::rtidb::base::ShowTableRows(columns, it, tables[0].compress_type());
-                delete it;
-            }
-        } catch (std::exception const& e) {
-            printf("Invalid args. st and et should be uint64_t, limit should be uint32_t\n");
+        }
+        it = tablet_client->Scan(tid, pid, key,  
+                st, et, index_name, ts_name, limit, msg);    
+        if (it == NULL) {
+            std::cout << "Fail to scan table. error msg: " << msg << std::endl;
+        } else {
+            ::rtidb::base::ShowTableRows(columns, it, tables[0].compress_type());
+            delete it;
         }
     }
 }
@@ -1305,12 +1278,12 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         std::cout << "count format error | count table_name key [col_name] [filter_expired_data] | count table_name=xxx key=xxx index_name=xxx ts_name [filter_expired_data]" << std::endl;
         return;
     }
-    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("table_name", parts, "=", is_pair_format, parameter_map)) {
+    if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
         std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
+    bool is_pair_format = parameter_map.empty() ? false : true;
     std::string table_name;
     std::string key;
     std::string index_name;
@@ -1397,12 +1370,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::rtidb::client::NsCli
         return;
     }
     uint64_t value = 0;
-    bool ok = false;
-    if (is_pair_format) {
-        ok = tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg); 
-    } else {
-        ok = tablet_client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
-    }
+    bool ok = tablet_client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg); 
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
@@ -3576,12 +3544,12 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "count format error! eg. count tid pid key [col_name] [filter_expired_data] | count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
-    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", is_pair_format, parameter_map)) {
+    if (!GetParameterMap("tid", parts, "=", parameter_map)) {
         std::cout << "count format erro! eg. count tid=xxx pid=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx [filter_expired_data]" << std::endl;
         return;
     }
+    bool is_pair_format = parameter_map.empty() ? false : true;
     uint32_t tid = 0;
     uint32_t pid = 0;
     bool filter_expired_data = false;
@@ -3636,6 +3604,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
         } else {
             tid = boost::lexical_cast<uint32_t>(parts[1]);
             pid = boost::lexical_cast<uint32_t>(parts[2]);
+            key = parts[3];
             if (parts.size() == 5) {
                 if (parts[4] == "true") {
                     filter_expired_data = true;
@@ -3661,13 +3630,7 @@ void HandleClientCount(const std::vector<std::string>& parts, ::rtidb::client::T
         return;
     }
     std::string msg;
-    bool ok;
-    if (is_pair_format) {
-        ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
-    } else {
-        key = parts[3];
-        ok = client->Count(tid, pid, key, index_name, filter_expired_data, value, msg);
-    }
+    bool ok = client->Count(tid, pid, key, index_name, ts_name, filter_expired_data, value, msg);
     if (ok) {
         std::cout << "count: " << value << std::endl;
     } else {
@@ -3726,12 +3689,12 @@ void HandleClientSGet(const std::vector<std::string>& parts,
         std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
         return;
     }
-    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", is_pair_format, parameter_map)) {
+    if (!GetParameterMap("tid", parts, "=", parameter_map)) {
         std::cout << "sget format erro! eg. sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
         return;
     }
+    bool is_pair_format = parameter_map.empty() ? false : true;
     uint32_t tid = 0;
     uint32_t pid = 0;
     std::string key;
@@ -3781,7 +3744,9 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             tid = boost::lexical_cast<uint32_t>(parts[1]);
             pid = boost::lexical_cast<uint32_t>(parts[2]);
             key = parts[3];
-            index_name = parts[4];
+            if (parts.size() == 6) {
+                index_name = parts[4];
+            }
             if (parts.size() > 5) {
                 timestamp = boost::lexical_cast<uint64_t>(parts[5]);
             }
@@ -3799,11 +3764,7 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     std::string value;
     uint64_t ts = 0;
     std::string msg;
-    if (is_pair_format) {
-        ok = client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg);
-    } else {
-        ok = client->Get(tid, pid, key, timestamp, index_name, value, ts, msg);
-    }
+    ok = client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg);
     if (!ok) {
         std::cout << "Fail to sget value! error msg: " << msg << std::endl;
         return;
@@ -3847,12 +3808,12 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "Bad scan format! eg.sscan tid pid key col_name start_time end_time [limit] | sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
-    bool is_pair_format = false;
     std::map<std::string, std::string> parameter_map;
-    if (!GetParameterMap("tid", parts, "=", is_pair_format, parameter_map)) {
+    if (!GetParameterMap("tid", parts, "=", parameter_map)) {
         std::cout << "scan format erro! eg. sscan table_name=xxx key=xxx index_name=xxx st=xxx et=xxx ts_name=xxx [limit=xxx]" << std::endl;
         return;
     }
+    bool is_pair_format = parameter_map.empty() ? false : true;
     uint32_t tid = 0;
     uint32_t pid = 0;
     std::string key;
@@ -3926,14 +3887,9 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         std::cout << "Invalid args. tid pid should be uint32_t, st and et should be uint64_t, limit should be uint32" << std::endl;
         return;
     }
-    
     std::string msg;
     ::rtidb::base::KvIterator* it = NULL;
-    if (is_pair_format) {
-        it = client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, msg); 
-    } else {
-        it = client->Scan(tid, pid, key, st, et, index_name, limit, msg); 
-    }
+    it = client->Scan(tid, pid, key, st, et, index_name, ts_name, limit, msg); 
     if (it == NULL) {
         std::cout << "Fail to scan table. error msg: " << msg << std::endl;
     } else {
