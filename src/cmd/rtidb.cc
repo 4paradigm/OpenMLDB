@@ -1048,12 +1048,10 @@ void HandleNSGet(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         } else {
             table_name = parts[1];
             key = parts[2];
-            if (parts.size() == 4) {
-                timestamp = boost::lexical_cast<uint64_t>(parts[3]);
-            } else if (parts.size() == 5){
+            if (parts.size() == 5){
                 index_name = parts[3];
-                timestamp = boost::lexical_cast<uint64_t>(parts[4]);
             }
+            timestamp = boost::lexical_cast<uint64_t>(parts[parts.size() - 1]);
         }
     } catch (std::exception const& e) {
         printf("Invalid args. ts should be unsigned int\n");
@@ -3685,7 +3683,7 @@ uint32_t GetDimensionIndex(const std::vector<::rtidb::base::ColumnDesc>& columns
 
 void HandleClientSGet(const std::vector<std::string>& parts, 
                       ::rtidb::client::TabletClient* client){
-    if (parts.size() < 5) {
+    if (parts.size() < 6) {
         std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
         return;
     }
@@ -3744,12 +3742,8 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             tid = boost::lexical_cast<uint32_t>(parts[1]);
             pid = boost::lexical_cast<uint32_t>(parts[2]);
             key = parts[3];
-            if (parts.size() == 6) {
-                index_name = parts[4];
-            }
-            if (parts.size() > 5) {
-                timestamp = boost::lexical_cast<uint64_t>(parts[5]);
-            }
+            index_name = parts[4];
+            timestamp = boost::lexical_cast<uint64_t>(parts[5]);
         }
     } catch (std::exception const& e) {
         std::cout << "Invalid args. tid pid should be uint32_t, ts should be uint64_t, " << std::endl;
