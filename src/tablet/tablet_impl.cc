@@ -2201,6 +2201,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
     FileSender sender(tid, pid, endpoint);
     if (!sender.Init()) {
         PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
+        return;
     }
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);

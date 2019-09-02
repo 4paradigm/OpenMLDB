@@ -25,7 +25,8 @@ namespace tablet {
 
 FileSender::FileSender(uint32_t tid, uint32_t pid, const std::string& endpoint) : tid_(tid), pid_(pid),
     endpoint_(endpoint), cur_try_time_(0), 
-    max_try_time_(FLAGS_send_file_max_try), limit_time_(0) {
+    max_try_time_(FLAGS_send_file_max_try), limit_time_(0),
+    channel_(NULL), stub_(NULL) {
 }
 
 FileSender::~FileSender() {
