@@ -2243,7 +2243,7 @@ void HandleClientSetTTL(const std::vector<std::string>& parts, ::rtidb::client::
         return;
     }
     std::string ts_name;
-    if (parts.size() == 5) {
+    if (parts.size() == 6) {
         ts_name = parts[5];
     }
     try {
