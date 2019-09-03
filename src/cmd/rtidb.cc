@@ -3683,7 +3683,7 @@ uint32_t GetDimensionIndex(const std::vector<::rtidb::base::ColumnDesc>& columns
 
 void HandleClientSGet(const std::vector<std::string>& parts, 
                       ::rtidb::client::TabletClient* client){
-    if (parts.size() < 6) {
+    if (parts.size() < 5) {
         std::cout << "Bad sget format, eg. sget tid pid key index_name ts | sget table_name=xxx key=xxx index_name=xxx ts=xxx ts_name=xxx" << std::endl;
         return;
     }
@@ -3730,9 +3730,6 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             iter = parameter_map.find("ts");
             if (iter != parameter_map.end()) {
                 timestamp = boost::lexical_cast<uint64_t>(iter->second);
-            } else {
-                std::cout<<"sget format error: ts does not exist!"<<std::endl;
-                return;
             }
             iter = parameter_map.find("ts_name");
             if (iter != parameter_map.end()) {
@@ -3743,7 +3740,9 @@ void HandleClientSGet(const std::vector<std::string>& parts,
             pid = boost::lexical_cast<uint32_t>(parts[2]);
             key = parts[3];
             index_name = parts[4];
-            timestamp = boost::lexical_cast<uint64_t>(parts[5]);
+            if (parts.size() > 5) {
+                timestamp = boost::lexical_cast<uint64_t>(parts[5]);
+            }
         }
     } catch (std::exception const& e) {
         std::cout << "Invalid args. tid pid should be uint32_t, ts should be uint64_t, " << std::endl;
