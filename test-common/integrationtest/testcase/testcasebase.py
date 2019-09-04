@@ -232,6 +232,12 @@ class TestCaseBase(unittest.TestCase):
         infoLogger.debug(result)
         return result
 
+    def ns_count_with_pair(self, endpoint, name, key, idx_name, ts_name, filter_expired_data = 'false'):
+        cmd = 'count {} {} {} {} {}'.format('table_name='+name, 'key='+key, 'index_name='+idx_name, 'ts_name='+ts_name, 'filter_expired_data='+filter_expired_data)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        infoLogger.debug(result)
+        return result
+
     def ns_scan_kv(self, endpoint, name, pk, start_time, end_time, limit = ''):
         cmd = 'scan {} {} {} {} {}'.format(name, pk, start_time, end_time, limit)
         result = self.run_client(endpoint, cmd, 'ns_client')
@@ -241,6 +247,12 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'scan {} {} {} {} {} {}'.format(name, pk, idx_name, start_time, end_time, limit)
         result = self.run_client(endpoint, cmd, 'ns_client')
         return self.parse_scan_result(result)
+
+    def ns_scan_multi_with_pair(self, endpoint, name, pk, idx_name, start_time, end_time, ts_name, limit = '0'):
+        cmd = 'scan {} {} {} {} {} {} {}'.format('table_name='+name, 'key='+pk, 'index_name='+idx_name, 'st='+start_time, 'et='+end_time, 'ts_name='+ts_name, 'limit='+limit)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        return self.parse_scan_result(result)
+
 
     def ns_delete(self, endpoint, name, key, idx_name = ''):
         cmd = 'delete {} {} {}'.format(name, key, idx_name);
@@ -261,12 +273,28 @@ class TestCaseBase(unittest.TestCase):
             value[key_arr[idx]] = record[idx+2]
         return value
 
+    def ns_get_multi_with_pair(self, endpoint, name, key, idx_name, ts, ts_name):
+        cmd = 'get {} {} {} {} {}'.format('table_name='+name,'key='+ key, 'index_name='+idx_name,'ts='+ts,'ts_name='+ts_name)
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        arr = result.split("\n")
+        key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
+        value = {}
+        record = re.sub(' +', ' ', arr[2]).strip().split(" ")
+        for idx in range(len(key_arr)):
+            value[key_arr[idx]] = record[idx+2]
+        return value
+
     def ns_put_kv(self, endpoint, name, pk, ts, value):
         cmd = 'put {} {} {} {}'.format(name, pk, ts, value)
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_put_multi(self, endpoint, name, ts, row):
         cmd = 'put {} {} {}'.format(name, ts, ' '.join(row))
+        return self.run_client(endpoint, cmd, 'ns_client')
+
+    
+    def ns_put_multi_with_pair(self, endpoint, name, row):
+        cmd = 'put {} {}'.format(name, ' '.join(row))
         return self.run_client(endpoint, cmd, 'ns_client')
 
     def ns_drop(self, endpoint, tname):

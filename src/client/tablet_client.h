@@ -92,12 +92,26 @@ public:
              uint64_t& ts,
              std::string& msg);
 
+    bool Get(uint32_t tid, 
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t time,
+             const std::string& idx_name,
+             const std::string& ts_name,
+             std::string& value,
+             uint64_t& ts,
+             std::string& msg);
+
     bool Delete(uint32_t tid, uint32_t pid, 
              const std::string& pk, const std::string& idx_name,
              std::string& msg);
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
              const std::string& idx_name, bool filter_expired_data, 
+             uint64_t& value, std::string& msg);
+    
+    bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
+             const std::string& idx_name, const std::string& ts_name, bool filter_expired_data, 
              uint64_t& value, std::string& msg);
 
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
@@ -107,7 +121,17 @@ public:
              uint64_t etime,
              uint32_t limit,
              std::string& msg);
-    
+   
+    ::rtidb::base::KvIterator* Scan(uint32_t tid,
+                                 uint32_t pid,
+                                 const std::string& pk,
+                                 uint64_t stime,
+                                 uint64_t etime,
+                                 const std::string& idx_name,
+                                 const std::string& ts_name,
+                                 uint32_t limit,
+                                 std::string& msg);
+
     ::rtidb::base::KvIterator* Scan(uint32_t tid,
                                  uint32_t pid,
                                  const std::string& pk,
