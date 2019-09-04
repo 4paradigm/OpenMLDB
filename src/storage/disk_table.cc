@@ -130,18 +130,85 @@ bool DiskTable::InitColumnFamilyDescriptor() {
 }
 
 bool DiskTable::InitTableProperty() {
-    if (mapping_.empty()) {
+    if (table_meta_.column_desc_size() > 0) {
+        uint32_t key_idx = 0, ts_idx = 0;
+        for (const auto &column_desc : table_meta_.column_desc()) {
+            if (column_desc.add_ts_idx()) {
+                mapping_.insert(std::make_pair(column_desc.name(), key_idx++));
+            } else if (column_desc.is_ts_col()) {
+                ts_mapping_.insert(std::make_pair(column_desc.name(), ts_idx++));
+                if (column_desc.has_ttl()) {
+                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(column_desc.ttl() * 60 * 1000));
+                } else {
+                    ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
+                    new_ttl_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(table_meta_.ttl() * 60 * 1000));
+                }
+            }
+        }
+        if (ts_mapping_.size() > 1 && !mapping_.empty()) {
+            mapping_.clear();
+        }
+        if (table_meta_.column_key_size() > 0) {
+            mapping_.clear();
+            key_idx = 0;
+            for (const auto &column_key : table_meta_.column_key()) {
+                uint32_t cur_key_idx = key_idx;
+                std::string name = column_key.index_name();
+                auto it = mapping_.find(name);
+                if (it != mapping_.end()) {
+                    return -1;
+                }
+                mapping_.insert(std::make_pair(name, key_idx++));
+                if (ts_mapping_.empty()) {
+                    continue;
+                }
+                if (column_key_map_.find(cur_key_idx) == column_key_map_.end()) {
+                    column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                }
+                if (ts_mapping_.size() == 1) {
+                    column_key_map_[cur_key_idx].push_back(ts_mapping_.begin()->second);
+                    continue;
+                }
+                for (const auto &ts_name : column_key.ts_name()) {
+                    auto ts_iter = ts_mapping_.find(name);
+                    if (ts_iter == ts_mapping_.end()) {
+                        PDLOG(WARNING, "not found ts_name[%s]. tid %u pid %u", ts_name.c_str(), id_, pid_);
+                        return -1;
+                    }
+                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(),
+                                  ts_iter->second) == column_key_map_[cur_key_idx].end()) {
+                        column_key_map_[cur_key_idx].push_back(ts_iter->second);
+                    }
+                }
+            }
+        } else {
+            if (!ts_mapping_.empty()) {
+                for (const auto &kv : mapping_) {
+                    uint32_t cur_key_idx = kv.second;
+                    if ((column_key_map_.find(cur_key_idx)) == column_key_map_.end()) {
+                        column_key_map_.insert(std::make_pair(cur_key_idx, std::vector<uint32_t>()));
+                    }
+                    uint32_t cur_ts_idx = ts_mapping_.begin()->second;
+                    if (std::find(column_key_map_[cur_key_idx].begin(), column_key_map_[cur_key_idx].end(),
+                                  cur_ts_idx) == column_key_map_[cur_key_idx].end()) {
+                        column_key_map_[cur_key_idx].push_back(cur_ts_idx);
+                    }
+                }
+            }
+        }
+    } else {
         for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
             mapping_.insert(std::make_pair(table_meta_.dimensions(i),
                            (uint32_t)i));
             PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u", table_meta_.dimensions(i).c_str(),
                     i, table_meta_.name().c_str(), table_meta_.tid(), table_meta_.pid());
         }
-        // add default dimension
-        if (mapping_.empty()) {
-            mapping_.insert(std::make_pair("idx0", 0));
-            PDLOG(INFO, "no index specified with default");
-        }
+    }
+    // add default dimension
+    if (mapping_.empty()) {
+        mapping_.insert(std::make_pair("idx0", 0));
+        PDLOG(INFO, "no index specified with default");
     }
     if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
         is_leader_ = false;
@@ -217,8 +284,36 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
 }
 
 bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) {
-    // TODO
-    return true;
+    if (dimensions.size() == 0 || ts_dimemsions.size() == 0) {
+       PDLOG(WARNING, "empty dimesion. tid %u pid %u", id_, pid_);
+    }
+    rocksdb::WriteBatch batch;
+    for (auto it = dimensions.rbegin(); it != dimensions.rend(); it++) {
+          if (it->idx() >= (cf_hs_.size() - 1)) {
+              PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u",
+                  it->key().c_str(), it->idx(), id_, pid_);
+              return false;
+          }
+          auto& ts_vector = column_key_map_[it->idx()];
+          if (() != ts_vector.size()) {
+              PDLOG(WARNING, "ts dimemsions not equal");
+              return false;
+          }
+          for (const auto& cur_ts : ts_dimemsions) {
+              if (std::find(ts_vector.rbegin(), ts_vector.rend(), cur_ts.idx()) == ts_vector.rend()) {
+                continue;
+              }
+              rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(it->key(), cur_ts.ts(), cur_ts.idx()));
+              batch.Put(cf_hs_[it->idx() + 1], spk, value);
+          }
+      }
+      rocksdb::Status s = db_->Write(write_opts_, &batch);
+      if (s.ok()) {
+        offset_.fetch_add(1, std::memory_order_relaxed);
+      } else {
+        PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+      }
+      return s.ok();
 }
 
 bool DiskTable::Put(const ::rtidb::api::LogEntry& entry) {
