@@ -72,8 +72,6 @@ public:
     MemTable(const MemTable&) = delete;
     MemTable& operator=(const MemTable&) = delete;
 
-    int InitColumnDesc();
-
     virtual bool Init() override;
 
     // Put a record
