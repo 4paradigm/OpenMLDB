@@ -243,7 +243,7 @@ bool DiskTable::Init() {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
         return false;
     } 
-    PDLOG(DEBUG, "Open DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
+    PDLOG(DEBUG, "Open DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, idx_cnt_);
     return true;
 }
 
@@ -265,7 +265,7 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
     rocksdb::Status s;
     Dimensions::const_iterator it = dimensions.begin();
     for (; it != dimensions.end(); ++it) {
-        if (it->idx() >= (cf_hs_.size() - 1)) {
+        if (it->idx() > idx_cnt_) {
             PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u",
                             it->key().c_str(), it->idx(), id_, pid_);
             return false;
@@ -289,13 +289,13 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
     }
     rocksdb::WriteBatch batch;
     for (auto it = dimensions.rbegin(); it != dimensions.rend(); it++) {
-          if (it->idx() >= (cf_hs_.size() - 1)) {
-              PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u",
+          if (it->idx() > idx_cnt_) {
+              PDLOG(WARNING, "idx greater than idx_cnt_, failed putting key %s to dimension %u in table tid %u pid %u",
                   it->key().c_str(), it->idx(), id_, pid_);
               return false;
           }
           auto& ts_vector = column_key_map_[it->idx()];
-          if (() != ts_vector.size()) {
+          if ((long unsigned int)ts_dimemsions.size() != ts_vector.size()) {
               PDLOG(WARNING, "ts dimemsions not equal");
               return false;
           }
@@ -334,8 +334,16 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
 }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
-    rocksdb::Status s;
+    if (idx > idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return false;
+    }
     rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(pk, ts));
+    auto pos = column_key_map_.find(idx);
+    if (pos != column_key_map_.end()) {
+        spk = rocksdb::Slice(CombineKeyTs(pk, ts, 0));
+    }
+    rocksdb::Status s;
     s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
     if (s.ok()) {
         return true;
@@ -362,7 +370,7 @@ bool DiskTable::LoadTable() {
     options_.error_if_exists = false;
     options_.create_missing_column_families = false;
     rocksdb::Status s = rocksdb::DB::Open(options_, path, cf_ds_, &cf_hs_, &db_);
-    PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, cf_hs_.size());
+    PDLOG(DEBUG, "Load DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, idx_cnt_);
     if (!s.ok()) {
         PDLOG(WARNING, "Load DB failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
         return false;
@@ -525,11 +533,20 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+    if (index > idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return NULL;
+    }
+
     // TODO
     return NULL;
 }
 
 TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
+    if (idx > idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return NULL;
+    }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
@@ -550,6 +567,13 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
 
 TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
     // TODO
+    if (index > idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return NULL;
+    }
+    auto pos = column_key_map_.find(index);
+    if (pos != column_key_map_.end() && std::find(pos->second.rbegin(), pos->second.rend(), ts_idx) != pos->second.rend()) {
+    }
     return NULL;
 }
 
