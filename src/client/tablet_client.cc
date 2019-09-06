@@ -532,6 +532,7 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
                                  uint64_t stime,
                                  uint64_t etime,
                                  const std::string& idx_name,
+                                 const std::string& ts_name,
                                  uint32_t limit,
                                  std::string& msg) {
     ::rtidb::api::ScanRequest request;
@@ -540,7 +541,12 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     request.set_et(etime);
     request.set_tid(tid);
     request.set_pid(pid);
-    request.set_idx_name(idx_name);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    if (!ts_name.empty()) {
+        request.set_ts_name(ts_name);
+    }
     request.set_limit(limit);
     ::rtidb::api::ScanResponse* response  = new ::rtidb::api::ScanResponse();
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
@@ -554,6 +560,17 @@ bool TabletClient::GetTableStatus(uint32_t tid, uint32_t pid, bool need_schema,
     }
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(response);
     return kv_it;
+}
+
+::rtidb::base::KvIterator* TabletClient::Scan(uint32_t tid,
+                                 uint32_t pid,
+                                 const std::string& pk,
+                                 uint64_t stime,
+                                 uint64_t etime,
+                                 const std::string& idx_name,
+                                 uint32_t limit,
+                                 std::string& msg) {
+    return Scan(tid, pid, pk, stime, etime, idx_name, "", limit, msg);
 }
 
 
@@ -847,6 +864,12 @@ bool TabletClient::Get(uint32_t tid,
 bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
             const std::string& idx_name, bool filter_expired_data,
             uint64_t& value, std::string& msg) {
+    return Count(tid, pid, pk, idx_name ,"", filter_expired_data, value, msg);
+}
+
+bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
+            const std::string& idx_name, const std::string& ts_name, bool filter_expired_data,
+             uint64_t& value, std::string& msg) {
     ::rtidb::api::CountRequest request;
     ::rtidb::api::CountResponse response;
     request.set_tid(tid);
@@ -855,6 +878,9 @@ bool TabletClient::Count(uint32_t tid, uint32_t pid, const std::string& pk,
     request.set_filter_expired_data(filter_expired_data);
     if (!idx_name.empty()) {
         request.set_idx_name(idx_name);
+    }
+    if (!ts_name.empty()) {
+        request.set_ts_name(ts_name);
     }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Count,
             &request, &response, FLAGS_request_timeout_ms, 1);
@@ -876,13 +902,30 @@ bool TabletClient::Get(uint32_t tid,
              std::string& value,
              uint64_t& ts,
              std::string& msg) {
+    return Get(tid, pid, pk, time, idx_name, "", value, ts, msg);
+}
+
+bool TabletClient::Get(uint32_t tid, 
+             uint32_t pid,
+             const std::string& pk,
+             uint64_t time,
+             const std::string& idx_name,
+             const std::string& ts_name,
+             std::string& value,
+             uint64_t& ts,
+             std::string& msg) {
     ::rtidb::api::GetRequest request;
     ::rtidb::api::GetResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
     request.set_key(pk);
     request.set_ts(time);
-    request.set_idx_name(idx_name);
+    if (!idx_name.empty()) {
+        request.set_idx_name(idx_name);
+    }
+    if (!ts_name.empty()) {
+        request.set_ts_name(ts_name);
+    }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Get,
             &request, &response, FLAGS_request_timeout_ms, 1);
     if (response.has_msg()) {

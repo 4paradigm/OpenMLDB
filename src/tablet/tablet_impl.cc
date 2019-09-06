@@ -215,18 +215,6 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
                         ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
         return;
     }
-    uint64_t old_ttl = table->GetTTL();
-    if (old_ttl == 0 && ttl > 0) {
-        response->set_code(133);
-        response->set_msg("cannot update ttl form zero to nonzero");
-        PDLOG(WARNING, "cannot update ttl form zero to nonzero. tid %u pid %u", request->tid(), request->pid());
-        return;
-    } else if (old_ttl > 0 && ttl == 0) {
-        response->set_code(133);
-        response->set_msg("cannot update ttl form nonzero to zero");
-        PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
-        return;
-    }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
 		auto iter = table->GetTSMapping().find(request->ts_name());
         if (iter == table->GetTSMapping().end()) {

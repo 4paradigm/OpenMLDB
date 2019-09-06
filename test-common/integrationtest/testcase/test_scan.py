@@ -15,7 +15,7 @@ class TestScan(TestCaseBase):
         ({'card': ('string:index', '0'), 's2': ('int32', 7)}, {'card': '0'}, ' 7 '),
         ({'card': ('string', '1'), 's2': ('int32', 7)}, {'card': '1'}, 'Fail to scan table'),
         ({'card': ('string', '2'), 's2': ('int32', 77)}, {'card': '2', 's2': '77'},
-         'Invalid args, tid pid should be uint32_t, st and et should be uint64_t'),
+         'Invalid args. tid pid should be uint32_t, st and et should be uint64_t, limit should be uint32'),
         ({'card': ('string:index', '3'), 's2': ('int32:index', 77), 's3': ('int32:index', 88)},
          {'s2': '77'}, ' 88 '),
         ({'card': ('string', '4'), 's2': ('int32', 77), 's3': ('int32', 88)},
