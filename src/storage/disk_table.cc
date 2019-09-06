@@ -189,7 +189,7 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
     rocksdb::Status s;
     Dimensions::const_iterator it = dimensions.begin();
     for (; it != dimensions.end(); ++it) {
-        if (it->idx() > idx_cnt_) {
+        if (it->idx() >= idx_cnt_) {
             PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u",
                             it->key().c_str(), it->idx(), id_, pid_);
             return false;
@@ -213,7 +213,7 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
     }
     rocksdb::WriteBatch batch;
     for (auto it = dimensions.rbegin(); it != dimensions.rend(); it++) {
-          if (it->idx() > idx_cnt_) {
+          if (it->idx() >= idx_cnt_) {
               PDLOG(WARNING, "idx greater than idx_cnt_, failed putting key %s to dimension %u in table tid %u pid %u",
                   it->key().c_str(), it->idx(), id_, pid_);
               return false;
@@ -258,7 +258,7 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
 }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
-    if (idx > idx_cnt_) {
+    if (idx >= idx_cnt_) {
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return false;
     }
@@ -457,18 +457,26 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
-    if (index > idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+    if (index >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
     }
-
-    // TODO
-    return NULL;
+    if (ts_idx >= column_key_map_[index].size()) {
+        PDLOG(WARNING, "ts idx too large index id %d, failed getting table tid %u pid %u", index, id_, pid_);
+        return NULL;
+    }
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index+1]);
+    return new DiskTableIterator(db_, it, snapshot, pk, ts_idx);
 }
 
 TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
-    if (idx > idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+    if (idx >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
@@ -491,8 +499,8 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
 
 TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
     // TODO
-    if (index > idx_cnt_) {
-        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+    if (index >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
     }
     auto pos = column_key_map_.find(index);
@@ -504,6 +512,12 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
 DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, 
             const rocksdb::Snapshot* snapshot, const std::string& pk) : 
             db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0) {
+}
+
+DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it,
+                                     const rocksdb::Snapshot* snapshot, const std::string& pk, uint32_t ts_idx) :
+    db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0), ts_idx_(ts_idx) {
+    has_ts_idx_ = true;
 }
 
 DiskTableIterator::~DiskTableIterator() {
@@ -538,11 +552,19 @@ uint64_t DiskTableIterator::GetKey() const {
 }
 
 void DiskTableIterator::SeekToFirst() {
-    it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, UINT64_MAX)));
+    if (has_ts_idx_) {
+        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, UINT64_MAX, ts_idx_)));
+    } else {
+        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, UINT64_MAX)));
+    }
 }
 
 void DiskTableIterator::Seek(uint64_t ts) {
-    it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts)));
+    if (has_ts_idx_) {
+        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts, ts_idx_)));
+    } else {
+        it_->Seek(rocksdb::Slice(CombineKeyTs(pk_, ts)));
+    }
 }
 
 DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, 

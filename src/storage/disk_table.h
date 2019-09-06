@@ -153,7 +153,8 @@ private:
 class DiskTableIterator : public TableIterator {
 public:
     DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk);
-    virtual ~DiskTableIterator();
+  DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk, uint32_t ts_idx);
+  virtual ~DiskTableIterator();
     virtual bool Valid() override;
     virtual void Next() override;
     virtual rtidb::base::Slice GetValue() const override;
@@ -168,6 +169,8 @@ private:
     const rocksdb::Snapshot* snapshot_;
     std::string pk_;
     uint64_t ts_;
+    uint32_t ts_idx_;
+    bool has_ts_idx_ = false;
 };
 
 class DiskTableTraverseIterator : public TableIterator {
