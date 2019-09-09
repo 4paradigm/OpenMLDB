@@ -2570,12 +2570,7 @@ void TabletImpl::LoadTable(RpcController* controller,
         }
         uint32_t tid = table_meta.tid();
         uint32_t pid = table_meta.pid();
-        std::string root_path = FLAGS_db_root_path;
-        if (table_meta.storage_mode() == ::rtidb::common::kHDD) {
-            root_path = FLAGS_hdd_root_path;
-        } else if (table_meta.storage_mode() == ::rtidb::common::kSSD) {
-            root_path = FLAGS_ssd_root_path;
-        }
+        std::string root_path = GetDBRootPath(table_meta.storage_mode());
         std::string db_path = root_path + "/" + std::to_string(tid) + 
                         "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
@@ -2790,12 +2785,11 @@ void TabletImpl::CreateTable(RpcController* controller,
     PDLOG(INFO, "start creating table tid[%u] pid[%u] with mode %s", 
             tid, pid, ::rtidb::api::TableMode_Name(request->table_meta().mode()).c_str());
     std::string name = table_meta->name();
+    std::string db_root_path = GetDBRootPath(table_meta->storage_mode());
+    std::string table_db_path = db_root_path + "/" + std::to_string(tid) +
+                    "_" + std::to_string(pid);
     if (table_meta->storage_mode() != rtidb::common::kMemory) {
         std::lock_guard<std::mutex> lock(mu_);
-        std::string db_root_path = table_meta->storage_mode() == 
-                    ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
-    	std::string table_db_path = db_root_path + "/" + std::to_string(tid) +
-                        "_" + std::to_string(pid);
 		if (WriteTableMeta(table_db_path, table_meta) < 0) {
         	PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
             response->set_code(127);
@@ -2810,8 +2804,6 @@ void TabletImpl::CreateTable(RpcController* controller,
         }
     } else {
         std::lock_guard<std::mutex> lock(mu_);
-        std::string table_db_path = FLAGS_db_root_path + "/" + std::to_string(tid) +
-                        "_" + std::to_string(pid);
         if (WriteTableMeta(table_db_path, table_meta) < 0) {
             PDLOG(WARNING, "write table_meta failed. tid[%lu] pid[%lu]", tid, pid);
             response->set_code(127);
@@ -2994,11 +2986,7 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
     uint32_t pid = request->pid();
     std::string root_path = FLAGS_db_root_path;
     if (request->has_storage_mode()) {
-        if (request->storage_mode() == ::rtidb::common::kHDD) {
-            root_path = FLAGS_hdd_root_path;
-        } else if (request->storage_mode() == ::rtidb::common::kSSD) {
-            root_path = FLAGS_ssd_root_path;
-        }
+        root_path = GetDBRootPath(request->storage_mode());
     }
     std::string db_path = root_path + "/" + std::to_string(tid) + 
                     "_" + std::to_string(pid);
@@ -3024,15 +3012,9 @@ void TabletImpl::CheckFile(RpcController* controller,
     std::string file_name = request->file();
     std::string root_path = FLAGS_db_root_path;
     if (request->has_storage_mode()) {
-        if (request->storage_mode() == ::rtidb::common::kHDD) {
-            root_path = FLAGS_hdd_root_path;
-        } else if (request->storage_mode() == ::rtidb::common::kSSD) {
-            root_path = FLAGS_ssd_root_path;
-        }
+        root_path = GetDBRootPath(request->storage_mode());
     }
-    std::string db_path = root_path + "/" + std::to_string(tid) + 
-                    "_" + std::to_string(pid);
-    std::string full_path = db_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    std::string full_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (file_name != "table_meta.txt") {
         full_path += "snapshot/";
     }
@@ -3062,11 +3044,7 @@ void TabletImpl::GetManifest(RpcController* controller,
 	brpc::ClosureGuard done_guard(done);
     std::string root_path = FLAGS_db_root_path;
     if (request->has_storage_mode()) {
-        if (request->storage_mode() == ::rtidb::common::kHDD) {
-            root_path = FLAGS_hdd_root_path;
-        } else if (request->storage_mode() == ::rtidb::common::kSSD) {
-            root_path = FLAGS_ssd_root_path;
-        }
+        root_path = GetDBRootPath(request->storage_mode());
     }
     std::string db_path = root_path + "/" + std::to_string(request->tid()) + 
                     "_" + std::to_string(request->pid());
@@ -3557,6 +3535,16 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
         replicator->DeleteBinlog();
         task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
     }
+}
+
+std::string TabletImpl::GetDBRootPath(::rtidb::common::StorageMode storage_mode) {
+    std::string db_root_path = FLAGS_db_root_path;
+    if (storage_mode == ::rtidb::common::kHDD) {
+        db_root_path = FLAGS_hdd_root_path;
+    } else if (storage_mode == ::rtidb::common::kSSD) {
+        db_root_path = FLAGS_ssd_root_path;
+    }
+    return db_root_path;
 }
 
 }

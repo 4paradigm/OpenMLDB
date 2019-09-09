@@ -359,6 +359,8 @@ private:
     bool CheckGetDone(::rtidb::api::GetType type, 
                       uint64_t ts, uint64_t target_ts); 
 
+    std::string GetDBRootPath(::rtidb::common::StorageMode storage_mode);
+
 
 private:
     Tables tables_;
