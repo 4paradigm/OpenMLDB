@@ -328,6 +328,7 @@ class TestSendSnapshot(TestCaseBase):
         self.start_client(self.leader)
         time.sleep(10)
 
+    @multi_dimension(False)
     def test_sendsnapshot_disk(self):
         """
         disktable
