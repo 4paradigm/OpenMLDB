@@ -230,18 +230,6 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
                         ttl, ::rtidb::api::TTLType_Name(table->GetTTLType()).c_str(), max_ttl);
         return;
     }
-    uint64_t old_ttl = table->GetTTL();
-    if (old_ttl == 0 && ttl > 0) {
-        response->set_code(133);
-        response->set_msg("cannot update ttl form zero to nonzero");
-        PDLOG(WARNING, "cannot update ttl form zero to nonzero. tid %u pid %u", request->tid(), request->pid());
-        return;
-    } else if (old_ttl > 0 && ttl == 0) {
-        response->set_code(133);
-        response->set_msg("cannot update ttl form nonzero to zero");
-        PDLOG(WARNING, "cannot update ttl form nonzero to zero. tid %u pid %u", request->tid(), request->pid());
-        return;
-    }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
 		auto iter = table->GetTSMapping().find(request->ts_name());
         if (iter == table->GetTSMapping().end()) {
@@ -1518,7 +1506,7 @@ void TabletImpl::Count(RpcController* controller,
             return;
         }
         ts_index = iter->second;
-    }    
+    } 
     if (!request->filter_expired_data()) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
@@ -1674,7 +1662,7 @@ void TabletImpl::Traverse(RpcController* controller,
             break;
         }
         PDLOG(DEBUG, "traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
-        // skip duplicate record 
+        // skip duplicate record
         if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
             PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
             it->Next();

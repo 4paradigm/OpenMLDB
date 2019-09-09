@@ -20,6 +20,8 @@
 #include "thread_pool.h"
 #include <unistd.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <boost/bind.hpp>
+#include "base/taskpool.hpp"
 
 using ::baidu::common::DEBUG;
 using ::baidu::common::INFO;
@@ -28,6 +30,9 @@ using ::baidu::common::WARNING;
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
 DECLARE_uint32(make_snapshot_max_deleted_keys);
+DECLARE_uint32(load_table_batch);
+DECLARE_uint32(load_table_thread_num);
+DECLARE_uint32(load_table_queue_size);
 
 namespace rtidb {
 namespace storage {
@@ -195,6 +200,10 @@ void MemTableSnapshot::RecoverFromSnapshot(const std::string& snapshot_name, uin
 void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table,
                                      std::atomic<uint64_t>* g_succ_cnt,
                                      std::atomic<uint64_t>* g_failed_cnt) {
+    ::rtidb::base::TaskPool load_pool_(FLAGS_load_table_thread_num, FLAGS_load_table_batch);
+    std::atomic<uint64_t> succ_cnt, failed_cnt;
+    succ_cnt = failed_cnt = 0;
+
     do {
         if (table == NULL) {
             PDLOG(WARNING, "table input is NULL");
@@ -208,38 +217,36 @@ void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::share
         ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
         ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
         std::string buffer;
-        ::rtidb::api::LogEntry entry;
-        uint64_t succ_cnt = 0;
-        uint64_t failed_cnt = 0;
         // second
         uint64_t consumed = ::baidu::common::timer::now_time();
+        std::vector<std::string*> recordPtr;
+        recordPtr.reserve(FLAGS_load_table_batch);
+
         while (true) {
+            buffer.clear();
             ::rtidb::base::Slice record;
             ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
             if (status.IsWaitRecord() || status.IsEof()) {
                 consumed = ::baidu::common::timer::now_time() - consumed;
                 PDLOG(INFO, "read path %s for table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
-                        path.c_str(), tid_, pid_, succ_cnt, failed_cnt, consumed);
+                      path.c_str(), tid_, pid_, succ_cnt.load(std::memory_order_relaxed), failed_cnt.load(std::memory_order_relaxed), consumed);
                 break;
             }
+
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_, status.ToString().c_str());
-                failed_cnt++;
+                failed_cnt.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
-            bool ok = entry.ParseFromString(record.ToString());
-            if (!ok) {
-                PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-                        ::rtidb::base::DebugString(record.ToString()).c_str());
-                failed_cnt++;
-                continue;
+            std::string* sp = new std::string(record.data(), record.size());
+            recordPtr.push_back(sp);
+            if (recordPtr.size() >= FLAGS_load_table_batch) {
+                load_pool_.AddTask(boost::bind(&MemTableSnapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
+                recordPtr.clear();
             }
-            succ_cnt++;
-            if (succ_cnt % 100000 == 0) {
-                PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
-                        succ_cnt, failed_cnt);
-            }
-            table->Put(entry);
+        }
+        if (recordPtr.size() > 0) {
+            load_pool_.AddTask(boost::bind(&MemTableSnapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
         }
         // will close the fd atomic
         delete seq_file;
@@ -250,6 +257,26 @@ void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::share
             g_failed_cnt->fetch_add(failed_cnt, std::memory_order_relaxed);
         }
     }while(false);
+    load_pool_.Stop();
+}
+
+void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
+    ::rtidb::api::LogEntry entry;
+    for (auto it = recordPtr.cbegin(); it != recordPtr.cend(); it++) {
+        bool ok = entry.ParseFromString(**it);
+        if (!ok) {
+            failed_cnt->fetch_add(1, std::memory_order_relaxed);
+            delete *it;
+            continue;
+        }
+        auto scount = succ_cnt->fetch_add(1, std::memory_order_relaxed);
+        if (scount % 100000 == 0) {
+            PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(),
+                  scount, failed_cnt->load(std::memory_order_relaxed));
+        }
+        table->Put(entry);
+        delete *it;
+    }
 }
 
 int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest, WriteHandle* wh, 

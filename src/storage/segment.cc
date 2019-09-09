@@ -57,6 +57,7 @@ uint64_t Segment::Release() {
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
+        delete[] it->GetKey().data();
         if (it->GetValue() != NULL) {
             if (ts_cnt_ > 1) {
                 KeyEntry** entry_arr = (KeyEntry**)it->GetValue();
@@ -80,7 +81,7 @@ uint64_t Segment::Release() {
     f_it->SeekToFirst();
     while (f_it->Valid()) {
         ::rtidb::base::Node<Slice, void*>* node = f_it->GetValue();
-        delete node->GetKey().data();
+        delete[] node->GetKey().data();
         if (ts_cnt_ > 1) {
             KeyEntry** entry_arr = (KeyEntry**)node->GetValue();
             for (uint32_t i = 0; i < ts_cnt_; i++) {
@@ -351,6 +352,23 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
 
 void Segment::Gc4Head(const std::map<uint32_t, uint64_t>& keep_cnt_map, uint64_t& gc_idx_cnt, 
         uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    if (!keep_cnt_map.empty()) {
+        bool all_ts_is_zero = true;
+        for (const auto&kv : keep_cnt_map) {
+            // only judge ts of current segment
+            auto pos = ts_idx_map_.find(kv.first);
+            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ || kv.second == 0) {
+                continue;
+            }
+            all_ts_is_zero = false;
+            break;
+        }
+        if (all_ts_is_zero) {
+            return;
+        }
+    } else {
+        return;
+    } 
     if (ts_cnt_ <= 1) {
         if (!keep_cnt_map.empty()) {
             return Gc4Head(keep_cnt_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
@@ -439,6 +457,23 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
 
 void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_idx_cnt, 
             uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    if (!time_map.empty()) {
+        bool all_ts_is_zero = true;
+        for (const auto&kv : time_map) {
+            // only judge ts of current segment
+            auto pos = ts_idx_map_.find(kv.first);
+            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ || kv.second == 0) {
+                continue;
+            }
+            all_ts_is_zero = false;
+            break;
+        }
+        if (all_ts_is_zero) {
+            return;
+        }
+    } else {
+        return;
+    }
     if (ts_cnt_ <= 1) {
         if (!time_map.empty()) {
             return Gc4TTL(time_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
@@ -456,7 +491,7 @@ void Segment::Gc4TTL(const std::map<uint32_t, uint64_t>& time_map, uint64_t& gc_
         uint32_t empty_cnt = 0;
         for (const auto& kv : time_map) {
             auto pos = ts_idx_map_.find(kv.first);
-            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_) {
+            if (pos == ts_idx_map_.end() || pos->second >= ts_cnt_ || kv.second == 0) {
                 continue;
             }
             KeyEntry* entry = entry_arr[pos->second];

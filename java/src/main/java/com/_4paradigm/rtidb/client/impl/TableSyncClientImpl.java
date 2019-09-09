@@ -376,6 +376,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         builder.setPid(pid);
         builder.setKey(key);
         builder.setFilterExpiredData(filter_expired_data);
+        if (client.getConfig().isRemoveDuplicateByTime()) {
+            builder.setEnableRemoveDuplicatedRecord(true);
+        }
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
