@@ -2928,7 +2928,16 @@ void TabletImpl::GetTermPair(RpcController* controller,
 		response->set_has_table(false);
 		response->set_msg("table is not exist");
 
-        std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+        std::string root_path = FLAGS_db_root_path;
+        if (request->has_storage_mode()) {
+            if (request->storage_mode() == ::rtidb::common::kHDD) {
+                root_path = FLAGS_hdd_root_path;
+            } else if (request->storage_mode() == ::rtidb::common::kSSD) {
+                root_path = FLAGS_ssd_root_path;
+            }
+        }
+        std::string db_path = root_path + "/" + std::to_string(tid) + 
+                        "_" + std::to_string(pid);
     	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
 		int fd = open(manifest_file.c_str(), O_RDONLY);
 	    response->set_msg("ok");
@@ -2983,7 +2992,16 @@ void TabletImpl::DeleteBinlog(RpcController* controller,
 	brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    std::string db_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string root_path = FLAGS_db_root_path;
+    if (request->has_storage_mode()) {
+        if (request->storage_mode() == ::rtidb::common::kHDD) {
+            root_path = FLAGS_hdd_root_path;
+        } else if (request->storage_mode() == ::rtidb::common::kSSD) {
+            root_path = FLAGS_ssd_root_path;
+        }
+    }
+    std::string db_path = root_path + "/" + std::to_string(tid) + 
+                    "_" + std::to_string(pid);
     std::string binlog_path = db_path + "/binlog";
     if (::rtidb::base::IsExists(binlog_path)) {
         std::string recycle_path = FLAGS_recycle_bin_root_path + "/" + std::to_string(tid) + 
@@ -3004,7 +3022,17 @@ void TabletImpl::CheckFile(RpcController* controller,
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
     std::string file_name = request->file();
-    std::string full_path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    std::string root_path = FLAGS_db_root_path;
+    if (request->has_storage_mode()) {
+        if (request->storage_mode() == ::rtidb::common::kHDD) {
+            root_path = FLAGS_hdd_root_path;
+        } else if (request->storage_mode() == ::rtidb::common::kSSD) {
+            root_path = FLAGS_ssd_root_path;
+        }
+    }
+    std::string db_path = root_path + "/" + std::to_string(tid) + 
+                    "_" + std::to_string(pid);
+    std::string full_path = db_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (file_name != "table_meta.txt") {
         full_path += "snapshot/";
     }
@@ -3032,8 +3060,16 @@ void TabletImpl::GetManifest(RpcController* controller,
             ::rtidb::api::GetManifestResponse* response,
             Closure* done) {
 	brpc::ClosureGuard done_guard(done);
-	std::string db_path = FLAGS_db_root_path + "/" + std::to_string(request->tid()) + "_" + 
-                std::to_string(request->pid());
+    std::string root_path = FLAGS_db_root_path;
+    if (request->has_storage_mode()) {
+        if (request->storage_mode() == ::rtidb::common::kHDD) {
+            root_path = FLAGS_hdd_root_path;
+        } else if (request->storage_mode() == ::rtidb::common::kSSD) {
+            root_path = FLAGS_ssd_root_path;
+        }
+    }
+    std::string db_path = root_path + "/" + std::to_string(request->tid()) + 
+                    "_" + std::to_string(request->pid());
 	std::string manifest_file =  db_path + "/snapshot/MANIFEST";
 	::rtidb::api::Manifest manifest;
 	int fd = open(manifest_file.c_str(), O_RDONLY);
@@ -3158,6 +3194,10 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
 }
 
 int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_meta, bool is_load, std::string& msg) {
+    std::vector<std::string> endpoints;
+    for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
+        endpoints.push_back(table_meta->replicas(i));
+    }
     DiskTable* table_ptr = new DiskTable(*table_meta);
     std::shared_ptr<Table> table((Table*)table_ptr);
     if (is_load) {
@@ -3182,7 +3222,7 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(table_db_path, 
-                                                     std::vector<std::string>(),
+                                                     endpoints,
                                                      ReplicatorRole::kLeaderNode, 
                                                      table);
     } else {

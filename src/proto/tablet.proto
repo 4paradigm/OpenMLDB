@@ -176,6 +176,7 @@ message GeneralRequest {
     required int32 tid = 1;
     required int32 pid = 2;
     optional TaskInfo task_info = 3;
+    optional rtidb.common.StorageMode storage_mode = 4;
 }
 
 message TaskStatusRequest {
@@ -505,6 +506,7 @@ message CountResponse {
 message GetTermPairRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
+    optional rtidb.common.StorageMode storage_mode = 3;
 }
 
 message GetTermPairResponse {
@@ -519,6 +521,7 @@ message GetTermPairResponse {
 message GetManifestRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
+    optional rtidb.common.StorageMode storage_mode = 3;
 }
 
 message GetManifestResponse { 
@@ -549,6 +552,7 @@ message CheckFileRequest {
     optional uint32 pid = 2;
     optional string file = 3;
     optional uint64 size = 4;
+    optional rtidb.common.StorageMode storage_mode = 5;
 }
 
 message ConnectZKRequest {}
