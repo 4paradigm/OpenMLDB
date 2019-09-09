@@ -227,24 +227,20 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         ::rtidb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(0);
-        sr.set_pk("0");
-        sr.set_st(10);
+        sr.set_pk("1");
+        sr.set_st(92);
         sr.set_et(0);
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         ::rtidb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(5, srp.count());
         ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(10, kv_it->GetKey());
-        ASSERT_STREQ("10", kv_it->GetValue().ToString().c_str());
+        ASSERT_EQ(92, kv_it->GetKey());
+        ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
         kv_it->Next();
         ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(0, kv_it->GetKey());
-        ASSERT_STREQ("0", kv_it->GetValue().ToString().c_str());
-        kv_it->Next();
-        ASSERT_FALSE(kv_it->Valid());
     }
 }
 
@@ -1188,7 +1184,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
     ASSERT_EQ(2, srp.count());
-    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
+    ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp, false);
     ASSERT_EQ(9539, kv_it->GetKey());
     ASSERT_STREQ("test9539", kv_it->GetValue().ToString().c_str());
     kv_it->Next();
