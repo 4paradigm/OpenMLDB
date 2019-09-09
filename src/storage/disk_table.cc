@@ -119,7 +119,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
             options_ = hdd_option_template;
         }
         cfo.comparator = &cmp_;
-        cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
+        cfo.prefix_extractor.reset(new KeyTsPrefixTransform(column_key_map_.find(iter->second) == column_key_map_.end()));
         if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(ttl_);
         }
@@ -130,6 +130,10 @@ bool DiskTable::InitColumnFamilyDescriptor() {
 }
 
 bool DiskTable::InitTableProperty() {
+    if (InitColumnDesc() < 0) {
+        PDLOG(WARNING, "init column desc failed");
+        return false;
+    }
     if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
         is_leader_ = false;
     }
@@ -145,10 +149,6 @@ bool DiskTable::InitTableProperty() {
 }
 
 bool DiskTable::Init() {
-    if (InitColumnDesc() < 0) {
-        PDLOG(WARNING, "init column desc failed");
-        return false;
-    }
     if (!InitTableProperty()) {
         return false;
     }
@@ -209,7 +209,8 @@ bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &d
 
 bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) {
     if (dimensions.size() == 0 || ts_dimemsions.size() == 0) {
-       PDLOG(WARNING, "empty dimesion. tid %u pid %u", id_, pid_);
+         PDLOG(WARNING, "empty dimesion. tid %u pid %u", id_, pid_);
+         return false;
     }
     rocksdb::WriteBatch batch;
     for (auto it = dimensions.rbegin(); it != dimensions.rend(); it++) {
@@ -526,11 +527,12 @@ DiskTableIterator::~DiskTableIterator() {
 }
 
 bool DiskTableIterator::Valid() {
+    PDLOG(INFO, "iter is valid %d", it_->Valid());
     if (it_ == NULL || !it_->Valid()) {
         return false;
     }
     std::string cur_pk;
-    ParseKeyAndTs(it_->key(), cur_pk, ts_);
+    ParseKeyAndTs(it_->key(), cur_pk, ts_, has_ts_idx_);
     return cur_pk == pk_;
 }
 

@@ -32,6 +32,23 @@ namespace rtidb {
 namespace storage {
 
 const static uint32_t TS_LEN = sizeof(uint64_t);
+const static uint32_t TS_POS_LEN = sizeof(uint8_t);
+
+static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts, bool& has_ts_idx) {
+    auto len = TS_LEN;
+    if (has_ts_idx) {
+        len += TS_POS_LEN;
+    }
+    key.clear();
+    if (s.size() < len) {
+        return -1;
+    } else if (s.size() > len) {
+        key.assign(s.data(), s.size() - len);
+    }
+    memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
+    memrev64ifbe(static_cast<void*>(&ts));
+    return 0;
+}
 
 static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
     key.clear();
@@ -54,9 +71,10 @@ static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
 
 static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint32_t ts_pos) {
   memrev64ifbe(static_cast<void*>(&ts));
-  char buf[TS_LEN];
-  memcpy(buf, static_cast<void*>(&ts), TS_LEN);
-  return key + std::to_string(ts_pos) + std::string(buf, TS_LEN);
+  char buf[TS_LEN + TS_POS_LEN];
+  memcpy(buf, static_cast<void*>(&ts_pos), TS_POS_LEN);
+  memcpy(buf + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
+  return key + std::string(buf, TS_LEN + TS_POS_LEN);
 }
 
 class KeyTSComparator : public rocksdb::Comparator {
@@ -86,17 +104,23 @@ public:
 class KeyTsPrefixTransform : public rocksdb::SliceTransform {
 public:
     virtual const char* Name() const override { return "KeyTsPrefixTransform"; }
+    KeyTsPrefixTransform() {}
+    KeyTsPrefixTransform(bool has_ts): has_ts_(has_ts) {
+        if (has_ts_) {
+            len = TS_LEN + TS_POS_LEN;
+        }
+    }
     virtual rocksdb::Slice Transform(const rocksdb::Slice& src) const override {
         assert(InDomain(src));
-        return rocksdb::Slice(src.data(), src.size() - TS_LEN);
+        return rocksdb::Slice(src.data(), src.size() - len);
     }
 
     virtual bool InDomain(const rocksdb::Slice& src) const override { 
-        return src.size() >= TS_LEN; 
+        return src.size() >= len;
     }
 
     virtual bool InRange(const rocksdb::Slice& dst) const override {
-        return dst.size() <= TS_LEN;
+        return dst.size() <= len;
     }
 
     virtual bool FullLengthEnabled(size_t* len) const override {
@@ -106,6 +130,9 @@ public:
     virtual bool SameResultWhenAppended(const rocksdb::Slice& prefix) const override {
         return InDomain(prefix);
     }
+ private:
+    uint32_t len = TS_LEN;
+    bool has_ts_;
 };
 
 class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
