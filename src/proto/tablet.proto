@@ -418,6 +418,7 @@ message SendDataRequest {
     required uint64 block_id = 4;
     optional uint32 block_size = 5;
     optional bool eof = 6 [default = false];
+    optional string dir_name = 7;
 }
 
 message ChangeRoleResponse {
@@ -552,7 +553,8 @@ message CheckFileRequest {
     optional uint32 pid = 2;
     optional string file = 3;
     optional uint64 size = 4;
-    optional rtidb.common.StorageMode storage_mode = 5;
+    optional string dir_name = 5;
+    optional rtidb.common.StorageMode storage_mode = 6;
 }
 
 message ConnectZKRequest {}
