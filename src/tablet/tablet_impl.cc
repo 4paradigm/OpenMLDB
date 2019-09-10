@@ -529,6 +529,7 @@ void TabletImpl::Get(RpcController* controller,
 
     if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
         GetFromDiskTable(table, request, response);
+	return;
     }
 
     uint32_t index = 0;
