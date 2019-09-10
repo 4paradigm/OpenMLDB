@@ -96,9 +96,16 @@ bool TabletImpl::Init() {
     }else {
         PDLOG(INFO, "zk cluster disabled");
     }
-    bool ok = ::rtidb::base::MkdirRecur(FLAGS_recycle_bin_root_path);
-    if (!ok) {
+    if (!::rtidb::base::MkdirRecur(FLAGS_recycle_bin_root_path)) {
         PDLOG(WARNING, "fail to create recycle bin path %s", FLAGS_recycle_bin_root_path.c_str());
+        return false;
+    }
+    if (!::rtidb::base::MkdirRecur(FLAGS_recycle_ssd_bin_root_path)) {
+        PDLOG(WARNING, "fail to create recycle ssd bin path %s", FLAGS_recycle_ssd_bin_root_path.c_str());
+        return false;
+    }
+    if (!::rtidb::base::MkdirRecur(FLAGS_recycle_hdd_bin_root_path)) {
+        PDLOG(WARNING, "fail to create recycle hdd bin path %s", FLAGS_recycle_hdd_bin_root_path.c_str());
         return false;
     }
     if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
@@ -2051,7 +2058,11 @@ void TabletImpl::SendData(RpcController* controller,
     uint32_t pid = request->pid(); 
     std::string combine_key = std::to_string(tid) + "_" + std::to_string(pid) + "_" + request->file_name();
     std::shared_ptr<FileReceiver> receiver;
-    std::string path = FLAGS_db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
+    std::string db_root_path = FLAGS_db_root_path;
+    if (request->has_storage_mode()) {
+        GetDBRootPath(request->storage_mode());
+    }
+    std::string path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (request->file_name() != "table_meta.txt") {
         path.append("snapshot/");
     }
@@ -2198,23 +2209,18 @@ void TabletImpl::SendSnapshot(RpcController* controller,
 void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, 
             std::shared_ptr<::rtidb::api::TaskInfo> task) {
     bool has_error = true;
-    FileSender sender(tid, pid, endpoint);
-    if (!sender.Init()) {
-        PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
-        return;
-    }
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
             break;
         }
-        std::string db_root_path = FLAGS_db_root_path;
-        if (table->GetStorageMode() == ::rtidb::common::StorageMode::kSSD) {
-            db_root_path = FLAGS_ssd_root_path;
-        } else if (table->GetStorageMode() == ::rtidb::common::StorageMode::kHDD) {
-            db_root_path = FLAGS_hdd_root_path;
+        FileSender sender(tid, pid, table->GetStorageMode(), endpoint);
+        if (!sender.Init()) {
+            PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
+            break;
         }
+        std::string db_root_path = GetDBRootPath(table->GetStorageMode());
         // send table_meta file
         std::string full_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
         std::string file_name = "table_meta.txt";
@@ -2416,20 +2422,20 @@ void TabletImpl::LoadTable(RpcController* controller,
                 PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
                 response->set_code(101);
                 response->set_msg("table already exists");
-                return;
+                break;
             }
             UpdateTableMeta(db_path, &table_meta);
             if (WriteTableMeta(db_path, &table_meta) < 0) {
                 PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
                 response->set_code(127);
                 response->set_msg("write data failed");
-                return;
+                break;
             }
             std::string msg;
             if (CreateDiskTableInternal(&table_meta, true, msg) < 0) {
                 response->set_code(131);
                 response->set_msg(msg.c_str());
-                return;
+                break;
             }
             if (table_meta.ttl() > 0) {
                 gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
@@ -2438,6 +2444,9 @@ void TabletImpl::LoadTable(RpcController* controller,
             response->set_msg("ok");
             PDLOG(INFO, "load table ok. tid[%u] pid[%u] storage mode[%s]", 
                         tid, pid, ::rtidb::common::StorageMode_Name(table_meta.storage_mode()).c_str());
+            if (task_ptr) {
+                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+            }  
             return;
         }
         {
@@ -2534,14 +2543,12 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
 
 int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     std::shared_ptr<Table> table = GetTable(tid, pid);
-    std::string root_path = FLAGS_db_root_path;
+    std::string root_path = GetDBRootPath(table->GetStorageMode());
     std::string recycle_bin_root_path = FLAGS_recycle_bin_root_path;
     if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
         if (table->GetStorageMode() == ::rtidb::common::StorageMode::kSSD) {
-            root_path = FLAGS_ssd_root_path;
             recycle_bin_root_path = FLAGS_recycle_ssd_bin_root_path;
         } else {
-            root_path = FLAGS_hdd_root_path;
             recycle_bin_root_path = FLAGS_recycle_hdd_bin_root_path;
 
         }
@@ -2561,7 +2568,6 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
         }
-        root_path = FLAGS_db_root_path;
     }
     std::string source_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
 
@@ -3060,6 +3066,7 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
+    table->SetTableStat(::rtidb::storage::kNormal);
     return 0;
 }
 

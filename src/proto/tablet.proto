@@ -419,6 +419,7 @@ message SendDataRequest {
     optional uint32 block_size = 5;
     optional bool eof = 6 [default = false];
     optional string dir_name = 7;
+    optional rtidb.common.StorageMode storage_mode = 8;
 }
 
 message ChangeRoleResponse {
