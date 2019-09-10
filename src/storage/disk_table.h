@@ -34,7 +34,7 @@ namespace storage {
 const static uint32_t TS_LEN = sizeof(uint64_t);
 const static uint32_t TS_POS_LEN = sizeof(uint8_t);
 
-static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts, bool& has_ts_idx) {
+static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
     auto len = TS_LEN;
     if (has_ts_idx) {
         len += TS_POS_LEN;
