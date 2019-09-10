@@ -947,6 +947,7 @@ int32_t TabletImpl::CountTimeIndex(uint64_t expire_ts,
     while (it->Valid()) {
         // skip duplicate record 
         if (remove_duplicated_record 
+            && internal_cnt > 0
             && last_time == it->GetKey()) {
             it->Next();
             continue;
@@ -973,7 +974,9 @@ int32_t TabletImpl::CountTimeIndex(uint64_t expire_ts,
                 PDLOG(WARNING, "invalid et type %s", ::rtidb::api::GetType_Name(et_type).c_str());
                 return -2;
         }
+
         if (jump_out) break;
+        last_time = it->GetKey();
         internal_cnt++;
         it->Next();
     }
@@ -1086,7 +1089,8 @@ int32_t TabletImpl::CountLatestIndex(uint64_t ttl,
                             const ::rtidb::api::GetType& st_type,
                             uint64_t et,
                             const ::rtidb::api::GetType& et_type,
-                            uint32_t* count) {
+                            uint32_t* count,
+                            bool remove_duplicated_record) {
 
     if (it == NULL || count == NULL) {
         PDLOG(WARNING, "invalid args");
@@ -1125,8 +1129,17 @@ int32_t TabletImpl::CountLatestIndex(uint64_t ttl,
             }
         }
     }
+    uint64_t last_key = 0;
     uint32_t internal_cnt = 0;
     while (it->Valid() && (it_count < ttl || ttl == 0)) {
+        // skip duplicate record 
+        if (remove_duplicated_record 
+            && internal_cnt > 0
+            && last_key == it->GetKey()) {
+            it_count++;
+            it->Next();
+            continue;
+        }
         bool jump_out = false;
         switch(et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
@@ -1149,9 +1162,10 @@ int32_t TabletImpl::CountLatestIndex(uint64_t ttl,
                 return -2;
         }
         if (jump_out) break;
+        last_key = it->GetKey();
         it_count++;
-        it->Next();
         internal_cnt++;
+        it->Next();
     }
     *count = internal_cnt;
     return 0;
@@ -1539,19 +1553,19 @@ void TabletImpl::Count(RpcController* controller,
     uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     uint32_t count = 0;
     int32_t code = 0;
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+        remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
     switch(table->GetTTLType()) {
         case ::rtidb::api::TTLType::kLatestTime:
             code = CountLatestIndex(ttl, it,
                         request->st(), request->st_type(),
                         request->et(), request->et_type(),
-                        &count);
+                        &count, remove_duplicated_record);
             break;
 
         default:
-            bool remove_duplicated_record = false;
-            if (request->has_enable_remove_duplicated_record()) {
-                remove_duplicated_record = request->enable_remove_duplicated_record();
-            }
             uint64_t expire_ts = table->GetExpireTime(ttl);
             code = CountTimeIndex(expire_ts, it,
                     request->st(), request->st_type(),
@@ -1628,7 +1642,7 @@ void TabletImpl::Traverse(RpcController* controller,
             return;
         }
         ts_index = iter->second;
-    }    
+    }
     ::rtidb::storage::TableIterator* it = NULL;
     if (ts_index >= 0) {
         it = table->NewTraverseIterator(index, ts_index);

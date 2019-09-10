@@ -162,9 +162,11 @@ void MultiDimensionDecode(const std::string& value,
     }
 }
 
+
+
 void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid) {
     for (int32_t i = 0; i< 100; i++) {
-       ::rtidb::api::PutRequest prequest;
+        ::rtidb::api::PutRequest prequest;
         prequest.set_pk(boost::lexical_cast<std::string>(i%10));
         prequest.set_time(i + 1);
         prequest.set_value(boost::lexical_cast<std::string>(i));
@@ -176,6 +178,294 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid) {
                 &closure);
         ASSERT_EQ(0, presponse.code());
     }
+
+    for (int32_t i = 0; i< 100; i++) {
+        ::rtidb::api::PutRequest prequest;
+        prequest.set_pk("10");
+        prequest.set_time(i % 10 + 1);
+        prequest.set_value(boost::lexical_cast<std::string>(i));
+        prequest.set_tid(tid);
+        prequest.set_pid(pid);
+        ::rtidb::api::PutResponse presponse;
+        MockClosure closure;
+        tablet.Put(NULL, &prequest, &presponse,
+                &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+}
+
+TEST_F(TabletImplTest, Count_Latest_Table) {
+    TabletImpl tablet;
+    tablet.Init();
+    // create table
+    MockClosure closure;
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_ttl(0);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kLatestTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        PrepareLatestTableData(tablet, id, 0);
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("10");
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(100, response.count());
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("10");
+        request.set_filter_expired_data(true);
+        request.set_enable_remove_duplicated_record(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // default
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // default st et type
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_st(91);
+        request.set_et(81);
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.count());
+    }
+
+    {
+        // st type=le et type=ge
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_st(91);
+        request.set_et(81);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(2, response.count());
+    }
+
+    {
+        // st type=le et type=ge
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_st(90);
+        request.set_et(81);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.count());
+    }
+
+}
+
+TEST_F(TabletImplTest, Count_Time_Table) {
+    TabletImpl tablet;
+    tablet.Init();
+    // create table
+    MockClosure closure;
+    uint32_t id = counter++;
+    {
+        ::rtidb::api::CreateTableRequest request;
+        ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_ttl(0);
+        table_meta->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        ::rtidb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response,
+                &closure);
+        ASSERT_EQ(0, response.code());
+        PrepareLatestTableData(tablet, id, 0);
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("10");
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(100, response.count());
+    }
+
+    {
+        // 
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("10");
+        request.set_filter_expired_data(true);
+        request.set_enable_remove_duplicated_record(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // default
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, response.count());
+    }
+
+    {
+        // default st et type
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_st(91);
+        request.set_et(81);
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.count());
+    }
+
+    {
+        // st type=le et type=ge
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_st(91);
+        request.set_et(81);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(2, response.count());
+    }
+
+    {
+        // st type=le et type=ge
+        ::rtidb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        request.set_st(90);
+        request.set_et(81);
+        request.set_et_type(::rtidb::api::GetType::kSubKeyGe);
+        request.set_filter_expired_data(true);
+        ::rtidb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, response.count());
+    }
+
 }
 
 TEST_F(TabletImplTest, SCAN_latest_table) {

@@ -278,7 +278,8 @@ public:
                             const ::rtidb::api::GetType& st_type,
                             uint64_t et,
                             const ::rtidb::api::GetType& et_type,
-                            uint32_t* count);
+                            uint32_t* count,
+                            bool remove_duplicated_record);
 
     // get one value from latest index
     int32_t GetLatestIndex(uint64_t ttl,
