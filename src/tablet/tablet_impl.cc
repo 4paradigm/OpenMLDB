@@ -1186,9 +1186,9 @@ int32_t TabletImpl::ScanLatestIndex(uint64_t ttl,
         PDLOG(WARNING, "invalid args");
         return -1;
     }
-    PDLOG(DEBUG, "scan latest index ttl %lu, limit %u, st %lu, et %lu , st type %s, et type %s",
-            ttl, limit, st, et, ::rtidb::api::GetType_Name(st_type).c_str(),
-            ::rtidb::api::GetType_Name(et_type).c_str());
+    //PDLOG(DEBUG, "scan latest index ttl %lu, limit %u, st %lu, et %lu , st type %s, et type %s",
+    //         ttl, limit, st, et, ::rtidb::api::GetType_Name(st_type).c_str(),
+    //        ::rtidb::api::GetType_Name(et_type).c_str());
     uint32_t it_count = 0;
     // go to start point
     it->SeekToFirst();
