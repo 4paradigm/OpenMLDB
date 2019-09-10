@@ -410,5 +410,58 @@ static void PrintTableInfo(const std::vector<::rtidb::nameserver::TableInfo>& ta
     tp.Print(true);
 }
 
+static void PrintTableStatus(const std::vector<::rtidb::api::TableStatus>& status_vec) {
+    std::vector<std::string> row;
+    row.push_back("tid");
+    row.push_back("pid");
+    row.push_back("offset");
+    row.push_back("mode");
+    row.push_back("state");
+    row.push_back("enable_expire");
+    row.push_back("ttl");
+    row.push_back("ttl_offset");
+    row.push_back("memused");
+    row.push_back("compress_type");
+    row.push_back("skiplist_height");
+    row.push_back("storage_mode");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+
+    for (const auto& table_status : status_vec) {
+        std::vector<std::string> row;
+        row.push_back(std::to_string(table_status.tid()));
+        row.push_back(std::to_string(table_status.pid()));
+        row.push_back(std::to_string(table_status.offset()));
+        row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
+        row.push_back(::rtidb::api::TableState_Name(table_status.state()));
+        if (table_status.is_expire()) {
+            row.push_back("true");
+        } else {
+            row.push_back("false");
+        }
+        if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
+            row.push_back(std::to_string(table_status.ttl()));
+        } else {
+            row.push_back(std::to_string(table_status.ttl()) + "min");
+        }
+        row.push_back(std::to_string(table_status.time_offset()) + "s");
+        if (!table_status.has_storage_mode() || table_status.storage_mode() == ::rtidb::common::StorageMode::kMemory) {
+            row.push_back(::rtidb::base::HumanReadableString(table_status.record_byte_size() + table_status.record_idx_byte_size()));
+        } else {
+            row.push_back("-");
+        }
+        row.push_back(::rtidb::api::CompressType_Name(table_status.compress_type()));
+        if (!table_status.has_storage_mode() || table_status.storage_mode() == ::rtidb::common::StorageMode::kMemory) {
+            row.push_back(std::to_string(table_status.skiplist_height()));
+            row.push_back("kMemory");
+        } else {
+            row.push_back("-");
+            row.push_back(::rtidb::common::StorageMode_Name(table_status.storage_mode()));
+        }
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 }
 }
