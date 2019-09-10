@@ -22,22 +22,6 @@ static rocksdb::Options ssd_option_template;
 static rocksdb::Options hdd_option_template;
 static bool options_template_initialized = false;
 
-static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
-    auto len = TS_LEN;
-    if (has_ts_idx) {
-        len += TS_POS_LEN;
-    }
-    key.clear();
-    if (s.size() < len) {
-        return -1;
-    } else if (s.size() > len) {
-        key.assign(s.data(), s.size() - len);
-    }
-    memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
-    memrev64ifbe(static_cast<void*>(&ts));
-    return 0;
-}
-
 DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      const std::map<std::string, uint32_t> &mapping, 
                      uint64_t ttl, ::rtidb::api::TTLType ttl_type,
