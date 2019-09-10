@@ -527,7 +527,6 @@ DiskTableIterator::~DiskTableIterator() {
 }
 
 bool DiskTableIterator::Valid() {
-    PDLOG(INFO, "iter is valid %d", it_->Valid());
     if (it_ == NULL || !it_->Valid()) {
         return false;
     }
