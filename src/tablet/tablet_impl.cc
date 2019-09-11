@@ -1256,8 +1256,7 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         ts_index = iter->second;
-    } else if (disk_table->GetColumnMap().find(index) != disk_table->GetColumnMap().end())
-    {
+    } else if (disk_table->GetColumnMap().find(index) != disk_table->GetColumnMap().end()) {
         ts_index = 0;
     }
     if (ts_index >= 0) {
