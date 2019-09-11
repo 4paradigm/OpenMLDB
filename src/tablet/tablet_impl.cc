@@ -22,6 +22,7 @@
 #include "base/strings.h"
 #include "base/file_util.h"
 #include "storage/segment.h"
+#include "storage/binlog.h"
 #include "logging.h"
 #include "timer.h"
 #include <google/protobuf/text_format.h>
@@ -2431,22 +2432,11 @@ void TabletImpl::LoadTable(RpcController* controller,
                 response->set_msg("write data failed");
                 break;
             }
-            std::string msg;
-            if (CreateDiskTableInternal(&table_meta, true, msg) < 0) {
-                response->set_code(131);
-                response->set_msg(msg.c_str());
-                break;
-            }
-            if (table_meta.ttl() > 0) {
-                gc_pool_.DelayTask(FLAGS_disk_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
-            }
+            task_pool_.AddTask(boost::bind(&TabletImpl::LoadDiskTableInternal, this, tid, pid, table_meta, task_ptr));
             response->set_code(0);
             response->set_msg("ok");
             PDLOG(INFO, "load table ok. tid[%u] pid[%u] storage mode[%s]", 
                         tid, pid, ::rtidb::common::StorageMode_Name(table_meta.storage_mode()).c_str());
-            if (task_ptr) {
-                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
-            }  
             return;
         }
         {
@@ -2491,6 +2481,81 @@ void TabletImpl::LoadTable(RpcController* controller,
     }        
 }
 
+int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, 
+            const ::rtidb::api::TableMeta& table_meta, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
+    do {
+        std::string table_path = GetDBRootPath(table_meta.storage_mode()) + 
+                "/" + std::to_string(tid) + "_" + std::to_string(pid);
+        std::string snapshot_path = table_path + "/snapshot/";
+        ::rtidb::api::Manifest manifest;
+        uint64_t snapshot_offset = 0;
+        if (Snapshot::GetLocalManifest(snapshot_path + "MANIFEST", manifest) == 0) {
+            std::string data_path = table_path + "/data";
+            if (::rtidb::base::RemoveDir(data_path)) {
+                PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid, pid, data_path.c_str());
+                break;
+            }
+            std::string snapshot_dir = snapshot_path + manifest.name();
+            if (!::rtidb::base::Rename(snapshot_dir, data_path)) {
+                PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, snapshot_dir.c_str());
+                break; 
+            }
+            snapshot_offset = manifest.offset();
+        }
+        std::string msg;
+        if (CreateDiskTableInternal(&table_meta, true, msg) < 0) {
+            PDLOG(WARNING, "create table failed. tid %u pid %u msg %s", tid, pid, msg.c_str());
+            break;
+        }
+        // load snapshot data
+        std::shared_ptr<Table> table = GetTable(tid, pid);        
+        if (!table) {
+            PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
+            break; 
+        }
+        std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
+        if (!snapshot) {
+            PDLOG(WARNING, "snapshot with tid %u and pid %u does not exist", tid, pid);
+            break; 
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        if (!replicator) {
+            PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
+            break;
+        }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            table->SetTableStat(::rtidb::storage::kLoading);
+        }
+        uint64_t latest_offset = 0;
+        std::string binlog_path = table_path + "/binlog/";
+        ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
+        if (binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset)) {
+            table->SetTableStat(::rtidb::storage::kNormal);
+            replicator->SetOffset(latest_offset);
+            replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
+            replicator->StartSyncing();
+            table->SchedGc();
+            gc_pool_.DelayTask(FLAGS_gc_interval * 60 * 1000, boost::bind(&TabletImpl::GcTable, this, tid, pid, false));
+            io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
+            task_pool_.DelayTask(FLAGS_binlog_delete_interval, boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
+            PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
+            if (task_ptr) {
+                std::lock_guard<std::mutex> lock(mu_);
+                task_ptr->set_status(::rtidb::api::TaskStatus::kDone);
+                return 0;
+            }
+        } else {
+           DeleteTableInternal(tid, pid, std::shared_ptr<::rtidb::api::TaskInfo>());
+        }
+    } while (0);    
+    if (task_ptr) {
+        std::lock_guard<std::mutex> lock(mu_);
+        task_ptr->set_status(::rtidb::api::TaskStatus::kFailed);
+    }
+    return -1;
+}
+
 int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
     do {
         // load snapshot data
@@ -2514,8 +2579,11 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
             table->SetTableStat(::rtidb::storage::kLoading);
         }
         uint64_t latest_offset = 0;
-        bool ok = snapshot->Recover(table, latest_offset);
-        if (ok) {
+        uint64_t snapshot_offset = 0;
+        std::string binlog_path = GetDBRootPath(table->GetStorageMode()) + 
+                "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/binlog/";
+        ::rtidb::storage::Binlog binlog(replicator->GetLogPart(), binlog_path);
+        if (snapshot->Recover(table, snapshot_offset) && binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset)) {
             table->SetTableStat(::rtidb::storage::kNormal);
             replicator->SetOffset(latest_offset);
             replicator->SetSnapshotLogPartIndex(snapshot->GetOffset());
@@ -3066,7 +3134,6 @@ int TabletImpl::CreateDiskTableInternal(const ::rtidb::api::TableMeta* table_met
     tables_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), table));
     snapshots_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), snapshot));
     replicators_[table_meta->tid()].insert(std::make_pair(table_meta->pid(), replicator));
-    table->SetTableStat(::rtidb::storage::kNormal);
     return 0;
 }
 

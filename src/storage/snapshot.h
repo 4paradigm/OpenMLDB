@@ -25,6 +25,7 @@ public:
     uint64_t GetOffset() { return offset_; }
     int GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
     int GetLocalManifest(::rtidb::api::Manifest& manifest);
+    static int GetLocalManifest(const std::string& full_path, ::rtidb::api::Manifest& manifest);
 
 protected:
     uint32_t tid_;
