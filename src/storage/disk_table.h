@@ -70,7 +70,7 @@ static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
     return key + std::string(buf, TS_LEN);
 }
 
-static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint32_t ts_pos) {
+static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint8_t ts_pos) {
   memrev64ifbe(static_cast<void*>(&ts));
   char buf[TS_LEN + TS_POS_LEN];
   memcpy(buf, static_cast<void*>(&ts_pos), TS_POS_LEN);
@@ -105,10 +105,10 @@ public:
 class KeyTsPrefixTransform : public rocksdb::SliceTransform {
 public:
     virtual const char* Name() const override { return "KeyTsPrefixTransform"; }
-    KeyTsPrefixTransform() {}
-    KeyTsPrefixTransform(bool has_ts): has_ts_(has_ts) {
+    KeyTsPrefixTransform(): has_ts_(false), len_(TS_LEN) {}
+    KeyTsPrefixTransform(bool has_ts): has_ts_(has_ts), len_(TS_LEN) {
         if (has_ts_) {
-            len = TS_LEN + TS_POS_LEN;
+            len_ += TS_POS_LEN;
         }
     }
     virtual rocksdb::Slice Transform(const rocksdb::Slice& src) const override {
@@ -117,11 +117,11 @@ public:
     }
 
     virtual bool InDomain(const rocksdb::Slice& src) const override { 
-        return src.size() >= len;
+        return src.size() >= len_;
     }
 
     virtual bool InRange(const rocksdb::Slice& dst) const override {
-        return dst.size() <= len;
+        return dst.size() <= len_;
     }
 
     virtual bool FullLengthEnabled(size_t* len) const override {
@@ -132,7 +132,7 @@ public:
         return InDomain(prefix);
     }
  private:
-    uint32_t len = TS_LEN;
+    uint32_t len_;
     bool has_ts_;
 };
 
@@ -181,8 +181,8 @@ private:
 class DiskTableIterator : public TableIterator {
 public:
     DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk);
-  DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk, uint32_t ts_idx);
-  virtual ~DiskTableIterator();
+    DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk, uint8_t ts_idx);
+    virtual ~DiskTableIterator();
     virtual bool Valid() override;
     virtual void Next() override;
     virtual rtidb::base::Slice GetValue() const override;
@@ -197,7 +197,7 @@ private:
     const rocksdb::Snapshot* snapshot_;
     std::string pk_;
     uint64_t ts_;
-    uint32_t ts_idx_;
+    uint8_t ts_idx_;
     bool has_ts_idx_ = false;
 };
 
@@ -302,7 +302,7 @@ public:
 
     virtual TableIterator* NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) override;
 
-    virtual TableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) override;
+    virtual TableIterator* NewIterator(uint32_t index, uint8_t ts_idx, const std::string& pk, Ticket& ticket) override;
 
     virtual TableIterator* NewTraverseIterator(uint32_t idx) override;
 

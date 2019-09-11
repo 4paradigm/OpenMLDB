@@ -186,7 +186,7 @@ protected:
     std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
-    std::map<std::string, uint32_t> ts_mapping_;
+    std::map<std::string, uint8_t> ts_mapping_;
     std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_ttl_vec_;

@@ -641,9 +641,6 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         ts_index = iter->second;
-    } else if (disk_table->GetColumnMap().find(index) != disk_table->GetColumnMap().end())
-    {
-        ts_index = 0;
     }
     if (ts_index >= 0) {
         it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
@@ -1234,7 +1231,7 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
     ::rtidb::storage::TableIterator* it = NULL;
     ::rtidb::storage::Ticket ticket;
     uint32_t index = 0;
-    int ts_index = -1;
+    int32_t ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
         if (iit == disk_table->GetMapping().end()) {
@@ -1256,8 +1253,6 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         ts_index = iter->second;
-    } else if (disk_table->GetColumnMap().find(index) != disk_table->GetColumnMap().end()) {
-        ts_index = 0;
     }
     if (ts_index >= 0) {
         it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);

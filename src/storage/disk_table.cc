@@ -119,7 +119,8 @@ bool DiskTable::InitColumnFamilyDescriptor() {
             options_ = hdd_option_template;
         }
         cfo.comparator = &cmp_;
-        cfo.prefix_extractor.reset(new KeyTsPrefixTransform(column_key_map_.find(iter->second) == column_key_map_.end()));
+        auto ts_vector = column_key_map_.find(iter->second);
+        cfo.prefix_extractor.reset(new KeyTsPrefixTransform(ts_vector != column_key_map_.end() && ts_vector->second.size() > 1));
         if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(ttl_);
         }
@@ -131,7 +132,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
 
 bool DiskTable::InitTableProperty() {
     if (InitColumnDesc() < 0) {
-        PDLOG(WARNING, "init column desc failed");
+        PDLOG(WARNING, "init column desc failed, tid %u pid %u", id_, pid_);
         return false;
     }
     if (table_meta_.has_mode() && table_meta_.mode() != ::rtidb::api::TableMode::kTableLeader) {
@@ -220,15 +221,16 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
               return false;
           }
           auto& ts_vector = column_key_map_[it->idx()];
-          if ((long unsigned int)ts_dimemsions.size() != ts_vector.size()) {
-              PDLOG(WARNING, "ts dimemsions not equal");
-              return false;
-          }
           for (const auto& cur_ts : ts_dimemsions) {
-              if (std::find(ts_vector.rbegin(), ts_vector.rend(), cur_ts.idx()) == ts_vector.rend()) {
+              if (std::find(ts_vector.cbegin(), ts_vector.cend(), cur_ts.idx()) == ts_vector.cend()) {
                 continue;
               }
-              rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(it->key(), cur_ts.ts(), cur_ts.idx()));
+              rocksdb::Slice spk;
+              if (ts_vector.size() == 1) {
+                  spk = rocksdb::Slice(CombineKeyTs(it->key(), cur_ts.ts()));
+              } else {
+                  spk = rocksdb::Slice(CombineKeyTs(it->key(), cur_ts.ts(), (uint8_t)cur_ts.idx()));
+              }
               batch.Put(cf_hs_[it->idx() + 1], spk, value);
           }
       }
@@ -265,8 +267,10 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
     }
     rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(pk, ts));
     auto pos = column_key_map_.find(idx);
-    if (pos != column_key_map_.end()) {
+    if ((pos != column_key_map_.end()) && (pos->second.size() > 1)) {
         spk = rocksdb::Slice(CombineKeyTs(pk, ts, 0));
+    } else {
+        spk = rocksdb::Slice(CombineKeyTs(pk, ts));
     }
     rocksdb::Status s;
     s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
@@ -457,7 +461,7 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
     return new DiskTableIterator(db_, it, snapshot, pk);
 }
 
-TableIterator* DiskTable::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+TableIterator* DiskTable::NewIterator(uint32_t index, uint8_t ts_idx, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
@@ -516,7 +520,7 @@ DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it,
 }
 
 DiskTableIterator::DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it,
-                                     const rocksdb::Snapshot* snapshot, const std::string& pk, uint32_t ts_idx) :
+                                     const rocksdb::Snapshot* snapshot, const std::string& pk, uint8_t ts_idx) :
     db_(db), it_(it), snapshot_(snapshot), pk_(pk), ts_(0), ts_idx_(ts_idx) {
     has_ts_idx_ = true;
 }

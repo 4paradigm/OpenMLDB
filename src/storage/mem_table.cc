@@ -522,7 +522,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     return segment->NewIterator(spk, ticket);
 }
 
-TableIterator* MemTable::NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) {
+TableIterator* MemTable::NewIterator(uint32_t index, uint8_t ts_idx, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;

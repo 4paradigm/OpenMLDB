@@ -92,6 +92,10 @@ int Table::InitColumnDesc() {
                   table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
         }
     }
+
+    if (ts_idx > UINT8_MAX) {
+        PDLOG(INFO, "failed create table because ts column more than %d, tid %u pid %u", UINT8_MAX + 1, id_, pid_);
+    }
     // add default dimension
     if (mapping_.empty()) {
         mapping_.insert(std::make_pair("idx0", 0));
