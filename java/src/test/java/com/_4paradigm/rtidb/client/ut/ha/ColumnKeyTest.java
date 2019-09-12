@@ -240,6 +240,43 @@ public class ColumnKeyTest extends TestCaseBase {
     }
 
     @Test
+    public void testPutMultiCombinedKeyTS() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
+        ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts_1").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
+                .addColumnKey(colKey1).addColumnKey(colKey2)
+                .setPartitionNum(1).setReplicaNum(1)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        try {
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.6);
+            data.put("ts", 1235l);
+            data.put("ts_1", 333l);
+            tableSyncClient.put(name, data);
+            KvIterator it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts_1", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 1);
+        } catch (Exception e) {
+            Assert.assertTrue(false);
+        }
+        nsc.dropTable(name);
+    }
+
+    @Test
     public void testPutMultiCombinedKey() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
