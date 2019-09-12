@@ -152,8 +152,8 @@ void Segment::Put(const Slice& key, const TSDimensions& ts_dimension, DataBlock*
                 auto pos = ts_idx_map_.find(cur_ts.idx());
                 if (pos != ts_idx_map_.end()) {
                     Put(key, cur_ts.ts(), row);
+                    break;
                 }
-                break;
             }
         }
         return;
