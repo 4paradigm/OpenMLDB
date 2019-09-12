@@ -85,16 +85,16 @@ int Table::InitColumnDesc() {
                 }
             }
         }
+
+        if (ts_idx > UINT8_MAX) {
+            PDLOG(INFO, "failed create table because ts column more than %d, tid %u pid %u", UINT8_MAX + 1, id_, pid_);
+        }
     } else {
         for (int32_t i = 0; i < table_meta_.dimensions_size(); i++) {
             mapping_.insert(std::make_pair(table_meta_.dimensions(i), (uint32_t) i));
             PDLOG(INFO, "add index name %s, idx %d to table %s, tid %u, pid %u",
                   table_meta_.dimensions(i).c_str(), i, table_meta_.name().c_str(), id_, pid_);
         }
-    }
-
-    if (ts_idx > UINT8_MAX) {
-        PDLOG(INFO, "failed create table because ts column more than %d, tid %u pid %u", UINT8_MAX + 1, id_, pid_);
     }
     // add default dimension
     if (mapping_.empty()) {

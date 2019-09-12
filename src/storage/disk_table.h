@@ -105,15 +105,19 @@ public:
 class KeyTsPrefixTransform : public rocksdb::SliceTransform {
 public:
     virtual const char* Name() const override { return "KeyTsPrefixTransform"; }
-    KeyTsPrefixTransform(): has_ts_(false), len_(TS_LEN) {}
-    KeyTsPrefixTransform(bool has_ts): has_ts_(has_ts), len_(TS_LEN) {
+    KeyTsPrefixTransform() {
+        has_ts_ = false;
+        len_ = TS_LEN;
+    }
+    KeyTsPrefixTransform(bool has_ts): has_ts_(has_ts) {
+        len_ = TS_LEN;
         if (has_ts_) {
             len_ += TS_POS_LEN;
         }
     }
     virtual rocksdb::Slice Transform(const rocksdb::Slice& src) const override {
         assert(InDomain(src));
-        return rocksdb::Slice(src.data(), src.size() - len);
+        return rocksdb::Slice(src.data(), src.size() - len_);
     }
 
     virtual bool InDomain(const rocksdb::Slice& src) const override { 
