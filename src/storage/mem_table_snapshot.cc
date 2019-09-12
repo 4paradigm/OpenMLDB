@@ -40,6 +40,7 @@ namespace storage {
 
 const std::string SNAPSHOT_SUBFIX=".sdb";
 const uint32_t KEY_NUM_DISPLAY = 1000000;
+const std::string MANIFEST = "MANIFEST";
 
 MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part): Snapshot(tid, pid),
      log_part_(log_part) {}
@@ -61,7 +62,7 @@ bool MemTableSnapshot::Init() {
 bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
-    int ret = GetLocalManifest(manifest);
+    int ret = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (ret == -1) {
         return false;
     }
@@ -352,7 +353,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     uint64_t expired_key_num = 0;
     uint64_t deleted_key_num = 0;
     uint64_t last_term = 0;
-    int result = GetLocalManifest(manifest);
+    int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (result == 0) {
         // filter old snapshot
         if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num, deleted_key_num) < 0) {

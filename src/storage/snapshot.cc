@@ -21,7 +21,7 @@ using ::baidu::common::WARNING;
 namespace rtidb {
 namespace storage {
 
-const std::string MANIFEST = "MANIFEST";    
+const std::string MANIFEST = "MANIFEST";
 
 int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
     PDLOG(DEBUG, "record offset[%lu]. add snapshot[%s] key_count[%lu]",
@@ -58,11 +58,6 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, 
     unlink(tmp_file.c_str());
     return -1;
 }
-
-int Snapshot::GetLocalManifest(::rtidb::api::Manifest& manifest) {
-    std::string full_path = snapshot_path_ + MANIFEST;
-    return GetLocalManifest(full_path, manifest);
-}    
 
 int Snapshot::GetLocalManifest(const std::string& full_path, ::rtidb::api::Manifest& manifest) {
     int fd = open(full_path.c_str(), O_RDONLY);

@@ -2491,7 +2491,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid,
         uint64_t snapshot_offset = 0;
         if (Snapshot::GetLocalManifest(snapshot_path + "MANIFEST", manifest) == 0) {
             std::string data_path = table_path + "/data";
-            if (::rtidb::base::RemoveDir(data_path)) {
+            if (!::rtidb::base::RemoveDir(data_path)) {
                 PDLOG(WARNING, "remove dir failed. tid %u pid %u path %s", tid, pid, data_path.c_str());
                 break;
             }
