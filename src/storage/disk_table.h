@@ -34,8 +34,8 @@ namespace storage {
 const static uint32_t TS_LEN = sizeof(uint64_t);
 const static uint32_t TS_POS_LEN = sizeof(uint8_t);
 
-//__attribute__((unused))
-static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
+__attribute__((unused))
+static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s, std::string& key, uint64_t& ts, uint8_t& ts_idx) {
     auto len = TS_LEN;
     if (has_ts_idx) {
         len += TS_POS_LEN;
@@ -46,6 +46,7 @@ static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s, std::string& 
     } else if (s.size() > len) {
         key.assign(s.data(), s.size() - len);
     }
+    memcpy(static_cast<void*>(&ts_idx), s.data() + s.size() - len, TS_POS_LEN);
     memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
     memrev64ifbe(static_cast<void*>(&ts));
     return 0;

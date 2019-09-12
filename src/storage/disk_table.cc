@@ -535,8 +535,9 @@ bool DiskTableIterator::Valid() {
         return false;
     }
     std::string cur_pk;
-    ParseKeyAndTs(has_ts_idx_, it_->key(), cur_pk, ts_);
-    return cur_pk == pk_;
+    uint8_t cur_ts_idx = -1;
+    ParseKeyAndTs(has_ts_idx_, it_->key(), cur_pk, ts_, cur_ts_idx);
+    return has_ts_idx_ ? cur_pk == pk_ && cur_ts_idx == ts_idx_ : cur_pk == pk_;
 }
 
 void DiskTableIterator::Next() {
