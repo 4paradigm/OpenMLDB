@@ -557,6 +557,10 @@ void TabletImpl::Get(RpcController* controller,
         ts_index = iter->second;
     }    
 
+    auto s = table->GetColumnMap().find(index);
+    if (s != table->GetColumnMap().end() && s->second.size() == 1) {
+        ts_index = -1;
+    }
     ::rtidb::storage::Ticket ticket;
     ::rtidb::storage::TableIterator* it = NULL;
     if (ts_index >= 0) {
@@ -645,6 +649,10 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         ts_index = iter->second;
+    }
+    auto s = disk_table->GetColumnMap().find(index);
+    if (s != disk_table->GetColumnMap().end() && s->second.size() == 1) {
+        ts_index = -1;
     }
     if (ts_index >= 0) {
         it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
@@ -1246,11 +1254,6 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         index = iit->second;
-        index = iit->second;
-        auto s = disk_table->GetColumnMap().find(index);
-        if (s != disk_table->GetColumnMap().end() && s->second.size() > 1) {
-            ts_index = 0;
-        }
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = disk_table->GetTSMapping().find(request->ts_name());
@@ -1262,6 +1265,10 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         ts_index = iter->second;
+    }
+    auto s = disk_table->GetColumnMap().find(index);
+    if (s != disk_table->GetColumnMap().end() && s->second.size() == 1) {
+        ts_index = -1;
     }
     if (ts_index >= 0) {
         it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
