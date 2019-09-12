@@ -1250,6 +1250,10 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         index = iit->second;
+        auto s = disk_table->GetColumnMap().find(index);
+        if (s != disk_table->GetColumnMap().end() && s->second.size() > 1) {
+            ts_index = 0;
+        }
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = disk_table->GetTSMapping().find(request->ts_name());
