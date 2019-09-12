@@ -557,10 +557,6 @@ void TabletImpl::Get(RpcController* controller,
         ts_index = iter->second;
     }    
 
-    auto s = table->GetColumnMap().find(index);
-    if (s != table->GetColumnMap().end() && s->second.size() == 1) {
-        ts_index = -1;
-    }
     ::rtidb::storage::Ticket ticket;
     ::rtidb::storage::TableIterator* it = NULL;
     if (ts_index >= 0) {
