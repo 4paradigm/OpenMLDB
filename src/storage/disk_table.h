@@ -46,7 +46,9 @@ static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s, std::string& 
     } else if (s.size() > len) {
         key.assign(s.data(), s.size() - len);
     }
-    memcpy(static_cast<void*>(&ts_idx), s.data() + s.size() - len, TS_POS_LEN);
+    if (has_ts_idx) {
+        memcpy(static_cast<void*>(&ts_idx), s.data() + s.size() - len, TS_POS_LEN);
+    }
     memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
     memrev64ifbe(static_cast<void*>(&ts));
     return 0;
