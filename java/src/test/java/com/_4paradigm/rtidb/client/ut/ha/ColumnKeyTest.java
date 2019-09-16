@@ -240,43 +240,6 @@ public class ColumnKeyTest extends TestCaseBase {
     }
 
     @Test
-    public void testPutMultiCombinedKeyTS() {
-        String name = String.valueOf(id.incrementAndGet());
-        nsc.dropTable(name);
-        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
-        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
-        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
-        ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
-        ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
-        ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
-        ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts_1").build();
-        TableInfo table = TableInfo.newBuilder()
-                .setName(name).setTtl(0)
-                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
-                .addColumnKey(colKey1).addColumnKey(colKey2)
-                .setPartitionNum(1).setReplicaNum(1)
-                .build();
-        boolean ok = nsc.createTable(table);
-        Assert.assertTrue(ok);
-        client.refreshRouteTable();
-        try {
-            Map<String, Object> data = new HashMap<String, Object>();
-            data.put("card", "card0");
-            data.put("mcc", "mcc1");
-            data.put("amt", 1.6);
-            data.put("ts", 1235l);
-            data.put("ts_1", 333l);
-            tableSyncClient.put(name, data);
-            KvIterator it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts_1", 0);
-            Assert.assertTrue(it.valid());
-            Assert.assertTrue(it.getCount() == 1);
-        } catch (Exception e) {
-            Assert.assertTrue(false);
-        }
-        nsc.dropTable(name);
-    }
-
-    @Test
     public void testPutMultiCombinedKey() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
@@ -285,12 +248,15 @@ public class ColumnKeyTest extends TestCaseBase {
         ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
         ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        ColumnDesc col5 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setType("string").build();
         ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
         ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
+        ColumnKey colKey3 = ColumnKey.newBuilder().setIndexName("col1").addTsName("ts_1").build();
         TableInfo table = TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
-                .addColumnKey(colKey1).addColumnKey(colKey2)
+                .addColumnDescV1(col5)
+                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3)
                 .setPartitionNum(1).setReplicaNum(1)
                 .build();
         boolean ok = nsc.createTable(table);
@@ -303,6 +269,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("amt", 1.5);
             data.put("ts", 1234l);
             data.put("ts_1", 222l);
+            data.put("col1", "col_key0");
             tableSyncClient.put(name, data);
             data.clear();
             data.put("card", "card0");
@@ -310,31 +277,39 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("amt", 1.6);
             data.put("ts", 1235l);
             data.put("ts_1", 333l);
+            data.put("col1", "col_key1");
             tableSyncClient.put(name, data);
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 2);
             Object[] row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
-            Assert.assertEquals(row.length, 5);
+            Assert.assertEquals(row.length, 6);
             Assert.assertEquals(row[0],"card0");
             Assert.assertEquals(row[1],"mcc1");
             Assert.assertEquals(row[2],1.6d);
             Assert.assertEquals(((Long)row[3]).longValue(),1235l);
             Assert.assertEquals(((Long)row[4]).longValue(),333l);
+            Assert.assertEquals(row[5],"col_key1");
             it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.getCount() == 2);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 333);
-            Assert.assertEquals(row.length, 5);
+            Assert.assertEquals(row.length, 6);
             Assert.assertEquals(row[0],"card0");
             Assert.assertEquals(row[1],"mcc1");
             Assert.assertEquals(row[2],1.6d);
             Assert.assertEquals(((Long)row[3]).longValue(),1235l);
             Assert.assertEquals(((Long)row[4]).longValue(),333l);
+            Assert.assertEquals(row[5],"col_key1");
             it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
+            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_1", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 1);
+            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts", 0);
+            Assert.assertFalse(it.valid());
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
