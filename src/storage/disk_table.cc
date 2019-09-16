@@ -119,7 +119,6 @@ bool DiskTable::InitColumnFamilyDescriptor() {
             options_ = hdd_option_template;
         }
         cfo.comparator = &cmp_;
-        auto ts_vector = column_key_map_.find(iter->second);
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(ttl_);
