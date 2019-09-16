@@ -1272,6 +1272,11 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
     }
     if (ts_index >= 0) {
         it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
+        if (it == NULL) {
+            response->set_code(137);
+            response->set_msg("ts name not found, when create iterator");
+            return;
+        }
     } else {
         it = disk_table->NewIterator(index, request->pk(), ticket);
     }

@@ -120,7 +120,7 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         }
         cfo.comparator = &cmp_;
         auto ts_vector = column_key_map_.find(iter->second);
-        cfo.prefix_extractor.reset(new KeyTsPrefixTransform(ts_vector != column_key_map_.end() && ts_vector->second.size() > 1));
+        cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(ttl_);
         }
@@ -466,8 +466,8 @@ TableIterator* DiskTable::NewIterator(uint32_t index, uint8_t ts_idx, const std:
         PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
     }
-    if (ts_idx >= column_key_map_[index].size()) {
-        PDLOG(WARNING, "ts idx too large index id %d, failed getting table tid %u pid %u", index, id_, pid_);
+    if (std::find(column_key_map_[index].cbegin(), column_key_map_[index].cend(), ts_idx) == column_key_map_[index].cend()) {
+        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
         return NULL;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
@@ -509,7 +509,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
         return NULL;
     }
     auto pos = column_key_map_.find(index);
-    if (pos != column_key_map_.end() && std::find(pos->second.rbegin(), pos->second.rend(), ts_idx) != pos->second.rend()) {
+    if (pos != column_key_map_.end() && std::find(pos->second.cbegin(), pos->second.cend(), ts_idx) != pos->second.cend()) {
     }
     return NULL;
 }
