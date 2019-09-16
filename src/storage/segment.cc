@@ -208,12 +208,12 @@ bool Segment::Get(const Slice& key, uint32_t idx, const uint64_t time, DataBlock
     if (block == NULL) {
         return false;
     }
-    if (ts_cnt_ == 1) {
-        return Get(key, time, block);
-    }
     auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return false;
+    }
+    if (ts_cnt_ == 1) {
+        return Get(key, time, block);
     }
     void* entry = NULL;
     if (entries_->Get(key, entry) < 0 || entry == NULL) {
@@ -556,12 +556,12 @@ int Segment::GetCount(const Slice& key, uint64_t& count) {
 }
 
 int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
-    if (ts_cnt_ == 1) {
-        return GetCount(key, count);
-    }
     auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return -1;
+    }
+    if (ts_cnt_ == 1) {
+        return GetCount(key, count);
     }
     void* entry_arr = NULL;
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
@@ -585,12 +585,12 @@ MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
 }
 
 MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
-    if (ts_cnt_ == 1) {
-        return NewIterator(key, ticket);
-    }
     auto pos = ts_idx_map_.find(idx);
     if (pos == ts_idx_map_.end()) {
         return new MemTableIterator(NULL);
+    }
+    if (ts_cnt_ == 1) {
+        return NewIterator(key, ticket);
     }
     void* entry_arr = NULL;
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {

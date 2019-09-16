@@ -276,9 +276,11 @@ class TestCaseBase(unittest.TestCase):
     def ns_get_multi_with_pair(self, endpoint, name, key, idx_name, ts, ts_name):
         cmd = 'get {} {} {} {} {}'.format('table_name='+name,'key='+ key, 'index_name='+idx_name,'ts='+ts,'ts_name='+ts_name)
         result = self.run_client(endpoint, cmd, 'ns_client')
+        value = {}
+        if result.find("Fail to get value") != -1:
+            return value
         arr = result.split("\n")
         key_arr = re.sub(' +', ' ', arr[0]).replace("# ts", "").strip().split(" ")
-        value = {}
         record = re.sub(' +', ' ', arr[2]).strip().split(" ")
         for idx in range(len(key_arr)):
             value[key_arr[idx]] = record[idx+2]
