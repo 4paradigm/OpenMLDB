@@ -498,7 +498,6 @@ public:
         buffer_ += 1;
         offset_++;
         if (((uint8_t)(buffer_[0]) & 0x80) == 0) {
-            memcpy(static_cast<void*>(&fsize_), buffer_, 1);
             fsize_ = (uint8_t)(buffer_[0]);
             buffer_ += 1;
             offset_++;
