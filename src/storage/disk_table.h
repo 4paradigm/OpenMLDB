@@ -296,7 +296,7 @@ public:
 
     virtual TableIterator* NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) override;
 
-    virtual TableIterator* NewIterator(uint32_t index, uint8_t ts_idx, const std::string& pk, Ticket& ticket) override;
+    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) override;
 
     virtual TableIterator* NewTraverseIterator(uint32_t idx) override;
 

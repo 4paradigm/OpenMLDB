@@ -59,7 +59,7 @@ public:
 
     virtual TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) = 0;
 
-    virtual TableIterator* NewIterator(uint32_t index, uint8_t ts_idx, const std::string& pk, Ticket& ticket) = 0;
+    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) = 0;
 
     virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
     virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) = 0;

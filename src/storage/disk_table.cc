@@ -457,16 +457,11 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
-    return new DiskTableIterator(db_, it, snapshot, pk);
 }
 
-TableIterator* DiskTable::NewIterator(uint32_t index, uint8_t ts_idx, const std::string& pk, Ticket& ticket) {
+TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
     if (index >= idx_cnt_) {
         PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
-        return NULL;
-    }
-    if (std::find(column_key_map_[index].cbegin(), column_key_map_[index].cend(), ts_idx) == column_key_map_[index].cend()) {
-        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
         return NULL;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
@@ -475,6 +470,13 @@ TableIterator* DiskTable::NewIterator(uint32_t index, uint8_t ts_idx, const std:
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index+1]);
+    if (ts_idx < 0) {
+        return new DiskTableIterator(db_, it, snapshot, pk);
+    }
+    if (std::find(column_key_map_[index].cbegin(), column_key_map_[index].cend(), ts_idx) == column_key_map_[index].cend()) {
+        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
+        return NULL;
+    }
     return new DiskTableIterator(db_, it, snapshot, pk, ts_idx);
 }
 
