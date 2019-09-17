@@ -57,7 +57,8 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
     int ret = 0;
     do {
         std::string now_time = ::rtidb::base::GetNowTime();
-        std::string snapshot_dir = snapshot_path_ + now_time.substr(0, now_time.length() - 2);
+        std::string snapshot_dir_name = now_time.substr(0, now_time.length() - 2);
+        std::string snapshot_dir = snapshot_path_ + snapshot_dir_name;
         std::string snapshot_dir_tmp = snapshot_dir + ".tmp";
         if (::rtidb::base::IsExists(snapshot_dir_tmp)) {
             PDLOG(WARNING, "checkpoint dir[%s] is exist", snapshot_dir_tmp.c_str());
@@ -95,10 +96,10 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
         }
         ::rtidb::api::Manifest manifest;
         GetLocalManifest(manifest);
-        if (GenManifest(snapshot_dir, record_count, cur_offset, term_) == 0) {
+        if (GenManifest(snapshot_dir_name, record_count, cur_offset, term_) == 0) {
             if (manifest.has_name() && manifest.name() != snapshot_dir) {
                 PDLOG(DEBUG, "delete old checkpoint[%s]", manifest.name().c_str());
-                if (!::rtidb::base::RemoveDir(manifest.name())) {
+                if (!::rtidb::base::RemoveDir(snapshot_path_ + manifest.name())) {
                     PDLOG(WARNING, "delete checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
                 }
             }

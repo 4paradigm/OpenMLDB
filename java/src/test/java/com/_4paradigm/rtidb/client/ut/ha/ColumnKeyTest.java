@@ -36,11 +36,9 @@ public class ColumnKeyTest extends TestCaseBase {
     @DataProvider(name = "StorageMode")
     public Object[][] StorageMode() {
         return new Object[][] {
-                new Object[] {
-                        Common.StorageMode.kSSD,
-                        Common.StorageMode.kMemory,
-                        Common.StorageMode.kHDD
-                },
+                new Object[] { Common.StorageMode.kSSD },
+                new Object[] { Common.StorageMode.kHDD },
+                new Object[] { Common.StorageMode.kMemory },
         };
     }
 
@@ -263,14 +261,16 @@ public class ColumnKeyTest extends TestCaseBase {
         ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
         ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
-        ColumnDesc col5 = ColumnDesc.newBuilder().setName("ts_2").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        ColumnDesc col5 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col6 = ColumnDesc.newBuilder().setName("ts_2").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
-        ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts_1").build();
-        ColumnKey colKey3 = ColumnKey.newBuilder().setIndexName("card2").addColName("card").addColName("mcc").addTsName("ts_1").addTsName("ts_2").build();
+        ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
+        ColumnKey colKey3 = ColumnKey.newBuilder().setIndexName("col1").addTsName("ts_1").build();
+        ColumnKey colKey4 = ColumnKey.newBuilder().setIndexName("card2").addColName("card").addColName("mcc").addTsName("ts_1").addTsName("ts_2").build();
         TableInfo table = TableInfo.newBuilder()
                 .setName(name).setTtl(0)
-                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4).addColumnDescV1(col5)
-                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4).addColumnDescV1(col5).addColumnDescV1(col6)
+                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3).addColumnKey(colKey4)
                 .setStorageMode(sm)
                 .setPartitionNum(1).setReplicaNum(1)
                 .build();
@@ -284,6 +284,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("amt", 1.5);
             data.put("ts", 1234l);
             data.put("ts_1", 222l);
+            data.put("col1", "col_key0");
             data.put("ts_2", 2222l);
             tableSyncClient.put(name, data);
             data.clear();
@@ -292,6 +293,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("amt", 1.6);
             data.put("ts", 1235l);
             data.put("ts_1", 333l);
+            data.put("col1", "col_key1");
             data.put("ts_2", 3333l);
             tableSyncClient.put(name, data);
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
@@ -305,7 +307,8 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(row[2], 1.6d);
             Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
             Assert.assertEquals(((Long) row[4]).longValue(), 333l);
-            Assert.assertEquals(((Long) row[5]).longValue(), 3333l);
+            Assert.assertEquals(row[5],"col_key1");
+            Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
             it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.getCount() == 2);
             row = it.getDecodedValue();
@@ -316,7 +319,8 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(row[2], 1.6d);
             Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
             Assert.assertEquals(((Long) row[4]).longValue(), 333l);
-            Assert.assertEquals(((Long) row[5]).longValue(), 3333l);
+            Assert.assertEquals(row[5],"col_key1");
+            Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
             it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
@@ -327,6 +331,11 @@ public class ColumnKeyTest extends TestCaseBase {
             it = tableSyncClient.scan(name, query, "card2", 3333l, 0l, "ts_2", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
+            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_1", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 1);
+            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts", 0);
+            Assert.assertFalse(it.valid());
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
