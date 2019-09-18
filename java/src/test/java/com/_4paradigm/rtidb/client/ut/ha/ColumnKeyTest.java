@@ -13,7 +13,9 @@ import com._4paradigm.rtidb.common.Common.ColumnDesc;
 import com._4paradigm.rtidb.common.Common.ColumnKey;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -248,12 +250,15 @@ public class ColumnKeyTest extends TestCaseBase {
         ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
         ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        ColumnDesc col5 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setType("string").build();
         ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
         ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
+        ColumnKey colKey3 = ColumnKey.newBuilder().setIndexName("col1").addTsName("ts_1").build();
         TableInfo table = TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
-                .addColumnKey(colKey1).addColumnKey(colKey2)
+                .addColumnDescV1(col5)
+                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3)
                 .setPartitionNum(1).setReplicaNum(1)
                 .build();
         boolean ok = nsc.createTable(table);
@@ -266,6 +271,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("amt", 1.5);
             data.put("ts", 1234l);
             data.put("ts_1", 222l);
+            data.put("col1", "col_key0");
             tableSyncClient.put(name, data);
             data.clear();
             data.put("card", "card0");
@@ -273,31 +279,39 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("amt", 1.6);
             data.put("ts", 1235l);
             data.put("ts_1", 333l);
+            data.put("col1", "col_key1");
             tableSyncClient.put(name, data);
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 2);
             Object[] row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
-            Assert.assertEquals(row.length, 5);
+            Assert.assertEquals(row.length, 6);
             Assert.assertEquals(row[0],"card0");
             Assert.assertEquals(row[1],"mcc1");
             Assert.assertEquals(row[2],1.6d);
             Assert.assertEquals(((Long)row[3]).longValue(),1235l);
             Assert.assertEquals(((Long)row[4]).longValue(),333l);
+            Assert.assertEquals(row[5],"col_key1");
             it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.getCount() == 2);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 333);
-            Assert.assertEquals(row.length, 5);
+            Assert.assertEquals(row.length, 6);
             Assert.assertEquals(row[0],"card0");
             Assert.assertEquals(row[1],"mcc1");
             Assert.assertEquals(row[2],1.6d);
             Assert.assertEquals(((Long)row[3]).longValue(),1235l);
             Assert.assertEquals(((Long)row[4]).longValue(),333l);
+            Assert.assertEquals(row[5],"col_key1");
             it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
+            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_1", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 1);
+            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts", 0);
+            Assert.assertFalse(it.valid());
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
@@ -733,4 +747,183 @@ public class ColumnKeyTest extends TestCaseBase {
         nsc.dropTable(name);
     }
 
+    @Test
+    public void testMutlColAndTS() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        List<ColumnDesc> colList = new ArrayList<>();
+        for (int i = 0; i < 11; i++) {
+            colList.add(ColumnDesc.newBuilder().setName("col" + i).setAddTsIdx(false).setType("string").build());
+        }
+        for (int i = 1; i < 6; i++) {
+            colList.add(ColumnDesc.newBuilder().setName("ts" + i).setAddTsIdx(false).setType("int64").setIsTsCol(true).build());
+        }
+        List<ColumnKey> keyList = new ArrayList<>();
+        keyList.add(ColumnKey.newBuilder().setIndexName("col0").addTsName("ts1").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col1").addTsName("ts3").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col2").addTsName("ts5").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col3").addTsName("ts1").addTsName("ts2").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col4").addTsName("ts3").addTsName("ts5").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col5").addTsName("ts1").addTsName("ts3").addTsName("ts4").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col6").addTsName("ts1").addTsName("ts2").addTsName("ts3").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col7").addTsName("ts1").addTsName("ts2").addTsName("ts3").addTsName("ts5").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("col8").addTsName("ts1").addTsName("ts2").addTsName("ts3")
+                .addTsName("ts4").addTsName("ts5").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("combine1").addColName("col1").addColName("col2").addTsName("ts1").addTsName("ts5").build());
+        keyList.add(ColumnKey.newBuilder().setIndexName("combine2").addColName("col8").addColName("col9").addColName("col10")
+                .addTsName("ts1").addTsName("ts2").addTsName("ts3").addTsName("ts5").build());
+        TableInfo.Builder builder = TableInfo.newBuilder();
+        builder.setName(name).setTtl(0);
+        for (ColumnDesc col : colList) {
+            builder.addColumnDescV1(col);
+        }
+        for (ColumnKey key : keyList) {
+            builder.addColumnKey(key);
+        }
+        TableInfo table = builder.build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        Map<String, Object> keyMap = new HashMap<>();
+        for (int i = 0; i < 11; i++) {
+            keyMap.put("col" + i, "col_value" + i);
+        }
+        for (int i = 1; i < 6; i++) {
+            keyMap.put("ts" + i, 100l + i);
+        }
+        try {
+            tableSyncClient.put(name, keyMap);
+        } catch (Exception e) {
+            Assert.assertTrue(false);
+        }
+        try {
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value0", "col0", 200, 0, "ts" + i, 0);
+                if (i == 1) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value1", "col1", 200, 0, "ts" + i, 0);
+                if (i == 3) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value2", "col2", 200, 0, "ts" + i, 0);
+                if (i == 5) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value3", "col3", 200, 0, "ts" + i, 0);
+                if (i == 1 || i == 2) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value4", "col4", 200, 0, "ts" + i, 0);
+                if (i == 3 || i == 5) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value5", "col5", 200, 0, "ts" + i, 0);
+                if (i == 1 || i == 3 || i == 4) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value6", "col6", 200, 0, "ts" + i, 0);
+                if (i == 1 || i == 2 || i == 3) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value7", "col7", 200, 0, "ts" + i, 0);
+                if (i == 1 || i == 2 || i == 3 || i == 5) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+            }
+            for (int i = 1; i < 6; i++) {
+                KvIterator it = tableSyncClient.scan(name, "col_value8", "col8", 200, 0, "ts" + i, 0);
+                Assert.assertTrue(it.valid());
+                Assert.assertEquals(it.getCount(), 1);
+            }
+            for (int i = 1; i < 6; i++) {
+                Map<String, Object> scanMap = new HashMap<>();
+                scanMap.put("col1", "col_value1");
+                scanMap.put("col2", "col_value2");
+
+                KvIterator it = tableSyncClient.scan(name, scanMap, "combine1", 200, 0, "ts" + i, 0);
+                if (i == 1 || i == 5) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+            }
+            for (int i = 1; i < 6; i++) {
+                Map<String, Object> scanMap = new HashMap<>();
+                scanMap.put("col8", "col_value8");
+                scanMap.put("col9", "col_value9");
+                scanMap.put("col10", "col_value10");
+
+                KvIterator it = tableSyncClient.scan(name, scanMap, "combine2", 200, 0, "ts" + i, 0);
+                if (i == 1 || i == 2 || i == 3 || i == 5) {
+                    Assert.assertTrue(it.valid());
+                    Assert.assertEquals(it.getCount(), 1);
+                } else {
+                    Assert.assertFalse(it.valid());
+                }
+            }
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+
+        try {
+            KvIterator it = tableSyncClient.scan(name, "col_value0", "col0", 200, 0, "tsNo", 0);
+            Assert.assertTrue(false);
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        try {
+            KvIterator it = tableSyncClient.scan(name, "col_value9", "col9", 200, 0, "ts1", 0);
+            Assert.assertFalse(true);
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        nsc.dropTable(name);
+    }
 }
