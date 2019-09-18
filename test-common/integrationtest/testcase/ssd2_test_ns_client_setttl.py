@@ -79,7 +79,7 @@ class TestSetTTL(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 14400,
-                "storage_mode": "kHDD",
+                "storage_mode": "kSSD",
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
