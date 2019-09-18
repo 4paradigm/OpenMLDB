@@ -254,6 +254,10 @@ public:
         return offset_.load(std::memory_order_relaxed);
     }
 
+    void SetOffset(uint64_t offset) {
+        offset_.store(offset, std::memory_order_relaxed);
+    }
+
     inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }
