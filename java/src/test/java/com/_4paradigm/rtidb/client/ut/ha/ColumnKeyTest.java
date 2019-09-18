@@ -301,7 +301,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertTrue(it.getCount() == 2);
             Object[] row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
-            Assert.assertEquals(row.length, 6);
+            Assert.assertEquals(row.length, 7);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 1.6d);
@@ -313,7 +313,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertTrue(it.getCount() == 2);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 333);
-            Assert.assertEquals(row.length, 6);
+            Assert.assertEquals(row.length, 7);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 1.6d);
@@ -321,7 +321,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(((Long) row[4]).longValue(), 333l);
             Assert.assertEquals(row[5],"col_key1");
             Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
-            it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts_1", 0);
+            it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
 
@@ -331,13 +331,14 @@ public class ColumnKeyTest extends TestCaseBase {
             it = tableSyncClient.scan(name, query, "card2", 3333l, 0l, "ts_2", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
+            if (sm != Common.StorageMode.kMemory) {
+                it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_2", 0);
+                Assert.assertTrue(it.valid());
+            }
             it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
-            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts", 0);
-            Assert.assertFalse(it.valid());
         } catch (Exception e) {
-            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);
