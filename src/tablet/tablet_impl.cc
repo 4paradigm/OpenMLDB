@@ -560,10 +560,11 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         index = iit->second;
-        auto s = disk_table->GetColumnMap().find(index);
-        if (s != disk_table->GetColumnMap().end() && s->second.size() > 1) {
-            ts_index = 0;
-        }
+    }
+    auto columnMapIt = disk_table->GetColumnMap().find(index);
+    bool IteratorIsEnd = columnMapIt == disk_table->GetColumnMap().end();
+    if (!IteratorIsEnd && columnMapIt->second.size() > 1) {
+        ts_index = 0;
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = disk_table->GetTSMapping().find(request->ts_name());
@@ -576,14 +577,14 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         ts_index = iter->second;
     }
-    auto s = disk_table->GetColumnMap().find(index);
-    if (s != disk_table->GetColumnMap().end() && s->second.size() == 1) {
+    if (!IteratorIsEnd && columnMapIt->second.size() == 1) {
         ts_index = -1;
     }
-    if (ts_index >= 0) {
-        it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
-    } else {
-        it = disk_table->NewIterator(index, request->key(), ticket);
+    it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found, when create iterator");
+        return;
     }
 
 
@@ -1171,7 +1172,6 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
     uint32_t index = 0;
     int32_t ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
-        PDLOG(DEBUG, "idx name is %s", request->idx_name().c_str());
         std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
         if (iit == disk_table->GetMapping().end()) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
@@ -1182,8 +1182,9 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         index = iit->second;
     }
-    auto s = disk_table->GetColumnMap().find(index);
-    if (s != disk_table->GetColumnMap().end() && s->second.size() > 1) {
+    auto columnMapIt = disk_table->GetColumnMap().find(index);
+    bool IteratorIsEnd = columnMapIt == disk_table->GetColumnMap().end();
+    if (!IteratorIsEnd && columnMapIt->second.size() > 1) {
         ts_index = 0;
     }
     if (request->has_ts_name() && request->ts_name().size() > 0) {
@@ -1197,8 +1198,7 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         ts_index = iter->second;
     }
-    auto v = disk_table->GetColumnMap().find(index);
-    if (v != disk_table->GetColumnMap().end() && v->second.size() == 1) {
+    if (!IteratorIsEnd && columnMapIt->second.size() == 1) {
         ts_index = -1;
     }
     it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
