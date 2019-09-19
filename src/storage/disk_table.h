@@ -75,10 +75,11 @@ static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
 
 static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint8_t ts_pos) {
   memrev64ifbe(static_cast<void*>(&ts));
-  char buf[TS_LEN + TS_POS_LEN];
-  memcpy(buf, static_cast<void*>(&ts_pos), TS_POS_LEN);
-  memcpy(buf + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
-  return key + std::string(buf, TS_LEN + TS_POS_LEN);
+  char buf[key.size() + TS_LEN + TS_POS_LEN];
+  memcpy(buf, key.c_str(), key.size());
+  memcpy(buf + key.size(), static_cast<void*>(&ts_pos), TS_POS_LEN);
+  memcpy(buf + key.size() + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
+  return std::string(buf, key.size() + TS_LEN + TS_POS_LEN);
 }
 
 class KeyTSComparator : public rocksdb::Comparator {
