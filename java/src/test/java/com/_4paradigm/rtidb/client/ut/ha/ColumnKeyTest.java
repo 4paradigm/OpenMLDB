@@ -333,9 +333,9 @@ public class ColumnKeyTest extends TestCaseBase {
             it = tableSyncClient.scan(name, query, "card2", 3333l, 0l, "ts_2", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
-            if (sm != Common.StorageMode.kMemory) {
+            if (sm == Common.StorageMode.kMemory) {
                 it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_2", 0);
-                Assert.assertTrue(it.valid());
+                Assert.assertFalse(it.valid());
             }
             it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.valid());
