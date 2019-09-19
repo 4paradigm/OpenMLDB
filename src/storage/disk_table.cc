@@ -471,6 +471,9 @@ TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std:
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index+1]);
+    if (ts_idx < 0) {
+        return new DiskTableIterator(db_, it, snapshot, pk);
+    }
     if (std::find(column_key_map_[index].cbegin(), column_key_map_[index].cend(), ts_idx) == column_key_map_[index].cend()) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
         return NULL;
