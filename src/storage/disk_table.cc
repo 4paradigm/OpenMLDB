@@ -460,8 +460,8 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
-    if (index >= idx_cnt_) {
-        PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+    if (column_key_map_.find(index) == column_key_map_.end()) {
+        PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
