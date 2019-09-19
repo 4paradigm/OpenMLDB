@@ -264,10 +264,10 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return false;
     }
-    rocksdb::Slice spk = rocksdb::Slice(CombineKeyTs(pk, ts));
+    rocksdb::Slice spk ;
     auto pos = column_key_map_.find(idx);
     if ((pos != column_key_map_.end()) && (pos->second.size() > 1)) {
-        spk = rocksdb::Slice(CombineKeyTs(pk, ts, 0));
+        spk = rocksdb::Slice(CombineKeyTs(pk, ts, pos->second[0]));
     } else {
         spk = rocksdb::Slice(CombineKeyTs(pk, ts));
     }
