@@ -505,13 +505,6 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
 
 TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
     // TODO
-    if (index >= idx_cnt_) {
-        PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
-        return NULL;
-    }
-    auto pos = column_key_map_.find(index);
-    if (pos != column_key_map_.end() && std::find(pos->second.cbegin(), pos->second.cend(), ts_idx) != pos->second.cend()) {
-    }
     return NULL;
 }
 
