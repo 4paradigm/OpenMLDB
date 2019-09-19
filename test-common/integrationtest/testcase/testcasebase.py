@@ -340,6 +340,10 @@ class TestCaseBase(unittest.TestCase):
         return self.run_client(endpoint, 'sput {} {} {} {}'.format(
             tid, pid, ts, ' '.join(values)))
 
+    def sput(self, endpoint, tid, pid, ts, *values):
+        return self.run_client(endpoint, 'sput {} {} {} {}'.format(
+            tid, pid, ts, ' '.join(values[0])))
+
     def scan(self, endpoint, tid, pid, vk, ts_from, ts_to):
         """
 
