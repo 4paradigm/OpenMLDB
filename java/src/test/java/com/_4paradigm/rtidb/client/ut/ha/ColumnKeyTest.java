@@ -2,9 +2,11 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.common.Common;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,51 +35,62 @@ public class ColumnKeyTest extends TestCaseBase {
         super.tearDown();
     }
 
-    @Test
-    public void testPutNoTs() {
-        String name = String.valueOf(id.incrementAndGet());
-        nsc.dropTable(name);
-        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
-        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
-        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
-        ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
-        TableInfo table = TableInfo.newBuilder()
-                .setName(name).setTtl(0)
-                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
-                .build();
-        boolean ok = nsc.createTable(table);
-        Assert.assertTrue(ok);
-        client.refreshRouteTable();
-        try {
-            tableSyncClient.put(name, 1122, new Object[]{"card1", "mcc1", 9.2d, 1234});
-            Assert.assertTrue(false);
-        } catch (Exception e) {
-            Assert.assertTrue(true);
-        }
-        try {
-            Map<String, Object> data = new HashMap<String, Object>();
-            data.put("card", "card0");
-            data.put("mcc", "mcc0");
-            data.put("amt", 1.5);
-            data.put("ts", 1234l);
-            tableSyncClient.put(name, data);
-            data.clear();
-            data.put("card", "card0");
-            data.put("mcc", "mcc1");
-            data.put("amt", 1.6);
-            data.put("ts", 1235l);
-            tableSyncClient.put(name, data);
-            KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235, 0);
-            Assert.assertTrue(it.valid());
-            Assert.assertTrue(it.getCount() == 2);
-        } catch (Exception e) {
-            Assert.assertTrue(false);
-        }
-        nsc.dropTable(name);
+    @DataProvider(name = "StorageMode")
+    public Object[][] StorageMode() {
+        return new Object[][] {
+                new Object[] { Common.StorageMode.kSSD },
+                new Object[] { Common.StorageMode.kHDD },
+                new Object[] { Common.StorageMode.kMemory },
+        };
     }
 
-    @Test
-    public void testPutTwoIndex() {
+
+    @Test(dataProvider = "StorageMode")
+    public void testPutNoTs(Common.StorageMode sm) {
+            String name = String.valueOf(id.incrementAndGet());
+            nsc.dropTable(name);
+            ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+            ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+            ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+            ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+            TableInfo table = TableInfo.newBuilder()
+                    .setName(name).setTtl(0)
+                    .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                    .setStorageMode(sm)
+                    .build();
+            boolean ok = nsc.createTable(table);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            try {
+                tableSyncClient.put(name, 1122, new Object[]{"card1", "mcc1", 9.2d, 1234});
+                Assert.assertTrue(false);
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
+            try {
+                Map<String, Object> data = new HashMap<String, Object>();
+                data.put("card", "card0");
+                data.put("mcc", "mcc0");
+                data.put("amt", 1.5);
+                data.put("ts", 1234l);
+                tableSyncClient.put(name, data);
+                data.clear();
+                data.put("card", "card0");
+                data.put("mcc", "mcc1");
+                data.put("amt", 1.6);
+                data.put("ts", 1235l);
+                tableSyncClient.put(name, data);
+                KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235, 0);
+                Assert.assertTrue(it.valid());
+                Assert.assertTrue(it.getCount() == 2);
+            } catch (Exception e) {
+                Assert.assertTrue(false);
+            }
+            nsc.dropTable(name);
+    }
+
+    @Test(dataProvider = "StorageMode")
+    public void testPutTwoIndex(Common.StorageMode sm) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -87,6 +100,7 @@ public class ColumnKeyTest extends TestCaseBase {
         TableInfo table = TableInfo.newBuilder()
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .setStorageMode(sm)
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
@@ -122,7 +136,6 @@ public class ColumnKeyTest extends TestCaseBase {
         nsc.dropTable(name);
     }
 
-    @Test
     public void testPutCombinedKey() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
@@ -167,10 +180,10 @@ public class ColumnKeyTest extends TestCaseBase {
             Object[] row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1234);
             Assert.assertEquals(row.length, 4);
-            Assert.assertEquals(row[0],"card0");
-            Assert.assertEquals(row[1],"mcc0");
-            Assert.assertEquals(row[2],1.5d);
-            Assert.assertEquals(((Long)row[3]).longValue(),1234l);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 1.5d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1234l);
             scan_key.put("mcc", "mcc1");
             it = tableSyncClient.scan(name, scan_key, "card_mcc", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
@@ -178,19 +191,19 @@ public class ColumnKeyTest extends TestCaseBase {
             scan_key.put("mcc", "mcc2");
             it = tableSyncClient.scan(name, scan_key, "card_mcc", 1235l, 0l, "ts", 0);
             Assert.assertFalse(it.valid());
-            row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc", 1234, "ts", null);
+            row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 1234, "ts", null);
             Assert.assertEquals(row.length, 4);
-            Assert.assertEquals(row[0],"card0");
-            Assert.assertEquals(row[1],"mcc0");
-            Assert.assertEquals(row[2],1.5d);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 1.5d);
 
             Map<String, Object> key_map = new HashMap<String, Object>();
             key_map.put("card", "card0");
             key_map.put("mcc", "mcc1");
             row = tableSyncClient.getRow(name, key_map, "card_mcc", 1235, "ts", null);
-            Assert.assertEquals(row[0],"card0");
-            Assert.assertEquals(row[1],"mcc1");
-            Assert.assertEquals(row[2],1.6d);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.6d);
 
             Assert.assertEquals(tableSyncClient.count(name, key_map, "card_mcc", "ts", false), 1);
             data.clear();
@@ -215,15 +228,15 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertTrue(it.getCount() == 3);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1245);
-            Assert.assertEquals(row[0],"card0");
-            Assert.assertEquals(row[1],"mcc1");
-            Assert.assertEquals(row[2],1.7d);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.7d);
 
             GetFuture gf = tableAsyncClient.get(name, key_map, "card_mcc", 1235, "ts", null);
             row = gf.getRow();
-            Assert.assertEquals(row[0],"card0");
-            Assert.assertEquals(row[1],"mcc1");
-            Assert.assertEquals(row[2],1.6d);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.6d);
 
             data.clear();
             data.put("card", "card0");
@@ -231,7 +244,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("amt", 1.8);
             data.put("ts", 1250l);
             tableSyncClient.put(name, data);
-            row = tableSyncClient.getRow(name, new Object[] {"card0", ""}, "card_mcc", 0, "ts", null);
+            row = tableSyncClient.getRow(name, new Object[]{"card0", ""}, "card_mcc", 0, "ts", null);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "");
             Assert.assertEquals(row[2], 1.8);
@@ -241,8 +254,8 @@ public class ColumnKeyTest extends TestCaseBase {
         nsc.dropTable(name);
     }
 
-    @Test
-    public void testPutMultiCombinedKey() {
+    @Test(dataProvider = "StorageMode")
+    public void testPutMultiCombinedKey(Common.StorageMode sm) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
@@ -251,14 +264,16 @@ public class ColumnKeyTest extends TestCaseBase {
         ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnDesc col4 = ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnDesc col5 = ColumnDesc.newBuilder().setName("col1").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col6 = ColumnDesc.newBuilder().setName("ts_2").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
         ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
         ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
         ColumnKey colKey3 = ColumnKey.newBuilder().setIndexName("col1").addTsName("ts_1").build();
+        ColumnKey colKey4 = ColumnKey.newBuilder().setIndexName("card2").addColName("card").addColName("mcc").addTsName("ts_1").addTsName("ts_2").build();
         TableInfo table = TableInfo.newBuilder()
                 .setName(name).setTtl(0)
-                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
-                .addColumnDescV1(col5)
-                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4).addColumnDescV1(col5).addColumnDescV1(col6)
+                .addColumnKey(colKey1).addColumnKey(colKey2).addColumnKey(colKey3).addColumnKey(colKey4)
+                .setStorageMode(sm)
                 .setPartitionNum(1).setReplicaNum(1)
                 .build();
         boolean ok = nsc.createTable(table);
@@ -272,6 +287,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("ts", 1234l);
             data.put("ts_1", 222l);
             data.put("col1", "col_key0");
+            data.put("ts_2", 2222l);
             tableSyncClient.put(name, data);
             data.clear();
             data.put("card", "card0");
@@ -280,38 +296,50 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("ts", 1235l);
             data.put("ts_1", 333l);
             data.put("col1", "col_key1");
+            data.put("ts_2", 3333l);
             tableSyncClient.put(name, data);
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 2);
             Object[] row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
-            Assert.assertEquals(row.length, 6);
-            Assert.assertEquals(row[0],"card0");
-            Assert.assertEquals(row[1],"mcc1");
-            Assert.assertEquals(row[2],1.6d);
-            Assert.assertEquals(((Long)row[3]).longValue(),1235l);
-            Assert.assertEquals(((Long)row[4]).longValue(),333l);
+            Assert.assertEquals(row.length, 7);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.6d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 333l);
             Assert.assertEquals(row[5],"col_key1");
+            Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
             it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.getCount() == 2);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 333);
-            Assert.assertEquals(row.length, 6);
-            Assert.assertEquals(row[0],"card0");
-            Assert.assertEquals(row[1],"mcc1");
-            Assert.assertEquals(row[2],1.6d);
-            Assert.assertEquals(((Long)row[3]).longValue(),1235l);
-            Assert.assertEquals(((Long)row[4]).longValue(),333l);
+            Assert.assertEquals(row.length, 7);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.6d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 333l);
             Assert.assertEquals(row[5],"col_key1");
+            Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
             it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
+
+            Map<String, Object> query = new HashMap<String, Object>();
+            query.put("card", "card0");
+            query.put("mcc", "mcc0");
+            it = tableSyncClient.scan(name, query, "card2", 3333l, 0l, "ts_2", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 1);
+            if (sm == Common.StorageMode.kMemory) {
+                it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_2", 0);
+                Assert.assertFalse(it.valid());
+            }
             it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
-            it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts", 0);
-            Assert.assertFalse(it.valid());
         } catch (Exception e) {
             Assert.assertTrue(false);
         }

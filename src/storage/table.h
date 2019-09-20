@@ -41,6 +41,8 @@ public:
     virtual ~Table() {}
     virtual bool Init() = 0;
 
+    int InitColumnDesc();
+
     virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;
 
     virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) = 0;
@@ -64,7 +66,7 @@ public:
 
     virtual TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) = 0;
 
-    virtual TableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) = 0;
+    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) = 0;
 
     virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
     virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) = 0;
@@ -129,7 +131,7 @@ public:
         return mapping_;
     }
 
-    inline std::map<std::string, uint32_t>& GetTSMapping() {
+    inline std::map<std::string, uint8_t>& GetTSMapping() {
         return ts_mapping_;
     }
 
@@ -191,7 +193,7 @@ protected:
     std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
-    std::map<std::string, uint32_t> ts_mapping_;
+    std::map<std::string, uint8_t> ts_mapping_;
     std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_ttl_vec_;
