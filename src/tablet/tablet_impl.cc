@@ -459,6 +459,7 @@ void TabletImpl::Get(RpcController* controller,
 
     if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
         GetFromDiskTable(table, request, response);
+	    return;
     }
 
     uint32_t index = 0;
@@ -547,6 +548,8 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
              ::rtidb::api::GetResponse* response) {
     ::rtidb::storage::TableIterator* it = NULL;
     ::rtidb::storage::Ticket ticket;
+    uint32_t index = 0;
+    int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
         if (iit == disk_table->GetMapping().end()) {
@@ -556,10 +559,27 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
             response->set_msg("idx name not found");
             return;
         }
-        it = disk_table->NewIterator(iit->second, request->key(), ticket);
-    } else {
-        it = disk_table->NewIterator(request->key(), ticket);
+        index = iit->second;
     }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = disk_table->GetTSMapping().find(request->ts_name());
+        if (iter == disk_table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }
+    it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found, when create iterator");
+        return;
+    }
+
+
     ::rtidb::api::GetType get_type = ::rtidb::api::GetType::kSubKeyEq;
     if (request->has_type()) {
         get_type = request->type();
@@ -1141,6 +1161,8 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
     }
     ::rtidb::storage::TableIterator* it = NULL;
     ::rtidb::storage::Ticket ticket;
+    uint32_t index = 0;
+    int32_t ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
         if (iit == disk_table->GetMapping().end()) {
@@ -1150,9 +1172,24 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
             response->set_msg("idx name not found");
             return;
         }
-        it = disk_table->NewIterator(iit->second, request->pk(), ticket);
-    } else {
-        it = disk_table->NewIterator(request->pk(), ticket);
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = disk_table->GetTSMapping().find(request->ts_name());
+        if (iter == disk_table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }
+    it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found, when create iterator");
+        return;
     }
     if (request->st() == 0) {
         it->SeekToFirst();

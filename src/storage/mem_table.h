@@ -72,8 +72,6 @@ public:
     MemTable(const MemTable&) = delete;
     MemTable& operator=(const MemTable&) = delete;
 
-    int InitColumnDesc();
-
     virtual bool Init() override;
 
     // Put a record
@@ -96,7 +94,7 @@ public:
 
     virtual TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) override;
 
-    virtual TableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket);
+    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket);
 
     virtual TableIterator* NewTraverseIterator(uint32_t index) override;
     virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) override;
