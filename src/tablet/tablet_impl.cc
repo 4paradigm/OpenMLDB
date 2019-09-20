@@ -1269,11 +1269,7 @@ void TabletImpl::Count(RpcController* controller,
         return;
     }
     if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-        PDLOG(WARNING, "table is disk table. tid %u, pid %u", 
-                      request->tid(), request->pid());
-        response->set_code(307);
-        response->set_msg("disk table is not support count");
-        return;
+        return CountFromDiskTable(table, reequest, response);
     }
     uint32_t index = 0;
     int ts_index = -1;
@@ -1359,6 +1355,88 @@ void TabletImpl::Count(RpcController* controller,
         last_time = it->GetKey();
         scount ++;
         it->Next();
+    }
+    delete it;
+    response->set_code(0);
+    response->set_msg("ok");
+    response->set_count(scount);
+}
+
+void TabletImpl::CountFromDiskTable(std::shared_ptr<Table> disk_table,
+                                   const ::rtidb::api::CountRequest* request,
+                                   ::rtidb::api::CountResponse* response) {
+    ::rtidb::storage::TableIterator* it = NULL;
+    ::rtidb::storage::Ticket ticket;
+    uint32_t index = 0;
+    int32_t ts_index = -1;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
+        if (iit == disk_table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(108);
+            response->set_msg("idx name not found");
+            return;
+        }
+        index = iit->second;
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = disk_table->GetTSMapping().find(request->ts_name());
+        if (iter == disk_table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
+        ts_index = iter->second;
+    }
+    it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found, when create iterator");
+        return;
+    }
+    it->SeekToFirst();
+    uint64_t ttl = ts_index < 0 ? disk_table->GetTTL(index) : disk_table->GetTTL(index, ts_index);
+    uint64_t end_time = disk_table->GetExpireTime(ttl);
+    PDLOG(DEBUG, "end_time %lu", end_time);
+
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+        remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
+    uint64_t scount = 0, last_time = 0;
+    if (!request->filter_expired_data()) {
+        for (; it->Valid(); it->Next()) {
+            scount++;
+        }
+    } else if (disk_table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
+        for (;it->Valid(); it->Next()) {
+            if (scount >= ttl) {
+                break;
+            }
+            if (remove_duplicated_record && last_time == it->GetKey()) {
+                PDLOG(DEBUG, "filter duplicated ts record %lu", last_time);
+                it->Next();
+                continue;
+            }
+            last_time = it->GetKey();
+            scount++;
+        }
+    } else {
+        for (;it->Valid();it->Next()) {
+            if (it->GetKey() <= end_time) {
+                break;
+            }
+            if (remove_duplicated_record && last_time == it->GetKey()) {
+                PDLOG(DEBUG, "filter duplicated ts record %lu", last_time);
+                it->Next();
+                continue;
+            }
+            last_time = it->GetKey();
+            scount++;
+        }
     }
     delete it;
     response->set_code(0);
