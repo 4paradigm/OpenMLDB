@@ -1617,62 +1617,8 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
     }
 }
 
-int GenTableInfo(const std::string& path, const std::set<std::string>& type_set, 
+int SetTablePartition(const ::rtidb::client::TableInfo& table_info, 
             ::rtidb::nameserver::TableInfo& ns_table_info) {
-    ::rtidb::client::TableInfo table_info;
-    int fd = open(path.c_str(), O_RDONLY);
-    if (fd < 0) {
-        std::cout << "can not open file " << path << std::endl;
-        return -1;
-    }
-    google::protobuf::io::FileInputStream fileInput(fd);
-    fileInput.SetCloseOnDelete(true);
-    if (!google::protobuf::TextFormat::Parse(&fileInput, &table_info)) {
-        std::cout << "table meta file format error" << std::endl;
-        return -1;
-    }
-
-    ns_table_info.set_name(table_info.name());
-    std::string ttl_type = table_info.ttl_type();
-    std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
-    uint32_t default_skiplist_height = FLAGS_absolute_default_skiplist_height;
-    if (ttl_type == "kabsolutetime") {
-        ns_table_info.set_ttl_type("kAbsoluteTime");
-    } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
-        ns_table_info.set_ttl_type("kLatestTime");
-        default_skiplist_height = FLAGS_latest_default_skiplist_height;
-    } else {
-        printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
-        return -1;
-    }
-    ns_table_info.set_ttl(table_info.ttl());
-    std::string compress_type = table_info.compress_type();
-    std::transform(compress_type.begin(), compress_type.end(), compress_type.begin(), ::tolower);
-    if (compress_type == "knocompress" || compress_type == "nocompress" || compress_type == "no") {
-        ns_table_info.set_compress_type(::rtidb::nameserver::kNoCompress);
-    } else if (compress_type == "ksnappy" || compress_type == "snappy") {
-        ns_table_info.set_compress_type(::rtidb::nameserver::kSnappy);
-    } else {
-        printf("compress type %s is invalid\n", table_info.compress_type().c_str());
-        return -1;
-    }
-    ns_table_info.set_storage_mode(table_info.storage_mode());
-    if (table_info.has_key_entry_max_height()) {
-        if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
-            printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n", 
-                        table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
-            return -1;
-        }
-        if (table_info.key_entry_max_height() == 0) {
-            printf("Fail to create table. key_entry_max_height must be greater than 0\n"); 
-            return -1;
-        }
-        ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
-    }else {
-        // config default height
-        ns_table_info.set_key_entry_max_height(default_skiplist_height);
-    }
-    ns_table_info.set_seg_cnt(table_info.seg_cnt());
     if (table_info.table_partition_size() > 0) {
         std::map<uint32_t, std::string> leader_map;
         std::map<uint32_t, std::set<std::string>> follower_map;
@@ -1762,7 +1708,12 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
             ns_table_info.set_replica_num(table_info.replica_num());
         }
     }
+    return 0;
+}
 
+int SetColumnDesc(const ::rtidb::client::TableInfo& table_info, 
+            const std::set<std::string>& type_set,
+            ::rtidb::nameserver::TableInfo& ns_table_info) {
     std::map<std::string, std::string> name_map;
     std::set<std::string> index_set;
     std::set<std::string> ts_col_set;
@@ -1813,11 +1764,22 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         ::rtidb::common::ColumnDesc* column_desc = ns_table_info.add_column_desc_v1();
         column_desc->CopyFrom(table_info.column_desc(idx));
     }
-    if (ts_col_set.size() > 1 && table_info.column_key_size() == 0) {
-        printf("column_key should be set when has two or more ts columns\n");
-        return -1;
-    }
-    if (table_info.column_key_size() > 0) {
+    if (table_info.column_key_size() == 0) {
+        if (ts_col_set.size() > 1) {
+            printf("column_key should be set when has two or more ts columns\n");
+            return -1;
+
+        } else if (ts_col_set.empty()) {
+            // convert to old version
+            for (const auto& column_desc : ns_table_info.column_desc_v1()) {
+                ::rtidb::nameserver::ColumnDesc* cur_column_desc = ns_table_info.add_column_desc();
+                cur_column_desc->set_name(column_desc.name());
+                cur_column_desc->set_type(column_desc.type());
+                cur_column_desc->set_add_ts_idx(column_desc.add_ts_idx());
+            }
+            ns_table_info.clear_column_desc_v1();
+        }
+    } else {
         index_set.clear();
         std::set<std::string> key_set;
         for (int idx = 0; idx < table_info.column_key_size(); idx++) {
@@ -1869,6 +1831,72 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
     }
     if (index_set.empty() && table_info.column_desc_size() > 0) {
         std::cout << "no index" << std::endl;
+        return -1;
+    }
+    return 0;
+}
+
+int GenTableInfo(const std::string& path, const std::set<std::string>& type_set, 
+            ::rtidb::nameserver::TableInfo& ns_table_info) {
+    ::rtidb::client::TableInfo table_info;
+    int fd = open(path.c_str(), O_RDONLY);
+    if (fd < 0) {
+        std::cout << "can not open file " << path << std::endl;
+        return -1;
+    }
+    google::protobuf::io::FileInputStream fileInput(fd);
+    fileInput.SetCloseOnDelete(true);
+    if (!google::protobuf::TextFormat::Parse(&fileInput, &table_info)) {
+        std::cout << "table meta file format error" << std::endl;
+        return -1;
+    }
+
+    ns_table_info.set_name(table_info.name());
+    std::string ttl_type = table_info.ttl_type();
+    std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
+    uint32_t default_skiplist_height = FLAGS_absolute_default_skiplist_height;
+    if (ttl_type == "kabsolutetime") {
+        ns_table_info.set_ttl_type("kAbsoluteTime");
+    } else if (ttl_type == "klatesttime" || ttl_type == "latest") {
+        ns_table_info.set_ttl_type("kLatestTime");
+        default_skiplist_height = FLAGS_latest_default_skiplist_height;
+    } else {
+        printf("ttl type %s is invalid\n", table_info.ttl_type().c_str());
+        return -1;
+    }
+    ns_table_info.set_ttl(table_info.ttl());
+    std::string compress_type = table_info.compress_type();
+    std::transform(compress_type.begin(), compress_type.end(), compress_type.begin(), ::tolower);
+    if (compress_type == "knocompress" || compress_type == "nocompress" || compress_type == "no") {
+        ns_table_info.set_compress_type(::rtidb::nameserver::kNoCompress);
+    } else if (compress_type == "ksnappy" || compress_type == "snappy") {
+        ns_table_info.set_compress_type(::rtidb::nameserver::kSnappy);
+    } else {
+        printf("compress type %s is invalid\n", table_info.compress_type().c_str());
+        return -1;
+    }
+    ns_table_info.set_storage_mode(table_info.storage_mode());
+    if (table_info.has_key_entry_max_height()) {
+        if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
+            printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n", 
+                        table_info.key_entry_max_height(), FLAGS_skiplist_max_height);
+            return -1;
+        }
+        if (table_info.key_entry_max_height() == 0) {
+            printf("Fail to create table. key_entry_max_height must be greater than 0\n"); 
+            return -1;
+        }
+        ns_table_info.set_key_entry_max_height(table_info.key_entry_max_height());
+    } else {
+        // config default height
+        ns_table_info.set_key_entry_max_height(default_skiplist_height);
+    }
+    ns_table_info.set_seg_cnt(table_info.seg_cnt());
+
+    if (SetTablePartition(table_info, ns_table_info) < 0) {
+        return -1;
+    }
+    if (SetColumnDesc(table_info, type_set, ns_table_info) < 0) {
         return -1;
     }
     return 0;
