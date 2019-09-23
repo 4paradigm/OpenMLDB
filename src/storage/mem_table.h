@@ -85,8 +85,6 @@ public:
 
     virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, const std::string& value) override;
 
-    virtual bool Put(const ::rtidb::api::LogEntry& entry) override;
-
     virtual bool Delete(const std::string& pk, uint32_t idx) override;
 
     // use the first demission

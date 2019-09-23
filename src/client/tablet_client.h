@@ -189,15 +189,17 @@ public:
                    const ::rtidb::api::TTLType& type,
                    uint64_t ttl, const std::string& ts_name);
     bool SetMaxConcurrency(const std::string& key, int32_t max_concurrency);
-    bool DeleteBinlog(uint32_t tid, uint32_t pid);
+    bool DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode);
 
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);               
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
-    bool GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader);
+    bool GetTermPair(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode, 
+                    uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader);
 
-    bool GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest);
+    bool GetManifest(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode,
+                    ::rtidb::api::Manifest& manifest);
 
     bool GetTableStatus(::rtidb::api::GetTableStatusResponse& response);
     bool GetTableStatus(uint32_t tid, uint32_t pid,

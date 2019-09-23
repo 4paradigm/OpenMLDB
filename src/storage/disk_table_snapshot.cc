@@ -24,6 +24,8 @@ DECLARE_string(hdd_root_path);
 namespace rtidb {
 namespace storage {
 
+const std::string MANIFEST = "MANIFEST";
+
 DiskTableSnapshot::DiskTableSnapshot(uint32_t tid, uint32_t pid, 
         ::rtidb::common::StorageMode storage_mode) : Snapshot(tid, pid), 
         storage_mode_(storage_mode), term_(0) {
@@ -95,7 +97,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
             break;
         }
         ::rtidb::api::Manifest manifest;
-        GetLocalManifest(manifest);
+        GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
         if (GenManifest(snapshot_dir_name, record_count, cur_offset, term_) == 0) {
             if (manifest.has_name() && manifest.name() != snapshot_dir) {
                 PDLOG(DEBUG, "delete old checkpoint[%s]", manifest.name().c_str());

@@ -41,7 +41,6 @@ public:
     virtual bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) override;
 
     void RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table);
-    bool RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, uint64_t& latest_offset);
 
     virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) override;
 
