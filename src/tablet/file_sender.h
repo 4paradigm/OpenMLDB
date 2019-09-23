@@ -17,7 +17,7 @@ namespace tablet {
 class FileSender {
 
 public:
-    FileSender(uint32_t tid, uint32_t pid, const std::string& endpoint);
+    FileSender(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode, const std::string& endpoint);
     ~FileSender();
     bool Init();
     int SendFile(const std::string& file_name, const std::string& dir_name, const std::string& full_path);
@@ -32,6 +32,7 @@ public:
 private:
     uint32_t tid_;
     uint32_t pid_;
+    ::rtidb::common::StorageMode storage_mode_;
     std::string endpoint_;
     uint32_t cur_try_time_;
     uint32_t max_try_time_;

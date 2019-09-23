@@ -40,6 +40,7 @@ namespace storage {
 
 const std::string SNAPSHOT_SUBFIX=".sdb";
 const uint32_t KEY_NUM_DISPLAY = 1000000;
+const std::string MANIFEST = "MANIFEST";
 
 MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part): Snapshot(tid, pid),
      log_part_(log_part) {}
@@ -61,7 +62,7 @@ bool MemTableSnapshot::Init() {
 bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
-    int ret = GetLocalManifest(manifest);
+    int ret = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (ret == -1) {
         return false;
     }
@@ -69,115 +70,6 @@ bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_of
         RecoverFromSnapshot(manifest.name(), manifest.count(), table);
         latest_offset = manifest.offset();
         offset_ = latest_offset;
-    }
-    return RecoverFromBinlog(table, manifest.offset(), latest_offset);
-}
-
-bool MemTableSnapshot::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset,
-                                 uint64_t& latest_offset) {
-    PDLOG(INFO, "start recover table tid %u, pid %u from binlog with start offset %lu",
-            table->GetId(), table->GetPid(), offset);
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
-    log_reader.SetOffset(offset);
-    ::rtidb::api::LogEntry entry;
-    uint64_t cur_offset = offset;
-    std::string buffer;
-    uint64_t succ_cnt = 0;
-    uint64_t failed_cnt = 0;
-    uint64_t consumed = ::baidu::common::timer::now_time();
-    int last_log_index = log_reader.GetLogIndex();
-    bool reach_end_log = true;
-    while (true) {
-        buffer.clear();
-        ::rtidb::base::Slice record;
-        ::rtidb::base::Status status = log_reader.ReadNextRecord(&record, &buffer);
-        if (status.IsWaitRecord()) {
-            int end_log_index = log_reader.GetEndLogIndex();
-            int cur_log_index = log_reader.GetLogIndex();
-            if (end_log_index >= 0 && end_log_index > cur_log_index) {
-                log_reader.RollRLogFile();
-                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] end_log_index[%d] cur_offset[%lu]", 
-                                tid_, pid_, cur_log_index, end_log_index, cur_offset);
-                continue;
-            }
-            consumed = ::baidu::common::timer::now_time() - consumed;
-            PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
-                       tid_, pid_, succ_cnt, failed_cnt, consumed);
-            reach_end_log = false;
-            break;
-        }
-        if (status.IsEof()) {
-            if (log_reader.GetLogIndex() != last_log_index) {
-                last_log_index = log_reader.GetLogIndex();
-                continue;
-            }
-            break;
-        }
-
-        if (!status.ok()) {
-            failed_cnt++;
-            continue;
-        }
-        bool ok = entry.ParseFromString(record.ToString());
-        if (!ok) {
-            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-                        ::rtidb::base::DebugString(record.ToString()).c_str());
-            failed_cnt++;
-            continue;
-        }
-
-        if (cur_offset >= entry.log_index()) {
-            PDLOG(DEBUG, "offset %lu has been made snapshot", entry.log_index());
-            continue;
-        }
-
-        if (cur_offset + 1 != entry.log_index()) {
-            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
-                  cur_offset, entry.log_index(), tid_, pid_);
-        }
-        
-        if (entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete) {
-            if (entry.dimensions_size() == 0) {
-                PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid_, pid_, entry.log_index());
-            } else {
-                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
-            }
-        } else {
-            table->Put(entry);
-        }
-        cur_offset = entry.log_index();
-        succ_cnt++;
-        if (succ_cnt % 100000 == 0) {
-            PDLOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
-                    succ_cnt, failed_cnt, tid_, pid_);
-        }
-        if (succ_cnt % FLAGS_gc_on_table_recover_count == 0) {
-            table->SchedGc();
-        }
-    }
-    latest_offset = cur_offset;
-    if (!reach_end_log) {
-        int log_index = log_reader.GetLogIndex();
-        if (log_index < 0) {
-            PDLOG(INFO, "no binglog available. tid[%u] pid[%u]", tid_, pid_);
-            return true;
-        }
-        uint64_t pos = log_reader.GetLastRecordEndOffset();
-        PDLOG(DEBUG, "last record end offset[%lu] tid[%u] pid[%u]", pos, tid_, pid_);
-        std::string full_path = log_path_ + "/" +
-                            ::rtidb::base::FormatToString(log_index, FLAGS_binlog_name_length) + ".log";
-        FILE* fd = fopen(full_path.c_str(), "rb+");
-        if (fd == NULL) {
-            PDLOG(WARNING, "fail to open file %s", full_path.c_str());
-            return false;
-        }
-        if (fseek(fd, pos, SEEK_SET) != 0) {
-            PDLOG(WARNING, "fail to seek. file[%s] pos[%lu]", full_path.c_str(), pos);
-            return false;
-        }
-        WriteHandle wh(full_path, fd, pos);
-        wh.EndLog();
-        PDLOG(INFO, "append endlog record ok. file[%s]", full_path.c_str());
     }
     return true;
 }
@@ -461,7 +353,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     uint64_t expired_key_num = 0;
     uint64_t deleted_key_num = 0;
     uint64_t last_term = 0;
-    int result = GetLocalManifest(manifest);
+    int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (result == 0) {
         // filter old snapshot
         if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num, deleted_key_num) < 0) {

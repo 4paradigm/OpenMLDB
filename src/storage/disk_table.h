@@ -263,8 +263,6 @@ public:
     virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
             const std::string& value) override;
 
-    virtual bool Put(const ::rtidb::api::LogEntry& entry) override;
-
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value);
 
     bool Get(const std::string& pk, uint64_t ts, std::string& value);
@@ -287,6 +285,10 @@ public:
 
     uint64_t GetOffset() {
         return offset_.load(std::memory_order_relaxed);
+    }
+
+    void SetOffset(uint64_t offset) {
+        offset_.store(offset, std::memory_order_relaxed);
     }
 
     inline std::map<std::string, uint32_t>& GetMapping() {
