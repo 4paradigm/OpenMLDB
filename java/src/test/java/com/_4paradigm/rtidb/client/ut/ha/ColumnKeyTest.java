@@ -136,7 +136,8 @@ public class ColumnKeyTest extends TestCaseBase {
         nsc.dropTable(name);
     }
 
-    public void testPutCombinedKey() {
+    @Test(dataProvider = "StorageMode")
+    public void testPutCombinedKey(Common.StorageMode sm) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
@@ -148,6 +149,7 @@ public class ColumnKeyTest extends TestCaseBase {
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
                 .addColumnKey(colKey1)
+                .setStorageMode(sm)
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
@@ -388,8 +390,8 @@ public class ColumnKeyTest extends TestCaseBase {
         }
     }
 
-    @Test
-    public void testTs() {
+    @Test(dataProvider = "StorageMode")
+    public void testTs(Common.StorageMode sm) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
@@ -403,6 +405,7 @@ public class ColumnKeyTest extends TestCaseBase {
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
                 .addColumnKey(colKey1).addColumnKey(colKey2)
+                .setStorageMode(sm)
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
