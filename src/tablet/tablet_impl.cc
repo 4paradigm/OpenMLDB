@@ -96,9 +96,16 @@ bool TabletImpl::Init() {
     }else {
         PDLOG(INFO, "zk cluster disabled");
     }
-    bool ok = ::rtidb::base::MkdirRecur(FLAGS_recycle_bin_root_path);
-    if (!ok) {
+    if (!::rtidb::base::MkdirRecur(FLAGS_recycle_bin_root_path)) {
         PDLOG(WARNING, "fail to create recycle bin path %s", FLAGS_recycle_bin_root_path.c_str());
+        return false;
+    }
+    if (!::rtidb::base::MkdirRecur(FLAGS_recycle_hdd_bin_root_path)) {
+        PDLOG(WARNING, "fail to create hdd recycle bin path %s", FLAGS_recycle_hdd_bin_root_path.c_str());
+        return false;
+    }
+    if (!::rtidb::base::MkdirRecur(FLAGS_recycle_ssd_bin_root_path)) {
+        PDLOG(WARNING, "fail to create ssd recycle bin path %s", FLAGS_recycle_ssd_bin_root_path.c_str());
         return false;
     }
     if (FLAGS_make_snapshot_time < 0 || FLAGS_make_snapshot_time > 23) {
