@@ -42,29 +42,6 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table> > > Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator> > > Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot> > > Snapshots;
 
-class FileReceiver {
-public:
-    FileReceiver(const std::string& file_name,
-                 const std::string& db_root_path,
-                 uint32_t tid, uint32_t pid);
-    ~FileReceiver();
-    FileReceiver(const FileReceiver&) = delete;
-    FileReceiver& operator = (const FileReceiver&) = delete;
-    int Init();
-    int WriteData(const std::string& data, uint64_t block_id);
-    void SaveFile();
-    uint64_t GetBlockId();
-
-private:
-    std::string file_name_;
-    uint32_t tid_;
-    uint32_t pid_;
-    uint64_t size_;
-    uint64_t block_id_;
-    FILE* file_;
-    std::string db_root_path_;
-};
-
 class TabletImpl : public ::rtidb::api::TabletServer {
 
 public:
@@ -355,6 +332,8 @@ private:
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+    int LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::rtidb::api::TableMeta& table_meta,
+                std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
 
@@ -370,13 +349,15 @@ private:
     
     // sync log data from page cache to disk 
     void SchedSyncDisk(uint32_t tid, uint32_t pid);
+
     // sched replicator to delete binlog
     void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
     bool CheckGetDone(::rtidb::api::GetType type, 
                       uint64_t ts, uint64_t target_ts); 
 
-    bool ChooseDBRootPath(std::shared_ptr<Table> table, 
+    bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
+            const ::rtidb::common::StorageMode& mode,
             std::string& path);
 
     bool ChooseMemDBRootPath(uint32_t tid, uint32_t pid,
@@ -385,7 +366,8 @@ private:
     bool ChooseMemRecycleBinRootPath(uint32_t tid,
             uint32_t pid, std::string& path);
 
-    bool ChooseRecycleBinRootPath(std::shared_ptr<Table> table,
+    bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
+            const ::rtidb::common::StorageMode& mode,
             std::string& path);
 
     bool ChooseSSDRootPath(uint32_t tid, 
@@ -399,7 +381,6 @@ private:
 
     bool ChooseRecycleHDDBinRootPath(uint32_t tid, 
             uint32_t pid, std::string& path);
-
 
 private:
     Tables tables_;

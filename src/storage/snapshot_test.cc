@@ -8,6 +8,7 @@
 #include "gtest/gtest.h"
 #include "logging.h"
 #include "base/file_util.h"
+#include "storage/binlog.h"
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "storage/disk_table_snapshot.h"
@@ -120,7 +121,7 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     mapping.insert(std::make_pair("idx0", 0));
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>("test", 4, 3, 8, mapping, 0);
     table->Init();
-    uint64_t offset_value;
+    uint64_t offset_value = 0;;
     int ret = snapshot.MakeSnapshot(table, offset_value);
     ASSERT_EQ(0, ret); 
     RollWLogFile(&wh, log_part, binlog_dir, binlog_index, offset);
@@ -166,9 +167,12 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
             ::rtidb::base::Status status = wh->Write(slice1);
         }
     }
-
-    ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(31, offset);
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(31, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
@@ -243,8 +247,12 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     table->Init();
     MemTableSnapshot snapshot(4, 4, log_part, FLAGS_db_root_path);
     snapshot.Init();
-    ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(10, offset);
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(10, latest_offset);
 
     {
         Ticket ticket;
@@ -312,8 +320,12 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     table->Init();
     MemTableSnapshot snapshot(3, 3, log_part, FLAGS_db_root_path);
     snapshot.Init();
-    ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(10, offset);
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(10, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
@@ -333,6 +345,7 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
 
 TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     std::string snapshot_dir = FLAGS_db_root_path + "/3_2/snapshot";
+    std::string binlog_dir = FLAGS_db_root_path + "/3_2/binlog";
 
     ::rtidb::base::MkdirRecur(snapshot_dir);
     {
@@ -418,9 +431,12 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     ASSERT_TRUE(snapshot.Init());
     int ret = snapshot.GenManifest("20170609.sdb", 3, 2, 5);
     ASSERT_EQ(0, ret);
-    uint64_t offset = 0;
-    ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(2, offset);
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
+    ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(2, latest_offset);
     {
         Ticket ticket;
         TableIterator* it = table->NewIterator(0, "card0", ticket);
@@ -907,8 +923,12 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     table->Init();
     MemTableSnapshot snapshot(tid, 0, log_part, FLAGS_db_root_path);
     snapshot.Init();
+    uint64_t snapshot_offset = 0;
+    uint64_t latest_offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(30, offset);
+    Binlog binlog(log_part, binlog_dir);
+    binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
+    ASSERT_EQ(30, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key_new", ticket);
     it->Seek(1);
