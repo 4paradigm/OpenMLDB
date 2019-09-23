@@ -15,6 +15,7 @@
 #include "storage/disk_table_snapshot.h"
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"
+#include "tablet/file_receiver.h"
 #include "thread_pool.h"
 #include "base/set.h"
 #include "zk/zk_client.h"
@@ -347,11 +348,6 @@ private:
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid,
                         std::shared_ptr<::rtidb::api::TaskInfo> task);
 
-    int SendFile(const std::string& endpoint, uint32_t tid, uint32_t pid, const std::string& file_name);
-
-    int DataWrite(::rtidb::api::TabletServer_Stub& stub, uint32_t tid, uint32_t pid,
-                  const std::string& file_name, char* buffer, size_t len, uint64_t block_id, uint64_t limit_time);
-
     void SchedMakeSnapshot();
 
     void CheckZkClient();
@@ -380,11 +376,30 @@ private:
     bool CheckGetDone(::rtidb::api::GetType type, 
                       uint64_t ts, uint64_t target_ts); 
 
-    void ChooseDBRootPath(uint32_t tid, 
+    bool ChooseDBRootPath(std::shared_ptr<Table> table, 
+            std::string& path);
+
+    bool ChooseMemDBRootPath(uint32_t tid, uint32_t pid,
+            std::string& path);
+
+    bool ChooseMemRecycleBinRootPath(uint32_t tid,
             uint32_t pid, std::string& path);
 
-    void ChooseRecycleBinRootPath(uint32_t tid, 
+    bool ChooseRecycleBinRootPath(std::shared_ptr<Table> table,
+            std::string& path);
+
+    bool ChooseSSDRootPath(uint32_t tid, 
             uint32_t pid, std::string& path);
+
+    bool ChooseRecycleSSDBinRootPath(uint32_t tid, 
+            uint32_t pid, std::string& path);
+
+    bool ChooseHDDRootPath(uint32_t tid, 
+            uint32_t pid, std::string& path);
+
+    bool ChooseRecycleHDDBinRootPath(uint32_t tid, 
+            uint32_t pid, std::string& path);
+
 
 private:
     Tables tables_;
@@ -402,7 +417,11 @@ private:
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
     std::vector<std::string> db_root_paths_;
+    std::vector<std::string> ssd_root_paths_;
+    std::vector<std::string> hdd_root_paths_;
     std::vector<std::string> recycle_bin_root_paths_;
+    std::vector<std::string> recycle_ssd_bin_root_paths_;
+    std::vector<std::string> recycle_hdd_bin_root_paths_;
 };
 
 }

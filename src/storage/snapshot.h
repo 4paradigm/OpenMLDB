@@ -18,6 +18,7 @@ class Snapshot {
 
 public:
     Snapshot(uint32_t tid, uint32_t pid) : tid_(tid), pid_(pid), offset_(0), making_snapshot_(false) {}
+    virtual ~Snapshot() = default;
     virtual bool Init() = 0;
     virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) = 0;
     virtual bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) = 0;

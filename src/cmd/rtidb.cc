@@ -2944,51 +2944,13 @@ void HandleClientSetTTLClock(const std::vector<std::string> parts, ::rtidb::clie
 
 }
 
-void AddPrintRow(const ::rtidb::api::TableStatus& table_status, ::baidu::common::TPrinter& tp) {
-    std::vector<std::string> row;
-    row.push_back(std::to_string(table_status.tid()));
-    row.push_back(std::to_string(table_status.pid()));
-    row.push_back(std::to_string(table_status.offset()));
-    row.push_back(::rtidb::api::TableMode_Name(table_status.mode()));
-    row.push_back(::rtidb::api::TableState_Name(table_status.state()));
-    if (table_status.is_expire()) {
-        row.push_back("true");
-    } else {
-        row.push_back("false");
-    }
-    if (table_status.ttl_type() == ::rtidb::api::TTLType::kLatestTime) {
-        row.push_back(std::to_string(table_status.ttl()));
-    } else {
-        row.push_back(std::to_string(table_status.ttl()) + "min");
-    }
-    row.push_back(std::to_string(table_status.time_offset()) + "s");
-    row.push_back(::rtidb::base::HumanReadableString(table_status.record_byte_size() + table_status.record_idx_byte_size()));
-    row.push_back(::rtidb::api::CompressType_Name(table_status.compress_type()));
-    row.push_back(std::to_string(table_status.skiplist_height()));
-    tp.AddRow(row);
-}
-
 void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
-    std::vector<std::string> row;
-    row.push_back("tid");
-    row.push_back("pid");
-    row.push_back("offset");
-    row.push_back("mode");
-    row.push_back("state");
-    row.push_back("enable_expire");
-    row.push_back("ttl");
-    row.push_back("ttl_offset");
-    row.push_back("memused");
-    row.push_back("compress_type");
-    row.push_back("skiplist_height");
-    ::baidu::common::TPrinter tp(row.size());
-    tp.AddRow(row);
+    std::vector<::rtidb::api::TableStatus> status_vec;
     if (parts.size() == 3) {
         ::rtidb::api::TableStatus table_status;
         try {
             if (client->GetTableStatus(boost::lexical_cast<uint32_t>(parts[1]), boost::lexical_cast<uint32_t>(parts[2]), table_status)) {
-                AddPrintRow(table_status, tp);
-                tp.Print(true);
+                status_vec.push_back(table_status);
             } else {
                 std::cout << "gettablestatus failed" << std::endl;
             }
@@ -3003,13 +2965,13 @@ void HandleClientGetTableStatus(const std::vector<std::string> parts, ::rtidb::c
             return;
         }
         for (int idx = 0; idx < response.all_table_status_size(); idx++) {
-            AddPrintRow(response.all_table_status(idx), tp);
+            status_vec.push_back(response.all_table_status(idx));
         }
-        tp.Print(true);
     } else {
         std::cout << "Bad gettablestatus format" << std::endl;
         return;
     }
+    ::rtidb::base::PrintTableStatus(status_vec);
 }
 
 void HandleClientMakeSnapshot(const std::vector<std::string> parts, ::rtidb::client::TabletClient* client) {
