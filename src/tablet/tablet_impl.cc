@@ -1269,7 +1269,7 @@ void TabletImpl::Count(RpcController* controller,
         return;
     }
     if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-        return CountFromDiskTable(table, reequest, response);
+        return CountFromDiskTable(table, request, response);
     }
     uint32_t index = 0;
     int ts_index = -1;
@@ -1463,6 +1463,9 @@ void TabletImpl::Traverse(RpcController* controller,
         response->set_msg("table is loading");
         return;
     }
+    if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
+        return TraverseFromDiskTable(table, request, response);
+    }
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
@@ -1534,6 +1537,108 @@ void TabletImpl::Traverse(RpcController* controller,
         value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
         total_block_size += last_pk.length() + value.size();
         it->Next();
+        scount ++;
+    }
+    delete it;
+    uint32_t total_size = scount * (8+4+4) + total_block_size;
+    std::string* pairs = response->mutable_pairs();
+    if (scount <= 0) {
+        pairs->resize(0);
+    } else {
+        pairs->resize(total_size);
+    }
+    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
+    uint32_t offset = 0;
+    for (const auto& kv : value_map) {
+        for (const auto& pair : kv.second) {
+            PDLOG(DEBUG, "encode pk %s ts %lu value %s size %u", kv.first.c_str(), pair.first, pair.second.data(), pair.second.size());
+            ::rtidb::base::EncodeFull(kv.first, pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
+            offset += (4 + 4 + 8 + kv.first.length() + pair.second.size());
+        }
+    }
+    PDLOG(DEBUG, "traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
+    response->set_code(0);
+    response->set_count(scount);
+    response->set_pk(last_pk);
+    response->set_ts(last_time);
+}
+
+void TabletImpl::TraverseFromDiskTable(std::shared_ptr<Table> disk_table,
+    const ::rtidb::api::TraverseRequest* request,
+    ::rtidb::api::TraverseResponse* response) {
+    ::rtidb::storage::TableIterator* it = NULL;
+    uint32_t index = 0;
+    int32_t ts_index = -1;
+    if (request->has_idx_name() && request->idx_name().size() > 0) {
+        std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
+        if (iit == disk_table->GetMapping().end()) {
+            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
+                  request->tid(), request->pid());
+            response->set_code(108);
+            response->set_msg("idx name not found");
+            return;
+        }
+        index = iit->second;
+        if (request->has_ts_name() && request->ts_name().size() > 0) {
+            auto iter = disk_table->GetTSMapping().find(request->ts_name());
+            if (iter == disk_table->GetTSMapping().end()) {
+                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                      request->tid(), request->pid());
+                response->set_code(137);
+                response->set_msg("ts name not found");
+                return;
+            }
+            ts_index = iter->second;
+        }
+        it = disk_table->NewTraverseIterator(index, ts_index);
+        if (it == NULL) {
+            response->set_code(137);
+            response->set_msg("ts name not found, when create iterator");
+            return;
+        }
+    } else {
+        it = disk_table->NewTraverseIterator(index);
+    }
+    uint64_t last_time = 0;
+    std::string last_pk;
+    if (request->has_pk() && request->pk().size() > 0) {
+        PDLOG(DEBUG, "tid %u, pid %u seek pk %s ts %lu",
+              request->tid(), request->pid(), request->pk().c_str(), request->ts());
+        it->Seek(request->pk(), request->ts());
+        last_pk = request->pk();
+        last_time = request->ts();
+    } else {
+        PDLOG(DEBUG, "tid %u, pid %u seek to first", request->tid(), request->pid());
+        it->SeekToFirst();
+    }
+    std::map<std::string, std::vector<std::pair<uint64_t, rtidb::base::Slice>>> value_map;
+    uint32_t total_block_size = 0;
+    bool remove_duplicated_record = false;
+    if (request->has_enable_remove_duplicated_record()) {
+        remove_duplicated_record = request->enable_remove_duplicated_record();
+    }
+    uint32_t scount = 0;
+    for (;it->Valid(); it->Next()) {
+        if (request->limit() > 0 && scount > request->limit() - 1) {
+            PDLOG(DEBUG, "reache the limit %u ", request->limit());
+            break;
+        }
+        PDLOG(DEBUG, "traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
+        // skip duplicate record
+        if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
+            PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
+            it->Next();
+            continue;
+        }
+        last_pk = it->GetPK();
+        last_time = it->GetKey();
+        if (value_map.find(last_pk) == value_map.end()) {
+            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, rtidb::base::Slice>>()));
+            value_map[last_pk].reserve(request->limit());
+        }
+        rtidb::base::Slice value = it->GetValue();
+        value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
+        total_block_size += last_pk.length() + value.size();
         scount ++;
     }
     delete it;
