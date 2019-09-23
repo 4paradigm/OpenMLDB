@@ -394,9 +394,6 @@ class TestCreateTableByNsClient(TestCaseBase):
             tid = rs1.keys()[0][1]
             for edp in (self.leader, self.slave1, self.slave2):
                 (schema, column_key) = self.showschema(edp, tid, 2)
-                index_set = []
-                for arr in column_key:
-                    index_set.append(arr[1])
                 infoLogger.info(schema)
                 self.assertEqual(len(schema), len(column_descs))
                 idx = 0
@@ -405,7 +402,9 @@ class TestCreateTableByNsClient(TestCaseBase):
                     type = i[2][1:-1]
                     self.assertEqual(schema[idx][2], type)
                     if i[3] == 'true':
-                        self.assertTrue(key in index_set)
+                        self.assertEqual(schema[idx][3], "yes")
+                    else:
+                        self.assertEqual(schema[idx][3], "no")
                     idx += 1
         self.ns_drop(self.ns_leader, name)
 
