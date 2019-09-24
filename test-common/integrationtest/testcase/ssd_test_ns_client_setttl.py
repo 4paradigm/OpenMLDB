@@ -17,8 +17,33 @@ class TestSetTTL(TestCaseBase):
         测试setttl函数，正常修改ttl值，查看返回值
         :return:
         """
-        rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
-        rs_latest1 = self.ns_create_cmd(self.ns_leader, 'latest1', 'latest:10', str(8), str(3), '')
+        # rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
+
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name": "t1",
+            "ttl": 10,
+            "partition_num": 8,
+            "replica_num": 3,
+            "storage_mode": "kSSD",
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs_absolute1 = self.ns_create(self.ns_leader, metadata_path)
+
+        # rs_latest1 = self.ns_create_cmd(self.ns_leader, 'latest1', 'latest:10', str(8), str(3), '')
+
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name": "latest1",
+            "ttl_type": "kLatestTime",
+            "ttl": 10,
+            "partition_num": 8,
+            "replica_num": 3,
+            "storage_mode": "kSSD",
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs_latest1 = self.ns_create(self.ns_leader, metadata_path)
+
         self.assertIn('Create table ok', rs_absolute1)
         self.assertIn('Create table ok', rs_latest1)
 
@@ -40,8 +65,32 @@ class TestSetTTL(TestCaseBase):
         测试修改后的ttl值，scan后的数据被删除。两种类型latest和absolute都要测试
         :return:
         """
-        rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
-        rs_latest1 = self.ns_create_cmd(self.ns_leader, 'latest1', 'latest:10', str(8), str(3), '')
+        # rs_absolute1 = self.ns_create_cmd(self.ns_leader, 't1', '10', str(8), str(3), '')
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name": "t1",
+            "ttl": 10,
+            "partition_num": 8,
+            "replica_num": 3,
+            "storage_mode": "kSSD",
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs_absolute1 = self.ns_create(self.ns_leader, metadata_path)
+
+        # rs_latest1 = self.ns_create_cmd(self.ns_leader, 'latest1', 'latest:10', str(8), str(3), '')
+
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name": "latest1",
+            "ttl_type": "kLatestTime",
+            "ttl": 10,
+            "partition_num": 8,
+            "replica_num": 3,
+            "storage_mode": "kSSD",
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs_latest1 = self.ns_create(self.ns_leader, metadata_path)
+
         self.assertIn('Create table ok', rs_absolute1)
         self.assertIn('Create table ok', rs_latest1)
         rs_absolute2 = self.ns_setttl(self.ns_leader, 'setttl', 't1', 'absolute', 1)
@@ -116,6 +165,7 @@ class TestSetTTL(TestCaseBase):
                 "name": name,
                 "ttl": 100,
                 "ttl_type": "kLatestTime",
+                "storage_mode": "kSSD",
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},

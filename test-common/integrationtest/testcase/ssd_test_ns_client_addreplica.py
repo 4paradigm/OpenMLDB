@@ -35,9 +35,7 @@ class TestAddReplicaNs(TestCaseBase):
         #     ('table_partition', '"{}"'.format(self.slave2), '"0"', 'false'),
         #     ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),)
         # utils.gen_table_metadata_file(m, metadata_path)
-        # rs1 = self.ns_create(self.ns_leader, metadata_path)
 
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
             "name": name,
             "ttl": 144000,
@@ -47,21 +45,10 @@ class TestAddReplicaNs(TestCaseBase):
                 {"endpoint": self.slave2,"pid_group": "0","is_leader": "false"},
                 {"endpoint": self.slave2,"pid_group": "2-3","is_leader": "false"},
             ],
-            # "column_desc":[
-            #     {"name": "card", "type": "string", "add_ts_idx": "true"},
-            #     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
-            #     {"name": "amt", "type": "double", "add_ts_idx": "false"},
-            #     {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 1000},
-            #     {"name": "ts2", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 100},
-            # ],
-            # "column_key":[
-            #     {"index_name":"card", "ts_name":["ts1", "ts2"]},
-            #     {"index_name":"mcc", "ts_name":["ts2"]},
-            # ]
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
-        rs1 = self.ns_create(self.ns_leader, metadata_path)
 
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
 
         rs2 = self.showtable(self.ns_leader, name)
@@ -102,11 +89,20 @@ class TestAddReplicaNs(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         infoLogger.info(name)
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
         rs2 = self.showtable(self.ns_leader, name)
@@ -133,11 +129,20 @@ class TestAddReplicaNs(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"tname{}"'.format(time.time())
         infoLogger.info(name)
-        m = utils.gen_table_metadata(
-            name, None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     name, None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
 
@@ -166,10 +171,21 @@ class TestAddReplicaNs(TestCaseBase):
         name = 't{}'.format(time.time())
         infoLogger.info(name)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-                                     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-                                     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'))
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+        #                              ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #                              ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'))
+        # utils.gen_table_metadata_file(m, metadata_path)
+        table_meta = {
+            "name": name,
+            "ttl_type": "kLatestTime",
+            "ttl": 100,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
 
@@ -197,9 +213,19 @@ class TestAddReplicaNs(TestCaseBase):
         name = 't{}'.format(time.time())
         infoLogger.info(name)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-                                     ('table_partition', '"{}"'.format(self.leader), '"0-5"', 'true'))
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+        #                              ('table_partition', '"{}"'.format(self.leader), '"0-5"', 'true'))
+        # utils.gen_table_metadata_file(m, metadata_path)
+        table_meta = {
+            "name": name,
+            "ttl_type": "kLatestTime",
+            "ttl": 100,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-5","is_leader": "true"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
         rs2 = self.ns_addreplica(self.ns_leader, name, pid_group, self.slave1)
@@ -241,10 +267,21 @@ class TestAddReplicaNs(TestCaseBase):
         name = 't{}'.format(time.time())
         infoLogger.info(name)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
-                                     ('table_partition', '"{}"'.format(self.leader), '"0-8"', 'true'),
-                                     ('table_partition', '"{}"'.format(self.slave1), '"0-5"', 'false'))
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata('"{}"'.format(name), '"kLatestTime"', 100, 8,
+        #                              ('table_partition', '"{}"'.format(self.leader), '"0-8"', 'true'),
+        #                              ('table_partition', '"{}"'.format(self.slave1), '"0-5"', 'false'))
+        # utils.gen_table_metadata_file(m, metadata_path)
+        table_meta = {
+            "name": name,
+            "ttl_type": "kLatestTime",
+            "ttl": 100,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-8","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-5","is_leader": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
         rs2 = self.ns_addreplica(self.ns_leader, name, pid_group, endpoint)
@@ -260,7 +297,17 @@ class TestAddReplicaNs(TestCaseBase):
         infoLogger.info(name)
         endponints = self.get_tablet_endpoints()
 
-        rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
+          # rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "partition_num": 1,
+            "replica_num": 2,
+            "storage_mode": "kSSD",
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok' ,rs1)
         number = 200
         for i in range(number):
@@ -323,7 +370,17 @@ class TestAddReplicaNs(TestCaseBase):
         time.sleep(5)
         self.get_new_ns_leader()
 
-        rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
+        # rs1 = self.ns_create_cmd(self.ns_leader, name, 144000, 1, 2, '')
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "partition_num": 1,
+            "replica_num": 2,
+            "storage_mode": "kSSD",
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
         time.sleep(1)
         number = 20
