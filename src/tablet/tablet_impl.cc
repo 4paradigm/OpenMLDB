@@ -494,7 +494,7 @@ void TabletImpl::Get(RpcController* controller,
             return;
         }
         ts_index = iter->second;
-    }    
+    }
 
     ::rtidb::storage::Ticket ticket;
     ::rtidb::storage::TableIterator* it = NULL;
@@ -509,6 +509,7 @@ void TabletImpl::Get(RpcController* controller,
         response->set_msg("key not found");
         return;
     }
+
     uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     std::string* value = response->mutable_value(); 
     uint64_t ts = 0;

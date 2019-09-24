@@ -28,6 +28,10 @@
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
+DECLARE_string(hdd_root_path);
+DECLARE_string(recycle_bin_root_path);
+DECLARE_string(recycle_ssd_bin_root_path);
+DECLARE_string(recycle_hdd_bin_root_path);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(gc_interval);
@@ -55,7 +59,6 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
             uint64_t ttl, uint64_t start_ts,
             uint32_t tid, uint32_t pid,
             const ::rtidb::common::StorageMode& mode) {
-
     ::rtidb::api::CreateTableRequest crequest;
     ::rtidb::api::TableMeta* table_meta = crequest.mutable_table_meta();
     table_meta->set_name("table");
@@ -109,16 +112,19 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
         request.set_pid(pid);
         ::rtidb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
-        dim->set_key("card" + std::to_string(i % 100));
+        std::string k1 = "card" + std::to_string(i % 100);
+        dim->set_key(k1);
         dim = request.add_dimensions();
         dim->set_idx(1);
-        dim->set_key("mcc" + std::to_string(i));
+        std::string k2 = "mcc" + std::to_string(i % 100);
+        dim->set_key(k2);
         ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
         ts->set_idx(0);
-        ts->set_ts(start_ts + i);
+        uint64_t time = start_ts + i;
+        ts->set_ts(time);
         ts = request.add_ts_dimensions();
         ts->set_idx(1);
-        ts->set_ts(start_ts + i);
+        ts->set_ts(time);
         std::string value = "value" + std::to_string(i);
         request.set_value(value);
         ::rtidb::api::PutResponse response;
@@ -127,17 +133,72 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
         tablet.Put(NULL, &request, &response,
                 &closure);
         ASSERT_EQ(0, response.code());
+
+        {
+            ::rtidb::api::GetRequest request;
+            request.set_tid(tid);
+            request.set_pid(pid);
+            request.set_key(k1);
+            request.set_ts(time);
+            request.set_idx_name("card");
+            ::rtidb::api::GetResponse response;
+            MockClosure closure;
+            tablet.Get(NULL, &request, &response, &closure);
+            ASSERT_EQ(0, response.code());
+            ASSERT_EQ(value.c_str(), response.value());
+        }
+
+        {
+            ::rtidb::api::GetRequest request;
+            request.set_tid(tid);
+            request.set_pid(pid);
+            request.set_key(k2);
+            request.set_ts(time);
+            request.set_idx_name("mcc");
+            ::rtidb::api::GetResponse response;
+            MockClosure closure;
+            tablet.Get(NULL, &request, &response, &closure);
+            ASSERT_EQ(0, response.code());
+            ASSERT_EQ(value.c_str(), response.value());
+        }
     }
 }
 
-class TabletSSDTest : public ::testing::Test {
+class TabletMultiPathTest : public ::testing::Test {
 
 public:
-    TabletSSDTest() {}
-    ~TabletSSDTest() {}
+    TabletMultiPathTest() {}
+    ~TabletMultiPathTest() {}
 };
 
-TEST_F(TabletSSDTest, Test_write){
+TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute){
+    ::rtidb::tablet::TabletImpl tablet_impl;
+    tablet_impl.Init();
+    for (uint32_t i = 0; i < 100; i++) {
+        CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kAbsoluteTime, 0, 1000,
+            i+1, i % 10, ::rtidb::common::StorageMode::kMemory);
+    }
+}
+
+TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest){
+    ::rtidb::tablet::TabletImpl tablet_impl;
+    tablet_impl.Init();
+    for (uint32_t i = 0; i < 100; i++) {
+        CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10, 1000,
+            i+1, i % 10, ::rtidb::common::StorageMode::kMemory);
+    }
+}
+
+TEST_F(TabletMultiPathTest, HDD_Test_read_write){
+    ::rtidb::tablet::TabletImpl tablet_impl;
+    tablet_impl.Init();
+    for (uint32_t i = 0; i < 100; i++) {
+        CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10, 1000,
+            i+1, i % 10, ::rtidb::common::StorageMode::kHDD);
+    }
+}
+
+TEST_F(TabletMultiPathTest, SSD_Test_read_write){
     ::rtidb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init();
     for (uint32_t i = 0; i < 100; i++) {
@@ -152,7 +213,14 @@ TEST_F(TabletSSDTest, Test_write){
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand (time(NULL));
-    FLAGS_ssd_root_path="/tmp/ssd"+::rtidb::tablet::GenRand()+",/tmp/ssd" + ::rtidb::tablet::GenRand();
+    std::string k1 = ::rtidb::tablet::GenRand();
+    std::string k2 = ::rtidb::tablet::GenRand();
+    FLAGS_ssd_root_path="/tmp/ssd"+k1+",/tmp/ssd" + k2;
+    FLAGS_db_root_path="/tmp/db"+k1+",/tmp/db" + k2;
+    FLAGS_hdd_root_path="/tmp/hdd"+k1+",/tmp/hdd" + k2;
+    FLAGS_recycle_bin_root_path="/tmp/recycle" +k1 +",/tmp/recycle" + k2;
+    FLAGS_recycle_ssd_bin_root_path="/tmp/ssd_recycle" +k1 +",/tmp/ssd_recycle" + k2;
+    FLAGS_recycle_hdd_bin_root_path="/tmp/hdd_recycle" +k1 +",/tmp/hdd_recycle" + k2;
     return RUN_ALL_TESTS();
 }
 
