@@ -47,17 +47,17 @@ class TestAddReplicaNs(TestCaseBase):
                 {"endpoint": self.slave2,"pid_group": "0","is_leader": "false"},
                 {"endpoint": self.slave2,"pid_group": "2-3","is_leader": "false"},
             ],
-            "column_desc":[
-                {"name": "card", "type": "string", "add_ts_idx": "true"},
-                {"name": "mcc", "type": "string", "add_ts_idx": "true"},
-                {"name": "amt", "type": "double", "add_ts_idx": "false"},
-                {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 1000},
-                {"name": "ts2", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 100},
-            ],
-            "column_key":[
-                {"index_name":"card", "ts_name":["ts1", "ts2"]},
-                {"index_name":"mcc", "ts_name":["ts2"]},
-            ]
+            # "column_desc":[
+            #     {"name": "card", "type": "string", "add_ts_idx": "true"},
+            #     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
+            #     {"name": "amt", "type": "double", "add_ts_idx": "false"},
+            #     {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 1000},
+            #     {"name": "ts2", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 100},
+            # ],
+            # "column_key":[
+            #     {"index_name":"card", "ts_name":["ts1", "ts2"]},
+            #     {"index_name":"mcc", "ts_name":["ts2"]},
+            # ]
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
