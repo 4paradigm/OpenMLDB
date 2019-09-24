@@ -154,9 +154,9 @@ class TestCaseBase(unittest.TestCase):
         return rs.replace(self.welcome, '').replace('>', '')
 
     @staticmethod
-    def get_manifest(nodepath, tid, pid):
+    def get_manifest_by_realpath(realpath, tid, pid):
         manifest_dict = {}
-        with open('{}/db/{}_{}/snapshot/MANIFEST'.format(nodepath, tid, pid)) as f:
+        with open('{}/{}_{}/snapshot/MANIFEST'.format(realpath, tid, pid)) as f:
             for l in f:
                 if 'offset: ' in l:
                     manifest_dict['offset'] = l.split(':')[1].strip()
@@ -167,6 +167,11 @@ class TestCaseBase(unittest.TestCase):
                 elif 'term: ' in l:
                     manifest_dict['term'] = l.split(':')[1].strip()
         return manifest_dict
+
+    @staticmethod
+    def get_manifest(nodepath, tid, pid):
+        realpath = nodepath + "/db"
+        return TestCaseBase.get_manifest_by_realpath(realpath, tid, pid)
 
     @staticmethod
     def get_table_meta(nodepath, tid, pid):

@@ -184,6 +184,7 @@ int FileSender::CheckFile(const std::string& file_name, const std::string& dir_n
     check_request.set_tid(tid_);
     check_request.set_pid(pid_);
     check_request.set_file(file_name);
+    check_request.set_storage_mode(storage_mode_);
     if (!dir_name.empty()) {
         check_request.set_dir_name(dir_name);
     }
