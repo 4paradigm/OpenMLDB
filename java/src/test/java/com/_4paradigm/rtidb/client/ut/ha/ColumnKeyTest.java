@@ -38,12 +38,50 @@ public class ColumnKeyTest extends TestCaseBase {
     @DataProvider(name = "StorageMode")
     public Object[][] StorageMode() {
         return new Object[][] {
+                new Object[] { Common.StorageMode.kMemory },
                 new Object[] { Common.StorageMode.kSSD },
                 new Object[] { Common.StorageMode.kHDD },
-                new Object[] { Common.StorageMode.kMemory },
         };
     }
 
+    @Test(dataProvider = "StorageMode")
+    public void testPutNoTsCol(Common.StorageMode sm) {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2)
+                .setStorageMode(sm)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        try {
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("card", "card0");
+            data.put("mcc", "mcc0");
+            data.put("amt", 1.5);
+            tableSyncClient.put(name, 1122, data);
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.6);
+            tableSyncClient.put(name, 1234, data);
+            KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235, 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 2);
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 0);
+            Assert.assertEquals(row.length, 3);
+            Assert.assertEquals(row[0], "card0");
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+        nsc.dropTable(name);
+    }
 
     @Test(dataProvider = "StorageMode")
     public void testPutNoTs(Common.StorageMode sm) {
