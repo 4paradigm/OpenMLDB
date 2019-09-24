@@ -2098,7 +2098,7 @@ void TabletImpl::SendData(RpcController* controller,
     std::shared_ptr<FileReceiver> receiver;
     std::string db_root_path = FLAGS_db_root_path;
     if (request->has_storage_mode()) {
-        GetDBRootPath(request->storage_mode());
+        db_root_path = GetDBRootPath(request->storage_mode());
     }
     std::string path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/";
     if (request->file_name() != "table_meta.txt") {
