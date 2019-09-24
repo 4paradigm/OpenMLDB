@@ -580,13 +580,16 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         ts_index = iter->second;
     }
-    it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    if (ts_index >= 0) {
+        it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    } else {
+        it = disk_table->NewIterator(index, request->key(), ticket);
+    }
     if (it == NULL) {
         response->set_code(137);
         response->set_msg("ts name not found, when create iterator");
         return;
     }
-
 
     ::rtidb::api::GetType get_type = ::rtidb::api::GetType::kSubKeyEq;
     if (request->has_type()) {
@@ -1193,7 +1196,11 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         ts_index = iter->second;
     }
-    it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
+    if (ts_index >= 0) {
+        it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
+    } else {
+        it = disk_table->NewIterator(index, request->pk(), ticket);
+    }
     if (it == NULL) {
         response->set_code(137);
         response->set_msg("ts name not found, when create iterator");
