@@ -1085,12 +1085,13 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
 
 TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     std::string snapshot_path = FLAGS_hdd_root_path + "/1_1/snapshot/";
-    DiskTableSnapshot snapshot(1, 1, ::rtidb::common::StorageMode::kHDD);
+    DiskTableSnapshot snapshot(1, 1, ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     DiskTable* disk_table_ptr = new DiskTable("test", 1, 1, mapping, 0, 
-            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD);
+            ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::common::StorageMode::kHDD,
+            FLAGS_hdd_root_path);
     std::shared_ptr<Table> table(disk_table_ptr);
     table->Init();
     
