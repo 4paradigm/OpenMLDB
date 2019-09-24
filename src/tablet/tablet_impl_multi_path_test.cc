@@ -96,10 +96,9 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
     ::rtidb::common::ColumnKey* column_key = table_meta->add_column_key();
     column_key->set_index_name("card");
     column_key->add_ts_name("ts1");
-    column_key->add_ts_name("ts2");
     column_key = table_meta->add_column_key();
     column_key->set_index_name("mcc");
-    column_key->add_ts_name("ts1");
+    column_key->add_ts_name("ts2");
     ::rtidb::api::CreateTableResponse cresponse;
     MockClosure closure;
     tablet.CreateTable(NULL, &crequest, &cresponse,
@@ -141,6 +140,7 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
             request.set_key(k1);
             request.set_ts(time);
             request.set_idx_name("card");
+            request.set_ts_name("ts1");
             ::rtidb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
@@ -155,6 +155,7 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
             request.set_key(k2);
             request.set_ts(time);
             request.set_idx_name("mcc");
+            request.set_ts_name("ts2");
             ::rtidb::api::GetResponse response;
             MockClosure closure;
             tablet.Get(NULL, &request, &response, &closure);
