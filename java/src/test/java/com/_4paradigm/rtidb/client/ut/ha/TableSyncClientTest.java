@@ -757,9 +757,9 @@ public class TableSyncClientTest extends TestCaseBase {
             }
             int count = tableSyncClient.count(name, key, 10, 9);
             Assert.assertEquals(0, count);
-            count = tableSyncClient.count(name, key, 10, 9);
+            count = tableSyncClient.count(name, key, 10, 8);
             Assert.assertEquals(1, count);
-            count = tableSyncClient.count(name, key, 10, 9);
+            count = tableSyncClient.count(name, key, 10, 7);
             Assert.assertEquals(2, count);
         } catch (Exception e) {
             e.printStackTrace();
