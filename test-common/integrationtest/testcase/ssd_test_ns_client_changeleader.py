@@ -19,18 +19,33 @@ class TestChangeLeader(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         infoLogger.info(name)
-        m = utils.gen_table_metadata_ssd(
-            '"{}"'.format(name), None, 144000, 2,'"kSSD"'
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        print(">>>>>>>>>>>>>>>>>")
-        print(m)
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata_ssd(
+        #     '"{}"'.format(name), None, 144000, 2,'"kSSD"',
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('table_partition', '"{}"'.format(self.slave2), '"0-2"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": self.tname,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0-2","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
