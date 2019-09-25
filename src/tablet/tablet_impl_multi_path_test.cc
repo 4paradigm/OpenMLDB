@@ -163,6 +163,12 @@ void CreateBaseTablet(::rtidb::tablet::TabletImpl& tablet,
             ASSERT_EQ(value.c_str(), response.value());
         }
     }
+    ::rtidb::api::DropTableRequest dr;
+    dr.set_tid(tid);
+    dr.set_pid(pid);
+    ::rtidb::api::DropTableResponse drs;
+    tablet.DropTable(NULL, &dr, &drs, &closure);
+    ASSERT_EQ(0, drs.code());
 }
 
 class TabletMultiPathTest : public ::testing::Test {

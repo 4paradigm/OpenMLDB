@@ -114,6 +114,36 @@ bool TabletImpl::Init() {
         return false;
     }
 
+    if (!CreateMultiDir(db_root_paths_)) {
+        PDLOG(WARNING, "fail to create db root path %s", FLAGS_db_root_path.c_str());
+        return false;
+    }
+
+    if (!CreateMultiDir(ssd_root_paths_)) {
+        PDLOG(WARNING, "fail to create ssd root path %s", FLAGS_ssd_root_path.c_str());
+        return false;
+    }
+
+    if (!CreateMultiDir(hdd_root_paths_)) {
+        PDLOG(WARNING, "fail to create hdd root path %s", FLAGS_hdd_root_path.c_str());
+        return false;
+    }
+
+    if (!CreateMultiDir(recycle_bin_root_paths_)) {
+        PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_root_path.c_str());
+        return false;
+    }
+
+    if (!CreateMultiDir(recycle_ssd_bin_root_paths_)) {
+        PDLOG(WARNING, "fail to create recycle ssd bin root path %s", FLAGS_recycle_ssd_bin_root_path.c_str());
+        return false;
+    }
+
+    if (!CreateMultiDir(recycle_hdd_bin_root_paths_)) {
+        PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_hdd_bin_root_path.c_str());
+        return false;
+    }
+
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
 #ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
@@ -3898,7 +3928,7 @@ bool TabletImpl::ChooseRecycleSSDBinRootPath(uint32_t tid,
     std::string key = std::to_string(tid) + std::to_string(pid);
     uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % recycle_ssd_bin_root_paths_.size();
     path.assign(recycle_ssd_bin_root_paths_[index]);
-    return false;
+    return true;
 }
 
 bool TabletImpl::ChooseRecycleHDDBinRootPath(uint32_t tid, 
@@ -3913,7 +3943,21 @@ bool TabletImpl::ChooseRecycleHDDBinRootPath(uint32_t tid,
     std::string key = std::to_string(tid) + std::to_string(pid);
     uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % recycle_hdd_bin_root_paths_.size();
     path.assign(recycle_hdd_bin_root_paths_[index]);
-    return false;
+    return true;
+}
+
+bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
+
+    std::vector<std::string>::const_iterator it = dirs.begin();
+    for (; it != dirs.end(); ++it) {
+        std::string path = *it;
+        bool ok = ::rtidb::base::MkdirRecur(path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to create dir %s", path.c_str());
+            return false;
+        }
+    }
+    return true;
 }
 
 }

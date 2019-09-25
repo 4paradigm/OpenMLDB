@@ -299,8 +299,9 @@ public:
                           const rtidb::api::GetType& et_type,
                           uint32_t* count,
                           bool remove_duplicated_record);
-
 private:
+
+    bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
     // Get table by table id , and Need external synchronization  
