@@ -136,16 +136,33 @@ class TestChangeLeader(TestCaseBase):
         self.start_client(self.leader)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
@@ -194,12 +211,23 @@ class TestChangeLeader(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
 
@@ -218,16 +246,33 @@ class TestChangeLeader(TestCaseBase):
         self.get_new_ns_leader()
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
         result = self.showtable(self.ns_leader)
@@ -257,12 +302,23 @@ class TestChangeLeader(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"{}"'.format('tname{}'.format(time.time()))
-        m = utils.gen_table_metadata(
-            name, None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     name, None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs1)
 
@@ -283,16 +339,33 @@ class TestChangeLeader(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
@@ -340,16 +413,33 @@ class TestChangeLeader(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         infoLogger.info(name)
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
@@ -424,16 +514,33 @@ class TestChangeLeader(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
@@ -471,16 +578,33 @@ class TestChangeLeader(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('table_partition', '"{}"'.format(self.slave2), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+                {"endpoint": self.slave2,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
@@ -525,15 +649,31 @@ class TestChangeLeader(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-1"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-1"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-1","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
@@ -571,15 +711,31 @@ class TestChangeLeader(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            '"{}"'.format(name), None, 144000, 2,
-            ('table_partition', '"{}"'.format(self.leader), '"0-1"', 'true'),
-            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-            ('column_desc', '"k1"', '"string"', 'true'),
-            ('column_desc', '"k2"', '"string"', 'false'),
-            ('column_desc', '"k3"', '"string"', 'false')
-        )
-        utils.gen_table_metadata_file(m, metadata_path)
+        # m = utils.gen_table_metadata(
+        #     '"{}"'.format(name), None, 144000, 2,
+        #     ('table_partition', '"{}"'.format(self.leader), '"0-1"', 'true'),
+        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+        #     ('column_desc', '"k1"', '"string"', 'true'),
+        #     ('column_desc', '"k2"', '"string"', 'false'),
+        #     ('column_desc', '"k3"', '"string"', 'false')
+        # )
+        # utils.gen_table_metadata_file(m, metadata_path)
+
+        table_meta = {
+            "name": name,
+            "ttl": 144000,
+            "storage_mode": "kSSD",
+            "table_partition": [
+                {"endpoint": self.leader,"pid_group": "0-1","is_leader": "true"},
+                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
+            ],
+            "column_desc":[
+                {"name": "k1", "type": "string", "add_ts_idx": "true"},
+                {"name": "k2", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+            ],
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
         self.multidimension_vk = {'k1': ('string:index', 'testvalue0'),
