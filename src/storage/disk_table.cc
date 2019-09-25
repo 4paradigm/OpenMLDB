@@ -446,6 +446,10 @@ TableIterator* DiskTable::NewIterator(const std::string &pk, Ticket& ticket) {
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) {
+    auto column_map_iter = column_key_map_.find(idx);
+    if (column_map_iter != column_key_map_.end() && !column_map_iter->second.empty()) {
+        return NewIterator(idx, column_map_iter->second.front(), pk, ticket);
+    }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
@@ -456,8 +460,8 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
-    auto columnMapIt = column_key_map_.find(index);
-    if (columnMapIt == column_key_map_.end()) {
+    auto column_map_iter = column_key_map_.find(index);
+    if (column_map_iter == column_key_map_.end()) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
@@ -470,11 +474,13 @@ TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std:
     if (ts_idx < 0) {
         return new DiskTableIterator(db_, it, snapshot, pk);
     }
-    if (std::find(column_key_map_[index].cbegin(), column_key_map_[index].cend(), ts_idx) == column_key_map_[index].cend()) {
-        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
+    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx) 
+                == column_map_iter->second.cend()) {
+        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
+                    ts_idx, index, id_, pid_);
         return NULL;
     }
-    if (columnMapIt->second.size() == 1) {
+    if (column_map_iter->second.size() == 1) {
         return new DiskTableIterator(db_, it, snapshot, pk);
     }
     return new DiskTableIterator(db_, it, snapshot, pk, ts_idx);
