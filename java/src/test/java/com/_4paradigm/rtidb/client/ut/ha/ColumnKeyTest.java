@@ -489,8 +489,8 @@ public class ColumnKeyTest extends TestCaseBase {
         nsc.dropTable(name);
     }
 
-    @Test
-    public void testTwoTs() {
+    @Test(dataProvider = "StorageMode")
+    public void testTwoTs(Common.StorageMode sm) {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
         ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
@@ -504,6 +504,7 @@ public class ColumnKeyTest extends TestCaseBase {
                 .setName(name).setTtl(0)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
                 .addColumnKey(colKey1).addColumnKey(colKey2)
+                .setStorageMode(sm)
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
@@ -527,6 +528,8 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(20, it.getCount());
             it = tableSyncClient.scan(name, "card0", "card", 20000, 0, "ts", 0);
             Assert.assertEquals(20, it.getCount());
+            it = tableSyncClient.scan(name, "card0", "card", 20000, 0);
+            Assert.assertEquals(20, it.getCount());
             it = tableSyncClient.scan(name, "card0", "card", 20000, 0, "ts1", 0);
             Assert.assertEquals(20, it.getCount());
             Object[]row = tableSyncClient.getRow(name, "card0", "card",  10008, "ts", null);
@@ -538,17 +541,19 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
             Assert.assertEquals(10008, (long)row[3]);
-            Assert.assertEquals(20, tableSyncClient.count(name, "card0", "card"));
 
-            it = tableSyncClient.traverse(name, "card");
-            int count = 0;
-            while(it.valid()) {
-                count++;
-                it.next();
+            if (sm == Common.StorageMode.kMemory) {
+                Assert.assertEquals(20, tableSyncClient.count(name, "card0", "card"));
+                it = tableSyncClient.traverse(name, "card");
+                int count = 0;
+                while (it.valid()) {
+                    count++;
+                    it.next();
+                }
+                Assert.assertEquals(400, count);
             }
-            Assert.assertEquals(400, count);
-
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);
