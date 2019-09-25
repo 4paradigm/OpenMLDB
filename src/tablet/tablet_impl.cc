@@ -78,7 +78,7 @@ TabletImpl::TabletImpl():tables_(),mu_(), gc_pool_(FLAGS_gc_pool_size),
     replicators_(), snapshots_(), zk_client_(NULL),
     keep_alive_pool_(1), task_pool_(FLAGS_task_pool_size),
     io_pool_(FLAGS_io_pool_size), snapshot_pool_(1), server_(NULL),
-    db_root_paths_(), recycle_bin_root_paths_(){}
+    mode_root_paths_(), mode_recycle_root_paths_(){}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -90,12 +90,13 @@ TabletImpl::~TabletImpl() {
 
 bool TabletImpl::Init() {
     std::lock_guard<std::mutex> lock(mu_);
-    ::rtidb::base::SplitString(FLAGS_db_root_path, ",", &db_root_paths_);
-    ::rtidb::base::SplitString(FLAGS_ssd_root_path, ",", &ssd_root_paths_);
-    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", &hdd_root_paths_);
-    ::rtidb::base::SplitString(FLAGS_recycle_bin_root_path, ",", &recycle_bin_root_paths_);
-    ::rtidb::base::SplitString(FLAGS_recycle_ssd_bin_root_path, ",", &recycle_ssd_bin_root_paths_);
-    ::rtidb::base::SplitString(FLAGS_recycle_hdd_bin_root_path, ",", &recycle_hdd_bin_root_paths_);
+    ::rtidb::base::SplitString(FLAGS_db_root_path, ",", mode_root_paths_[::rtidb::common::kMemory]);
+    ::rtidb::base::SplitString(FLAGS_ssd_root_path, ",", mode_root_paths_[::rtidb::common::kSSD]);
+    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", mode_root_paths_[::rtidb::common::kHDD]);
+
+    ::rtidb::base::SplitString(FLAGS_recycle_bin_root_path, ",", mode_recycle_root_paths_[::rtidb::common::kMemory]);
+    ::rtidb::base::SplitString(FLAGS_recycle_ssd_bin_root_path, ",", mode_recycle_root_paths_[::rtidb::common::kSSD]);
+    ::rtidb::base::SplitString(FLAGS_recycle_hdd_bin_root_path, ",", mode_recycle_root_paths_[::rtidb::common::kHDD]);
 
     if (!FLAGS_zk_cluster.empty()) {
         zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
@@ -114,32 +115,32 @@ bool TabletImpl::Init() {
         return false;
     }
 
-    if (!CreateMultiDir(db_root_paths_)) {
+    if (!CreateMultiDir(mode_root_paths_[::rtidb::common::kMemory])) {
         PDLOG(WARNING, "fail to create db root path %s", FLAGS_db_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(ssd_root_paths_)) {
+    if (!CreateMultiDir(mode_root_paths_[::rtidb::common::kSSD])) {
         PDLOG(WARNING, "fail to create ssd root path %s", FLAGS_ssd_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(hdd_root_paths_)) {
+    if (!CreateMultiDir(mode_root_paths_[::rtidb::common::kHDD])) {
         PDLOG(WARNING, "fail to create hdd root path %s", FLAGS_hdd_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(recycle_bin_root_paths_)) {
+    if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kMemory])) {
         PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_bin_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(recycle_ssd_bin_root_paths_)) {
+    if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kSSD])) {
         PDLOG(WARNING, "fail to create recycle ssd bin root path %s", FLAGS_recycle_ssd_bin_root_path.c_str());
         return false;
     }
 
-    if (!CreateMultiDir(recycle_hdd_bin_root_paths_)) {
+    if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kHDD])) {
         PDLOG(WARNING, "fail to create recycle bin root path %s", FLAGS_recycle_hdd_bin_root_path.c_str());
         return false;
     }
@@ -3813,138 +3814,43 @@ void TabletImpl::SchedDelBinlog(uint32_t tid, uint32_t pid) {
     }
 }
 
-bool TabletImpl::ChooseMemRecycleBinRootPath(uint32_t tid,
-        uint32_t pid, std::string& path) {
-
-    if (recycle_bin_root_paths_.size() < 1) return false;
-    if (recycle_bin_root_paths_.size() == 1) {
-        path.assign(recycle_bin_root_paths_[0]);
-        return true;
-    }
-    std::string key = std::to_string(tid) + std::to_string(pid);
-    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % recycle_bin_root_paths_.size();
-    path.assign(recycle_bin_root_paths_[index]);
-    return true;
-}
-
 bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid,
                                   const ::rtidb::common::StorageMode& mode,
                                   std::string& path) {
 
-    switch (mode) {
-        case ::rtidb::common::kMemory:
-            return ChooseMemDBRootPath(tid,
-                    pid, path);
-        case ::rtidb::common::kSSD:
-            return ChooseSSDRootPath(tid,
-                    pid, path);
-        case ::rtidb::common::kHDD:
-            return ChooseHDDRootPath(tid,
-                    pid, path);
-    }
-    return false;
-}
-
-bool TabletImpl::ChooseMemDBRootPath(uint32_t tid, uint32_t pid,
-        std::string& path) {
-
-    if (db_root_paths_.size() < 1) {
+    std::vector<std::string>& paths = mode_root_paths_[mode];
+    if (paths.size() < 1) {
         return false;
     }
 
-    if (db_root_paths_.size() == 1) {
-        path.assign(db_root_paths_[0]);
+    if (paths.size() == 1) {
+        path.assign(paths[0]);
         return true;
     }
+
     std::string key = std::to_string(tid) + std::to_string(pid);
-    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % db_root_paths_.size();
-    path.assign(db_root_paths_[index]);
+    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % paths.size();
+    path.assign(paths[index]);
     return true;
 }
 
-bool TabletImpl::ChooseSSDRootPath(uint32_t tid, 
-                                  uint32_t pid, 
-                                  std::string& path) {
-
-    if (ssd_root_paths_.size() < 1) {
-        return false;
-    }
-
-    if (ssd_root_paths_.size() == 1) {
-        path.assign(ssd_root_paths_[0]);
-        return true;
-    }
-    std::string key = std::to_string(tid) + std::to_string(pid);
-    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % ssd_root_paths_.size();
-    path.assign(ssd_root_paths_[index]);
-    return true;
-}
-
-bool TabletImpl::ChooseHDDRootPath(uint32_t tid, 
-                                  uint32_t pid, 
-                                  std::string& path) {
-
-    if (hdd_root_paths_.size() < 1) {
-        return false;
-    }
-
-    if (hdd_root_paths_.size() == 1) {
-        path.assign(hdd_root_paths_[0]);
-        return true;
-    }
-    std::string key = std::to_string(tid) + std::to_string(pid);
-    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % hdd_root_paths_.size();
-    path.assign(hdd_root_paths_[index]);
-    return true;
-}
 
 bool TabletImpl::ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
                                   const ::rtidb::common::StorageMode& mode,
                                   std::string& path) {
-    switch (mode) {
-        case ::rtidb::common::kMemory:
-            return ChooseMemRecycleBinRootPath(tid,
-                    pid, path);
-        case ::rtidb::common::kSSD:
-            return ChooseRecycleSSDBinRootPath(tid,
-                    pid, path);
-        case ::rtidb::common::kHDD:
-            return ChooseRecycleHDDBinRootPath(tid,
-                    pid, path);
-    }
-    return false;
-}
+    std::vector<std::string>& paths = mode_recycle_root_paths_[mode];
+    if (paths.size() < 1) return false;
 
-bool TabletImpl::ChooseRecycleSSDBinRootPath(uint32_t tid, 
-                                  uint32_t pid, 
-                                  std::string& path) {
-
-    if (recycle_ssd_bin_root_paths_.size() < 1) return false;
-
-    if (recycle_ssd_bin_root_paths_.size() == 1) {
-        path.assign(recycle_ssd_bin_root_paths_[0]);
+    if (paths.size() == 1) {
+        path.assign(paths[0]);
         return true;
     }
     std::string key = std::to_string(tid) + std::to_string(pid);
-    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % recycle_ssd_bin_root_paths_.size();
-    path.assign(recycle_ssd_bin_root_paths_[index]);
+    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % paths.size();
+    path.assign(paths[index]);
     return true;
 }
 
-bool TabletImpl::ChooseRecycleHDDBinRootPath(uint32_t tid, 
-                                  uint32_t pid, 
-                                  std::string& path) {
-
-    if (recycle_hdd_bin_root_paths_.size() < 1) return false;
-    if (recycle_hdd_bin_root_paths_.size() == 1) {
-        path.assign(recycle_hdd_bin_root_paths_[0]);
-        return true;
-    }
-    std::string key = std::to_string(tid) + std::to_string(pid);
-    uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % recycle_hdd_bin_root_paths_.size();
-    path.assign(recycle_hdd_bin_root_paths_[index]);
-    return true;
-}
 
 bool TabletImpl::CreateMultiDir(const std::vector<std::string>& dirs) {
 

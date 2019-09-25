@@ -458,11 +458,11 @@ int SplitPidGroup(const std::string& pid_group, std::set<uint32_t>& pid_set) {
 
 bool GetParameterMap(const std::string& first, const std::vector<std::string>& parts, const std::string& delimiter, std::map<std::string, std::string>& parameter_map) {
     std::vector<std::string> temp_vec;
-    ::rtidb::base::SplitString(parts[1], delimiter, &temp_vec);
+    ::rtidb::base::SplitString(parts[1], delimiter, temp_vec);
     if (temp_vec.size() == 2 && temp_vec[0] == first && !temp_vec[1].empty()) {
         parameter_map.insert(std::make_pair(temp_vec[0], temp_vec[1]));
         for (uint32_t i = 2; i < parts.size(); i++) {
-            ::rtidb::base::SplitString(parts[i], delimiter, &temp_vec);
+            ::rtidb::base::SplitString(parts[i], delimiter, temp_vec);
             if (temp_vec.size() < 2 || temp_vec[1].empty()) {
                 return false;
             }
@@ -1926,7 +1926,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         std::string type = "kAbsoluteTime";
         try {
             std::vector<std::string> vec;
-            ::rtidb::base::SplitString(parts[2], ":", &vec);
+            ::rtidb::base::SplitString(parts[2], ":", vec);
             if (vec.size() > 1) {
                 if ((vec[0] == "latest" || vec[0] == "kLatestTime"))  {
                     type = "kLatestTime";
@@ -1957,7 +1957,7 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::rtidb::client:
         std::set<std::string> name_set;
         for (uint32_t i = 5; i < parts.size(); i++) {
             std::vector<std::string> kv;
-            ::rtidb::base::SplitString(parts[i], ":", &kv);
+            ::rtidb::base::SplitString(parts[i], ":", kv);
             if (kv.size() < 2) {
                 std::cout << "create failed! schema format is illegal" << std::endl;
                 return;
@@ -2610,7 +2610,7 @@ void HandleClientCreateTable(const std::vector<std::string>& parts, ::rtidb::cli
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         if (parts.size() > 4) {
             std::vector<std::string> vec;
-            ::rtidb::base::SplitString(parts[4], ":", &vec);
+            ::rtidb::base::SplitString(parts[4], ":", vec);
             ttl = boost::lexical_cast<uint64_t>(vec[vec.size() - 1]);
             if (vec.size() > 1) {
                 if (vec[0] == "latest") {
@@ -3391,7 +3391,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         int64_t ttl = 0;
         ::rtidb::api::TTLType type = ::rtidb::api::TTLType::kAbsoluteTime;
         std::vector<std::string> vec;
-        ::rtidb::base::SplitString(parts[4], ":", &vec);
+        ::rtidb::base::SplitString(parts[4], ":", vec);
         ttl = boost::lexical_cast<int64_t>(vec[vec.size() - 1]);
         if (vec.size() > 1) {
             if (vec[0] == "latest") {
@@ -3431,7 +3431,7 @@ void HandleClientSCreateTable(const std::vector<std::string>& parts, ::rtidb::cl
         bool has_index = false;
         for (uint32_t i = 7; i < parts.size(); i++) {
             std::vector<std::string> kv;
-            ::rtidb::base::SplitString(parts[i], ":", &kv);
+            ::rtidb::base::SplitString(parts[i], ":", kv);
             if (kv.size() < 2) {
                 std::cout << "create failed! schema format is illegal" << std::endl;
                 return;
@@ -4066,7 +4066,7 @@ void StartClient() {
             }
         }
         std::vector<std::string> parts;
-        ::rtidb::base::SplitString(buffer, " ", &parts);
+        ::rtidb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
         } else if (parts[0] == "put") {
@@ -4209,7 +4209,7 @@ void StartNsClient() {
             }
         }
         std::vector<std::string> parts;
-        ::rtidb::base::SplitString(buffer, " ", &parts);
+        ::rtidb::base::SplitString(buffer, " ", parts);
         if (parts.empty()) {
             continue;
         } else if (parts[0] == "showtablet") {

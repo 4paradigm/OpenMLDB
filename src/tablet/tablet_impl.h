@@ -361,27 +361,10 @@ private:
             const ::rtidb::common::StorageMode& mode,
             std::string& path);
 
-    bool ChooseMemDBRootPath(uint32_t tid, uint32_t pid,
-            std::string& path);
-
-    bool ChooseMemRecycleBinRootPath(uint32_t tid,
-            uint32_t pid, std::string& path);
-
     bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
             const ::rtidb::common::StorageMode& mode,
             std::string& path);
 
-    bool ChooseSSDRootPath(uint32_t tid, 
-            uint32_t pid, std::string& path);
-
-    bool ChooseRecycleSSDBinRootPath(uint32_t tid, 
-            uint32_t pid, std::string& path);
-
-    bool ChooseHDDRootPath(uint32_t tid, 
-            uint32_t pid, std::string& path);
-
-    bool ChooseRecycleHDDBinRootPath(uint32_t tid, 
-            uint32_t pid, std::string& path);
 
 private:
     Tables tables_;
@@ -398,12 +381,8 @@ private:
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
-    std::vector<std::string> db_root_paths_;
-    std::vector<std::string> ssd_root_paths_;
-    std::vector<std::string> hdd_root_paths_;
-    std::vector<std::string> recycle_bin_root_paths_;
-    std::vector<std::string> recycle_ssd_bin_root_paths_;
-    std::vector<std::string> recycle_hdd_bin_root_paths_;
+    std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
+    std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
 };
 
 }
