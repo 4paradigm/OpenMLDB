@@ -10,15 +10,16 @@ import libs.utils as utils
 
 
 @ddt.ddt
-class TestCount(TestCaseBase):
+class TestDelete(TestCaseBase):
 
-    def test_count_kv(self):
+    def test_kv_delete(self):
         """
-        kv表统计pk下的条数
+        kv表delete pk
         :return:
         """
         name = 'tname{}'.format(time.time())
         # rs = self.ns_create_cmd(self.ns_leader, name, '0', str(8), str(3), '')
+
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
             "name": name,
@@ -37,55 +38,17 @@ class TestCount(TestCaseBase):
         self.assertIn('Put ok', rs2)
         rs3 = self.ns_put_kv(self.ns_leader, name, 'testkey1', '33', 'testvalue2')
         self.assertIn('Put ok', rs3)
+        rs4 = self.ns_scan_kv(self.ns_leader, name, 'testkey0', '1111', '0')
+        self.assertEqual(2, len(rs4))
+        rs5 = self.ns_delete(self.ns_leader, name, 'testkey0')
+        self.assertIn('delete ok', rs5)
+        rs6 = self.ns_scan_kv(self.ns_leader, name, 'testkey0', '1111', '0')
+        self.assertEqual(0, len(rs6))
 
-        rs4 = self.ns_count(self.ns_leader, name, 'testkey0', '')
-        self.assertIn('count: 2', rs4)
-        rs5 = self.ns_count(self.ns_leader, name, 'testkey1', '')
-        self.assertIn('count: 1', rs5)
-        rs6 = self.ns_count(self.ns_leader, name, 'testkeyx', '')
-        self.assertIn('count: 0', rs6)
-        rs7 = self.ns_count(self.ns_leader, name, 'testkey0', '', 'true')
-        self.assertIn('count: 2', rs7)
-        rs8 = self.ns_count(self.ns_leader, name, 'testkeyx', '', 'true')
-        self.assertIn('count: 0', rs8)
 
-    def test_count_kv_latest(self):
+    def test_schema_delete(self):
         """
-        kv表统计pk下的条数
-        :return:
-        """
-        name = 'tname{}'.format(time.time())
-        # rs = self.ns_create_cmd(self.ns_leader, name, 'latest:2', str(8), str(3), '')
-        metadata_path = '{}/metadata.txt'.format(self.testpath)
-        table_meta = {
-            "name": name,
-            "ttl_type": "kLatestTime",
-            "ttl": 2,
-            "partition_num": 8,
-            "replica_num": 3,
-            "storage_mode": "kSSD",
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
-        rs = self.ns_create(self.ns_leader, metadata_path)
-        self.assertIn('Create table ok', rs)
-
-        rs1 = self.ns_put_kv(self.ns_leader, name, 'testkey0', '11', 'testvalue0')
-        self.assertIn('Put ok', rs1)
-        rs2 = self.ns_put_kv(self.ns_leader, name, 'testkey0', '22', 'testvalue1')
-        self.assertIn('Put ok', rs2)
-        rs3 = self.ns_put_kv(self.ns_leader, name, 'testkey0', '33', 'testvalue2')
-        self.assertIn('Put ok', rs3)
-        rs4 = self.ns_put_kv(self.ns_leader, name, 'testkey1', '44', 'testvalue3')
-        self.assertIn('Put ok', rs4)
-
-        rs5 = self.ns_count(self.ns_leader, name, 'testkey0', '')
-        self.assertIn('count: 3', rs5)
-        rs6 = self.ns_count(self.ns_leader, name, 'testkey0', '', 'true')
-        self.assertIn('count: 2', rs6)
-
-    def test_count_schema(self):
-        """
-        schema表统计pk下的条数
+        schema表 delete pk
         :return:
         """
         name = 'tname{}'.format(time.time())
@@ -114,7 +77,7 @@ class TestCount(TestCaseBase):
             "column_desc":[
                 {"name": "k1", "type": "string", "add_ts_idx": "true"},
                 {"name": "k2", "type": "string", "add_ts_idx": "true"},
-                {"name": "k3", "type": "string", "add_ts_idx": "false"},
+                {"name": "k3", "type": "uint16", "add_ts_idx": "false"},
             ],
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
@@ -127,16 +90,14 @@ class TestCount(TestCaseBase):
         self.assertIn('Put ok', rs2)
         rs3 = self.ns_put_multi(self.ns_leader, name, 33, ['card1', 'mcc2', '20'])
         self.assertIn('Put ok', rs3)
+        rs4 = self.ns_scan_kv(self.ns_leader, name, 'card0', 'k1', '1111', '0')
+        self.assertEqual(2, len(rs4))
+        rs5 = self.ns_delete(self.ns_leader, name, 'card0', 'k1')
+        self.assertIn('delete ok', rs5)
+        rs6 = self.ns_scan_kv(self.ns_leader, name, 'card0', 'k1', '1111', '0')
+        self.assertEqual(0, len(rs6))
 
-        rs4 = self.ns_count(self.ns_leader, name, 'card0', 'k1')
-        self.assertIn('count: 2', rs4)
-        rs5 = self.ns_count(self.ns_leader, name, 'mcc1', 'k2')
-        self.assertIn('count: 1', rs5)
-        rs6 = self.ns_count(self.ns_leader, name, 'mcc1', 'k1')
-        self.assertIn('count: 0', rs6)
-        rs7 = self.ns_count(self.ns_leader, name, 'mcc1', 'card')
-        self.assertIn('idx name not found', rs7)
 
 if __name__ == "__main__":
-    load(TestCount)
+    load(TestDelete)
 
