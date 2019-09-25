@@ -190,7 +190,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute){
 TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest){
     ::rtidb::tablet::TabletImpl tablet_impl;
     tablet_impl.Init();
-    for (uint32_t i = 0; i < 100; i++) {
+    for (uint32_t i = 100; i < 200; i++) {
         CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10, 1000,
             i+1, i % 10, ::rtidb::common::StorageMode::kMemory);
     }

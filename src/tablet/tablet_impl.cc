@@ -3824,7 +3824,7 @@ bool TabletImpl::ChooseMemRecycleBinRootPath(uint32_t tid,
     std::string key = std::to_string(tid) + std::to_string(pid);
     uint32_t index = ::rtidb::base::hash(key.c_str(), key.size(), SEED) % recycle_bin_root_paths_.size();
     path.assign(recycle_bin_root_paths_[index]);
-    return false;
+    return true;
 }
 
 bool TabletImpl::ChooseDBRootPath(uint32_t tid, uint32_t pid,
