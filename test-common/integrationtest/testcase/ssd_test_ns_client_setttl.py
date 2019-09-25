@@ -69,6 +69,7 @@ class TestSetTTL(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
             "name": "t1",
+            "ttl_type": "kAbsoluteTime",
             "ttl": 10,
             "partition_num": 8,
             "replica_num": 3,
@@ -136,7 +137,7 @@ class TestSetTTL(TestCaseBase):
                     {"name": "ts1", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 1000},
                     {"name": "ts2", "type": "int64", "add_ts_idx": "false", "is_ts_col": "true", "ttl": 100},
                     ],
-		"column_key":[
+		        "column_key":[
                     {"index_name":"card", "ts_name":["ts1", "ts2"]},
                     {"index_name":"mcc", "ts_name":["ts2"]},
                     ]

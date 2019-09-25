@@ -53,8 +53,6 @@ class TestAddReplicaNs(TestCaseBase):
 
         rs2 = self.showtable(self.ns_leader, name)
         tid = rs2.keys()[0][1]
-        print(">>>>>>>>>>>>")
-        print(tid)
 
         rs3 = self.put(self.leader, tid, 1, 'testkey0', self.now() + 10000, 'testvalue0')
         self.assertIn('Put ok', rs3)
