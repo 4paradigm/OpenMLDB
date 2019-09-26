@@ -191,7 +191,7 @@ class TestDelReplicaNs(TestCaseBase):
         """
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"{}"'.format(name)
+        name = '{}'.format(name)
         # m = utils.gen_table_metadata(name, '"kLatestTime"', 100, 8,
         #                              ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
         #                              ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
