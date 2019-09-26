@@ -231,7 +231,7 @@ class TestAutoFailover(TestCaseBase):
         rs = self.ns_drop(self.ns_leader, name)
 
 
-    @multi_dimension(True)
+    @multi_dimension(False)
     def test_select_leader(self):
         """
         slave1改为leader role，put数据后改回follower role，leader发生故障后，新主会切换到slave1，数据同步正确
