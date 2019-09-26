@@ -15,7 +15,7 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
-    @multi_dimension(False)
+    # @multi_dimension(False)
     @ddt.data(
         ('Create table ok',
         ('column_desc', '"card"', '"string"', 'true')),
