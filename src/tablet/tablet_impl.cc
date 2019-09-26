@@ -1604,7 +1604,7 @@ void TabletImpl::TraverseFromDiskTable(std::shared_ptr<Table> disk_table,
         ts_index = iter->second;
     }
     if (ts_index >= 0) {
-    it = disk_table->NewTraverseIterator(index, ts_index);
+        it = disk_table->NewTraverseIterator(index, ts_index);
     } else {
         it = disk_table->NewTraverseIterator(index);
     }

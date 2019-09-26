@@ -535,12 +535,6 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
     }
-    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-    ro.snapshot = snapshot;
-    //ro.prefix_same_as_start = true;
-    ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index + 1]);
     uint64_t expire_value = 0; // suppose ttl_ is 0
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         expire_value = ttl_ / 60 / 1000;
@@ -552,6 +546,12 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
         return NULL;
     }
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    //ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index + 1]);
     if (columnMapIt->second.size() == 1) {
         return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_, expire_value);
     }
@@ -640,22 +640,26 @@ bool DiskTableTraverseIterator::Valid() {
 }
 
 void DiskTableTraverseIterator::Next() {
-    it_->Next();
-    if (it_->Valid()) {
+    for (it_->Next(); it_->Valid(); it_->Next()) {
         std::string tmp_pk;
         uint8_t cur_ts_idx = UINT8_MAX;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
-        if (has_ts_idx_) {
-            if (tmp_pk == pk_ && cur_ts_idx == ts_idx_) {
-                record_idx_++;
-            } else {
-                pk_ = tmp_pk;
-                record_idx_ = 1;
+        if (it_->Valid()) {
+            ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
+            if (has_ts_idx_) {
+                if (tmp_pk == pk_) {
+                    if (cur_ts_idx == ts_idx_) {
+                        record_idx_++;
+                    }
+                } else {
+                    pk_ = tmp_pk;
+                    record_idx_ = 1;
+                    continue;
+                }
             }
         }
-        if (IsExpired()) {
-            NextPK();
-        }
+    }
+    if (IsExpired()) {
+        NextPK();
     }
 }
 
