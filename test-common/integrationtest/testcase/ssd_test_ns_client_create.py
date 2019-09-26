@@ -404,7 +404,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
 
-    @multi_dimension(True)
+    # @multi_dimension(True)
     @ddt.data(
         ('Create table ok',
         ('column_desc', '"card"', '"string"', 'true')),
