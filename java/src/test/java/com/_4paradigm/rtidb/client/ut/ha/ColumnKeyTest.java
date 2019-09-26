@@ -607,8 +607,10 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(1.3d, row[2]);
             Assert.assertEquals(null, row[3]);
             Assert.assertEquals(3122, (long)row[4]);
-            Assert.assertEquals(3, tableSyncClient.count(name, "cardxxx", "card", "ts", false));
-            Assert.assertEquals(2, tableSyncClient.count(name, "cardxxx", "card", "ts1", false));
+            if (sm == Common.StorageMode.kMemory) {
+                Assert.assertEquals(3, tableSyncClient.count(name, "cardxxx", "card", "ts", false));
+                Assert.assertEquals(2, tableSyncClient.count(name, "cardxxx", "card", "ts1", false));
+            }
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
