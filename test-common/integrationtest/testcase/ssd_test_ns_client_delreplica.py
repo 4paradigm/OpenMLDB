@@ -43,7 +43,7 @@ class TestDelReplicaNs(TestCaseBase):
             #     ('column_desc', '"amt"', '"double"', 'false'),
             #     ('column_desc', '"card"', '"string"', 'true'),
             # )
-            table_meta = {
+            m = {
                 "name": name,
                 "ttl": 144000,
                 "storage_mode": "kSSD",
