@@ -507,12 +507,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
         PDLOG(WARNING, "idx greater equal than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
         return NULL;
     }
-    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
-    ro.snapshot = snapshot;
-    //ro.prefix_same_as_start = true;
-    ro.pin_data = true;
-    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+
     uint64_t expire_value = 0;
     if (ttl_ == 0) {
         expire_value = 0;
@@ -522,6 +517,12 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
         expire_value = cur_time - ttl_.load(std::memory_order_relaxed);
     }
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    ro.snapshot = snapshot;
+    //ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
     return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_, expire_value);
 }
 
@@ -640,7 +641,7 @@ void DiskTableTraverseIterator::Next() {
     it_->Next();
     if (it_->Valid()) {
         std::string tmp_pk;
-        uint8_t cur_ts_idx;
+        uint8_t cur_ts_idx = UINT8_MAX;
         ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
         if (has_ts_idx_) {
             if (tmp_pk == pk_ && cur_ts_idx == ts_idx_) {
