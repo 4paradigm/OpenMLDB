@@ -17,8 +17,21 @@ class TestPreview(TestCaseBase):
         预览kv表
         :return:
         """
-        rs = self.ns_create_cmd(self.ns_leader, 't1', '0', str(8), str(3), '')
+        # rs = self.ns_create_cmd(self.ns_leader, 't1', '0', str(8), str(3), '')
+
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+            "name": "t1",
+            "ttl": 0,
+            "partition_num": 8,
+            "replica_num": 3,
+            "storage_mode": "kSSD",
+        }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+
         self.assertIn('Create table ok', rs)
+
 
         rs1 = self.ns_put_kv(self.ns_leader, 't1', 'testkey0', '11', 'testvalue0')
         self.assertIn('Put ok', rs1)
