@@ -125,7 +125,7 @@ class TestAddReplicaNs(TestCaseBase):
         """
         self.start_client(self.slave1)
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(time.time())
+        name = 'tname{}'.format(time.time())
         infoLogger.info(name)
         # m = utils.gen_table_metadata(
         #     name, None, 144000, 2,
