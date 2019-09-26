@@ -124,6 +124,18 @@ public class ColumnKeyTest extends TestCaseBase {
             } catch (Exception e) {
                 Assert.assertTrue(false);
             }
+
+            Map<String, Object> data = new HashMap<>();
+            try {
+                data.put("card", "card0");
+                data.put("mcc", "mcc0");
+                data.put("amt", 1.2d);
+                data.put("ts", null);
+                tableSyncClient.put(name, data);
+                Assert.assertTrue(false);
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
             nsc.dropTable(name);
     }
 
@@ -555,6 +567,91 @@ public class ColumnKeyTest extends TestCaseBase {
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        try {
+            data.put("card", "cardxxx");
+            data.put("mcc", "mccx");
+            data.put("amt", 1.2d);
+            data.put("ts", 1122l);
+            data.put("ts1", 2122l);
+            Assert.assertTrue(tableSyncClient.put(name, data));
+            data.put("amt", 1.3d);
+            data.put("ts", null);
+            data.put("ts1", 3122l);
+            Assert.assertTrue(tableSyncClient.put(name, data));
+            data.put("amt", 1.4d);
+            data.put("ts", 1234l);
+            data.put("ts1", null);
+            Assert.assertTrue(tableSyncClient.put(name, data));
+            data.put("amt", 1.5d);
+            data.put("ts", 1334l);
+            data.put("ts1", null);
+            Assert.assertTrue(tableSyncClient.put(name, data));
+
+            KvIterator it = tableSyncClient.scan(name, "cardxxx", "card", 20000, 0, null, 0);
+            Assert.assertEquals(3, it.getCount());
+            it = tableSyncClient.scan(name, "cardxxx", "card", 20000, 0, "ts", 0);
+            Assert.assertEquals(3, it.getCount());
+            it = tableSyncClient.scan(name, "cardxxx", "card", 20000, 0, "ts1", 0);
+            Assert.assertEquals(2, it.getCount());
+            Object[]row = tableSyncClient.getRow(name, "cardxxx", "card",  0, "ts", null);
+            Assert.assertEquals("cardxxx", row[0]);
+            Assert.assertEquals(1.5d, row[2]);
+            Assert.assertEquals(1334, (long)row[3]);
+            Assert.assertEquals(null, row[4]);
+            GetFuture gf = tableAsyncClient.get(name, "cardxxx", "card",  0, "ts1", null);
+            row = gf.getRow();
+            Assert.assertEquals("cardxxx", row[0]);
+            Assert.assertEquals(1.3d, row[2]);
+            Assert.assertEquals(null, row[3]);
+            Assert.assertEquals(3122, (long)row[4]);
+            Assert.assertEquals(3, tableSyncClient.count(name, "cardxxx", "card", "ts", false));
+            Assert.assertEquals(2, tableSyncClient.count(name, "cardxxx", "card", "ts1", false));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+        try {
+            data.put("ts", null);
+            data.put("ts1", null);
+            tableSyncClient.put(name, data);
+            Assert.assertTrue(false);
+        } catch (Exception e) {
+            Assert.assertTrue(true);
+        }
+        nsc.dropTable(name);
+    }
+
+    @Test
+    public void testNullOneTs() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col1 = ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        ColumnDesc col2 = ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        ColumnDesc col3 = ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        ColumnKey colKey1 = ColumnKey.newBuilder().setIndexName("card").build();
+        ColumnKey colKey2 = ColumnKey.newBuilder().setIndexName("mcc").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .addColumnKey(colKey1).addColumnKey(colKey2)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        Map<String, Object> data = new HashMap<>();
+        try {
+            data.put("card", "card0");
+            data.put("mcc", "mcc0");
+            data.put("amt", 1.2d);
+            data.put("ts", null);
+            tableSyncClient.put(name, data);
+            Assert.assertTrue(false);
+        } catch (Exception e) {
+            Assert.assertTrue(true);
         }
         nsc.dropTable(name);
     }
