@@ -3384,7 +3384,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, s
     if (!ok) {
         PDLOG(WARNING, "fail to get table db root path");
         msg.assign("fail to get table db root path");
-        return 138;
+        return -1;
     }
     std::string table_db_path = db_root_path + "/" + std::to_string(table_meta->tid()) +
                 "_" + std::to_string(table_meta->pid());
