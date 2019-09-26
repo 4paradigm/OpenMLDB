@@ -34,7 +34,7 @@ class TestUpdateTableAlive(TestCaseBase):
 
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
-            "name": "t1",
+            "name": "latest1",
             "ttl": 10,
             "ttl_type": "kLatestTime",
             "partition_num": 8,
