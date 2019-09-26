@@ -372,7 +372,7 @@ class TestCreateTableByNsClient(TestCaseBase):
          ('table_partition', '{}'.format(slave1), '0-3', 'false')),
 
         ('table meta file format error',
-         ('table_partition', '{}'.format(leader), '0-3', '""')),
+         ('table_partition', '{}'.format(leader), '0-3', '')),
 
         ('missing required fields: table_partition[0].endpoint, table_partition[0].pid_group, table_partition[0].is_leader',
          ('table_partition', None, None, None)),
