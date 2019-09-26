@@ -723,6 +723,53 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
+    public void testCountSchemaTable() {
+       String name = createSchemaTable();
+       try {
+           String k1 = "k1";
+           String k2 = "k2";
+           for (int i = 1; i < 10; i++) {
+               boolean ok  = tableSyncClient.put(name, i, new Object[]{k1, k2, 1.0});
+               Assert.assertTrue(ok);
+           }
+           int count = tableSyncClient.count(name, k1,"card", 10, 9);
+           Assert.assertEquals(0, count);
+           count = tableSyncClient.count(name, k1,"card", 10, 8);
+           Assert.assertEquals(1, count);
+           count = tableSyncClient.count(name, k1,"card", 10, 7);
+           Assert.assertEquals(2, count);
+       } catch (Exception e) {
+           e.printStackTrace();
+           Assert.fail();
+       } finally {
+           nsc.dropTable(name);
+       }
+    }
+
+    @Test
+    public void testCountKvTable() {
+        String name = createKvTable();
+        try {
+            String key  = "k1";
+            for (int i = 1; i < 10; i++) {
+                boolean ok = tableSyncClient.put(name, key, i, String.valueOf(i));
+                Assert.assertTrue(ok);
+            }
+            int count = tableSyncClient.count(name, key, 10, 9);
+            Assert.assertEquals(0, count);
+            count = tableSyncClient.count(name, key, 10, 8);
+            Assert.assertEquals(1, count);
+            count = tableSyncClient.count(name, key, 10, 7);
+            Assert.assertEquals(2, count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
     public void testTraverSeEmptyKvTest() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);

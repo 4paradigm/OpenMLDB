@@ -311,7 +311,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, filter_expired_data, th);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, filter_expired_data, th, 0, 0);
     }
 
     @Override
@@ -327,7 +327,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th);
+        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th, 0, 0);
     }
 
     @Override
@@ -346,7 +346,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyArr, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th);
+        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th, 0, 0);
     }
 
     @Override
@@ -360,11 +360,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with tid" + tid);
         }
-        return count(tid, pid, key, idxName, null, filter_expired_data, th);
+        return count(tid, pid, key, idxName, null, filter_expired_data, th, 0, 0);
     }
 
     private int count(int tid, int pid, String key, String idxName, String tsName, boolean filter_expired_data,
-                      TableHandler th) throws TimeoutException, TabletException {
+                      TableHandler th, long st, long et) throws TimeoutException, TabletException {
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -379,6 +379,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (client.getConfig().isRemoveDuplicateByTime()) {
             builder.setEnableRemoveDuplicatedRecord(true);
         }
+        builder.setEt(et);
+        builder.setSt(st);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
         }
@@ -832,6 +834,28 @@ public class TableSyncClientImpl implements TableSyncClient {
             arrayRow[i] = row.get(th.getSchema().get(i).getName());
         }
         return put(tid, pid, time, arrayRow);
+    }
+
+    @Override
+    public int count(String tname, String key, long st, long et) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return count(th.getTableInfo().getTid(), pid, key, null, null, true, th, st, et);
+    }
+
+    @Override
+    public int count(String tname, String key, String idxName, long st, long et) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, null, true, th, st, et);
     }
 
     @Override
