@@ -105,8 +105,8 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        ('t{}'.format(time.time()), '"kLatestTime"', 10, 8),
-        ('t{}'.format(time.time()), '"kAbsoluteTime"', 1, 8),  # RTIDB-202
+        ('t{}'.format(time.time()), 'kLatestTime', 10, 8),
+        ('t{}'.format(time.time()), 'kAbsoluteTime', 1, 8),  # RTIDB-202
     )
     @ddt.unpack
     def test_create_ttl_type(self, name, ttl_type, ttl, seg_cnt):
