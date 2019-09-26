@@ -231,7 +231,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         }
         for num in range(1003, 4000):
             name = 'k' + str(num)
-            table_meta.append(('column_desc', [('name',  name), ('type', 'int32'), ('add_ts_idx', 'false')]))
+            table_meta.append(('column_desc', [('name', '"' + name + '"'), ('type', '"int32"'), ('add_ts_idx', 'false')]))
         print(table_meta[-1])
         #self.assertTrue(False)
         utils.gen_table_metadata_file(table_meta, metadata_path)
@@ -240,27 +240,27 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        (('"0-9"', 'true'), ('"1-3"', 'false'), 'Create table ok'),
-        (('"0-9"', 'true'), ('"0-9"', 'false'), 'Create table ok'),
-        (('"0-3"', 'true'), ('"2-9"', 'false'), 'has not leader'),
-        (('"0-3"', 'true'), ('"0-4"', 'false'), 'has not leader'),
-        (('"-1-3"', 'true'), ('"0-2"', 'false'), 'pid_group[-1-3] format error.'),
-        (('"0"', 'true'), ('"0"', 'false'), 'Create table ok'),
-        (('"-1"', 'true'), ('"-1"', 'false'), 'pid_group[-1] format error.'),
-        (('"0"', 'true'), ('"2"', 'false'), ' has not leader'),
-        (('"3-0"', 'true'), ('"2"', 'false'), 'has not leader'),
-        (('"3-0"', 'true'), ('"2"', 'true'), 'pid is not start with zero and consecutive'),
-        (('"0"', 'true'), ('"1"', 'true'), 'Create table ok'),
-        (('"0"', 'true'), ('"0"', 'true'), 'pid 0 has two leader'),
-        (('"0-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
-        (('""', 'true'), ('"2-4"', 'true'), 'pid_group[] format error.'),
-        (('"0-4000"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
-        (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
-        ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
-        (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),
-        (('""', 'true'), ('"1-3"', 'false'), 'pid_group[] format error.'),
-        (('"0-9"', 'false'), ('"1-3"', 'false'), 'has not leader'),
-        (('"1-1"', 'false'), ('"0-3"', 'true'), 'Create table ok'),
+        (('0-9', 'true'), ('1-3', 'false'), 'Create table ok'),
+        (('0-9', 'true'), ('0-9', 'false'), 'Create table ok'),
+        (('0-3', 'true'), ('2-9', 'false'), 'has not leader'),
+        (('0-3', 'true'), ('0-4', 'false'), 'has not leader'),
+        (('-1-3', 'true'), ('0-2', 'false'), 'pid_group[-1-3] format error.'),
+        (('0', 'true'), ('0', 'false'), 'Create table ok'),
+        (('-1', 'true'), ('-1', 'false'), 'pid_group[-1] format error.'),
+        (('0', 'true'), ('2', 'false'), ' has not leader'),
+        (('3-0', 'true'), ('2', 'false'), 'has not leader'),
+        (('3-0', 'true'), ('2', 'true'), 'pid is not start with zero and consecutive'),
+        (('0', 'true'), ('1', 'true'), 'Create table ok'),
+        (('0', 'true'), ('0', 'true'), 'pid 0 has two leader'),
+        (('0-3', 'true'), ('2-4', 'true'), 'pid 2 has two leader'),
+        (('', 'true'), ('2-4', 'true'), 'pid_group[] format error.'),
+        (('0-4000', 'true'), ('1', 'false'), 'Create table ok'),  # RTIDB-238
+        (('0', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
+        ((None, 'true'), ('1-3', 'false'), 'table_partition[0].pid_group'),
+        (('None', 'true'), ('1-3', 'false'), 'table meta file format error'),
+        (('', 'true'), ('1-3', 'false'), 'pid_group[] format error.'),
+        (('0-9', 'false'), ('1-3', 'false'), 'has not leader'),
+        (('1-1', 'false'), ('0-3', 'true'), 'Create table ok'),
         ((None, 'false'), (None, 'true'), 'table meta file format error'),
     )
     @ddt.unpack
