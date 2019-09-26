@@ -66,6 +66,7 @@ message TableInfo {
     repeated rtidb.common.ColumnDesc column_desc_v1 = 12;
     repeated rtidb.common.ColumnKey column_key = 13;
     optional rtidb.common.StorageMode storage_mode = 14 [default = kMemory];
+    repeated rtidb.common.ColumnDesc added_column_desc = 15;
 }
 
 message CreateTableRequest {
@@ -145,6 +146,11 @@ message GeneralResponse {
 
 message ShowTabletRequest {}
 
+message AddTableFieldRequest {
+    required string name = 1;
+    required rtidb.common.ColumnDesc column_desc = 2;
+    required string schema = 3;
+}
 message TabletStatus {
     optional string endpoint = 1;
     optional string state = 2;
@@ -281,5 +287,5 @@ service NameServer {
     rpc GetTablePartition(GetTablePartitionRequest) returns (GetTablePartitionResponse);
     rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
     rpc UpdateTableAliveStatus(UpdateTableAliveRequest) returns (GeneralResponse);
-
+    rpc AddTableField(AddTableFieldRequest) returns (GeneralResponse);
 }

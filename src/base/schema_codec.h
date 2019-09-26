@@ -148,11 +148,20 @@ public:
         }
         return type;
     }
-
+    
     static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
                         std::vector<ColumnDesc>& columns) {
+        return ConvertColumnDesc(table_info, columns, -1); 
+    }
+
+    static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
+                        std::vector<ColumnDesc>& columns,
+                        int modify_index) {
         columns.clear();
         if (table_info.column_desc_v1_size() > 0) {
+            if (modify_index > -1) {
+                return ConvertColumnDesc(table_info.column_desc_v1(), columns, table_info.added_column_desc());
+            }
             return ConvertColumnDesc(table_info.column_desc_v1(), columns);
         }
         for (int idx = 0; idx < table_info.column_desc_size(); idx++) {
@@ -167,12 +176,27 @@ public:
             column_desc.is_ts_col = false;
             columns.push_back(column_desc);
         }
+        if (modify_index > -1) {
+            for (int idx = 0; idx < modify_index; idx++) {
+                ::rtidb::base::ColType type = ConvertType(table_info.added_column_desc(idx).type());
+                if (type == ::rtidb::base::ColType::kUnknown) {
+                    return -1;
+                }
+                ColumnDesc column_desc;
+                column_desc.type = type;
+                column_desc.name = table_info.added_column_desc(idx).name();
+                column_desc.add_ts_idx = false;
+                column_desc.is_ts_col = false;
+                columns.push_back(column_desc);
+            }
+        }
         return 0;
     }
 
     static int ConvertColumnDesc(
             const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
-             std::vector<ColumnDesc>& columns) {
+            std::vector<ColumnDesc>& columns,
+            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& added_column_field) {
         columns.clear();
         for (const auto& cur_column_desc : column_desc_field) {
             ::rtidb::base::ColType type = ConvertType(cur_column_desc.type());
@@ -186,7 +210,28 @@ public:
             column_desc.is_ts_col = cur_column_desc.is_ts_col();
             columns.push_back(column_desc);
         }
+        if (!added_column_field.empty()) {
+            for (int idx = 0; idx < added_column_field.size(); idx++) {
+                ::rtidb::base::ColType type = ConvertType(added_column_field.Get(idx).type());
+                if (type == ::rtidb::base::ColType::kUnknown) {
+                    return -1;
+                }
+                ColumnDesc column_desc;
+                column_desc.type = type;
+                column_desc.name = added_column_field.Get(idx).name();
+                column_desc.add_ts_idx = false;
+                column_desc.is_ts_col = false;
+                columns.push_back(column_desc);
+            }
+        }
         return 0;
+    }
+
+    static int ConvertColumnDesc(
+            const google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& column_desc_field,
+            std::vector<ColumnDesc>& columns) {
+        google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> added_column_field;
+        return ConvertColumnDesc(column_desc_field, columns, added_column_field);
     }
 
     static bool HasTSCol(const std::vector<ColumnDesc>& columns) {

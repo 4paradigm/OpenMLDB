@@ -2013,6 +2013,95 @@ void NameServerImpl::DropTable(RpcController* controller,
     NotifyTableChanged();
 }
 
+void NameServerImpl::AddTableField(RpcController* controller,
+        const AddTableFieldRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(300);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    auto iter = table_info_.find(request->name());
+    if (iter == table_info_.end()) {
+        response->set_code(100);
+        response->set_msg("table is not exist!");
+        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    std::string col_name = request->column_desc().name();
+    if (table_info->column_desc_v1_size() > 0) {
+        for (const auto& column : table_info->column_desc_v1()) {
+            if (column.name() == col_name) {
+                response->set_code(323);
+                response->set_msg("field name repeated!");
+                PDLOG(WARNING, "field name[%s] repeated!", col_name.c_str());
+            } 
+        }
+    } else {
+        for (const auto& column : table_info->column_desc()) {
+            if (column.name() == col_name) {
+                response->set_code(323);
+                response->set_msg("field name repeated!");
+                PDLOG(WARNING, "field name[%s] repeated!", col_name.c_str());
+            } 
+        }
+    }
+    for (const auto& column : table_info->added_column_desc()) {
+        if (column.name() == col_name) {
+           response->set_code(323);
+           response->set_msg("field name repeated!");
+           PDLOG(WARNING, "field name[%s] repeated!", col_name.c_str());
+        } 
+    }
+    //update ns table_info_
+    PDLOG(DEBUG, "added_column_desc size is [%u] ", table_info->added_column_desc_size());
+    ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
+    added_column_desc->CopyFrom(request->column_desc());
+    PDLOG(DEBUG, "added_column_desc size is [%u] ", table_info->added_column_desc_size());
+    //update zk node
+    std::string table_value;
+    table_info->SerializeToString(&table_value);
+    if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+        response->set_code(304);
+        response->set_msg("set zk failed!");
+        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+        return;         
+    }
+    PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
+            zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+    //update tablet tables_
+    uint32_t tid = table_info->tid();
+    Tablets::iterator it = tablets_.begin();
+    for (; it != tablets_.end(); ++it) {
+        std::string endpoint = it->first;
+        std::shared_ptr<TabletInfo> tablet_ptr = it->second;
+        // check tablet healthy
+        if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            response->set_code(303);
+            response->set_msg("tablet is not healthy!");
+            PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
+            return;
+        }
+        if (!tablet_ptr->client_->UpdateTableMetaForAddField(tid, *added_column_desc, request->schema())) {
+            response->set_code(324);
+            response->set_msg("fail to update tableMeta for add field!");
+            PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field failed!",
+                    endpoint.c_str());
+            return;
+        }
+        PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field succeeded!",
+                endpoint.c_str());
+    }
+    NotifyTableChanged();
+    response->set_code(0);
+}
+
 void NameServerImpl::CreateTable(RpcController* controller, 
         const CreateTableRequest* request, 
         GeneralResponse* response, 

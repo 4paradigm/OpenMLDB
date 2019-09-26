@@ -38,6 +38,41 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::common
     tp.Print(true);
 }
 
+static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
+    std::vector<std::string> row;
+    row.push_back("#");
+    row.push_back("name");
+    row.push_back("type");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    uint32_t idx = 0;
+    for (const auto& column_desc : table_info.column_desc_v1()) {
+        row.clear();
+        row.push_back(std::to_string(idx));
+        row.push_back(column_desc.name());
+        row.push_back(column_desc.type());
+        tp.AddRow(row);
+        idx++;
+    }
+    for (const auto& column_desc : table_info.column_desc()) {
+        row.clear();
+        row.push_back(std::to_string(idx));
+        row.push_back(column_desc.name());
+        row.push_back(column_desc.type());
+        tp.AddRow(row);
+        idx++;
+    }
+    for (const auto& column_desc : table_info.added_column_desc()) {
+        row.clear();
+        row.push_back(std::to_string(idx));
+        row.push_back(column_desc.name());
+        row.push_back(column_desc.type());
+        tp.AddRow(row);
+        idx++;
+    }
+    tp.Print(true);
+}
+
 static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::nameserver::ColumnDesc>& column_desc_field) {
     std::vector<std::string> row;
     row.push_back("#");
@@ -212,9 +247,14 @@ static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                   const uint32_t row_size,
                   std::vector<std::string>& vrow) {
     rtidb::base::FlatArrayIterator fit(row, row_size, schema.size());
-    while (fit.Valid()) {
+    uint32_t schema_size = schema.size();
+    while (schema_size > 0) {
         std::string col;
-        if (fit.GetType() == ::rtidb::base::ColType::kString) {
+        if (!fit.Valid()) {
+            schema_size--;
+            vrow.push_back("");
+            continue;
+        } else if (fit.GetType() == ::rtidb::base::ColType::kString) {
             fit.GetString(&col);
         } else if (fit.GetType() == ::rtidb::base::ColType::kUInt16) {
             uint16_t uint16_col = 0;
@@ -269,6 +309,7 @@ static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                 col = "false";
             }
         }
+        schema_size--;
         fit.Next();
         vrow.push_back(col);
     }

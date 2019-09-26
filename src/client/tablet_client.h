@@ -48,7 +48,9 @@ public:
                      bool leader, const std::vector<std::string>& endpoints,
                      uint64_t term = 0, const ::rtidb::api::CompressType compress_type = ::rtidb::api::CompressType::kNoCompress);
                     
-    bool CreateTable(const ::rtidb::api::TableMeta& table_meta);                
+    bool CreateTable(const ::rtidb::api::TableMeta& table_meta);
+   
+    bool UpdateTableMetaForAddField(uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc, const std::string& schema);
 
     bool Put(uint32_t tid,
              uint32_t pid,

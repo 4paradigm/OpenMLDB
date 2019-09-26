@@ -118,6 +118,11 @@ public:
             ::rtidb::api::AppendEntriesResponse* response,
             Closure* done); 
 
+    void UpdateTableMetaForAddField(RpcController* controller,
+            const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,

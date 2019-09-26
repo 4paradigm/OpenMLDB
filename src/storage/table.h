@@ -105,6 +105,9 @@ public:
         table_status_.store(table_status, std::memory_order_relaxed);
     }
 
+    inline void SetSchema(const std::string& schema) {
+        schema_.assign(schema);
+    }
     inline const std::string& GetSchema() {
         return schema_;
     }
@@ -117,6 +120,9 @@ public:
         return table_meta_;
     }
 
+    inline void SetTableMeta(::rtidb::api::TableMeta& table_meta) {
+        table_meta_.CopyFrom(table_meta);
+    }
 	inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }

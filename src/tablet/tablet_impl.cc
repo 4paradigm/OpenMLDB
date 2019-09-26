@@ -1772,6 +1772,54 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
 }
 
+void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
+        const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);        
+    std::lock_guard<std::mutex> lock(mu_);        
+    for (auto it = tables_.begin(); it != tables_.end(); ++it) {
+        if (request->has_tid() && request->tid() != it->first) {
+            continue;
+        }
+        uint32_t tid = it->first;
+        for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
+            uint32_t pid = pit->first;
+            std::shared_ptr<Table> table = pit->second;
+            ::rtidb::api::TableMeta table_meta;
+            table_meta.CopyFrom(table->GetTableMeta());
+            ::rtidb::common::ColumnDesc* column_desc = table_meta.add_added_column_desc();
+            column_desc->CopyFrom(request->column_desc());
+            table_meta.set_schema(request->schema());
+            table->SetTableMeta(table_meta);
+            table->SetSchema(request->schema());
+            //update TableMeta.txt
+            std::string root_path = FLAGS_db_root_path;
+            if (table_meta.storage_mode() == ::rtidb::common::kHDD) {
+                root_path = FLAGS_hdd_root_path;
+            } else if (table_meta.storage_mode() == ::rtidb::common::kSSD) {
+                root_path = FLAGS_ssd_root_path;
+            }
+            std::string db_path = root_path + "/" + std::to_string(tid) + 
+                "_" + std::to_string(pid);
+            if (!::rtidb::base::IsExists(db_path)) {
+                PDLOG(WARNING, "table db path is not exist. tid %u, pid %u", tid, pid);
+                response->set_code(130);
+                response->set_msg("table db path is not exist");
+                return;
+            }
+            UpdateTableMeta(db_path, &table_meta);
+            if (WriteTableMeta(db_path, &table_meta) < 0) {
+                PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
+                response->set_code(127);
+                response->set_msg("write data failed");
+                return;
+            }
+        }
+    }
+    response->set_code(0);
+}
+
 void TabletImpl::GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,

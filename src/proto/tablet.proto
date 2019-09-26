@@ -293,12 +293,18 @@ message TableMeta {
     repeated rtidb.common.ColumnDesc column_desc = 15;
     repeated rtidb.common.ColumnKey column_key = 16;
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
+    repeated rtidb.common.ColumnDesc added_column_desc = 18;
 }
 
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
 }
 
+message UpdateTableMetaForAddFieldRequest {
+    required uint32 tid = 1;
+    required rtidb.common.ColumnDesc column_desc = 2;
+    required string schema = 3;
+}
 message CreateTableResponse {
 	optional int32 code = 1;
 	optional string msg = 2;
@@ -605,4 +611,5 @@ service TabletServer {
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+    rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
 }
