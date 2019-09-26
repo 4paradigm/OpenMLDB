@@ -29,7 +29,7 @@ class TestRecoverTable(TestCaseBase):
         # utils.gen_table_metadata_file(m, metadata_path)
 
         table_meta = {
-            "name": self.tname,
+            "name": name,
             "ttl": 144000,
             "storage_mode": "kSSD",
             "table_partition": [
