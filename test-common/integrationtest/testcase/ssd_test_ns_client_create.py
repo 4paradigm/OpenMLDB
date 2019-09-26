@@ -231,7 +231,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         }
         for num in range(1003, 4000):
             name = 'k' + str(num)
-            table_meta.append(('column_desc', [('name', '"' + name + '"'), ('type', '"int32"'), ('add_ts_idx', 'false')]))
+            table_meta.append(('column_desc', [('name',  name), ('type', 'int32'), ('add_ts_idx', 'false')]))
         print(table_meta[-1])
         #self.assertTrue(False)
         utils.gen_table_metadata_file(table_meta, metadata_path)
