@@ -115,6 +115,7 @@ public interface TableSyncClient {
     int count(String tname, String key, long st, long et) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName, long st, long et) throws TimeoutException, TabletException;
+    int count(String tname, String key, String idxName, String tsName, long st, long et) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(String tname, String key, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(String tname, Map<String, Object> keyMap, String idxName, String tsName, boolean filter_expired_data) throws TimeoutException, TabletException;

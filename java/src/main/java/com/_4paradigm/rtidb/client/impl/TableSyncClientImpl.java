@@ -859,6 +859,17 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     @Override
+    public int count(String tname, String key, String idxName, String tsName, long st, long et) throws TimeoutException, TabletException {
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        key = validateKey(key);
+        int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, true, th, st, et);
+    }
+
+    @Override
     public List<ColumnDesc> getSchema(int tid) throws TabletException {
         TableHandler th = client.getHandler(tid);
         if (th == null) {
