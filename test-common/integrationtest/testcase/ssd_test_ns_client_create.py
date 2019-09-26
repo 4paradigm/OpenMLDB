@@ -16,31 +16,31 @@ class TestCreateTableByNsClient(TestCaseBase):
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     @ddt.data(
-        ('"t{}"'.format(time.time()), None, 144000, 8,
+        ('t{}'.format(time.time()), None, 144000, 8,
          'Create table ok'),
-        ('"t{}"'.format(time.time()), None, 157680000, 8,
+        ('t{}'.format(time.time()), None, 157680000, 8,
          'Create failed. The max num of AbsoluteTime ttl is 15768000'),
-        ('"t{}"'.format(time.time()), '"notype"', 144000, 8,
+        ('t{}'.format(time.time()), '"notype"', 144000, 8,
          'ttl type notype is invalid'),
-        ('"t{}"'.format(time.time()), '', 144000, 8,
+        ('t{}'.format(time.time()), '', 144000, 8,
          'table meta file format error'),
-        ('""', None, 144000, 8,
+        ('', None, 144000, 8,
          'Fail to create table'),
-        ('"t{}"'.format(time.time()), None, -1, 8,
+        ('t{}'.format(time.time()), None, -1, 8,
          'Error parsing text-format rtidb.client.TableInfo: 2:5: Expected integer.'),
-        ('"t{}"'.format(time.time()), None, '', 8,
+        ('t{}'.format(time.time()), None, '', 8,
          'Error parsing text-format rtidb.client.TableInfo: 3:1: Expected integer.'),
-        ('"t{}"'.format(time.time()), None, '"144000"', 8,
+        ('t{}'.format(time.time()), None, '"144000"', 8,
          'table meta file format error'),
-        ('"t{}"'.format(time.time()), None, 144, -8,
+        ('t{}'.format(time.time()), None, 144, -8,
          'Error parsing text-format rtidb.client.TableInfo: 3:9: Expected integer.'),
-        ('"t{}"'.format(time.time()), None, 144, '',
+        ('t{}'.format(time.time()), None, 144, '',
          'Error parsing text-format rtidb.client.TableInfo: 4:1: Expected integer.'),
-        ('"t{}"'.format(time.time()), None, 144, '"8"',
+        ('t{}'.format(time.time()), None, 144, '"8"',
          'table meta file format error'),
         (None, None, 144000, 8,
          'Message missing required fields: name'),
-        ('"t{}"'.format(time.time()), None, None, 8,
+        ('t{}'.format(time.time()), None, None, 8,
          'Message missing required fields: ttl'),
     )
     @ddt.unpack
@@ -105,8 +105,8 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        ('"t{}"'.format(time.time()), '"kLatestTime"', 10, 8),
-        ('"t{}"'.format(time.time()), '"kAbsoluteTime"', 1, 8),  # RTIDB-202
+        ('t{}'.format(time.time()), '"kLatestTime"', 10, 8),
+        ('t{}'.format(time.time()), '"kAbsoluteTime"', 1, 8),  # RTIDB-202
     )
     @ddt.unpack
     def test_create_ttl_type(self, name, ttl_type, ttl, seg_cnt):
@@ -202,7 +202,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"large_table"'
+        name = 'large_table'
         # m = utils.gen_table_metadata(
         #     name, None, 144000, 8,
         #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
@@ -273,7 +273,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(time.time())
+        name = 'tname{}'.format(time.time())
         infoLogger.info(name)
 
         # table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
@@ -336,7 +336,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(time.time())
+        name = 'tname{}'.format(time.time())
         # m = utils.gen_table_metadata(
         #     name, None, 144000, 2,
         #     ('table_partition', ep[0], '"0-2"', 'true'),
@@ -386,7 +386,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(time.time())
+        name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             name, None, 144000, 2,
             *table_partition)
@@ -462,7 +462,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"tname{}"'.format(time.time())
+        name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata(
             name, '"kAbsoluteTime"', 144000, 8,
             ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
