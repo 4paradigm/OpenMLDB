@@ -170,7 +170,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"naysatest"'
+        name = 'naysatest'
         # m = utils.gen_table_metadata(
         #     name, None, 144000, 8,
         #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
