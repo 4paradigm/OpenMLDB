@@ -301,7 +301,7 @@ class TestChangeLeader(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = '"{}"'.format('tname{}'.format(time.time()))
+        name = '{}'.format('tname{}'.format(time.time()))
         # m = utils.gen_table_metadata(
         #     name, None, 144000, 2,
         #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
