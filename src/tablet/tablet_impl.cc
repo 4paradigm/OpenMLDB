@@ -2659,8 +2659,6 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_
             recycle_bin_root_path = FLAGS_recycle_hdd_bin_root_path;
 
         }
-        std::lock_guard<std::mutex> lock(mu_);
-        tables_[tid].erase(pid);
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     // do block other requests
