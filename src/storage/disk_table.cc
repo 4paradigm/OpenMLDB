@@ -184,7 +184,7 @@ bool DiskTable::Put(const std::string &pk, uint64_t time, const char *data, uint
     }
 }
 
-bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &dimensions) {
+    bool DiskTable::Put(uint64_t time, const std::string &value, const Dimensions &dimensions) {
     rocksdb::WriteBatch batch;
     rocksdb::Status s;
     Dimensions::const_iterator it = dimensions.begin();
@@ -213,7 +213,7 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
          return false;
     }
     rocksdb::WriteBatch batch;
-    for (auto it = dimensions.rbegin(); it != dimensions.rend(); it++) {
+    for (auto it = dimensions.begin(); it != dimensions.end(); it++) {
           if (it->idx() >= idx_cnt_) {
               PDLOG(WARNING, "idx greater than idx_cnt_, failed putting key %s to dimension %u in table tid %u pid %u",
                   it->key().c_str(), it->idx(), id_, pid_);
@@ -235,9 +235,9 @@ bool DiskTable::Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsi
       }
       rocksdb::Status s = db_->Write(write_opts_, &batch);
       if (s.ok()) {
-        offset_.fetch_add(1, std::memory_order_relaxed);
+            offset_.fetch_add(1, std::memory_order_relaxed);
       } else {
-        PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+            PDLOG(DEBUG, "Put failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
       }
       return s.ok();
 }
@@ -248,8 +248,23 @@ bool DiskTable::Put(const ::rtidb::api::LogEntry& entry) {
 }
 
 bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
-    rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
+    rocksdb::WriteBatch batch;
+    std::map<uint32_t, std::vector<uint32_t>>::iterator it = column_key_map_.find(idx);
+    if (it != column_key_map_.end()) {
+        if (it->second.size() == 1) {
+            batch.DeleteRange(cf_hs_[idx+1],
                 rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX)), rocksdb::Slice(CombineKeyTs(pk, 0)));
+        } else {
+            for (auto ts : it->second) {
+                batch.DeleteRange(cf_hs_[idx+1],
+                    rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX, ts)),rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX, ts)));
+            }
+        }
+    } else {
+        batch.DeleteRange(cf_hs_[idx+1],
+            rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX)), rocksdb::Slice(CombineKeyTs(pk, 0)));
+    }
+    rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -461,7 +476,7 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
-    auto columnMapIt = column_key_map_.find(index);
+    std::map<uint32_t, std::vector<uint32_t >>::iterator columnMapIt = column_key_map_.find(index);
     if (columnMapIt == column_key_map_.end()) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
         return NULL;
@@ -476,7 +491,9 @@ TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std:
         return new DiskTableIterator(db_, it, snapshot, pk);
     }
     if (std::find(column_key_map_[index].cbegin(), column_key_map_[index].cend(), ts_idx) == column_key_map_[index].cend()) {
-        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
+        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %u, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
+        delete it;
+        db_->ReleaseSnapshot(snapshot);
         return NULL;
     }
     if (columnMapIt->second.size() == 1) {

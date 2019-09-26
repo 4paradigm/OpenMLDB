@@ -572,7 +572,11 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         ts_index = iter->second;
     }
-    it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    if (ts_index >= 0) {
+        it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    } else {
+        it = disk_table->NewIterator(index, request->key(), ticket);
+    }
     if (it == NULL) {
         response->set_code(137);
         response->set_msg("ts name not found, when create iterator");
@@ -1185,7 +1189,11 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         ts_index = iter->second;
     }
-    it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
+    if (ts_index >= 0) {
+        it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
+    } else {
+        it = disk_table->NewIterator(index, request->pk(), ticket);
+    }
     if (it == NULL) {
         response->set_code(137);
         response->set_msg("ts name not found, when create iterator");
@@ -1391,7 +1399,11 @@ void TabletImpl::CountFromDiskTable(std::shared_ptr<Table> disk_table,
         }
         ts_index = iter->second;
     }
-    it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    if (ts_index >= 0) {
+        it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
+    } else {
+        it = disk_table->NewIterator(request->key(), ticket);
+    }
     if (it == NULL) {
         response->set_code(137);
         response->set_msg("ts name not found, when create iterator");
@@ -1489,7 +1501,7 @@ void TabletImpl::Traverse(RpcController* controller,
             return;
         }
         ts_index = iter->second;
-    }    
+    }
     ::rtidb::storage::TableIterator* it = NULL;
     if (ts_index >= 0) {
         it = table->NewTraverseIterator(index, ts_index);
@@ -1579,25 +1591,27 @@ void TabletImpl::TraverseFromDiskTable(std::shared_ptr<Table> disk_table,
             return;
         }
         index = iit->second;
-        if (request->has_ts_name() && request->ts_name().size() > 0) {
-            auto iter = disk_table->GetTSMapping().find(request->ts_name());
-            if (iter == disk_table->GetTSMapping().end()) {
-                PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                      request->tid(), request->pid());
-                response->set_code(137);
-                response->set_msg("ts name not found");
-                return;
-            }
-            ts_index = iter->second;
-        }
-        it = disk_table->NewTraverseIterator(index, ts_index);
-        if (it == NULL) {
+    }
+    if (request->has_ts_name() && request->ts_name().size() > 0) {
+        auto iter = disk_table->GetTSMapping().find(request->ts_name());
+        if (iter == disk_table->GetTSMapping().end()) {
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
+                  request->tid(), request->pid());
             response->set_code(137);
-            response->set_msg("ts name not found, when create iterator");
+            response->set_msg("ts name not found");
             return;
         }
+        ts_index = iter->second;
+    }
+    if (ts_index >= 0) {
+    it = disk_table->NewTraverseIterator(index, ts_index);
     } else {
         it = disk_table->NewTraverseIterator(index);
+    }
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found, when create iterator");
+        return;
     }
     uint64_t last_time = 0;
     std::string last_pk;
@@ -1711,31 +1725,29 @@ void TabletImpl::Delete(RpcController* controller,
         response->set_msg("delete failed");
         return;
     }
-    if (table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-        std::shared_ptr<LogReplicator> replicator;
-        do {
-            replicator = GetReplicator(request->tid(), request->pid());
-            if (!replicator) {
-                PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
-                        request->pid());
-                break;
-            }
-            ::rtidb::api::LogEntry entry;
-            entry.set_term(replicator->GetLeaderTerm());
-            entry.set_method_type(::rtidb::api::MethodType::kDelete);
-            ::rtidb::api::Dimension* dimension = entry.add_dimensions();
-            dimension->set_key(request->key());
-            dimension->set_idx(idx);
-            replicator->AppendEntry(entry);
-        } while(false);
-        if (replicator && FLAGS_binlog_notify_on_put) {
-            replicator->Notify(); 
+    std::shared_ptr<LogReplicator> replicator;
+    do {
+        replicator = GetReplicator(request->tid(), request->pid());
+        if (!replicator) {
+            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
+                    request->pid());
+            break;
         }
+        ::rtidb::api::LogEntry entry;
+        entry.set_term(replicator->GetLeaderTerm());
+        entry.set_method_type(::rtidb::api::MethodType::kDelete);
+        ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+        dimension->set_key(request->key());
+        dimension->set_idx(idx);
+        replicator->AppendEntry(entry);
+    } while(false);
+    if (replicator && FLAGS_binlog_notify_on_put) {
+        replicator->Notify();
     }
     return;
 }
 
-void TabletImpl::ChangeRole(RpcController* controller, 
+void TabletImpl::ChangeRole(RpcController* controller,
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
             Closure* done) {
