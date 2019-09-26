@@ -20,6 +20,7 @@ class TestNsDropTable(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
+        name = '{}'.format(name)
         # m = utils.gen_table_metadata(
         #     '"{}"'.format(name), None, 144000, 2,
         #     ('table_partition', '"{}"'.format(self.leader), '"0-30"', 'true'),
