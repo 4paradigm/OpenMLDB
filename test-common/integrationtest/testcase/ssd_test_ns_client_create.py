@@ -36,7 +36,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         #  'src/brpc/global.cpp:260] google/protobuf/text_format.cc:274 Error parsing text-format rtidb.client.TableInfo: 32:6: Expected integer.\ntable meta file format error'),
         # ('t{}'.format(time.time()), None, 144, '',
         #  'src/brpc/global.cpp:260] google/protobuf/text_format.cc:274 Error parsing text-format rtidb.client.TableInfo: 32:6: Expected integer.\ntable meta file format error'),
-        ('t{}'.format(time.time()), None, 144, '"8"',
+        ('t{}'.format(time.time()), None, 144, '8',
          'table meta file format error'),
         (None, None, 144000, 8,
          'Message missing required fields: name'),
