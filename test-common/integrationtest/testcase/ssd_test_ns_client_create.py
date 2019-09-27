@@ -22,8 +22,8 @@ class TestCreateTableByNsClient(TestCaseBase):
          'Create failed. The max num of AbsoluteTime ttl is 15768000'),
         ('t{}'.format(time.time()), 'notype', 144000, 8,
          'ttl type notype is invalid'),    #
-        # ('t{}'.format(time.time()), '', 144000, 8,
-        #  'ttl type  is invalid'),      #table meta file format error
+        ('t{}'.format(time.time()), '', 144000, 8,
+         'ttl type  is invalid'),      #table meta file format error
         # ('', None, 144000, 8,
         #  'Fail to create table'),
         # ('t{}'.format(time.time()), None, -1, 8,
