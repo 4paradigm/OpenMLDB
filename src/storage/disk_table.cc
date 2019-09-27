@@ -466,6 +466,10 @@ TableIterator* DiskTable::NewIterator(const std::string &pk, Ticket& ticket) {
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) {
+    auto column_map_iter = column_key_map_.find(idx);
+    if (column_map_iter != column_key_map_.end() && !column_map_iter->second.empty()) {
+        return NewIterator(idx, column_map_iter->second.front(), pk, ticket);
+    }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
     ro.snapshot = snapshot;
@@ -476,9 +480,16 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
-    std::map<uint32_t, std::vector<uint32_t >>::iterator columnMapIt = column_key_map_.find(index);
-    if (columnMapIt == column_key_map_.end()) {
+    if (ts_idx < 0) {
+        return NULL;
+    }
+    auto column_map_iter = column_key_map_.find(index);
+    if (column_map_iter == column_key_map_.end()) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
+        return NULL;
+    }
+    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx) == column_map_iter->second.cend()) {
+        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %u, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
         return NULL;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
@@ -487,16 +498,7 @@ TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std:
     ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[index+1]);
-    if (ts_idx < 0) {
-        return new DiskTableIterator(db_, it, snapshot, pk);
-    }
-    if (std::find(column_key_map_[index].cbegin(), column_key_map_[index].cend(), ts_idx) == column_key_map_[index].cend()) {
-        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %u, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
-        delete it;
-        db_->ReleaseSnapshot(snapshot);
-        return NULL;
-    }
-    if (columnMapIt->second.size() == 1) {
+    if (column_map_iter->second.size() == 1) {
         return new DiskTableIterator(db_, it, snapshot, pk);
     }
     return new DiskTableIterator(db_, it, snapshot, pk, ts_idx);
@@ -526,7 +528,7 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t idx) {
     return new DiskTableTraverseIterator(db_, it, snapshot, ttl_type_, expire_value);
 }
 
-TableIterator* DiskTable::NewTraverseIterator(uint32_t index, int32_t ts_idx) {
+TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
     auto columnMapIt = column_key_map_.find(index);
     if (columnMapIt != column_key_map_.end() && std::find(columnMapIt->second.cbegin(),
             columnMapIt->second.cend(), ts_idx) != columnMapIt->second.cend()) {

@@ -330,7 +330,6 @@ private:
     rocksdb::Options options_;
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
-  TableIterator *NewTraverseIterator(uint32_t index, int32_t ts_idx);
 };
 
 }
