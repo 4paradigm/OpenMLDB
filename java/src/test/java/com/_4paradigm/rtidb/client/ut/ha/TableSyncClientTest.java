@@ -12,6 +12,8 @@ import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
+import com._4paradigm.rtidb.common.Common;
+import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -95,7 +97,25 @@ public class TableSyncClientTest extends TestCaseBase {
         client.refreshRouteTable();
         return name;
     }
-    
+
+
+    private String createTsSchemaTable() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("amt").setType("double").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setIsTsCol(true).setType("timestamp").build();
+        Common.ColumnKey key = Common.ColumnKey.newBuilder().setIndexName("card").addColName("card").addTsName("ts").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setSegCnt(8).setName(name).setTtl(0).addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnKey(key)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        return name;
+    }
+
     @Test
     public void testPut() {
         String name = createKvTable();
@@ -283,6 +303,27 @@ public class TableSyncClientTest extends TestCaseBase {
         }
     }
 
+    @Test
+    public void testTsCountSchema() {
+        String name = createTsSchemaTable();
+        try{
+            long now = System.currentTimeMillis();
+            boolean ok = tableSyncClient.put(name, new Object[] {"card1", 1.1d, new DateTime(now)});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, new Object[] {"card1", 2.1d, new DateTime(now-1000)});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, new Object[] {"card1", 3.1d, new DateTime(now-2000)});
+            Assert.assertTrue(ok);
+            Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, 0l));
+            Assert.assertEquals(1, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 1000));
+            Assert.assertEquals(2, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 2000));
+        }catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
     @Test
     public void testCountSchema() {
         String name = createSchemaTable();
@@ -717,6 +758,53 @@ public class TableSyncClientTest extends TestCaseBase {
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(true);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testCountSchemaTable() {
+       String name = createSchemaTable();
+       try {
+           String k1 = "k1";
+           String k2 = "k2";
+           for (int i = 1; i < 10; i++) {
+               boolean ok  = tableSyncClient.put(name, i, new Object[]{k1, k2, 1.0});
+               Assert.assertTrue(ok);
+           }
+           int count = tableSyncClient.count(name, k1,"card", 10, 9);
+           Assert.assertEquals(0, count);
+           count = tableSyncClient.count(name, k1,"card", 10, 8);
+           Assert.assertEquals(1, count);
+           count = tableSyncClient.count(name, k1,"card", 10, 7);
+           Assert.assertEquals(2, count);
+       } catch (Exception e) {
+           e.printStackTrace();
+           Assert.fail();
+       } finally {
+           nsc.dropTable(name);
+       }
+    }
+
+    @Test
+    public void testCountKvTable() {
+        String name = createKvTable();
+        try {
+            String key  = "k1";
+            for (int i = 1; i < 10; i++) {
+                boolean ok = tableSyncClient.put(name, key, i, String.valueOf(i));
+                Assert.assertTrue(ok);
+            }
+            int count = tableSyncClient.count(name, key, 10, 9);
+            Assert.assertEquals(0, count);
+            count = tableSyncClient.count(name, key, 10, 8);
+            Assert.assertEquals(1, count);
+            count = tableSyncClient.count(name, key, 10, 7);
+            Assert.assertEquals(2, count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
         } finally {
             nsc.dropTable(name);
         }

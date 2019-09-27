@@ -11,8 +11,6 @@ using ::baidu::common::INFO;
 using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
-DECLARE_string(ssd_root_path);
-DECLARE_string(hdd_root_path);
 DECLARE_bool(disable_wal);
 
 namespace rtidb {
@@ -25,10 +23,11 @@ static bool options_template_initialized = false;
 DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
                      const std::map<std::string, uint32_t> &mapping, 
                      uint64_t ttl, ::rtidb::api::TTLType ttl_type,
-                     ::rtidb::common::StorageMode storage_mode) :
+                     ::rtidb::common::StorageMode storage_mode,
+                     const std::string& db_root_path) :
         Table(storage_mode, name, id, pid, ttl * 60 * 1000, true, 0, mapping, ttl_type, 
                 ::rtidb::api::CompressType::kNoCompress),
-        write_opts_(), offset_(0) {
+        write_opts_(), offset_(0), db_root_path_(db_root_path){
     if (!options_template_initialized) {
         initOptionTemplate();
     }
@@ -36,11 +35,12 @@ DiskTable::DiskTable(const std::string &name, uint32_t id, uint32_t pid,
     db_ = nullptr;
 }
 
-DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta) :
+DiskTable::DiskTable(const ::rtidb::api::TableMeta& table_meta,
+        const std::string& db_root_path) :
         Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(),
                 0, true, 0, std::map<std::string, uint32_t>(), 
                 ::rtidb::api::TTLType::kAbsoluteTime, ::rtidb::api::CompressType::kNoCompress),
-        write_opts_(), offset_(0) {
+        write_opts_(), offset_(0), db_root_path_(db_root_path) {
     table_meta_.CopyFrom(table_meta);
     if (!options_template_initialized) {
         initOptionTemplate();
@@ -153,8 +153,7 @@ bool DiskTable::Init() {
         return false;
     }
     InitColumnFamilyDescriptor();
-    std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
-    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
+    std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!::rtidb::base::MkdirRecur(path)) {
         PDLOG(WARNING, "fail to create path %s", path.c_str());
         return false;
@@ -167,7 +166,8 @@ bool DiskTable::Init() {
         PDLOG(WARNING, "rocksdb open failed. tid %u pid %u error %s", id_, pid_, s.ToString().c_str());
         return false;
     } 
-    PDLOG(DEBUG, "Open DB. tid %u pid %u ColumnFamilyHandle size %d,", id_, pid_, idx_cnt_);
+    PDLOG(INFO, "Open DB. tid %u pid %u ColumnFamilyHandle size %d with data path %s", id_, pid_, idx_cnt_,
+            path.c_str());
     return true;
 }
 
@@ -284,8 +284,7 @@ bool DiskTable::LoadTable() {
         return false;
     }
     InitColumnFamilyDescriptor();
-    std::string root_path = storage_mode_ == ::rtidb::common::StorageMode::kSSD ? FLAGS_ssd_root_path : FLAGS_hdd_root_path;
-    std::string path = root_path + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
+    std::string path = db_root_path_ + "/" + std::to_string(id_) + "_" + std::to_string(pid_) + "/data";
     if (!rtidb::base::IsExists(path)) {
         return false;
     }
