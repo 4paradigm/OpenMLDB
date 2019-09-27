@@ -233,9 +233,11 @@ public:
                 const std::map<std::string, uint32_t>& mapping,
                 uint64_t ttl,
                 ::rtidb::api::TTLType ttl_type,
-                ::rtidb::common::StorageMode storage_mode);
+                ::rtidb::common::StorageMode storage_mode,
+                const std::string& db_root_path);
 
-    DiskTable(const ::rtidb::api::TableMeta& table_meta);
+    DiskTable(const ::rtidb::api::TableMeta& table_meta,
+              const std::string& db_root_path);
     DiskTable(const DiskTable&) = delete;
     DiskTable& operator=(const DiskTable&) = delete;
 
@@ -327,6 +329,7 @@ private:
     rocksdb::Options options_;
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
+    std::string db_root_path_;
 };
 
 }

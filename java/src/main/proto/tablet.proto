@@ -176,6 +176,7 @@ message GeneralRequest {
     required int32 tid = 1;
     required int32 pid = 2;
     optional TaskInfo task_info = 3;
+    optional rtidb.common.StorageMode storage_mode = 4 [default = kMemory];
 }
 
 message TaskStatusRequest {
@@ -418,6 +419,7 @@ message SendDataRequest {
     optional uint32 block_size = 5;
     optional bool eof = 6 [default = false];
     optional string dir_name = 7;
+    optional rtidb.common.StorageMode storage_mode = 8 [default = kMemory];
 }
 
 message ChangeRoleResponse {
@@ -458,7 +460,7 @@ message TableStatus {
     optional CompressType compress_type = 17;
     optional uint32 skiplist_height = 18;
     optional bytes schema = 19;
-    optional rtidb.common.StorageMode storage_mode = 20;
+    optional rtidb.common.StorageMode storage_mode = 20 [default = kMemory];
 }
 
 message GetTableStatusResponse {
@@ -494,8 +496,12 @@ message CountRequest {
     optional string key = 4;
     optional bool filter_expired_data = 5 [default = false];
     optional string ts_name = 6;
-    optional bool enable_remove_duplicated_record = 7 [default=false];
-}    
+    optional uint64 st = 7;
+    optional GetType st_type = 8 [default = kSubKeyLe];
+    optional uint64 et = 9;
+    optional GetType et_type = 10 [default = kSubKeyGt];
+    optional bool enable_remove_duplicated_record = 11 [default=false];
+} 
 
 message CountResponse {
     optional int32 code = 1;
@@ -506,6 +512,7 @@ message CountResponse {
 message GetTermPairRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
+    optional rtidb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetTermPairResponse {
@@ -520,6 +527,7 @@ message GetTermPairResponse {
 message GetManifestRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
+    optional rtidb.common.StorageMode storage_mode = 3 [default = kMemory];
 }
 
 message GetManifestResponse { 
@@ -551,6 +559,7 @@ message CheckFileRequest {
     optional string file = 3;
     optional uint64 size = 4;
     optional string dir_name = 5;
+    optional rtidb.common.StorageMode storage_mode = 6 [default = kMemory];
 }
 
 message ConnectZKRequest {}

@@ -497,7 +497,11 @@ message CountRequest {
     optional bool filter_expired_data = 5 [default = false];
     optional string ts_name = 6;
     optional bool enable_remove_duplicated_record = 7 [default=false];
-}    
+    optional uint64 st = 8 [default = 0];
+    optional GetType st_type = 9 [default = kSubKeyLe];
+    optional uint64 et = 10 [default = 0];
+    optional GetType et_type = 11 [default = kSubKeyGt];
+}
 
 message CountResponse {
     optional int32 code = 1;
