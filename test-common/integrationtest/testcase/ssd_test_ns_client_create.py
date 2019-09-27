@@ -21,7 +21,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('t{}'.format(time.time()), None, 157680000, 8,
          'Create failed. The max num of AbsoluteTime ttl is 15768000'),
         ('t{}'.format(time.time()), 'notype', 144000, 8,
-         'E0927 15:34:17.594265  8272 src/brpc/global.cpp:260] google/protobuf/text_format.cc:274 Error parsing text-format rtidb.client.TableInfo: 32:6: Expected integer.\ntable meta file format error'),    #ttl type notype is invalid
+         'ttl type notype is invalid'),    #
         ('t{}'.format(time.time()), '', 144000, 8,
          'ttl type  is invalid'),      #table meta file format error
         ('', None, 144000, 8,
