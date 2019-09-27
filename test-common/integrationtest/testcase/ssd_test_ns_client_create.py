@@ -23,7 +23,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('t{}'.format(time.time()), 'notype', 144000, 8,
          'ttl type notype is invalid'),
         ('t{}'.format(time.time()), '', 144000, 8,
-         'table meta file format error'),
+         'ttl type  is invalid'),      #table meta file format error
         ('', None, 144000, 8,
          'Fail to create table'),
         ('t{}'.format(time.time()), None, -1, 8,
