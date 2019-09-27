@@ -26,8 +26,8 @@ class TestCreateTableByNsClient(TestCaseBase):
          'ttl type  is invalid'),      #table meta file format error
         ('', None, 144000, 8,
          'Fail to create table'),
-        # ('t{}'.format(time.time()), None, -1, 8,
-        #  'Error parsing text-format rtidb.client.TableInfo: 2:5: Expected integer.'),
+        ('t{}'.format(time.time()), None, -1, 8,
+         'Error parsing text-format rtidb.client.TableInfo: 2:5: Expected integer.'),
         # ('t{}'.format(time.time()), None, '', 8,
         #  'Error parsing text-format rtidb.client.TableInfo: 3:1: Expected integer.'),
         # ('t{}'.format(time.time()), None, '"144000"', 8,
