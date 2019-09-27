@@ -322,6 +322,8 @@ private:
 
     int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
 
+    int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta, bool for_add_column);
+
     int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 
     int AddOPTask(const ::rtidb::api::TaskInfo& task_info, ::rtidb::api::TaskType task_type,

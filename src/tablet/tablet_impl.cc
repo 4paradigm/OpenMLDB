@@ -1777,47 +1777,62 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);        
-    std::lock_guard<std::mutex> lock(mu_);        
-    for (auto it = tables_.begin(); it != tables_.end(); ++it) {
-        if (request->has_tid() && request->tid() != it->first) {
-            continue;
+    std::lock_guard<std::mutex> lock(mu_);
+    auto it = tables_.find(request->tid());
+    uint32_t tid = it->first;
+    for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
+        uint32_t pid = pit->first;
+        std::shared_ptr<Table> table = pit->second;
+        //judge if field exists
+        std::string col_name = request->column_desc().name();
+        for (const auto& column : table->GetTableMeta().column_desc()) {
+            if (column.name() == col_name) {
+                response->set_code(323);
+                response->set_msg("field name repeated in tablet!");
+                PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
+                return;
+            } 
         }
-        uint32_t tid = it->first;
-        for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
-            uint32_t pid = pit->first;
-            std::shared_ptr<Table> table = pit->second;
-            ::rtidb::api::TableMeta table_meta;
-            table_meta.CopyFrom(table->GetTableMeta());
-            ::rtidb::common::ColumnDesc* column_desc = table_meta.add_added_column_desc();
-            column_desc->CopyFrom(request->column_desc());
-            table_meta.set_schema(request->schema());
-            table->SetTableMeta(table_meta);
-            table->SetSchema(request->schema());
-            //update TableMeta.txt
-            std::string root_path = FLAGS_db_root_path;
-            if (table_meta.storage_mode() == ::rtidb::common::kHDD) {
-                root_path = FLAGS_hdd_root_path;
-            } else if (table_meta.storage_mode() == ::rtidb::common::kSSD) {
-                root_path = FLAGS_ssd_root_path;
-            }
-            std::string db_path = root_path + "/" + std::to_string(tid) + 
-                "_" + std::to_string(pid);
-            if (!::rtidb::base::IsExists(db_path)) {
-                PDLOG(WARNING, "table db path is not exist. tid %u, pid %u", tid, pid);
-                response->set_code(130);
-                response->set_msg("table db path is not exist");
+        for (const auto& column : table->GetTableMeta().added_column_desc()) {
+            if (column.name() == col_name) {
+                response->set_code(323);
+                response->set_msg("field name repeated in tablet!");
+                PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
                 return;
-            }
-            UpdateTableMeta(db_path, &table_meta);
-            if (WriteTableMeta(db_path, &table_meta) < 0) {
-                PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
-                response->set_code(127);
-                response->set_msg("write data failed");
-                return;
-            }
+            } 
+        }
+        ::rtidb::api::TableMeta table_meta;
+        table_meta.CopyFrom(table->GetTableMeta());
+        ::rtidb::common::ColumnDesc* column_desc = table_meta.add_added_column_desc();
+        column_desc->CopyFrom(request->column_desc());
+        table_meta.set_schema(request->schema());
+        table->SetTableMeta(table_meta);
+        table->SetSchema(request->schema());
+        //update TableMeta.txt
+        std::string root_path = FLAGS_db_root_path;
+        if (table_meta.storage_mode() == ::rtidb::common::kHDD) {
+            root_path = FLAGS_hdd_root_path;
+        } else if (table_meta.storage_mode() == ::rtidb::common::kSSD) {
+            root_path = FLAGS_ssd_root_path;
+        }
+        std::string db_path = root_path + "/" + std::to_string(tid) + 
+            "_" + std::to_string(pid);
+        if (!::rtidb::base::IsExists(db_path)) {
+            PDLOG(WARNING, "table db path is not exist. tid %u, pid %u", tid, pid);
+            response->set_code(130);
+            response->set_msg("table db path is not exist");
+            return;
+        }
+        UpdateTableMeta(db_path, &table_meta, true);
+        if (WriteTableMeta(db_path, &table_meta) < 0) {
+            PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
+            response->set_code(127);
+            response->set_msg("write data failed");
+            return;
         }
     }
     response->set_code(0);
+    response->set_msg("ok");
 }
 
 void TabletImpl::GetTableStatus(RpcController* controller,
@@ -2962,7 +2977,7 @@ int TabletImpl::WriteTableMeta(const std::string& path, const ::rtidb::api::Tabl
     return 0;
 }
 
-int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta) {
+int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta, bool for_add_column) {
     std::string full_path = path + "/table_meta.txt";
     int fd = open(full_path.c_str(), O_RDONLY);
     ::rtidb::api::TableMeta old_meta;
@@ -2978,13 +2993,25 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
         }
     }
     // use replicas in LoadRequest
-    old_meta.clear_replicas();
+    if (for_add_column) {
+        old_meta.clear_dimensions();
+        old_meta.clear_column_desc();
+        old_meta.clear_column_key();
+        old_meta.clear_added_column_desc();
+    } else {
+        old_meta.clear_replicas();
+    }
     old_meta.MergeFrom(*table_meta);
     table_meta->CopyFrom(old_meta);
     std::string new_name = full_path + "." + ::rtidb::base::GetNowTime();
     rename(full_path.c_str(), new_name.c_str());
     return 0;
 }
+
+int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta) {
+    return UpdateTableMeta(path, table_meta, false);
+}
+ 
 
 int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
     std::vector<std::string> endpoints;

@@ -50,7 +50,7 @@ public:
                     
     bool CreateTable(const ::rtidb::api::TableMeta& table_meta);
    
-    bool UpdateTableMetaForAddField(uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc, const std::string& schema);
+    bool UpdateTableMetaForAddField(uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc, const std::string& schema, std::string& msg);
 
     bool Put(uint32_t tid,
              uint32_t pid,

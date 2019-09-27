@@ -191,7 +191,7 @@ public:
                 memrev16ifbe(static_cast<void*>(cbuffer));
                 cbuffer += 2;
             } else {
-                uint8_t col_cnt_tmp = (uint8_t)col_cnt_;
+                uint8_t col_cnt_tmp = (uint8_t)(col_cnt_ | 0x80);
                 memcpy(cbuffer, static_cast<const void*>(&col_cnt_tmp), 1);
                 cbuffer += 1;
             }
@@ -263,26 +263,18 @@ public:
 
     FlatArrayIterator(const char* buffer, uint32_t bsize, uint16_t column_size):buffer_(buffer), 
     col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0){
-        //for the case of adding field
+        // for the case:
+        // 1.add field
+        // 2.real column_sizei < 128
         if ((uint8_t)(buffer_[0] & 0x80) != 0) {
             memcpy(static_cast<void*>(&col_cnt_), buffer_, 1);
             buffer_ += 1;
             offset_ += 1;
         } else {
-            //for the old data before adding field
-            column_size = (uint16_t)(buffer_[0] & 0x7F);
-            if (column_size >= 128) {
-                memcpy(static_cast<void*>(&col_cnt_), buffer_, 2);
-                memrev16ifbe(static_cast<void*>(&col_cnt_));
-                buffer_ += 2;
-                offset_ += 2;
-            } else {
-                uint8_t col_cnt_tmp = 0;
-                memcpy(static_cast<void*>(&col_cnt_tmp), buffer_, 1);
-                col_cnt_ = col_cnt_tmp;
-                buffer_ += 1;
-                offset_ += 1;
-            }
+            memcpy(static_cast<void*>(&col_cnt_), buffer_, 2);
+            memrev16ifbe(static_cast<void*>(&col_cnt_));
+            buffer_ += 2;
+            offset_ += 2;
         } 
         Next();
     }

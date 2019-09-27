@@ -2024,82 +2024,105 @@ void NameServerImpl::AddTableField(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    auto iter = table_info_.find(request->name());
-    if (iter == table_info_.end()) {
-        response->set_code(100);
-        response->set_msg("table is not exist!");
-        PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
-        return;
+    std::map<std::string, std::shared_ptr<TabletClient>> tablet_client_map;
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto iter = table_info_.find(request->name());
+        if (iter == table_info_.end()) {
+            response->set_code(100);
+            response->set_msg("table is not exist!");
+            PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
+            return;
+        }
+        table_info = iter->second;
+        // 1.update tablet tables_
+        std::vector<std::string> endpoint_vec;
+        for (auto it = table_info->table_partition().begin(); it != table_info->table_partition().end(); it++) {
+            for (auto tit = it->partition_meta().begin(); tit != it->partition_meta().end(); tit++) {
+                endpoint_vec.push_back(tit->endpoint());
+            }
+        }
+        Tablets::iterator it = tablets_.begin();
+        for (; it != tablets_.end(); ++it) {
+            std::string endpoint = it->first;
+            if (std::find(endpoint_vec.begin(), endpoint_vec.end(), endpoint) == endpoint_vec.end()) {
+                continue;
+            }
+            std::shared_ptr<TabletInfo> tablet_ptr = it->second;
+            // check tablet healthy
+            if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                response->set_code(303);
+                response->set_msg("tablet is not healthy!");
+                PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
+                return;
+            }
+            tablet_client_map.insert(std::make_pair(endpoint, tablet_ptr->client_));
+        }
     }
-    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = iter->second;
+    uint32_t tid = table_info->tid();
+    std::string msg;
+    for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++ ){
+        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), request->schema(), msg)) {
+            response->set_code(324);
+            response->set_msg("fail to update tableMeta for adding field: "+ msg);
+            PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field failed!",
+                    it->first.c_str());
+            return;
+        }
+        PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field succeeded!",
+                it->first.c_str());
+    }
+    //judge if field exists in table_info
     std::string col_name = request->column_desc().name();
     if (table_info->column_desc_v1_size() > 0) {
         for (const auto& column : table_info->column_desc_v1()) {
             if (column.name() == col_name) {
                 response->set_code(323);
-                response->set_msg("field name repeated!");
-                PDLOG(WARNING, "field name[%s] repeated!", col_name.c_str());
+                response->set_msg("field name repeated in table_info!");
+                PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
+                return;
             } 
         }
     } else {
         for (const auto& column : table_info->column_desc()) {
             if (column.name() == col_name) {
                 response->set_code(323);
-                response->set_msg("field name repeated!");
-                PDLOG(WARNING, "field name[%s] repeated!", col_name.c_str());
+                response->set_msg("field name repeated in table_info!");
+                PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
+                return;
             } 
         }
     }
     for (const auto& column : table_info->added_column_desc()) {
         if (column.name() == col_name) {
-           response->set_code(323);
-           response->set_msg("field name repeated!");
-           PDLOG(WARNING, "field name[%s] repeated!", col_name.c_str());
+            response->set_code(323);
+            response->set_msg("field name repeated in table_info!");
+            PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
+            return;
         } 
     }
-    //update ns table_info_
-    PDLOG(DEBUG, "added_column_desc size is [%u] ", table_info->added_column_desc_size());
-    ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
-    added_column_desc->CopyFrom(request->column_desc());
-    PDLOG(DEBUG, "added_column_desc size is [%u] ", table_info->added_column_desc_size());
-    //update zk node
-    std::string table_value;
-    table_info->SerializeToString(&table_value);
-    if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
-        response->set_code(304);
-        response->set_msg("set zk failed!");
-        PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        // 2.update ns table_info_
+        ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
+        added_column_desc->CopyFrom(request->column_desc());
+        //update zk node
+        std::string table_value;
+        table_info->SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+            response->set_code(304);
+            response->set_msg("set zk failed!");
+            PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
+                    zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+            return;         
+        }
+        PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
-        return;         
+        NotifyTableChanged();
     }
-    PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
-            zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
-    //update tablet tables_
-    uint32_t tid = table_info->tid();
-    Tablets::iterator it = tablets_.begin();
-    for (; it != tablets_.end(); ++it) {
-        std::string endpoint = it->first;
-        std::shared_ptr<TabletInfo> tablet_ptr = it->second;
-        // check tablet healthy
-        if (tablet_ptr->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
-            response->set_code(303);
-            response->set_msg("tablet is not healthy!");
-            PDLOG(WARNING, "endpoint [%s] is offline", endpoint.c_str());
-            return;
-        }
-        if (!tablet_ptr->client_->UpdateTableMetaForAddField(tid, *added_column_desc, request->schema())) {
-            response->set_code(324);
-            response->set_msg("fail to update tableMeta for add field!");
-            PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field failed!",
-                    endpoint.c_str());
-            return;
-        }
-        PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field succeeded!",
-                endpoint.c_str());
-    }
-    NotifyTableChanged();
     response->set_code(0);
+    response->set_msg("ok");
 }
 
 void NameServerImpl::CreateTable(RpcController* controller, 

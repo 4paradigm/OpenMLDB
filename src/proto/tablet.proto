@@ -301,9 +301,9 @@ message CreateTableRequest {
 }
 
 message UpdateTableMetaForAddFieldRequest {
-    required uint32 tid = 1;
-    required rtidb.common.ColumnDesc column_desc = 2;
-    required string schema = 3;
+    optional uint32 tid = 1;
+    optional rtidb.common.ColumnDesc column_desc = 2;
+    optional string schema = 3;
 }
 message CreateTableResponse {
 	optional int32 code = 1;

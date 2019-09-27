@@ -1548,6 +1548,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
 void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() != 4) {
         std::cout << "addtablefield format error. eg: addtablefield tablename column_name column_type" << std::endl;
+        return;
     }
     std::set<std::string> type_set;
     type_set.insert("int32");
@@ -1562,6 +1563,10 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
     type_set.insert("date");
     type_set.insert("int16");
     type_set.insert("uint16");
+    if (type_set.find(parts[3]) == type_set.end()) {
+        printf("type %s is invalid\n", parts[3].c_str());
+        return;
+    }
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::string msg;
     bool ret = client->ShowTable(parts[1], tables, msg);
@@ -1657,7 +1662,6 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         int base_size = (int)(column_desc_list_1.size());
         int add_size = (int)(column_desc_list_2.size());
         int modify_index = parts.size() - start_index - base_size;
-        printf("add_size: %d", add_size);
         if (modify_index - add_size > 0 || modify_index < 0) {
             printf("put format error! input value does not match the schema\n");
             return;
@@ -3348,7 +3352,6 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::rtidb::client:
         return;
     }
     std::string schema = table_status.schema();
-    printf("schmea: %d\n", (int)(schema.size()));
     std::vector<::rtidb::base::ColumnDesc> columns;
     if (!schema.empty()) {
         ::rtidb::base::SchemaCodec codec;
@@ -4083,8 +4086,6 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
         scodec.Decode(schema, raw);
         int base_size = (int)(raw.size() - table_meta.added_column_desc_size());
         int modify_index = (int)(parts.size() - 4 - base_size); 
-        printf("modify_index: %d\n", modify_index);
-        printf("base_index: %d\n", base_size);
         if (modify_index > table_meta.added_column_desc_size() || modify_index < 0) {
             std::cout << "Input value mismatch schema" << std::endl;
             return;

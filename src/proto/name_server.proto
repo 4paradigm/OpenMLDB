@@ -147,9 +147,9 @@ message GeneralResponse {
 message ShowTabletRequest {}
 
 message AddTableFieldRequest {
-    required string name = 1;
-    required rtidb.common.ColumnDesc column_desc = 2;
-    required string schema = 3;
+    optional string name = 1;
+    optional rtidb.common.ColumnDesc column_desc = 2;
+    optional string schema = 3;
 }
 message TabletStatus {
     optional string endpoint = 1;
