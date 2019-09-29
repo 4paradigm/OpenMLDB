@@ -120,8 +120,14 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         }
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
-        if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime && ttl_ > 0) {
-            cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(ttl_);
+        if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
+            auto column_key_map_iter = column_key_map_.find(iter->second);
+            if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second.size() > 1) {
+                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&ttl_vec_);
+                PDLOG(DEBUG, "set ttl vec. tid %u pid %u", id_, pid_);
+            } else {
+                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&ttl_);
+            }
         }
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
         PDLOG(DEBUG, "add cf_name %s. tid %u pid %u", iter->first.c_str(), id_, pid_);
@@ -301,15 +307,28 @@ bool DiskTable::LoadTable() {
 }
 
 void DiskTable::SchedGc() {
-    if (ttl_ == 0) {
-        return;
-    }
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         GcHead();
     } /*else {
         rocksdb will delete expired key when compact
         GcTTL();
     }*/
+	if (ttl_.load(std::memory_order_relaxed) != new_ttl_.load(std::memory_order_relaxed)) {
+        uint64_t ttl_for_logger = ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        uint64_t new_ttl_for_logger = new_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
+        PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_);
+        ttl_.store(new_ttl_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
+    for (uint32_t i = 0; i < ttl_vec_.size(); i++) {
+        if (ttl_vec_[i]->load(std::memory_order_relaxed) != new_ttl_vec_[i]->load(std::memory_order_relaxed)) {
+            uint64_t ttl_for_logger = ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
+            uint64_t new_ttl_for_logger = new_ttl_vec_[i]->load(std::memory_order_relaxed) / 1000 / 60;
+            PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u ts_index %u",
+                    ttl_for_logger, new_ttl_for_logger, name_.c_str(), id_, pid_, i);
+            ttl_vec_[i]->store(new_ttl_vec_[i]->load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+    }
 }
 
 void DiskTable::GcTTL() {
@@ -357,41 +376,95 @@ void DiskTable::GcTTL() {
 
 void DiskTable::GcHead() {
     uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
-    uint64_t ttl_num = ttl_ / 60 / 1000;
-    if (ttl_num < 1) {
-        return;
-    }
-    for (auto cf_hs : cf_hs_) {
+    for (auto iter = mapping_.begin(); iter != mapping_.end(); ++iter) {
+        uint32_t idx = iter->second;
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
         const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
         ro.snapshot = snapshot;
         //ro.prefix_same_as_start = true;
         ro.pin_data = true;
-        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs);
+        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
         it->SeekToFirst();
-        std::string last_pk;
-        uint64_t count = 0;
-        while (it->Valid()) {
-            std::string cur_pk;
-            uint64_t ts = 0;
-            ParseKeyAndTs(it->key(), cur_pk, ts);
-            if (cur_pk == last_pk) {
-                if (ts == 0 || count < ttl_num) {
-                    it->Next();
-                    count++;
-                    continue;
-                } else {
-                    rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs, 
-                            rocksdb::Slice(CombineKeyTs(cur_pk, ts)), rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
-                    if (!s.ok()) {
-                        PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
-                    }    
-                    it->Seek(rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
+        auto column_key_map_iter = column_key_map_.find(iter->second);
+        if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second.size() > 1) {
+            bool need_ttl = false;
+            std::map<uint32_t, uint64_t> ttl_map;
+            for (auto ts_idx : column_key_map_iter->second) {
+                uint64_t ttl = ttl_vec_[ts_idx]->load(std::memory_order_relaxed) / 60 / 1000;
+                ttl_map.insert(std::make_pair(ts_idx, ttl));
+                if (ttl > 0) {
+                    need_ttl = true;
+                    break;
                 }
-            } else {
-                count = 1;
-                last_pk = cur_pk;
+            }
+            if (!need_ttl) {
+                continue;
+            }
+            std::map<uint32_t, uint32_t> key_cnt;
+            std::map<uint32_t, uint64_t> delete_key_map;
+            std::string last_pk;
+            while (it->Valid()) {
+                std::string cur_pk;
+                uint64_t ts = 0;
+                uint8_t ts_idx = 0;
+                ParseKeyAndTs(true, it->key(), cur_pk, ts, ts_idx);
+                if (!last_pk.empty() && cur_pk == last_pk) {
+                    auto ttl_iter = ttl_map.find(ts_idx);
+                    if (ttl_iter != ttl_map.end() && ttl_iter->second > 0) {
+                        auto key_cnt_iter = key_cnt.find(ts_idx);
+                        if (key_cnt_iter == key_cnt.end()) {
+                            key_cnt.insert(std::make_pair(ts_idx, 1));
+                        } else {   
+                            key_cnt_iter->second++;
+                        }
+                        if (key_cnt_iter->second > ttl_iter->second && delete_key_map.find(ts_idx) == delete_key_map.end()) {
+                            delete_key_map.insert(std::make_pair(ts_idx, ts));
+                        }
+                    }
+                } else {
+                    for (const auto& kv : delete_key_map) {
+                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
+                                rocksdb::Slice(CombineKeyTs(last_pk, kv.second, kv.first)), rocksdb::Slice(CombineKeyTs(last_pk, 0, kv.first)));
+                        if (!s.ok()) {
+                            PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                        }    
+                    }
+                    delete_key_map.clear();
+                    key_cnt.clear();
+                    key_cnt.insert(std::make_pair(ts_idx, 1));
+                    last_pk = cur_pk;
+                }
                 it->Next();
+            }
+        } else {
+            uint64_t ttl_num = ttl_ / 60 / 1000;
+            if (ttl_num < 1) {
+                continue;
+            }
+            std::string last_pk;
+            uint64_t count = 0;
+            while (it->Valid()) {
+                std::string cur_pk;
+                uint64_t ts = 0;
+                ParseKeyAndTs(it->key(), cur_pk, ts);
+                if (!last_pk.empty() && cur_pk == last_pk) {
+                    if (ts == 0 || count < ttl_num) {
+                        it->Next();
+                        count++;
+                        continue;
+                    } else {
+                        rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
+                                rocksdb::Slice(CombineKeyTs(cur_pk, ts)), rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
+                        if (!s.ok()) {
+                            PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                        }    
+                        it->Seek(rocksdb::Slice(CombineKeyTs(cur_pk, 0)));
+                    }
+                } else {
+                    count = 1;
+                    last_pk = cur_pk;
+                    it->Next();
+                }
             }
         }
         delete it;
