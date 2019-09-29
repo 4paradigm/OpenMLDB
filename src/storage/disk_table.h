@@ -225,7 +225,7 @@ private:
     std::string pk_;
     uint64_t ts_;
     bool has_ts_idx_;
-    int32_t ts_idx_;
+    uint8_t ts_idx_;
 
 };
 
