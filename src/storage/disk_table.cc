@@ -256,8 +256,8 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
                 rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX)), rocksdb::Slice(CombineKeyTs(pk, 0)));
         } else {
             for (auto ts : it->second) {
-                batch.DeleteRange(cf_hs_[idx+1],
-                    rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX, ts)),rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX, ts)));
+                batch.DeleteRange(cf_hs_[idx+1], rocksdb::Slice(CombineKeyTs(pk, UINT64_MAX, ts)),
+                    rocksdb::Slice(CombineKeyTs(pk, 0, ts)));
             }
         }
     } else {

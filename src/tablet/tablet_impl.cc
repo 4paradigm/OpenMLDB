@@ -1421,6 +1421,9 @@ void TabletImpl::CountFromDiskTable(std::shared_ptr<Table> disk_table,
     uint64_t scount = 0, last_time = 0;
     if (!request->filter_expired_data()) {
         for (; it->Valid(); it->Next()) {
+            if (it->GetKey() <= end_time) {
+                break;
+            }
             scount++;
         }
     } else if (disk_table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
