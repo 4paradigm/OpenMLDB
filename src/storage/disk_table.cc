@@ -676,17 +676,21 @@ uint64_t DiskTableTraverseIterator::GetKey() const {
 void DiskTableTraverseIterator::SeekToFirst() {
     it_->SeekToFirst();
     record_idx_ = 1;
-    if (it_->Valid()) {
-        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, ts_idx_);
+    for (; it_->Valid(); it_->Next()) {
+        uint8_t cur_ts_idx = UINT8_MAX;
+        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        if (has_ts_idx_ && cur_ts_idx != ts_idx_) {
+            continue;
+        }
         if (IsExpired()) {
             NextPK();
         }
+        break;
     }
 }
 
 void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     std::string combine;
-    uint8_t cur_ts_idx = UINT8_MAX;
     if (has_ts_idx_) {
         combine = CombineKeyTs(pk, UINT64_MAX, ts_idx_);
     } else {
@@ -698,7 +702,8 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         it_->Seek(rocksdb::Slice(combine));
         for (; it_->Valid(); it_->Next()) {
             record_idx_++;
-            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, ts_idx_);
+            uint8_t cur_ts_idx = UINT8_MAX;
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
             if (pk_ == pk) {
                 if (IsExpired()) {
                     NextPK();
@@ -720,7 +725,8 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         }
     } else {
         for (; it_->Valid(); it_->Next()) {
-            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, ts_idx_);
+            uint8_t cur_ts_idx = UINT8_MAX;
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
             if (pk_ == pk) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                     continue;
@@ -764,7 +770,8 @@ void DiskTableTraverseIterator::NextPK() {
     record_idx_ = 1;
     while (it_->Valid()) {
         std::string tmp_pk;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, ts_idx_);
+        uint8_t cur_ts_idx = UINT8_MAX;
+        ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
         if (tmp_pk != last_pk) {
             if (!IsExpired()) {
                 pk_ = tmp_pk;
