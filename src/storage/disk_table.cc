@@ -700,17 +700,17 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         record_idx_ = 0;
         for (; it_->Valid(); it_->Next()) {
-            record_idx_++;
             uint8_t cur_ts_idx = UINT8_MAX;
             ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
             if (pk_ == pk) {
+                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                    continue;
+                }
+                record_idx_++;
                 if (IsExpired()) {
                     NextPK();
                     break;
                 } 
-                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                    continue;
-                }
                 if (ts_ >= time) {
                     continue;
                 }
@@ -731,13 +731,11 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                     continue;
                 }
                 if (ts_ >= time) {
-                    it_->Next();
                     continue;
                 }
                 if (IsExpired()) {
                     NextPK();
                 }    
-                break;
             } else {
                 if (IsExpired()) {
                     NextPK();
