@@ -250,6 +250,15 @@ public:
                             std::string* pairs,
                             uint32_t* count);
 
+    int32_t CountLatestIndex(uint64_t ttl, 
+                            ::rtidb::storage::TableIterator* it,
+                            uint64_t st,
+                            const ::rtidb::api::GetType& st_type,
+                            uint64_t et,
+                            const ::rtidb::api::GetType& et_type,
+                            uint32_t* count,
+                            bool remove_duplicated_record);
+
     // get one value from latest index
     int32_t GetLatestIndex(uint64_t ttl,
                            ::rtidb::storage::TableIterator* it,
@@ -282,7 +291,17 @@ public:
                           uint32_t* count,
                           bool remove_duplicated_record);
 
+    int32_t CountTimeIndex(uint64_t expire_ts, 
+                          ::rtidb::storage::TableIterator* it,
+                          uint64_t st,
+                          const rtidb::api::GetType& st_type,
+                          uint64_t et,
+                          const rtidb::api::GetType& et_type,
+                          uint32_t* count,
+                          bool remove_duplicated_record);
 private:
+
+    bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
     // Get table by table id , and Need external synchronization  
@@ -314,6 +333,8 @@ private:
     int32_t DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
+    int LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::rtidb::api::TableMeta& table_meta,
+                std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
 
@@ -329,11 +350,20 @@ private:
     
     // sync log data from page cache to disk 
     void SchedSyncDisk(uint32_t tid, uint32_t pid);
+
     // sched replicator to delete binlog
     void SchedDelBinlog(uint32_t tid, uint32_t pid);
 
     bool CheckGetDone(::rtidb::api::GetType type, 
                       uint64_t ts, uint64_t target_ts); 
+
+    bool ChooseDBRootPath(uint32_t tid, uint32_t pid,
+            const ::rtidb::common::StorageMode& mode,
+            std::string& path);
+
+    bool ChooseRecycleBinRootPath(uint32_t tid, uint32_t pid,
+            const ::rtidb::common::StorageMode& mode,
+            std::string& path);
 
 
 private:
@@ -351,8 +381,9 @@ private:
     std::set<std::string> sync_snapshot_set_;
     std::map<std::string, std::shared_ptr<FileReceiver>> file_receiver_map_;
     brpc::Server* server_;
+    std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_root_paths_;
+    std::map<::rtidb::common::StorageMode, std::vector<std::string>> mode_recycle_root_paths_;
 };
-
 
 }
 }

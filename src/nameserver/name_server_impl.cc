@@ -2055,13 +2055,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
                         table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
         return;
     }
-    if (table_info->has_storage_mode() && table_info->storage_mode() != rtidb::common::StorageMode::kMemory && 
-            table_info->replica_num() > 1) {
-        response->set_code(307);
-        response->set_msg("invalid parameter");
-        PDLOG(WARNING, "muti-replica not supported");
-        return;
-    }
     if (table_info->table_partition_size() > 0) {
         std::set<uint32_t> pid_set;
         for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
@@ -3202,6 +3195,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     std::shared_ptr<TabletInfo> leader_tablet_ptr;
     std::shared_ptr<TabletInfo> tablet_ptr;
     bool has_follower = true;
+    ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(name);
@@ -3211,6 +3205,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
             return;
         }
         tid = iter->second->tid();
+        storage_mode = iter->second->storage_mode();
         for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
             if (iter->second->table_partition(idx).pid() != pid) {
                 continue;
@@ -3276,7 +3271,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     bool is_leader = false;
     uint64_t term = 0;
     uint64_t offset = 0;
-    if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
+    if (!tablet_ptr->client_->GetTermPair(tid, pid, storage_mode, term, offset, has_table, is_leader)) {
         PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
                         name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
@@ -3306,7 +3301,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                     name.c_str(), tid, pid, endpoint.c_str());
     }
     if (!has_table) {
-        if (!tablet_ptr->client_->DeleteBinlog(tid, pid)) {
+        if (!tablet_ptr->client_->DeleteBinlog(tid, pid, storage_mode)) {
             PDLOG(WARNING, "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
                             name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
@@ -3323,7 +3318,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         return;
     }
     ::rtidb::api::Manifest manifest;
-    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
+    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, storage_mode, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u] op_id[%lu]", 
                 name.c_str(), tid, pid, task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);

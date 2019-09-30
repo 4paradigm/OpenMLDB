@@ -238,9 +238,11 @@ public:
                 const std::map<std::string, uint32_t>& mapping,
                 uint64_t ttl,
                 ::rtidb::api::TTLType ttl_type,
-                ::rtidb::common::StorageMode storage_mode);
+                ::rtidb::common::StorageMode storage_mode,
+                const std::string& db_root_path);
 
-    DiskTable(const ::rtidb::api::TableMeta& table_meta);
+    DiskTable(const ::rtidb::api::TableMeta& table_meta,
+              const std::string& db_root_path);
     DiskTable(const DiskTable&) = delete;
     DiskTable& operator=(const DiskTable&) = delete;
 
@@ -268,8 +270,6 @@ public:
     virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
             const std::string& value) override;
 
-    virtual bool Put(const ::rtidb::api::LogEntry& entry) override;
-
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value);
 
     bool Get(const std::string& pk, uint64_t ts, std::string& value);
@@ -292,6 +292,10 @@ public:
 
     uint64_t GetOffset() {
         return offset_.load(std::memory_order_relaxed);
+    }
+
+    void SetOffset(uint64_t offset) {
+        offset_.store(offset, std::memory_order_relaxed);
     }
 
     inline std::map<std::string, uint32_t>& GetMapping() {
@@ -330,6 +334,7 @@ private:
     rocksdb::Options options_;
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
+    std::string db_root_path_;
 };
 
 }

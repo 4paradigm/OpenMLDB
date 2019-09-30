@@ -27,10 +27,18 @@ public class TestCaseBase {
         try {
             nsc = ClientBuilder.buildNewNSC();
             client = ClientBuilder.buildNewCluster();
-            snc = ClientBuilder.buildNewSingle();
             tableSyncClient = new TableSyncClientImpl(client);
-            tableSingleNodeSyncClient = new TableSyncClientImpl(snc);
             tableAsyncClient = new TableAsyncClientImpl(client);
+            setUpSingle();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setUpSingle() {
+        try {
+            snc = ClientBuilder.buildNewSingle();
+            tableSingleNodeSyncClient = new TableSyncClientImpl(snc);
             tableSingleNodeAsyncClient = new TableAsyncClientImpl(snc);
             tabletClient = new TabletClientImpl(snc);
             tabletSyncClient = new TabletSyncClientImpl(snc);
@@ -41,8 +49,11 @@ public class TestCaseBase {
     }
 
     public  void tearDown() {
+        if (nsc != null)
         nsc.close();
+        if (client !=null)
         client.close();
+        if (snc != null)
         snc.close();
     }
 

@@ -31,6 +31,32 @@ class TestAutoRecoverTable(TestCaseBase):
         self.pid = 3
         self.put_large_datas(data_count, data_thread)
 
+    def create_new_table_put(self, storage_mode, data_count, data_thread=1):
+        self.tname = 'tname{}'.format(time.time())
+        metadata_path = '{}/metadata.txt'.format(self.testpath)
+        table_meta = {
+                "name": self.tname,
+                "ttl": 14400,
+                "storage_mode": storage_mode,
+                "replica_num" : 3,
+                "partition_num" : 8,
+                "column_desc" : [{"name" : "k1", "type" : "string", "add_ts_idx" : "true"},
+                                 {"name" : "k2", "type" : "string", "add_ts_idx" : "false"},
+                                 {"name" : "k3", "type" : "string", "add_ts_idx" : "false"}],
+                }
+        utils.gen_table_meta_file(table_meta, metadata_path)
+        rs = self.ns_create(self.ns_leader, metadata_path)
+        self.assertTrue('Create table ok', rs)
+
+        on = {'k1': ('string:index', 'testvalue0'),
+                                  'k2': ('string', 'testvalue1'),
+                                  'k3': ('string', 1.1)}
+        values = ["testkey0", "testvalue1", "testvalue2"]
+        table_info = self.showtable(self.ns_leader, self.tname)
+        self.tid = int(table_info.keys()[0][1])
+        self.pid = 0
+        self.put_large_datas(data_count, 1)
+
     def put_data(self, endpoint):
         rs = self.put(endpoint, self.tid, self.pid, "testkey0", self.now() + 1000, "testvalue0")
         self.assertIn("ok", rs)
@@ -67,6 +93,8 @@ class TestAutoRecoverTable(TestCaseBase):
             34: 'self.confset(self.ns_leader, "auto_failover", "true")',
             35: 'self.confset(self.ns_leader, "auto_failover", "false")',
             36: 'self.wait_op_done(self.tname)',
+            37: 'self.create_new_table_put("kHDD", 10)',
+            38: 'self.create_new_table_put("kSSD", 10)',
         }
 
     @ddt.data(
@@ -229,6 +257,19 @@ class TestAutoRecoverTable(TestCaseBase):
         rs = self.showtable(self.ns_leader, self.tname)
         self.assertEqual(rs[(self.tname, str(self.tid), str(self.pid), self.leader)],
                          ['leader', '144000min', 'yes', 'kNoCompress'])
+        self.ns_drop(self.ns_leader, self.tname)
+
+    @ddt.data(
+        (34, 37, 2, -1, 36, 13, -1, 36, 33, 17, 35),
+        (34, 37, 4, -1, 36, 14, -1, 36, 33, 17, 35),
+        (34, 38, 2, -1, 36, 13, -1, 36, 33, 17, 35),
+        (34, 38, 4, -1, 36, 14, -1, 36, 33, 17, 35),
+    )
+    @ddt.unpack
+    def test_disk_table(self, *steps):
+        steps_dict = self.get_steps_dict()
+        for i in steps:
+            eval(steps_dict[i])
         self.ns_drop(self.ns_leader, self.tname)
 
 

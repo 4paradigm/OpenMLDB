@@ -109,15 +109,17 @@ class TestSendSnapshot(TestCaseBase):
         return sdb_name
 
 
-    def check_manifest(self, endpoint, tid, pid, offset, name, count):
+    def check_manifest(self, db_path, tid, pid, offset, name, count):
         try:
-            mf = self.get_manifest(endpoint, tid, pid)
+            mf = self.get_manifest(db_path, tid, pid)
             infoLogger.info(mf)
             self.assertEqual(mf['offset'], offset)
             self.assertEqual(mf['name'], name)
             self.assertEqual(mf['count'], count)
             return True
-        except Exception:
+        except Exception as e:
+            infoLogger.info(e)
+
             return False
 
 
@@ -291,7 +293,7 @@ class TestSendSnapshot(TestCaseBase):
         infoLogger.info(self.get_sdb_name(self.tid, self.pid).endswith('sdb'))
         check_manifest_sent = self.check_manifest(
             self.slave1path, self.tid, self.pid, offset, self.get_sdb_name(self.tid, self.pid), offset) \
-                              and self.get_sdb_name(self.tid, self.pid).endswith('sdb')
+                               and self.get_sdb_name(self.tid, self.pid).endswith('sdb')
         # Teardown
         self.update_conf(self.leaderpath, 'stream_block_size', None)
         self.update_conf(self.leaderpath, 'stream_bandwidth_limit', None)
@@ -329,7 +331,12 @@ class TestSendSnapshot(TestCaseBase):
         time.sleep(10)
 
     @multi_dimension(False)
-    def test_sendsnapshot_disk(self):
+    @ddt.data(
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
+    )
+    @ddt.unpack
+    def test_sendsnapshot_disk(self, db_path, storage_mode):
         """
         disktable
         :return:
@@ -340,7 +347,7 @@ class TestSendSnapshot(TestCaseBase):
         table_meta = {
                 "name": tname,
                 "ttl": 14400,
-                "storage_mode": "kHDD",
+                "storage_mode": storage_mode,
                 "replica_num" : 1,
                 "partition_num" : 1,
                 }
@@ -355,10 +362,10 @@ class TestSendSnapshot(TestCaseBase):
         self.assertIn("PauseSnapshot ok", self.pausesnapshot(self.leader, tid, pid))
         self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, tid, pid, self.slave1))
         time.sleep(1)
-        mf = self.get_manifest(self.leaderpath, tid, pid)
-        mf1 = self.get_manifest(self.slave1path, tid, pid)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, pid)
+        mf1 = self.get_manifest_by_realpath(self.slave1path + "/" + db_path, tid, pid)
         self.assertEqual(mf, mf1)
-        snapshot_path = "/db/" + str(tid) + "_" + str(pid) + "/snapshot/" + mf["name"]
+        snapshot_path = "/" + db_path + "/" + str(tid) + "_" + str(pid) + "/snapshot/" + mf["name"]
         self.assertEqual(len(os.listdir(self.slave1path + snapshot_path)), len(os.listdir(self.leaderpath + snapshot_path)))
         self.ns_drop(self.ns_leader, tname)
 

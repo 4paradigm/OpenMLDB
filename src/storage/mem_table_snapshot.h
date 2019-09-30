@@ -32,7 +32,8 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t, ::rtidb::base::DefaultCompar
 class MemTableSnapshot : public Snapshot {
 
 public:
-    MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part);
+    MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part,
+            const std::string& db_root_path);
 
     virtual ~MemTableSnapshot() = default;
 
@@ -41,7 +42,6 @@ public:
     virtual bool Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) override;
 
     void RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt, std::shared_ptr<Table> table);
-    bool RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, uint64_t& latest_offset);
 
     virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) override;
 
@@ -63,6 +63,7 @@ private:
     LogParts* log_part_;
     std::string log_path_;
     std::map<std::string, uint64_t> deleted_keys_;
+    std::string db_root_path_;
 };
 
 }
