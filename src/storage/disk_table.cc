@@ -699,7 +699,6 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     it_->Seek(rocksdb::Slice(combine));
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
         record_idx_ = 0;
-        it_->Seek(rocksdb::Slice(combine));
         for (; it_->Valid(); it_->Next()) {
             record_idx_++;
             uint8_t cur_ts_idx = UINT8_MAX;
