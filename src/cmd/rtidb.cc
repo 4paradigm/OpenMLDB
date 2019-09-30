@@ -1617,30 +1617,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
     ::rtidb::common::ColumnDesc column_desc;
     column_desc.set_name(parts[2]);
     column_desc.set_type(parts[3]);
-    //for updating tablemeta.schema
-    std::vector<::rtidb::base::ColumnDesc> columns;
-    if (tables[0].added_column_desc_size() > 0) {
-        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, tables[0].added_column_desc_size()) < 0) {
-            std::cout << "convert table column desc failed" << std::endl;
-            return;
-        }
-    } else {
-        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns) < 0) {
-            std::cout << "convert table column desc failed" << std::endl;
-            return;
-        }
-    }
-    ::rtidb::base::ColumnDesc column;
-    column.name = parts[2];
-    column.type = rtidb::base::SchemaCodec::ConvertType(parts[3]);
-    columns.push_back(column);
-    ::rtidb::base::SchemaCodec codec;
-    std::string schema;
-    if (!codec.Encode(columns, schema)) {
-        std::cout << "Fail to encode schema from columns!" << std::endl;
-        return;
-    }
-    if (!client->AddTableField(parts[1], column_desc, schema, msg)) {
+    if (!client->AddTableField(parts[1], column_desc, msg)) {
         std::cout << "Fail to add table field. error msg: " << msg << std::endl;
         return;
     }

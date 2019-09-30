@@ -2026,6 +2026,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
     }
     std::map<std::string, std::shared_ptr<TabletClient>> tablet_client_map;
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::string schema;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(request->name());
@@ -2088,11 +2089,39 @@ void NameServerImpl::AddTableField(RpcController* controller,
             }
             tablet_client_map.insert(std::make_pair(endpoint, tablet_ptr->client_));
         }
+        //update tableMeta.schema
+        auto kv = table_info_.find(request->name());
+        if (kv == table_info_.end()) {
+            PDLOG(WARNING, "table_name %s did not exist.", request->name().c_str());
+            return;
+        }
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = kv->second;
+        std::vector<::rtidb::base::ColumnDesc> columns;
+        if (table_info->added_column_desc_size() > 0) {
+            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns, table_info->added_column_desc_size()) < 0) {
+                PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
+                return;
+            }
+        } else {
+            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
+                PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
+                return;
+            }
+        }
+        ::rtidb::base::ColumnDesc column;
+        column.name = request->column_desc().name();
+        column.type = rtidb::base::SchemaCodec::ConvertType(request->column_desc().type());
+        columns.push_back(column);
+        ::rtidb::base::SchemaCodec codec;
+        if (!codec.Encode(columns, schema)) {
+            PDLOG(WARNING, "Fail to encode schema from columns in table %s!", request->name().c_str()) ;
+            return;
+        }
     }
     uint32_t tid = table_info->tid();
     std::string msg;
     for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++ ){
-        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), request->schema(), msg)) {
+        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), schema, msg)) {
             response->set_code(324);
             response->set_msg("fail to update tableMeta for adding field: "+ msg);
             PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field failed!",
