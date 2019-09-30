@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ColumnKeyTest extends TestCaseBase {
     private final static Logger logger = LoggerFactory.getLogger(ColumnKeyTest.class);
     private static AtomicInteger id = new AtomicInteger(50000);
+
     @BeforeClass
     public void setUp() {
         super.setUp();
@@ -82,6 +83,7 @@ public class ColumnKeyTest extends TestCaseBase {
 
     @Test(dataProvider = "StorageMode")
     public void testPutNoTs(Common.StorageMode sm) {
+<<<<<<< HEAD
             String name = String.valueOf(id.incrementAndGet());
             nsc.dropTable(name);
             ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -358,7 +360,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(row[2], 1.6d);
             Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
             Assert.assertEquals(((Long) row[4]).longValue(), 333l);
-            Assert.assertEquals(row[5],"col_key1");
+            Assert.assertEquals(row[5], "col_key1");
             Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
             it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.getCount() == 2);
@@ -370,7 +372,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(row[2], 1.6d);
             Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
             Assert.assertEquals(((Long) row[4]).longValue(), 333l);
-            Assert.assertEquals(row[5],"col_key1");
+            Assert.assertEquals(row[5], "col_key1");
             Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
             it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
@@ -393,7 +395,8 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(1, tableSyncClient.count(name, "mcc0", "mcc", "ts", false));
             try {
                 Assert.assertEquals(0, tableSyncClient.count(name, "mcc0", "mcc", "ts_1", false));
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
 
             data.clear();
             data.put("card", "card0");
@@ -408,29 +411,35 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(2, tableSyncClient.count(name, query, "card2", "ts_2", false));
             try {
                 tableSyncClient.count(name, query, "card2", "ts_0", false);
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
             try {
                 tableSyncClient.count(name, query, "card2", "ts", false);
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
 
             it = tableSyncClient.traverse(name, "card2", "ts_1");
             int count = 0;
-            for(; it.valid(); it.next(), count++) {}
+            for (; it.valid(); it.next(), count++) {
+            }
             Assert.assertEquals(3, count);
 
             it = tableSyncClient.traverse(name, "card2", "ts_2");
             count = 0;
-            for(; it.valid(); it.next(), count++) {}
+            for (; it.valid(); it.next(), count++) {
+            }
             Assert.assertEquals(3, count);
             try {
                 tableSyncClient.traverse(name, "card2", "ts_0");
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
             try {
                 tableSyncClient.traverse(name, "card2", "ts");
-            } catch (Exception e) {}
+            } catch (Exception e) {
+            }
 
             Assert.assertTrue(tableSyncClient.delete(name, "card0|mcc0", "card2"));
-            it = tableSyncClient.scan(name, query,"card2", 3333, 0l, "ts_1", 0);
+            it = tableSyncClient.scan(name, query, "card2", 3333, 0l, "ts_1", 0);
             Assert.assertTrue(it.getCount() == 0);
         } catch (Exception e) {
             e.printStackTrace();
@@ -509,7 +518,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertTrue(true);
         }
         try {
-            Object[]row = tableSyncClient.getRow(name, "card0", "card",  0, "xxx", null);
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 0, "xxx", null);
 
             Assert.assertTrue(false);
         } catch (Exception e) {
@@ -520,20 +529,20 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(20, it.getCount());
             it = tableSyncClient.scan(name, "card0", "card", 20000, 0, "ts", 0);
             Assert.assertEquals(20, it.getCount());
-            Object[]row = tableSyncClient.getRow(name, "card0", "card",  10008, "ts", null);
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 10008, "ts", null);
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            GetFuture gf = tableAsyncClient.get(name, "card0", "card",  10008, "ts", null);
+            Assert.assertEquals(10008, (long) row[3]);
+            GetFuture gf = tableAsyncClient.get(name, "card0", "card", 10008, "ts", null);
             row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
+            Assert.assertEquals(10008, (long) row[3]);
             Assert.assertEquals(20, tableSyncClient.count(name, "card0", "card"));
 
             it = tableSyncClient.traverse(name, "card");
             int count = 0;
-            while(it.valid()) {
+            while (it.valid()) {
                 count++;
                 it.next();
             }
@@ -574,7 +583,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertTrue(true);
         }
         try {
-            Object[]row = tableSyncClient.getRow(name, "card0", "card",  0, "xxx", null);
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 0, "xxx", null);
 
             Assert.assertTrue(false);
         } catch (Exception e) {
@@ -589,15 +598,16 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(20, it.getCount());
             it = tableSyncClient.scan(name, "card0", "card", 20000, 0, "ts1", 0);
             Assert.assertEquals(20, it.getCount());
-            Object[]row = tableSyncClient.getRow(name, "card0", "card",  10008, "ts", null);
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 10008, "ts", null);
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            GetFuture gf = tableAsyncClient.get(name, "card0", "card",  10008, "ts", null);
+            Assert.assertEquals(10008, (long) row[3]);
+            GetFuture gf = tableAsyncClient.get(name, "card0", "card", 10008, "ts", null);
             row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
+            Assert.assertEquals(10008, (long) row[3]);
+            Assert.assertEquals(20, tableSyncClient.count(name, "card0", "card"));
 
             Assert.assertEquals(20, tableSyncClient.count(name, "card0", "card"));
             it = tableSyncClient.traverse(name, "card");
@@ -722,38 +732,38 @@ public class ColumnKeyTest extends TestCaseBase {
         client.refreshRouteTable();
         putDataWithTS(name);
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  0, "xxx", null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 0, "xxx", null);
 
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, null, 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, null, 0);
             Assert.assertEquals(20, it.getCount());
-            ScanFuture sf = tableAsyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, null, 0);
+            ScanFuture sf = tableAsyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, null, 0);
             it = sf.get();
             Assert.assertEquals(20, it.getCount());
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, null, null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, null, null);
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            GetFuture gf = tableAsyncClient.get(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, null, null);
+            Assert.assertEquals(10008, (long) row[3]);
+            GetFuture gf = tableAsyncClient.get(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, null, null);
             row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            Assert.assertEquals(20, tableSyncClient.count(name, new Object[] {"card0", "mcc0"}, "card_mcc", null, true));
+            Assert.assertEquals(10008, (long) row[3]);
+            Assert.assertEquals(20, tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", null, true));
 
             it = tableSyncClient.traverse(name, "card_mcc");
             int count = 0;
-            while(it.valid()) {
+            while (it.valid()) {
                 count++;
                 it.next();
             }
@@ -786,38 +796,38 @@ public class ColumnKeyTest extends TestCaseBase {
         client.refreshRouteTable();
         putData(name);
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  0, "xxx", null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 0, "xxx", null);
 
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
             Assert.assertEquals(20, it.getCount());
-            ScanFuture sf = tableAsyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
+            ScanFuture sf = tableAsyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
             it = sf.get();
             Assert.assertEquals(20, it.getCount());
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, "ts", null);
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            GetFuture gf = tableAsyncClient.get(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Assert.assertEquals(10008, (long) row[3]);
+            GetFuture gf = tableAsyncClient.get(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, "ts", null);
             row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            Assert.assertEquals(20, tableSyncClient.count(name, new Object[] {"card0", "mcc0"}, "card_mcc", "ts", true));
+            Assert.assertEquals(10008, (long) row[3]);
+            Assert.assertEquals(20, tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts", true));
 
             it = tableSyncClient.traverse(name, "card_mcc");
             int count = 0;
-            while(it.valid()) {
+            while (it.valid()) {
                 count++;
                 it.next();
             }
@@ -850,40 +860,40 @@ public class ColumnKeyTest extends TestCaseBase {
         client.refreshRouteTable();
         putData(name);
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  0, "xxx", null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 0, "xxx", null);
 
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
             Assert.assertEquals(20, it.getCount());
-            it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts1", 0);
+            it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts1", 0);
             Assert.assertEquals(20, it.getCount());
-            ScanFuture sf = tableAsyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
+            ScanFuture sf = tableAsyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
             it = sf.get();
             Assert.assertEquals(20, it.getCount());
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, "ts", null);
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            GetFuture gf = tableAsyncClient.get(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Assert.assertEquals(10008, (long) row[3]);
+            GetFuture gf = tableAsyncClient.get(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, "ts", null);
             row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            Assert.assertEquals(20, tableSyncClient.count(name, new Object[] {"card0", "mcc0"}, "card_mcc", "ts", true));
+            Assert.assertEquals(10008, (long) row[3]);
+            Assert.assertEquals(20, tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts", true));
 
             it = tableSyncClient.traverse(name, "card_mcc", "ts1");
             int count = 0;
-            while(it.valid()) {
+            while (it.valid()) {
                 count++;
                 it.next();
             }
@@ -917,42 +927,42 @@ public class ColumnKeyTest extends TestCaseBase {
         client.refreshRouteTable();
         putData(name);
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "xxx", 0);
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  0, "xxx", null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 0, "xxx", null);
 
             Assert.assertTrue(false);
         } catch (Exception e) {
             Assert.assertTrue(true);
         }
         try {
-            KvIterator it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
+            KvIterator it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
             Assert.assertEquals(20, it.getCount());
-            it = tableSyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts1", 0);
+            it = tableSyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts1", 0);
             Assert.assertEquals(20, it.getCount());
             it = tableSyncClient.scan(name, "card11", "card", 20000, 0, "ts", 0);
             Assert.assertEquals(20, it.getCount());
-            ScanFuture sf = tableAsyncClient.scan(name, new Object[] {"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
+            ScanFuture sf = tableAsyncClient.scan(name, new Object[]{"card0", "mcc0"}, "card_mcc", 20000, 0, "ts", 0);
             it = sf.get();
             Assert.assertEquals(20, it.getCount());
-            Object[]row = tableSyncClient.getRow(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Object[] row = tableSyncClient.getRow(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, "ts", null);
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            GetFuture gf = tableAsyncClient.get(name, new Object[] {"card0", "mcc0"}, "card_mcc",  10008, "ts", null);
+            Assert.assertEquals(10008, (long) row[3]);
+            GetFuture gf = tableAsyncClient.get(name, new Object[]{"card0", "mcc0"}, "card_mcc", 10008, "ts", null);
             row = gf.getRow();
             Assert.assertEquals("card0", row[0]);
             Assert.assertEquals(9.2d, row[2]);
-            Assert.assertEquals(10008, (long)row[3]);
-            Assert.assertEquals(20, tableSyncClient.count(name, new Object[] {"card0", "mcc0"}, "card_mcc", "ts", true));
+            Assert.assertEquals(10008, (long) row[3]);
+            Assert.assertEquals(20, tableSyncClient.count(name, new Object[]{"card0", "mcc0"}, "card_mcc", "ts", true));
 
             it = tableSyncClient.traverse(name, "card_mcc", "ts1");
             int count = 0;
-            while(it.valid()) {
+            while (it.valid()) {
                 count++;
                 it.next();
             }
@@ -1144,6 +1154,7 @@ public class ColumnKeyTest extends TestCaseBase {
         }
         nsc.dropTable(name);
     }
+
     @Test(dataProvider = "StorageMode")
     public void testExpiredCount(Common.StorageMode sm) {
         String name = String.valueOf(id.incrementAndGet());
@@ -1184,7 +1195,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("card", "card0");
             data.put("mcc", "mcc1");
             data.put("amt", 1.6);
-            data.put("ts",  ts + 1235l);
+            data.put("ts", ts + 1235l);
             data.put("ts_1", ts + 333l);
             data.put("col1", "col_key1");
             data.put("ts_2", ts + 3333l);
@@ -1193,7 +1204,7 @@ public class ColumnKeyTest extends TestCaseBase {
             data.put("card", "card0");
             data.put("mcc", "mcc0");
             data.put("amt", 1.7);
-            data.put("ts",  ts + 1236l);
+            data.put("ts", ts + 1236l);
             data.put("ts_1", ts - 333l);
             data.put("col1", "col_key1");
             data.put("ts_2", ts - 20 * 60 * 1000);
