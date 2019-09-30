@@ -46,21 +46,24 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     uint32_t idx = 0;
-    for (const auto& column_desc : table_info.column_desc_v1()) {
-        row.clear();
-        row.push_back(std::to_string(idx));
-        row.push_back(column_desc.name());
-        row.push_back(column_desc.type());
-        tp.AddRow(row);
-        idx++;
-    }
-    for (const auto& column_desc : table_info.column_desc()) {
-        row.clear();
-        row.push_back(std::to_string(idx));
-        row.push_back(column_desc.name());
-        row.push_back(column_desc.type());
-        tp.AddRow(row);
-        idx++;
+    if (table_info.column_desc_v1_size() > 0) {
+        for (const auto& column_desc : table_info.column_desc_v1()) {
+            row.clear();
+            row.push_back(std::to_string(idx));
+            row.push_back(column_desc.name());
+            row.push_back(column_desc.type());
+            tp.AddRow(row);
+            idx++;
+        }
+    } else {
+        for (const auto& column_desc : table_info.column_desc()) {
+            row.clear();
+            row.push_back(std::to_string(idx));
+            row.push_back(column_desc.name());
+            row.push_back(column_desc.type());
+            tp.AddRow(row);
+            idx++;
+        }
     }
     for (const auto& column_desc : table_info.added_column_desc()) {
         row.clear();
@@ -247,11 +250,78 @@ static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                   const uint32_t row_size,
                   std::vector<std::string>& vrow) {
     rtidb::base::FlatArrayIterator fit(row, row_size, schema.size());
-    uint32_t schema_size = schema.size();
-    while (schema_size > 0) {
+    while (fit.Valid()) {
+        std::string col;
+        if (fit.GetType() == ::rtidb::base::ColType::kString) {
+            fit.GetString(&col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt16) {
+            uint16_t uint16_col = 0;
+            fit.GetUInt16(&uint16_col);
+            col = boost::lexical_cast<std::string>(uint16_col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kInt16) {
+            int16_t int16_col = 0;
+            fit.GetInt16(&int16_col);
+            col = boost::lexical_cast<std::string>(int16_col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kInt32) {
+            int32_t int32_col = 0;
+            fit.GetInt32(&int32_col);
+            col = boost::lexical_cast<std::string>(int32_col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kInt64) {
+            int64_t int64_col = 0;
+            fit.GetInt64(&int64_col);
+            col = boost::lexical_cast<std::string>(int64_col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt32) {
+            uint32_t uint32_col = 0;
+            fit.GetUInt32(&uint32_col);
+            col = boost::lexical_cast<std::string>(uint32_col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kUInt64) {
+            uint64_t uint64_col = 0;
+            fit.GetUInt64(&uint64_col);
+            col = boost::lexical_cast<std::string>(uint64_col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kDouble) {
+            double double_col = 0.0d;
+            fit.GetDouble(&double_col);
+            col = boost::lexical_cast<std::string>(double_col);
+        } else if (fit.GetType() == ::rtidb::base::ColType::kFloat) {
+            float float_col = 0.0f;
+            fit.GetFloat(&float_col);
+            col = boost::lexical_cast<std::string>(float_col);
+        } else if(fit.GetType() == ::rtidb::base::ColType::kTimestamp) {
+            uint64_t ts = 0;
+            fit.GetTimestamp(&ts);
+            col = boost::lexical_cast<std::string>(ts);
+        } else if(fit.GetType() == ::rtidb::base::ColType::kDate) {
+            uint64_t dt = 0;
+            fit.GetDate(&dt);
+            time_t rawtime = (time_t)dt / 1000;
+            tm* timeinfo = localtime(&rawtime);
+            char buf[20];
+            strftime(buf, 20, "%Y-%m-%d", timeinfo);
+            col.assign(buf);
+        } else if(fit.GetType() == ::rtidb::base::ColType::kBool) {
+            bool value = false;
+            fit.GetBool(&value);
+            if (value) {
+                col = "true";
+            } else {
+                col = "false";
+            }
+        }
+        fit.Next();
+        vrow.push_back(col);
+    }
+}
+
+static void FillTableRow(uint32_t full_schema_size, 
+        const std::vector<::rtidb::base::ColumnDesc>& base_schema,
+        const char* row,
+        const uint32_t row_size,
+        std::vector<std::string>& vrow) {
+    rtidb::base::FlatArrayIterator fit(row, row_size, base_schema.size());
+    while (full_schema_size > 0) {
         std::string col;
         if (!fit.Valid()) {
-            schema_size--;
+            full_schema_size--;
             vrow.push_back("");
             continue;
         } else if (fit.GetType() == ::rtidb::base::ColType::kString) {
@@ -309,7 +379,7 @@ static void FillTableRow(const std::vector<::rtidb::base::ColumnDesc>& schema,
                 col = "false";
             }
         }
-        schema_size--;
+        full_schema_size--;
         fit.Next();
         vrow.push_back(col);
     }
@@ -343,6 +413,47 @@ static void ShowTableRows(const std::vector<ColumnDesc>& raw,
         } else {
             FillTableRow(raw, it->GetValue().data(), it->GetValue().size(), vrow); 
         }
+        tp.AddRow(vrow);
+        index ++;
+        it->Next();
+    }
+    tp.Print(true);
+}
+
+static void ShowTableRows(const std::vector<ColumnDesc>& base_columns,
+        const std::vector<ColumnDesc>& raw, 
+        ::rtidb::base::KvIterator* it, 
+        const ::rtidb::nameserver::CompressType compress_type) {
+    bool has_ts_col = SchemaCodec::HasTSCol(raw);
+    std::vector<std::string> row;
+    row.push_back("#");
+    if (!has_ts_col) {
+        row.push_back("ts");
+    }
+    for (uint32_t i = 0; i < raw.size(); i++) {
+        row.push_back(raw[i].name);
+    }
+    ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
+    tp.AddRow(row);
+    uint32_t index = 1;
+    while (it->Valid()) {
+        std::vector<std::string> vrow;
+        vrow.push_back(boost::lexical_cast<std::string>(index));
+        if (!has_ts_col) {
+            vrow.push_back(boost::lexical_cast<std::string>(it->GetKey()));
+        }
+        const char* str;
+        uint32_t str_size;
+        if (compress_type == ::rtidb::nameserver::kSnappy) {
+            std::string uncompressed;
+            ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &uncompressed);
+            str = uncompressed.c_str();
+            str_size = uncompressed.size();
+        } else {
+            str = it->GetValue().data();
+            str_size = it->GetValue().size();
+        }
+        ::rtidb::base::FillTableRow(raw.size(), base_columns, str, str_size, vrow); 
         tp.AddRow(vrow);
         index ++;
         it->Next();

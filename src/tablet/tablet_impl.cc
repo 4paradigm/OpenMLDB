@@ -1779,6 +1779,12 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
     brpc::ClosureGuard done_guard(done);        
     std::lock_guard<std::mutex> lock(mu_);
     auto it = tables_.find(request->tid());
+    if (it == tables_.end()) {
+        response->set_code(100);
+        response->set_msg("table did not exist");
+        PDLOG(WARNING, "table tid %u did not exist.", request->tid());
+        return;
+    }
     uint32_t tid = it->first;
     for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
         uint32_t pid = pit->first;
@@ -2993,16 +2999,11 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
         }
     }
     // use replicas in LoadRequest
-    if (for_add_column) {
-        old_meta.clear_dimensions();
-        old_meta.clear_column_desc();
-        old_meta.clear_column_key();
-        old_meta.clear_added_column_desc();
-    } else {
+    if (!for_add_column) {
         old_meta.clear_replicas();
+        old_meta.MergeFrom(*table_meta);
+        table_meta->CopyFrom(old_meta);
     }
-    old_meta.MergeFrom(*table_meta);
-    table_meta->CopyFrom(old_meta);
     std::string new_name = full_path + "." + ::rtidb::base::GetNowTime();
     rename(full_path.c_str(), new_name.c_str());
     return 0;

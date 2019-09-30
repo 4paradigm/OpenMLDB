@@ -2036,7 +2036,36 @@ void NameServerImpl::AddTableField(RpcController* controller,
             return;
         }
         table_info = iter->second;
-        // 1.update tablet tables_
+        //judge if field exists in table_info
+        std::string col_name = request->column_desc().name();
+        if (table_info->column_desc_v1_size() > 0) {
+            for (const auto& column : table_info->column_desc_v1()) {
+                if (column.name() == col_name) {
+                    response->set_code(323);
+                    response->set_msg("field name repeated in table_info!");
+                    PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
+                    return;
+                } 
+            }
+        } else {
+            for (const auto& column : table_info->column_desc()) {
+                if (column.name() == col_name) {
+                    response->set_code(323);
+                    response->set_msg("field name repeated in table_info!");
+                    PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
+                    return;
+                } 
+            }
+        }
+        for (const auto& column : table_info->added_column_desc()) {
+            if (column.name() == col_name) {
+                response->set_code(323);
+                response->set_msg("field name repeated in table_info!");
+                PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
+                return;
+            } 
+        }
+        // 1.update tablet tableMeta
         std::vector<std::string> endpoint_vec;
         for (auto it = table_info->table_partition().begin(); it != table_info->table_partition().end(); it++) {
             for (auto tit = it->partition_meta().begin(); tit != it->partition_meta().end(); tit++) {
@@ -2070,43 +2099,11 @@ void NameServerImpl::AddTableField(RpcController* controller,
                     it->first.c_str());
             return;
         }
-        PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field succeeded!",
+        PDLOG(INFO, "update table_meta on endpoint[%s] for add table field succeeded!",
                 it->first.c_str());
-    }
-    //judge if field exists in table_info
-    std::string col_name = request->column_desc().name();
-    if (table_info->column_desc_v1_size() > 0) {
-        for (const auto& column : table_info->column_desc_v1()) {
-            if (column.name() == col_name) {
-                response->set_code(323);
-                response->set_msg("field name repeated in table_info!");
-                PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
-                return;
-            } 
-        }
-    } else {
-        for (const auto& column : table_info->column_desc()) {
-            if (column.name() == col_name) {
-                response->set_code(323);
-                response->set_msg("field name repeated in table_info!");
-                PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
-                return;
-            } 
-        }
-    }
-    for (const auto& column : table_info->added_column_desc()) {
-        if (column.name() == col_name) {
-            response->set_code(323);
-            response->set_msg("field name repeated in table_info!");
-            PDLOG(WARNING, "field name[%s] repeated in table_info!", col_name.c_str());
-            return;
-        } 
     }
     {
         std::lock_guard<std::mutex> lock(mu_);
-        // 2.update ns table_info_
-        ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
-        added_column_desc->CopyFrom(request->column_desc());
         //update zk node
         std::string table_value;
         table_info->SerializeToString(&table_value);
@@ -2119,6 +2116,9 @@ void NameServerImpl::AddTableField(RpcController* controller,
         }
         PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
                 zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+        // 2.update ns table_info_
+        ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
+        added_column_desc->CopyFrom(request->column_desc());
         NotifyTableChanged();
     }
     response->set_code(0);
