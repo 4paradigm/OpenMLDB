@@ -23,7 +23,8 @@ using ::baidu::common::DEBUG;
 namespace rtidb {
 namespace tablet {
 
-FileSender::FileSender(uint32_t tid, uint32_t pid, const std::string& endpoint) : tid_(tid), pid_(pid),
+FileSender::FileSender(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode,
+        const std::string& endpoint) : tid_(tid), pid_(pid), storage_mode_(storage_mode),
     endpoint_(endpoint), cur_try_time_(0), 
     max_try_time_(FLAGS_send_file_max_try), limit_time_(0),
     channel_(NULL), stub_(NULL) {
@@ -66,6 +67,7 @@ int FileSender::WriteData(const std::string& file_name, const std::string& dir_n
     if (!dir_name.empty()) {
         request.set_dir_name(dir_name);
     }
+    request.set_storage_mode(storage_mode_);
     request.set_block_id(block_id);
     request.set_block_size(len);
     brpc::Controller cntl;
@@ -182,6 +184,7 @@ int FileSender::CheckFile(const std::string& file_name, const std::string& dir_n
     check_request.set_tid(tid_);
     check_request.set_pid(pid_);
     check_request.set_file(file_name);
+    check_request.set_storage_mode(storage_mode_);
     if (!dir_name.empty()) {
         check_request.set_dir_name(dir_name);
     }

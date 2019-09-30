@@ -67,7 +67,7 @@ DEFINE_int32(put_concurrency_limit, 8, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 8, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
-DEFINE_int32(request_timeout_ms, 12000, "request timeout");
+DEFINE_int32(request_timeout_ms, 20000, "request timeout");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error");
 
 DEFINE_int32(send_file_max_try, 3, "the max retry time when send file failed");
@@ -84,6 +84,7 @@ DEFINE_uint32(make_snapshot_max_deleted_keys, 1000000, "config the max deleted k
 
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 DEFINE_string(recycle_ssd_bin_root_path, "/tmp/ssd_recycle", "specify the ssd root path of recycle bin");
+DEFINE_bool(recycle_bin_enabled, true, "enable the recycle bin storage");
 DEFINE_string(recycle_hdd_bin_root_path, "/tmp/hdd_recycle", "specify the hdd root path of recycle bin");
 
 DEFINE_uint32(latest_ttl_max, 1000, "the max ttl of latest");

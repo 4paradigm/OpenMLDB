@@ -92,7 +92,7 @@ public class RowCodec {
                         Timestamp ts = (Timestamp) row[i];
                         buffer.putLong(ts.getTime());
                     } else {
-                        throw new TabletException(row[i].getClass().getName() + "is not support for timestamp ");
+                        throw new TabletException(row[i].getClass().getName() + " is not support for timestamp ");
                     }
                     break;
                 case kInt16:
@@ -108,7 +108,7 @@ public class RowCodec {
                         LocalDate date = (LocalDate) row[i];
                         buffer.putLong(date.toDate().getTime());
                     } else {
-                        throw new TabletException(row[i].getClass().getName() + "is not support for date");
+                        throw new TabletException(row[i].getClass().getName() + " is not support for date");
                     }
                     break;
                 case kBool:

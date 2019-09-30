@@ -17,6 +17,7 @@ public class TableHandler {
     private TableInfo tableInfo;
     private PartitionHandler[] partitions;
     private Map<Integer, List<Integer>> indexes = new TreeMap<Integer, List<Integer>>();
+    private Map<Integer, List<Integer>> indexTsMap = new TreeMap<Integer, List<Integer>>();
     private Map<String, List<String>> keyMap = new TreeMap<String, List<String>>();
     private List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
     private ReadStrategy readStrategy = ReadStrategy.kReadLeader;
@@ -26,6 +27,7 @@ public class TableHandler {
         int index = 0;
         if (tableInfo.getColumnDescV1Count() > 0) {
             Map<String, Integer> schemaPos = new HashMap<String, Integer>();
+            Map<String, Integer> tsPos = new HashMap<String, Integer>();
             for (int i = 0; i< tableInfo.getColumnDescV1Count(); i++) {
                 com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getColumnDescV1(i);
                 ColumnDesc ncd = new ColumnDesc();
@@ -33,6 +35,7 @@ public class TableHandler {
                 ncd.setAddTsIndex(cd.getAddTsIdx());
                 if (cd.getIsTsCol()) {
                     hasTsCol = true;
+                    tsPos.put(cd.getName(), i);
                 }
                 ncd.setTsCol(cd.getIsTsCol());
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
@@ -55,10 +58,14 @@ public class TableHandler {
                 Set<String> indexSet = new HashSet<String>();
                 for (com._4paradigm.rtidb.common.Common.ColumnKey ck : tableInfo.getColumnKeyList()) {
                     List<Integer> indexList = new ArrayList<Integer>();
+                    List<Integer> tsList = new ArrayList<Integer>();
                     List<String> nameList = new ArrayList<String>();
                     for (String colName : ck.getColNameList()) {
                         indexList.add(schemaPos.get(colName));
                         nameList.add(colName);
+                    }
+                    for (String tsName : ck.getTsNameList()) {
+                        tsList.add(tsPos.get(tsName));
                     }
                     if (indexList.isEmpty()) {
                         String key = ck.getIndexName();
@@ -71,7 +78,27 @@ public class TableHandler {
                     indexSet.add(ck.getIndexName());
                     indexes.put(index, indexList);
                     keyMap.put(ck.getIndexName(), nameList);
+                    if (!tsList.isEmpty()) {
+                        indexTsMap.put(index, tsList);
+                    } else if (!tsPos.isEmpty()) {
+                        for (Integer curTsPos : tsPos.values()) {
+                            tsList.add(curTsPos);
+                        }
+                        for (Integer cur_index : indexes.keySet()) {
+                            indexTsMap.put(index, tsList);
+                        }
+                    }
                     index++;
+                }
+            } else {
+                if (!tsPos.isEmpty()) {
+                    List<Integer> tsList = new ArrayList<Integer>();
+                    for (Integer curTsPos : tsPos.values()) {
+                        tsList.add(curTsPos);
+                    }
+                    for (Integer cur_index : indexes.keySet()) {
+                        indexTsMap.put(index, tsList);
+                    }
                 }
             }
 
@@ -144,6 +171,10 @@ public class TableHandler {
 
     public Map<Integer, List<Integer>> getIndexes() {
         return indexes;
+    }
+
+    public Map<Integer, List<Integer>> getIndexTsMap() {
+        return indexTsMap;
     }
 
     public Map<String, List<String>> getKeyMap() {

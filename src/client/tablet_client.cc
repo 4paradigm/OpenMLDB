@@ -477,12 +477,13 @@ bool TabletClient::DeleteOPTask(const std::vector<uint64_t>& op_id_vec) {
     return true;
 }
 
-bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint64_t& offset, 
-            bool& has_table, bool& is_leader) {
+bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode,
+            uint64_t& term, uint64_t& offset, bool& has_table, bool& is_leader) {
     ::rtidb::api::GetTermPairRequest request;
     ::rtidb::api::GetTermPairResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetTermPair,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
@@ -497,11 +498,13 @@ bool TabletClient::GetTermPair(uint32_t tid, uint32_t pid, uint64_t& term, uint6
     return true;
 }
 
-bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::rtidb::api::Manifest& manifest) {
+bool TabletClient::GetManifest(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode,
+            ::rtidb::api::Manifest& manifest) {
     ::rtidb::api::GetManifestRequest request;
     ::rtidb::api::GetManifestResponse response;
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_storage_mode(storage_mode);
     bool ret = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetManifest,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     if (!ret || response.code() != 0) {
@@ -1002,10 +1005,11 @@ bool TabletClient::DisConnectZK() {
     return true;
 }
 
-bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid) {
+bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode) {
     ::rtidb::api::GeneralRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
+    request.set_storage_mode(storage_mode);
     ::rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::DeleteBinlog,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);

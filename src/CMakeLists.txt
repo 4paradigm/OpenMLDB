@@ -10,7 +10,7 @@ endif()
 
 add_library(tablet STATIC proto/tablet.pb.cc proto/common.pb.cc tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc)
 add_library(nameserver STATIC proto/name_server.pb.cc nameserver/name_server_impl.cc flags.cc)
-add_library(storage STATIC storage/mem_table.cc storage/disk_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc)
+add_library(storage STATIC storage/mem_table.cc storage/disk_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc)
 target_link_libraries(storage rocksdb z)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc)
 add_library(log STATIC log/crc32c.cc 
@@ -18,6 +18,7 @@ add_library(log STATIC log/crc32c.cc
                        log/log_writer.cc 
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
+
 add_library(base STATIC base/status.cc base/ringqueue.h)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 
@@ -87,6 +88,9 @@ target_link_libraries(tablet_impl_keep_alive_test   gtest pthread tablet gflags 
 
 add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
 target_link_libraries(tablet_impl_mem_test   gtest pthread tablet gflags storage replica log common brpc rt ssl crypto dl leveldb protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
+
+add_executable(tablet_impl_multi_path_test  tablet/tablet_impl_multi_path_test.cc base/status.cc)
+target_link_libraries(tablet_impl_multi_path_test   gtest pthread tablet gflags storage replica log common brpc rt ssl crypto dl leveldb protobuf z snappy zk_client zookeeper_mt unwind tcmalloc)
 
 add_executable(codec_bench_test  base/codec_bench_test.cc proto/common.pb.cc)
 target_link_libraries(codec_bench_test gtest pthread storage tablet gflags common rt protobuf tcmalloc_minimal)
