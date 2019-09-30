@@ -151,7 +151,7 @@ public:
     
     static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
                         std::vector<ColumnDesc>& columns) {
-        return ConvertColumnDesc(table_info, columns, -1); 
+        return ConvertColumnDesc(table_info, columns, 0); 
     }
 
     static int ConvertColumnDesc(const ::rtidb::nameserver::TableInfo& table_info,
@@ -159,7 +159,7 @@ public:
                         int modify_index) {
         columns.clear();
         if (table_info.column_desc_v1_size() > 0) {
-            if (modify_index > -1) {
+            if (modify_index > 0) {
                 return ConvertColumnDesc(table_info.column_desc_v1(), columns, table_info.added_column_desc());
             }
             return ConvertColumnDesc(table_info.column_desc_v1(), columns);
@@ -176,7 +176,7 @@ public:
             column_desc.is_ts_col = false;
             columns.push_back(column_desc);
         }
-        if (modify_index > -1) {
+        if (modify_index > 0) {
             for (int idx = 0; idx < modify_index; idx++) {
                 ::rtidb::base::ColType type = ConvertType(table_info.added_column_desc(idx).type());
                 if (type == ::rtidb::base::ColType::kUnknown) {

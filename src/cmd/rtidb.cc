@@ -283,7 +283,7 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
     }
     uint8_t cnt = (uint8_t)data.size();
     ::rtidb::base::FlatArrayCodec codec;
-    if (modify_times == -1) {
+    if (modify_times == 0) {
         ::rtidb::base::FlatArrayCodec codec_tmp(&value, cnt);
         codec = codec_tmp;
     } else {
@@ -379,7 +379,7 @@ int EncodeMultiDimensionData(const std::vector<std::string>& data,
             std::string& value, 
             std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
             std::vector<uint64_t>& ts_dimensions) {
-    return EncodeMultiDimensionData(data, columns, pid_num, value, dimensions, ts_dimensions, -1); 
+    return EncodeMultiDimensionData(data, columns, pid_num, value, dimensions, ts_dimensions, 0); 
 }
 
 int EncodeMultiDimensionData(const std::vector<std::string>& data, 
@@ -1680,7 +1680,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             column_desc_list_1.Add()->CopyFrom(column_desc_list_2.Get(i));
         }
         std::vector<::rtidb::base::ColumnDesc> columns;
-        if (add_size > 0) {
+        if (modify_index > 0) {
             if (::rtidb::base::SchemaCodec::ConvertColumnDesc(column_desc_list_1, columns) < 0) {
                 std::cout << "convert table column desc failed" << std::endl;
             }
@@ -1692,7 +1692,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         std::string buffer;
         std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
         std::vector<uint64_t> ts_dimensions;
-        if (add_size > 0) {
+        if (modify_index > 0) {
             if (EncodeMultiDimensionData(std::vector<std::string>(parts.begin() + start_index, parts.end()), columns, 
                         tables[0].table_partition_size(), buffer, dimensions, ts_dimensions, modify_index) < 0) {
                 std::cout << "Encode data error" << std::endl;
@@ -1740,7 +1740,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
             return;
         }
         std::vector<::rtidb::base::ColumnDesc> columns;
-        if (add_size > 0) {
+        if (modify_index > 0) {
             if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], columns, modify_index) < 0) {
                 std::cout << "convert table column desc failed" << std::endl;
             }
@@ -1757,7 +1757,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClien
         }
         std::string buffer;
         std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
-        if (add_size > 0) {
+        if (modify_index > 0) {
             if (EncodeMultiDimensionData(std::vector<std::string>(parts.begin() + 3, parts.end()), columns, 
                         tables[0].table_partition_size(), buffer, dimensions, modify_index) < 0) {
                 std::cout << "Encode data error" << std::endl;
@@ -4161,7 +4161,7 @@ void HandleClientSPut(const std::vector<std::string>& parts, ::rtidb::client::Ta
         raw.erase(raw.begin() + base_size + modify_index, raw.end());
         std::string buffer;
         std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions;
-        if (table_meta.added_column_desc_size() > 0) {
+        if (modify_index > 0) {
             if (EncodeMultiDimensionData(std::vector<std::string>(parts.begin() + 4, parts.end()), raw, 0, buffer, dimensions, modify_index) < 0) {
                 std::cout << "Encode data error" << std::endl;
                 return;

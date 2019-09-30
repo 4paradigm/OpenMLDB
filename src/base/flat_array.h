@@ -29,14 +29,14 @@ class FlatArrayCodec {
 public:
     FlatArrayCodec(std::string* buffer, 
             uint16_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
-    cur_cnt_(0), datas_(col_cnt_), modify_times_(-1){
+    cur_cnt_(0), datas_(col_cnt_), modify_times_(0){
     }
 
     FlatArrayCodec(std::string* buffer, 
             uint16_t col_cnt, int modify_times):buffer_(buffer), col_cnt_(col_cnt),
     cur_cnt_(0), datas_(col_cnt_), modify_times_(modify_times){
     }
-    FlatArrayCodec():col_cnt_(0),cur_cnt_(0),modify_times_(-1){}
+    FlatArrayCodec():col_cnt_(0),cur_cnt_(0),modify_times_(0){}
     ~FlatArrayCodec() {}
 
     bool Append(bool data) {
@@ -181,7 +181,7 @@ public:
         buffer_->resize(GetSize());
         char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0]));
         //for the case of adding field
-        if (modify_times_ > -1) {
+        if (modify_times_ > 0) {
             uint8_t modify_count = (uint8_t)(modify_times_ | 0x80);
             memcpy(cbuffer, static_cast<const void*>(&modify_count), 1);
             cbuffer += 1;
