@@ -83,7 +83,6 @@ public class ColumnKeyTest extends TestCaseBase {
 
     @Test(dataProvider = "StorageMode")
     public void testPutNoTs(Common.StorageMode sm) {
-<<<<<<< HEAD
             String name = String.valueOf(id.incrementAndGet());
             nsc.dropTable(name);
             ColumnDesc col0 = ColumnDesc.newBuilder().setName("card").setAddTsIdx(true).setType("string").build();
@@ -395,7 +394,8 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(1, tableSyncClient.count(name, "mcc0", "mcc", "ts", false));
             try {
                 Assert.assertEquals(0, tableSyncClient.count(name, "mcc0", "mcc", "ts_1", false));
-            } catch (Exception e) {
+            } catch (Exception e){
+                Assert.assertTrue(true);
             }
 
             data.clear();
@@ -411,11 +411,14 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(2, tableSyncClient.count(name, query, "card2", "ts_2", false));
             try {
                 tableSyncClient.count(name, query, "card2", "ts_0", false);
+                Assert.assertTrue(false);
             } catch (Exception e) {
+                Assert.assertTrue(true);
             }
             try {
                 tableSyncClient.count(name, query, "card2", "ts", false);
             } catch (Exception e) {
+                Assert.assertTrue(true);
             }
 
             it = tableSyncClient.traverse(name, "card2", "ts_1");
@@ -431,11 +434,14 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(3, count);
             try {
                 tableSyncClient.traverse(name, "card2", "ts_0");
+                Assert.assertTrue(false);
             } catch (Exception e) {
+                Assert.assertTrue(true);
             }
             try {
                 tableSyncClient.traverse(name, "card2", "ts");
             } catch (Exception e) {
+                Assert.assertTrue(true);
             }
 
             Assert.assertTrue(tableSyncClient.delete(name, "card0|mcc0", "card2"));
