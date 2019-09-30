@@ -687,15 +687,16 @@ void DiskTableTraverseIterator::SeekToFirst() {
 void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     std::string combine;
     uint8_t cur_ts_idx = UINT8_MAX;
+    if (has_ts_idx_) {
+        combine = CombineKeyTs(pk, UINT64_MAX, ts_idx_);
+    } else {
+        combine = CombineKeyTs(pk, UINT64_MAX);
+    }
+    it_->Seek(rocksdb::Slice(combine));
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        if (has_ts_idx_) {
-            combine = CombineKeyTs(pk, UINT64_MAX, ts_idx_);
-        } else {
-            combine = CombineKeyTs(pk, UINT64_MAX);
-        }
-        it_->Seek(rocksdb::Slice(combine));
         record_idx_ = 0;
-        for (;it_->Valid();it_->Next()) {
+        it_->Seek(rocksdb::Slice(combine));
+        for (; it_->Valid(); it_->Next()) {
             record_idx_++;
             ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, ts_idx_);
             if (pk_ == pk) {
@@ -707,7 +708,6 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                     continue;
                 }
                 if (ts_ >= time) {
-                    it_->Next();
                     continue;
                 }
             } else {
@@ -719,8 +719,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
             break;
         }
     } else {
-        it_->Seek(rocksdb::Slice(combine));
-        for (;it_->Valid();it_->Next()) {
+        for (; it_->Valid(); it_->Next()) {
             ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, ts_idx_);
             if (pk_ == pk) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
