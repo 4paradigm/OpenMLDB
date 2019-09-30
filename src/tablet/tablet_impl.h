@@ -232,14 +232,6 @@ public:
         server_ = server;
     }
 
-    void CountFromDiskTable(std::shared_ptr<Table> disk_table,
-          const ::rtidb::api::CountRequest* request,
-          ::rtidb::api::CountResponse* response);
-
-    void TraverseFromDiskTable(std::shared_ptr<Table> disk_table,
-           const ::rtidb::api::TraverseRequest* request,
-           ::rtidb::api::TraverseResponse* response);
-
     void GetFromDiskTable(std::shared_ptr<Table> disk_table,
             const ::rtidb::api::GetRequest* request, 
             ::rtidb::api::GetResponse* response);
