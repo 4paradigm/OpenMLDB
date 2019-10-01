@@ -650,7 +650,11 @@ void DiskTableTraverseIterator::Next() {
             }
             record_idx_++;
         } else {
+            record_idx_ = 0;
             pk_ = tmp_pk;
+            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                continue;
+            }
             record_idx_ = 1;
         }
         if (IsExpired()) {
@@ -770,6 +774,10 @@ void DiskTableTraverseIterator::NextPK() {
         uint8_t cur_ts_idx = UINT8_MAX;
         ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
         if (tmp_pk != last_pk) {
+            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                it_->Next();
+                continue;
+            }
             if (!IsExpired()) {
                 pk_ = tmp_pk;
                 return;
