@@ -1488,13 +1488,6 @@ void TabletImpl::Count(RpcController* controller,
         response->set_msg("table is loading");
         return;
     }
-    if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-        PDLOG(WARNING, "table is disk table. tid %u, pid %u", 
-                      request->tid(), request->pid());
-        response->set_code(307);
-        response->set_msg("disk table is not support count");
-        return;
-    }
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
@@ -1518,8 +1511,8 @@ void TabletImpl::Count(RpcController* controller,
             return;
         }
         ts_index = iter->second;
-    } 
-    if (!request->filter_expired_data()) {
+    }    
+    if (!request->filter_expired_data() && table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
             uint64_t count = 0;
@@ -1649,6 +1642,12 @@ void TabletImpl::Traverse(RpcController* controller,
     } else {
         it = table->NewTraverseIterator(index);
     }
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found, when create iterator");
+        return;
+    }
+
     uint64_t last_time = 0;
     std::string last_pk;
     if (request->has_pk() && request->pk().size() > 0) {
@@ -1668,7 +1667,7 @@ void TabletImpl::Traverse(RpcController* controller,
         remove_duplicated_record = request->enable_remove_duplicated_record();
     }
     uint32_t scount = 0;
-    while (it->Valid()) {
+    for (;it->Valid(); it->Next()) {
         if (request->limit() > 0 && scount > request->limit() - 1) {
             PDLOG(DEBUG, "reache the limit %u ", request->limit());
             break;
@@ -1677,7 +1676,6 @@ void TabletImpl::Traverse(RpcController* controller,
         // skip duplicate record
         if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
             PDLOG(DEBUG, "filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
-            it->Next();
             continue;
         }
         last_pk = it->GetPK();
@@ -1689,7 +1687,6 @@ void TabletImpl::Traverse(RpcController* controller,
         rtidb::base::Slice value = it->GetValue();
         value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
         total_block_size += last_pk.length() + value.size();
-        it->Next();
         scount ++;
     }
     delete it;
@@ -1762,31 +1759,29 @@ void TabletImpl::Delete(RpcController* controller,
         response->set_msg("delete failed");
         return;
     }
-    if (table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
-        std::shared_ptr<LogReplicator> replicator;
-        do {
-            replicator = GetReplicator(request->tid(), request->pid());
-            if (!replicator) {
-                PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
-                        request->pid());
-                break;
-            }
-            ::rtidb::api::LogEntry entry;
-            entry.set_term(replicator->GetLeaderTerm());
-            entry.set_method_type(::rtidb::api::MethodType::kDelete);
-            ::rtidb::api::Dimension* dimension = entry.add_dimensions();
-            dimension->set_key(request->key());
-            dimension->set_idx(idx);
-            replicator->AppendEntry(entry);
-        } while(false);
-        if (replicator && FLAGS_binlog_notify_on_put) {
-            replicator->Notify(); 
+    std::shared_ptr<LogReplicator> replicator;
+    do {
+        replicator = GetReplicator(request->tid(), request->pid());
+        if (!replicator) {
+            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(),
+                    request->pid());
+            break;
         }
+        ::rtidb::api::LogEntry entry;
+        entry.set_term(replicator->GetLeaderTerm());
+        entry.set_method_type(::rtidb::api::MethodType::kDelete);
+        ::rtidb::api::Dimension* dimension = entry.add_dimensions();
+        dimension->set_key(request->key());
+        dimension->set_idx(idx);
+        replicator->AppendEntry(entry);
+    } while(false);
+    if (replicator && FLAGS_binlog_notify_on_put) {
+        replicator->Notify();
     }
     return;
 }
 
-void TabletImpl::ChangeRole(RpcController* controller, 
+void TabletImpl::ChangeRole(RpcController* controller,
             const ::rtidb::api::ChangeRoleRequest* request,
             ::rtidb::api::ChangeRoleResponse* response,
             Closure* done) {
