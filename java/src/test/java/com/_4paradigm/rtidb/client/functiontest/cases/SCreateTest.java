@@ -95,6 +95,7 @@ public class SCreateTest extends TestCaseBase {
     @Test(dataProvider = "schema")
     public void testCreate(Object[]... array) {
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         Boolean result = (Boolean) array[0][0];
         List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
         int indexes = 0;
@@ -119,5 +120,6 @@ public class SCreateTest extends TestCaseBase {
             Assert.assertEquals(th.getSchema().size(), schemaCount);
             Assert.assertEquals(th.getIndexes().size(), indexes);
         }
+        tabletClient.dropTable(tid, 0);
     }
 }

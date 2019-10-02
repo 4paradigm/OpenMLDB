@@ -71,6 +71,7 @@ public class SScanTest extends TestCaseBase {
         } catch (Exception e) {
             Assert.fail();
         }
+        tabletClient.dropTable(tid, 0);
     }
 
     @Test
@@ -107,5 +108,6 @@ public class SScanTest extends TestCaseBase {
         } catch (Exception e) {
             Assert.fail();
         }
+        tabletClient.dropTable(tid, 0);
     }
 }
