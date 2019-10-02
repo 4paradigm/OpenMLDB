@@ -122,11 +122,12 @@ bool DiskTable::InitColumnFamilyDescriptor() {
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         if (ttl_type_ == ::rtidb::api::TTLType::kAbsoluteTime) {
             auto column_key_map_iter = column_key_map_.find(iter->second);
-            if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second.size() > 1) {
-                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&ttl_vec_);
-                PDLOG(DEBUG, "set ttl vec. tid %u pid %u", id_, pid_);
-            } else {
+            if (column_key_map_iter == column_key_map_.end() || column_key_map_iter->second.empty()) {
                 cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&ttl_);
+            } else if (column_key_map_iter->second.size() == 1) {
+                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(ttl_vec_[column_key_map_iter->second.front()].get());
+            } else {
+                cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(&ttl_vec_);
             }
         }
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(iter->first, cfo));
@@ -275,6 +276,38 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
     }
 }
 
+bool DiskTable::Get(uint32_t idx, const std::string& pk, 
+        uint64_t ts, uint32_t ts_idx, std::string& value) {
+    if (idx >= idx_cnt_) {
+        PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
+        return false;
+    }
+    auto column_map_iter = column_key_map_.find(idx);
+    if (column_map_iter == column_key_map_.end()) {
+        PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", idx, id_, pid_);
+        return false;
+    }
+    if (std::find(column_map_iter->second.begin(), column_map_iter->second.end(), ts_idx) 
+                            == column_map_iter->second.end()) {
+        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
+                        ts_idx, idx, id_, pid_);
+        return false;
+    }
+    rocksdb::Slice spk ;
+    if (column_map_iter->second.size() > 1) {
+        spk = rocksdb::Slice(CombineKeyTs(pk, ts, ts_idx));
+    } else {
+        spk = rocksdb::Slice(CombineKeyTs(pk, ts));
+    }
+    rocksdb::Status s;
+    s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
+    if (s.ok()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {
     if (idx >= idx_cnt_) {
         PDLOG(WARNING, "idx greater than idx_cnt_, failed getting table tid %u pid %u", id_, pid_);
@@ -328,7 +361,7 @@ void DiskTable::SchedGc() {
         rocksdb will delete expired key when compact
         GcTTL();
     }*/
-	if (ttl_.load(std::memory_order_relaxed) != new_ttl_.load(std::memory_order_relaxed)) {
+    if (ttl_.load(std::memory_order_relaxed) != new_ttl_.load(std::memory_order_relaxed)) {
         uint64_t ttl_for_logger = ttl_.load(std::memory_order_relaxed) / 1000 / 60;
         uint64_t new_ttl_for_logger = new_ttl_.load(std::memory_order_relaxed) / 1000 / 60;
         PDLOG(INFO, "update ttl form %lu to %lu, table %s tid %u pid %u",

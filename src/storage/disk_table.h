@@ -292,6 +292,9 @@ public:
     virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
             const std::string& value) override;
 
+    bool Get(uint32_t idx, const std::string& pk, 
+            uint64_t ts, uint32_t ts_idx, std::string& value);
+
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value);
 
     bool Get(const std::string& pk, uint64_t ts, std::string& value);
