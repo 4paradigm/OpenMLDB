@@ -652,14 +652,15 @@ TableIterator* DiskTable::NewTraverseIterator(uint32_t index, uint32_t ts_idx) {
         PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %u, failed getting table tid %u pid %u", ts_idx, index, id_, pid_);
         return NULL;
     }
+    uint64_t ttl = ttl_vec_[ts_idx]->load(std::memory_order_relaxed);
     uint64_t expire_value = 0; // suppose ttl_ is 0
-    if (ttl_ == 0) {
+    if (ttl == 0) {
         expire_value = 0;
     } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
-        expire_value = ttl_ / 60 / 1000;
+        expire_value = ttl / 60 / 1000;
     } else {
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-        expire_value = cur_time - ttl_.load(std::memory_order_relaxed);
+        expire_value = cur_time - ttl;
     }
     rocksdb::ReadOptions ro = rocksdb::ReadOptions();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
