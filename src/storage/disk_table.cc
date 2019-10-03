@@ -442,7 +442,6 @@ void DiskTable::GcHead() {
                 ttl_map.insert(std::make_pair(ts_idx, ttl));
                 if (ttl > 0) {
                     need_ttl = true;
-                    break;
                 }
             }
             if (!need_ttl) {
@@ -484,8 +483,18 @@ void DiskTable::GcHead() {
                 }
                 it->Next();
             }
+            for (const auto& kv : delete_key_map) {
+                rocksdb::Status s = db_->DeleteRange(write_opts_, cf_hs_[idx + 1], 
+                        rocksdb::Slice(CombineKeyTs(last_pk, kv.second, kv.first)), rocksdb::Slice(CombineKeyTs(last_pk, 0, kv.first)));
+                if (!s.ok()) {
+                    PDLOG(WARNING, "Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+                }
+            }
         } else {
             uint64_t ttl_num = ttl_ / 60 / 1000;
+            if (column_key_map_iter != column_key_map_.end() && column_key_map_iter->second.front() < ttl_vec_.size()) {
+                ttl_num = ttl_vec_[column_key_map_iter->second.front()]->load(std::memory_order_relaxed) / 60 / 1000;
+            }
             if (ttl_num < 1) {
                 continue;
             }
