@@ -190,39 +190,22 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'large_table'
-        # m = utils.gen_table_metadata(
-        #     name, None, 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
-        #     ('column_desc', '"k1000"', '"string"', 'true'),
-        #     ('column_desc', '"k1001"', '"double"', 'false'),
-        #     ('column_desc', '"k1002"', '"int32"', 'true'),
-        # )
-
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "partition_num": 8,
-            "storage_mode": "kSSD",
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "1-2","is_leader": "false"},
-            ],
-            "column_desc":[
-                {"name": "k1000", "type": "string", "add_ts_idx": "true"},
-                {"name": "k1001", "type": "double", "add_ts_idx": "false"},
-                {"name": "k1002", "type": "int32", "add_ts_idx": "true"},
-            ],
-        }
+        name = '"large_table"'
+        m = utils.gen_table_metadata_ssd(
+            name, None, 144000, 8,'kSSD',
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'),
+            ('column_desc', '"k1000"', '"string"', 'true'),
+            ('column_desc', '"k1001"', '"double"', 'false'),
+            ('column_desc', '"k1002"', '"int32"', 'true'),
+        )
         for num in range(1003, 4000):
             name = 'k' + str(num)
-            table_meta.append(('column_desc', [('name', '"' + name + '"'), ('type', '"int32"'), ('add_ts_idx', 'false')]))
-        print(table_meta[-1])
+            m.append(('column_desc', [('name', '"' + name + '"'), ('type', '"int32"'), ('add_ts_idx', 'false')]))
+        print(m[-1])
         #self.assertTrue(False)
-        utils.gen_table_metadata_file(table_meta, metadata_path)
+        utils.gen_table_metadata_file(m, metadata_path)
         rs1 = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         self.assertIn('Create table ok', rs1)
         self.ns_drop(self.ns_leader, name)
