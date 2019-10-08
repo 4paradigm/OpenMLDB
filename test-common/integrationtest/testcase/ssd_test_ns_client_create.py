@@ -408,8 +408,8 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     # @multi_dimension(True)
     @ddt.data(
-        # ('Create table ok',
-        # ('column_desc', '"card"', '"string"', 'true')),
+        ('Create table ok',
+        ('column_desc', '"card"', '"string"', 'true')),
 
         ('no index',
         ('column_desc', '"card"', '"double"', 'false')),
@@ -537,9 +537,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         :param eles:
         :return:
         """
-        tname = 'tname{}'.format(time.time())
+        tname = '"tname{}"'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        m = utils.gen_table_metadata('"' + tname + '"', '"kAbsoluteTime"', 144000, 8, *eles)
+        m = utils.gen_table_metadata_ssd('"' + tname + '"', '"kAbsoluteTime"', 144000, 8,'kSSD', *eles)
         utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
