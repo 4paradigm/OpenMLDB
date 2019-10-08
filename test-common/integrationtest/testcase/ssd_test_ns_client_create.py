@@ -275,7 +275,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(time.time())
+        name = '"tname{}"'.format(time.time())
         infoLogger.info(name)
 
         table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
