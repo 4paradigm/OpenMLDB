@@ -280,7 +280,7 @@ class TestCreateTableByNsClient(TestCaseBase):
 
         table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
         table_partition2 = ('table_partition', '"{}"'.format(self.slave1), pid_group2[0], pid_group2[1])
-        m = utils.gen_table_metadata_ssd(name, None, 144000, 2,'"kSSD"', table_partition1, table_partition2)
+        m = utils.gen_table_metadata_ssd(name, None, 144000, 2,'kSSD', table_partition1, table_partition2)
         utils.gen_table_metadata_file(m, metadata_path)
 
         # table_meta = {
