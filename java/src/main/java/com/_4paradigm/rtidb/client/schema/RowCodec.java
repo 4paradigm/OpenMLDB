@@ -1,18 +1,17 @@
 package com._4paradigm.rtidb.client.schema;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.Charset;
-import java.sql.Timestamp;
-import java.sql.Date;
-import java.util.List;
-
-import org.joda.time.DateTime;
-
 import com._4paradigm.rtidb.client.TabletException;
+import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.util.List;
 
 
 public class RowCodec {
@@ -21,6 +20,10 @@ public class RowCodec {
     private final static int stringMaxLength = 32767;
 
     public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
+        return encode(row, schema, 0);
+    }
+
+    public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema, int modifyTimes) throws TabletException {
         if (row.length != schema.size()) {
             throw new TabletException("row length mismatch schema");
         }
@@ -29,10 +32,14 @@ public class RowCodec {
         // TODO limit the max size
         int size = getSize(row, schema, cache);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-        if (row.length >= 128) {
-            buffer.putShort((short) row.length);
+        if (modifyTimes > 0) {
+            buffer.put((byte) (modifyTimes | 0x8F));
         } else {
-            buffer.put((byte) row.length);
+            if (row.length >= 128) {
+                buffer.putShort((short) row.length);
+            } else {
+                buffer.put((byte) row.length);
+            }
         }
         for (int i = 0; i < row.length; i++) {
             ColumnType ct = schema.get(i).getType();
@@ -92,7 +99,7 @@ public class RowCodec {
                         Timestamp ts = (Timestamp) row[i];
                         buffer.putLong(ts.getTime());
                     } else {
-                        throw new TabletException(row[i].getClass().getName() + "is not support for timestamp ");
+                        throw new TabletException(row[i].getClass().getName() + " is not support for timestamp ");
                     }
                     break;
                 case kInt16:
@@ -108,7 +115,7 @@ public class RowCodec {
                         LocalDate date = (LocalDate) row[i];
                         buffer.putLong(date.toDate().getTime());
                     } else {
-                        throw new TabletException(row[i].getClass().getName() + "is not support for date");
+                        throw new TabletException(row[i].getClass().getName() + " is not support for date");
                     }
                     break;
                 case kBool:
@@ -135,10 +142,15 @@ public class RowCodec {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
         int colLength = 0;
-        if (schema.size() >= 128) {
-            colLength = buffer.getShort();
+        Byte temp = buffer.asReadOnlyBuffer().get();
+        if ((temp & 0x80) != 0) {
+            colLength = buffer.get() & 0x7F;
         } else {
-            colLength = buffer.get() & 0xFF;
+            if (schema.size() >= 128) {
+                colLength = buffer.getShort();
+            } else {
+                colLength = buffer.get() & 0xFF;
+            }
         }
         if (colLength > length) {
             colLength = length;
@@ -218,7 +230,12 @@ public class RowCodec {
     }
 
     public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
-        Object[] row = new Object[schema.size()];
+        return decode(buffer, schema, 0);
+    }
+
+    //for adding field
+    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, int addFieldSize) throws TabletException {
+        Object[] row = new Object[schema.size() + addFieldSize];
         decode(buffer, schema, row, 0, row.length);
         return row;
     }

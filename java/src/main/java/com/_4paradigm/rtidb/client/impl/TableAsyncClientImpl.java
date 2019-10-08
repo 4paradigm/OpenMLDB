@@ -1,17 +1,6 @@
 package com._4paradigm.rtidb.client.impl;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Future;
-
-import com._4paradigm.rtidb.client.GetFuture;
-import com._4paradigm.rtidb.client.PutFuture;
-import com._4paradigm.rtidb.client.ScanFuture;
-import com._4paradigm.rtidb.client.TableAsyncClient;
-import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
@@ -26,9 +15,15 @@ import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
-
 import io.brpc.client.RpcCallback;
 import rtidb.api.TabletServer;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
 
 public class TableAsyncClientImpl implements TableAsyncClient {
 
@@ -49,7 +44,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find partition with pid "+ pid +" from table " +tableHandler.getTableInfo().getName());
         }
         List<Tablet.Dimension> dimList = TableClientCommon.fillTabletDimension(row, tableHandler, client.getConfig().isHandleNull());
-        ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
+        ByteBuffer buffer = null;
+        if (row.length == tableHandler.getSchema().size()) {
+            buffer = RowCodec.encode(row, tableHandler.getSchema());
+        } else {
+            List<ColumnDesc> columnDescs = tableHandler.getSchemaMap().get(row.length);
+            buffer = RowCodec.encode(row, columnDescs, row.length - tableHandler.getSchema().size());
+        }
         return put(tid, pid, null, time, dimList, buffer, tableHandler);
     }
 
@@ -95,7 +96,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("no table with name " + name);
         }
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, client.getConfig().isHandleNull());
-        ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
+        ByteBuffer buffer = null;
+        if (row.length == th.getSchema().size()) {
+            buffer = RowCodec.encode(row, th.getSchema());
+        } else {
+            List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
+            buffer = RowCodec.encode(row, columnDescs, row.length - th.getSchema().size());
+        }
         List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
         while (it.hasNext()) {
@@ -123,9 +130,15 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        Object[] arrayRow = new Object[th.getSchema().size()];
+        Object[] arrayRow = null;
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
-        TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
+        if (row.size() > th.getSchema().size()) {
+            arrayRow = new Object[row.size()];
+            TableClientCommon.parseMapInput(row, th.getSchemaMap().get(row.size()), arrayRow, tsDimensions);
+        } else {
+            arrayRow = new Object[th.getSchema().size()];
+            TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
+        }
         return put(name, 0, arrayRow, tsDimensions);
     }
 

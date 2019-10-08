@@ -48,6 +48,37 @@ public class TableClientCommon {
         }
     }
 
+    public static void parseMapInput(Map<String, Object> row, List<ColumnDesc> schema, Object[] arrayRow, List<Tablet.TSDimension> tsDimensions) throws TabletException {
+        tsDimensions.clear();
+        int tsIndex = 0;
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
+            Object colValue = row.get(columnDesc.getName());
+            arrayRow[i] = colValue;
+            if (columnDesc.isTsCol()) {
+                if (columnDesc.getType() == ColumnType.kInt64) {
+                    tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).setTs((Long) colValue).build());
+                } else if (columnDesc.getType() == ColumnType.kTimestamp) {
+                    if (colValue instanceof Timestamp) {
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                                setTs(((Timestamp) colValue).getTime()).build());
+                    } else if (colValue instanceof DateTime) {
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                                setTs(((DateTime) colValue).getMillis()).build());
+                    } else {
+                        throw new TabletException("invalid ts column");
+                    }
+                } else {
+                    throw new TabletException("invalid ts column");
+                }
+                tsIndex++;
+            }
+        }
+        if (tsDimensions.isEmpty()) {
+            throw new TabletException("no ts column");
+        }
+    }
+
     public static List<Tablet.TSDimension> parseArrayInput(Object[] row, TableHandler th) throws TabletException {
         if (row.length != th.getSchema().size()) {
             throw new TabletException("input row size error");
