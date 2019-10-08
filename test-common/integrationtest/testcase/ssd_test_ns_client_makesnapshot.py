@@ -19,32 +19,15 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
 
         pid_group = '"0-2"'
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), pid_group, 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), pid_group, 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), pid_group, 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'true'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "storage_mode": "kSSD",
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": pid_group,"is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": pid_group,"is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": pid_group,"is_leader": "false"},
-            ],
-            "column_desc":[
-                {"name": "k1", "type": "string", "add_ts_idx": "true"},
-                {"name": "k2", "type": "string", "add_ts_idx": "false"},
-                {"name": "k3", "type": "string", "add_ts_idx": "true"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
+        m = utils.gen_table_metadata_ssd(
+            '"{}"'.format(name), None, 144000, 8,'kSSD',
+            ('table_partition', '"{}"'.format(self.leader), pid_group, 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), pid_group, 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), pid_group, 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'true'))
+        utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
 
