@@ -67,19 +67,24 @@ static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts
 }
 
 static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
+    std::string result;
+    result.resize(key.size() + TS_LEN);
+    char* buf = reinterpret_cast<char*>(&(result[0]));
     memrev64ifbe(static_cast<void*>(&ts));
-    char buf[TS_LEN];
-    memcpy(buf, static_cast<void*>(&ts), TS_LEN);
-    return key + std::string(buf, TS_LEN);
+    memcpy(buf, key.c_str(), key.size());
+    memcpy(buf + key.size(), static_cast<void*>(&ts), TS_LEN);
+    return result;
 }
 
 static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint8_t ts_pos) {
-  memrev64ifbe(static_cast<void*>(&ts));
-  char buf[key.size() + TS_LEN + TS_POS_LEN];
-  memcpy(buf, key.c_str(), key.size());
-  memcpy(buf + key.size(), static_cast<void*>(&ts_pos), TS_POS_LEN);
-  memcpy(buf + key.size() + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
-  return std::string(buf, key.size() + TS_LEN + TS_POS_LEN);
+    std::string result;
+    result.resize(key.size() + TS_LEN + TS_POS_LEN);
+    char* buf = reinterpret_cast<char*>(&(result[0]));
+    memrev64ifbe(static_cast<void*>(&ts));
+    memcpy(buf, key.c_str(), key.size());
+    memcpy(buf + key.size(), static_cast<void*>(&ts_pos), TS_POS_LEN);
+    memcpy(buf + key.size() + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
+    return result;
 }
 
 class KeyTSComparator : public rocksdb::Comparator {
@@ -147,9 +152,6 @@ public:
         if (key.size() < TS_LEN) {
             return false;
         }
-        uint64_t ts = 0;
-        memcpy(static_cast<void*>(&ts), key.data() + key.size() - TS_LEN, TS_LEN);
-        memrev64ifbe(static_cast<void*>(&ts));
         uint64_t real_ttl = ttl_;
         if (ttl_vec_ptr_ != NULL) {
             if (key.size() < TS_LEN + TS_POS_LEN) {
@@ -161,6 +163,12 @@ public:
             }
             real_ttl = (*ttl_vec_ptr_)[ts_idx]->load(std::memory_order_relaxed);
         }
+        if (real_ttl < 1) {
+            return false;
+        }
+        uint64_t ts = 0;
+        memcpy(static_cast<void*>(&ts), key.data() + key.size() - TS_LEN, TS_LEN);
+        memrev64ifbe(static_cast<void*>(&ts));
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
         if (ts < cur_time - real_ttl) {
             return true;
