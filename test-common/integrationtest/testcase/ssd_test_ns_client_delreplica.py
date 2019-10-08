@@ -56,7 +56,8 @@ class TestDelReplicaNs(TestCaseBase):
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                 ],
             }
-        utils.gen_table_metadata_file(m, metadata_path)
+        # utils.gen_table_metadata_file(m, metadata_path)
+        utils.gen_table_meta_file(m, metadata_path)
         rs2 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs2)
 
