@@ -106,8 +106,8 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        ('t{}'.format(time.time()), 'kLatestTime', 10, 8),
-        ('t{}'.format(time.time()), 'kAbsoluteTime', 1, 8),  # RTIDB-202
+        ('"t{}"'.format(time.time()), '"kLatestTime"', 10, 8),
+        ('"t{}"'.format(time.time()), '"kAbsoluteTime"', 1, 8),  # RTIDB-202
     )
     @ddt.unpack
     def test_create_ttl_type(self, name, ttl_type, ttl, seg_cnt):
@@ -121,26 +121,12 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        # m = utils.gen_table_metadata(
-        #     name, ttl_type, ttl, seg_cnt,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl": ttl,
-            "seg_cnt": seg_cnt,
-            "ttl_type": ttl_type,
-            "storage_mode": "kSSD",
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "1-2","is_leader": "false"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
+        m = utils.gen_table_metadata_ssd(
+            name, ttl_type, ttl, seg_cnt,'kSSD',
+            ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-1"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"1-2"', 'false'))
+        utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
 
