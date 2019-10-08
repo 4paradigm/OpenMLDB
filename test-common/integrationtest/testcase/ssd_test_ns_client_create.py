@@ -365,19 +365,19 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('table meta file format error',
          ('table_partition', '"{}"'.format(leader), '"0-3"', None)),
 
-        # ('has not leader pid',
-        #  ('table_partition', '"{}"'.format(leader), '"0-3"', 'false'),
-        #  ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
-        #
-        # ('Create table ok',
-        #  ('table_partition', '"{}"'.format(leader), '"0-3"', 'true'),
-        #  ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
-        #
-        # ('table meta file format error',
-        #  ('table_partition', '"{}"'.format(leader), '"0-3"', '""')),
-        #
-        # ('missing required fields: table_partition[0].endpoint, table_partition[0].pid_group, table_partition[0].is_leader',
-        #  ('table_partition', None, None, None)),
+        ('has not leader pid',
+         ('table_partition', '"{}"'.format(leader), '"0-3"', 'false'),
+         ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
+
+        ('Create table ok',
+         ('table_partition', '"{}"'.format(leader), '"0-3"', 'true'),
+         ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
+
+        ('table meta file format error',
+         ('table_partition', '"{}"'.format(leader), '"0-3"', '""')),
+
+        ('missing required fields: table_partition[0].endpoint, table_partition[0].pid_group, table_partition[0].is_leader',
+         ('table_partition', None, None, None)),
     )
     @ddt.unpack
     def test_create_is_leader(self, exp_msg, *table_partition):
