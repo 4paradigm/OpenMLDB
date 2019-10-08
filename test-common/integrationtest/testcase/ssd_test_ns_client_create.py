@@ -33,7 +33,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         ('t{}'.format(time.time()), None, '"144000"', 8,
          'table meta file format error'),
         ('t{}'.format(time.time()), None, 144, -8,
-         'src/brpc/global.cpp:260] google/protobuf/text_format.cc:274 Error parsing text-format rtidb.client.TableInfo: 32:6: Expected integer.\ntable meta file format error'),
+         'src/brpc/global.cpp:260] google/protobuf/text_format.cc:274 Error parsing text-format rtidb.client.TableInfo: 19:6: Expected integer.\ntable meta file format error'),
         # ('t{}'.format(time.time()), None, 144, '',
         #  'src/brpc/global.cpp:260] google/protobuf/text_format.cc:274 Error parsing text-format rtidb.client.TableInfo: 32:6: Expected integer.\ntable meta file format error'),
         # ('t{}'.format(time.time()), None, 144, '8',
