@@ -39,7 +39,11 @@
 #--task_pool_size=8
 
 --db_root_path=./db
+--ssd_root_path=./db
+--hdd_root_path=./db
 --recycle_bin_root_path=./recycle
+--recycle_ssd_bin_root_path=./recycle
+--recycle_hdd_bin_root_path=./recycle
 
 # snapshot conf
 # 每天23点做snapshot
@@ -51,6 +55,7 @@
 # 60m
 --gc_interval=60
 --gc_pool_size=2
+#--disk_gc_interval=120
 # 1m
 #--gc_safe_offset=1
 
@@ -67,3 +72,12 @@
 # table conf
 #--skiplist_max_height=12
 #--key_entry_max_height=8
+
+# rocksdb
+#--disable_wal=true
+
+
+# loadtable
+#--load_table_batch=30
+#--load_table_thread_num=3
+#--load_table_queue_size=1000

@@ -1241,7 +1241,6 @@ int NameServerImpl::FillColumnKey(TableInfo& table_info) {
         }
     }
     return 0;
-
 }
 
 int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
