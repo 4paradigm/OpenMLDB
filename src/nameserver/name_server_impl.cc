@@ -1209,7 +1209,15 @@ int NameServerImpl::CheckTableMeta(const TableInfo& table_info) {
 }
 
 int NameServerImpl::FillColumnKey(TableInfo& table_info) {
-    if (table_info.column_key_size() > 0 || table_info.column_desc_v1_size() == 0) {
+    if (table_info.column_desc_v1_size() == 0) {
+        return 0;
+    } else if (table_info.column_key_size() > 0) {
+        for (int idx = 0; idx < table_info.column_key_size(); idx++) {
+            if (table_info.column_key(idx).col_name_size() == 0) { 
+                ::rtidb::common::ColumnKey* column_key = table_info.mutable_column_key(idx);
+                column_key->add_col_name(table_info.column_key(idx).index_name());
+            }
+        }
         return 0;
     }
     std::vector<std::string> ts_vec;
@@ -1233,6 +1241,7 @@ int NameServerImpl::FillColumnKey(TableInfo& table_info) {
         }
     }
     return 0;
+
 }
 
 int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
