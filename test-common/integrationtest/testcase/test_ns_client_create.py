@@ -394,9 +394,6 @@ class TestCreateTableByNsClient(TestCaseBase):
             tid = rs1.keys()[0][1]
             for edp in (self.leader, self.slave1, self.slave2):
                 (schema, column_key) = self.showschema(edp, tid, 2)
-                index_set = []
-                for arr in column_key:
-                    index_set.append(arr[1])
                 infoLogger.info(schema)
                 self.assertEqual(len(schema), len(column_descs))
                 idx = 0
@@ -405,7 +402,9 @@ class TestCreateTableByNsClient(TestCaseBase):
                     type = i[2][1:-1]
                     self.assertEqual(schema[idx][2], type)
                     if i[3] == 'true':
-                        self.assertTrue(key in index_set)
+                        self.assertEqual(schema[idx][3], "yes")
+                    else:
+                        self.assertEqual(schema[idx][3], "no")
                     idx += 1
         self.ns_drop(self.ns_leader, name)
 
@@ -466,12 +465,10 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(rs1[(tname, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         (schema, column_key) = self.showschema(self.slave1, tid, 0)
         self.assertEqual(len(schema), 3)
-        self.assertEqual(len(column_key), 2)
-        self.assertEqual(schema[0], ['0', 'k1', 'string'])
-        self.assertEqual(schema[1], ['1', 'k2', 'double'])
-        self.assertEqual(schema[2], ['2', 'k3', 'int32'])
-        self.assertEqual(column_key[0], ['0', 'k1', 'k1', '-', '144000min'])
-        self.assertEqual(column_key[1], ['1', 'k3', 'k3', '-', '144000min'])
+        self.assertEqual(len(column_key), 0)
+        self.assertEqual(schema[0], ['0', 'k1', 'string', 'yes'])
+        self.assertEqual(schema[1], ['1', 'k2', 'double', 'no'])
+        self.assertEqual(schema[2], ['2', 'k3', 'int32', 'yes'])
         self.ns_drop(self.ns_leader, tname)
 
     @ddt.data(

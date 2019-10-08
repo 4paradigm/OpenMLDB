@@ -46,7 +46,6 @@ public:
 
     bool AddTableField(const std::string& table_name,
             const ::rtidb::common::ColumnDesc& column_desc,
-            const std::string& schema,
             std::string& msg);
 
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg);

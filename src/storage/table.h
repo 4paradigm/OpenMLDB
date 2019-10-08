@@ -39,24 +39,34 @@ public:
         ttl_(ttl), new_ttl_(ttl), ttl_offset_(ttl_offset), is_leader_(is_leader),
         mapping_(mapping), ttl_type_(ttl_type), compress_type_(compress_type) {}
     virtual ~Table() {}
-	virtual bool Init() = 0;
+    virtual bool Init() = 0;
+
+    int InitColumnDesc();
 
     virtual bool Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) = 0;
 
-	virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) = 0;
+    virtual bool Put(uint64_t time, const std::string& value, const Dimensions& dimensions) = 0;
 
     virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions,
              const std::string& value) = 0;
 
-    virtual bool Put(const ::rtidb::api::LogEntry& entry) = 0;
+    bool Put(const ::rtidb::api::LogEntry& entry) {
+        if (entry.dimensions_size() > 0) {
+            return entry.ts_dimensions_size() > 0 ?
+                Put(entry.dimensions(), entry.ts_dimensions(), entry.value()) :
+                Put(entry.ts(), entry.value(), entry.dimensions());
+        } else {
+            return Put(entry.pk(), entry.ts(), entry.value().c_str(), entry.value().size());
+        }
+    }
 
     virtual bool Delete(const std::string& pk, uint32_t idx) = 0;
 
-	virtual TableIterator* NewIterator(const std::string& pk, Ticket& ticket) = 0;
+    virtual TableIterator* NewIterator(const std::string& pk, Ticket& ticket) = 0;
 
     virtual TableIterator* NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) = 0;
 
-    virtual TableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) = 0;
+    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) = 0;
 
     virtual TableIterator* NewTraverseIterator(uint32_t index) = 0;
     virtual TableIterator* NewTraverseIterator(uint32_t index, uint32_t ts_idx) = 0;
@@ -73,7 +83,7 @@ public:
         return storage_mode_;
     }
 
-	inline std::string GetName() const {
+    inline std::string GetName() const {
         return name_;
     }
 
@@ -96,8 +106,8 @@ public:
     void SetLeader(bool is_leader) {
         is_leader_ = is_leader;
     }
-	
-	inline uint32_t GetTableStat() {
+    
+    inline uint32_t GetTableStat() {
         return table_status_.load(std::memory_order_relaxed);
     }
 
@@ -123,11 +133,12 @@ public:
     inline void SetTableMeta(::rtidb::api::TableMeta& table_meta) {
         table_meta_.CopyFrom(table_meta);
     }
-	inline std::map<std::string, uint32_t>& GetMapping() {
+
+    inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }
 
-    inline std::map<std::string, uint32_t>& GetTSMapping() {
+    inline std::map<std::string, uint8_t>& GetTSMapping() {
         return ts_mapping_;
     }
 
@@ -135,7 +146,7 @@ public:
         return column_key_map_;
     }
 
-	inline void SetTTLType(const ::rtidb::api::TTLType& type) {
+    inline void SetTTLType(const ::rtidb::api::TTLType& type) {
         ttl_type_ = type;
     }
 
@@ -178,22 +189,22 @@ public:
 
 protected:
     ::rtidb::common::StorageMode storage_mode_;
-	std::string name_;
+    std::string name_;
     uint32_t id_;
     uint32_t pid_;
     uint32_t idx_cnt_;
-	std::atomic<uint64_t> ttl_;
+    std::atomic<uint64_t> ttl_;
     std::atomic<uint64_t> new_ttl_;
     uint64_t ttl_offset_;
     bool is_leader_;
     std::atomic<uint32_t> table_status_;
     std::string schema_;
     std::map<std::string, uint32_t> mapping_;
-    std::map<std::string, uint32_t> ts_mapping_;
+    std::map<std::string, uint8_t> ts_mapping_;
     std::map<uint32_t, std::vector<uint32_t>> column_key_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> ttl_vec_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> new_ttl_vec_;
-	::rtidb::api::TTLType ttl_type_;
+    ::rtidb::api::TTLType ttl_type_;
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
 };

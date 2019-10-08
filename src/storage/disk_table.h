@@ -32,6 +32,27 @@ namespace rtidb {
 namespace storage {
 
 const static uint32_t TS_LEN = sizeof(uint64_t);
+const static uint32_t TS_POS_LEN = sizeof(uint8_t);
+
+__attribute__((unused))
+static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s, std::string& key, uint64_t& ts, uint8_t& ts_idx) {
+    auto len = TS_LEN;
+    if (has_ts_idx) {
+        len += TS_POS_LEN;
+    }
+    key.clear();
+    if (s.size() < len) {
+        return -1;
+    } else if (s.size() > len) {
+        key.assign(s.data(), s.size() - len);
+    }
+    if (has_ts_idx) {
+        memcpy(static_cast<void*>(&ts_idx), s.data() + s.size() - len, TS_POS_LEN);
+    }
+    memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
+    memrev64ifbe(static_cast<void*>(&ts));
+    return 0;
+}
 
 static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key, uint64_t& ts) {
     key.clear();
@@ -50,6 +71,15 @@ static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
     char buf[TS_LEN];
     memcpy(buf, static_cast<void*>(&ts), TS_LEN);
     return key + std::string(buf, TS_LEN);
+}
+
+static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint8_t ts_pos) {
+  memrev64ifbe(static_cast<void*>(&ts));
+  char buf[key.size() + TS_LEN + TS_POS_LEN];
+  memcpy(buf, key.c_str(), key.size());
+  memcpy(buf + key.size(), static_cast<void*>(&ts_pos), TS_POS_LEN);
+  memcpy(buf + key.size() + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
+  return std::string(buf, key.size() + TS_LEN + TS_POS_LEN);
 }
 
 class KeyTSComparator : public rocksdb::Comparator {
@@ -85,7 +115,7 @@ public:
     }
 
     virtual bool InDomain(const rocksdb::Slice& src) const override { 
-        return src.size() >= TS_LEN; 
+        return src.size() >= TS_LEN;
     }
 
     virtual bool InRange(const rocksdb::Slice& dst) const override {
@@ -146,6 +176,7 @@ private:
 class DiskTableIterator : public TableIterator {
 public:
     DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk);
+    DiskTableIterator(rocksdb::DB* db, rocksdb::Iterator* it, const rocksdb::Snapshot* snapshot, const std::string& pk, uint8_t ts_idx);
     virtual ~DiskTableIterator();
     virtual bool Valid() override;
     virtual void Next() override;
@@ -161,6 +192,8 @@ private:
     const rocksdb::Snapshot* snapshot_;
     std::string pk_;
     uint64_t ts_;
+    uint8_t ts_idx_;
+    bool has_ts_idx_ = false;
 };
 
 class DiskTableTraverseIterator : public TableIterator {
@@ -200,9 +233,11 @@ public:
                 const std::map<std::string, uint32_t>& mapping,
                 uint64_t ttl,
                 ::rtidb::api::TTLType ttl_type,
-                ::rtidb::common::StorageMode storage_mode);
+                ::rtidb::common::StorageMode storage_mode,
+                const std::string& db_root_path);
 
-    DiskTable(const ::rtidb::api::TableMeta& table_meta);
+    DiskTable(const ::rtidb::api::TableMeta& table_meta,
+              const std::string& db_root_path);
     DiskTable(const DiskTable&) = delete;
     DiskTable& operator=(const DiskTable&) = delete;
 
@@ -230,8 +265,6 @@ public:
     virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
             const std::string& value) override;
 
-    virtual bool Put(const ::rtidb::api::LogEntry& entry) override;
-
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value);
 
     bool Get(const std::string& pk, uint64_t ts, std::string& value);
@@ -256,6 +289,10 @@ public:
         return offset_.load(std::memory_order_relaxed);
     }
 
+    void SetOffset(uint64_t offset) {
+        offset_.store(offset, std::memory_order_relaxed);
+    }
+
     inline std::map<std::string, uint32_t>& GetMapping() {
         return mapping_;
     }
@@ -264,7 +301,7 @@ public:
 
     virtual TableIterator* NewIterator(uint32_t idx, const std::string& pk, Ticket& ticket) override;
 
-    virtual TableIterator* NewIterator(uint32_t index, uint32_t ts_idx, const std::string& pk, Ticket& ticket) override;
+    virtual TableIterator* NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) override;
 
     virtual TableIterator* NewTraverseIterator(uint32_t idx) override;
 
@@ -292,6 +329,7 @@ private:
     rocksdb::Options options_;
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
+    std::string db_root_path_;
 };
 
 }

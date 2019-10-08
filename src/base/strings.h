@@ -24,16 +24,14 @@ const static char* TIME_LABEL[] = { "ms", "s", "m", "h", "d"};
 
 static inline void SplitString(const std::string& full,
                                const std::string& delim,
-                               std::vector<std::string>* result) {
-    result->clear();
+                               std::vector<std::string>& result) {
+    result.clear();
     if (full.empty()) {
         return;
     }
-
     std::string tmp;
     std::string::size_type pos_begin = full.find_first_not_of(delim);
     std::string::size_type comma_pos = 0;
-
     while (pos_begin != std::string::npos) {
         comma_pos = full.find(delim, pos_begin);
         if (comma_pos != std::string::npos) {
@@ -45,7 +43,7 @@ static inline void SplitString(const std::string& full,
         }
 
         if (!tmp.empty()) {
-            result->push_back(tmp);
+            result.push_back(tmp);
             tmp.clear();
         }
     }

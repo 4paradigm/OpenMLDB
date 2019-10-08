@@ -2026,6 +2026,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
     }
     std::map<std::string, std::shared_ptr<TabletClient>> tablet_client_map;
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
+    std::string schema;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(request->name());
@@ -2036,6 +2037,12 @@ void NameServerImpl::AddTableField(RpcController* controller,
             return;
         }
         table_info = iter->second;
+        if (table_info->added_column_desc_size() == 63) {
+            response->set_code(324);
+            response->set_msg("the count of adding field is more than 63");
+            PDLOG(WARNING, "the count of adding field is more than 63 in table %s!", request->name().c_str());
+            return;
+        }
         //judge if field exists in table_info
         std::string col_name = request->column_desc().name();
         if (table_info->column_desc_v1_size() > 0) {
@@ -2088,11 +2095,39 @@ void NameServerImpl::AddTableField(RpcController* controller,
             }
             tablet_client_map.insert(std::make_pair(endpoint, tablet_ptr->client_));
         }
+        //update tableMeta.schema
+        auto kv = table_info_.find(request->name());
+        if (kv == table_info_.end()) {
+            PDLOG(WARNING, "table_name %s did not exist.", request->name().c_str());
+            return;
+        }
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = kv->second;
+        std::vector<::rtidb::base::ColumnDesc> columns;
+        if (table_info->added_column_desc_size() > 0) {
+            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns, table_info->added_column_desc_size()) < 0) {
+                PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
+                return;
+            }
+        } else {
+            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
+                PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
+                return;
+            }
+        }
+        ::rtidb::base::ColumnDesc column;
+        column.name = request->column_desc().name();
+        column.type = rtidb::base::SchemaCodec::ConvertType(request->column_desc().type());
+        columns.push_back(column);
+        ::rtidb::base::SchemaCodec codec;
+        if (!codec.Encode(columns, schema)) {
+            PDLOG(WARNING, "Fail to encode schema from columns in table %s!", request->name().c_str()) ;
+            return;
+        }
     }
     uint32_t tid = table_info->tid();
     std::string msg;
     for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++ ){
-        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), request->schema(), msg)) {
+        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), schema, msg)) {
             response->set_code(324);
             response->set_msg("fail to update tableMeta for adding field: "+ msg);
             PDLOG(WARNING, "update table_meta on endpoint[%s] for add table field failed!",
@@ -2105,17 +2140,21 @@ void NameServerImpl::AddTableField(RpcController* controller,
     {
         std::lock_guard<std::mutex> lock(mu_);
         //update zk node
+        ::rtidb::nameserver::TableInfo table_info_zk;
+        table_info_zk.CopyFrom(*table_info);
+        ::rtidb::common::ColumnDesc* added_column_desc_zk = table_info_zk.add_added_column_desc();
+        added_column_desc_zk->CopyFrom(request->column_desc());
         std::string table_value;
-        table_info->SerializeToString(&table_value);
-        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+        table_info_zk.SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info_zk.name(), table_value)) {
             response->set_code(304);
             response->set_msg("set zk failed!");
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                    zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+                    zk_table_data_path_.c_str(), table_info_zk.name().c_str(), table_value.c_str());
             return;         
         }
         PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
-                zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+                zk_table_data_path_.c_str(), table_info_zk.name().c_str(), table_value.c_str());
         // 2.update ns table_info_
         ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
         added_column_desc->CopyFrom(request->column_desc());
@@ -2165,13 +2204,6 @@ void NameServerImpl::CreateTable(RpcController* controller,
         response->set_msg("invalid parameter");
         PDLOG(WARNING, "ttl is greater than conf value. ttl[%lu] ttl_type[%s] max ttl[%u]", 
                         table_info->ttl(), table_info->ttl_type().c_str(), max_ttl);
-        return;
-    }
-    if (table_info->has_storage_mode() && table_info->storage_mode() != rtidb::common::StorageMode::kMemory && 
-            table_info->replica_num() > 1) {
-        response->set_code(307);
-        response->set_msg("invalid parameter");
-        PDLOG(WARNING, "muti-replica not supported");
         return;
     }
     if (table_info->table_partition_size() > 0) {
@@ -3314,6 +3346,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     std::shared_ptr<TabletInfo> leader_tablet_ptr;
     std::shared_ptr<TabletInfo> tablet_ptr;
     bool has_follower = true;
+    ::rtidb::common::StorageMode storage_mode = ::rtidb::common::StorageMode::kMemory;
     {
         std::lock_guard<std::mutex> lock(mu_);
         auto iter = table_info_.find(name);
@@ -3323,6 +3356,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
             return;
         }
         tid = iter->second->tid();
+        storage_mode = iter->second->storage_mode();
         for (int idx = 0; idx < iter->second->table_partition_size(); idx++) {
             if (iter->second->table_partition(idx).pid() != pid) {
                 continue;
@@ -3388,7 +3422,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
     bool is_leader = false;
     uint64_t term = 0;
     uint64_t offset = 0;
-    if (!tablet_ptr->client_->GetTermPair(tid, pid, term, offset, has_table, is_leader)) {
+    if (!tablet_ptr->client_->GetTermPair(tid, pid, storage_mode, term, offset, has_table, is_leader)) {
         PDLOG(WARNING, "GetTermPair failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
                         name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);
@@ -3418,7 +3452,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
                     name.c_str(), tid, pid, endpoint.c_str());
     }
     if (!has_table) {
-        if (!tablet_ptr->client_->DeleteBinlog(tid, pid)) {
+        if (!tablet_ptr->client_->DeleteBinlog(tid, pid, storage_mode)) {
             PDLOG(WARNING, "delete binlog failed. name[%s] tid[%u] pid[%u] endpoint[%s] op_id[%lu]", 
                             name.c_str(), tid, pid, endpoint.c_str(), task_info->op_id());
             task_info->set_status(::rtidb::api::TaskStatus::kFailed);
@@ -3435,7 +3469,7 @@ void NameServerImpl::RecoverEndpointTable(const std::string& name, uint32_t pid,
         return;
     }
     ::rtidb::api::Manifest manifest;
-    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, manifest)) {
+    if (!leader_tablet_ptr->client_->GetManifest(tid, pid, storage_mode, manifest)) {
         PDLOG(WARNING, "get manifest failed. name[%s] tid[%u] pid[%u] op_id[%lu]", 
                 name.c_str(), tid, pid, task_info->op_id());
         task_info->set_status(::rtidb::api::TaskStatus::kFailed);

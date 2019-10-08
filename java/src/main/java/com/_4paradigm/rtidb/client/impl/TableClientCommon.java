@@ -25,14 +25,19 @@ public class TableClientCommon {
             Object colValue = row.get(columnDesc.getName());
             arrayRow[i] = colValue;
             if (columnDesc.isTsCol()) {
+                int curTsIndex = tsIndex;
+                tsIndex++;
+                if (colValue == null) {
+                    continue;
+                }
                 if (columnDesc.getType() == ColumnType.kInt64) {
-                    tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).setTs((Long)colValue).build());
+                    tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(curTsIndex).setTs((Long)colValue).build());
                 } else if (columnDesc.getType() == ColumnType.kTimestamp) {
                     if (colValue instanceof Timestamp) {
-                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(curTsIndex).
                                 setTs(((Timestamp)colValue).getTime()).build());
                     } else if (colValue instanceof DateTime) {
-                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(curTsIndex).
                                 setTs(((DateTime)colValue).getMillis()).build());
                     } else {
                         throw new TabletException("invalid ts column");
@@ -40,7 +45,6 @@ public class TableClientCommon {
                 } else {
                     throw new TabletException("invalid ts column");
                 }
-                tsIndex++;
             }
         }
         if (tsDimensions.isEmpty()) {
@@ -89,14 +93,19 @@ public class TableClientCommon {
             ColumnDesc columnDesc = th.getSchema().get(i);
             Object colValue = row[i];
             if (columnDesc.isTsCol()) {
+                int curTsIndex = tsIndex;
+                tsIndex++;
+                if (colValue == null) {
+                    continue;
+                }
                 if (columnDesc.getType() == ColumnType.kInt64) {
-                    tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).setTs((Long)colValue).build());
+                    tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(curTsIndex).setTs((Long)colValue).build());
                 } else if (columnDesc.getType() == ColumnType.kTimestamp) {
                     if (colValue instanceof Timestamp) {
-                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(curTsIndex).
                                 setTs(((Timestamp)colValue).getTime()).build());
                     } else if (colValue instanceof DateTime) {
-                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(tsIndex).
+                        tsDimensions.add(Tablet.TSDimension.newBuilder().setIdx(curTsIndex).
                                 setTs(((DateTime)colValue).getMillis()).build());
                     } else {
                         throw new TabletException("invalid ts column");
@@ -104,7 +113,6 @@ public class TableClientCommon {
                 } else {
                     throw new TabletException("invalid ts column");
                 }
-                tsIndex++;
             }
         }
         if (tsDimensions.isEmpty()) {
@@ -116,6 +124,7 @@ public class TableClientCommon {
     public static List<Tablet.Dimension> fillTabletDimension(Object[] row, TableHandler th, boolean handleNull) throws TabletException {
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         Map<Integer, List<Integer>> indexs = th.getIndexes();
+        Map<Integer, List<Integer>> indexTsMap = th.getIndexTsMap();
         if (indexs.isEmpty()) {
             throw new TabletException("no dimension in this row");
         }
@@ -123,6 +132,19 @@ public class TableClientCommon {
             int index = entry.getKey();
             String value = null;
             int null_empty_count = 0;
+            List<Integer> tsList = indexTsMap.get(index);
+            if (tsList != null && !tsList.isEmpty()) {
+                boolean allTsIsNull = true;
+                for (int tsIndex : tsList) {
+                    if (row[tsIndex] != null) {
+                        allTsIsNull = false;
+                        break;
+                    }
+                }
+                if (allTsIsNull) {
+                    continue;
+                }
+            }
             for (Integer pos : entry.getValue()) {
                 String cur_value = null;
                 if (pos >= row.length) {
@@ -163,11 +185,25 @@ public class TableClientCommon {
         if (indexs.isEmpty()) {
             throw new TabletException("no dimension in this row");
         }
+        Map<Integer, List<Integer>> indexTsMap = th.getIndexTsMap();
         int count = 0;
         for (Map.Entry<Integer, List<Integer>> entry : indexs.entrySet()) {
             int index = entry.getKey();
             String value = null;
             int null_empty_count = 0;
+            List<Integer> tsList = indexTsMap.get(index);
+            if (tsList != null && !tsList.isEmpty()) {
+                boolean allTsIsNull = true;
+                for (int tsIndex : tsList) {
+                    if (row[tsIndex] != null) {
+                        allTsIsNull = false;
+                        break;
+                    }
+                }
+                if (allTsIsNull) {
+                    continue;
+                }
+            }
             for (Integer pos : entry.getValue()) {
                 String cur_value = null;
                 if (pos >= row.length) {
