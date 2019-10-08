@@ -20,34 +20,16 @@ class TestNsDropTable(TestCaseBase):
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
-        name = '{}'.format(name)
-        # m = utils.gen_table_metadata(
-        #     '"{}"'.format(name), None, 144000, 2,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-30"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"10-20"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"20-30"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'true'),
-        # )
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "storage_mode": "kSSD",
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-30","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "10-20","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "20-30","is_leader": "false"},
-            ],
-            "column_desc":[
-                {"name": "k1", "type": "string", "add_ts_idx": "true"},
-                {"name": "k2", "type": "string", "add_ts_idx": "false"},
-                {"name": "k3", "type": "string", "add_ts_idx": "true"},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
+        m = utils.gen_table_metadata_ssd(
+            '"{}"'.format(name), None, 144000, 2,'kSSD',
+            ('table_partition', '"{}"'.format(self.leader), '"0-30"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"10-20"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"20-30"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'true'),
+        )
+        utils.gen_table_metadata_file(m, metadata_path)
         rs0 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs0)
 
