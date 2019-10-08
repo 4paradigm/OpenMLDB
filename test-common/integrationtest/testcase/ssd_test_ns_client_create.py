@@ -615,35 +615,16 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"{}"'.format(self.tname)
-        # m = utils.gen_table_metadata(
-        #     name, '"kAbsoluteTime"', 144000, 8,
-        #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
-        #     ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
-        #     ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
-        #     ('column_desc', '"k1"', '"string"', 'true'),
-        #     ('column_desc', '"k2"', '"string"', 'false'),
-        #     ('column_desc', '"k3"', '"string"', 'false'))
-        # m[0].append(("key_entry_max_height", height))
-        # utils.gen_table_metadata_file(m, metadata_path)
-
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "ttl_type": "kAbsoluteTime",
-            "storage_mode": "kSSD",
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
-                {"endpoint": self.slave1,"pid_group": "0-3","is_leader": "false"},
-                {"endpoint": self.slave2,"pid_group": "2-3","is_leader": "false"},
-            ],
-            "column_desc":[
-                {"name": "k1", "type": "string", "add_ts_idx": "true"},
-                {"name": "k2", "type": "string", "add_ts_idx": "false"},
-                {"name": "k3", "type": "string", "add_ts_idx": "false"},
-            ],
-        }
-        table_meta[0].append(("key_entry_max_height", height))
-        utils.gen_table_meta_file(table_meta, metadata_path)
+        m = utils.gen_table_metadata_ssd(
+            name, '"kAbsoluteTime"', 144000, 8,'kSSD',
+            ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
+            ('table_partition', '"{}"'.format(self.slave1), '"0-3"', 'false'),
+            ('table_partition', '"{}"'.format(self.slave2), '"2-3"', 'false'),
+            ('column_desc', '"k1"', '"string"', 'true'),
+            ('column_desc', '"k2"', '"string"', 'false'),
+            ('column_desc', '"k3"', '"string"', 'false'))
+        m[0].append(("key_entry_max_height", height))
+        utils.gen_table_metadata_file(m, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
@@ -654,7 +635,6 @@ class TestCreateTableByNsClient(TestCaseBase):
                 table_meta = self.get_table_meta(self.leaderpath, tid, pid)
                 self.assertEqual(table_meta['key_entry_max_height'], height)
         self.ns_drop(self.ns_leader, name)
-
     def test_create_pid_leader_distribute(self):
         self.clear_ns_table(self.ns_leader);
         name1 = 'tname1{}'.format(time.time())
