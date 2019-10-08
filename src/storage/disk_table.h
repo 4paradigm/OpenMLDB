@@ -133,7 +133,9 @@ public:
 
 class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
 public:
-    AbsoluteTTLCompactionFilter(uint64_t ttl) : ttl_(ttl) {}
+    AbsoluteTTLCompactionFilter(uint64_t ttl) : ttl_(ttl), ttl_vec_ptr_(NULL) {}
+    AbsoluteTTLCompactionFilter(std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr) : 
+        ttl_(0), ttl_vec_ptr_(ttl_vec_ptr) {}
     virtual ~AbsoluteTTLCompactionFilter() {}
 
     virtual const char* Name() const override { return "AbsoluteTTLCompactionFilter"; }
@@ -148,8 +150,19 @@ public:
         uint64_t ts = 0;
         memcpy(static_cast<void*>(&ts), key.data() + key.size() - TS_LEN, TS_LEN);
         memrev64ifbe(static_cast<void*>(&ts));
+        uint64_t real_ttl = ttl_;
+        if (ttl_vec_ptr_ != NULL) {
+            if (key.size() < TS_LEN + TS_POS_LEN) {
+                return false;
+            }
+            uint8_t ts_idx = *((uint8_t*)(key.data() + key.size() - TS_LEN - TS_POS_LEN));
+            if (ts_idx >= ttl_vec_ptr_->size()) {
+                return false;
+            }
+            real_ttl = (*ttl_vec_ptr_)[ts_idx]->load(std::memory_order_relaxed);
+        }
         uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
-        if (ts < cur_time - ttl_) {
+        if (ts < cur_time - real_ttl) {
             return true;
         }
         return false;
@@ -157,20 +170,29 @@ public:
 
 private:
     uint64_t ttl_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr_;
 };
 
 class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
 public:
-    AbsoluteTTLFilterFactory(uint64_t ttl) : ttl_(ttl) {};
+    AbsoluteTTLFilterFactory(std::atomic<uint64_t>* ttl_ptr) : ttl_ptr_(ttl_ptr), ttl_vec_ptr_(NULL) {};
+    AbsoluteTTLFilterFactory(std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr) : 
+        ttl_ptr_(NULL), ttl_vec_ptr_(ttl_vec_ptr) {};
     std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
         const rocksdb::CompactionFilter::Context& context) override {
-        return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(ttl_));
+        if (ttl_vec_ptr_ != NULL) {
+            return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(ttl_vec_ptr_));
+        } else {
+            return std::unique_ptr<rocksdb::CompactionFilter>(
+                    new AbsoluteTTLCompactionFilter(ttl_ptr_->load(std::memory_order_relaxed)));
+        }
     }
     const char* Name() const override {
         return "AbsoluteTTLFilterFactory";
     }
 private:
-    uint64_t ttl_;
+    std::atomic<uint64_t>* ttl_ptr_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>>* ttl_vec_ptr_;
 };
 
 class DiskTableIterator : public TableIterator {
@@ -269,6 +291,9 @@ public:
 
     virtual bool Put(const Dimensions& dimensions, const TSDimensions& ts_dimemsions, 
             const std::string& value) override;
+
+    bool Get(uint32_t idx, const std::string& pk, 
+            uint64_t ts, uint32_t ts_idx, std::string& value);
 
     bool Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value);
 
