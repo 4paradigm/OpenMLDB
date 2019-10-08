@@ -363,18 +363,18 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     @ddt.data(
         ('table meta file format error',
-         ('table_partition', '{}'.format(leader), '0-3', None)),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', None)),
 
         ('has not leader pid',
-         ('table_partition', '{}'.format(leader), '0-3', 'false'),
-         ('table_partition', '{}'.format(slave1), '0-3', 'false')),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', 'false'),
+         ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
 
         ('Create table ok',
-         ('table_partition', '{}'.format(leader), '0-3', 'true'),
-         ('table_partition', '{}'.format(slave1), '0-3', 'false')),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', 'true'),
+         ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
 
         ('table meta file format error',
-         ('table_partition', '{}'.format(leader), '0-3', '')),
+         ('table_partition', '"{}"'.format(leader), '"0-3"', '""')),
 
         ('missing required fields: table_partition[0].endpoint, table_partition[0].pid_group, table_partition[0].is_leader',
          ('table_partition', None, None, None)),
@@ -388,9 +388,9 @@ class TestCreateTableByNsClient(TestCaseBase):
         :return:
         """
         metadata_path = '{}/metadata.txt'.format(self.testpath)
-        name = 'tname{}'.format(time.time())
-        m = utils.gen_table_metadata(
-            name, None, 144000, 2,
+        name = '"tname{}"'.format(time.time())
+        m = utils.gen_table_metadata_ssd(
+            name, None, 144000, 2,'kSSD'
             *table_partition)
 
         utils.gen_table_metadata_file(m, metadata_path)
