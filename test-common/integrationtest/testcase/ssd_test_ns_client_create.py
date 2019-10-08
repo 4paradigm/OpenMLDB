@@ -369,9 +369,9 @@ class TestCreateTableByNsClient(TestCaseBase):
          ('table_partition', '"{}"'.format(leader), '"0-3"', 'false'),
          ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
 
-        ('Create table ok',
-         ('table_partition', '"{}"'.format(leader), '"0-3"', 'true'),
-         ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
+        # ('Create table ok',
+        #  ('table_partition', '"{}"'.format(leader), '"0-3"', 'true'),
+        #  ('table_partition', '"{}"'.format(slave1), '"0-3"', 'false')),
 
         ('table meta file format error',
          ('table_partition', '"{}"'.format(leader), '"0-3"', '""')),
