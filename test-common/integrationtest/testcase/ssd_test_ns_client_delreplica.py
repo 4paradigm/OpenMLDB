@@ -24,40 +24,18 @@ class TestDelReplicaNs(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         if conf.multidimension is False:
-            # m = utils.gen_table_metadata(
-            #     '"{}"'.format(name), None, 144000, 2,
-            #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'))
-            m = {
-                "name": name,
-                "ttl": 144000,
-                "storage_mode": "kSSD",
-                "table_partition": [
-                    {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
-                ]
-            }
+            m = utils.gen_table_metadata_ssd(
+                '"{}"'.format(name), None, 144000, 2,'kSSD',
+                ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'))
         else:
-            # m = utils.gen_table_metadata(
-            #     '"{}"'.format(name), None, 144000, 2,
-            #     ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
-            #     ('column_desc', '"merchant"', '"string"', 'true'),
-            #     ('column_desc', '"amt"', '"double"', 'false'),
-            #     ('column_desc', '"card"', '"string"', 'true'),
-            # )
-            m = {
-                "name": name,
-                "ttl": 144000,
-                "storage_mode": "kSSD",
-                "table_partition": [
-                    {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
-                ],
-                "column_desc":[
-                    {"name": "merchant", "type": "string", "add_ts_idx": "true"},
-                    {"name": "amt", "type": "double", "add_ts_idx": "false"},
-                    {"name": "card", "type": "string", "add_ts_idx": "true"},
-                ],
-            }
-        # utils.gen_table_metadata_file(m, metadata_path)
-        utils.gen_table_meta_file(m, metadata_path)
+            m = utils.gen_table_metadata_ssd(
+                '"{}"'.format(name), None, 144000, 2,'kSSD',
+                ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
+                ('column_desc', '"merchant"', '"string"', 'true'),
+                ('column_desc', '"amt"', '"double"', 'false'),
+                ('column_desc', '"card"', '"string"', 'true'),
+            )
+        utils.gen_table_metadata_file(m, metadata_path)
         rs2 = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs2)
 
