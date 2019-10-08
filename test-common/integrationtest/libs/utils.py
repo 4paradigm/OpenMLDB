@@ -99,7 +99,11 @@ def gen_table_metadata_ssd(name, ttl_type, ttl, seg_cnt,storage_mode, *table_par
 
 def gen_table_metadata_file(metadata, filepath):
     s = ''
+    print("AAAAAAAAAA")
+    print(metadata[0])
     for basic in metadata[0]:
+        print("BBBBBB")
+        print(basic)
         s += '{}:{}\n'.format(basic[0], basic[1])
     for tp in metadata[1:]:
         s += tp[0] + ' {\n'
