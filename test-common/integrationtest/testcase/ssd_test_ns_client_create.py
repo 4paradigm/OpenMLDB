@@ -256,12 +256,12 @@ class TestCreateTableByNsClient(TestCaseBase):
         (('"0"', 'true'), ('"0"', 'true'), 'pid 0 has two leader'),
         (('"0-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
         (('""', 'true'), ('"2-4"', 'true'), 'pid_group[] format error.'),
-        # (('"0-4000"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
-        # (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
-        # ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
-        # (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),
-        # (('""', 'true'), ('"1-3"', 'false'), 'pid_group[] format error.'),
-        # (('"0-9"', 'false'), ('"1-3"', 'false'), 'has not leader'),
+        (('"0-4000"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
+        (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
+        ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
+        (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),
+        (('""', 'true'), ('"1-3"', 'false'), 'pid_group[] format error.'),
+        (('"0-9"', 'false'), ('"1-3"', 'false'), 'has not leader'),
         # (('"1-1"', 'false'), ('"0-3"', 'true'), 'Create table ok'),
         # ((None, 'false'), (None, 'true'), 'table meta file format error'),
     )
