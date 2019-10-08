@@ -537,7 +537,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         :param eles:
         :return:
         """
-        tname = '"tname{}"'.format(time.time())
+        tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         m = utils.gen_table_metadata_ssd('"' + tname + '"', '"kAbsoluteTime"', 144000, 8,'kSSD', *eles)
         utils.gen_table_metadata_file(m, metadata_path)
