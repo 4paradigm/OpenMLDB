@@ -278,21 +278,21 @@ class TestCreateTableByNsClient(TestCaseBase):
         name = 'tname{}'.format(time.time())
         infoLogger.info(name)
 
-        # table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
-        # table_partition2 = ('table_partition', '"{}"'.format(self.slave1), pid_group2[0], pid_group2[1])
-        # m = utils.gen_table_metadata(name, None, 144000, 2, table_partition1, table_partition2)
-        # utils.gen_table_metadata_file(m, metadata_path)
+        table_partition1 = ('table_partition', '"{}"'.format(self.leader), pid_group1[0], pid_group1[1])
+        table_partition2 = ('table_partition', '"{}"'.format(self.slave1), pid_group2[0], pid_group2[1])
+        m = utils.gen_table_metadata_ssd(name, None, 144000, 2,"kSSD", table_partition1, table_partition2)
+        utils.gen_table_metadata_file(m, metadata_path)
 
-        table_meta = {
-            "name": name,
-            "ttl": 144000,
-            "storage_mode": "kSSD",
-            "table_partition": [
-                {"endpoint": self.leader,"pid_group": pid_group1[0],"is_leader": pid_group1[1]},
-                {"endpoint": self.slave1,"pid_group": pid_group2[0],"is_leader": pid_group2[1]},
-            ],
-        }
-        utils.gen_table_meta_file(table_meta, metadata_path)
+        # table_meta = {
+        #     "name": name,
+        #     "ttl": 144000,
+        #     "storage_mode": "kSSD",
+        #     "table_partition": [
+        #         {"endpoint": self.leader,"pid_group": pid_group1[0],"is_leader": pid_group1[1]},
+        #         {"endpoint": self.slave1,"pid_group": pid_group2[0],"is_leader": pid_group2[1]},
+        #     ],
+        # }
+        # utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.run_client(self.ns_leader, 'create ' + metadata_path, 'ns_client')
         infoLogger.info(rs)
         self.assertIn(exp_msg, rs)
