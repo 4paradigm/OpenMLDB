@@ -1611,9 +1611,6 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
         printf("add table field failed! table %s is not exist\n", parts[1].c_str());
         return;
     }
-    if (tables[0].added_column_desc_size() == 63) {
-        std::cout << "the count of adding table field is more than 63!\n" << std::endl;
-    }
     ::rtidb::common::ColumnDesc column_desc;
     column_desc.set_name(parts[2]);
     column_desc.set_type(parts[3]);

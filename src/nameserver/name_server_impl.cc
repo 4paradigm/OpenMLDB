@@ -2037,6 +2037,12 @@ void NameServerImpl::AddTableField(RpcController* controller,
             return;
         }
         table_info = iter->second;
+        if (table_info->added_column_desc_size() == 63) {
+            response->set_code(324);
+            response->set_msg("the count of adding field is more than 63");
+            PDLOG(WARNING, "the count of adding field is more than 63 in table %s!", request->name().c_str());
+            return;
+        }
         //judge if field exists in table_info
         std::string col_name = request->column_desc().name();
         if (table_info->column_desc_v1_size() > 0) {
@@ -2134,17 +2140,21 @@ void NameServerImpl::AddTableField(RpcController* controller,
     {
         std::lock_guard<std::mutex> lock(mu_);
         //update zk node
+        ::rtidb::nameserver::TableInfo table_info_zk;
+        table_info_zk.CopyFrom(*table_info);
+        ::rtidb::common::ColumnDesc* added_column_desc_zk = table_info_zk.add_added_column_desc();
+        added_column_desc_zk->CopyFrom(request->column_desc());
         std::string table_value;
-        table_info->SerializeToString(&table_value);
-        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info->name(), table_value)) {
+        table_info_zk.SerializeToString(&table_value);
+        if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info_zk.name(), table_value)) {
             response->set_code(304);
             response->set_msg("set zk failed!");
             PDLOG(WARNING, "update table node[%s/%s] failed! value[%s]", 
-                    zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+                    zk_table_data_path_.c_str(), table_info_zk.name().c_str(), table_value.c_str());
             return;         
         }
         PDLOG(INFO, "update table node[%s/%s]. value is [%s]", 
-                zk_table_data_path_.c_str(), table_info->name().c_str(), table_value.c_str());
+                zk_table_data_path_.c_str(), table_info_zk.name().c_str(), table_value.c_str());
         // 2.update ns table_info_
         ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
         added_column_desc->CopyFrom(request->column_desc());
