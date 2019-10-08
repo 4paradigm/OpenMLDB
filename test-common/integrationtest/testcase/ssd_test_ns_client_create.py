@@ -131,6 +131,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": ttl,
+            "seg_cnt": seg_cnt,
             "ttl_type": ttl_type,
             "storage_mode": "kSSD",
             "table_partition": [
