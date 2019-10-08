@@ -2086,13 +2086,16 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         table->SetTableMeta(table_meta);
         table->SetSchema(request->schema());
         //update TableMeta.txt
-        std::string root_path = FLAGS_db_root_path;
-        if (table_meta.storage_mode() == ::rtidb::common::kHDD) {
-            root_path = FLAGS_hdd_root_path;
-        } else if (table_meta.storage_mode() == ::rtidb::common::kSSD) {
-            root_path = FLAGS_ssd_root_path;
+        std::string db_root_path;
+        ::rtidb::common::StorageMode mode = table_meta.storage_mode();
+        bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+        if (!ok) {
+            response->set_code(138);
+            response->set_msg("fail to get db root path");
+            PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
+            return;
         }
-        std::string db_path = root_path + "/" + std::to_string(tid) + 
+        std::string db_path = db_root_path + "/" + std::to_string(tid) + 
             "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
             PDLOG(WARNING, "table db path is not exist. tid %u, pid %u", tid, pid);
