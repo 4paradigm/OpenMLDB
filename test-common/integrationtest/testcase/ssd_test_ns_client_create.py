@@ -408,52 +408,52 @@ class TestCreateTableByNsClient(TestCaseBase):
 
     # @multi_dimension(True)
     @ddt.data(
-        ('Create table ok',
-        ('column_desc', '"card"', '"string"', 'true')),
+        # ('Create table ok',
+        # ('column_desc', '"card"', '"string"', 'true')),
 
-        # ('no index',
-        # ('column_desc', '"card"', '"double"', 'false')),
-        #
-        # ('no index',
-        # ('column_desc', '"k1"', '"string"', 'false'),
-        # ('column_desc', '"k2"', '"string"', 'false'),
-        # ('column_desc', '"k3"', '"double"', 'false')),
-        #
-        # ('Create table ok',
-        # ('column_desc', '"k1"', '"string"', 'true'),
-        # ('column_desc', '"k2"', '"string"', 'false'),
-        # ('column_desc', '"k3"', '"double"', 'false')),
-        #
-        # ('Create table ok',
-        # ('column_desc', '"k1"', '"string"', 'true'),
-        # ('column_desc', '"k2"', '"string"', 'true'),
-        # ('column_desc', '"k3"', '"double"', 'false')),
-        #
-        # ('check column_desc name failed. name is card',
-        # ('column_desc', '"card"', '"string"', 'true'),
-        # ('column_desc', '"card"', '"double"', 'false')),
-        #
-        # ('Create table ok',
-        # ('column_desc', '"k1"', '"string"', 'true'),
-        # ('column_desc', '"k2"', '"float"', 'false'),
-        # ('column_desc', '"k3"', '"double"', 'false'),
-        # ('column_desc', '"k4"', '"int32"', 'false'),
-        # ('column_desc', '"k5"', '"uint32"', 'false'),
-        # ('column_desc', '"k6"', '"int64"', 'false'),
-        # ('column_desc', '"k7"', '"uint64"', 'false')),
-        #
-        # ('Create table ok',
-        # ('column_desc', '"k1"', '"string"', 'true'),
-        # ('column_desc', '"k2"', '"float"', 'false'),
-        # ('column_desc', '"k3"', '"double"', 'false'),
-        # ('column_desc', '"k4"', '"int32"', 'true'),
-        # ('column_desc', '"k5"', '"uint32"', 'true'),
-        # ('column_desc', '"k6"', '"int64"', 'true'),
-        # ('column_desc', '"k7"', '"uint64"', 'true')),
-        #
-        # ('type double2 is invalid',
-        # ('column_desc', '"k1"', '"string"', 'true'),
-        # ('column_desc', '"k2"', '"double2"', 'true')),
+        ('no index',
+        ('column_desc', '"card"', '"double"', 'false')),
+
+        ('no index',
+        ('column_desc', '"k1"', '"string"', 'false'),
+        ('column_desc', '"k2"', '"string"', 'false'),
+        ('column_desc', '"k3"', '"double"', 'false')),
+
+        ('Create table ok',
+        ('column_desc', '"k1"', '"string"', 'true'),
+        ('column_desc', '"k2"', '"string"', 'false'),
+        ('column_desc', '"k3"', '"double"', 'false')),
+
+        ('Create table ok',
+        ('column_desc', '"k1"', '"string"', 'true'),
+        ('column_desc', '"k2"', '"string"', 'true'),
+        ('column_desc', '"k3"', '"double"', 'false')),
+
+        ('check column_desc name failed. name is card',
+        ('column_desc', '"card"', '"string"', 'true'),
+        ('column_desc', '"card"', '"double"', 'false')),
+
+        ('Create table ok',
+        ('column_desc', '"k1"', '"string"', 'true'),
+        ('column_desc', '"k2"', '"float"', 'false'),
+        ('column_desc', '"k3"', '"double"', 'false'),
+        ('column_desc', '"k4"', '"int32"', 'false'),
+        ('column_desc', '"k5"', '"uint32"', 'false'),
+        ('column_desc', '"k6"', '"int64"', 'false'),
+        ('column_desc', '"k7"', '"uint64"', 'false')),
+
+        ('Create table ok',
+        ('column_desc', '"k1"', '"string"', 'true'),
+        ('column_desc', '"k2"', '"float"', 'false'),
+        ('column_desc', '"k3"', '"double"', 'false'),
+        ('column_desc', '"k4"', '"int32"', 'true'),
+        ('column_desc', '"k5"', '"uint32"', 'true'),
+        ('column_desc', '"k6"', '"int64"', 'true'),
+        ('column_desc', '"k7"', '"uint64"', 'true')),
+
+        ('type double2 is invalid',
+        ('column_desc', '"k1"', '"string"', 'true'),
+        ('column_desc', '"k2"', '"double2"', 'true')),
     )
     @ddt.unpack
     def test_create_column_desc(self, exp_msg, *column_descs):
