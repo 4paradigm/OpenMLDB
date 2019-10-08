@@ -390,7 +390,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"tname{}"'.format(time.time())
         m = utils.gen_table_metadata_ssd(
-            name, None, 144000, 2,'kSSD'
+            name, None, 144000, 2,'kSSD',
             *table_partition)
 
         utils.gen_table_metadata_file(m, metadata_path)
