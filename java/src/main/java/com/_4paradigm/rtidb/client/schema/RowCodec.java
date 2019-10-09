@@ -33,7 +33,7 @@ public class RowCodec {
         int size = getSize(row, schema, cache);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
         if (modifyTimes > 0) {
-            buffer.put((byte) (modifyTimes | 0x8F));
+            buffer.put((byte) (modifyTimes | 0x80));
         } else {
             if (row.length >= 128) {
                 buffer.putShort((short) row.length);
@@ -144,7 +144,7 @@ public class RowCodec {
         int colLength = 0;
         Byte temp = buffer.asReadOnlyBuffer().get();
         if ((temp & 0x80) != 0) {
-            colLength = buffer.get() & 0x7F;
+            colLength = buffer.get() & 0x7F + schema.size();
         } else {
             if (schema.size() >= 128) {
                 colLength = buffer.getShort();
