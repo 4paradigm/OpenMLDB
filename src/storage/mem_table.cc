@@ -589,9 +589,17 @@ TableIterator* MemTable::NewTraverseIterator(uint32_t index) {
     auto pos = column_key_map_.find(index);
     if (pos != column_key_map_.end() && !pos->second.empty()) {
         return NewTraverseIterator(index, pos->second.front());
-    } else {
-        return NewTraverseIterator(index, 0);
     }
+    
+    uint64_t expire_value = 0;
+    if (!enable_gc_.load(std::memory_order_relaxed)) {
+        expire_value = 0;
+    } else if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
+        expire_value = GetTTL(index, 0);
+    } else {
+        expire_value = GetExpireTime(GetTTL(index, 0));
+    }
+    return new MemTableTraverseIterator(segments_[index], seg_cnt_, ttl_type_, expire_value, 0);
 }
 
 TableIterator* MemTable::NewTraverseIterator(uint32_t index, uint32_t ts_index) {
