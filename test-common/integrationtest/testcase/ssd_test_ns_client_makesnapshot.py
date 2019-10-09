@@ -20,7 +20,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         pid_group = '"0-2"'
         m = utils.gen_table_metadata_ssd(
-            '"{}"'.format(name), None, 144000, 8,'"kSSD"',
+            '"{}"'.format(name), None, 144000, 8,'kSSD',
             ('table_partition', '"{}"'.format(self.leader), pid_group, 'true'),
             ('table_partition', '"{}"'.format(self.slave1), pid_group, 'false'),
             ('table_partition', '"{}"'.format(self.slave2), pid_group, 'false'),
