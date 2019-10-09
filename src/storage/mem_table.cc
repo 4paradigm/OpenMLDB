@@ -503,7 +503,7 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    if (index > idx_cnt_) {
+    if (index >= idx_cnt_) {
         PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
         return NULL;
     }
