@@ -53,7 +53,7 @@ public:
 
 TEST_F(BinlogTest, DeleteBinlog) {
     FLAGS_binlog_single_file_max_size = 1;
-    FLAGS_binlog_delete_interval = 1000;
+    FLAGS_binlog_delete_interval = 500;
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
     tablet->Init();
     int offset = FLAGS_make_snapshot_threshold_offset;

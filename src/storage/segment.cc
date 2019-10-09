@@ -596,8 +596,8 @@ MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& t
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == NULL) {
         return new MemTableIterator(NULL);
     }
-    ticket.Push(((KeyEntry**)entry_arr)[idx]);
-    return new MemTableIterator(((KeyEntry**)entry_arr)[idx]->entries.NewIterator());
+    ticket.Push(((KeyEntry**)entry_arr)[pos->second]);
+    return new MemTableIterator(((KeyEntry**)entry_arr)[pos->second]->entries.NewIterator());
 }
 
 MemTableIterator::MemTableIterator(TimeEntries::Iterator* it): it_(it) {}
