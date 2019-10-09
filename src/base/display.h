@@ -43,6 +43,9 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
     row.push_back("#");
     row.push_back("name");
     row.push_back("type");
+    if (table_info.column_desc_v1_size() == 0) {
+        row.push_back("index");
+    }
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     uint32_t idx = 0;
@@ -61,6 +64,7 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
             row.push_back(std::to_string(idx));
             row.push_back(column_desc.name());
             row.push_back(column_desc.type());
+            column_desc.add_ts_idx() ? row.push_back("yes") : row.push_back("no");
             tp.AddRow(row);
             idx++;
         }
@@ -70,6 +74,9 @@ static void PrintSchema(const ::rtidb::nameserver::TableInfo& table_info) {
         row.push_back(std::to_string(idx));
         row.push_back(column_desc.name());
         row.push_back(column_desc.type());
+        if (table_info.column_desc_v1_size() == 0) {
+            column_desc.add_ts_idx() ? row.push_back("yes") : row.push_back("no");
+        }
         tp.AddRow(row);
         idx++;
     }
@@ -97,17 +104,18 @@ static void PrintSchema(const google::protobuf::RepeatedPtrField<::rtidb::namese
     tp.Print(true);
 }
 
-static void PrintSchema(const std::string& schema) {
+static void PrintSchema(const std::string& schema, bool is_add_field) {
     std::vector<::rtidb::base::ColumnDesc> raw;
     ::rtidb::base::SchemaCodec codec;
     codec.Decode(schema, raw);
-    ::baidu::common::TPrinter tp(4);
     std::vector<std::string> header;
     header.push_back("#");
     header.push_back("name");
     header.push_back("type");
-    header.push_back("index");
-
+    if (!is_add_field) {
+        header.push_back("index");
+    }
+    ::baidu::common::TPrinter tp(header.size());
     tp.AddRow(header);
     for (uint32_t i = 0; i < raw.size(); i++) {
         std::vector<std::string> row;
@@ -153,14 +161,20 @@ static void PrintSchema(const std::string& schema) {
             default:
                 break;
         }
-        if (raw[i].add_ts_idx) {
-            row.push_back("yes");
-        }else {
-            row.push_back("no");
+        if (!is_add_field) {
+            if (raw[i].add_ts_idx) {
+                row.push_back("yes");
+            }else {
+                row.push_back("no");
+            }
         }
         tp.AddRow(row);
     }
     tp.Print(true);
+}
+
+static void PrintSchema(const std::string& schema) {
+    return PrintSchema(schema, false);
 }
 
 static void PrintColumnKey(uint64_t ttl, const std::string& ttl_suff,

@@ -214,6 +214,10 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'create {} {} {} {} {}'.format(name, ttl, partition_num, replica_num, schema)
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_add_table_field(self, endpoint, name ,col_name, col_type):
+        cmd = 'addtablefield {} {} {}'.format(name, col_name, col_type);
+        return self.run_client(endpoint, cmd, 'ns_client')
+
     def parse_scan_result(self, result):    
         arr = result.split("\n")
         key_arr = re.sub(' +', ' ', arr[0]).strip().split(" ")
