@@ -265,7 +265,7 @@ public:
     col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0){
         // for the case of adding field
         if ((uint8_t)(buffer_[0] & 0x80) != 0) {
-            col_cnt_ = (uint8_t)buffer_[0] & 0x7F;
+            col_cnt_ = (uint8_t)buffer_[0] & 0x7F + column_size;
             buffer_ += 1;
             offset_ += 1;
         } else {
