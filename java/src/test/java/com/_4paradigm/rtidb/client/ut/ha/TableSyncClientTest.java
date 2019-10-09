@@ -580,12 +580,11 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[2], 9.3d);
             Assert.assertEquals(row[3], null);
 
-
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
         } finally {
-//            nsc.dropTable(name);
+            nsc.dropTable(name);
         }
     }
 

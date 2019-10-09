@@ -237,7 +237,7 @@ public class TableAsyncClientTest extends TestCaseBase {
         } catch (Exception e) {
             Assert.assertTrue(false);
         }
-//        nsc.dropTable(name);
+        nsc.dropTable(name);
     }
 
     @Test
@@ -327,7 +327,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             e.printStackTrace();
             Assert.assertTrue(false);
         } finally {
-//            nsc.dropTable(name);
+            nsc.dropTable(name);
         }
     }
 

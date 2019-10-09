@@ -127,8 +127,8 @@ public class TableHandler {
                 ncd.setName(cd.getName());
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
                 schemaMapList.add(ncd);
+                schemaMap.put(schemaSize + i + 1, schemaMapList);
             }
-            schemaMap.put(schemaSize + tableInfo.getAddedColumnDescCount(), schemaMapList);
         }
     }
     
