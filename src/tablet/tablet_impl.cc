@@ -518,8 +518,7 @@ void TabletImpl::Get(RpcController* controller,
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
         if (iter == table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                  request->tid(), request->pid());
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(), request->tid(), request->pid());
             response->set_code(137);
             response->set_msg("ts name not found");
             return;
@@ -536,8 +535,8 @@ void TabletImpl::Get(RpcController* controller,
     }
 
     if (it == NULL) {
-        response->set_code(109);
-        response->set_msg("key not found");
+        response->set_code(137);
+        response->set_msg("ts name not found");
         return;
     }
 
@@ -1514,6 +1513,18 @@ void TabletImpl::Count(RpcController* controller,
         }
         ts_index = iter->second;
     }    
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::TableIterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->key(), ticket);
+    } else {
+        it = table->NewIterator(index, request->key(), ticket);
+    }
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found");
+        return;
+    }
     if (!request->filter_expired_data() && table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
@@ -1532,18 +1543,6 @@ void TabletImpl::Count(RpcController* controller,
             response->set_count(count);
             return;
         }
-    }
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::TableIterator* it = NULL;
-    if (ts_index >= 0) {
-        it = table->NewIterator(index, ts_index, request->key(), ticket);
-    } else {
-        it = table->NewIterator(index, request->key(), ticket);
-    }
-    if (it == NULL) {
-        response->set_code(109);
-        response->set_msg("key not found");
-        return;
     }
     uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     uint32_t count = 0;
