@@ -15,7 +15,7 @@ namespace storage {
 bool Table::CheckTsValid(uint32_t index, int32_t ts_idx) {
     auto column_map_iter = column_key_map_.find(index);
     if (column_map_iter == column_key_map_.end()) {
-        return true;
+        return false;
     }
     if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx)
                 == column_map_iter->second.cend()) {

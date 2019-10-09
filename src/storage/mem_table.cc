@@ -503,9 +503,13 @@ TableIterator* MemTable::NewIterator(const std::string& pk, Ticket& ticket) {
 }
 
 TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Ticket& ticket) {
-    auto pos = column_key_map_.find(index);
-    if (pos != column_key_map_.end() && !pos->second.empty()) {
-        return NewIterator(index, pos->second.front(), pk, ticket);
+    if (index > idx_cnt_) {
+        PDLOG(WARNING, "invalid idx %u, the max idx cnt %u", index, idx_cnt_);
+        return NULL;
+    }
+    auto column_map_iter = column_key_map_.find(index);
+    if (column_map_iter != column_key_map_.end() && !column_map_iter->second.empty()) {
+        return NewIterator(index, column_map_iter->second.front(), pk, ticket);
     } 
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
