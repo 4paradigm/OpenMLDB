@@ -647,7 +647,7 @@ class TestCaseBase(unittest.TestCase):
     def update_conf(nodepath, conf_item, conf_value, role='client'):
         conf_file = ''
         if role == 'client':
-            conf_file = 'rtidb.flags'
+            conf_file = 'tablet.flags'
         elif role == 'ns_client':
             conf_file = 'nameserver.flags'
         utils.exe_shell("sed -i '/{}/d' {}/conf/{}".format(conf_item, nodepath, conf_file))
