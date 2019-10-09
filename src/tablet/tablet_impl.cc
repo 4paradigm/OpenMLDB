@@ -1308,7 +1308,7 @@ void TabletImpl::Count(RpcController* controller,
             return;
         }
         ts_index = iter->second;
-        if (table->CheckTsValid(index, ts_index)) {
+        if (!table->CheckTsValid(index, ts_index)) {
             response->set_code(137);
             response->set_msg("ts name not found");
             return;
