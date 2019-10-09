@@ -1308,19 +1308,12 @@ void TabletImpl::Count(RpcController* controller,
             return;
         }
         ts_index = iter->second;
+        if (table->CheckTsValid(index, ts_index)) {
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
     }    
-    ::rtidb::storage::Ticket ticket;
-    ::rtidb::storage::TableIterator* it = NULL;
-    if (ts_index >= 0) {
-        it = table->NewIterator(index, ts_index, request->key(), ticket);
-    } else {
-        it = table->NewIterator(index, request->key(), ticket);
-    }
-    if (it == NULL) {
-        response->set_code(137);
-        response->set_msg("ts name not found");
-        return;
-    }
     if (!request->filter_expired_data() && table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
         if (mem_table != NULL) {
@@ -1339,6 +1332,18 @@ void TabletImpl::Count(RpcController* controller,
             response->set_count(count);
             return;
         }
+    }
+    ::rtidb::storage::Ticket ticket;
+    ::rtidb::storage::TableIterator* it = NULL;
+    if (ts_index >= 0) {
+        it = table->NewIterator(index, ts_index, request->key(), ticket);
+    } else {
+        it = table->NewIterator(index, request->key(), ticket);
+    }
+    if (it == NULL) {
+        response->set_code(137);
+        response->set_msg("ts name not found");
+        return;
     }
     uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
     uint32_t count = 0;

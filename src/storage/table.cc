@@ -12,6 +12,20 @@ using ::baidu::common::DEBUG;
 
 namespace rtidb {
 namespace storage {
+bool Table::CheckTsValid(uint32_t index, int32_t ts_idx) {
+    auto column_map_iter = column_key_map_.find(index);
+    if (column_map_iter == column_key_map_.end()) {
+        return true;
+    }
+    if (std::find(column_map_iter->second.cbegin(), column_map_iter->second.cend(), ts_idx)
+                == column_map_iter->second.cend()) {
+        PDLOG(WARNING, "ts cloumn not member of index, ts id %d index id %d, failed getting table tid %u pid %u", 
+                    ts_idx, index, id_, pid_);
+        return false;
+    }
+    return true;
+}
+
 int Table::InitColumnDesc() {
     if (table_meta_.column_desc_size() > 0) {
         uint32_t key_idx = 0;
