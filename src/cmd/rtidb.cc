@@ -3853,7 +3853,7 @@ void HandleClientShowSchema(const std::vector<std::string>& parts, ::rtidb::clie
         if (table_meta.added_column_desc_size() == 0) {
             ::rtidb::base::PrintSchema(table_meta.column_desc());
         } else {
-            ::rtidb::base::PrintSchema(schema);
+            ::rtidb::base::PrintSchema(schema, true);
         }
         printf("\n#ColumnKey\n");
         std::string ttl_suff = table_meta.ttl_type() == ::rtidb::api::kLatestTime ? "" : "min";
