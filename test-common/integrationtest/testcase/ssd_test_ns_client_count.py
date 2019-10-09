@@ -25,7 +25,7 @@ class TestCount(TestCaseBase):
             "ttl": 0,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": '"kSSD"',
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
