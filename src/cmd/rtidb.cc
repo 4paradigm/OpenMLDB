@@ -1875,7 +1875,18 @@ int GenTableInfo(const std::string& path, const std::set<std::string>& type_set,
         printf("compress type %s is invalid\n", table_info.compress_type().c_str());
         return -1;
     }
-    ns_table_info.set_storage_mode(table_info.storage_mode());
+    std::string storage_mode = table_info.storage_mode();
+    std::transform(storage_mode.begin(), storage_mode.end(), storage_mode.begin(), ::tolower);
+    if (storage_mode == "kmemory" || storage_mode == "memory") {
+        ns_table_info.set_storage_mode(::rtidb::common::kMemory);
+    } else if (storage_mode == "kssd" || storage_mode == "ssd") {
+        ns_table_info.set_storage_mode(::rtidb::common::kSSD);
+    } else if (storage_mode == "khdd" || storage_mode == "hdd") {
+        ns_table_info.set_storage_mode(::rtidb::common::kHDD);
+    } else {
+        printf("storage mode %s is invalid\n", table_info.storage_mode().c_str());
+        return -1;
+    }
     if (table_info.has_key_entry_max_height()) {
         if (table_info.key_entry_max_height() > FLAGS_skiplist_max_height) {
             printf("Fail to create table. key_entry_max_height %u is greater than the max heght %u\n", 

@@ -3014,18 +3014,22 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    response->set_code(0);
-    response->set_msg("ok");
     table = GetTable(tid, pid);        
     if (!table) {
+        response->set_code(131);
+        response->set_msg("table is not exist");
         PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
         return; 
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
+        response->set_code(131);
+        response->set_msg("replicator is not exist");
         PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
         return;
     }
+    response->set_code(0);
+    response->set_msg("ok");
     table->SetTableStat(::rtidb::storage::kNormal);
     replicator->StartSyncing();
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));
