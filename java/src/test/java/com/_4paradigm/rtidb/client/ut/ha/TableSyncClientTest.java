@@ -1,31 +1,29 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
-import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.common.Common;
-import org.joda.time.DateTime;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
-
-import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncClientTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(10000);
@@ -97,25 +95,7 @@ public class TableSyncClientTest extends TestCaseBase {
         client.refreshRouteTable();
         return name;
     }
-
-
-    private String createTsSchemaTable() {
-        String name = String.valueOf(id.incrementAndGet());
-        nsc.dropTable(name);
-
-        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setType("string").build();
-        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("amt").setType("double").build();
-        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setIsTsCol(true).setType("timestamp").build();
-        Common.ColumnKey key = Common.ColumnKey.newBuilder().setIndexName("card").addColName("card").addTsName("ts").build();
-        TableInfo table = TableInfo.newBuilder()
-                .setSegCnt(8).setName(name).setTtl(0).addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnKey(key)
-                .build();
-        boolean ok = nsc.createTable(table);
-        Assert.assertTrue(ok);
-        client.refreshRouteTable();
-        return name;
-    }
-
+    
     @Test
     public void testPut() {
         String name = createKvTable();
@@ -304,27 +284,6 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
-    public void testTsCountSchema() {
-        String name = createTsSchemaTable();
-        try{
-            long now = System.currentTimeMillis();
-            boolean ok = tableSyncClient.put(name, new Object[] {"card1", 1.1d, new DateTime(now)});
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, new Object[] {"card1", 2.1d, new DateTime(now-1000)});
-            Assert.assertTrue(ok);
-            ok = tableSyncClient.put(name, new Object[] {"card1", 3.1d, new DateTime(now-2000)});
-            Assert.assertTrue(ok);
-            Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, 0l));
-            Assert.assertEquals(1, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 1000));
-            Assert.assertEquals(2, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 2000));
-        }catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
-        } finally {
-            nsc.dropTable(name);
-        }
-    }
-    @Test
     public void testCountSchema() {
         String name = createSchemaTable();
         try {
@@ -376,6 +335,257 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(false);
         }finally {
             nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testAddTableFieldWithColumnKey() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ts").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.ColumnDesc col4 = Common.ColumnDesc.newBuilder().setName("ts_1").setAddTsIdx(false).setType("int64").setIsTsCol(true).build();
+        Common.ColumnKey colKey1 = Common.ColumnKey.newBuilder().setIndexName("card").addTsName("ts").addTsName("ts_1").build();
+        Common.ColumnKey colKey2 = Common.ColumnKey.newBuilder().setIndexName("mcc").addTsName("ts").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setName(name).setTtl(0)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
+                .addColumnKey(colKey1).addColumnKey(colKey2)
+                .setPartitionNum(1).setReplicaNum(1)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        try {
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("card", "card0");
+            data.put("mcc", "mcc0");
+            data.put("amt", 1.5);
+            data.put("ts", 1234l);
+            data.put("ts_1", 222l);
+            tableSyncClient.put(name, data);
+
+            ok = nsc.AddTableField(name, "aa", "string");
+//            Thread.currentThread().sleep(15);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.6);
+            data.put("ts", 1235l);
+            data.put("ts_1", 333l);
+            data.put("aa", "aa1");
+            tableSyncClient.put(name, data);
+
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.7);
+            data.put("ts", 1236l);
+            data.put("ts_1", 444l);
+            tableSyncClient.put(name, data);
+
+            Object[] row = tableSyncClient.getRow(name, "card0", "card", 1236l, "ts", null);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.7);
+            Assert.assertEquals(row[3], 1236l);
+            Assert.assertEquals(row[4], 444l);
+            Assert.assertEquals(row[5], null);
+
+            KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(it.getCount(), 2);
+            row = it.getDecodedValue();
+            Assert.assertEquals(it.getKey(), 1235);
+            Assert.assertEquals(row.length, 6);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.6d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 333l);
+            Assert.assertEquals(row[5], "aa1");
+            it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
+            Assert.assertEquals(it.getCount(), 3);
+            row = it.getDecodedValue();
+            Assert.assertEquals(it.getKey(), 444);
+            Assert.assertEquals(row.length, 6);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.7d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1236l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 444l);
+            Assert.assertEquals(row[5], null);
+            it = tableSyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts", 0);
+            Assert.assertTrue(it.valid());
+            Assert.assertTrue(it.getCount() == 1);
+
+            KvIterator itt = tableSyncClient.traverse(name, "card");
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 1236);
+            Assert.assertEquals(row.length, 6);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.7d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1236l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 444l);
+            Assert.assertEquals(row[5], null);
+
+            itt.next();
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 1235);
+            Assert.assertEquals(row.length, 6);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.6d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 333l);
+            Assert.assertEquals(row[5], "aa1");
+
+            itt.next();
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 1234);
+            Assert.assertEquals(row.length, 6);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 1.5d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1234l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 222l);
+            Assert.assertEquals(row[5], null);
+
+        } catch (Exception e) {
+            Assert.assertTrue(false);
+        }
+        nsc.dropTable(name);
+    }
+
+    @Test
+    public void testAddTableFieldWithoutColumnKey() {
+        String name = createSchemaTable();
+        try {
+            Assert.assertTrue(tableSyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d}));
+
+            boolean ok = nsc.AddTableField(name, "aa", "string");
+//            Thread.currentThread().sleep(15);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+
+            Assert.assertTrue(tableSyncClient.put(name, 9528, new Object[]{"card1", "mcc1", 9.2d, "aa1"}));
+            Assert.assertTrue(tableSyncClient.put(name, 9529, new Object[]{"card2", "mcc2", 9.3d}));
+
+            Object[] row = tableSyncClient.getRow(name, "card0", 9527);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 9.15d);
+            Assert.assertEquals(row[3], null);
+
+            row = tableSyncClient.getRow(name, "card1", 9528);
+            Assert.assertEquals(row[0], "card1");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
+            Assert.assertEquals(row[3], "aa1");
+
+            row = tableSyncClient.getRow(name, "card2", 9529);
+            Assert.assertEquals(row[0], "card2");
+            Assert.assertEquals(row[1], "mcc2");
+            Assert.assertEquals(row[2], 9.3d);
+            Assert.assertEquals(row[3], null);
+
+            Assert.assertTrue(tableSyncClient.put(name, 9528, new Object[]{"card0", "mcc1", 9.2d, "aa1"}));
+            Assert.assertTrue(tableSyncClient.put(name, 9529, new Object[]{"card0", "mcc2", 9.3d}));
+
+            KvIterator it = tableSyncClient.scan(name, "card0", "card", 9530, 0);
+            Assert.assertEquals(it.getCount(), 3);
+            Assert.assertTrue(it.valid());
+            row = it.getDecodedValue();
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals("mcc2", row[1]);
+            Assert.assertEquals(9.3d, row[2]);
+            Assert.assertEquals(null, row[3]);
+
+            it.next();
+            Assert.assertTrue(it.valid());
+            row = it.getDecodedValue();
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals("mcc1", row[1]);
+            Assert.assertEquals(9.2d, row[2]);
+            Assert.assertEquals("aa1", row[3]);
+
+            it.next();
+            Assert.assertTrue(it.valid());
+            row = it.getDecodedValue();
+            Assert.assertEquals("card0", row[0]);
+            Assert.assertEquals("mcc0", row[1]);
+            Assert.assertEquals(9.15d, row[2]);
+            Assert.assertEquals(null, row[3]);
+
+            KvIterator itt = tableSyncClient.traverse(name, "card");
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 9528);
+            Assert.assertEquals(itt.getPK(), "card1");
+            Assert.assertEquals(row.length, 4);
+            Assert.assertEquals(row[0], "card1");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
+
+            itt.next();
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 9529);
+            Assert.assertEquals(itt.getPK(), "card0");
+            Assert.assertEquals(row.length, 4);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc2");
+            Assert.assertEquals(row[2], 9.3d);
+            Assert.assertEquals(row[3], null);
+
+            itt.next();
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 9528);
+            Assert.assertEquals(itt.getPK(), "card0");
+            Assert.assertEquals(row.length, 4);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 9.2d);
+            Assert.assertEquals(row[3], "aa1");
+
+            itt.next();
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 9527);
+            Assert.assertEquals(itt.getPK(), "card0");
+            Assert.assertEquals(row.length, 4);
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[2], 9.15d);
+            Assert.assertEquals(row[3], null);
+
+            itt.next();
+            Assert.assertTrue(itt.valid());
+            row = itt.getDecodedValue();
+            Assert.assertEquals(itt.getKey(), 9529);
+            Assert.assertEquals(itt.getPK(), "card2");
+            Assert.assertEquals(row.length, 4);
+            Assert.assertEquals(row[0], "card2");
+            Assert.assertEquals(row[1], "mcc2");
+            Assert.assertEquals(row[2], 9.3d);
+            Assert.assertEquals(row[3], null);
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        } finally {
+//            nsc.dropTable(name);
         }
     }
 
@@ -758,53 +968,6 @@ public class TableSyncClientTest extends TestCaseBase {
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(true);
-        } finally {
-            nsc.dropTable(name);
-        }
-    }
-
-    @Test
-    public void testCountSchemaTable() {
-       String name = createSchemaTable();
-       try {
-           String k1 = "k1";
-           String k2 = "k2";
-           for (int i = 1; i < 10; i++) {
-               boolean ok  = tableSyncClient.put(name, i, new Object[]{k1, k2, 1.0});
-               Assert.assertTrue(ok);
-           }
-           int count = tableSyncClient.count(name, k1,"card", 10, 9);
-           Assert.assertEquals(0, count);
-           count = tableSyncClient.count(name, k1,"card", 10, 8);
-           Assert.assertEquals(1, count);
-           count = tableSyncClient.count(name, k1,"card", 10, 7);
-           Assert.assertEquals(2, count);
-       } catch (Exception e) {
-           e.printStackTrace();
-           Assert.fail();
-       } finally {
-           nsc.dropTable(name);
-       }
-    }
-
-    @Test
-    public void testCountKvTable() {
-        String name = createKvTable();
-        try {
-            String key  = "k1";
-            for (int i = 1; i < 10; i++) {
-                boolean ok = tableSyncClient.put(name, key, i, String.valueOf(i));
-                Assert.assertTrue(ok);
-            }
-            int count = tableSyncClient.count(name, key, 10, 9);
-            Assert.assertEquals(0, count);
-            count = tableSyncClient.count(name, key, 10, 8);
-            Assert.assertEquals(1, count);
-            count = tableSyncClient.count(name, key, 10, 7);
-            Assert.assertEquals(2, count);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
         } finally {
             nsc.dropTable(name);
         }

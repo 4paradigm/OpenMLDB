@@ -1,19 +1,5 @@
 package com._4paradigm.rtidb.client.impl;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeoutException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.TabletSyncClient;
@@ -28,8 +14,14 @@ import com._4paradigm.rtidb.tablet.Tablet.TTLType;
 import com._4paradigm.rtidb.utils.MurmurHash;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rtidb.api.TabletServer;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 public class TabletSyncClientImpl implements TabletSyncClient {
     private final static Logger logger = LoggerFactory.getLogger(TabletSyncClientImpl.class);
@@ -142,7 +134,13 @@ public class TabletSyncClientImpl implements TabletSyncClient {
     @Override
     public boolean put(int tid, int pid, long ts, Object[] row) throws TimeoutException, TabletException {
         TableHandler tableHandler = client.getHandler(tid);
-        ByteBuffer buffer = RowCodec.encode(row, tableHandler.getSchema());
+        ByteBuffer buffer = null;
+        if (row.length == tableHandler.getSchema().size()) {
+            buffer = RowCodec.encode(row, tableHandler.getSchema());
+        } else {
+            List<ColumnDesc> columnDescs = tableHandler.getSchemaMap().get(row.length);
+            buffer = RowCodec.encode(row, columnDescs, row.length - tableHandler.getSchema().size());
+        }
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         int index = 0;
         for (int i = 0; i < tableHandler.getSchema().size(); i++) {
@@ -249,7 +247,12 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         if (response == null) {
             return new Object[th.getSchema().size()];
         }
-        Object[] row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
+        Object[] row = null;
+        if (th.getSchemaMap().size() > 0) {
+            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema(), th.getSchemaMap().size());
+        } else {
+            row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema());
+        }
         return row;
     }
 
@@ -273,7 +276,13 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        ByteBuffer buffer = RowCodec.encode(row, th.getSchema());
+        ByteBuffer buffer = null;
+        if (row.length == th.getSchema().size()) {
+            buffer = RowCodec.encode(row, th.getSchema());
+        } else {
+            List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
+            buffer = RowCodec.encode(row, columnDescs, row.length - th.getSchema().size());
+        }
         Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
         int index = 0;
         for (int i = 0; i < th.getSchema().size(); i++) {
