@@ -589,9 +589,6 @@ TableIterator* DiskTable::NewIterator(uint32_t idx, const std::string& pk, Ticke
 }
 
 TableIterator* DiskTable::NewIterator(uint32_t index, int32_t ts_idx, const std::string& pk, Ticket& ticket) {
-    if (ts_idx < 0) {
-        return NULL;
-    }
     auto column_map_iter = column_key_map_.find(index);
     if (column_map_iter == column_key_map_.end()) {
         PDLOG(WARNING, "index %d not found in column key map table tid %u pid %u", index, id_, pid_);
