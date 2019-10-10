@@ -59,8 +59,7 @@ public class ScanFuture implements Future<KvIterator> {
             DefaultKvIterator kit = null;
             if (t != null) {
                 if (t.getSchemaMap().size() > 0) {
-                    kit = new DefaultKvIterator(response.getPairs()
-                            , t.getSchemaMap().get(t.getSchema().size() + t.getSchemaMap().size()), network);
+                    kit = new DefaultKvIterator(response.getPairs(), network, t);
                 } else {
                     kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
                 }

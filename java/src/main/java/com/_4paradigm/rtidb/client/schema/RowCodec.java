@@ -32,11 +32,15 @@ public class RowCodec {
         // TODO limit the max size
         int size = getSize(row, schema, cache);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-        if (modifyTimes > 0) {
-            buffer.put((byte) (modifyTimes | 0x80));
-        } else {
-            if (row.length >= 128) {
+        if (row.length - modifyTimes >= 128) {
+            if (modifyTimes > 0) {
+                buffer.putShort((short) (modifyTimes | 0x8000));
+            } else {
                 buffer.putShort((short) row.length);
+            }
+        } else {
+            if (modifyTimes > 0) {
+                buffer.put((byte) (modifyTimes | 0x80));
             } else {
                 buffer.put((byte) row.length);
             }
@@ -59,8 +63,8 @@ public class RowCodec {
                     if (bytes.length < 128) {
                         buffer.put((byte) bytes.length);
                     } else if (bytes.length <= stringMaxLength) {
-                        buffer.put((byte)(bytes.length >> 8 | 0x80));
-                        buffer.put((byte)(bytes.length & 0xFF));
+                        buffer.put((byte) (bytes.length >> 8 | 0x80));
+                        buffer.put((byte) (bytes.length & 0xFF));
                     } else {
                         throw new TabletException("kString length should be less than or equal " + stringMaxLength);
                     }
@@ -142,14 +146,21 @@ public class RowCodec {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
         int colLength = 0;
-        Byte temp = buffer.asReadOnlyBuffer().get();
-        if ((temp & 0x80) != 0) {
-            colLength = buffer.get() & 0x7F + schema.size();
-        } else {
-            if (schema.size() >= 128) {
-                colLength = buffer.getShort();
+        if (schema.size() < 128) {
+            Byte temp = buffer.asReadOnlyBuffer().get();
+            if ((temp & 0x80) != 0) {
+                colLength = buffer.get() & 0x7F + schema.size();
             } else {
-                colLength = buffer.get() & 0xFF;
+                colLength = buffer.get() & 0x7F;
+            }
+        } else {
+            //小端字节序，buffer.putShort(00000000,10000000)后在buffer中存储为10000000,00000000
+            short temp = buffer.getShort();
+            if ((temp & 0x8000) != 0) {
+                int res = temp & 0x007F;
+                colLength = res + schema.size();
+            } else {
+                colLength = temp;
             }
         }
         if (colLength > length) {

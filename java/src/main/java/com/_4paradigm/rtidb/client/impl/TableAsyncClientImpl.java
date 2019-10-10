@@ -494,9 +494,17 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        Object[] arrayRow = new Object[th.getSchema().size()];
-        for(int i = 0; i < th.getSchema().size(); i++) {
-            arrayRow[i] = row.get(th.getSchema().get(i).getName());
+        Object[] arrayRow = null;
+        if (row.size() > th.getSchema().size()) {
+            arrayRow = new Object[row.size()];
+            for (int i = 0; i < th.getSchemaMap().get(row.size()).size(); i++) {
+                arrayRow[i] = row.get(th.getSchemaMap().get(row.size()).get(i).getName());
+            }
+        } else {
+            arrayRow = new Object[th.getSchema().size()];
+            for (int i = 0; i < th.getSchema().size(); i++) {
+                arrayRow[i] = row.get(th.getSchema().get(i).getName());
+            }
         }
         return put(name, time, arrayRow);
     }
@@ -516,9 +524,17 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
-        Object[] arrayRow = new Object[th.getSchema().size()];
-        for(int i = 0; i < th.getSchema().size(); i++) {
-            arrayRow[i] = row.get(th.getSchema().get(i).getName());
+        Object[] arrayRow = null;
+        if (row.size() > th.getSchema().size()) {
+            arrayRow = new Object[row.size()];
+            for (int i = 0; i < th.getSchemaMap().get(row.size()).size(); i++) {
+                arrayRow[i] = row.get(th.getSchemaMap().get(row.size()).get(i).getName());
+            }
+        } else {
+            arrayRow = new Object[th.getSchema().size()];
+            for (int i = 0; i < th.getSchema().size(); i++) {
+                arrayRow[i] = row.get(th.getSchema().get(i).getName());
+            }
         }
         return put(tid, pid, time, arrayRow);
     }

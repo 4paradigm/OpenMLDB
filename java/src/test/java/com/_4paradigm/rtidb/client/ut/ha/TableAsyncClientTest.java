@@ -248,9 +248,9 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertTrue(pf.get());
 
             boolean ok = nsc.AddTableField(name, "aa", "string");
-//            Thread.currentThread().sleep(15);
+            Thread.currentThread().sleep(1000);
             Assert.assertTrue(ok);
-            client.refreshRouteTable();
+//            client.refreshRouteTable();
 
             pf = tableAsyncClient.put(name, 9528, new Object[]{"card1", "mcc1", 9.2d, "aa1"});
             Assert.assertTrue(pf.get());
