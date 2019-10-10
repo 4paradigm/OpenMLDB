@@ -521,7 +521,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(rs1[(tname, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         (schema, column_key) = self.showschema(self.slave1, tid, 0)
         self.assertEqual(len(schema), 3)
-        self.assertEqual(len(column_key), 2)
+        self.assertEqual(len(column_key), 0)
         self.assertEqual(schema[0], ['0', 'k1', 'string'])
         self.assertEqual(schema[1], ['1', 'k2', 'double'])
         self.assertEqual(schema[2], ['2', 'k3', 'int32'])
