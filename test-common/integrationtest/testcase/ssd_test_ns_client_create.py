@@ -524,7 +524,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(len(column_key), 0)
         self.assertEqual(schema[0], ['0', 'k1', 'string', 'yes'])
         self.assertEqual(schema[1], ['1', 'k2', 'double', 'no'])
-        self.assertEqual(schema[2], ['2', 'k3', 'int32', 'no'])
+        self.assertEqual(schema[2], ['2', 'k3', 'int32', 'yes'])
         self.assertEqual(column_key[0], ['0', 'k1', 'k1', '-', '144000min'])
         self.assertEqual(column_key[1], ['1', 'k3', 'k3', '-', '144000min'])
         self.ns_drop(self.ns_leader, tname)
