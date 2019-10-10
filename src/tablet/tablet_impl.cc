@@ -628,11 +628,12 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
     if (request->has_type()) {
         get_type = request->type();
     }
+    uint64_t ttl = ts_index < 0 ? disk_table->GetTTL(index) : disk_table->GetTTL(index, ts_index);
     bool has_found = true;
     // filter with time
     if (request->ts() > 0) {
         if (disk_table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
-            uint64_t keep_cnt = disk_table->GetTTL();
+            uint64_t keep_cnt = ttl;
             it->SeekToFirst();
             while (it->Valid()) {
                 if (CheckGetDone(get_type, it->GetKey(), request->ts())) {
@@ -645,7 +646,7 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
                 }
                 it->Next();
             }
-        } else if (request->ts() > disk_table->GetExpireTime(disk_table->GetTTL())) {
+        } else if (request->ts() > disk_table->GetExpireTime(ttl)) {
             it->Seek(request->ts());
             if (it->Valid() && it->GetKey() != request->ts()) {
                 has_found = false;
@@ -655,7 +656,7 @@ void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
     } else {
         it->SeekToFirst();
         if (it->Valid() && disk_table->GetTTLType() == ::rtidb::api::TTLType::kAbsoluteTime) {
-            if (it->GetKey() <= disk_table->GetExpireTime(disk_table->GetTTL())) {
+            if (it->GetKey() <= disk_table->GetExpireTime(ttl)) {
                 has_found = false;
             }
         }
@@ -1422,7 +1423,8 @@ void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
     uint32_t total_block_size = 0;
     uint64_t end_time = request->et();
     uint32_t scount = 0;
-    uint64_t expire_time = disk_table->GetExpireTime(disk_table->GetTTL());
+    uint64_t ttl = ts_index < 0 ? disk_table->GetTTL(index) : disk_table->GetTTL(index, ts_index);
+    uint64_t expire_time = disk_table->GetExpireTime(ttl);
     end_time = std::max(end_time, expire_time);
     PDLOG(DEBUG, "scan pk %s st %lu end_time %lu expire_time %lu", 
                   request->pk().c_str(), request->st(), end_time, expire_time);
@@ -3012,18 +3014,22 @@ void TabletImpl::CreateTable(RpcController* controller,
             return;
         }
     }
-    response->set_code(0);
-    response->set_msg("ok");
     table = GetTable(tid, pid);        
     if (!table) {
+        response->set_code(131);
+        response->set_msg("table is not exist");
         PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
         return; 
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
+        response->set_code(131);
+        response->set_msg("replicator is not exist");
         PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
         return;
     }
+    response->set_code(0);
+    response->set_msg("ok");
     table->SetTableStat(::rtidb::storage::kNormal);
     replicator->StartSyncing();
     io_pool_.DelayTask(FLAGS_binlog_sync_to_disk_interval, boost::bind(&TabletImpl::SchedSyncDisk, this, tid, pid));

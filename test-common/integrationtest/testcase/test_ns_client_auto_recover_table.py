@@ -39,7 +39,7 @@ class TestAutoRecoverTable(TestCaseBase):
                 "ttl": 14400,
                 "storage_mode": storage_mode,
                 "replica_num" : 3,
-                "partition_num" : 8,
+                "partition_num" : 4,
                 "column_desc" : [{"name" : "k1", "type" : "string", "add_ts_idx" : "true"},
                                  {"name" : "k2", "type" : "string", "add_ts_idx" : "false"},
                                  {"name" : "k3", "type" : "string", "add_ts_idx" : "false"}],
