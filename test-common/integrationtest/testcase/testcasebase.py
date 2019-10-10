@@ -147,7 +147,7 @@ class TestCaseBase(unittest.TestCase):
 
     def run_client(self, endpoint, cmd, role='client'):
         cmd = cmd.strip()
-        rs = utils.exe_shell('{} --endpoint={} --role={} --interactive=false --request_timeout_ms=200000 --cmd="{}"'.format(
+        rs = utils.exe_shell('{} --endpoint={} --role={} --interactive=false --request_timeout_ms=2000000 --cmd="{}"'.format(
             self.rtidb_path, endpoint, role, cmd))
         return rs.replace(self.welcome, '').replace('>', '')
 
