@@ -497,11 +497,6 @@ void TabletImpl::Get(RpcController* controller,
         return;
     }
 
-    if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-        GetFromDiskTable(table, request, response);
-	    return;
-    }
-
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
@@ -518,8 +513,7 @@ void TabletImpl::Get(RpcController* controller,
     if (request->has_ts_name() && request->ts_name().size() > 0) {
         auto iter = table->GetTSMapping().find(request->ts_name());
         if (iter == table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                  request->tid(), request->pid());
+            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(), request->tid(), request->pid());
             response->set_code(137);
             response->set_msg("ts name not found");
             return;
@@ -536,8 +530,8 @@ void TabletImpl::Get(RpcController* controller,
     }
 
     if (it == NULL) {
-        response->set_code(109);
-        response->set_msg("key not found");
+        response->set_code(137);
+        response->set_msg("ts name not found");
         return;
     }
 
@@ -582,98 +576,6 @@ void TabletImpl::Get(RpcController* controller,
         default:
             return;
     }
-}
-
-void TabletImpl::GetFromDiskTable(std::shared_ptr<Table> disk_table,
-             const ::rtidb::api::GetRequest* request,
-             ::rtidb::api::GetResponse* response) {
-    ::rtidb::storage::TableIterator* it = NULL;
-    ::rtidb::storage::Ticket ticket;
-    uint32_t index = 0;
-    int ts_index = -1;
-    if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
-        if (iit == disk_table->GetMapping().end()) {
-            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                  request->tid(), request->pid());
-            response->set_code(108);
-            response->set_msg("idx name not found");
-            return;
-        }
-        index = iit->second;
-    }
-    if (request->has_ts_name() && request->ts_name().size() > 0) {
-        auto iter = disk_table->GetTSMapping().find(request->ts_name());
-        if (iter == disk_table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                  request->tid(), request->pid());
-            response->set_code(137);
-            response->set_msg("ts name not found");
-            return;
-        }
-        ts_index = iter->second;
-    }
-    if (ts_index >= 0) {
-        it = disk_table->NewIterator(index, ts_index, request->key(), ticket);
-    } else {
-        it = disk_table->NewIterator(index, request->key(), ticket);
-    }
-    if (it == NULL) {
-        response->set_code(137);
-        response->set_msg("ts name not found, when create iterator");
-        return;
-    }
-
-    ::rtidb::api::GetType get_type = ::rtidb::api::GetType::kSubKeyEq;
-    if (request->has_type()) {
-        get_type = request->type();
-    }
-    uint64_t ttl = ts_index < 0 ? disk_table->GetTTL(index) : disk_table->GetTTL(index, ts_index);
-    bool has_found = true;
-    // filter with time
-    if (request->ts() > 0) {
-        if (disk_table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
-            uint64_t keep_cnt = ttl;
-            it->SeekToFirst();
-            while (it->Valid()) {
-                if (CheckGetDone(get_type, it->GetKey(), request->ts())) {
-                    break;
-                }
-                keep_cnt--;
-                if (keep_cnt == 0) {
-                    has_found = false;
-                    break;
-                }
-                it->Next();
-            }
-        } else if (request->ts() > disk_table->GetExpireTime(ttl)) {
-            it->Seek(request->ts());
-            if (it->Valid() && it->GetKey() != request->ts()) {
-                has_found = false;
-            }
-        }
-
-    } else {
-        it->SeekToFirst();
-        if (it->Valid() && disk_table->GetTTLType() == ::rtidb::api::TTLType::kAbsoluteTime) {
-            if (it->GetKey() <= disk_table->GetExpireTime(ttl)) {
-                has_found = false;
-            }
-        }
-    }
-    if (it->Valid() && has_found) {
-        response->set_code(0);
-        response->set_msg("ok");
-        response->set_key(request->key());
-        response->set_ts(it->GetKey());
-        response->set_value(it->GetValue().data(), it->GetValue().size());
-    } else {
-        response->set_code(109);
-        response->set_msg("key not found");
-        PDLOG(DEBUG, "not found key %s ts %lu ", request->key().c_str(),
-                request->ts());
-    }        
-    delete it;
 }
 
 void TabletImpl::Put(RpcController* controller,
@@ -1274,10 +1176,6 @@ void TabletImpl::Scan(RpcController* controller,
         response->set_msg("table is loading");
         return;
     }
-    if (table->GetStorageMode() != ::rtidb::common::StorageMode::kMemory) {
-        ScanFromDiskTable(table, request, response);
-        return;
-    }
     uint32_t index = 0;
     int ts_index = -1;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
@@ -1368,109 +1266,6 @@ void TabletImpl::Scan(RpcController* controller,
     }
 }
 
-void TabletImpl::ScanFromDiskTable(std::shared_ptr<Table> disk_table,
-              const ::rtidb::api::ScanRequest* request,
-              ::rtidb::api::ScanResponse* response) {
-    if (disk_table->GetTTLType() == ::rtidb::api::TTLType::kLatestTime) {
-        response->set_code(112);
-        response->set_msg("table ttl type is kLatestTime, cannot scan");
-        return;
-    }
-    ::rtidb::storage::TableIterator* it = NULL;
-    ::rtidb::storage::Ticket ticket;
-    uint32_t index = 0;
-    int32_t ts_index = -1;
-    if (request->has_idx_name() && request->idx_name().size() > 0) {
-        std::map<std::string, uint32_t>::iterator iit = disk_table->GetMapping().find(request->idx_name());
-        if (iit == disk_table->GetMapping().end()) {
-            PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", request->idx_name().c_str(),
-                  request->tid(), request->pid());
-            response->set_code(108);
-            response->set_msg("idx name not found");
-            return;
-        }
-        index = iit->second;
-    }
-    if (request->has_ts_name() && request->ts_name().size() > 0) {
-        auto iter = disk_table->GetTSMapping().find(request->ts_name());
-        if (iter == disk_table->GetTSMapping().end()) {
-            PDLOG(WARNING, "ts name %s not found in table tid %u, pid %u", request->ts_name().c_str(),
-                  request->tid(), request->pid());
-            response->set_code(137);
-            response->set_msg("ts name not found");
-            return;
-        }
-        ts_index = iter->second;
-    }
-    if (ts_index >= 0) {
-        it = disk_table->NewIterator(index, ts_index, request->pk(), ticket);
-    } else {
-        it = disk_table->NewIterator(index, request->pk(), ticket);
-    }
-    if (it == NULL) {
-        response->set_code(137);
-        response->set_msg("ts name not found, when create iterator");
-        return;
-    }
-    if (request->st() == 0) {
-        it->SeekToFirst();
-    } else {
-        it->Seek(request->st());
-    }
-    std::vector<std::pair<uint64_t, rtidb::base::Slice> > tmp;
-    // reduce the times of memcpy in vector
-    tmp.reserve(FLAGS_scan_reserve_size);
-    uint32_t total_block_size = 0;
-    uint64_t end_time = request->et();
-    uint32_t scount = 0;
-    uint64_t ttl = ts_index < 0 ? disk_table->GetTTL(index) : disk_table->GetTTL(index, ts_index);
-    uint64_t expire_time = disk_table->GetExpireTime(ttl);
-    end_time = std::max(end_time, expire_time);
-    PDLOG(DEBUG, "scan pk %s st %lu end_time %lu expire_time %lu", 
-                  request->pk().c_str(), request->st(), end_time, expire_time);
-    uint32_t limit = 0;
-    if (request->has_limit()) {
-        limit = request->limit();
-    }
-    while (it->Valid()) {
-        scount ++;
-        if (it->GetKey() <= end_time) {
-            break;
-        }
-        rtidb::base::Slice value = it->GetValue();
-        tmp.push_back(std::make_pair(it->GetKey(), value));
-        total_block_size += value.size();
-        it->Next();
-        if (limit > 0 && scount >= limit) {
-            break;
-        }
-        // check reach the max bytes size
-        if (total_block_size > FLAGS_scan_max_bytes_size) {
-            response->set_code(118);
-            response->set_msg("reache the scan max bytes size " + ::rtidb::base::HumanReadableString(total_block_size));
-            delete it;
-            return;
-        }
-    }
-    delete it;
-    uint32_t total_size = tmp.size() * (8+4) + total_block_size;
-    std::string* pairs = response->mutable_pairs();
-    if (tmp.size() <= 0) {
-        pairs->resize(0);
-    }else {
-        pairs->resize(total_size);
-    }
-    char* rbuffer = reinterpret_cast<char*>(& ((*pairs)[0]));
-    uint32_t offset = 0;
-    for (const auto& pair : tmp) {
-        ::rtidb::base::Encode(pair.first, pair.second.data(), pair.second.size(), rbuffer, offset);
-        offset += (4 + 8 + pair.second.size());
-    }
-    response->set_code(0);
-    response->set_msg("ok");
-    response->set_count(tmp.size());
-}
-
 void TabletImpl::Count(RpcController* controller,
               const ::rtidb::api::CountRequest* request,
               ::rtidb::api::CountResponse* response,
@@ -1513,6 +1308,11 @@ void TabletImpl::Count(RpcController* controller,
             return;
         }
         ts_index = iter->second;
+        if (!table->CheckTsValid(index, ts_index)) {
+            response->set_code(137);
+            response->set_msg("ts name not found");
+            return;
+        }
     }    
     if (!request->filter_expired_data() && table->GetStorageMode() == ::rtidb::common::StorageMode::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
@@ -1541,8 +1341,8 @@ void TabletImpl::Count(RpcController* controller,
         it = table->NewIterator(index, request->key(), ticket);
     }
     if (it == NULL) {
-        response->set_code(109);
-        response->set_msg("key not found");
+        response->set_code(137);
+        response->set_msg("ts name not found");
         return;
     }
     uint64_t ttl = ts_index < 0 ? table->GetTTL(index) : table->GetTTL(index, ts_index);
