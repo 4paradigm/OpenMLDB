@@ -3452,7 +3452,9 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::rtidb::client:
                 ::rtidb::base::FillTableRow(columns, str, str_size, row); 
             } else {
                 std::vector<::rtidb::base::ColumnDesc> columns_tmp = columns;
-                columns_tmp.erase(columns_tmp.begin() + (int)(table_meta.added_column_desc_size()), columns_tmp.end());
+                for (int i = 0; i < (int)(table_meta.added_column_desc_size()); i++) {
+                    columns_tmp.pop_back();
+                }
                 ::rtidb::base::FillTableRow(columns.size(), columns_tmp, str, str_size, row); 
             }
         }
@@ -3992,9 +3994,11 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     if (table_meta.added_column_desc_size() == 0) {
         ::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
     } else {
-        uint32_t full_schema_size = raw.size();
-        raw.erase(raw.begin() + (int)(table_meta.added_column_desc_size()), raw.end());
-        ::rtidb::base::FillTableRow(full_schema_size, raw, value.c_str(), value.size(), row);
+        std::vector<::rtidb::base::ColumnDesc> columns_tmp = raw;
+        for (int i = 0; i < (int)(table_meta.added_column_desc_size()); i++) {
+            columns_tmp.pop_back();
+        }
+        ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(), value.size(), row); 
     }
     tp.AddRow(row);
     tp.Print(true);
@@ -4114,9 +4118,11 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         if (table_meta.added_column_desc_size() == 0) {
             ::rtidb::base::ShowTableRows(raw, it, compress_type);
         } else {
-            std::vector<::rtidb::base::ColumnDesc> full_raw = raw;
-            raw.erase(raw.begin() + (int)(table_meta.added_column_desc_size()), raw.end());
-            ::rtidb::base::ShowTableRows(raw, full_raw, it, compress_type);
+            std::vector<::rtidb::base::ColumnDesc> columns_tmp = raw;
+            for (int i = 0; i < (int)(table_meta.added_column_desc_size()); i++) {
+                columns_tmp.pop_back();
+            }
+            ::rtidb::base::ShowTableRows(columns_tmp, raw, it, compress_type);
         }
         delete it;
     }
