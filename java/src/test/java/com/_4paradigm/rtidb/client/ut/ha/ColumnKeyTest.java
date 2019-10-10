@@ -377,15 +377,43 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
 
+            GetFuture gf = tableAsyncClient.get(name, "mcc1", "mcc", 1235l, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals(row[0], "card0");
+            Assert.assertEquals(row[1], "mcc1");
+            Assert.assertEquals(row[2], 1.6d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 333l);
+            Assert.assertEquals(row[5], "col_key1");
+            Assert.assertEquals(((Long) row[6]).longValue(), 3333l);
+
+            gf = tableAsyncClient.get(name, "mcc1", "mcc", 1235l, "ts_0", null);
+            try {
+                gf.getRow();
+                Assert.assertTrue(false);
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
+
+            try {
+                tableSyncClient.getRow(name, "mcc1", "mcc", 1235l, "ts_1", null);
+                Assert.assertTrue(false);
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
+
             Map<String, Object> query = new HashMap<String, Object>();
             query.put("card", "card0");
             query.put("mcc", "mcc0");
             it = tableSyncClient.scan(name, query, "card2", 3333l, 0l, "ts_2", 0);
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
-            if (sm == Common.StorageMode.kMemory) {
+            try {
                 it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_2", 0);
                 Assert.assertFalse(it.valid());
+                Assert.assertTrue(false);
+            } catch (Exception e) {
+                Assert.assertTrue(true);
             }
             it = tableSyncClient.scan(name, "col_key1", "col1", 1235l, 0l, "ts_1", 0);
             Assert.assertTrue(it.valid());
@@ -394,6 +422,7 @@ public class ColumnKeyTest extends TestCaseBase {
             Assert.assertEquals(1, tableSyncClient.count(name, "mcc0", "mcc", "ts", false));
             try {
                 Assert.assertEquals(0, tableSyncClient.count(name, "mcc0", "mcc", "ts_1", false));
+                Assert.assertTrue(false);
             } catch (Exception e){
                 Assert.assertTrue(true);
             }
@@ -432,6 +461,13 @@ public class ColumnKeyTest extends TestCaseBase {
             for (; it.valid(); it.next(), count++) {
             }
             Assert.assertEquals(3, count);
+
+            it = tableSyncClient.traverse(name, "card2");
+            count = 0;
+            for (; it.valid(); it.next(), count++) {
+            }
+            Assert.assertEquals(3, count);
+
             try {
                 tableSyncClient.traverse(name, "card2", "ts_0");
                 Assert.assertTrue(false);
@@ -440,9 +476,11 @@ public class ColumnKeyTest extends TestCaseBase {
             }
             try {
                 tableSyncClient.traverse(name, "card2", "ts");
+                Assert.assertTrue(false);
             } catch (Exception e) {
                 Assert.assertTrue(true);
             }
+
 
             Assert.assertTrue(tableSyncClient.delete(name, "card0|mcc0", "card2"));
             it = tableSyncClient.scan(name, query, "card2", 3333, 0l, "ts_1", 0);
