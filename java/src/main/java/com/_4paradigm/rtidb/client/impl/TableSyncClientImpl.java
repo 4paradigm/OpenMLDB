@@ -844,7 +844,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, null, null, true, th, st, et);
+        return count(th.getTableInfo().getTid(), pid, key, null, null, false, th, st, et);
     }
 
     @Override
@@ -855,7 +855,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, null, true, th, st, et);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, null, false, th, st, et);
     }
 
     @Override
@@ -866,7 +866,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, true, th, st, et);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, false, th, st, et);
     }
 
     @Override
