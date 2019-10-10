@@ -79,7 +79,7 @@ class TestCount(TestCaseBase):
         self.assertIn('Put ok', rs4)
 
         rs5 = self.ns_count(self.ns_leader, name, 'testkey0', '')
-        self.assertIn('count: 3', rs5)
+        self.assertIn('count: 2', rs5)
         rs6 = self.ns_count(self.ns_leader, name, 'testkey0', '', 'true')
         self.assertIn('count: 2', rs6)
 
