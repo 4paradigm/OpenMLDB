@@ -168,7 +168,7 @@ class TestCaseBase(unittest.TestCase):
 
     @staticmethod
     def get_manifest(nodepath, tid, pid):
-        realpath = nodepath + "/ssd_db"
+        realpath = nodepath + "/db"
         return TestCaseBase.get_manifest_by_realpath(realpath, tid, pid)
 
     @staticmethod
