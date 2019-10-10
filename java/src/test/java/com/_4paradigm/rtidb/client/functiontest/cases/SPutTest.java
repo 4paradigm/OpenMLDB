@@ -155,6 +155,7 @@ public class SPutTest extends TestCaseBase {
             e.printStackTrace();
             Assert.fail();
         }
+        tabletClient.dropTable(tid, 0);
     }
 
 

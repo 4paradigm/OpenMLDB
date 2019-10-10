@@ -12,12 +12,12 @@ message TableInfo {
     required uint64 ttl = 2;
     optional uint32 seg_cnt = 3 [default = 8];
     repeated TablePartition table_partition = 4;
-	repeated rtidb.common.ColumnDesc column_desc = 5;
+    repeated rtidb.common.ColumnDesc column_desc = 5;
     optional string ttl_type = 6 [default = "kAbsoluteTime"];
-	optional uint32 partition_num = 7;
-	optional uint32 replica_num = 8; // contain the leader
-	optional string compress_type = 9 [default = "kNoCompress"];
-	optional uint32 key_entry_max_height = 10;
+    optional uint32 partition_num = 7;
+    optional uint32 replica_num = 8; // contain the leader
+    optional string compress_type = 9 [default = "kNoCompress"];
+    optional uint32 key_entry_max_height = 10;
     repeated rtidb.common.ColumnKey column_key = 11;
-	optional rtidb.common.StorageMode storage_mode = 12 [default = kMemory];
+    optional string storage_mode = 12 [default = "kMemory"];
 }

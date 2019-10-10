@@ -46,5 +46,13 @@ build
 thirdparty
 thirdsrc
 onebox/*.log
+onebox/*binlogs*
+onebox/*bin*
+test-output
+reports
 test-common/integrationtest/ns*
 test-common/integrationtest/tablet*
+test-common/integrationtest/logs*
+test-common/integrationtest/env.conf
+test-common/integrationtest/rtidb
+test-common/integrationtest/xmlrunner*

@@ -53,7 +53,7 @@ class TestHasTsCol(TestCaseBase):
         rs7 = self.ns_count_with_pair(self.ns_leader, name, 'card1', 'card', 'ts2')
         self.assertIn('count: 1', rs7)
         rs8 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'mcc', 'ts1')
-        self.assertIn('count: 0', rs8)
+        self.assertIn('ts name not found', rs8)
         rs9 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'card', 'ts1')
         self.assertIn('count: 0', rs9)
         rs10 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'k1', 'ts1')
@@ -113,6 +113,10 @@ class TestHasTsCol(TestCaseBase):
         self.assertEqual(rs5[0]['amt'], '2')
         self.assertEqual(rs5[0]['ts1'], '16')
         self.assertEqual(rs5[0]['ts2'], '19')
+        rs6 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts1', '1')
+        self.assertEqual(len(rs6), 0)
+        rs7 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
+        self.assertEqual(len(rs7), 1)
 
     def test_get_schema_has_ts_col(self):
         """
@@ -161,6 +165,11 @@ class TestHasTsCol(TestCaseBase):
         self.assertEqual(rs5['amt'], '1')
         self.assertEqual(rs5['ts1'], '15')
         self.assertEqual(rs5['ts2'], '18')
+
+        rs6 = self.ns_get_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '0', 'ts1')
+        self.assertEqual(len(rs6), 0)
+        rs7 = self.ns_get_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '0', 'ts2')
+        self.assertEqual(len(rs7), 5)
 
 
 

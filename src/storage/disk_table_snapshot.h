@@ -17,7 +17,8 @@ namespace storage {
 
 class DiskTableSnapshot : public Snapshot {
 public:
-    DiskTableSnapshot(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode);
+    DiskTableSnapshot(uint32_t tid, uint32_t pid, ::rtidb::common::StorageMode storage_mode,
+            const std::string& db_root_path);
     virtual ~DiskTableSnapshot() = default;
     virtual bool Init() override;
     virtual int MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_offset) override;
@@ -27,6 +28,7 @@ public:
 private:
     ::rtidb::common::StorageMode storage_mode_;
     uint64_t term_;
+    std::string db_root_path_;
 
 };
 
