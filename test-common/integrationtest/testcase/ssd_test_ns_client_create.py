@@ -134,12 +134,12 @@ class TestCreateTableByNsClient(TestCaseBase):
         tid = table_info.keys()[0][1]
         pid = 1
         ts = self.now() + 1000
-        for _ in range(10):
-            self.put(self.leader, tid, pid, 'testkey0', ts, 'testvalue0')
+        for x in range(10):
+            self.put(self.leader, tid, pid, 'testkey0', ts+x, 'testvalue0')
         time.sleep(2)
         self.assertIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', ts))
-        for _ in range(10):
-            self.put(self.leader, tid, pid, 'testkey0', 1999999999999, 'testvalue1')
+        for y in range(10):
+            self.put(self.leader, tid, pid, 'testkey0', 1999999999999+y, 'testvalue1')
         time.sleep(1)
         if ttl_type == '"kAbsoluteTime"':
             time.sleep(61)
