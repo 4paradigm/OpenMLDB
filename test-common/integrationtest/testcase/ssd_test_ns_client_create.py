@@ -134,8 +134,8 @@ class TestCreateTableByNsClient(TestCaseBase):
         tid = table_info.keys()[0][1]
         pid = 1
         ts = self.now() + 1000
-        for x in range(10):
-            self.put(self.leader, tid, pid, 'testkey0', ts+x, 'testvalue0')
+        for _ in range(10):
+            self.put(self.leader, tid, pid, 'testkey0', ts, 'testvalue0')
         time.sleep(2)
         self.assertIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', ts))
         for y in range(10):
