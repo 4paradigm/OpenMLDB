@@ -44,7 +44,7 @@ public enum ColumnType {
 			case 100:
 				return "kEmptyString";
 			default :
-				return "Unknow";
+                return "Unknown";
 		}
 	}
 

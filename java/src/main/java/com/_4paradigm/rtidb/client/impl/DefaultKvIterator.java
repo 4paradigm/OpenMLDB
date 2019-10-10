@@ -1,17 +1,18 @@
 package com._4paradigm.rtidb.client.impl;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.List;
-
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.List;
 
 public class DefaultKvIterator implements KvIterator {
 
@@ -28,6 +29,7 @@ public class DefaultKvIterator implements KvIterator {
     private int count;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
+    private TableHandler th = null;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -75,7 +77,20 @@ public class DefaultKvIterator implements KvIterator {
         next();
         this.network = network;
     }
-    
+
+    public DefaultKvIterator(ByteString bs, Long network, TableHandler th) {
+        this.bs = bs;
+        this.bb = this.bs.asReadOnlyByteBuffer();
+        this.offset = 0;
+        this.totalSize = this.bs.size();
+        next();
+        this.schema = th.getSchema();
+        if (network != null) {
+            this.network = network;
+        }
+        this.th = th;
+    }
+
     public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, Long network) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -125,7 +140,7 @@ public class DefaultKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row = new Object[schema.size()];
+        Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
         getDecodedValue(row, 0, row.length);
         return row;
     }
