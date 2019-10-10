@@ -620,13 +620,7 @@ TEST_F(TableTest, TableIteratorTS) {
     ASSERT_EQ(1, count);
     delete iter;
     iter = table.NewIterator(1, 1, "mcc10", ticket);
-    iter->SeekToFirst();
-    count = 0;
-    while(iter->Valid()) {
-        count++;
-        iter->Next();
-    }
-    ASSERT_EQ(0, count);
+    ASSERT_EQ(NULL, iter);
     delete iter;
 }
 

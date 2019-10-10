@@ -98,10 +98,8 @@ class TestCaseBase(unittest.TestCase):
 
     def start_client(self, endpoint, role='tablet'):
         client_path = self.node_path_dict[endpoint]
-        if role == 'tablet':
-            conf = 'rtidb'
-        elif role == 'nameserver':
-            conf = 'nameserver'
+        if role == 'tablet' or role == 'nameserver':
+            conf = role
         else:
             pass
         cmd = '{}/rtidb --flagfile={}/conf/{}.flags'.format(self.testpath, client_path, conf)
@@ -653,7 +651,7 @@ class TestCaseBase(unittest.TestCase):
     def update_conf(nodepath, conf_item, conf_value, role='client'):
         conf_file = ''
         if role == 'client':
-            conf_file = 'rtidb.flags'
+            conf_file = 'tablet.flags'
         elif role == 'ns_client':
             conf_file = 'nameserver.flags'
         utils.exe_shell("sed -i '/{}/d' {}/conf/{}".format(conf_item, nodepath, conf_file))
