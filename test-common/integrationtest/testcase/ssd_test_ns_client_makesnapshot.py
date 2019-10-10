@@ -13,6 +13,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         makesnapshot功能正常，op是kMakeSnapshotOP
         :return:
         """
+        db_path='ssd_db'
         self.clear_ns_table(self.ns_leader)
         old_last_op_id = max(self.showopstatus(self.ns_leader).keys()) if self.showopstatus(self.ns_leader) != {} else 1
         name = 't{}'.format(time.time())
@@ -40,8 +41,8 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         rs3 = self.makesnapshot(self.ns_leader, name, pid, 'ns_client')
         self.assertIn('MakeSnapshot ok', rs3)
         time.sleep(2)
-
-        mf = self.get_manifest(self.leaderpath, tid, pid)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, pid)
+        # mf = self.get_manifest(self.leaderpath, tid, pid)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
         self.assertEqual(mf['count'], '1')

@@ -138,8 +138,8 @@ class TestCreateTableByNsClient(TestCaseBase):
             self.put(self.leader, tid, pid, 'testkey0', ts, 'testvalue0')
         time.sleep(2)
         self.assertIn('testvalue0', self.get(self.slave1, tid, pid, 'testkey0', ts))
-        for _ in range(10):
-            self.put(self.leader, tid, pid, 'testkey0', 1999999999999, 'testvalue1')
+        for y in range(10):
+            self.put(self.leader, tid, pid, 'testkey0', 1999999999999+y, 'testvalue1')
         time.sleep(1)
         if ttl_type == '"kAbsoluteTime"':
             time.sleep(61)
@@ -521,12 +521,12 @@ class TestCreateTableByNsClient(TestCaseBase):
         self.assertEqual(rs1[(tname, tid, '2', self.slave2)], ['follower', '144000min', 'yes', 'kNoCompress'])
         (schema, column_key) = self.showschema(self.slave1, tid, 0)
         self.assertEqual(len(schema), 3)
-        self.assertEqual(len(column_key), 2)
-        self.assertEqual(schema[0], ['0', 'k1', 'string'])
-        self.assertEqual(schema[1], ['1', 'k2', 'double'])
-        self.assertEqual(schema[2], ['2', 'k3', 'int32'])
-        self.assertEqual(column_key[0], ['0', 'k1', 'k1', '-', '144000min'])
-        self.assertEqual(column_key[1], ['1', 'k3', 'k3', '-', '144000min'])
+        self.assertEqual(len(column_key), 0)
+        self.assertEqual(schema[0], ['0', 'k1', 'string', 'yes'])
+        self.assertEqual(schema[1], ['1', 'k2', 'double', 'no'])
+        self.assertEqual(schema[2], ['2', 'k3', 'int32', 'yes'])
+        # self.assertEqual(column_key[0], ['0', 'k1', 'k1', '-', '144000min'])
+        # self.assertEqual(column_key[1], ['1', 'k3', 'k3', '-', '144000min'])
         self.ns_drop(self.ns_leader, tname)
 
     @ddt.data(

@@ -80,7 +80,7 @@ def gen_table_metadata_ssd(name, ttl_type, ttl, seg_cnt,storage_mode, *table_par
     metadata = []
     # "storage_mode": "kSSD"
     basic_info_schema = ('name', 'ttl_type', 'ttl', 'seg_cnt','storage_mode')
-    basic_info = zip(basic_info_schema, (name, ttl_type, ttl, seg_cnt,storage_mode))
+    basic_info = zip(basic_info_schema, (name, ttl_type, ttl, seg_cnt,"\""+storage_mode+"\""))
     # print("===========")
     # print(basic_info)
     metadata.append([(i[0], i[1]) for i in basic_info if i[1] is not None])

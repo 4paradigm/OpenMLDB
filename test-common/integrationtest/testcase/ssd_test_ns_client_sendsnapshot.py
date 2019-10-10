@@ -329,7 +329,12 @@ class TestSendSnapshot(TestCaseBase):
         time.sleep(10)
 
     @multi_dimension(False)
-    def test_sendsnapshot_disk(self):
+    @ddt.data(
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
+    )
+    @ddt.unpack
+    def test_sendsnapshot_disk(self, db_path, storage_mode):
         """
         disktable
         :return:
@@ -338,12 +343,12 @@ class TestSendSnapshot(TestCaseBase):
         tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
-                "name": tname,
-                "ttl": 14400,
-                "storage_mode": "kHDD",
-                "replica_num" : 1,
-                "partition_num" : 1,
-                }
+            "name": tname,
+            "ttl": 14400,
+            "storage_mode": storage_mode,
+            "replica_num" : 1,
+            "partition_num" : 1,
+        }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
         self.assertIn('Create table ok', rs)
@@ -355,10 +360,10 @@ class TestSendSnapshot(TestCaseBase):
         self.assertIn("PauseSnapshot ok", self.pausesnapshot(self.leader, tid, pid))
         self.assertIn("SendSnapshot ok", self.sendsnapshot(self.leader, tid, pid, self.slave1))
         time.sleep(1)
-        mf = self.get_manifest(self.leaderpath, tid, pid)
-        mf1 = self.get_manifest(self.slave1path, tid, pid)
+        mf = self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, pid)
+        mf1 = self.get_manifest_by_realpath(self.slave1path + "/" + db_path, tid, pid)
         self.assertEqual(mf, mf1)
-        snapshot_path = "/db/" + str(tid) + "_" + str(pid) + "/snapshot/" + mf["name"]
+        snapshot_path = "/" + db_path + "/" + str(tid) + "_" + str(pid) + "/snapshot/" + mf["name"]
         self.assertEqual(len(os.listdir(self.slave1path + snapshot_path)), len(os.listdir(self.leaderpath + snapshot_path)))
         self.ns_drop(self.ns_leader, tname)
 

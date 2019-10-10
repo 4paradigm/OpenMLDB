@@ -182,9 +182,9 @@ class TestSchema(TestCaseBase):
         self.assertEqual(schema[1], ["1", "mcc", "string", "yes"])
         self.assertEqual(schema[2], ["2", "amt", "double", "no"])
         self.assertEqual(schema[3], ["3", "ts1", "int64", "no"])
-        self.assertEqual(len(column_key), 2)
-        self.assertEqual(column_key[0], ["0", "card", "card", "-", "14400min"])
-        self.assertEqual(column_key[1], ["1", "mcc", "mcc", "-", "14400min"])
+        self.assertEqual(len(column_key), 0)
+        # self.assertEqual(column_key[0], ["0", "card", "card", "-", "14400min"])
+        # self.assertEqual(column_key[1], ["1", "mcc", "mcc", "-", "14400min"])
         self.ns_drop(self.ns_leader, name)
 
     def test_showschema_no_schema(self):
