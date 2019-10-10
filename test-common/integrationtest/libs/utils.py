@@ -117,10 +117,7 @@ def gen_table_meta_file(meta, filepath):
     s = ''
     for key, value in meta.items():
         if isinstance(value, str):
-            if key == "storage_mode":
-                s += key + ": " + value + "\n"
-            else:    
-                s += key + ": \"" + value + "\"\n"
+            s += key + ": \"" + value + "\"\n"
         elif isinstance(value, int):
             s += key + ": " + str(value) + "\n"
         elif isinstance(value, list):

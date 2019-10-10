@@ -53,7 +53,7 @@ class TestHasTsCol(TestCaseBase):
         rs7 = self.ns_count_with_pair(self.ns_leader, name, 'card1', 'card', 'ts2')
         self.assertIn('count: 1', rs7)
         rs8 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'mcc', 'ts1')
-        self.assertIn('count: 0', rs8)
+        self.assertIn('ts name not found', rs8)
         rs9 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'card', 'ts1')
         self.assertIn('count: 0', rs9)
         rs10 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'k1', 'ts1')
