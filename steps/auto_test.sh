@@ -15,6 +15,7 @@ rtidb_version=`cat pom.xml| grep version | head -n 1 | sed -n 's/<version>\(.*\)
 mvn clean install -Dmaven.test.skip=true
 
 cd $ROOT_DIR
-source  rm -rf rtidb-auto-test; git checkout .; git submodule init; git submodule update
+source /root/.bashrc && rm -rf rtidb-auto-test; git checkout .; git submodule init; git submodule update
 cd rtidb-auto-test
+git pull
 sh run.sh gl.xml $rtidb_version
