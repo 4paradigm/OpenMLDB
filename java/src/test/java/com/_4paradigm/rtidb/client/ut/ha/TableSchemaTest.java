@@ -207,6 +207,21 @@ public class TableSchemaTest extends TestCaseBase {
                 Assert.assertNotNull(row);
                 Assert.assertEquals(schema_num, row.length);
                 Assert.assertEquals("card0", row[0]);
+                for (int i = 0; i < row.length - 1; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+
+                //put column count more than shema
+                row1.put("mcc", "mcc0");
+                ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                row = tableSyncClient.getRow(name, "card0", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num, row.length);
+                Assert.assertEquals("card0", row[0]);
+                for (int i = 0; i < row.length - 1; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
 
                 ok = nsc.AddTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(1000);
@@ -234,6 +249,19 @@ public class TableSchemaTest extends TestCaseBase {
                     row1.put("filed" + i, i + 1.5d);
                 }
                 row1.put("aa", "card3");
+                ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                row = tableSyncClient.getRow(name, "card2", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num + 1, row.length);
+                Assert.assertEquals("card2", row[0]);
+                for (int i = 0; i < row.length - 2; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+                Assert.assertEquals("card3", row[row.length - 1]);
+
+                //put column count more than shema
+                row1.put("mcc", "mcc1");
                 ok = tableSyncClient.put(name, time, row1);
                 Assert.assertTrue(ok);
                 row = tableSyncClient.getRow(name, "card2", 0);

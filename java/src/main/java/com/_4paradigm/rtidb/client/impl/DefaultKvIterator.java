@@ -28,7 +28,7 @@ public class DefaultKvIterator implements KvIterator {
     private int count;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
-    private int addfiledCount;
+    private int addfiledCount = 0;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -84,9 +84,6 @@ public class DefaultKvIterator implements KvIterator {
         this.totalSize = this.bs.size();
         next();
         this.schema = schema;
-        if (network != null) {
-            this.network = network;
-        }
         this.addfiledCount = addfiledCount;
     }
 

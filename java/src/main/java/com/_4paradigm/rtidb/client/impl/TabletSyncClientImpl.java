@@ -134,12 +134,25 @@ public class TabletSyncClientImpl implements TabletSyncClient {
     @Override
     public boolean put(int tid, int pid, long ts, Object[] row) throws TimeoutException, TabletException {
         TableHandler tableHandler = client.getHandler(tid);
+        if (tableHandler == null) {
+            throw new TabletException("no table with id " + tid);
+        }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         ByteBuffer buffer = null;
         if (row.length == tableHandler.getSchema().size()) {
             buffer = RowCodec.encode(row, tableHandler.getSchema());
         } else {
             List<ColumnDesc> columnDescs = tableHandler.getSchemaMap().get(row.length);
-            buffer = RowCodec.encode(row, columnDescs, row.length - tableHandler.getSchema().size());
+            if (columnDescs == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
+            int modifyTimes = row.length - tableHandler.getSchema().size();
+            if (row.length > tableHandler.getSchema().size() + tableHandler.getSchemaMap().size()) {
+                modifyTimes = tableHandler.getSchemaMap().size();
+            }
+            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         List<Tablet.Dimension> dimList = new ArrayList<Tablet.Dimension>();
         int index = 0;
@@ -281,12 +294,22 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
             buffer = RowCodec.encode(row, th.getSchema());
         } else {
             List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
-            buffer = RowCodec.encode(row, columnDescs, row.length - th.getSchema().size());
+            if (columnDescs == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
+            int modifyTimes = row.length - th.getSchema().size();
+            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                modifyTimes = th.getSchemaMap().size();
+            }
+            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         Map<Integer, List<Tablet.Dimension>> mapping = new HashMap<Integer, List<Tablet.Dimension>>();
         int index = 0;

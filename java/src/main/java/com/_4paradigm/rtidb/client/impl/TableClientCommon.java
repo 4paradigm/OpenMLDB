@@ -21,8 +21,8 @@ public class TableClientCommon {
         tsDimensions.clear();
         int tsIndex = 0;
         List<ColumnDesc> schema;
-        if (row.size() > th.getSchema().size()) {
-            schema = th.getSchemaMap().get(row.size());
+        if (arrayRow.length > th.getSchema().size()) {
+            schema = th.getSchemaMap().get(arrayRow.length);
         } else {
             schema = th.getSchema();
         }
@@ -59,6 +59,9 @@ public class TableClientCommon {
     }
 
     public static List<Tablet.TSDimension> parseArrayInput(Object[] row, TableHandler th) throws TabletException {
+        if (row == null) {
+            throw new TabletException("input row is null");
+        }
         if (row.length != th.getSchema().size()) {
             throw new TabletException("input row size error");
         }
@@ -277,4 +280,5 @@ public class TableClientCommon {
         }
         return pid;
     }
+
 }

@@ -60,12 +60,22 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
             buffer = RowCodec.encode(row, th.getSchema());
         } else {
             List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
-            buffer = RowCodec.encode(row, columnDescs, row.length - th.getSchema().size());
+            if (columnDescs == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
+            int modifyTimes = row.length - th.getSchema().size();
+            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                modifyTimes = th.getSchemaMap().size();
+            }
+            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         List<Tablet.Dimension> dimList = TableClientCommon.fillTabletDimension(row, th, client.getConfig().isHandleNull());
         return put(tid, pid, null, time, dimList, null, buffer, th);
@@ -742,12 +752,22 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
             buffer = RowCodec.encode(row, th.getSchema());
         } else {
             List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
-            buffer = RowCodec.encode(row, columnDescs, row.length - th.getSchema().size());
+            if (columnDescs == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
+            int modifyTimes = row.length - th.getSchema().size();
+            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                modifyTimes = th.getSchemaMap().size();
+            }
+            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, handleNull);
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
@@ -828,8 +848,20 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
-        Object[] arrayRow = new Object[row.size()];
+        Object[] arrayRow = null;
+        if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
+                arrayRow = new Object[th.getSchema().size() + th.getSchemaMap().size()];
+            } else {
+                arrayRow = new Object[row.size()];
+            }
+        } else {
+            arrayRow = new Object[th.getSchema().size()];
+        }
         TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
         return put(tname, 0, arrayRow, tsDimensions);
     }
@@ -843,11 +875,19 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th.hasTsCol()) {
             throw new TabletException("has ts column. should not set time");
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         Object[] arrayRow = null;
-        if (row.size() > th.getSchema().size()) {
-            arrayRow = new Object[row.size()];
-            for (int i = 0; i < th.getSchemaMap().get(row.size()).size(); i++) {
-                arrayRow[i] = row.get(th.getSchemaMap().get(row.size()).get(i).getName());
+        if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            int columnSize = row.size();
+            if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
+                columnSize = th.getSchema().size() + th.getSchemaMap().size();
+            }
+            arrayRow = new Object[columnSize];
+            List<ColumnDesc> schema = th.getSchemaMap().get(columnSize);
+            for (int i = 0; i < schema.size(); i++) {
+                arrayRow[i] = row.get(schema.get(i).getName());
             }
         } else {
             arrayRow = new Object[th.getSchema().size()];
@@ -873,11 +913,19 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         Object[] arrayRow = null;
-        if (row.size() > th.getSchema().size()) {
-            arrayRow = new Object[row.size()];
-            for (int i = 0; i < th.getSchemaMap().get(row.size()).size(); i++) {
-                arrayRow[i] = row.get(th.getSchemaMap().get(row.size()).get(i).getName());
+        if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            int columnSize = row.size();
+            if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
+                columnSize = th.getSchema().size() + th.getSchemaMap().size();
+            }
+            arrayRow = new Object[columnSize];
+            List<ColumnDesc> schema = th.getSchemaMap().get(columnSize);
+            for (int i = 0; i < schema.size(); i++) {
+                arrayRow[i] = row.get(schema.get(i).getName());
             }
         } else {
             arrayRow = new Object[th.getSchema().size()];
