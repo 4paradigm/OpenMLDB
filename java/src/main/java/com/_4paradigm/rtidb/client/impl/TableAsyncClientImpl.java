@@ -101,6 +101,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             buffer = RowCodec.encode(row, th.getSchema());
         } else {
             List<ColumnDesc> columnDescs = th.getSchemaMap().get(row.length);
+            if (columnDescs == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
             buffer = RowCodec.encode(row, columnDescs, row.length - th.getSchema().size());
         }
         List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
@@ -130,15 +133,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        Object[] arrayRow = null;
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
-        if (row.size() > th.getSchema().size()) {
-            arrayRow = new Object[row.size()];
-            TableClientCommon.parseMapInput(row, th.getSchemaMap().get(row.size()), arrayRow, tsDimensions);
-        } else {
-            arrayRow = new Object[th.getSchema().size()];
-            TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
-        }
+        Object[] arrayRow = new Object[row.size()];
+        TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
         return put(name, 0, arrayRow, tsDimensions);
     }
 
