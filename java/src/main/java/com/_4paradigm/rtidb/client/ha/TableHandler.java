@@ -102,8 +102,8 @@ public class TableHandler {
             }
 
         } else {
-            for (int i = 0; i < tableInfo.getColumnDescCount(); i++) {
-                schemaSize = tableInfo.getColumnDescCount();
+            schemaSize = tableInfo.getColumnDescCount();
+            for (int i = 0; i < schemaSize; i++) {
                 com._4paradigm.rtidb.ns.NS.ColumnDesc cd = tableInfo.getColumnDesc(i);
                 ColumnDesc ncd = new ColumnDesc();
                 ncd.setName(cd.getName());
@@ -210,7 +210,4 @@ public class TableHandler {
         return schemaMap;
     }
 
-    public void setSchemaMap(Map<Integer, List<ColumnDesc>> schemaMap) {
-        this.schemaMap = schemaMap;
-    }
 }

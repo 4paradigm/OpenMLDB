@@ -683,7 +683,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             Long network = null;
             DefaultKvIterator it = null;
             if (th.getSchemaMap().size() > 0) {
-                it = new DefaultKvIterator(response.getPairs(), network, th);
+                it = new DefaultKvIterator(response.getPairs(), th.getSchema(), th.getSchemaMap().size());
 
             } else {
                 it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
@@ -828,15 +828,9 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        Object[] arrayRow = null;
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
-        if (row.size() > th.getSchema().size()) {
-            arrayRow = new Object[row.size()];
-            TableClientCommon.parseMapInput(row, th.getSchemaMap().get(row.size()), arrayRow, tsDimensions);
-        } else {
-            arrayRow = new Object[th.getSchema().size()];
-            TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
-        }
+        Object[] arrayRow = new Object[row.size()];
+        TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
         return put(tname, 0, arrayRow, tsDimensions);
     }
 

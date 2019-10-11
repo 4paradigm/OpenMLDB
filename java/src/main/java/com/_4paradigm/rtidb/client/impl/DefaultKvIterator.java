@@ -3,7 +3,6 @@ package com._4paradigm.rtidb.client.impl;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
@@ -29,7 +28,7 @@ public class DefaultKvIterator implements KvIterator {
     private int count;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
-    private TableHandler th = null;
+    private int addfiledCount;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -78,17 +77,17 @@ public class DefaultKvIterator implements KvIterator {
         this.network = network;
     }
 
-    public DefaultKvIterator(ByteString bs, Long network, TableHandler th) {
+    public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, int addfiledCount) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
         this.totalSize = this.bs.size();
         next();
-        this.schema = th.getSchema();
+        this.schema = schema;
         if (network != null) {
             this.network = network;
         }
-        this.th = th;
+        this.addfiledCount = addfiledCount;
     }
 
     public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, Long network) {
@@ -140,7 +139,7 @@ public class DefaultKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
+        Object[] row = new Object[schema.size() + addfiledCount];
         getDecodedValue(row, 0, row.length);
         return row;
     }

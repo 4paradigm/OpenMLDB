@@ -141,15 +141,15 @@ public class RowCodec {
         return buffer;
     }
 
-    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, Object[] row, int start, int length) throws TabletException {
+    public static void decode(ByteBuffer buffer, List<ColumnDesc> raw_schema, Object[] row, int start, int length) throws TabletException {
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
         int colLength = 0;
-        if (schema.size() < 128) {
+        if (raw_schema.size() < 128) {
             Byte temp = buffer.asReadOnlyBuffer().get();
             if ((temp & 0x80) != 0) {
-                colLength = buffer.get() & 0x7F + schema.size();
+                colLength = buffer.get() & 0x7F + raw_schema.size();
             } else {
                 colLength = buffer.get() & 0x7F;
             }
@@ -158,7 +158,7 @@ public class RowCodec {
             short temp = buffer.getShort();
             if ((temp & 0x8000) != 0) {
                 int res = temp & 0x007F;
-                colLength = res + schema.size();
+                colLength = res + raw_schema.size();
             } else {
                 colLength = temp;
             }
