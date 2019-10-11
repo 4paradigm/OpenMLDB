@@ -237,13 +237,6 @@ public:
         server_ = server;
     }
 
-    void GetFromDiskTable(std::shared_ptr<Table> disk_table,
-            const ::rtidb::api::GetRequest* request, 
-            ::rtidb::api::GetResponse* response);
-
-    void ScanFromDiskTable(std::shared_ptr<Table> disk_table,
-            const ::rtidb::api::ScanRequest* request, 
-            ::rtidb::api::ScanResponse* response);
     // scan the latest index
     int32_t ScanLatestIndex(uint64_t ttl,
                             ::rtidb::storage::TableIterator* it,
