@@ -1844,27 +1844,34 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
         ::rtidb::api::GeneralResponse* response,
         Closure* done) {
-    brpc::ClosureGuard done_guard(done);        
-    std::lock_guard<std::mutex> lock(mu_);
-    auto it = tables_.find(request->tid());
-    if (it == tables_.end()) {
-        response->set_code(100);
-        response->set_msg("table did not exist");
-        PDLOG(WARNING, "table tid %u did not exist.", request->tid());
-        return;
+    brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    std::map<uint32_t, std::shared_ptr<Table>> table_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = tables_.find(tid);
+        if (it == tables_.end()) {
+            response->set_code(100);
+            response->set_msg("table did not exist");
+            PDLOG(WARNING, "table tid %u did not exist.", tid);
+            return;
+        }
+        table_map = it->second;
     }
-    uint32_t tid = it->first;
-    for (auto pit = it->second.begin(); pit != it->second.end(); ++pit) {
+    bool is_repeated = false;
+    for (auto pit = table_map.begin(); pit != table_map.end(); ++pit) {
         uint32_t pid = pit->first;
         std::shared_ptr<Table> table = pit->second;
         //judge if field exists
+        bool repeated = false;
         std::string col_name = request->column_desc().name();
         for (const auto& column : table->GetTableMeta().column_desc()) {
             if (column.name() == col_name) {
                 response->set_code(323);
                 response->set_msg("field name repeated in tablet!");
                 PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
-                return;
+                is_repeated = true;
+                repeated = true;
             } 
         }
         for (const auto& column : table->GetTableMeta().added_column_desc()) {
@@ -1872,8 +1879,12 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
                 response->set_code(323);
                 response->set_msg("field name repeated in tablet!");
                 PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
-                return;
+                is_repeated = true;
+                repeated = true;
             } 
+        }
+        if (repeated) {
+            break;
         }
         ::rtidb::api::TableMeta table_meta;
         table_meta.CopyFrom(table->GetTableMeta());
@@ -1908,8 +1919,10 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
             return;
         }
     }
-    response->set_code(0);
-    response->set_msg("ok");
+    if (!is_repeated) {
+        response->set_code(0);
+        response->set_msg("ok");
+    }
 }
 
 void TabletImpl::GetTableStatus(RpcController* controller,

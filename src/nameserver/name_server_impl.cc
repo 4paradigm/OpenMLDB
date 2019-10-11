@@ -39,6 +39,7 @@ namespace rtidb {
 namespace nameserver {
 
 const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";
+const uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
 
 NameServerImpl::NameServerImpl():mu_(), tablets_(),
     table_info_(), zk_client_(NULL), dist_lock_(NULL), thread_pool_(1), 
@@ -2045,7 +2046,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
             return;
         }
         table_info = iter->second;
-        if (table_info->added_column_desc_size() == 63) {
+        if (table_info->added_column_desc_size() == MAX_ADD_TABLE_FIELD_COUNT) {
             response->set_code(324);
             response->set_msg("the count of adding field is more than 63");
             PDLOG(WARNING, "the count of adding field is more than 63 in table %s!", request->name().c_str());
@@ -2103,35 +2104,30 @@ void NameServerImpl::AddTableField(RpcController* controller,
             }
             tablet_client_map.insert(std::make_pair(endpoint, tablet_ptr->client_));
         }
-        //update tableMeta.schema
-        auto kv = table_info_.find(request->name());
-        if (kv == table_info_.end()) {
-            PDLOG(WARNING, "table_name %s did not exist.", request->name().c_str());
+    }
+    //update tableMeta.schema
+    std::vector<::rtidb::base::ColumnDesc> columns;
+    if (table_info->added_column_desc_size() > 0) {
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns, table_info->added_column_desc_size()) < 0) {
+            PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
             return;
         }
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = kv->second;
-        std::vector<::rtidb::base::ColumnDesc> columns;
-        if (table_info->added_column_desc_size() > 0) {
-            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns, table_info->added_column_desc_size()) < 0) {
-                PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
-                return;
-            }
-        } else {
-            if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-                PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
-                return;
-            }
-        }
-        ::rtidb::base::ColumnDesc column;
-        column.name = request->column_desc().name();
-        column.type = rtidb::base::SchemaCodec::ConvertType(request->column_desc().type());
-        columns.push_back(column);
-        ::rtidb::base::SchemaCodec codec;
-        if (!codec.Encode(columns, schema)) {
-            PDLOG(WARNING, "Fail to encode schema from columns in table %s!", request->name().c_str()) ;
+    } else {
+        if (::rtidb::base::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
+            PDLOG(WARNING, "convert table %s column desc failed", request->name().c_str());
             return;
         }
     }
+    ::rtidb::base::ColumnDesc column;
+    column.name = request->column_desc().name();
+    column.type = rtidb::base::SchemaCodec::ConvertType(request->column_desc().type());
+    columns.push_back(column);
+    ::rtidb::base::SchemaCodec codec;
+    if (!codec.Encode(columns, schema)) {
+        PDLOG(WARNING, "Fail to encode schema from columns in table %s!", request->name().c_str()) ;
+        return;
+    }
+
     uint32_t tid = table_info->tid();
     std::string msg;
     for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++ ){
@@ -2145,15 +2141,15 @@ void NameServerImpl::AddTableField(RpcController* controller,
         PDLOG(INFO, "update table_meta on endpoint[%s] for add table field succeeded!",
                 it->first.c_str());
     }
+    //update zk node
+    ::rtidb::nameserver::TableInfo table_info_zk;
+    table_info_zk.CopyFrom(*table_info);
+    ::rtidb::common::ColumnDesc* added_column_desc_zk = table_info_zk.add_added_column_desc();
+    added_column_desc_zk->CopyFrom(request->column_desc());
+    std::string table_value;
+    table_info_zk.SerializeToString(&table_value);
     {
         std::lock_guard<std::mutex> lock(mu_);
-        //update zk node
-        ::rtidb::nameserver::TableInfo table_info_zk;
-        table_info_zk.CopyFrom(*table_info);
-        ::rtidb::common::ColumnDesc* added_column_desc_zk = table_info_zk.add_added_column_desc();
-        added_column_desc_zk->CopyFrom(request->column_desc());
-        std::string table_value;
-        table_info_zk.SerializeToString(&table_value);
         if (!zk_client_->SetNodeValue(zk_table_data_path_ + "/" + table_info_zk.name(), table_value)) {
             response->set_code(304);
             response->set_msg("set zk failed!");

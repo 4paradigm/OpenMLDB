@@ -1547,8 +1547,8 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
                 if (!has_ts_col) {
                     row.push_back(std::to_string(it->GetKey()));
                 } 
-                const char* str;
-                uint32_t str_size;
+                const char* str = NULL;
+                uint32_t str_size = 0;
                 if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                     std::string uncompressed;
                     ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &uncompressed);
@@ -3448,8 +3448,8 @@ void HandleClientPreview(const std::vector<std::string>& parts, ::rtidb::client:
                 delete it;
                 return;
             }
-            const char* str;
-            uint32_t str_size;
+            const char* str = NULL;
+            uint32_t str_size = 0;
             if (table_meta.compress_type() == ::rtidb::api::kSnappy) {
                 std::string uncompressed;
                 ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &uncompressed);
