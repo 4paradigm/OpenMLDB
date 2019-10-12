@@ -1,6 +1,6 @@
 image: develop-registry.4pd.io/centos6_gcc7_rtidb_build:0.0.7
 stages:
-#    - build
+    - build
 #    - ut
 #    - it-tablet
 #    - it-ns
