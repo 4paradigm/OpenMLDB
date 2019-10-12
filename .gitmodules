@@ -1,3 +1,0 @@
-[submodule "rtidb-auto-test"]
-	path = rtidb-auto-test
-	url = git@gitlab.4pd.io:FeatureEngineering/rtidb-auto-test.git
