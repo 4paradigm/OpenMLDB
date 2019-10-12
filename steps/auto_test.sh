@@ -18,12 +18,16 @@ netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs ki
 
 sleep 5
 
+echo "AAAA"
+
 cd onebox && sh start_onebox.sh && cd $ROOT_DIR
 sleep 3
 
 cd $ROOT_DIR/java
 rtidb_version=`cat pom.xml| grep version | head -n 1 | sed -n 's/<version>\(.*\)<\/version>/\1/p'`
 mvn clean install -Dmaven.test.skip=true
+
+echo "BBB"
 
 cd $ROOT_DIR
 source /root/.bashrc && rm -rf rtidb-auto-test; git checkout .; git submodule init; git submodule update

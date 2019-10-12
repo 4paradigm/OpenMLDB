@@ -21,7 +21,7 @@ integration-test:
     script:
         - ln -sf /usr/workdir/thirdparty thirdparty
         - ln -sf /usr/workdir/thirdsrc thirdsrc
-        - source /root/.bashrc && sh steps/auto_test.sh
+        - source /root/.bashrc && bash steps/auto_test.sh
     artifacts:
         reports:
             junit:
