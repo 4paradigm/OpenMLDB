@@ -315,8 +315,11 @@ public class TableSyncClientTest extends TestCaseBase {
             ok = tableSyncClient.put(name, new Object[] {"card1", 3.1d, new DateTime(now-2000)});
             Assert.assertTrue(ok);
             Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, 0l));
-            Assert.assertEquals(1, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 1000));
-            Assert.assertEquals(2, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 2000));
+            Assert.assertEquals(1, tableSyncClient.count(name, "card1", "card", "ts", true, now, now - 1000));
+            Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 1000));
+            Assert.assertEquals(1, tableSyncClient.count(name, "card1", "card", "ts", true, now, now - 1000));
+            Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 2000));
+            Assert.assertEquals(2, tableSyncClient.count(name, "card1", "card", "ts", true, now, now - 2000));
         }catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
@@ -774,14 +777,24 @@ public class TableSyncClientTest extends TestCaseBase {
                Assert.assertTrue(ok);
            }
            int count = tableSyncClient.count(name, k1,"card", 10, 9);
+           Assert.assertEquals(9, count);
+           count = tableSyncClient.count(name, k1,"card", null,true, 10, 9);
            Assert.assertEquals(0, count);
            count = tableSyncClient.count(name, k1,"card", 10, 8);
+           Assert.assertEquals(9, count);
+           count = tableSyncClient.count(name, k1,"card", null, true,10, 8);
            Assert.assertEquals(1, count);
-           count = tableSyncClient.count(name, k1,"card", 10, 7);
+           count = tableSyncClient.count(name, k1,"card", null, true,10, 7);
            Assert.assertEquals(2, count);
        } catch (Exception e) {
            e.printStackTrace();
            Assert.fail();
+       }
+       try {
+           int cnt = tableSyncClient.count(name, "k1","card", null, true,7, 10);
+           Assert.fail();
+       } catch (Exception e) {
+           Assert.assertTrue(true);
        } finally {
            nsc.dropTable(name);
        }
@@ -797,10 +810,13 @@ public class TableSyncClientTest extends TestCaseBase {
                 Assert.assertTrue(ok);
             }
             int count = tableSyncClient.count(name, key, 10, 9);
+            Assert.assertEquals(9, count);
+            count = tableSyncClient.count(name, key, null, null,true,10, 9);
             Assert.assertEquals(0, count);
-            count = tableSyncClient.count(name, key, 10, 8);
+            Assert.assertEquals(9, tableSyncClient.count(name, key, 10, 8));
+            count = tableSyncClient.count(name, key, null, null, true,10, 8);
             Assert.assertEquals(1, count);
-            count = tableSyncClient.count(name, key, 10, 7);
+            count = tableSyncClient.count(name, key, null, null, true,10, 7);
             Assert.assertEquals(2, count);
         } catch (Exception e) {
             e.printStackTrace();
