@@ -1,29 +1,31 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import com._4paradigm.rtidb.client.KvIterator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
-import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.common.Common;
+import org.joda.time.DateTime;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
+import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncClientTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(10000);
@@ -95,7 +97,25 @@ public class TableSyncClientTest extends TestCaseBase {
         client.refreshRouteTable();
         return name;
     }
-    
+
+
+    private String createTsSchemaTable() {
+        String name = String.valueOf(id.incrementAndGet());
+        nsc.dropTable(name);
+
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("amt").setType("double").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("ts").setIsTsCol(true).setType("timestamp").build();
+        Common.ColumnKey key = Common.ColumnKey.newBuilder().setIndexName("card").addColName("card").addTsName("ts").build();
+        TableInfo table = TableInfo.newBuilder()
+                .setSegCnt(8).setName(name).setTtl(0).addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnKey(key)
+                .build();
+        boolean ok = nsc.createTable(table);
+        Assert.assertTrue(ok);
+        client.refreshRouteTable();
+        return name;
+    }
+
     @Test
     public void testPut() {
         String name = createKvTable();
