@@ -225,7 +225,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         (('"0"', 'true'), ('"0"', 'true'), 'pid 0 has two leader'),
         (('"0-3"', 'true'), ('"2-4"', 'true'), 'pid 2 has two leader'),
         (('""', 'true'), ('"2-4"', 'true'), 'pid_group[] format error.'),
-        (('"0-4000"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
+        (('"0-10"', 'true'), ('"1"', 'false'), 'Create table ok'),  # RTIDB-238
         (('"0"', 'true'), (None, 'false'), 'table_partition[1].pid_group'),
         ((None, 'true'), ('"1-3"', 'false'), 'table_partition[0].pid_group'),
         (('None', 'true'), ('"1-3"', 'false'), 'table meta file format error'),
@@ -460,7 +460,10 @@ class TestCreateTableByNsClient(TestCaseBase):
                     type = i[2][1:-1]
                     self.assertEqual(schema[idx][2], type)
                     if i[3] == 'true':
-                        self.assertTrue(key in index_set)
+                        # self.assertTrue(key in index_set)
+                        self.assertEqual(schema[idx][3],"yes")
+                    else:
+                        self.assertEqual(schema[idx][3],"no")
                     idx += 1
         self.ns_drop(self.ns_leader, name)
 
@@ -581,6 +584,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     )
     @ddt.unpack
     def test_create_key_entry_max_height(self, exp_msg, height):
+        db_path='ssd_db'
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"{}"'.format(self.tname)
@@ -601,7 +605,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         if len(table_info) > 0:
             tid = table_info.keys()[0][1]
             for pid in range(3):
-                table_meta = self.get_table_meta(self.leaderpath, tid, pid)
+                table_meta = self.get_table_meta_no_db(self.leaderpath+ "/" + db_path, tid, pid)
                 self.assertEqual(table_meta['key_entry_max_height'], height)
         self.ns_drop(self.ns_leader, name)
     def test_create_pid_leader_distribute(self):
