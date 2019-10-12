@@ -460,7 +460,10 @@ class TestCreateTableByNsClient(TestCaseBase):
                     type = i[2][1:-1]
                     self.assertEqual(schema[idx][2], type)
                     if i[3] == 'true':
-                        self.assertTrue(key in index_set)
+                        # self.assertTrue(key in index_set)
+                        self.assertEqual(schema[idx][3],"yes")
+                    else:
+                        self.assertEqual(schema[idx][3],"no")
                     idx += 1
         self.ns_drop(self.ns_leader, name)
 
