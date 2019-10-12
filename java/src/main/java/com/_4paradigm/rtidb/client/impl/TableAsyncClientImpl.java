@@ -19,10 +19,7 @@ import io.brpc.client.RpcCallback;
 import rtidb.api.TabletServer;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Future;
 
 public class TableAsyncClientImpl implements TableAsyncClient {
@@ -41,7 +38,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with id " + tid);
         }
         if (tableHandler.getPartitions().length <= pid) {
-            throw new TabletException("fail to find partition with pid "+ pid +" from table " +tableHandler.getTableInfo().getName());
+            throw new TabletException("fail to find partition with pid " + pid + " from table " + tableHandler.getTableInfo().getName());
         }
         if (row == null) {
             throw new TabletException("putting data is null");
@@ -71,7 +68,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with id " + tid);
         }
         if (th.getPartitions().length <= pid) {
-            throw new TabletException("fail to find partition with pid "+ pid +" from table " +th.getTableInfo().getName());
+            throw new TabletException("fail to find partition with pid " + pid + " from table " + th.getTableInfo().getName());
         }
         return put(tid, pid, key, time, bytes, th);
     }
@@ -88,7 +85,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with name " + name);
         }
         if (!th.getSchema().isEmpty()) {
-            throw new TabletException("fail to put the schema table "+ th.getTableInfo().getName()+" in the way of putting kv table");
+            throw new TabletException("fail to put the schema table " + th.getTableInfo().getName() + " in the way of putting kv table");
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
@@ -142,6 +139,13 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         if (row == null) {
             throw new TabletException("putting data is null");
+        }
+        if (row.length > th.getSchema().size()) {
+            if (th.getSchemaMap().size() > 0) {
+                row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
+            } else {
+                row = Arrays.copyOf(row, th.getSchema().size());
+            }
         }
         List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
         return put(name, 0, row, tsDimensions);
@@ -197,7 +201,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with id " + tid);
         }
-        return get(tid, pid, key, idxName, time, null, null, 0l, null ,th);
+        return get(tid, pid, key, idxName, time, null, null, 0l, null, th);
     }
 
     @Override
@@ -252,7 +256,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
-        return scan(name, key, null, st, et, null,0);
+        return scan(name, key, null, st, et, null, 0);
     }
 
     @Override
@@ -323,7 +327,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, key, idxName, time, null, null,0l, null, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, null, null, 0l, null, th);
     }
 
     @Override
@@ -336,7 +340,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return get(name, key, idxName, 0l);
     }
 
-    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException{
+    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
         return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), th);
     }
 
@@ -355,6 +359,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     /**
      * validate key
      * rewrite key if rtidb client config set isHandleNull {@code true}
+     *
      * @param key
      * @return
      * @throws TabletException if key is null or empty
@@ -430,7 +435,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         builder.setKey(key);
         builder.setTs(time);
         builder.setEt(endtime);
-        if (type != null)  builder.setType(type);
+        if (type != null) builder.setType(type);
         if (etType != null) builder.setEtType(etType);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
@@ -612,7 +617,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type,0l, null, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, 0l, null, th);
     }
 
     @Override

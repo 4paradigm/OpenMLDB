@@ -171,6 +171,43 @@ public class TableAsyncClientTest extends TestCaseBase {
             PutFuture pf = tableAsyncClient.put(name, data);
             Assert.assertTrue(pf.get());
 
+            //for col_size > schema_size
+            data.clear();
+            data.put("card", "card01");
+            data.put("mcc", "mcc01");
+            data.put("amt", 1.5);
+            data.put("ts", 1111l);
+            data.put("ts_1", 111l);
+            data.put("aa", "aa0");
+            pf = tableAsyncClient.put(name, data);
+            Assert.assertTrue(pf.get());
+            GetFuture gf = tableAsyncClient.get(name, "card01", "card", 1111l, "ts", null);
+            Object[] row = gf.getRow();
+            Assert.assertEquals(row[0], "card01");
+            Assert.assertEquals(row[1], "mcc01");
+            Assert.assertEquals(row[2], 1.5);
+            Assert.assertEquals(row[3], 1111l);
+            Assert.assertEquals(row[4], 111l);
+            pf = tableAsyncClient.put(name, new Object[]{"card01", "mcc01", 1.5, 1111l, 111l});
+            Assert.assertTrue(pf.get());
+            gf = tableAsyncClient.get(name, "card01", "card", 1111l, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals(row[0], "card01");
+            Assert.assertEquals(row[1], "mcc01");
+            Assert.assertEquals(row[2], 1.5);
+            Assert.assertEquals(row[3], 1111l);
+            Assert.assertEquals(row[4], 111l);
+            pf = tableAsyncClient.put(name, new Object[]{"card01", "mcc01", 1.5, 1111l, 111l, 111});
+            Assert.assertTrue(pf.get());
+            gf = tableAsyncClient.get(name, "card01", "card", 1111l, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals(row[0], "card01");
+            Assert.assertEquals(row[1], "mcc01");
+            Assert.assertEquals(row[2], 1.5);
+            Assert.assertEquals(row[3], 1111l);
+            Assert.assertEquals(row[4], 111l);
+            Assert.assertTrue(pf.get());
+
             ok = nsc.AddTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
@@ -195,14 +232,51 @@ public class TableAsyncClientTest extends TestCaseBase {
             pf = tableAsyncClient.put(name, data);
             Assert.assertTrue(pf.get());
 
-            GetFuture gf = tableAsyncClient.get(name, "card0", "card", 1236l, "ts", null);
-            Object[] row = gf.getRow();
+            gf = tableAsyncClient.get(name, "card0", "card", 1236l, "ts", null);
+            row = gf.getRow();
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc1");
             Assert.assertEquals(row[2], 1.7);
             Assert.assertEquals(row[3], 1236l);
             Assert.assertEquals(row[4], 444l);
             Assert.assertEquals(row[5], null);
+
+            //for col_size > schema_size
+            data.clear();
+            data.put("card", "card01");
+            data.put("mcc", "mcc01");
+            data.put("amt", 1.5);
+            data.put("ts", 1111l);
+            data.put("ts_1", 111l);
+            data.put("aa", "aa0");
+            data.put("bb", "bb0");
+            pf = tableAsyncClient.put(name, data);
+            Assert.assertTrue(pf.get());
+            gf = tableAsyncClient.get(name, "card01", "card", 1111l, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals(row[0], "card01");
+            Assert.assertEquals(row[1], "mcc01");
+            Assert.assertEquals(row[2], 1.5);
+            Assert.assertEquals(row[3], 1111l);
+            Assert.assertEquals(row[4], 111l);
+            pf = tableAsyncClient.put(name, new Object[]{"card02", "mcc02", 1.5, 1111l, 111l, "aa", 111});
+            Assert.assertTrue(pf.get());
+            gf = tableAsyncClient.get(name, "card02", "card", 1111l, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals(row[0], "card02");
+            Assert.assertEquals(row[1], "mcc02");
+            Assert.assertEquals(row[2], 1.5);
+            Assert.assertEquals(row[3], 1111l);
+            Assert.assertEquals(row[4], 111l);
+            pf = tableAsyncClient.put(name, new Object[]{"card01", "mcc01", 1.5, 1111l, 111l, "aa", 111});
+            Assert.assertTrue(pf.get());
+            gf = tableAsyncClient.get(name, "card01", "card", 1111l, "ts", null);
+            row = gf.getRow();
+            Assert.assertEquals(row[0], "card01");
+            Assert.assertEquals(row[1], "mcc01");
+            Assert.assertEquals(row[2], 1.5);
+            Assert.assertEquals(row[3], 1111l);
+            Assert.assertEquals(row[4], 111l);
 
             ScanFuture sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             KvIterator it = sf.get();

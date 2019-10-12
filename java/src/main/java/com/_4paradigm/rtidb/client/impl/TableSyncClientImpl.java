@@ -18,10 +18,7 @@ import com.google.protobuf.ByteString;
 import rtidb.api.TabletServer;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 public class TableSyncClientImpl implements TableSyncClient {
@@ -741,6 +738,13 @@ public class TableSyncClientImpl implements TableSyncClient {
         TableHandler th = client.getHandler(name);
         if (th == null) {
             throw new TabletException("no table with name " + name);
+        }
+        if (row.length > th.getSchema().size()) {
+            if (th.getSchemaMap().size() > 0) {
+                row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
+            } else {
+                row = Arrays.copyOf(row, th.getSchema().size());
+            }
         }
         List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
         return put(name, 0, row, tsDimensions);
