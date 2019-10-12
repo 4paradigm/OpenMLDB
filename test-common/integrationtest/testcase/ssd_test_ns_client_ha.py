@@ -84,7 +84,7 @@ class TestNameserverHa(TestCaseBase):
             8: 'self.connectzk(self.ns_leader, "ns_client")',
             9: 'self.get_new_ns_leader()',
             10: 'None',
-            12: 'self.assertEqual(self.get_manifest(self.leaderpath, self.tid, self.pid)["offset"], "3510")',
+            12: 'self.assertEqual(self.get_manifest_by_realpath(self.leaderpat+"/ssd_db", self.tid, self.pid)["offset"], "3510")',   #self.get_manifest_by_realpath(self.leaderpath + "/" + db_path, tid, pid)
             13: 'self.assertEqual("15", self.get_table_status(self.slave1, self.tid, self.pid)[0])',
             14: 'self.assertIn("drop ok", self.ns_drop(self.ns_leader, self.tname))',
             15: 'self.assertFalse(self.showtable(self.ns_leader) is {})',
