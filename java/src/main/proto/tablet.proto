@@ -294,12 +294,18 @@ message TableMeta {
     repeated rtidb.common.ColumnDesc column_desc = 15;
     repeated rtidb.common.ColumnKey column_key = 16;
     optional rtidb.common.StorageMode storage_mode = 17 [default = kMemory];
+    repeated rtidb.common.ColumnDesc added_column_desc = 18;
 }
 
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
 }
 
+message UpdateTableMetaForAddFieldRequest {
+    optional uint32 tid = 1;
+    optional rtidb.common.ColumnDesc column_desc = 2;
+    optional string schema = 3;
+}
 message CreateTableResponse {
 	optional int32 code = 1;
 	optional string msg = 2;
@@ -496,12 +502,12 @@ message CountRequest {
     optional string key = 4;
     optional bool filter_expired_data = 5 [default = false];
     optional string ts_name = 6;
-    optional uint64 st = 7;
-    optional GetType st_type = 8 [default = kSubKeyLe];
-    optional uint64 et = 9;
-    optional GetType et_type = 10 [default = kSubKeyGt];
-    optional bool enable_remove_duplicated_record = 11 [default=false];
-} 
+    optional bool enable_remove_duplicated_record = 7 [default=false];
+    optional uint64 st = 8 [default = 0];
+    optional GetType st_type = 9 [default = kSubKeyLe];
+    optional uint64 et = 10 [default = 0];
+    optional GetType et_type = 11 [default = kSubKeyGt];
+}
 
 message CountResponse {
     optional int32 code = 1;
@@ -614,4 +620,5 @@ service TabletServer {
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+    rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
 }

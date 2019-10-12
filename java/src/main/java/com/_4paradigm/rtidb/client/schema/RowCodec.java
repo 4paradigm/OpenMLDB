@@ -24,7 +24,7 @@ public class RowCodec {
     }
 
     public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema, int modifyTimes) throws TabletException {
-        if (row.length != schema.size()) {
+        if (row.length < schema.size()) {
             throw new TabletException("row length mismatch schema");
         }
 
@@ -245,8 +245,8 @@ public class RowCodec {
     }
 
     //for adding field
-    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, int addFieldSize) throws TabletException {
-        Object[] row = new Object[schema.size() + addFieldSize];
+    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, int modifytimes) throws TabletException {
+        Object[] row = new Object[schema.size() + modifytimes];
         decode(buffer, schema, row, 0, row.length);
         return row;
     }

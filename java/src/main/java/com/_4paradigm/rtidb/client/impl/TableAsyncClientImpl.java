@@ -19,10 +19,7 @@ import io.brpc.client.RpcCallback;
 import rtidb.api.TabletServer;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Future;
 
 public class TableAsyncClientImpl implements TableAsyncClient {
@@ -41,7 +38,10 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with id " + tid);
         }
         if (tableHandler.getPartitions().length <= pid) {
-            throw new TabletException("fail to find partition with pid "+ pid +" from table " +tableHandler.getTableInfo().getName());
+            throw new TabletException("fail to find partition with pid " + pid + " from table " + tableHandler.getTableInfo().getName());
+        }
+        if (row == null) {
+            throw new TabletException("putting data is null");
         }
         List<Tablet.Dimension> dimList = TableClientCommon.fillTabletDimension(row, tableHandler, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
@@ -49,7 +49,14 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             buffer = RowCodec.encode(row, tableHandler.getSchema());
         } else {
             List<ColumnDesc> columnDescs = tableHandler.getSchemaMap().get(row.length);
-            buffer = RowCodec.encode(row, columnDescs, row.length - tableHandler.getSchema().size());
+            if (columnDescs == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
+            int modifyTimes = row.length - tableHandler.getSchema().size();
+            if (row.length > tableHandler.getSchema().size() + tableHandler.getSchemaMap().size()) {
+                modifyTimes = tableHandler.getSchemaMap().size();
+            }
+            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         return put(tid, pid, null, time, dimList, buffer, tableHandler);
     }
@@ -61,7 +68,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with id " + tid);
         }
         if (th.getPartitions().length <= pid) {
-            throw new TabletException("fail to find partition with pid "+ pid +" from table " +th.getTableInfo().getName());
+            throw new TabletException("fail to find partition with pid " + pid + " from table " + th.getTableInfo().getName());
         }
         return put(tid, pid, key, time, bytes, th);
     }
@@ -78,7 +85,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("fail to find table with name " + name);
         }
         if (!th.getSchema().isEmpty()) {
-            throw new TabletException("fail to put the schema table "+ th.getTableInfo().getName()+" in the way of putting kv table");
+            throw new TabletException("fail to put the schema table " + th.getTableInfo().getName() + " in the way of putting kv table");
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
@@ -95,6 +102,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
@@ -104,7 +114,11 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             if (columnDescs == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            buffer = RowCodec.encode(row, columnDescs, row.length - th.getSchema().size());
+            int modifyTimes = row.length - th.getSchema().size();
+            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                modifyTimes = th.getSchemaMap().size();
+            }
+            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
@@ -123,6 +137,16 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
+        if (row.length > th.getSchema().size()) {
+            if (th.getSchemaMap().size() > 0) {
+                row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
+            } else {
+                row = Arrays.copyOf(row, th.getSchema().size());
+            }
+        }
         List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
         return put(name, 0, row, tsDimensions);
     }
@@ -133,8 +157,20 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
-        Object[] arrayRow = new Object[row.size()];
+        Object[] arrayRow = null;
+        if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
+                arrayRow = new Object[th.getSchema().size() + th.getSchemaMap().size()];
+            } else {
+                arrayRow = new Object[row.size()];
+            }
+        } else {
+            arrayRow = new Object[th.getSchema().size()];
+        }
         TableClientCommon.parseMapInput(row, th, arrayRow, tsDimensions);
         return put(name, 0, arrayRow, tsDimensions);
     }
@@ -165,7 +201,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with id " + tid);
         }
-        return get(tid, pid, key, idxName, time, null, null, 0l, null ,th);
+        return get(tid, pid, key, idxName, time, null, null, 0l, null, th);
     }
 
     @Override
@@ -220,7 +256,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
     @Override
     public ScanFuture scan(String name, String key, long st, long et) throws TabletException {
-        return scan(name, key, null, st, et, null,0);
+        return scan(name, key, null, st, et, null, 0);
     }
 
     @Override
@@ -291,7 +327,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, key, idxName, time, null, null,0l, null, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, null, null, 0l, null, th);
     }
 
     @Override
@@ -304,7 +340,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         return get(name, key, idxName, 0l);
     }
 
-    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException{
+    private PutFuture put(int tid, int pid, String key, long time, byte[] bytes, TableHandler th) throws TabletException {
         return put(tid, pid, key, time, null, ByteBuffer.wrap(bytes), th);
     }
 
@@ -323,6 +359,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
     /**
      * validate key
      * rewrite key if rtidb client config set isHandleNull {@code true}
+     *
      * @param key
      * @return
      * @throws TabletException if key is null or empty
@@ -398,7 +435,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         builder.setKey(key);
         builder.setTs(time);
         builder.setEt(endtime);
-        if (type != null)  builder.setType(type);
+        if (type != null) builder.setType(type);
         if (etType != null) builder.setEtType(etType);
         if (idxName != null && !idxName.isEmpty()) {
             builder.setIdxName(idxName);
@@ -491,11 +528,19 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         Object[] arrayRow = null;
-        if (row.size() > th.getSchema().size()) {
-            arrayRow = new Object[row.size()];
-            for (int i = 0; i < th.getSchemaMap().get(row.size()).size(); i++) {
-                arrayRow[i] = row.get(th.getSchemaMap().get(row.size()).get(i).getName());
+        if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            int columnSize = row.size();
+            if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
+                columnSize = th.getSchema().size() + th.getSchemaMap().size();
+            }
+            arrayRow = new Object[columnSize];
+            List<ColumnDesc> schema = th.getSchemaMap().get(columnSize);
+            for (int i = 0; i < schema.size(); i++) {
+                arrayRow[i] = row.get(schema.get(i).getName());
             }
         } else {
             arrayRow = new Object[th.getSchema().size()];
@@ -521,11 +566,19 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
+        if (row == null) {
+            throw new TabletException("putting data is null");
+        }
         Object[] arrayRow = null;
-        if (row.size() > th.getSchema().size()) {
-            arrayRow = new Object[row.size()];
-            for (int i = 0; i < th.getSchemaMap().get(row.size()).size(); i++) {
-                arrayRow[i] = row.get(th.getSchemaMap().get(row.size()).get(i).getName());
+        if (row.size() > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            int columnSize = row.size();
+            if (row.size() > th.getSchema().size() + th.getSchemaMap().size()) {
+                columnSize = th.getSchema().size() + th.getSchemaMap().size();
+            }
+            arrayRow = new Object[columnSize];
+            List<ColumnDesc> schema = th.getSchemaMap().get(columnSize);
+            for (int i = 0; i < schema.size(); i++) {
+                arrayRow[i] = row.get(schema.get(i).getName());
             }
         } else {
             arrayRow = new Object[th.getSchema().size()];
@@ -564,7 +617,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
 
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type,0l, null, th);
+        return get(th.getTableInfo().getTid(), pid, key, idxName, time, tsName, type, 0l, null, th);
     }
 
     @Override
