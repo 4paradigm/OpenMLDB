@@ -284,6 +284,30 @@ public class TableSyncClientTest extends TestCaseBase {
     }
 
     @Test
+    public void testTsCountSchema() {
+        String name = createTsSchemaTable();
+        try{
+            long now = System.currentTimeMillis();
+            boolean ok = tableSyncClient.put(name, new Object[] {"card1", 1.1d, new DateTime(now)});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, new Object[] {"card1", 2.1d, new DateTime(now-1000)});
+            Assert.assertTrue(ok);
+            ok = tableSyncClient.put(name, new Object[] {"card1", 3.1d, new DateTime(now-2000)});
+            Assert.assertTrue(ok);
+            Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, 0l));
+            Assert.assertEquals(1, tableSyncClient.count(name, "card1", "card", "ts", true, now, now - 1000));
+            Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 1000));
+            Assert.assertEquals(1, tableSyncClient.count(name, "card1", "card", "ts", true, now, now - 1000));
+            Assert.assertEquals(3, tableSyncClient.count(name, "card1", "card", "ts",  now, now - 2000));
+            Assert.assertEquals(2, tableSyncClient.count(name, "card1", "card", "ts", true, now, now - 2000));
+        }catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+    @Test
     public void testCountSchema() {
         String name = createSchemaTable();
         try {
@@ -967,6 +991,66 @@ public class TableSyncClientTest extends TestCaseBase {
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(true);
+        } finally {
+            nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testCountSchemaTable() {
+       String name = createSchemaTable();
+       try {
+           String k1 = "k1";
+           String k2 = "k2";
+           for (int i = 1; i < 10; i++) {
+               boolean ok  = tableSyncClient.put(name, i, new Object[]{k1, k2, 1.0});
+               Assert.assertTrue(ok);
+           }
+           int count = tableSyncClient.count(name, k1,"card", 10, 9);
+           Assert.assertEquals(9, count);
+           count = tableSyncClient.count(name, k1,"card", null,true, 10, 9);
+           Assert.assertEquals(0, count);
+           count = tableSyncClient.count(name, k1,"card", 10, 8);
+           Assert.assertEquals(9, count);
+           count = tableSyncClient.count(name, k1,"card", null, true,10, 8);
+           Assert.assertEquals(1, count);
+           count = tableSyncClient.count(name, k1,"card", null, true,10, 7);
+           Assert.assertEquals(2, count);
+       } catch (Exception e) {
+           e.printStackTrace();
+           Assert.fail();
+       }
+       try {
+           int cnt = tableSyncClient.count(name, "k1","card", null, true,7, 10);
+           Assert.fail();
+       } catch (Exception e) {
+           Assert.assertTrue(true);
+       } finally {
+           nsc.dropTable(name);
+       }
+    }
+
+    @Test
+    public void testCountKvTable() {
+        String name = createKvTable();
+        try {
+            String key  = "k1";
+            for (int i = 1; i < 10; i++) {
+                boolean ok = tableSyncClient.put(name, key, i, String.valueOf(i));
+                Assert.assertTrue(ok);
+            }
+            int count = tableSyncClient.count(name, key, 10, 9);
+            Assert.assertEquals(9, count);
+            count = tableSyncClient.count(name, key, null, null,true,10, 9);
+            Assert.assertEquals(0, count);
+            Assert.assertEquals(9, tableSyncClient.count(name, key, 10, 8));
+            count = tableSyncClient.count(name, key, null, null, true,10, 8);
+            Assert.assertEquals(1, count);
+            count = tableSyncClient.count(name, key, null, null, true,10, 7);
+            Assert.assertEquals(2, count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
         } finally {
             nsc.dropTable(name);
         }
