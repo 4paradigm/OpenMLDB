@@ -581,6 +581,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     )
     @ddt.unpack
     def test_create_key_entry_max_height(self, exp_msg, height):
+        db_path='ssd_db'
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"{}"'.format(self.tname)
@@ -601,7 +602,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         if len(table_info) > 0:
             tid = table_info.keys()[0][1]
             for pid in range(3):
-                table_meta = self.get_table_meta(self.leaderpath, tid, pid)
+                table_meta = self.get_table_meta(self.leaderpath+ "/" + db_path, tid, pid)
                 self.assertEqual(table_meta['key_entry_max_height'], height)
         self.ns_drop(self.ns_leader, name)
     def test_create_pid_leader_distribute(self):
