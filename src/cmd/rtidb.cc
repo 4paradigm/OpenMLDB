@@ -1610,7 +1610,7 @@ void HandleNSAddTableField(const std::vector<std::string>& parts, ::rtidb::clien
         return;
     }
     if (tables.empty()) {
-        printf("add table field failed! table %s is not exist\n", parts[1].c_str());
+        printf("add table field failed! table %s doesn`t exist\n", parts[1].c_str());
         return;
     }
     ::rtidb::common::ColumnDesc column_desc;
@@ -2249,6 +2249,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
         printf("settablepartition - update partition info\n");
         printf("setttl - set table ttl\n");
         printf("updatetablealive - update table alive status\n");
+        printf("addtablefield - add field to the schema table \n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");

@@ -2041,8 +2041,8 @@ void NameServerImpl::AddTableField(RpcController* controller,
         auto iter = table_info_.find(request->name());
         if (iter == table_info_.end()) {
             response->set_code(100);
-            response->set_msg("table is not exist!");
-            PDLOG(WARNING, "table[%s] is not exist!", request->name().c_str());
+            response->set_msg("table doesn`t exist!");
+            PDLOG(WARNING, "table[%s] is doesn`t exist!", request->name().c_str());
             return;
         }
         table_info = iter->second;

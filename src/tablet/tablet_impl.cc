@@ -1852,8 +1852,8 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         auto it = tables_.find(tid);
         if (it == tables_.end()) {
             response->set_code(100);
-            response->set_msg("table did not exist");
-            PDLOG(WARNING, "table tid %u did not exist.", tid);
+            response->set_msg("table doesn`t exist");
+            PDLOG(WARNING, "table tid %u doesn`t exist.", tid);
             return;
         }
         table_map = it->second;
@@ -1903,7 +1903,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         std::string db_path = db_root_path + "/" + std::to_string(tid) + 
             "_" + std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
-            PDLOG(WARNING, "table db path is not exist. tid %u, pid %u", tid, pid);
+            PDLOG(WARNING, "table db path doesn`t exist. tid %u, pid %u", tid, pid);
             response->set_code(130);
             response->set_msg("table db path is not exist");
             return;
