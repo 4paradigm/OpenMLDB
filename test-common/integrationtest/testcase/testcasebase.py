@@ -172,6 +172,21 @@ class TestCaseBase(unittest.TestCase):
         return TestCaseBase.get_manifest_by_realpath(realpath, tid, pid)
 
     @staticmethod
+    def get_table_meta_no_db(nodepath, tid, pid):
+        table_meta_dict = {}
+        with open('{}/{}_{}/table_meta.txt'.format(nodepath, tid, pid)) as f:
+            for l in f:
+                if 'tid: ' in l:
+                    table_meta_dict['tid'] = l.split(':')[1].strip()
+                elif 'name: ' in l:
+                    table_meta_dict['name'] = l.split(':')[1][2:-2].strip()
+                elif 'compress_type: ' in l:
+                    table_meta_dict['compress_type'] = l.split(':')[1].strip()
+                elif 'key_entry_max_height: ' in l:
+                    table_meta_dict['key_entry_max_height'] = l.split(':')[1].strip()
+        return table_meta_dict
+
+    @staticmethod
     def get_table_meta(nodepath, tid, pid):
         table_meta_dict = {}
         with open('{}/db/{}_{}/table_meta.txt'.format(nodepath, tid, pid)) as f:

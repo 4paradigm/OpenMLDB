@@ -602,7 +602,7 @@ class TestCreateTableByNsClient(TestCaseBase):
         if len(table_info) > 0:
             tid = table_info.keys()[0][1]
             for pid in range(3):
-                table_meta = self.get_table_meta(self.leaderpath+ "/" + db_path, tid, pid)
+                table_meta = self.get_table_meta_no_db(self.leaderpath+ "/" + db_path, tid, pid)
                 self.assertEqual(table_meta['key_entry_max_height'], height)
         self.ns_drop(self.ns_leader, name)
     def test_create_pid_leader_distribute(self):
