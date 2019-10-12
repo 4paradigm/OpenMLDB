@@ -1329,6 +1329,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::rtidb::client::NsClie
                 std::vector<::rtidb::base::ColumnDesc> base_columns;
                 if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], base_columns) < 0) {
                     std::cout << "convert table column desc failed" << std::endl;
+                    delete it;
                     return;
                 }
                 ::rtidb::base::ShowTableRows(base_columns, columns, it, tables[0].compress_type());
@@ -1564,6 +1565,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::rtidb::client::NsC
                     std::vector<::rtidb::base::ColumnDesc> base_columns;
                     if (::rtidb::base::SchemaCodec::ConvertColumnDesc(tables[0], base_columns) < 0) {
                         std::cout << "convert table column desc failed" << std::endl;
+                        delete it;
                         return;
                     }
                     ::rtidb::base::FillTableRow(columns.size(), base_columns, str, str_size, row); 
@@ -2413,6 +2415,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts, ::rtidb::client::
             printf("usage: updatetablealive table_name pid endppoint is_alive\n");
             printf("ex: updatetablealive t1 * 172.27.2.52:9991 no\n");
             printf("ex: updatetablealive t1 0 172.27.2.52:9991 no\n");
+        } else if (parts[1] == "addtablefield") {
+            printf("desc: add table field (max adding field count is 63)\n");
+            printf("usage: addtablefield table_name col_name col_type\n");
+            printf("ex: addtablefield test card string\n");
+            printf("ex: addtablefield test money float\n");
         } else {
             printf("unsupport cmd %s\n", parts[1].c_str());
         }
@@ -4005,9 +4012,9 @@ void HandleClientSGet(const std::vector<std::string>& parts,
     if (table_meta.added_column_desc_size() == 0) {
         ::rtidb::base::FillTableRow(raw, value.c_str(), value.size(), row);
     } else {
-        std::vector<::rtidb::base::ColumnDesc> columns_tmp = raw;
-        for (int i = 0; i < (int)(table_meta.added_column_desc_size()); i++) {
-            columns_tmp.pop_back();
+        std::vector<::rtidb::base::ColumnDesc> columns_tmp;
+        for (int i = 0 ; i < (int)(raw.size() - table_meta.added_column_desc_size()); i++) {
+            columns_tmp.push_back(raw.at(i));
         }
         ::rtidb::base::FillTableRow(raw.size(), columns_tmp, value.c_str(), value.size(), row); 
     }
@@ -4129,9 +4136,9 @@ void HandleClientSScan(const std::vector<std::string>& parts, ::rtidb::client::T
         if (table_meta.added_column_desc_size() == 0) {
             ::rtidb::base::ShowTableRows(raw, it, compress_type);
         } else {
-            std::vector<::rtidb::base::ColumnDesc> columns_tmp = raw;
-            for (int i = 0; i < (int)(table_meta.added_column_desc_size()); i++) {
-                columns_tmp.pop_back();
+            std::vector<::rtidb::base::ColumnDesc> columns_tmp;
+            for (int i = 0 ; i < (int)(raw.size() - table_meta.added_column_desc_size()); i++) {
+                columns_tmp.push_back(raw.at(i));
             }
             ::rtidb::base::ShowTableRows(columns_tmp, raw, it, compress_type);
         }

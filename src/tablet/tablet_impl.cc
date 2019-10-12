@@ -1858,7 +1858,6 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         }
         table_map = it->second;
     }
-    bool is_repeated = false;
     for (auto pit = table_map.begin(); pit != table_map.end(); ++pit) {
         uint32_t pid = pit->first;
         std::shared_ptr<Table> table = pit->second;
@@ -1867,24 +1866,22 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         std::string col_name = request->column_desc().name();
         for (const auto& column : table->GetTableMeta().column_desc()) {
             if (column.name() == col_name) {
-                response->set_code(323);
-                response->set_msg("field name repeated in tablet!");
                 PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
-                is_repeated = true;
                 repeated = true;
+                break;
             } 
         }
-        for (const auto& column : table->GetTableMeta().added_column_desc()) {
-            if (column.name() == col_name) {
-                response->set_code(323);
-                response->set_msg("field name repeated in tablet!");
-                PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
-                is_repeated = true;
-                repeated = true;
-            } 
+        if (!repeated) {
+            for (const auto& column : table->GetTableMeta().added_column_desc()) {
+                if (column.name() == col_name) {
+                    PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
+                    repeated = true;
+                    break;
+                } 
+            }
         }
         if (repeated) {
-            break;
+            continue;
         }
         ::rtidb::api::TableMeta table_meta;
         table_meta.CopyFrom(table->GetTableMeta());
@@ -1919,10 +1916,8 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
             return;
         }
     }
-    if (!is_repeated) {
-        response->set_code(0);
-        response->set_msg("ok");
-    }
+    response->set_code(0);
+    response->set_msg("ok");
 }
 
 void TabletImpl::GetTableStatus(RpcController* controller,
