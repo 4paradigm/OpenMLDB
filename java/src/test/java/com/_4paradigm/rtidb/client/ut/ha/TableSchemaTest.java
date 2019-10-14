@@ -1,31 +1,26 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
+import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.common.Common;
+import com._4paradigm.rtidb.ns.NS.ColumnDesc;
+import com._4paradigm.rtidb.ns.NS.PartitionMeta;
+import com._4paradigm.rtidb.ns.NS.TableInfo;
+import com._4paradigm.rtidb.ns.NS.TablePartition;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import com._4paradigm.rtidb.client.base.TestCaseBase;
-import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.base.Config;
-import com._4paradigm.rtidb.common.Common;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
-import java.sql.Date;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
-import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
-import com._4paradigm.rtidb.ns.NS.ColumnDesc;
-import com._4paradigm.rtidb.ns.NS.PartitionMeta;
-import com._4paradigm.rtidb.ns.NS.TableInfo;
-import com._4paradigm.rtidb.ns.NS.TablePartition;
 
 public class TableSchemaTest extends TestCaseBase {
     private final static Logger logger = LoggerFactory.getLogger(TableSchemaTest.class);
@@ -182,6 +177,102 @@ public class TableSchemaTest extends TestCaseBase {
                 for (int i = 0; i < row.length - 1; i++) {
                     Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Assert.assertTrue(false);
+            } finally {
+                nsc.dropTable(name);
+            }
+        }
+    }
+
+    @Test
+    public void testForAddTableField() {
+        int[] schema_num_arr = {30, 127, 128};
+        for (int idx = 0; idx < schema_num_arr.length; idx++) {
+            int schema_num = schema_num_arr[idx];
+            String name = createMoreFieldTable(schema_num);
+            //String name = "50001";
+            long time = System.currentTimeMillis();
+            LocalDate target = new LocalDate(time);
+            Map<String, Object> row1 = new HashMap<String, Object>();
+            row1.put("card", "card0");
+            for (int i = 0; i < schema_num - 1; i++) {
+                row1.put("filed" + i, i + 1.5d);
+            }
+            try {
+                boolean ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                Object[] row = tableSyncClient.getRow(name, "card0", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num, row.length);
+                Assert.assertEquals("card0", row[0]);
+                for (int i = 0; i < row.length - 1; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+
+                //put column count more than shema
+                row1.put("mcc", "mcc0");
+                ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                row = tableSyncClient.getRow(name, "card0", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num, row.length);
+                Assert.assertEquals("card0", row[0]);
+                for (int i = 0; i < row.length - 1; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+
+                ok = nsc.AddTableField(name, "aa", "string");
+//            Thread.currentThread().sleep(1000);
+                Assert.assertTrue(ok);
+                client.refreshRouteTable();
+
+                row1.clear();
+                row1.put("card", "card1");
+                for (int i = 0; i < schema_num - 1; i++) {
+                    row1.put("filed" + i, i + 1.5d);
+                }
+                ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                row = tableSyncClient.getRow(name, "card1", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num + 1, row.length);
+                Assert.assertEquals("card1", row[0]);
+                for (int i = 0; i < row.length - 2; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+
+                row1.clear();
+                row1.put("card", "card2");
+                for (int i = 0; i < schema_num - 1; i++) {
+                    row1.put("filed" + i, i + 1.5d);
+                }
+                row1.put("aa", "card3");
+                ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                row = tableSyncClient.getRow(name, "card2", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num + 1, row.length);
+                Assert.assertEquals("card2", row[0]);
+                for (int i = 0; i < row.length - 2; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+                Assert.assertEquals("card3", row[row.length - 1]);
+
+                //put column count more than shema
+                row1.put("mcc", "mcc1");
+                ok = tableSyncClient.put(name, time, row1);
+                Assert.assertTrue(ok);
+                row = tableSyncClient.getRow(name, "card2", 0);
+                Assert.assertNotNull(row);
+                Assert.assertEquals(schema_num + 1, row.length);
+                Assert.assertEquals("card2", row[0]);
+                for (int i = 0; i < row.length - 2; i++) {
+                    Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
+                }
+                Assert.assertEquals("card3", row[row.length - 1]);
+
             } catch (Exception e) {
                 e.printStackTrace();
                 Assert.assertTrue(false);

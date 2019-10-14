@@ -1840,6 +1840,86 @@ void TabletImpl::GetTableSchema(RpcController* controller,
     response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
 }
 
+void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
+        const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    uint32_t tid = request->tid();
+    std::map<uint32_t, std::shared_ptr<Table>> table_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = tables_.find(tid);
+        if (it == tables_.end()) {
+            response->set_code(100);
+            response->set_msg("table doesn`t exist");
+            PDLOG(WARNING, "table tid %u doesn`t exist.", tid);
+            return;
+        }
+        table_map = it->second;
+    }
+    for (auto pit = table_map.begin(); pit != table_map.end(); ++pit) {
+        uint32_t pid = pit->first;
+        std::shared_ptr<Table> table = pit->second;
+        //judge if field exists
+        bool repeated = false;
+        std::string col_name = request->column_desc().name();
+        for (const auto& column : table->GetTableMeta().column_desc()) {
+            if (column.name() == col_name) {
+                PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
+                repeated = true;
+                break;
+            } 
+        }
+        if (!repeated) {
+            for (const auto& column : table->GetTableMeta().added_column_desc()) {
+                if (column.name() == col_name) {
+                    PDLOG(WARNING, "field name[%s] repeated in tablet!", col_name.c_str());
+                    repeated = true;
+                    break;
+                } 
+            }
+        }
+        if (repeated) {
+            continue;
+        }
+        ::rtidb::api::TableMeta table_meta;
+        table_meta.CopyFrom(table->GetTableMeta());
+        ::rtidb::common::ColumnDesc* column_desc = table_meta.add_added_column_desc();
+        column_desc->CopyFrom(request->column_desc());
+        table_meta.set_schema(request->schema());
+        table->SetTableMeta(table_meta);
+        table->SetSchema(request->schema());
+        //update TableMeta.txt
+        std::string db_root_path;
+        ::rtidb::common::StorageMode mode = table_meta.storage_mode();
+        bool ok = ChooseDBRootPath(tid, pid, mode, db_root_path);
+        if (!ok) {
+            response->set_code(138);
+            response->set_msg("fail to get db root path");
+            PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
+            return;
+        }
+        std::string db_path = db_root_path + "/" + std::to_string(tid) + 
+            "_" + std::to_string(pid);
+        if (!::rtidb::base::IsExists(db_path)) {
+            PDLOG(WARNING, "table db path doesn`t exist. tid %u, pid %u", tid, pid);
+            response->set_code(130);
+            response->set_msg("table db path is not exist");
+            return;
+        }
+        UpdateTableMeta(db_path, &table_meta, true);
+        if (WriteTableMeta(db_path, &table_meta) < 0) {
+            PDLOG(WARNING, "write table_meta failed. tid[%u] pid[%u]", tid, pid);
+            response->set_code(127);
+            response->set_msg("write data failed");
+            return;
+        }
+    }
+    response->set_code(0);
+    response->set_msg("ok");
+}
+
 void TabletImpl::GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,
@@ -3131,7 +3211,7 @@ int TabletImpl::WriteTableMeta(const std::string& path, const ::rtidb::api::Tabl
     return 0;
 }
 
-int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta) {
+int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta, bool for_add_column) {
     std::string full_path = path + "/table_meta.txt";
     int fd = open(full_path.c_str(), O_RDONLY);
     ::rtidb::api::TableMeta old_meta;
@@ -3147,13 +3227,20 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta
         }
     }
     // use replicas in LoadRequest
-    old_meta.clear_replicas();
-    old_meta.MergeFrom(*table_meta);
-    table_meta->CopyFrom(old_meta);
+    if (!for_add_column) {
+        old_meta.clear_replicas();
+        old_meta.MergeFrom(*table_meta);
+        table_meta->CopyFrom(old_meta);
+    }
     std::string new_name = full_path + "." + ::rtidb::base::GetNowTime();
     rename(full_path.c_str(), new_name.c_str());
     return 0;
 }
+
+int TabletImpl::UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta) {
+    return UpdateTableMeta(path, table_meta, false);
+}
+ 
 
 int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta, std::string& msg) {
     std::vector<std::string> endpoints;

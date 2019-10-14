@@ -20,8 +20,14 @@ public class TableClientCommon {
     public static void parseMapInput(Map<String, Object> row, TableHandler th, Object[] arrayRow, List<Tablet.TSDimension> tsDimensions) throws TabletException {
         tsDimensions.clear();
         int tsIndex = 0;
-        for (int i = 0; i < th.getSchema().size(); i++) {
-            ColumnDesc columnDesc = th.getSchema().get(i);
+        List<ColumnDesc> schema;
+        if (arrayRow.length > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            schema = th.getSchemaMap().get(arrayRow.length);
+        } else {
+            schema = th.getSchema();
+        }
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
             Object colValue = row.get(columnDesc.getName());
             arrayRow[i] = colValue;
             if (columnDesc.isTsCol()) {
@@ -53,13 +59,22 @@ public class TableClientCommon {
     }
 
     public static List<Tablet.TSDimension> parseArrayInput(Object[] row, TableHandler th) throws TabletException {
-        if (row.length != th.getSchema().size()) {
-            throw new TabletException("input row size error");
+        if (row == null) {
+            throw new TabletException("input row is null");
+        }
+        List<ColumnDesc> schema;
+        if (row.length > th.getSchema().size() && th.getSchemaMap().size() > 0) {
+            schema = th.getSchemaMap().get(row.length);
+            if (schema == null) {
+                throw new TabletException("no schema for column count " + row.length);
+            }
+        } else {
+            schema = th.getSchema();
         }
         List<Tablet.TSDimension> tsDimensions = new ArrayList<Tablet.TSDimension>();
         int tsIndex = 0;
-        for (int i = 0; i < th.getSchema().size(); i++) {
-            ColumnDesc columnDesc = th.getSchema().get(i);
+        for (int i = 0; i < schema.size(); i++) {
+            ColumnDesc columnDesc = schema.get(i);
             Object colValue = row[i];
             if (columnDesc.isTsCol()) {
                 int curTsIndex = tsIndex;
@@ -271,4 +286,5 @@ public class TableClientCommon {
         }
         return pid;
     }
+
 }
