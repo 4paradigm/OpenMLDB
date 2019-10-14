@@ -1273,7 +1273,7 @@ public class ColumnKeyTest extends TestCaseBase {
     @Test(dataProvider = "StorageMode")
     public void testCountOfKV(Common.StorageMode sm) throws Exception{
         //create table
-        String tableName = "tablexxx";
+        String tableName = String.valueOf(id.incrementAndGet());
         TableInfo tableInfo = TableInfo.newBuilder()
                 .setName(tableName)
                 .setTtl(5)
