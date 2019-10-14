@@ -2780,31 +2780,33 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
 }
 
 int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::rtidb::api::TaskInfo> task_ptr) {
-    std::shared_ptr<Table> table = GetTable(tid, pid);
     std::string root_path;
-    bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path);
-    if (!ok) {
-        PDLOG(WARNING, "fail to get db root path");
-        return 138;
-    }
     std::string recycle_bin_root_path;
-    ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
-    if (!ok) {
-        PDLOG(WARNING, "fail to get recycle bin root path");
-        return 139;
-    }
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    // do block other requests
     {
-        std::lock_guard<std::mutex> lock(mu_);
-        tables_[tid].erase(pid);
-        replicators_[tid].erase(pid);
-        snapshots_[tid].erase(pid);
-    }
+        std::shared_ptr<Table> table = GetTable(tid, pid);
+        bool ok = ChooseDBRootPath(tid, pid, table->GetStorageMode(), root_path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to get db root path");
+            return 138;
+        }
+        ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
+        if (!ok) {
+            PDLOG(WARNING, "fail to get recycle bin root path");
+            return 139;
+        }
+        std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
+        // do block other requests
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            tables_[tid].erase(pid);
+            replicators_[tid].erase(pid);
+            snapshots_[tid].erase(pid);
+        }
 
-    if (replicator) {
-        replicator->DelAllReplicateNode();
-        PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
+        if (replicator) {
+            replicator->DelAllReplicateNode();
+            PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
+        }
     }
 
     std::string source_path = root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
