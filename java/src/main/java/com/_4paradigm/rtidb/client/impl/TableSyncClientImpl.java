@@ -341,7 +341,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, null, null, false, th, st, et);
+        return count(th.getTableInfo().getTid(), pid, key, null, null, true, th, st, et);
     }
 
     @Override
@@ -352,23 +352,18 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, null, false, th, st, et);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, null, true, th, st, et);
     }
 
     @Override
     public int count(String tname, String key, String idxName, String tsName, long st, long et) throws TimeoutException, TabletException {
-        return count(tname, key, idxName, tsName, false, st, et);
-    }
-
-    @Override
-    public int count(String tname, String key, String idxName, String tsName, boolean filter_expired_data, long st, long et) throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
         key = validateKey(key);
         int pid = TableClientCommon.computePidByKey(key, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, filter_expired_data, th, st, et);
+        return count(th.getTableInfo().getTid(), pid, key, idxName, tsName, true, th, st, et);
     }
 
 
@@ -387,11 +382,21 @@ public class TableSyncClientImpl implements TableSyncClient {
     @Override
     public int count(String tname, Map<String, Object> keyMap, String idxName, String tsName, boolean filter_expired_data)
             throws TimeoutException, TabletException {
-       return count(tname, keyMap, idxName, tsName, filter_expired_data, 0, 0);
+        TableHandler th = client.getHandler(tname);
+        if (th == null) {
+            throw new TabletException("no table with name " + tname);
+        }
+        List<String> list = th.getKeyMap().get(idxName);
+        if (list == null) {
+            throw new TabletException("no index name in table" + idxName);
+        }
+        String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
+        int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
+        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th, 0, 0);
     }
 
     @Override
-    public int count(String tname, Map<String, Object> keyMap, String idxName, String tsName, boolean filter_expired_data, long st, long et)
+    public int count(String tname, Map<String, Object> keyMap, String idxName, String tsName, long st, long et)
             throws TimeoutException, TabletException {
         TableHandler th = client.getHandler(tname);
         if (th == null) {
@@ -403,7 +408,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         String combinedKey = TableClientCommon.getCombinedKey(keyMap, list, client.getConfig().isHandleNull());
         int pid = TableClientCommon.computePidByKey(combinedKey, th.getPartitions().length);
-        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, filter_expired_data, th, st, et);
+        return count(th.getTableInfo().getTid(), pid, combinedKey, idxName, tsName, true, th, st, et);
     }
 
     @Override
