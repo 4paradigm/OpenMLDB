@@ -1316,11 +1316,7 @@ public class ColumnKeyTest extends TestCaseBase {
         //count(String tname, String key, long st, long et)
         //磁盘表count一定会去掉过期数据，所以需求区别对待
         int offset = rows/2;
-        if (tableInfo.getStorageMode().equals(Common.StorageMode.kMemory)){
-            Assert.assertEquals(tableSyncClient.count(tableName,key,validDataSt+offset,invalidDataSt),20);
-        }else {
-            Assert.assertEquals(tableSyncClient.count(tableName,key,validDataSt+offset,invalidDataSt),10);
-        }
+        Assert.assertEquals(tableSyncClient.count(tableName,key,validDataSt+offset,invalidDataSt),10);
 
         //count(String tname, String key, boolean filter_expired_data)
         //磁盘表count一定会去掉过期数据，所以需求区别对待
