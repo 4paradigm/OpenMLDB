@@ -63,11 +63,11 @@ public class ScanFuture implements Future<KvIterator> {
                 } else {
                     kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
                 }
+                if (t.getTableInfo().hasCompressType()) {
+                    kit.setCompressType(t.getTableInfo().getCompressType());
+                }
             }else {
                 kit = new DefaultKvIterator(response.getPairs(), network);
-            }
-            if (t.getTableInfo().hasCompressType()) {
-                kit.setCompressType(t.getTableInfo().getCompressType());
             }
             kit.setCount(response.getCount());
             return kit;
@@ -87,7 +87,11 @@ public class ScanFuture implements Future<KvIterator> {
         if (response.getCode() == 0) {
             DefaultKvIterator kit = null;
             if (t != null) {
-                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
+                if (t.getSchemaMap().size() > 0) {
+                    kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), t.getSchemaMap().size());
+                } else {
+                    kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
+                }
                 if (t.getTableInfo().hasCompressType()) {
                     kit.setCompressType(t.getTableInfo().getCompressType());
                 }
