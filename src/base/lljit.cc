@@ -15,7 +15,10 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 #include "flatbuffers/flatbuffers.h"
-
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 using namespace llvm;
 using namespace llvm::orc;
 
@@ -93,8 +96,29 @@ int main(int argc, char *argv[]) {
   ExitOnErr.setBanner(std::string(argv[0]) + ": ");
   // Create an LLJIT instance.
   auto J = ExitOnErr(LLJITBuilder().create());
+
   auto M = createDemoModule();
+  M.getModule()->setDataLayout(J->getDataLayout());
+std::unique_ptr<llvm::legacy::FunctionPassManager> theFPM = llvm::make_unique<llvm::legacy::FunctionPassManager>(M.getModule());
+
+//InstructionCombining - Combine instructions to form fewer, simple instructions.
+theFPM->add(llvm::createInstructionCombiningPass());
+
+//Reassociate - This pass reassociates commutative expressions in an order that
+//is designed to promote better constant propagation
+//For example:  4 + (x + 5)  ->  x + (4 + 5)
+theFPM->add(llvm::createReassociatePass());
+
+//Create a legacy GVN pass. This also allows parameterizing whether or not loads are eliminated by the pass.
+theFPM->add(llvm::createGVNPass());
+
+//CFGSimplification - Merge basic blocks, eliminate unreachable blocks,
+// simplify terminator instructions, convert switches to lookup tables, etc.
+theFPM->add(llvm::createCFGSimplificationPass());
+
+theFPM->doInitialization();
   ExitOnErr(J->addIRModule(std::move(M)));
+
   // Look up the JIT'd function, cast it to a function pointer, then call it.
   auto Add1Sym = ExitOnErr(J->lookup("decode"));
   float (*decode)(int8_t*) = (float (*)(int8_t*))Add1Sym.getAddress();

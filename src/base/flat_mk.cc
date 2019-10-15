@@ -28,6 +28,12 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+
 using namespace llvm;
 using namespace llvm::orc;
 
@@ -221,6 +227,27 @@ BENCHMARK_F(AccessFixture, LLVM_NO_OPT_AccessFloat)(benchmark::State& st) {
     // Create an LLJIT instance.
     auto J = ExitOnErr(LLJITBuilder().create());
     auto M = createDemoModule();
+    M.getModule()->setDataLayout(J->getDataLayout());
+    std::unique_ptr<llvm::legacy::FunctionPassManager> theFPM = llvm::make_unique<llvm::legacy::FunctionPassManager>(M.getModule());
+
+    //InstructionCombining - Combine instructions to form fewer, simple instructions.
+    theFPM->add(llvm::createInstructionCombiningPass());
+
+    //Reassociate - This pass reassociates commutative expressions in an order that
+    //is designed to promote better constant propagation
+    //For example:  4 + (x + 5)  ->  x + (4 + 5)
+    theFPM->add(llvm::createReassociatePass());
+
+    //Create a legacy GVN pass. This also allows parameterizing whether or not loads are eliminated by the pass.
+    theFPM->add(llvm::createGVNPass());
+
+    //CFGSimplification - Merge basic blocks, eliminate unreachable blocks,
+    // simplify terminator instructions, convert switches to lookup tables, etc.
+    theFPM->add(llvm::createCFGSimplificationPass());
+    theFPM->add(llvm::createAggressiveInstCombinerPass());
+
+    theFPM->doInitialization();
+
     ExitOnErr(J->addIRModule(std::move(M)));
     // Look up the JIT'd function, cast it to a function pointer, then call it.
     auto decode_symble = ExitOnErr(J->lookup("decode"));
@@ -228,6 +255,7 @@ BENCHMARK_F(AccessFixture, LLVM_NO_OPT_AccessFloat)(benchmark::State& st) {
     float* output = new float[1];
     int8_t* ptr = (int8_t*)fb_.GetBufferPointer();
     output[0] = decode(ptr);
+
     for (auto _ : st) {
         output[0] = decode(ptr);
     }
