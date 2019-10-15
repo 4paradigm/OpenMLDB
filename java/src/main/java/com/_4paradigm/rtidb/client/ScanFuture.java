@@ -1,14 +1,14 @@
 package com._4paradigm.rtidb.client;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.impl.DefaultKvIterator;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.ScanResponse;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class ScanFuture implements Future<KvIterator> {
 
@@ -58,7 +58,11 @@ public class ScanFuture implements Future<KvIterator> {
         if (response.getCode() == 0) {
             DefaultKvIterator kit = null;
             if (t != null) {
-                kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
+                if (t.getSchemaMap().size() > 0) {
+                    kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), t.getSchemaMap().size());
+                } else {
+                    kit = new DefaultKvIterator(response.getPairs(), t.getSchema(), network);
+                }
             }else {
                 kit = new DefaultKvIterator(response.getPairs(), network);
             }

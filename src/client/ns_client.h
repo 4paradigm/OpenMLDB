@@ -44,6 +44,10 @@ public:
 
     bool CancelOP(uint64_t op_id, std::string& msg);
 
+    bool AddTableField(const std::string& table_name,
+            const ::rtidb::common::ColumnDesc& column_desc,
+            std::string& msg);
+
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg);
 
     bool DropTable(const std::string& name, std::string& msg);

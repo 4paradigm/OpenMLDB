@@ -118,6 +118,11 @@ public:
             ::rtidb::api::AppendEntriesResponse* response,
             Closure* done); 
 
+    void UpdateTableMetaForAddField(RpcController* controller,
+            const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
     void GetTableStatus(RpcController* controller,
             const ::rtidb::api::GetTableStatusRequest* request,
             ::rtidb::api::GetTableStatusResponse* response,
@@ -330,6 +335,8 @@ private:
                 std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
 
     int WriteTableMeta(const std::string& path, const ::rtidb::api::TableMeta* table_meta);
+
+    int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta, bool for_add_column);
 
     int UpdateTableMeta(const std::string& path, ::rtidb::api::TableMeta* table_meta);
 

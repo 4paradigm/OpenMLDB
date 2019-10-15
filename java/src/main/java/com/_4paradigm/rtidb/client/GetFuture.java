@@ -1,10 +1,5 @@
 package com._4paradigm.rtidb.client;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.RowCodec;
@@ -13,6 +8,11 @@ import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class GetFuture implements Future<ByteString>{
 	private Future<Tablet.GetResponse> f;
@@ -61,7 +61,7 @@ public class GetFuture implements Future<ByteString>{
 		if (raw == null || raw.isEmpty()) {
 			return null;
 		}
-		Object[] row = new Object[t.getSchema().size()];
+		Object[] row = new Object[t.getSchema().size() + t.getSchemaMap().size()];
 		decode(raw, row, 0, row.length);
 		return row;
 	}
@@ -75,7 +75,7 @@ public class GetFuture implements Future<ByteString>{
 			return null;
 
 		}
-		Object[] row = new Object[t.getSchema().size()];
+		Object[] row = new Object[t.getSchema().size() + t.getSchemaMap().size()];
 		decode(raw, row, 0, row.length);
 		return row;
 	}

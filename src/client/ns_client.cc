@@ -104,6 +104,23 @@ bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
     return false;
 }
 
+bool NsClient::AddTableField(const std::string& table_name, 
+        const ::rtidb::common::ColumnDesc& column_desc, 
+        std::string& msg) {
+    ::rtidb::nameserver::AddTableFieldRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_name(table_name);
+    ::rtidb::common::ColumnDesc* column_desc_ptr = request.mutable_column_desc();
+    column_desc_ptr->CopyFrom(column_desc);
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddTableField,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info, std::string& msg) {
     ::rtidb::nameserver::CreateTableRequest request;
     ::rtidb::nameserver::GeneralResponse response;

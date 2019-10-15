@@ -1,22 +1,21 @@
 package com._4paradigm.rtidb.client.impl;
 
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.PartitionHandler;
+import com._4paradigm.rtidb.client.ha.RTIDBClient;
+import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.tablet.Tablet;
+import com.google.protobuf.ByteString;
+import rtidb.api.TabletServer;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
-
-import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.client.ha.PartitionHandler;
-import com._4paradigm.rtidb.client.ha.RTIDBClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.RowCodec;
-import com.google.protobuf.ByteString;
-import rtidb.api.TabletServer;
-import com._4paradigm.rtidb.tablet.Tablet;
 
 public class TraverseKvIterator implements KvIterator {
     private int pid = 0;
@@ -146,7 +145,7 @@ public class TraverseKvIterator implements KvIterator {
         if (schema == null || schema.isEmpty()) {
             throw new UnsupportedOperationException("getDecodedValue is not supported");
         }
-        Object[] row = new Object[schema.size()];
+        Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
         getDecodedValue(row, 0, row.length);
         return row;
     }

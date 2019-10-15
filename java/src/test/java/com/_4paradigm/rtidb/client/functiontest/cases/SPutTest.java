@@ -114,7 +114,7 @@ public class SPutTest extends TestCaseBase {
         desc2.setType(type);
         schema.add(desc2);
         int tid = id.incrementAndGet();
-
+        tabletClient.dropTable(tid, 0);
         boolean ok = tabletClient.createTable("tj0", tid, 0, 144000, 8, schema);
         Assert.assertEquals(ok, true);
 
