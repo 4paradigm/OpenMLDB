@@ -93,6 +93,11 @@ public:
         GeneralResponse* response, 
         Closure* done);
 
+    void AddTableField(RpcController* controller,
+            const AddTableFieldRequest* request,
+            GeneralResponse* response,
+            Closure* done);
+
     void ShowTablet(RpcController* controller,
             const ShowTabletRequest* request,
             ShowTabletResponse* response,

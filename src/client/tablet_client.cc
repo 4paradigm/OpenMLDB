@@ -149,6 +149,25 @@ bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
     return false;
 }
 
+bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, 
+        const ::rtidb::common::ColumnDesc& column_desc, 
+        const std::string& schema, 
+        std::string& msg) {
+    ::rtidb::api::UpdateTableMetaForAddFieldRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_tid(tid);
+    ::rtidb::common::ColumnDesc* column_desc_ptr = request.mutable_column_desc();
+    column_desc_ptr->CopyFrom(column_desc);
+    request.set_schema(schema);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::UpdateTableMetaForAddField,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    msg = response.msg();
+    return false;
+}
+
 bool TabletClient::Put(uint32_t tid,
              uint32_t pid,
              uint64_t time,

@@ -48,6 +48,7 @@ public class SScanTest extends TestCaseBase {
         desc2.setType(ColumnType.kString);
         schema.add(desc2);
         int tid = id.incrementAndGet();
+        tabletClient.dropTable(tid, 0);
         Boolean ok = tabletClient.createTable("tj0", tid, 0, 0, 8, schema);
         Assert.assertFalse(!ok);
 

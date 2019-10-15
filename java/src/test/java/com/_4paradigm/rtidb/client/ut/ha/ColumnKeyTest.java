@@ -1269,4 +1269,65 @@ public class ColumnKeyTest extends TestCaseBase {
         }
         nsc.dropTable(name);
     }
+
+    @Test(dataProvider = "StorageMode")
+    public void testCountOfKV(Common.StorageMode sm) throws Exception{
+        //create table
+        String tableName = String.valueOf(id.incrementAndGet());
+        TableInfo tableInfo = TableInfo.newBuilder()
+                .setName(tableName)
+                .setTtl(5)
+                .setStorageMode(sm)
+                .build()
+                ;
+        nsc.dropTable(tableName);
+        Assert.assertTrue(nsc.createTable(tableInfo));
+        client.refreshRouteTable();
+
+        //put
+        String key = "key1";
+        //put未超时数据
+        long currentTimeMillis = System.currentTimeMillis();
+        long validDataSt = currentTimeMillis;
+        int rows = 10;
+        long invalidDataSt = validDataSt - tableInfo.getTtl()*60*1000 - rows - 100;
+        try {
+            for (int i = 0; i < rows; i++) {
+                tableSyncClient.put(tableName, key, currentTimeMillis - i, "value" + i);
+            }
+
+            for (int i = 0; i < rows; i++) {
+                tableSyncClient.put(tableName, key, invalidDataSt - i, "valueaaa" + i);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        //put超时数据
+
+        //count(String tname, String key)
+        //磁盘表count一定会去掉过期数据，所以需求区别对待
+        if (tableInfo.getStorageMode().equals(Common.StorageMode.kMemory)){
+            Assert.assertEquals(tableSyncClient.count(tableName,key),20);
+        } else {
+          Assert.assertEquals(tableSyncClient.count(tableName,key), 10);
+        }
+
+        //count(String tname, String key, long st, long et)
+        //磁盘表count一定会去掉过期数据，所以需求区别对待
+        int offset = rows/2;
+        Assert.assertEquals(tableSyncClient.count(tableName,key,validDataSt+offset,invalidDataSt),10);
+
+        //count(String tname, String key, boolean filter_expired_data)
+        //磁盘表count一定会去掉过期数据，所以需求区别对待
+        if (tableInfo.getStorageMode().equals(Common.StorageMode.kMemory)){
+            Assert.assertEquals(tableSyncClient.count(tableName,key,true), 10);
+            Assert.assertEquals(tableSyncClient.count(tableName,key,false),20);
+        }else {
+            Assert.assertEquals(tableSyncClient.count(tableName,key,true), 10);
+            Assert.assertEquals(tableSyncClient.count(tableName,key,false), 10);
+        }
+
+        Assert.assertEquals(tableSyncClient.count(tableName,key, null, null, validDataSt, validDataSt - 5), 5);
+    }
 }

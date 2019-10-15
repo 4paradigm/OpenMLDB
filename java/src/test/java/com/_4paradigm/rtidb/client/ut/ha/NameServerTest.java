@@ -1,25 +1,23 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
-import com._4paradigm.rtidb.client.base.TestCaseBase;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.client.ha.TableHandler;
+import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
+import com._4paradigm.rtidb.client.schema.ColumnDesc;
+import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
+import com._4paradigm.rtidb.ns.NS.PartitionMeta;
+import com._4paradigm.rtidb.ns.NS.TableInfo;
+import com._4paradigm.rtidb.ns.NS.TablePartition;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com._4paradigm.rtidb.client.ha.impl.NameServerClientImpl;
-import com._4paradigm.rtidb.ns.NS.PartitionMeta;
-import com._4paradigm.rtidb.ns.NS.TableInfo;
-import com._4paradigm.rtidb.ns.NS.TablePartition;
-import com._4paradigm.rtidb.common.Common;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 
 /**
@@ -111,7 +109,7 @@ public class NameServerTest extends TestCaseBase {
             Assert.assertTrue(nsc.createTable(tableInfo));
             List<TableInfo> tables = nsc.showTable(tname);
             Map<String, String> nscMap = nsc.showNs();
-            Assert.assertTrue(nscMap.size() == 3);
+            Assert.assertEquals(nscMap.size(), 3);
             TableInfo e = tables.get(0);
             Assert.assertTrue(e.getTablePartitionList().size() == 1);
             Assert.assertTrue(e.getTablePartition(0).getRecordCnt() == 0);
