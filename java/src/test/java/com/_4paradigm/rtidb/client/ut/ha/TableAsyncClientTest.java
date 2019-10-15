@@ -208,7 +208,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[4], 111l);
             Assert.assertTrue(pf.get());
 
-            ok = nsc.AddTableField(name, "aa", "string");
+            ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
             client.refreshRouteTable();
@@ -321,7 +321,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             PutFuture pf = tableAsyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d});
             Assert.assertTrue(pf.get());
 
-            boolean ok = nsc.AddTableField(name, "aa", "string");
+            boolean ok = nsc.addTableField(name, "aa", "string");
             Thread.currentThread().sleep(1000);
             Assert.assertTrue(ok);
 //            client.refreshRouteTable();

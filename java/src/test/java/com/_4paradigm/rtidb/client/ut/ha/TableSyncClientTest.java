@@ -1,31 +1,30 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
-import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.rtidb.common.Common;
-import org.joda.time.DateTime;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
-
-import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
+import org.joda.time.DateTime;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncClientTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(10000);
@@ -400,6 +399,7 @@ public class TableSyncClientTest extends TestCaseBase {
         Assert.assertTrue(ok);
         client.refreshRouteTable();
         try {
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 5);
             Map<String, Object> data = new HashMap<String, Object>();
             data.put("card", "card0");
             data.put("mcc", "mcc0");
@@ -408,10 +408,11 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("ts_1", 222l);
             tableSyncClient.put(name, data);
 
-            ok = nsc.AddTableField(name, "aa", "string");
+            ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
             client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 6);
 
             data.clear();
             data.put("card", "card0");
@@ -511,12 +512,14 @@ public class TableSyncClientTest extends TestCaseBase {
     public void testAddTableFieldWithoutColumnKey() {
         String name = createSchemaTable();
         try {
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 3);
             Assert.assertTrue(tableSyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d}));
 
-            boolean ok = nsc.AddTableField(name, "aa", "string");
+            boolean ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
             client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 4);
 
             Assert.assertTrue(tableSyncClient.put(name, 9528, new Object[]{"card1", "mcc1", 9.2d, "aa1"}));
             Assert.assertTrue(tableSyncClient.put(name, 9529, new Object[]{"card2", "mcc2", 9.3d}));

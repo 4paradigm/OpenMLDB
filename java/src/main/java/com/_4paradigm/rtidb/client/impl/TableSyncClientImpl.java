@@ -958,7 +958,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        return th.getSchema();
+        if (th.getSchemaMap().size() == 0) {
+            return th.getSchema();
+        } else {
+            return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
+        }
     }
 
     @Override
@@ -996,6 +1000,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
-        return th.getSchema();
+        if (th.getSchemaMap().size() == 0) {
+            return th.getSchema();
+        } else {
+            return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
+        }
     }
 }
