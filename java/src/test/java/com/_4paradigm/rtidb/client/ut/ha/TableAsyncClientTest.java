@@ -308,7 +308,26 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
 
+            ok = nsc.addTableField(name, "bb", "string");
+//            Thread.currentThread().sleep(15);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            data.clear();
+            data.put("card", "card0");
+            data.put("mcc", "mcc1");
+            data.put("amt", 1.6);
+            data.put("ts", 1235l);
+            data.put("ts_1", 333l);
+            data.put("aa", "aa1");
+            pf = tableAsyncClient.put(name, data);
+            Assert.assertTrue(pf.get());
+
+            pf = tableAsyncClient.put(name, new Object[]{"card02", "mcc02", 1.5, 1111l, 111l, "aa"});
+            Assert.assertTrue(pf.get());
+
+
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);

@@ -20,7 +20,6 @@ public class TableHandler {
     public TableHandler(TableInfo tableInfo) {
         this.tableInfo = tableInfo;
         int schemaSize = 0;
-        List<ColumnDesc> schemaMapList = new ArrayList<ColumnDesc>();
         int index = 0;
         if (tableInfo.getColumnDescV1Count() > 0) {
             schemaSize = tableInfo.getColumnDescV1Count();
@@ -38,7 +37,6 @@ public class TableHandler {
                 ncd.setTsCol(cd.getIsTsCol());
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
                 schema.add(ncd);
-                schemaMapList.add(ncd);
                 if (cd.getAddTsIdx()) {
                     List<Integer> indexList = new ArrayList<Integer>();
                     indexList.add(i);
@@ -111,7 +109,6 @@ public class TableHandler {
                 ncd.setTsCol(false);
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
                 schema.add(ncd);
-                schemaMapList.add(ncd);
                 if (cd.getAddTsIdx()) {
                     List<Integer> list = new ArrayList<Integer>();
                     list.add(i);
@@ -126,8 +123,9 @@ public class TableHandler {
                 ColumnDesc ncd = new ColumnDesc();
                 ncd.setName(cd.getName());
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
-                schemaMapList.add(ncd);
-                schemaMap.put(schemaSize + i + 1, schemaMapList);
+                List<ColumnDesc> tempList = new ArrayList<ColumnDesc>(schema);
+                tempList.add(ncd);
+                schemaMap.put(schemaSize + i + 1, tempList);
             }
         }
     }
