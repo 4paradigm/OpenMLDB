@@ -1,14 +1,6 @@
 package rtidb.nameserver;
 
-import com._4paradigm.rtidb.ns.NS.ChangeLeaderRequest;
-import com._4paradigm.rtidb.ns.NS.CreateTableRequest;
-import com._4paradigm.rtidb.ns.NS.DropTableRequest;
-import com._4paradigm.rtidb.ns.NS.GeneralResponse;
-import com._4paradigm.rtidb.ns.NS.RecoverEndpointRequest;
-import com._4paradigm.rtidb.ns.NS.ShowTableRequest;
-import com._4paradigm.rtidb.ns.NS.ShowTableResponse;
-import com._4paradigm.rtidb.ns.NS.ShowTabletRequest;
-import com._4paradigm.rtidb.ns.NS.ShowTabletResponse;
+import com._4paradigm.rtidb.ns.NS.*;
 
 public interface NameServer {
     GeneralResponse createTable(CreateTableRequest request);
@@ -17,4 +9,6 @@ public interface NameServer {
     ShowTabletResponse showTablet(ShowTabletRequest request);
     GeneralResponse changeLeader(ChangeLeaderRequest request);
     GeneralResponse recoverEndpoint(RecoverEndpointRequest request);
+
+    GeneralResponse AddTableField(AddTableFieldRequest request);
 }

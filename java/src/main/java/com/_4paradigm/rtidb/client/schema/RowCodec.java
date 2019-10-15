@@ -1,18 +1,17 @@
 package com._4paradigm.rtidb.client.schema;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.Charset;
-import java.sql.Timestamp;
-import java.sql.Date;
-import java.util.List;
-
-import org.joda.time.DateTime;
-
 import com._4paradigm.rtidb.client.TabletException;
+import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.util.List;
 
 
 public class RowCodec {
@@ -21,7 +20,11 @@ public class RowCodec {
     private final static int stringMaxLength = 32767;
 
     public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
-        if (row.length != schema.size()) {
+        return encode(row, schema, 0);
+    }
+
+    public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema, int modifyTimes) throws TabletException {
+        if (row.length < schema.size()) {
             throw new TabletException("row length mismatch schema");
         }
 
@@ -29,10 +32,18 @@ public class RowCodec {
         // TODO limit the max size
         int size = getSize(row, schema, cache);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
-        if (row.length >= 128) {
-            buffer.putShort((short) row.length);
+        if (row.length - modifyTimes >= 128) {
+            if (modifyTimes > 0) {
+                buffer.putShort((short) (modifyTimes | 0x8000));
+            } else {
+                buffer.putShort((short) row.length);
+            }
         } else {
-            buffer.put((byte) row.length);
+            if (modifyTimes > 0) {
+                buffer.put((byte) (modifyTimes | 0x80));
+            } else {
+                buffer.put((byte) row.length);
+            }
         }
         for (int i = 0; i < row.length; i++) {
             ColumnType ct = schema.get(i).getType();
@@ -52,8 +63,8 @@ public class RowCodec {
                     if (bytes.length < 128) {
                         buffer.put((byte) bytes.length);
                     } else if (bytes.length <= stringMaxLength) {
-                        buffer.put((byte)(bytes.length >> 8 | 0x80));
-                        buffer.put((byte)(bytes.length & 0xFF));
+                        buffer.put((byte) (bytes.length >> 8 | 0x80));
+                        buffer.put((byte) (bytes.length & 0xFF));
                     } else {
                         throw new TabletException("kString length should be less than or equal " + stringMaxLength);
                     }
@@ -130,15 +141,27 @@ public class RowCodec {
         return buffer;
     }
 
-    public static void decode(ByteBuffer buffer, List<ColumnDesc> schema, Object[] row, int start, int length) throws TabletException {
+    public static void decode(ByteBuffer buffer, List<ColumnDesc> raw_schema, Object[] row, int start, int length) throws TabletException {
         if (buffer.order() == ByteOrder.BIG_ENDIAN) {
             buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
         }
         int colLength = 0;
-        if (schema.size() >= 128) {
-            colLength = buffer.getShort();
+        if (raw_schema.size() < 128) {
+            Byte temp = buffer.asReadOnlyBuffer().get();
+            if ((temp & 0x80) != 0) {
+                colLength = buffer.get() & 0x7F + raw_schema.size();
+            } else {
+                colLength = buffer.get() & 0x7F;
+            }
         } else {
-            colLength = buffer.get() & 0xFF;
+            //小端字节序，buffer.putShort(00000000,10000000)后在buffer中存储为10000000,00000000
+            short temp = buffer.getShort();
+            if ((temp & 0x8000) != 0) {
+                int res = temp & 0x007F;
+                colLength = res + raw_schema.size();
+            } else {
+                colLength = temp;
+            }
         }
         if (colLength > length) {
             colLength = length;
@@ -218,7 +241,12 @@ public class RowCodec {
     }
 
     public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema) throws TabletException {
-        Object[] row = new Object[schema.size()];
+        return decode(buffer, schema, 0);
+    }
+
+    //for adding field
+    public static Object[] decode(ByteBuffer buffer, List<ColumnDesc> schema, int modifytimes) throws TabletException {
+        Object[] row = new Object[schema.size() + modifytimes];
         decode(buffer, schema, row, 0, row.length);
         return row;
     }

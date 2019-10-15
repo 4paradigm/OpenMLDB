@@ -28,10 +28,15 @@ class FlatArrayCodec {
 
 public:
     FlatArrayCodec(std::string* buffer, 
-                   uint16_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
-    cur_cnt_(0), datas_(col_cnt_){
+            uint16_t col_cnt):buffer_(buffer), col_cnt_(col_cnt),
+    cur_cnt_(0), datas_(col_cnt_), modify_times_(0){
     }
 
+    FlatArrayCodec(std::string* buffer, 
+            uint16_t col_cnt, int modify_times):buffer_(buffer), col_cnt_(col_cnt),
+    cur_cnt_(0), datas_(col_cnt_), modify_times_(modify_times){
+    }
+    FlatArrayCodec():col_cnt_(0),cur_cnt_(0),modify_times_(0){}
     ~FlatArrayCodec() {}
 
     bool Append(bool data) {
@@ -174,14 +179,24 @@ public:
     void Build() {
         //TODO limit the total size of single row
         buffer_->resize(GetSize());
-        char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0]));
-        if (col_cnt_ >= 128) {
-            memcpy(cbuffer, static_cast<const void*>(&col_cnt_), 2);
+        char* cbuffer = reinterpret_cast<char*>(&((*buffer_)[0])); 
+        if (col_cnt_ - modify_times_ >= 128) {
+            if (modify_times_ > 0) {
+                uint16_t modify_count = (uint16_t)(modify_times_ | 0x8000);
+                memcpy(cbuffer, static_cast<const void*>(&modify_count), 2);
+            } else { 
+                memcpy(cbuffer, static_cast<const void*>(&col_cnt_), 2);
+            }
             memrev16ifbe(static_cast<void*>(cbuffer));
             cbuffer += 2;
         } else {
-            uint8_t col_cnt_tmp = (uint8_t)col_cnt_;
-            memcpy(cbuffer, static_cast<const void*>(&col_cnt_tmp), 1);
+            if (modify_times_ > 0) {
+                uint8_t modify_count = (uint8_t)(modify_times_ | 0x80);
+                memcpy(cbuffer, static_cast<const void*>(&modify_count), 1);
+            } else {
+                uint8_t col_cnt_tmp = (uint8_t)col_cnt_;
+                memcpy(cbuffer, static_cast<const void*>(&col_cnt_tmp), 1);
+            }
             cbuffer += 1;
         }
         std::vector<Column>::iterator it = datas_.begin();
@@ -242,6 +257,7 @@ private:
     uint16_t col_cnt_;
     uint16_t cur_cnt_;
     std::vector<Column> datas_;
+    int modify_times_;
 };
 
 class FlatArrayIterator {
@@ -250,17 +266,26 @@ public:
 
     FlatArrayIterator(const char* buffer, uint32_t bsize, uint16_t column_size):buffer_(buffer), 
     col_cnt_(0), bsize_(bsize), type_(kUnknown), fsize_(0), offset_(0){
-        if (column_size >= 128) {
-            memcpy(static_cast<void*>(&col_cnt_), buffer_, 2);
-            memrev16ifbe(static_cast<void*>(&col_cnt_));
-            buffer_ += 2;
-            offset_ += 2;
-        } else {
-            uint8_t col_cnt_tmp = 0;
-            memcpy(static_cast<void*>(&col_cnt_tmp), buffer_, 1);
-            col_cnt_ = col_cnt_tmp;
+        // for the case of adding field
+        if (column_size < 128) {
+            if ((uint8_t)(buffer_[0] & 0x80) != 0) {
+                col_cnt_ = ((uint8_t)buffer_[0] & 0x7F) + column_size;
+            } else {
+                col_cnt_ = (uint8_t)buffer_[0];
+            }
             buffer_ += 1;
             offset_ += 1;
+        } else {
+            uint16_t col_cnt_tmp = 0;
+            memcpy(static_cast<void*>(&col_cnt_tmp), buffer_, 2);
+            memrev16ifbe(static_cast<void*>(&col_cnt_tmp));
+            if ((col_cnt_tmp & 0x0080) != 0) {
+                col_cnt_ = (col_cnt_tmp & 0x007F) + column_size;
+            } else {
+                col_cnt_ = col_cnt_tmp;
+            }
+            buffer_ += 2;
+            offset_ += 2;
         }
         Next();
     }
@@ -498,7 +523,6 @@ public:
         buffer_ += 1;
         offset_++;
         if (((uint8_t)(buffer_[0]) & 0x80) == 0) {
-            memcpy(static_cast<void*>(&fsize_), buffer_, 1);
             fsize_ = (uint8_t)(buffer_[0]);
             buffer_ += 1;
             offset_++;

@@ -54,6 +54,7 @@ DiskTable::~DiskTable() {
         delete handle;
     }
     if (db_ != nullptr) {
+        db_->Close();
         delete db_;
     }
 }

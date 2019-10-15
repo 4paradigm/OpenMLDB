@@ -1,45 +1,26 @@
 package com._4paradigm.rtidb.client.ha.impl;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import com._4paradigm.rtidb.client.NameServerClient;
+import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.common.Common;
+import com._4paradigm.rtidb.ns.NS.*;
+import io.brpc.client.*;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com._4paradigm.rtidb.client.NameServerClient;
-import com._4paradigm.rtidb.client.TabletException;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.ns.NS.ChangeLeaderRequest;
-import com._4paradigm.rtidb.ns.NS.CreateTableRequest;
-import com._4paradigm.rtidb.ns.NS.DropTableRequest;
-import com._4paradigm.rtidb.ns.NS.GeneralResponse;
-import com._4paradigm.rtidb.ns.NS.RecoverEndpointRequest;
-import com._4paradigm.rtidb.ns.NS.ShowTableRequest;
-import com._4paradigm.rtidb.ns.NS.ShowTableResponse;
-import com._4paradigm.rtidb.ns.NS.ShowTabletRequest;
-import com._4paradigm.rtidb.ns.NS.ShowTabletResponse;
-import com._4paradigm.rtidb.ns.NS.TableInfo;
-import com._4paradigm.rtidb.ns.NS.TabletStatus;
-
-import io.brpc.client.BrpcChannelGroup;
-import io.brpc.client.EndPoint;
-import io.brpc.client.RpcBaseClient;
-import io.brpc.client.RpcProxy;
-import io.brpc.client.SingleEndpointRpcClient;
-import io.brpc.client.RpcClientOptions;
 import rtidb.nameserver.NameServer;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NameServerClientImpl implements NameServerClient, Watcher {
     private final static Logger logger = LoggerFactory.getLogger(NameServerClientImpl.class);
@@ -249,6 +230,31 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
 
     @Override
+    public boolean AddTableField(String tableName, String columnName, String columnType) {
+        try {
+            ColumnType.valueFrom(columnType);
+        } catch (Exception e) {
+            logger.warn(e.getMessage());
+            return false;
+        }
+        Common.ColumnDesc columnDesc = Common.ColumnDesc.newBuilder()
+                .setName(columnName)
+                .setType(columnType)
+                .build();
+        AddTableFieldRequest request = AddTableFieldRequest.newBuilder()
+                .setName(tableName)
+                .setColumnDesc(columnDesc)
+                .build();
+        GeneralResponse response = ns.AddTableField(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        } else if (response != null) {
+            logger.warn("fail to add table field for error {}", response.getMsg());
+        }
+        return false;
+    }
+
+    @Override
     public void process(WatchedEvent event) {
 
 
@@ -334,4 +340,5 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         return nsEndpoint;
     }
+
 }
