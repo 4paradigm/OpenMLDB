@@ -208,6 +208,11 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[4], 111l);
             Assert.assertTrue(pf.get());
 
+            ScanFuture sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
+            KvIterator it = sf.get();
+            Assert.assertTrue(it.valid());
+            Assert.assertEquals(it.getSchema().size(), 5);
+
             ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
@@ -278,10 +283,11 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[3], 1111l);
             Assert.assertEquals(row[4], 111l);
 
-            ScanFuture sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
-            KvIterator it = sf.get();
+            sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
+            it = sf.get();
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 2);
+            Assert.assertEquals(it.getSchema().size(), 6);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
             Assert.assertEquals(row.length, 6);
@@ -325,6 +331,9 @@ public class TableAsyncClientTest extends TestCaseBase {
             pf = tableAsyncClient.put(name, new Object[]{"card02", "mcc02", 1.5, 1111l, 111l, "aa"});
             Assert.assertTrue(pf.get());
 
+            sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
+            it = sf.get();
+            Assert.assertEquals(it.getSchema().size(), 7);
 
         } catch (Exception e) {
             e.printStackTrace();

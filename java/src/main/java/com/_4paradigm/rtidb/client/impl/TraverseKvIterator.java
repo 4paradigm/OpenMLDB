@@ -117,6 +117,9 @@ public class TraverseKvIterator implements KvIterator {
 
     @Override
     public List<ColumnDesc> getSchema() {
+        if (th != null && th.getSchemaMap().size() > 0) {
+            return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
+        }
         return schema;
     }
 

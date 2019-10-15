@@ -740,7 +740,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             Long network = null;
             DefaultKvIterator it = null;
             if (th.getSchemaMap().size() > 0) {
-                it = new DefaultKvIterator(response.getPairs(), th.getSchema(), th.getSchemaMap().size());
+                it = new DefaultKvIterator(response.getPairs(), th);
 
             } else {
                 it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);

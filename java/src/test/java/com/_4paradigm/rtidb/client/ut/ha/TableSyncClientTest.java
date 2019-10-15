@@ -408,6 +408,10 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("ts_1", 222l);
             tableSyncClient.put(name, data);
 
+            KvIterator itt = tableSyncClient.traverse(name, "card");
+            Assert.assertTrue(itt.valid());
+            Assert.assertEquals(itt.getSchema().size(), 5);
+
             ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
@@ -442,6 +446,7 @@ public class TableSyncClientTest extends TestCaseBase {
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 2);
+            Assert.assertEquals(it.getSchema().size(), 6);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
             Assert.assertEquals(row.length, 6);
@@ -466,8 +471,9 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
 
-            KvIterator itt = tableSyncClient.traverse(name, "card");
+            itt = tableSyncClient.traverse(name, "card");
             Assert.assertTrue(itt.valid());
+            Assert.assertEquals(it.getSchema().size(), 6);
             row = itt.getDecodedValue();
             Assert.assertEquals(itt.getKey(), 1236);
             Assert.assertEquals(row.length, 6);
@@ -502,7 +508,17 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(((Long) row[4]).longValue(), 222l);
             Assert.assertEquals(row[5], null);
 
+            ok = nsc.addTableField(name, "bb", "string");
+//            Thread.currentThread().sleep(15);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 7);
+            itt = tableSyncClient.traverse(name, "card");
+            Assert.assertTrue(itt.valid());
+            Assert.assertEquals(it.getSchema().size(), 7);
+
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);

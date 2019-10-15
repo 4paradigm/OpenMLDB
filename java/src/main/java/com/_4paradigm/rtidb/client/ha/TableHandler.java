@@ -118,14 +118,14 @@ public class TableHandler {
             }
         }
         if (tableInfo.getAddedColumnDescCount() > 0) {
+            List<ColumnDesc> tempList = new ArrayList<ColumnDesc>(schema);
             for (int i = 0; i < tableInfo.getAddedColumnDescCount(); i++) {
                 com._4paradigm.rtidb.common.Common.ColumnDesc cd = tableInfo.getAddedColumnDesc(i);
                 ColumnDesc ncd = new ColumnDesc();
                 ncd.setName(cd.getName());
                 ncd.setType(ColumnType.valueFrom(cd.getType()));
-                List<ColumnDesc> tempList = new ArrayList<ColumnDesc>(schema);
                 tempList.add(ncd);
-                schemaMap.put(schemaSize + i + 1, tempList);
+                schemaMap.put(schemaSize + i + 1, new ArrayList<>(tempList));
             }
         }
     }
