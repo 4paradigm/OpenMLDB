@@ -29,7 +29,7 @@ public class DefaultKvIterator implements KvIterator {
     private int count;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
-    private TableHandler th = new TableHandler();
+    private TableHandler th = null;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -140,7 +140,12 @@ public class DefaultKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
+        Object[] row;
+        if (th != null) {
+            row = new Object[schema.size() + th.getSchemaMap().size()];
+        } else {
+            row = new Object[schema.size()];
+        }
         getDecodedValue(row, 0, row.length);
         return row;
     }
