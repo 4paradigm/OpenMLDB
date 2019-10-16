@@ -85,7 +85,12 @@ class TestAddReplicaNs(TestCaseBase):
 
 
     @multi_dimension(False)
-    def test_addreplica_no_snapshot(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_addreplica_no_snapshot(self,storage_mode):
         """
         没有snapshot，添加副本成功，数据追加成功
         :return:
@@ -101,7 +106,7 @@ class TestAddReplicaNs(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
             ],
@@ -124,7 +129,12 @@ class TestAddReplicaNs(TestCaseBase):
 
 
     @multi_dimension(False)
-    def test_addreplica_offline(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_addreplica_offline(self,storage_mode):
         """
         添加一个offline的副本，添加失败
         :return:
@@ -141,7 +151,7 @@ class TestAddReplicaNs(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
             ],
@@ -161,13 +171,17 @@ class TestAddReplicaNs(TestCaseBase):
 
 
     @ddt.data(
-        (None, None, slave1, 'Fail to addreplica'), 
-        ('notexsit', None, None, 'Fail to addreplica'),
-        (None, 10, None, 'Fail to addreplica'),
-        (None, None, '127.1.1.1:6666', 'Fail to addreplica'),
+        (None, None, slave1, 'Fail to addreplica','kSSD'),
+        ('notexsit', None, None, 'Fail to addreplica','kSSD'),
+        (None, 10, None, 'Fail to addreplica','kSSD'),
+        (None, None, '127.1.1.1:6666', 'Fail to addreplica','kSSD'),
+        (None, None, slave1, 'Fail to addreplica','kHDD'),
+        ('notexsit', None, None, 'Fail to addreplica','kHDD'),
+        (None, 10, None, 'Fail to addreplica','kHDD'),
+        (None, None, '127.1.1.1:6666', 'Fail to addreplica','kHDD'),
     )
     @ddt.unpack
-    def test_addreplica_args_invalid(self, tname, pid, endpoint, exp_msg):  # RTIDB-201
+    def test_addreplica_args_invalid(self, tname, pid, endpoint, exp_msg,storage_mode):  # RTIDB-201
         """
         建表时带副本，然后添加新副本时，参数异常检查
         :return:
@@ -183,7 +197,7 @@ class TestAddReplicaNs(TestCaseBase):
             "name": name,
             "ttl_type": "kLatestTime",
             "ttl": 100,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -202,14 +216,19 @@ class TestAddReplicaNs(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        ('0', 'AddReplica ok'),
-        ('0-3', 'AddReplica ok'),
-        ('0,2,3', 'AddReplica ok'),
-        ('a-z', 'pid group[a-z] format error'),
-        ('0-10', 'Fail to addreplica'),
+        ('0', 'AddReplica ok','kSSD'),
+        ('0-3', 'AddReplica ok','kSSD'),
+        ('0,2,3', 'AddReplica ok','kSSD'),
+        ('a-z', 'pid group[a-z] format error','kSSD'),
+        ('0-10', 'Fail to addreplica','kSSD'),
+        ('0', 'AddReplica ok','kHDD'),
+        ('0-3', 'AddReplica ok','kHDD'),
+        ('0,2,3', 'AddReplica ok','kHDD'),
+        ('a-z', 'pid group[a-z] format error','kHDD'),
+        ('0-10', 'Fail to addreplica','kHDD'),
     )
     @ddt.unpack
-    def test_addreplica_pid_group(self, pid_group, exp_msg):
+    def test_addreplica_pid_group(self, pid_group, exp_msg,storage_mode):
         """
         添加副本一次执行多个分片
         :return:
@@ -224,7 +243,7 @@ class TestAddReplicaNs(TestCaseBase):
             "name": name,
             "ttl_type": "kLatestTime",
             "ttl": 100,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-5","is_leader": "true"},
             ],
@@ -250,20 +269,31 @@ class TestAddReplicaNs(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        ('pid group[m] format error', 'm', conf.tb_endpoints[1]),
-        ('pid group[-1] format error', '-1', conf.tb_endpoints[1]),
-        ('Fail to addreplica', '1,2,10', conf.tb_endpoints[1]),
-        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1]),
-        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1]),
-        ('Fail to addreplica', '1-10', conf.tb_endpoints[1]),
-        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1]),
-        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1]),
-        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1]),
-        ('Fail to addreplica', '5-7', conf.tb_endpoints[1]),
-        ('Fail to addreplica', '5,6,7', conf.tb_endpoints[1]),
+        ('pid group[m] format error', 'm', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[-1] format error', '-1', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to addreplica', '1,2,10', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to addreplica', '1-10', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to addreplica', '5-7', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to addreplica', '5,6,7', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[m] format error', 'm', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[-1] format error', '-1', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to addreplica', '1,2,10', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to addreplica', '1-10', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to addreplica', '5-7', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to addreplica', '5,6,7', conf.tb_endpoints[1],'kHDD'),
     )
     @ddt.unpack
-    def test_addreplica_pid_group_error(self, exp_msg, pid_group, endpoint):
+    def test_addreplica_pid_group_error(self, exp_msg, pid_group, endpoint,storage_mode):
         """
         添加失败
         :return:
@@ -279,7 +309,7 @@ class TestAddReplicaNs(TestCaseBase):
             "name": name,
             "ttl_type": "kLatestTime",
             "ttl": 100,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-8","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-5","is_leader": "false"},
@@ -292,7 +322,12 @@ class TestAddReplicaNs(TestCaseBase):
         self.assertIn(exp_msg, rs2)
 
     @multi_dimension(False)
-    def test_addreplica_check_binlog_sync_progress(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_addreplica_check_binlog_sync_progress(self,storage_mode):
         """
         测试binlog在不同阈值的时候，数据追平之后，添加备份的状态是否为yes
         :return:
@@ -308,7 +343,7 @@ class TestAddReplicaNs(TestCaseBase):
             "ttl": 144000,
             "partition_num": 1,
             "replica_num": 2,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
@@ -346,7 +381,12 @@ class TestAddReplicaNs(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @multi_dimension(False)
-    def test_configset_binlog_threshold(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_configset_binlog_threshold(self,storage_mode):
         """
         修改check_binlog_sync_progress_delta 配置为0，添加新的副本后，查看offset追平
         :return:
@@ -381,7 +421,7 @@ class TestAddReplicaNs(TestCaseBase):
             "ttl": 144000,
             "partition_num": 1,
             "replica_num": 2,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs1 = self.ns_create(self.ns_leader, metadata_path)
