@@ -825,9 +825,9 @@ void DiskTableTraverseIterator::SeekToFirst() {
 void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
     std::string combine;
     if (has_ts_idx_) {
-        combine = CombineKeyTs(pk, UINT64_MAX, ts_idx_);
+        combine = CombineKeyTs(pk, time, ts_idx_);
     } else {
-        combine = CombineKeyTs(pk, UINT64_MAX);
+        combine = CombineKeyTs(pk, time);
     }
     it_->Seek(rocksdb::Slice(combine));
     if (ttl_type_ == ::rtidb::api::TTLType::kLatestTime) {
