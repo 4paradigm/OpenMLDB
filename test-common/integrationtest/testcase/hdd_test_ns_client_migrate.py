@@ -141,7 +141,7 @@ class TestNameserverMigrate(TestCaseBase):
         """
         print(">>>>>>")
         print(tname)
-        self.createtable_put(tname, 1)
+        self.createtable_put(str(tname), 1)
         if tname != 'table_not_exists':
             rs2 = self.migrate(self.ns_leader, src, tname, pid_group, des)
         else:
