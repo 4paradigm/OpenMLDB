@@ -220,11 +220,11 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        ['kSSD'],
-        ['kHDD'],
+        ('ssd_db', 'kSSD'),
+        ('hdd_db', 'kHDD'),
     )
     @ddt.unpack
-    def test_changeleader_and_makesnapshot(self,storage_mode):
+    def test_changeleader_and_makesnapshot(self,db_path,storage_mode):
         """
         changeleader后，可以makesnapshot，未changeleader的无法makesnapshot
         :return:
@@ -285,7 +285,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
 
         self.assertIn('MakeSnapshot ok', rs3)
         self.assertIn('Fail to makesnapshot', rs4)
-        mf = self.get_manifest(self.slave1path, tid, 0)
+        mf = self.get_manifest_by_realpath(self.slave1path + "/" + db_path, tid, 0)
         self.assertEqual(mf['offset'], '1')
         self.assertTrue(mf['name'])
         self.assertEqual(mf['count'], '1')
