@@ -38,7 +38,8 @@ using namespace llvm;
 using namespace llvm::orc;
 
 ExitOnError ExitOnErr;
-
+float * gf = new float[1];
+int32_t* gi = new int32_t[1];
 ThreadSafeModule createDemoModule() {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test", *ctx);
@@ -122,29 +123,17 @@ BENCHMARK_F(AccessFixture, DecodeTest)(benchmark::State& st) {
     }
 }
 
-BENCHMARK_F(AccessFixture, InitTest)(benchmark::State& st) {
-    flatbuffers::FlatBufferBuilder fb_;
-    ::flatbuffers::Offset<::flatbuffers::Table> table = Decode(fb_);
-    fb_.Finish(table);
-    for (auto _ : st) {
-        uint8_t* ptr = fb_.GetBufferPointer();
-        ::flatbuffers::GetRoot<::flatbuffers::Table>((void*)ptr);
-    }
-}
-
-
 BENCHMARK_F(AccessFixture, AccessInt)(benchmark::State& st) {
     flatbuffers::FlatBufferBuilder fb_;
     ::flatbuffers::Offset<::flatbuffers::Table> table = Decode(fb_);
     fb_.Finish(table);
     uint8_t* ptr = fb_.GetBufferPointer();
     const ::flatbuffers::Table* t = ::flatbuffers::GetRoot<::flatbuffers::Table>((void*)ptr);
-    int32_t* i = new int32_t[1];
-
+    int32_t i = 0;
     for (auto _ : st) {
-        i[0] = t->GetField<int32_t>(6, 0);
+        i += t->GetField<int32_t>(6, 0);
     }
-
+    gi[0] = i;
 }
 
 BENCHMARK_F(AccessFixture, AccessFloat)(benchmark::State& st) {
@@ -153,10 +142,11 @@ BENCHMARK_F(AccessFixture, AccessFloat)(benchmark::State& st) {
     fb_.Finish(table);
     uint8_t* ptr = fb_.GetBufferPointer();
     const ::flatbuffers::Table* t = ::flatbuffers::GetRoot<::flatbuffers::Table>((void*)ptr);
-    float* f = new float[1];
+    float f = 0.0;
     for (auto _ : st) {
-        f[0] = t->GetField<float>(4, 0.0f);
+        f += t->GetField<float>(4, 0.0f);
     }
+    gf[0] = f;
 }
 
 BENCHMARK_F(AccessFixture, ManualAccessFloat)(benchmark::State& st) {
@@ -164,15 +154,15 @@ BENCHMARK_F(AccessFixture, ManualAccessFloat)(benchmark::State& st) {
     ::flatbuffers::Offset<::flatbuffers::Table> table = Decode(fb_);
     fb_.Finish(table);
     uint8_t* ptr = fb_.GetBufferPointer();
-    float* f = new float[1];
+    float f = 0;
     for (auto _ : st) {
         ::flatbuffers::uoffset_t table_start = *((::flatbuffers::uoffset_t*)ptr);
         ::flatbuffers::uoffset_t vtable_start = table_start - *((::flatbuffers::soffset_t*)(ptr + table_start));
         ::flatbuffers::voffset_t float_field_voffset = *((::flatbuffers::voffset_t*)(ptr + vtable_start + 4));
-        f[0] = *(float*)(ptr + table_start + float_field_voffset);
+        f += *(float*)(ptr + table_start + float_field_voffset);
     }
+    gf[0] = f;
 }
-
 
 BENCHMARK_F(AccessFixture, JITAccessFloat)(benchmark::State& st) {
     flatbuffers::FlatBufferBuilder fb_;
@@ -211,14 +201,15 @@ BENCHMARK_F(AccessFixture, JITAccessFloat)(benchmark::State& st) {
     fn_entry entry = reinterpret_cast<float(*)(void*)>(jit_function_to_closure(fn));
     jit_context_build_end(ctx);
     uint8_t* ptr = fb_.GetBufferPointer();
-    float* output = new float[1];
-    output[0] = entry((void*)ptr);
+    float output = 0.0;
+    output = entry((void*)ptr);
     for (auto _ : st) {
-        output[0] = entry((void*)ptr);
+        output += entry((void*)ptr);
     }
+    gf[0] = output;
 }
 
-BENCHMARK_F(AccessFixture, LLVM_NO_OPT_AccessFloat)(benchmark::State& st) {
+BENCHMARK_F(AccessFixture, LLVM_AccessFloat)(benchmark::State& st) {
     flatbuffers::FlatBufferBuilder fb_;
     ::flatbuffers::Offset<::flatbuffers::Table> table = Decode(fb_);
     fb_.Finish(table);
@@ -252,13 +243,14 @@ BENCHMARK_F(AccessFixture, LLVM_NO_OPT_AccessFloat)(benchmark::State& st) {
     // Look up the JIT'd function, cast it to a function pointer, then call it.
     auto decode_symble = ExitOnErr(J->lookup("decode"));
     float (*decode)(int8_t*) = (float (*)(int8_t*))decode_symble.getAddress();
-    float* output = new float[1];
+    float output = 0.0f;
     int8_t* ptr = (int8_t*)fb_.GetBufferPointer();
-    output[0] = decode(ptr);
+    output = decode(ptr);
 
     for (auto _ : st) {
-        output[0] = decode(ptr);
+        output += decode(ptr);
     }
+    gf[0] = output;
 }
 
 
