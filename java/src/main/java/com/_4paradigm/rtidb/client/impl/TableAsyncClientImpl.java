@@ -140,12 +140,8 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (row == null) {
             throw new TabletException("putting data is null");
         }
-        if (row.length > th.getSchema().size() && th.getSchemaMap().size() > 0) {
-            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
-                row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
-            }
-        } else {
-            row = Arrays.copyOf(row, th.getSchema().size());
+        if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+            row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
         }
         List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
         return put(name, 0, row, tsDimensions);

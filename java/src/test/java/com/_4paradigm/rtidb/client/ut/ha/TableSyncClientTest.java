@@ -2,12 +2,15 @@ package com._4paradigm.rtidb.client.ut.ha;
 
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
 import com._4paradigm.rtidb.client.base.Config;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
+import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
@@ -21,6 +24,8 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -515,7 +520,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(tableSyncClient.getSchema(name).size(), 7);
             itt = tableSyncClient.traverse(name, "card");
             Assert.assertTrue(itt.valid());
-            Assert.assertEquals(it.getSchema().size(), 7);
+            Assert.assertEquals(itt.getSchema().size(), 7);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -645,6 +650,69 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(false);
         } finally {
             nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testCodecForAddTableFiled() {
+        String name = createSchemaTable();
+        try {
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 3);
+            Assert.assertTrue(tableSyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d}));
+
+            boolean ok = nsc.addTableField(name, "aa", "string");
+//            Thread.currentThread().sleep(15);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 4);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+        List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = new ArrayList<com._4paradigm.rtidb.client.schema.ColumnDesc>();
+        com._4paradigm.rtidb.client.schema.ColumnDesc col1 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col1.setAddTsIndex(true);
+        col1.setName("card");
+        col1.setType(ColumnType.kString);
+        schema.add(col1);
+
+        com._4paradigm.rtidb.client.schema.ColumnDesc col2 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col2.setAddTsIndex(true);
+        col2.setName("mcc");
+        col2.setType(ColumnType.kString);
+        schema.add(col2);
+
+        com._4paradigm.rtidb.client.schema.ColumnDesc col3 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col3.setAddTsIndex(false);
+        col3.setName("amt");
+        col3.setType(ColumnType.kDouble);
+        schema.add(col3);
+
+        com._4paradigm.rtidb.client.schema.ColumnDesc col4 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col4.setAddTsIndex(false);
+        col4.setName("aa");
+        col4.setType(ColumnType.kString);
+        schema.add(col4);
+        try {
+            ByteBuffer buffer = RowCodec.encode(new Object[]{"9527", "1234", 1.0, "aa1"}, schema);
+            buffer.rewind();
+
+            Object[] row = new Object[4];
+            RowCodec.decode(buffer, schema, row, 0, 4);
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals("1234", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+            Assert.assertEquals("aa1", row[3]);
+
+            buffer.rewind();
+            row = new Object[3];
+            schema = schema.subList(0, 2);
+            RowCodec.decode(buffer, schema, row, 0, 3);
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals("1234", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
         }
     }
 
@@ -821,6 +889,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals("1222", row[1]);
             Assert.assertEquals(1.0, row[2]);
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.fail();
         }
         
@@ -871,6 +940,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals("1223", row[1]);
             Assert.assertEquals(2.0, row[2]);
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.fail();
         } finally {
             ClientBuilder.config.setRemoveDuplicateByTime(false);

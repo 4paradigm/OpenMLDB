@@ -18,6 +18,12 @@ import java.util.Map;
 public class TableClientCommon {
 
     public static void parseMapInput(Map<String, Object> row, TableHandler th, Object[] arrayRow, List<Tablet.TSDimension> tsDimensions) throws TabletException {
+        if (row == null) {
+            throw new TabletException("input row is null");
+        }
+        if (arrayRow.length < th.getSchema().size()) {
+            throw new TabletException("row length mismatch schema");
+        }
         tsDimensions.clear();
         int tsIndex = 0;
         List<ColumnDesc> schema;
@@ -61,6 +67,9 @@ public class TableClientCommon {
     public static List<Tablet.TSDimension> parseArrayInput(Object[] row, TableHandler th) throws TabletException {
         if (row == null) {
             throw new TabletException("input row is null");
+        }
+        if (row.length < th.getSchema().size()) {
+            throw new TabletException("row length mismatch schema");
         }
         List<ColumnDesc> schema;
         if (row.length > th.getSchema().size() && th.getSchemaMap().size() > 0) {

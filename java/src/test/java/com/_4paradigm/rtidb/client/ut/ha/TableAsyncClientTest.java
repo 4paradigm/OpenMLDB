@@ -26,6 +26,7 @@ public class TableAsyncClientTest extends TestCaseBase {
 
     private static AtomicInteger id = new AtomicInteger(20000);
     private static String[] nodes = com._4paradigm.rtidb.client.base.Config.NODES;
+
     @BeforeClass
     public void setUp() {
         super.setUp();
@@ -35,6 +36,7 @@ public class TableAsyncClientTest extends TestCaseBase {
     public void tearDown() {
         super.tearDown();
     }
+
     private String createKvTable() {
         String name = String.valueOf(id.incrementAndGet());
         nsc.dropTable(name);
@@ -335,6 +337,24 @@ public class TableAsyncClientTest extends TestCaseBase {
             it = sf.get();
             Assert.assertEquals(it.getSchema().size(), 7);
 
+            try {
+                data.clear();
+                data.put("card", "card0");
+                data.put("mcc", "mcc1");
+                data.put("amt", 1.6);
+                data.put("ts", 1235l);
+                pf = tableAsyncClient.put(name, data);
+                Assert.assertTrue(pf.get());
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
+            try {
+                pf = tableAsyncClient.put(name, new Object[]{"card02", "mcc02", 1.5, 1111l});
+                Assert.assertFalse(pf.get());
+            } catch (Exception e) {
+                Assert.assertTrue(true);
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
             Assert.assertTrue(false);
@@ -602,7 +622,7 @@ public class TableAsyncClientTest extends TestCaseBase {
 
             //
             {
-                GetFuture gf = tableAsyncClient.get(name, "card0","card", 14, null, Tablet.GetType.kSubKeyLe,
+                GetFuture gf = tableAsyncClient.get(name, "card0", "card", 14, null, Tablet.GetType.kSubKeyLe,
                         14, Tablet.GetType.kSubKeyGe);
                 Object[] row = gf.getRow();
                 Assert.assertEquals(null, row);
@@ -610,14 +630,14 @@ public class TableAsyncClientTest extends TestCaseBase {
 
             //
             {
-                GetFuture gf = tableAsyncClient.get(name, "card0","card", 13, null, Tablet.GetType.kSubKeyEq,
+                GetFuture gf = tableAsyncClient.get(name, "card0", "card", 13, null, Tablet.GetType.kSubKeyEq,
                         13, Tablet.GetType.kSubKeyEq);
                 Object[] row = gf.getRow();
                 Assert.assertEquals(new Object[]{"card0", "1224", 3.0}, row);
             }
 
             {
-                GetFuture gf = tableAsyncClient.get(name, "card0","card", 11, null, Tablet.GetType.kSubKeyEq,
+                GetFuture gf = tableAsyncClient.get(name, "card0", "card", 11, null, Tablet.GetType.kSubKeyEq,
                         11, Tablet.GetType.kSubKeyEq);
                 Object[] row = gf.getRow();
                 Assert.assertEquals(new Object[]{"card0", "1224", 2.0}, row);

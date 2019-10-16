@@ -29,7 +29,7 @@ public class DefaultKvIterator implements KvIterator {
     private int count;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
-    private TableHandler th = null;
+    private TableHandler th = new TableHandler();
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
