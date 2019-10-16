@@ -5,7 +5,7 @@ build_rtidb_and_case:
     stage: build
     script:
         - ln -sf /depends/thirdparty thirdparty
-        - source /opt/rh/devtoolset-8/enable && bash steps/compile.sh
+        - source /opt/rh/devtoolset-8/enable && bash tools/compile.sh
 
 
 
