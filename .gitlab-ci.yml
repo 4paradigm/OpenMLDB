@@ -1,4 +1,6 @@
 image: develop-registry.4pd.io/fesql_build_base:0.2
+variables:
+    GIT_SUBMODULE_STRATEGY:normal
 stages:
     - build
 build_rtidb_and_case:
