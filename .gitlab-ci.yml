@@ -1,0 +1,12 @@
+image: develop-registry.4pd.io/fesql_build_base:0.2
+stages:
+    - build
+build_rtidb_and_case:
+    stage: build
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - source /opt/rh/devtoolset-8/enable && bash steps/compile.sh
+
+
+
+
