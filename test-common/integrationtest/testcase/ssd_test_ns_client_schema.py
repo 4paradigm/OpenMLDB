@@ -15,8 +15,12 @@ import libs.conf as conf
 class TestSchema(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
-
-    def test_schema(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_schema(self,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         # m = utils.gen_table_metadata(
@@ -42,7 +46,7 @@ class TestSchema(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -98,14 +102,18 @@ class TestSchema(TestCaseBase):
         self.assertEqual(rs1['k11'], '1545724145000')
         self.assertEqual(rs1['k12'], '2018-12-25')
         self.ns_drop(self.ns_leader, name)
-
-    def test_showschema(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_showschema(self,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 14400,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -131,14 +139,18 @@ class TestSchema(TestCaseBase):
         self.assertEqual(column_key[1], ["1", "card", "card", "ts2", "100min"])
         self.assertEqual(column_key[2], ["2", "mcc", "mcc", "ts2", "100min"])
         self.ns_drop(self.ns_leader, name)
-
-    def test_showschema_no_columnkey(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_showschema_no_columnkey(self,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 14400,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -158,14 +170,18 @@ class TestSchema(TestCaseBase):
         self.assertEqual(column_key[0], ["0", "card", "card", "ts1", "14400min"])
         self.assertEqual(column_key[1], ["1", "mcc", "mcc", "ts1", "14400min"])
         self.ns_drop(self.ns_leader, name)
-
-    def test_showschema_no_columnkey_no_tskey(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_showschema_no_columnkey_no_tskey(self,storage_mode):
         name = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         table_meta = {
                 "name": name,
                 "ttl": 14400,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
                 "column_desc":[
                     {"name": "card", "type": "string", "add_ts_idx": "true"},
                     {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -186,8 +202,12 @@ class TestSchema(TestCaseBase):
         # self.assertEqual(column_key[0], ["0", "card", "card", "-", "14400min"])
         # self.assertEqual(column_key[1], ["1", "mcc", "mcc", "-", "14400min"])
         self.ns_drop(self.ns_leader, name)
-
-    def test_showschema_no_schema(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_showschema_no_schema(self,storage_mode):
         name = 'tname{}'.format(time.time())
         # rs = self.ns_create_cmd(self.ns_leader, name, '0', '8', '3')
 
@@ -197,7 +217,7 @@ class TestSchema(TestCaseBase):
             "ttl": 0,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)

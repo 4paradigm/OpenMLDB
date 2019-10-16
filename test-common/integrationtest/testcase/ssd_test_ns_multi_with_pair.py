@@ -10,8 +10,12 @@ import libs.utils as utils
 
 @ddt.ddt
 class TestHasTsCol(TestCaseBase):
-
-    def test_count_schema_has_ts_col(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_count_schema_has_ts_col(self,storage_mode):
         """
         指定时间列的schema表统计pk下的条数
         :return:
@@ -21,7 +25,7 @@ class TestHasTsCol(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -61,8 +65,12 @@ class TestHasTsCol(TestCaseBase):
         self.assertIn('idx name not found', rs10)
         rs11 = self.ns_count_with_pair(self.ns_leader, name, 'mcc1', 'mcc', 'ts3')
         self.assertIn('ts name not found', rs11)
-
-    def test_scan_schema_has_ts_col(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_scan_schema_has_ts_col(self,storage_mode):
         """
         指定时间列的schema表查询pk下的多条数据
         :return:
@@ -72,7 +80,7 @@ class TestHasTsCol(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},
@@ -119,8 +127,12 @@ class TestHasTsCol(TestCaseBase):
         self.assertEqual(len(rs6), 0)
         rs7 = self.ns_scan_multi_with_pair(self.ns_leader, name, 'mcc1', 'mcc',  '25', '0', 'ts2', '1')
         self.assertEqual(len(rs7), 1)
-
-    def test_get_schema_has_ts_col(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_get_schema_has_ts_col(self,storage_mode):
         """
         指定时间列的schema表查询一条数据·
         :return:
@@ -130,7 +142,7 @@ class TestHasTsCol(TestCaseBase):
         table_meta = {
                 "name": name,
                 "ttl": 0,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
                "column_desc":[
                    {"name": "card", "type": "string", "add_ts_idx": "true"},
                    {"name": "mcc", "type": "string", "add_ts_idx": "true"},

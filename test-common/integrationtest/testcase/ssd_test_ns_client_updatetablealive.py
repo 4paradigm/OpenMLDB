@@ -11,8 +11,12 @@ import libs.utils as utils
 
 @ddt.ddt
 class TestUpdateTableAlive(TestCaseBase):
-
-    def test_update_table_alive_normal(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_update_table_alive_normal(self,storage_mode):
         """
         测试updatetable函数，设置参数为no和yes
         :return:
@@ -25,7 +29,7 @@ class TestUpdateTableAlive(TestCaseBase):
             "ttl": 10,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs_absolute1 = self.ns_create(self.ns_leader, metadata_path)
