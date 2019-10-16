@@ -19,7 +19,12 @@ class TestAddReplicaNs(TestCaseBase):
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
 
     @multi_dimension(False)
-    def test_addreplica_scenario(self):  # RTIDB-250
+    @ddt.data(
+        ('kSSD'),
+        ('kHDD'),
+    )
+    @ddt.unpack
+    def test_addreplica_scenario(self,storage_mode):  # RTIDB-250
         """
         创建主表，put数据后makesnapshot，添加副本后再put导主表，数据全部同步正确
         :return:
@@ -40,7 +45,7 @@ class TestAddReplicaNs(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave2,"pid_group": "0","is_leader": "false"},
