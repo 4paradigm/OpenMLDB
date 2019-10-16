@@ -38,6 +38,7 @@ public:
 	virtual std::string GetPK() const override;
 	virtual uint64_t GetKey() const override;
 	virtual void SeekToFirst() override;
+    virtual uint64_t GetCount() const override;
 
 private:
     void NextPK();
@@ -54,6 +55,7 @@ private:
     uint32_t ts_idx_;
     uint64_t expire_value_;
     Ticket ticket_;
+    uint64_t traverse_cnt_;
 };
 
 class MemTable : public Table {

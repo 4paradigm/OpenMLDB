@@ -26,6 +26,7 @@ DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(key_entry_max_height);
 DECLARE_uint32(absolute_default_skiplist_height);
 DECLARE_uint32(latest_default_skiplist_height);
+DECLARE_uint32(max_traverse_cnt);
 
 namespace rtidb {
 namespace storage {
@@ -633,7 +634,7 @@ MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t 
             uint32_t ts_index) : segments_(segments),
         seg_cnt_(seg_cnt), seg_idx_(0), pk_it_(NULL), it_(NULL), 
         ttl_type_(ttl_type), record_idx_(0), ts_idx_(0), 
-        expire_value_(expire_value), ticket_() {
+        expire_value_(expire_value), ticket_(), traverse_cnt_(0) {
     uint32_t idx = 0;
     if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
         ts_idx_ = idx;
@@ -647,16 +648,22 @@ MemTableTraverseIterator::~MemTableTraverseIterator() {
 }
 
 bool MemTableTraverseIterator::Valid() {
+    if (traverse_cnt_ >= FLAGS_max_traverse_cnt) return false;
     return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid();
 }
 
 void MemTableTraverseIterator::Next() {
     it_->Next();
     record_idx_++;
+    traverse_cnt_++;
     if (!it_->Valid() || IsExpired()) {
         NextPK();
         return;
     }
+}
+
+uint64_t MemTableTraverseIterator::GetCount() const {
+    return traverse_cnt_;
 }
 
 bool MemTableTraverseIterator::IsExpired() {
@@ -704,6 +711,10 @@ void MemTableTraverseIterator::NextPK() {
         }
         it_->SeekToFirst();
         record_idx_ = 1;
+        traverse_cnt_++;
+        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            break;
+        }
     } while(it_ == NULL || !it_->Valid() || IsExpired());
 }
 
@@ -733,6 +744,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
         }
         if (spk.compare(pk_it_->GetKey()) != 0) {
+            traverse_cnt_++;
             it_->SeekToFirst();
             record_idx_ = 1;
             if (!it_->Valid() || IsExpired()) {
@@ -743,6 +755,10 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 it_->SeekToFirst();
                 record_idx_ = 1;
                 while(it_->Valid() && record_idx_ <= expire_value_) {
+                    traverse_cnt_++;
+                    if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                        return;
+                    }
                     if (it_->GetKey() < ts) {
                         return;
                     }
@@ -751,6 +767,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 }
                 NextPK();
             } else {
+                traverse_cnt_++;
                 it_->Seek(ts);
                 if (it_->Valid() && it_->GetKey() == ts) {
                     it_->Next();
@@ -770,7 +787,10 @@ rtidb::base::Slice MemTableTraverseIterator::GetValue() const {
 }
 
 uint64_t MemTableTraverseIterator::GetKey() const {
-    return it_->GetKey();
+    if (it_ != NULL && it_->Valid()) {
+        return it_->GetKey();
+    }
+    return UINT64_MAX;
 }
 
 std::string MemTableTraverseIterator::GetPK() const {
@@ -800,6 +820,10 @@ void MemTableTraverseIterator::SeekToFirst() {
                 it_ = ((KeyEntry*)pk_it_->GetValue())->entries.NewIterator();
             }
             it_->SeekToFirst();
+            traverse_cnt_++;
+            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                return;
+            }
             if (it_->Valid() && !IsExpired()) {
                 record_idx_ = 1;
                 return;

@@ -67,6 +67,7 @@ DECLARE_int32(binlog_sync_to_disk_interval);
 DECLARE_int32(binlog_delete_interval);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(latest_ttl_max);
+DECLARE_uint32(max_traverse_cnt);
 
 namespace rtidb {
 namespace tablet {
@@ -1491,6 +1492,14 @@ void TabletImpl::Traverse(RpcController* controller,
         total_block_size += last_pk.length() + value.size();
         scount ++;
     }
+    bool is_finish = false;
+    if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+        PDLOG(DEBUG, "with ts %lu", last_pk.c_str(), last_time);
+        last_pk = it->GetPK();
+        last_time = it->GetKey();
+    } else if (scount < request->limit()) {
+        is_finish = true;
+    }
     delete it;
     uint32_t total_size = scount * (8+4+4) + total_block_size;
     std::string* pairs = response->mutable_pairs();
@@ -1513,6 +1522,7 @@ void TabletImpl::Traverse(RpcController* controller,
     response->set_count(scount);
     response->set_pk(last_pk);
     response->set_ts(last_time);
+    response->set_is_finish(is_finish);
 }
 
 void TabletImpl::Delete(RpcController* controller,

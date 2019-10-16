@@ -12,6 +12,7 @@ using ::baidu::common::WARNING;
 using ::baidu::common::DEBUG;
 
 DECLARE_bool(disable_wal);
+DECLARE_uint32(max_traverse_cnt);
 
 namespace rtidb {
 namespace storage {
@@ -733,15 +734,14 @@ void DiskTableIterator::Seek(uint64_t ts) {
 
 DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB* db, rocksdb::Iterator* it, 
         const rocksdb::Snapshot* snapshot, ::rtidb::api::TTLType ttl_type, uint64_t expire_value) : 
-        db_(db), it_(it), snapshot_(snapshot), ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value) {
-        has_ts_idx_ = false;
-    };
+        db_(db), it_(it), snapshot_(snapshot), ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value),
+        has_ts_idx_(false), ts_idx_(0), traverse_cnt_(0) {
+ };
 
 DiskTableTraverseIterator::DiskTableTraverseIterator(rocksdb::DB *db, rocksdb::Iterator *it,
     const rocksdb::Snapshot *snapshot, ::rtidb::api::TTLType ttl_type, uint64_t expire_value, int32_t ts_idx) :
     db_(db), it_(it), snapshot_(snapshot), ttl_type_(ttl_type), record_idx_(0), expire_value_(expire_value),
-    ts_idx_(ts_idx) {
-    has_ts_idx_ = true;
+    has_ts_idx_(true), ts_idx_(ts_idx), traverse_cnt_(0) {
 };
 
 DiskTableTraverseIterator::~DiskTableTraverseIterator() {
@@ -749,7 +749,14 @@ DiskTableTraverseIterator::~DiskTableTraverseIterator() {
     db_->ReleaseSnapshot(snapshot_);
 }
 
+uint64_t DiskTableTraverseIterator::GetCount() const {
+    return traverse_cnt_;
+}
+
 bool DiskTableTraverseIterator::Valid() {
+    if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+        return false;
+    }
     return it_->Valid();
 }
 
@@ -758,6 +765,10 @@ void DiskTableTraverseIterator::Next() {
         std::string tmp_pk;
         uint8_t cur_ts_idx = UINT8_MAX;
         ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
+        traverse_cnt_++;
+        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            break;
+        }
         if (tmp_pk == pk_) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                 continue;
@@ -797,6 +808,10 @@ void DiskTableTraverseIterator::SeekToFirst() {
     for (; it_->Valid(); it_->Next()) {
         uint8_t cur_ts_idx = UINT8_MAX;
         ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+        traverse_cnt_++;
+        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            break;
+        }
         if (has_ts_idx_ && cur_ts_idx != ts_idx_) {
             continue;
         }
@@ -820,6 +835,10 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         for (; it_->Valid(); it_->Next()) {
             uint8_t cur_ts_idx = UINT8_MAX;
             ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+            traverse_cnt_++;
+            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                break;
+            }
             if (pk_ == pk) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                     continue;
@@ -844,6 +863,10 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         for (; it_->Valid(); it_->Next()) {
             uint8_t cur_ts_idx = UINT8_MAX;
             ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+            traverse_cnt_++;
+            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+                break;
+            }
             if (pk_ == pk) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                     continue;
@@ -877,16 +900,16 @@ bool DiskTableTraverseIterator::IsExpired() {
 void DiskTableTraverseIterator::NextPK() {
     std::string last_pk = pk_;
     std::string combine;
-    if (has_ts_idx_) {
-        it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0, ts_idx_)));
-    } else {
-        it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0)));
-    }
+    it_->Seek(rocksdb::Slice(CombineKeyTs(last_pk, 0)));
     record_idx_ = 1;
     while (it_->Valid()) {
         std::string tmp_pk;
         uint8_t cur_ts_idx = UINT8_MAX;
         ParseKeyAndTs(has_ts_idx_, it_->key(), tmp_pk, ts_, cur_ts_idx);
+        traverse_cnt_++;
+        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            break;
+        }
         if (tmp_pk != last_pk) {
             if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                 it_->Next();
