@@ -19,4 +19,9 @@ add_custom_command(OUTPUT ${SQL_AST_PARSER_GEN}
 
 add_library(sql ${CMAKE_CURRENT_BINARY_DIR}/sql_scan.gen.cc ${CMAKE_CURRENT_BINARY_DIR}/sql_parser.gen.cc node.cc  parser.cc)
 add_executable(sql_test sql_test.cc )
-target_link_libraries(sql_test sql gtest  pthread)
+target_link_libraries(sql_test sql gtest pthread)
+
+add_executable(sql_node_test sql_node_test.cc node.cc)
+target_link_libraries(sql_node_test gtest pthread)
+
+

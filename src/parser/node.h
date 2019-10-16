@@ -32,6 +32,7 @@ enum SQLNodeType {
     kExpr,
     kConst,
     kTable,
+    kColumn,
     kResTarget,
 
     kList,
@@ -333,6 +334,37 @@ public:
     }
 };
 
+class ColumnRefNode : public SQLNode {
+
+public:
+    ColumnRefNode(const std::string column_name)
+        : SQLNode(kColumn, 0, 0), column_name_(column_name), relation_name_("") {
+    }
+
+    ColumnRefNode(const std::string column_name, std::string relation_name)
+        : SQLNode(kColumn, 0, 0), column_name_(column_name), relation_name_(relation_name) {
+    }
+
+    void Print(std::ostream &output, const std::string orgTab) const {
+        SQLNode::Print(output, orgTab);
+        output << "\n";
+        const std::string tab = orgTab + "\t" + SPACE_ED;
+        output << tab << "column_ref: " << "{relation_name: "
+               << relation_name_<< "," << " column_name: " << column_name_ <<"}";
+    }
+
+    std::string GetRelationName() const {
+        return relation_name_;
+    }
+
+    std::string GetColumnName() const {
+        return column_name_;
+    }
+
+private:
+    std::string column_name_;
+    std::string relation_name_;
+};
 class NameNode : SQLNode {
 public:
     NameNode(const std::string name) : SQLNode(kName, 0, 0), name_(name) {
@@ -413,6 +445,7 @@ public:
 };
 
 SQLNode* MakeTableNode(const std::string name, const std::string alias);
+SQLNode* MakeColumnRefNode(const std::string column_name, const std::string relation_name);
 SQLNode *MakeNode(const SQLNodeType &type, ...);
 SQLNodeList *MakeNodeList(fedb::sql::SQLNode *node);
 SQLNodeList *AppendNodeList(SQLNodeList *list, SQLNode *node);

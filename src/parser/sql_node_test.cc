@@ -14,32 +14,33 @@
  * limitations under the License.
  */
 #include "parser/node.h"
-#include "parser/parser.h"
 #include "gtest/gtest.h"
 
 namespace fedb {
 namespace sql {
 
-class SqlTest : public ::testing::Test {
+class SqlNodeTest : public ::testing::Test {
 
 public:
-    SqlTest() {}
+    SqlNodeTest() {}
 
-    ~SqlTest() {}
+    ~SqlNodeTest() {}
 };
 
+TEST_F(SqlNodeTest, MakeNode) {
+    using namespace std;
+    SQLNode * node = fedb::sql::MakeNode(kTable);
+    TableNode* columnnode = (TableNode*)node;
 
-TEST_F(SqlTest, Parser_Simple_Sql) {
+}
 
-    const char *sqlstr = "SELECT t1.COL1 AS c1, t2.COL2 AS c2 FROM t1;";
-    SQLNodeList *list = new SQLNodeList();
-    int ret = FeSqlParse(sqlstr, list);
-
-    ASSERT_EQ(0, ret);
-    ASSERT_EQ(1, list->Size());
-    SQLNode *node = list->head_->node_;
-    ASSERT_EQ(kSelectStmt, node->type_);
-    std::cout << *node << std::endl;
+TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
+    using namespace std;
+    SQLNode * node = MakeColumnRefNode("col", "t");
+    ColumnRefNode * columnnode = (ColumnRefNode*)node;
+    ASSERT_EQ(kColumn, columnnode->type_);
+    ASSERT_EQ("t", columnnode->GetRelationName());
+    ASSERT_EQ("col", columnnode->GetColumnName());
 
 }
 

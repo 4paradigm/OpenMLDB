@@ -16,16 +16,12 @@ namespace sql {
 std::string NameOfSQLNodeType(const SQLNodeType &type) {
     std::string output;
     switch (type) {
-        case kSelectStmt: output = "kSelectStmt";
-            break;
-        case kResTarget: output = "kResTarget";
-            break;
-        case kTable: output = "kTable";
-            break;
-        case kExpr: output = "kExpr";
-            break;
-        case kConst: output = "kConst";
-            break;
+        case kSelectStmt: output = "kSelectStmt";break;
+        case kResTarget: output = "kResTarget";break;
+        case kTable: output = "kTable"; break;
+        case kColumn: output = "kColumn"; break;
+        case kExpr: output = "kExpr"; break;
+        case kConst: output = "kConst"; break;
         case kInt: output = "kInt"; break;
         case kBigInt: output = "kBigInt"; break;
         case kFloat: output = "kFloat"; break;
@@ -60,6 +56,11 @@ SQLNode* MakeNode(const SQLNodeType &type,  ... ) {
 
 SQLNode* MakeTableNode(const std::string name, const std::string alias) {
     TableNode *node = new TableNode(name, alias);
+    return (SQLNode*)node;
+}
+
+SQLNode* MakeColumnRefNode(const std::string column_name, const std::string relation_name) {
+    ColumnRefNode *node = new ColumnRefNode(column_name, relation_name);
     return (SQLNode*)node;
 }
 

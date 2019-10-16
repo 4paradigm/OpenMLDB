@@ -304,12 +304,20 @@ typedef void* yyscan_t;
 %token FCOUNT
 
 %type <node>  sql_stmt stmt select_stmt select_opts select_expr
-                opt_all_clause expr
-                table_factor, table_reference
-%type <target> target_el
+              opt_all_clause expr
+              table_factor, table_reference
+              column_ref
+              simple_expr
+
+%type <target> projection
+
 %type <list> val_list opt_val_list case_list
-            opt_target_list target_list
+            opt_target_list select_expr_list
             table_references
+
+%type <strval> relation_name relation_factor
+               column_name
+               function_name
 %type <node> groupby_list opt_with_rollup opt_asc_desc
 %type <node> opt_inner_cross opt_outer
 %type <node> left_or_right opt_left_or_right_outer column_list
@@ -368,14 +376,14 @@ opt_all_clause:
  *
  *****************************************************************************/
 
-opt_target_list: target_list						{ $$ = $1; }
+opt_target_list: select_expr_list						{ $$ = $1; }
 			| /* EMPTY */							{ $$ = NULL; }
 		;
-target_list: target_el {
+select_expr_list: projection {
                             $$ = ::fedb::sql::MakeNodeList($1);
                             emit("select expr list size: %d", $$->Size());
                        }
-    | target_list ',' target_el {
+    | select_expr_list ',' projection {
                             $$ = ::fedb::sql::AppendNodeList($1, $3);
                             emit("select expr list size: >> %d", NULL == $$ ? 0 : $$->Size());
                             }
@@ -384,14 +392,21 @@ target_list: target_el {
     ;
 
 
-target_el: expr AS NAME
-				{
-				    emit("enter target el");
-					$$ = ::fedb::sql::MakeNode(::fedb::sql::kResTarget);
-					((::fedb::sql::ResTarget*)$$)->setName($3);
-					((::fedb::sql::ResTarget*)$$)->setVal($1);
-				}
-	;
+
+projection:
+    expr
+    {
+        $$ = ::fedb::sql::MakeNode(::fedb::sql::kResTarget);
+        ((::fedb::sql::ResTarget*)$$)->setName("");
+        ((::fedb::sql::ResTarget*)$$)->setVal($1);
+    }
+    | expr AS NAME
+    {
+        $$ = ::fedb::sql::MakeNode(::fedb::sql::kResTarget);
+        ((::fedb::sql::ResTarget*)$$)->setName($3);
+        ((::fedb::sql::ResTarget*)$$)->setVal($1);
+    }
+    ;
 
 table_references:    table_reference { $$ = ::fedb::sql::MakeNodeList($1); }
     | table_references ',' table_reference
@@ -405,19 +420,23 @@ table_reference:  table_factor
 
 
 table_factor:
-    NAME
+  relation_factor
     {
         $$ = ::fedb::sql::MakeTableNode($1, "");
     }
-  | NAME AS NAME
+  | relation_factor AS relation_name
     {
+        $$ = ::fedb::sql::MakeTableNode($1, $3);
     }
-  | NAME NAME
+  | relation_factor relation_name
     {
+        $$ = ::fedb::sql::MakeTableNode($1, $2);
     }
 
   ;
-
+relation_factor:
+    relation_name
+    { $$ = $1; }
 
 index_hint:
      USE KEY opt_for_join '(' index_list ')'
@@ -451,15 +470,49 @@ opt_as_alias: AS NAME {
 
 
 /**** expressions ****/
-expr: NAME          {
-                        emit("expr name >>");
-                        $$ = ::fedb::sql::MakeNode(::fedb::sql::kConst);
-                        ((::fedb::sql::ConstNode*)$$)->setValue($1);
-                        emit("NAME %s", $1);
-                    }
+expr:
+    simple_expr   { $$ = $1; }
+    ;
 
-   ;
+simple_expr:
+    column_ref
+        { $$ = $1; }
+    ;
 
+column_ref:
+    column_name
+    {
+        $$ = ::fedb::sql::MakeColumnRefNode($1, "");
+    }
+  | relation_name '.' column_name
+    {
+        $$ = ::fedb::sql::MakeColumnRefNode($3, $1);
+    }
+  |
+    relation_name '.' '*'
+    {
+        $$ = ::fedb::sql::MakeColumnRefNode("*", $1);
+    }
+  ;
+
+/*===========================================================
+ *
+ *	Name classification
+ *
+ *===========================================================*/
+
+
+column_name:
+    NAME
+  ;
+
+relation_name:
+    NAME
+  ;
+
+function_name:
+    NAME
+  ;
 
 %%
 
