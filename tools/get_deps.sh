@@ -202,7 +202,7 @@ else
         rm -rf incubator-brpc
     fi
     git clone https://github.com/apache/incubator-brpc.git
-    
+
     BRPC_DIR=$DEPS_SOURCE/incubator-brpc
     cd incubator-brpc
     if [ ""$PLATFORM != "mac" ]
