@@ -12,7 +12,7 @@ import libs.ddt as ddt
 @ddt.ddt
 class TestAutoRecoverTable(TestCaseBase):
 
-    def createtable_put(self,storage_mode, data_count, data_thread=2):
+    def createtable_put(self, data_count, data_thread=2):
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         # m = utils.gen_table_metadata(
@@ -28,7 +28,7 @@ class TestAutoRecoverTable(TestCaseBase):
         table_meta = {
             "name": self.tname,
             "ttl": 144000,
-            "storage_mode": storage_mode,
+            "storage_mode": "kSSD",
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-9","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-9","is_leader": "false"},
@@ -147,11 +147,10 @@ class TestAutoRecoverTable(TestCaseBase):
 
     @TestCaseBase.skip('FIXME')
     @ddt.data(
-        ('kSSD',3, 0, 6, 32, 7, 15, 28, 0, 29, 0, 30),  # recover when ns killed: RTIDB-243
-        ('kHDD',3, 0, 6, 32, 7, 15, 28, 0, 29, 0, 30),
+        (3, 0, 6, 32, 7, 15, 28, 0, 29, 0, 30),  # recover when ns killed: RTIDB-243
     )
     @ddt.unpack
-    def test_auto_recover_table_ns_killed(self,storage_mode, *steps):
+    def test_auto_recover_table_ns_killed(self, *steps):
         """
         ns_leader挂掉，可以sendsnapshot成功，可以故障恢复成功
         :param steps:
@@ -167,7 +166,7 @@ class TestAutoRecoverTable(TestCaseBase):
         self.start_client(self.slave1)
         self.start_client(self.slave2)
 
-        self.createtable_put(storage_mode,50, 7)
+        self.createtable_put(50, 7)
         steps_dict = self.get_steps_dict()
         for i in steps:
             infoLogger.info('*' * 10 + ' Executing step {}: {}'.format(i, steps_dict[i]))
@@ -212,13 +211,11 @@ class TestAutoRecoverTable(TestCaseBase):
 
 
     @ddt.data(
-        ('kSSD',34, 2, 0, 13, 0, 35),
-        ('kSSD',34, 3, -1, 15, 0, 35),
-        ('kHDD',34, 2, 0, 13, 0, 35),
-        ('kHDD',34, 3, -1, 15, 0, 35),
+        (34, 2, 0, 13, 0, 35),
+        (34, 3, -1, 15, 0, 35),
     )
     @ddt.unpack
-    def test_no_replica_bug(self,storage_mode, *steps):  # RTIDB-221
+    def test_no_replica_bug(self, *steps):  # RTIDB-221
         """
         没有副本的分片，挂掉后再恢复，会恢复为主节点
         :param steps:
@@ -239,7 +236,7 @@ class TestAutoRecoverTable(TestCaseBase):
         table_meta = {
             "name": self.tname,
             "ttl": 144000,
-            "storage_mode": storage_mode,
+            "storage_mode": "kSSD",
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "2-3","is_leader": "false"},
