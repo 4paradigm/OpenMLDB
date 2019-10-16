@@ -12,8 +12,12 @@ import libs.conf as conf
 class TestDelReplicaNs(TestCaseBase):
 
     leader, slave1, slave2 = (i for i in conf.tb_endpoints)
-
-    def test_delreplica_scenario(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_delreplica_scenario(self,storage_mode):
         """
         addreplica之前和delreplica之后，put到主节点的数据无法同步给副本
         addreplica和再次addreplica之后，put到主节点的数据可以同步给副本
@@ -25,11 +29,11 @@ class TestDelReplicaNs(TestCaseBase):
         name = 'tname{}'.format(time.time())
         if conf.multidimension is False:
             m = utils.gen_table_metadata_ssd(
-                '"{}"'.format(name), None, 144000, 2,'kSSD',
+                '"{}"'.format(name), None, 144000, 2,storage_mode,
                 ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'))
         else:
             m = utils.gen_table_metadata_ssd(
-                '"{}"'.format(name), None, 144000, 2,'kSSD',
+                '"{}"'.format(name), None, 144000, 2,storage_mode,
                 ('table_partition', '"{}"'.format(self.leader), '"0-2"', 'true'),
                 ('column_desc', '"merchant"', '"string"', 'true'),
                 ('column_desc', '"amt"', '"double"', 'false'),
@@ -115,8 +119,12 @@ class TestDelReplicaNs(TestCaseBase):
         self.assertIn('testvalue2', rs12)
         self.assertIn('testvalue3', rs12)
         self.ns_drop(self.ns_leader, name)
-
-    def test_delreplica_drop_table(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_delreplica_drop_table(self,storage_mode):
         """
         delreplica后droptable
         :return:
@@ -133,7 +141,7 @@ class TestDelReplicaNs(TestCaseBase):
             "name": name,
             "ttl_type": "kLatestTime",
             "ttl": 100,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-2","is_leader": "false"},
@@ -157,13 +165,17 @@ class TestDelReplicaNs(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        ('notexsit', None, None, 'Fail to delreplica'),
-        (None, 10, None, 'Fail to delreplica'),
-        (None, None, leader, 'Fail to delreplica'),
-        (None, None, '127.1.1.1:6666', 'Fail to delreplica'),
+        ('notexsit', None, None, 'Fail to delreplica','kSSD'),
+        (None, 10, None, 'Fail to delreplica','kSSD'),
+        (None, None, leader, 'Fail to delreplica','kSSD'),
+        (None, None, '127.1.1.1:6666', 'Fail to delreplica','kSSD'),
+        ('notexsit', None, None, 'Fail to delreplica','kHDD'),
+        (None, 10, None, 'Fail to delreplica','kHDD'),
+        (None, None, leader, 'Fail to delreplica','kHDD'),
+        (None, None, '127.1.1.1:6666', 'Fail to delreplica','kHDD'),
     )
     @ddt.unpack
-    def test_delreplica_args_invalid(self, tname, pid, endpoint, exp_msg):
+    def test_delreplica_args_invalid(self, tname, pid, endpoint, exp_msg,storage_mode):
         """
         建表时带副本，然后删掉副本时，参数异常检查
         :return:
@@ -181,7 +193,7 @@ class TestDelReplicaNs(TestCaseBase):
             "name": name,
             "ttl_type": "kLatestTime",
             "ttl": 100,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -201,14 +213,19 @@ class TestDelReplicaNs(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        ('0', 'DelReplica ok'),
-        ('0-3', 'DelReplica ok'),
-        ('0,2,3', 'DelReplica ok'),
-        ('a-z', 'pid group[a-z] format error'),
-        ('0-10', 'Fail to delreplica'),
+        ('0', 'DelReplica ok','kSSD'),
+        ('0-3', 'DelReplica ok','kSSD'),
+        ('0,2,3', 'DelReplica ok','kSSD'),
+        ('a-z', 'pid group[a-z] format error','kSSD'),
+        ('0-10', 'Fail to delreplica','kSSD'),
+        ('0', 'DelReplica ok','kHDD'),
+        ('0-3', 'DelReplica ok','kHDD'),
+        ('0,2,3', 'DelReplica ok','kHDD'),
+        ('a-z', 'pid group[a-z] format error','kHDD'),
+        ('0-10', 'Fail to delreplica','kHDD'),
     )
     @ddt.unpack
-    def test_delreplica_pid_group(self, pid_group, exp_msg):
+    def test_delreplica_pid_group(self, pid_group, exp_msg,storage_mode):
         """
         一次删除好几个副本
         :return:
@@ -224,7 +241,7 @@ class TestDelReplicaNs(TestCaseBase):
             "name": name,
             "ttl_type": "kLatestTime",
             "ttl": 100,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-7","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-7","is_leader": "false"},
@@ -251,8 +268,12 @@ class TestDelReplicaNs(TestCaseBase):
                 self.assertNotIn((name, str(self.tid), '3', self.slave1), rs3)
         self.ns_drop(self.ns_leader, name)
 
-
-    def test_delreplica_not_alive(self):  # RTIDB-201
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_delreplica_not_alive(self,storage_mode):  # RTIDB-201
         """
         建表时带副本，然后删掉副本，showtable时不会再出现删掉的副本
         :return:
@@ -273,7 +294,7 @@ class TestDelReplicaNs(TestCaseBase):
             "name": name,
             "ttl": 100,
             "ttl_type": "kLatestTime",
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
@@ -307,20 +328,31 @@ class TestDelReplicaNs(TestCaseBase):
         self.ns_drop(self.ns_leader, name)
 
     @ddt.data(
-        ('pid group[m] format error', 'm', conf.tb_endpoints[1]),
-        ('pid group[-1] format error', '-1', conf.tb_endpoints[1]),
-        ('Fail to delreplica', '1,2,10', conf.tb_endpoints[1]),
-        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1]),
-        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1]),
-        ('Fail to delreplica', '1-10', conf.tb_endpoints[1]),
-        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1]),
-        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1]),
-        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1]),
-        ('Fail to delreplica', '5-7', conf.tb_endpoints[1]),
-        ('Fail to delreplica', '5,6,7', conf.tb_endpoints[1]),
+        ('pid group[m] format error', 'm', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[-1] format error', '-1', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to delreplica', '1,2,10', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to delreplica', '1-10', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to delreplica', '5-7', conf.tb_endpoints[1],'kSSD'),
+        ('Fail to delreplica', '5,6,7', conf.tb_endpoints[1],'kSSD'),
+        ('pid group[m] format error', 'm', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[-1] format error', '-1', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to delreplica', '1,2,10', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1,x,5] format error', '1,x,5', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1,3:5] format error', '1,3:5', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to delreplica', '1-10', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1~10] format error', '1~10', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[1-m] format error', '1-m', conf.tb_endpoints[1],'kHDD'),
+        ('pid group[m-5] format error', 'm-5', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to delreplica', '5-7', conf.tb_endpoints[1],'kHDD'),
+        ('Fail to delreplica', '5,6,7', conf.tb_endpoints[1],'kHDD'),
     )
     @ddt.unpack
-    def test_delreplica_pid_group_error(self, exp_msg, pid_group, endpoint):
+    def test_delreplica_pid_group_error(self, exp_msg, pid_group, endpoint,storage_mode):
         """
         删除失败
         :return:
@@ -336,7 +368,7 @@ class TestDelReplicaNs(TestCaseBase):
             "name": name,
             "ttl_type": "kLatestTime",
             "ttl": 100,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-7","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-5","is_leader": "false"},

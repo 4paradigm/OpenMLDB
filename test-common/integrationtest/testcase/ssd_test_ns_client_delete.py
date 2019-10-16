@@ -11,8 +11,12 @@ import libs.utils as utils
 
 @ddt.ddt
 class TestDelete(TestCaseBase):
-
-    def test_kv_delete(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_kv_delete(self,storage_mode):
         """
         kv表delete pk
         :return:
@@ -26,7 +30,7 @@ class TestDelete(TestCaseBase):
             "ttl": 0,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
@@ -45,8 +49,12 @@ class TestDelete(TestCaseBase):
         rs6 = self.ns_scan_kv(self.ns_leader, name, 'testkey0', '1111', '0')
         self.assertEqual(0, len(rs6))
 
-
-    def test_schema_delete(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_schema_delete(self,storage_mode):
         """
         schema表 delete pk
         :return:
@@ -68,7 +76,7 @@ class TestDelete(TestCaseBase):
             "name": name,
             "ttl": 0,
             "partition_num": 8,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
