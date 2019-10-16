@@ -8,6 +8,7 @@ build_rtidb_and_case:
     script:
         - ln -sf /depends/thirdparty thirdparty
         - source /opt/rh/devtoolset-8/enable && bash tools/compile.sh
+        - cd build && src/base/flat_mk
     artifacts:
         reports:
             junit:
