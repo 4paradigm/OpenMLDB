@@ -20,11 +20,11 @@ class TestAddReplicaNs(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        ('','kSSD'),
-        ('','kHDD'),
+        ['kSSD'],
+        ['kHDD'],
     )
     @ddt.unpack
-    def test_addreplica_scenario(self,xxx,storage_mode):  # RTIDB-250
+    def test_addreplica_scenario(self,storage_mode):  # RTIDB-250
         """
         创建主表，put数据后makesnapshot，添加副本后再put导主表，数据全部同步正确
         :return:
@@ -34,7 +34,7 @@ class TestAddReplicaNs(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         infoLogger.info(name)
-
+        infoLogger.info(storage_mode)
         # m = utils.gen_table_metadata(
         #     '"{}"'.format(name), None, 144000, 2,
         #     ('table_partition', '"{}"'.format(self.leader), '"0-3"', 'true'),
