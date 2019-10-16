@@ -20,8 +20,8 @@ class TestAddReplicaNs(TestCaseBase):
 
     @multi_dimension(False)
     @ddt.data(
-        ("kSSD"),
-        ("kHDD"),
+        "kSSD",
+        "kHDD",
     )
     @ddt.unpack
     def test_addreplica_scenario(self,storage_mode):  # RTIDB-250
