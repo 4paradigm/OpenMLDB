@@ -71,7 +71,7 @@ class TestMakeSnapshotNsClient(TestCaseBase):
         name = 't{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
 
-        pid_group = '"0"'
+        pid_group = "0"
         # m = utils.gen_table_metadata(
         #     '"{}"'.format(name), None, 1, 8,
         #     ('table_partition', '"{}"'.format(self.leader), pid_group, 'true'),

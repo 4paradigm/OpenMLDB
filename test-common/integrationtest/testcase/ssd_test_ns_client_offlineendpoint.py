@@ -11,8 +11,12 @@ import libs.ddt as ddt
 
 @ddt.ddt
 class TestOfflineEndpoint(TestCaseBase):
-
-    def test_offlineendpoint_master_killed(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_offlineendpoint_master_killed(self,storage_mode):
         """
         offlineendpoint功能正常，主节点挂掉后，可以手工故障切换，切换后可put及同步数据
         :return:
@@ -34,7 +38,7 @@ class TestOfflineEndpoint(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "1-2","is_leader": "false"},
@@ -88,8 +92,12 @@ class TestOfflineEndpoint(TestCaseBase):
         self.assertIn('v2', self.scan(follower, tid, 2, {'k1': 'pk1'}, self.now(), 1))
         self.ns_drop(self.ns_leader, name)
 
-
-    def test_offlineendpoint_slave_killed(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_offlineendpoint_slave_killed(self,storage_mode):
         """
         offlineendpoint功能正常，从节点挂掉后，副本可以被删掉
         :return:
@@ -108,7 +116,7 @@ class TestOfflineEndpoint(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "1-2","is_leader": "false"},
@@ -155,8 +163,12 @@ class TestOfflineEndpoint(TestCaseBase):
         """
         rs2 = self.offlineendpoint(self.ns_leader, endpoint, concurrency)
         self.assertIn(exp_msg, rs2)
-
-    def test_offlineendpoint_alive(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_offlineendpoint_alive(self,storage_mode):
         """
         offlineendpoint传入alive状态节点, 执行成功
         :return:
@@ -179,7 +191,7 @@ class TestOfflineEndpoint(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "1-2","is_leader": "false"},
