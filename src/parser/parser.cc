@@ -29,12 +29,12 @@
  * @param list
  * @return 1 if success
  */
-int FeSqlParse(const char* sqlstr, ::fedb::sql::SQLNodeList* list) {
+int FeSqlParse(const char *sqlstr, ::fedb::sql::SQLNodeList *list) {
     yyscan_t scanner;
     yylex_init(&scanner);
     yy_scan_string(sqlstr, scanner);
     int ret = yyparse(scanner, list);
-    std::cout<<"ret: "<<ret<<" list size:"<<list->Size()<<std::endl;
+    std::cout << "ret: " << ret << " list size:" << list->Size() << std::endl;
     return ret;
 }
 

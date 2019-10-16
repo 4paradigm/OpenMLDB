@@ -28,7 +28,7 @@ const std::string SPACE_ST = "+";
 const std::string SPACE_ED = "";
 enum SQLNodeType {
     // SQL Node Type
-    kSelectStmt = 0,
+        kSelectStmt = 0,
     kExpr,
     kConst,
     kTable,
@@ -38,7 +38,7 @@ enum SQLNodeType {
     kList,
     kName,
     // Value Type
-    kInt,
+        kInt,
     kBigInt,
     kFloat,
     kDouble,
@@ -57,7 +57,6 @@ typedef struct Value {
         double vdouble;
     } val;
 };
-
 
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
@@ -118,12 +117,12 @@ struct SQLLinkedNode {
     }
 };
 
-class SQLNodeList : public  SQLNode {
+class SQLNodeList : public SQLNode {
 public:
 
     SQLLinkedNode *head_;
 
-    SQLNodeList() : SQLNode(kList, 0,0), len_(0), head_(NULL) {
+    SQLNodeList() : SQLNode(kList, 0, 0), len_(0), head_(NULL) {
     }
 
     SQLNodeList(SQLLinkedNode *head, size_t len) : SQLNode(kList, 0, 0), len_(len), head_(head) {
@@ -284,7 +283,6 @@ public:
     }
 };
 
-
 class ResTarget : public SQLNode {
     PNodeList indirection_;    /* subscripts, field names, and '*', or NIL */
     SQLNode *val_;            /* the value expression to compute or assign */
@@ -311,7 +309,7 @@ public:
 
     void Print(std::ostream &output, const std::string orgTab) const {
         SQLNode::Print(output, orgTab);
-        output<<"\n";
+        output << "\n";
         const std::string tab = orgTab + "\t" + SPACE_ED;
         const std::string space = orgTab + "\t\t";
         output << tab << "val: \n";
@@ -322,7 +320,6 @@ public:
         output << space << name_;
     }
 };
-
 
 class SQLExprNode : public SQLNode {
 public:
@@ -350,7 +347,7 @@ public:
         output << "\n";
         const std::string tab = orgTab + "\t" + SPACE_ED;
         output << tab << "column_ref: " << "{relation_name: "
-               << relation_name_<< "," << " column_name: " << column_name_ <<"}";
+               << relation_name_ << "," << " column_name: " << column_name_ << "}";
     }
 
     std::string GetRelationName() const {
@@ -444,13 +441,11 @@ public:
     }
 };
 
-SQLNode* MakeTableNode(const std::string name, const std::string alias);
-SQLNode* MakeColumnRefNode(const std::string column_name, const std::string relation_name);
+SQLNode *MakeTableNode(const std::string name, const std::string alias);
+SQLNode *MakeColumnRefNode(const std::string column_name, const std::string relation_name);
 SQLNode *MakeNode(const SQLNodeType &type, ...);
 SQLNodeList *MakeNodeList(fedb::sql::SQLNode *node);
 SQLNodeList *AppendNodeList(SQLNodeList *list, SQLNode *node);
-
-
 
 } // namespace of ast
 } // namespace of fedb

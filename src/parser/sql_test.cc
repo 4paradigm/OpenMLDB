@@ -28,7 +28,6 @@ public:
     ~SqlTest() {}
 };
 
-
 TEST_F(SqlTest, Parser_Simple_Sql) {
 
     const char *sqlstr = "SELECT t1.COL1 AS c1, t2.COL2 AS c2 FROM t1;";

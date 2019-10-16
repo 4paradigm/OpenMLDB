@@ -15,6 +15,7 @@
  */
 #include "parser/node.h"
 #include "gtest/gtest.h"
+#include <strstream>
 
 namespace fedb {
 namespace sql {
@@ -29,18 +30,30 @@ public:
 
 TEST_F(SqlNodeTest, MakeNode) {
     using namespace std;
-    SQLNode * node = fedb::sql::MakeNode(kTable);
-    TableNode* columnnode = (TableNode*)node;
-
+    SQLNode *node = fedb::sql::MakeNode(kConst);
+    cout << *node << endl;
+    std::strstream out;
+    out<< *node;
+    ASSERT_STREQ("+kConst {valtype: unknown, }",
+                 out.str());
 }
 
+
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
-    using namespace std;
-    SQLNode * node = MakeColumnRefNode("col", "t");
-    ColumnRefNode * columnnode = (ColumnRefNode*)node;
+
+    SQLNode *node = MakeColumnRefNode("col", "t");
+    ColumnRefNode *columnnode = (ColumnRefNode *) node;
+
     ASSERT_EQ(kColumn, columnnode->type_);
     ASSERT_EQ("t", columnnode->GetRelationName());
     ASSERT_EQ("col", columnnode->GetColumnName());
+
+    std::strstream out;
+    out<< *node;
+    ASSERT_STREQ("+kColumn\n"
+                  "+\tcolumn_ref: {relation_name: t, column_name: col}",
+                 out.str());
+    std::cout<<out.str()<<std::endl;
 
 }
 
