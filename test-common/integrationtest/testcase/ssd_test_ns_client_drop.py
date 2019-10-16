@@ -12,8 +12,12 @@ import collections
 @ddt.ddt
 class TestNsDropTable(TestCaseBase):
 
-
-    def test_ns_drop_table(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_ns_drop_table(self,storage_mode):
         """
         通过ns建的表，可以通过ns全部drop掉，drop后gettablestatus为空
         :return:
@@ -21,7 +25,7 @@ class TestNsDropTable(TestCaseBase):
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = 'tname{}'.format(time.time())
         m = utils.gen_table_metadata_ssd(
-            '"{}"'.format(name), None, 144000, 2,'kSSD',
+            '"{}"'.format(name), None, 144000, 2,storage_mode,
             ('table_partition', '"{}"'.format(self.leader), '"0-30"', 'true'),
             ('table_partition', '"{}"'.format(self.slave1), '"10-20"', 'false'),
             ('table_partition', '"{}"'.format(self.slave2), '"20-30"', 'false'),
