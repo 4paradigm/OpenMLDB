@@ -11,8 +11,12 @@ import libs.utils as utils
 
 @ddt.ddt
 class TestPreview(TestCaseBase):
-
-    def test_preview_kv(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_preview_kv(self,storage_mode):
         """
         预览kv表
         :return:
@@ -25,7 +29,7 @@ class TestPreview(TestCaseBase):
             "ttl": 0,
             "partition_num": 8,
             "replica_num": 3,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
         }
         utils.gen_table_meta_file(table_meta, metadata_path)
         rs = self.ns_create(self.ns_leader, metadata_path)
@@ -54,8 +58,12 @@ class TestPreview(TestCaseBase):
         self.assertEqual(rs5[1]['data'], 'testvalue0')
         self.assertEqual(rs5[2]['key'], 'testkey1')
         self.assertEqual(rs5[2]['data'], 'testvalue2')
-
-    def test_preview_schema(self):
+    @ddt.data(
+        ['kSSD'],
+        ['kHDD'],
+    )
+    @ddt.unpack
+    def test_preview_schema(self,storage_mode):
         """
         预览schema表
         :return:
@@ -76,7 +84,7 @@ class TestPreview(TestCaseBase):
         table_meta = {
             "name": name,
             "ttl": 0,
-            "storage_mode": "kSSD",
+            "storage_mode": storage_mode,
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-2","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-1","is_leader": "false"},
