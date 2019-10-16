@@ -19,4 +19,4 @@ add_custom_command(OUTPUT ${AST_PARSER_GEN}
 add_library(ast STATIC ${CMAKE_CURRENT_BINARY_DIR}/lexer.gen.cc ${CMAKE_CURRENT_BINARY_DIR}/parser.gen.cc)
 add_executable(ast_test ast_test.cc)
 target_link_libraries(ast_test ast gtest pthread)
-add_test(ast_test ast_test)
+add_test(ast_test ast_test --gtest_output=xml:${CMAKE_BINARY_DIR}/ast_test.xml)

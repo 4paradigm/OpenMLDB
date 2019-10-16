@@ -3,7 +3,7 @@ include_directories(${INCLUDE_DIRECTORIES}
     ${PROJECT_BINARY_DIR}/src)
 add_executable(hash_test hash_test.cc)
 target_link_libraries(hash_test gflags gtest pthread)
-add_test(hash_test hash_test)
+add_test(hash_test hash_test --gtest_output=xml:${CMAKE_BINARY_DIR}/hash_test.xml)
 
 if (COVERAGE_ENABLE)
     if(CMAKE_COMPILER_IS_GNUCXX)
