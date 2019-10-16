@@ -7,7 +7,7 @@ from libs.logger import infoLogger
 import libs.ddt as ddt
 from libs.test_loader import load
 import libs.utils as utils
-
+@ddt.ddt
 class TestRecoverTable(TestCaseBase):
     @multi_dimension(False)
     @ddt.data(
