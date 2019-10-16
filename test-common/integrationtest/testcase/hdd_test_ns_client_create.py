@@ -584,7 +584,7 @@ class TestCreateTableByNsClient(TestCaseBase):
     )
     @ddt.unpack
     def test_create_key_entry_max_height(self, exp_msg, height):
-        db_path='ssd_db'
+        db_path='hdd_db'
         self.tname = 'tname{}'.format(time.time())
         metadata_path = '{}/metadata.txt'.format(self.testpath)
         name = '"{}"'.format(self.tname)
