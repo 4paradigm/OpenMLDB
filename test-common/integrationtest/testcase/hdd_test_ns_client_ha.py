@@ -31,7 +31,7 @@ class TestNameserverHa(TestCaseBase):
         table_meta = {
             "name": self.tname,
             "ttl": 144000,
-            "storage_mode": "kSSD",
+            "storage_mode": "kHDD",
             "table_partition": [
                 {"endpoint": self.leader,"pid_group": "0-3","is_leader": "true"},
                 {"endpoint": self.slave1,"pid_group": "0-3","is_leader": "false"},
