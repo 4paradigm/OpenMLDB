@@ -6,7 +6,7 @@ import libs.utils as utils
 import libs.ddt as ddt
 from libs.deco import *
 
-
+@ddt.ddt
 class TestMakeSnapshotNsClient(TestCaseBase):
     @ddt.data(
         ('ssd_db', 'kSSD'),
