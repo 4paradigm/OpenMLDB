@@ -16,11 +16,9 @@ namespace sql {
 std::string NameOfSQLNodeType(const SQLNodeType &type) {
     std::string output;
     switch (type) {
-        case kSelectStmt:
-            output = "kSelectStmt";
+        case kSelectStmt:output = "kSelectStmt";
             break;
-        case kResTarget:
-            output = "kResTarget";
+        case kResTarget:output = "kResTarget";
             break;
         case kTable: output = "kTable";
             break;
@@ -49,31 +47,27 @@ SQLNode *MakeNode(const SQLNodeType &type, ...) {
     switch (type) {
         case kSelectStmt:return new SelectStmt();
         case kResTarget:return new ResTarget();
-        case kConst:return new ConstNode();
         default:return new UnknowSqlNode();
     }
 }
 
+////////////////// Make Table Node///////////////////////////////////
 SQLNode *MakeTableNode(const std::string &name, const std::string &alias) {
     TableNode *node = new TableNode(name, alias);
     return (SQLNode *) node;
 }
 
+
+////////////////// Make Column Reference Node///////////////////////////////////
 SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name) {
     ColumnRefNode *node = new ColumnRefNode(column_name, relation_name);
     return (SQLNode *) node;
 }
 
+///////////////// Make SQL Node List with single Node/////////////////////////
 SQLNodeList *MakeNodeList(SQLNode *node) {
     SQLLinkedNode *head = new SQLLinkedNode(node);
     SQLNodeList *new_list = new SQLNodeList(head, head, 1);
-    return new_list;
-}
-
-SQLNodeList *AppendNodeList(SQLNodeList *list, SQLNode *node) {
-    SQLLinkedNode *linkedNode = new SQLLinkedNode(node);
-    SQLNodeList *new_list = new SQLNodeList(linkedNode, linkedNode, 1);
-    new_list->AppendNodeList(list);
     return new_list;
 }
 

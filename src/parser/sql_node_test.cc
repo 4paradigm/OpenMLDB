@@ -33,11 +33,10 @@ TEST_F(SqlNodeTest, MakeNode) {
     SQLNode *node = fedb::sql::MakeNode(kConst);
     cout << *node << endl;
     std::strstream out;
-    out<< *node;
+    out << *node;
     ASSERT_STREQ("+kConst {valtype: unknown, }",
                  out.str());
 }
-
 
 TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 
@@ -49,12 +48,45 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     ASSERT_EQ("col", columnnode->GetColumnName());
 
     std::strstream out;
-    out<< *node;
+    out << *node;
     ASSERT_STREQ("+kColumn\n"
-                  "+\tcolumn_ref: {relation_name: t, column_name: col}",
+                     "+\tcolumn_ref: {relation_name: t, column_name: col}",
                  out.str());
-    std::cout<<out.str()<<std::endl;
+    std::cout << out.str() << std::endl;
+}
 
+TEST_F(SqlNodeTest, MakeConstNodeStringTest) {
+
+    ConstNode *pNode = new ConstNode("sql string test");
+    ASSERT_EQ(kString, pNode->GetType());
+    std::strstream out;
+    out << *pNode;
+    std::cout << out.str() << std::endl;
+    ASSERT_STREQ("+kString\n"
+                     "+\tvalue: sql string test",
+                 out.str());
+}
+
+TEST_F(SqlNodeTest, MakeConstNodeIntTest) {
+    ConstNode *pNode = new ConstNode(1);
+    ASSERT_EQ(kInt, pNode->GetType());
+    std::strstream out;
+    out << *pNode;
+    std::cout << out.str() << std::endl;
+    ASSERT_STREQ("+kInt\n"
+                     "+\tvalue: 1",
+                 out.str());
+}
+
+TEST_F(SqlNodeTest, MakeConstNodeFloatTest) {
+    ConstNode *pNode = new ConstNode(1.234f);
+    ASSERT_EQ(kFloat, pNode->GetType());
+    std::strstream out;
+    out << *pNode;
+    std::cout << out.str() << std::endl;
+    ASSERT_STREQ("+kFloat\n"
+                     "+\tvalue: 1.234",
+                 out.str());
 }
 
 } // namespace of base

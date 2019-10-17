@@ -43,22 +43,10 @@ enum SQLNodeType {
     kUnknow
 };
 
-typedef struct Value {
-    SQLNodeType type;
-    union {
-        int vint;        /* machine integer */
-        long vlong;        /* machine integer */
-        char *vstr;        /* string */
-        float vfloat;
-        double vdouble;
-    } val;
-};
-
 // Global methods
 std::string NameOfSQLNodeType(const SQLNodeType &type);
 
 class SQLNode {
-    SQLNodeType type_;
     uint32_t line_num_;
     uint32_t location_;
 
@@ -90,6 +78,13 @@ public:
     }
 
     friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
+
+protected:
+    SQLNodeType type_;
+};
+
+class Value : public SQLNode {
+
 };
 
 struct SQLLinkedNode {
@@ -137,11 +132,10 @@ public:
         return len_;
     }
 
-
     void Print(std::ostream &output) const {
         Print(output, "");
     }
-    
+
     void Print(std::ostream &output, const std::string &tab) const {
         output << tab << "[\n";
         SQLLinkedNode *p = head_;
@@ -162,6 +156,9 @@ public:
         linkedNode->next_ = head_;
         head_ = linkedNode;
         len_ += 1;
+        if (NULL == tail_) {
+            tail_ = head_;
+        }
     }
 
     void AppendNodeList(SQLNodeList *pList) {
@@ -180,7 +177,7 @@ public:
         tail_ = pList->tail_;
         len_ += pList->len_;
     }
-    
+
     friend std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz);
 };
 
@@ -366,54 +363,54 @@ public:
 };
 
 class ConstNode : public SQLNode {
-    Value value_;
+    union {
+        int vint;        /* machine integer */
+        long vlong;        /* machine integer */
+        const char * vstr;        /* string */
+        float vfloat;
+        double vdouble;
+    } val_;
+
 public:
-    ConstNode() : SQLNode(kConst, 0, 0) {}
-    ConstNode(uint32_t line_num, uint32_t location) : SQLNode(kConst, line_num, location) {
+    ConstNode(int val) : SQLNode(kInt, 0, 0) {
+        val_.vint = val;
+    }
+    ConstNode(long val) : SQLNode(kBigInt, 0, 0) {
+        val_.vlong = val;
+    }
+    ConstNode(float val) : SQLNode(kFloat, 0, 0) {
+        val_.vfloat = val;
     }
 
-    void setValue(int value) {
-        value_.type = kInt;
-        value_.val.vint = value;
+    ConstNode(double val) : SQLNode(kDouble, 0, 0) {
+        val_.vdouble = val;
     }
 
-    void setValue(long value) {
-        value_.type = kBigInt;
-        value_.val.vlong = value;
+    ConstNode(const char *val) : SQLNode(kString, 0, 0) {
+        val_.vstr = val;
+    }
+    ConstNode(const std::string &val) : SQLNode(kString, 0, 0) {
+        val_.vstr = val.c_str();
     }
 
-    void setValue(double value) {
-        value_.type = kDouble;
-        value_.val.vdouble = value;
-    }
-
-    void setValue(float value) {
-        value_.type = kFloat;
-        value_.val.vfloat = value;
-    }
-
-    void setValue(char *value) {
-        value_.type = kString;
-        value_.val.vstr = value;
-    }
-
+    ~ConstNode() {}
     void Print(std::ostream &output, const std::string &orgTab) const {
         SQLNode::Print(output, orgTab);
-        const std::string tab = orgTab + "\t" + orgTab;
-        output << " {valtype: " << NameOfSQLNodeType(value_.type) << ", ";
-        switch (value_.type) {
-            case kInt:output << "value: " << value_.val.vint;
+        output << "\n";
+        const std::string tab = orgTab + "\t";
+        output << tab;
+        switch (type_) {
+            case kInt:output << "value: " << val_.vint;
                 break;
-            case kBigInt:output << "value: " << value_.val.vlong;
+            case kBigInt:output << "value: " << val_.vlong;
                 break;
-            case kString:output << "value: " << value_.val.vstr;
+            case kString:output << "value: " << val_.vstr;
                 break;
-            case kFloat:output << "value: " << value_.val.vfloat;
+            case kFloat:output << "value: " << val_.vfloat;
                 break;
-            case kDouble:output << "value: " << value_.val.vdouble;
+            case kDouble:output << "value: " << val_.vdouble;
                 break;
         }
-        output << "}";
     }
 };
 
@@ -433,10 +430,14 @@ public:
 };
 
 SQLNode *MakeTableNode(const std::string &name, const std::string &alias);
+SQLNode *MakeConstNode(int value);
+SQLNode *MakeConstNode(long value);
+SQLNode *MakeConstNode(float value);
+SQLNode *MakeConstNode(double value);
+SQLNode *MakeConstNode(const std::string &value);
 SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name);
 SQLNode *MakeNode(const SQLNodeType &type, ...);
 SQLNodeList *MakeNodeList(fedb::sql::SQLNode *node);
-SQLNodeList *AppendNodeList(SQLNodeList *list, SQLNode *node);
 
 } // namespace of sql
 } // namespace of fedb

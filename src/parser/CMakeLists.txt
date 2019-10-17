@@ -24,4 +24,6 @@ target_link_libraries(sql_test sql gtest pthread)
 add_executable(sql_node_test sql_node_test.cc node.cc)
 target_link_libraries(sql_node_test gtest pthread)
 
+add_executable(sql_list_node_test sql_list_node_test.cc node.cc)
+target_link_libraries(sql_list_node_test gtest pthread)
 

@@ -383,11 +383,13 @@ select_expr_list: projection {
                             $$ = ::fedb::sql::MakeNodeList($1);
                             emit("select expr list size: %d", $$->Size());
                        }
-    | select_expr_list ',' projection {
-                            $$ = ::fedb::sql::AppendNodeList($1, $3);
-                            emit("select expr list size: >> %d", NULL == $$ ? 0 : $$->Size());
-                            }
-
+    | projection ',' select_expr_list
+    {
+        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        new_list->AppendNodeList($3);
+        $$ = new_list;
+        emit("select expr list size: >> %d", NULL == $$ ? 0 : $$->Size());
+    }
     | '*'               { emit("SELECTALL"); }
     ;
 
@@ -409,10 +411,12 @@ projection:
     ;
 
 table_references:    table_reference { $$ = ::fedb::sql::MakeNodeList($1); }
-    | table_references ',' table_reference
-        {
-            $$ = ::fedb::sql::AppendNodeList($1, $3);
-        }
+    | table_reference ',' table_references
+    {
+        ::fedb::sql::SQLNodeList *new_list = ::fedb::sql::MakeNodeList($1);
+        new_list->AppendNodeList($3);
+        $$ = new_list;
+    }
     ;
 
 table_reference:  table_factor
