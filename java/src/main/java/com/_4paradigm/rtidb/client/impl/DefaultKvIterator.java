@@ -3,6 +3,7 @@ package com._4paradigm.rtidb.client.impl;
 import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.ns.NS;
@@ -28,7 +29,7 @@ public class DefaultKvIterator implements KvIterator {
     private int count;
     private RTIDBClientConfig config = null;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
-    private int addfiledCount = 0;
+    private TableHandler th = null;
     public DefaultKvIterator(ByteString bs) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
@@ -77,14 +78,14 @@ public class DefaultKvIterator implements KvIterator {
         this.network = network;
     }
 
-    public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, int addfiledCount) {
+    public DefaultKvIterator(ByteString bs, TableHandler th) {
         this.bs = bs;
         this.bb = this.bs.asReadOnlyByteBuffer();
         this.offset = 0;
         this.totalSize = this.bs.size();
         next();
-        this.schema = schema;
-        this.addfiledCount = addfiledCount;
+        this.schema = th.getSchema();
+        this.th = th;
     }
 
     public DefaultKvIterator(ByteString bs, List<ColumnDesc> schema, Long network) {
@@ -100,7 +101,10 @@ public class DefaultKvIterator implements KvIterator {
     }
 
     public List<ColumnDesc> getSchema() {
-		return schema;
+        if (th != null && th.getSchemaMap().size() > 0) {
+            return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
+        }
+        return schema;
 	}
 
 	public boolean valid() {
@@ -136,7 +140,12 @@ public class DefaultKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row = new Object[schema.size() + addfiledCount];
+        Object[] row;
+        if (th != null) {
+            row = new Object[schema.size() + th.getSchemaMap().size()];
+        } else {
+            row = new Object[schema.size()];
+        }
         getDecodedValue(row, 0, row.length);
         return row;
     }

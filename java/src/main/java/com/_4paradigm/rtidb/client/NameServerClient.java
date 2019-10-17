@@ -13,5 +13,5 @@ public interface NameServerClient {
     boolean recoverEndpoint(String endpoint);
     List<String> showTablet();
 
-    boolean AddTableField(String tableName, String columnName, String columnType);
+    boolean addTableField(String tableName, String columnName, String columnType);
 }

@@ -740,7 +740,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             Long network = null;
             DefaultKvIterator it = null;
             if (th.getSchemaMap().size() > 0) {
-                it = new DefaultKvIterator(response.getPairs(), th.getSchema(), th.getSchemaMap().size());
+                it = new DefaultKvIterator(response.getPairs(), th);
 
             } else {
                 it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
@@ -789,12 +789,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + name);
         }
-        if (row.length > th.getSchema().size()) {
-            if (th.getSchemaMap().size() > 0) {
-                row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
-            } else {
-                row = Arrays.copyOf(row, th.getSchema().size());
-            }
+        if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+            row = Arrays.copyOf(row, th.getSchema().size() + th.getSchemaMap().size());
         }
         List<Tablet.TSDimension> tsDimensions = TableClientCommon.parseArrayInput(row, th);
         return put(name, 0, row, tsDimensions);
@@ -958,7 +954,11 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("no table with name " + tname);
         }
-        return th.getSchema();
+        if (th.getSchemaMap().size() == 0) {
+            return th.getSchema();
+        } else {
+            return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
+        }
     }
 
     @Override
@@ -996,6 +996,10 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th == null) {
             throw new TabletException("fail to find table with id " + tid);
         }
-        return th.getSchema();
+        if (th.getSchemaMap().size() == 0) {
+            return th.getSchema();
+        } else {
+            return th.getSchemaMap().get(th.getSchema().size() + th.getSchemaMap().size());
+        }
     }
 }

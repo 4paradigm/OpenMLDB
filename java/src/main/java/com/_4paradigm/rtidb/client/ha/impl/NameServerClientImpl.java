@@ -230,7 +230,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     }
 
     @Override
-    public boolean AddTableField(String tableName, String columnName, String columnType) {
+    public boolean addTableField(String tableName, String columnName, String columnType) {
         try {
             ColumnType.valueFrom(columnType);
         } catch (Exception e) {
@@ -245,7 +245,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 .setName(tableName)
                 .setColumnDesc(columnDesc)
                 .build();
-        GeneralResponse response = ns.AddTableField(request);
+        GeneralResponse response = ns.addTableField(request);
         if (response != null && response.getCode() == 0) {
             return true;
         } else if (response != null) {

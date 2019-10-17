@@ -1,31 +1,35 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TableSyncClient;
+import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
-import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.impl.RTIDBClusterClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
+import com._4paradigm.rtidb.client.schema.ColumnType;
+import com._4paradigm.rtidb.client.schema.RowCodec;
 import com._4paradigm.rtidb.common.Common;
-import org.joda.time.DateTime;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
-
-import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com.google.protobuf.ByteString;
+import org.joda.time.DateTime;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableSyncClientTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(10000);
@@ -400,6 +404,7 @@ public class TableSyncClientTest extends TestCaseBase {
         Assert.assertTrue(ok);
         client.refreshRouteTable();
         try {
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 5);
             Map<String, Object> data = new HashMap<String, Object>();
             data.put("card", "card0");
             data.put("mcc", "mcc0");
@@ -408,10 +413,15 @@ public class TableSyncClientTest extends TestCaseBase {
             data.put("ts_1", 222l);
             tableSyncClient.put(name, data);
 
-            ok = nsc.AddTableField(name, "aa", "string");
+            KvIterator itt = tableSyncClient.traverse(name, "card");
+            Assert.assertTrue(itt.valid());
+            Assert.assertEquals(itt.getSchema().size(), 5);
+
+            ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
             client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 6);
 
             data.clear();
             data.put("card", "card0");
@@ -441,6 +451,7 @@ public class TableSyncClientTest extends TestCaseBase {
             KvIterator it = tableSyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 2);
+            Assert.assertEquals(it.getSchema().size(), 6);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
             Assert.assertEquals(row.length, 6);
@@ -465,8 +476,9 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(it.valid());
             Assert.assertTrue(it.getCount() == 1);
 
-            KvIterator itt = tableSyncClient.traverse(name, "card");
+            itt = tableSyncClient.traverse(name, "card");
             Assert.assertTrue(itt.valid());
+            Assert.assertEquals(it.getSchema().size(), 6);
             row = itt.getDecodedValue();
             Assert.assertEquals(itt.getKey(), 1236);
             Assert.assertEquals(row.length, 6);
@@ -501,7 +513,17 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals(((Long) row[4]).longValue(), 222l);
             Assert.assertEquals(row[5], null);
 
+            ok = nsc.addTableField(name, "bb", "string");
+//            Thread.currentThread().sleep(15);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 7);
+            itt = tableSyncClient.traverse(name, "card");
+            Assert.assertTrue(itt.valid());
+            Assert.assertEquals(itt.getSchema().size(), 7);
+
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);
@@ -511,12 +533,14 @@ public class TableSyncClientTest extends TestCaseBase {
     public void testAddTableFieldWithoutColumnKey() {
         String name = createSchemaTable();
         try {
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 3);
             Assert.assertTrue(tableSyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d}));
 
-            boolean ok = nsc.AddTableField(name, "aa", "string");
+            boolean ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(15);
             Assert.assertTrue(ok);
             client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 4);
 
             Assert.assertTrue(tableSyncClient.put(name, 9528, new Object[]{"card1", "mcc1", 9.2d, "aa1"}));
             Assert.assertTrue(tableSyncClient.put(name, 9529, new Object[]{"card2", "mcc2", 9.3d}));
@@ -626,6 +650,69 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertTrue(false);
         } finally {
             nsc.dropTable(name);
+        }
+    }
+
+    @Test
+    public void testCodecForAddTableFiled() {
+        String name = createSchemaTable();
+        try {
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 3);
+            Assert.assertTrue(tableSyncClient.put(name, 9527, new Object[]{"card0", "mcc0", 9.15d}));
+
+            boolean ok = nsc.addTableField(name, "aa", "string");
+//            Thread.currentThread().sleep(15);
+            Assert.assertTrue(ok);
+            client.refreshRouteTable();
+            Assert.assertEquals(tableSyncClient.getSchema(name).size(), 4);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+        List<com._4paradigm.rtidb.client.schema.ColumnDesc> schema = new ArrayList<com._4paradigm.rtidb.client.schema.ColumnDesc>();
+        com._4paradigm.rtidb.client.schema.ColumnDesc col1 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col1.setAddTsIndex(true);
+        col1.setName("card");
+        col1.setType(ColumnType.kString);
+        schema.add(col1);
+
+        com._4paradigm.rtidb.client.schema.ColumnDesc col2 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col2.setAddTsIndex(true);
+        col2.setName("mcc");
+        col2.setType(ColumnType.kString);
+        schema.add(col2);
+
+        com._4paradigm.rtidb.client.schema.ColumnDesc col3 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col3.setAddTsIndex(false);
+        col3.setName("amt");
+        col3.setType(ColumnType.kDouble);
+        schema.add(col3);
+
+        com._4paradigm.rtidb.client.schema.ColumnDesc col4 = new com._4paradigm.rtidb.client.schema.ColumnDesc();
+        col4.setAddTsIndex(false);
+        col4.setName("aa");
+        col4.setType(ColumnType.kString);
+        schema.add(col4);
+        try {
+            ByteBuffer buffer = RowCodec.encode(new Object[]{"9527", "1234", 1.0, "aa1"}, schema);
+            buffer.rewind();
+
+            Object[] row = new Object[4];
+            RowCodec.decode(buffer, schema, row, 0, 4);
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals("1234", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+            Assert.assertEquals("aa1", row[3]);
+
+            buffer.rewind();
+            row = new Object[3];
+            schema = schema.subList(0, 2);
+            RowCodec.decode(buffer, schema, row, 0, 3);
+            Assert.assertEquals("9527", row[0]);
+            Assert.assertEquals("1234", row[1]);
+            Assert.assertEquals(1.0, row[2]);
+        } catch (TabletException e) {
+            Assert.assertTrue(false);
         }
     }
 
@@ -802,6 +889,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals("1222", row[1]);
             Assert.assertEquals(1.0, row[2]);
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.fail();
         }
         
@@ -852,6 +940,7 @@ public class TableSyncClientTest extends TestCaseBase {
             Assert.assertEquals("1223", row[1]);
             Assert.assertEquals(2.0, row[2]);
         } catch (Exception e) {
+            e.printStackTrace();
             Assert.fail();
         } finally {
             ClientBuilder.config.setRemoveDuplicateByTime(false);

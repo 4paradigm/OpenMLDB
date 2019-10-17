@@ -193,7 +193,7 @@ public class TabletSyncClientImpl implements TabletSyncClient {
         if (response != null && response.getCode() == 0) {
             DefaultKvIterator it = null;
             if (th.getSchemaMap().size() > 0) {
-                it = new DefaultKvIterator(response.getPairs(), th.getSchema(), th.getSchemaMap().size());
+                it = new DefaultKvIterator(response.getPairs(), th);
             } else {
                 it = new DefaultKvIterator(response.getPairs(), th.getSchema(), network);
             }
