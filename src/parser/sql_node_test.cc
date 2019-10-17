@@ -44,7 +44,7 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
     SQLNode *node = MakeColumnRefNode("col", "t");
     ColumnRefNode *columnnode = (ColumnRefNode *) node;
 
-    ASSERT_EQ(kColumn, columnnode->type_);
+    ASSERT_EQ(kColumn, columnnode->GetType());
     ASSERT_EQ("t", columnnode->GetRelationName());
     ASSERT_EQ("col", columnnode->GetColumnName());
 

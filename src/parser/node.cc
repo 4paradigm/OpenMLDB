@@ -45,13 +45,6 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
     return output;
 }
 
-static void freeSqlNode(SQLNode *node) {
-    delete node;
-}
-void SelectStmt::AddChild(SQLNode *node) {
-
-}
-
 SQLNode *MakeNode(const SQLNodeType &type, ...) {
     switch (type) {
         case kSelectStmt:return new SelectStmt();
@@ -61,34 +54,37 @@ SQLNode *MakeNode(const SQLNodeType &type, ...) {
     }
 }
 
-SQLNode *MakeTableNode(const std::string name, const std::string alias) {
+SQLNode *MakeTableNode(const std::string &name, const std::string &alias) {
     TableNode *node = new TableNode(name, alias);
     return (SQLNode *) node;
 }
 
-SQLNode *MakeColumnRefNode(const std::string column_name, const std::string relation_name) {
+SQLNode *MakeColumnRefNode(const std::string &column_name, const std::string &relation_name) {
     ColumnRefNode *node = new ColumnRefNode(column_name, relation_name);
     return (SQLNode *) node;
 }
 
 SQLNodeList *MakeNodeList(SQLNode *node) {
     SQLLinkedNode *head = new SQLLinkedNode(node);
-    SQLNodeList *new_list = new SQLNodeList(head, 1);
+    SQLNodeList *new_list = new SQLNodeList(head, head, 1);
     return new_list;
 }
 
 SQLNodeList *AppendNodeList(SQLNodeList *list, SQLNode *node) {
-    SQLNodeList *new_list = new SQLNodeList();
     SQLLinkedNode *linkedNode = new SQLLinkedNode(node);
-    linkedNode->next_ = list->head_;
-    new_list->head_ = linkedNode;
-    new_list->SetSize(list->Size() + 1);
+    SQLNodeList *new_list = new SQLNodeList(linkedNode, linkedNode, 1);
+    new_list->AppendNodeList(list);
     return new_list;
 }
 
 // FIXME: this overloading does not work
 std::ostream &operator<<(std::ostream &output, const SQLNode &thiz) {
     thiz.Print(output);
+    return output;
+}
+
+std::ostream &operator<<(std::ostream &output, const SQLNodeList &thiz) {
+    thiz.Print(output, "");
     return output;
 }
 
