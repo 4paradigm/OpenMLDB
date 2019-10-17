@@ -201,6 +201,7 @@ public class TableSchemaTest extends TestCaseBase {
                 row1.put("filed" + i, i + 1.5d);
             }
             try {
+                Assert.assertEquals(tableSyncClient.getSchema(name).size(), schema_num);
                 boolean ok = tableSyncClient.put(name, time, row1);
                 Assert.assertTrue(ok);
                 Object[] row = tableSyncClient.getRow(name, "card0", 0);
@@ -223,10 +224,11 @@ public class TableSchemaTest extends TestCaseBase {
                     Assert.assertEquals(i + 1.5d, Double.parseDouble(row[i + 1].toString()), 0.000001);
                 }
 
-                ok = nsc.AddTableField(name, "aa", "string");
+                ok = nsc.addTableField(name, "aa", "string");
 //            Thread.currentThread().sleep(1000);
                 Assert.assertTrue(ok);
                 client.refreshRouteTable();
+                Assert.assertEquals(tableSyncClient.getSchema(name).size(), schema_num + 1);
 
                 row1.clear();
                 row1.put("card", "card1");

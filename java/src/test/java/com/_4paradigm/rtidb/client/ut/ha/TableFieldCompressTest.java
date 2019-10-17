@@ -1,27 +1,24 @@
 package com._4paradigm.rtidb.client.ut.ha;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.client.GetFuture;
+import com._4paradigm.rtidb.client.KvIterator;
+import com._4paradigm.rtidb.client.PutFuture;
+import com._4paradigm.rtidb.client.ScanFuture;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.base.TestCaseBase;
+import com._4paradigm.rtidb.ns.NS;
+import com.google.protobuf.ByteString;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com._4paradigm.rtidb.client.GetFuture;
-import com._4paradigm.rtidb.client.KvIterator;
-import com._4paradigm.rtidb.client.PutFuture;
-import com._4paradigm.rtidb.client.ScanFuture;
-import com._4paradigm.rtidb.ns.NS;
-import com.google.protobuf.ByteString;
-
-
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableFieldCompressTest extends TestCaseBase {
     private static AtomicInteger id = new AtomicInteger(10000);
@@ -114,6 +111,12 @@ public class TableFieldCompressTest extends TestCaseBase {
             Object[] result1 = tableSyncClient.getRow(name, "card0", "card", 9527);
             Assert.assertEquals(result1[0], "card0");
             Assert.assertEquals(result1[1], "valueabcad123ajcr34560");
+
+            it = tableSyncClient.traverse(name, "card", null);
+            Assert.assertTrue(it.valid());
+            result = it.getDecodedValue();
+            Assert.assertEquals(result[0], "card0");
+            Assert.assertEquals(result[1], "XXvalueabcad123ajcr34560");
 
             ok = tableSyncClient.put(kvTable, "test1", 9527, "value1");
             Assert.assertTrue(ok);
