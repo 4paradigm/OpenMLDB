@@ -89,7 +89,8 @@ public class TraverseKvIterator implements KvIterator {
                 lastPid = pid;
                 lastPk = response.getPk();
                 lastTime = response.getTs();
-                if (response.getCount() < client.getConfig().getTraverseLimit()) {
+                if ((response.hasIsFinish() && response.getIsFinish()) ||
+                        (!response.hasIsFinish() && response.getCount() < client.getConfig().getTraverseLimit())) {
                     pid++;
                     if (pid >= th.getPartitions().length) {
                         isFinished = true;
